@@ -296,6 +296,69 @@ public sealed class DrivingGraduationController(
         return Ok(new { record.Id, status = record.Status.ToString(), record.GraduatedAtUtc });
     }
 
+    /// <summary>
+    /// Kontrol listesi tamamlanmayan bir kursiyeri, yalnızca hem mezuniyet yönetimi
+    /// hem de istisna onay yetkisi bulunan kullanıcının açık ve gerekçeli kararıyla
+    /// doğrudan mezun eder. İşlem tek adımda tamamlanır ancak eksik maddeler,
+    /// kullanıcı ve gerekçe değiştirilemez audit kaydına yazılır.
+    /// </summary>
+    [HttpPost("students/{profileId:guid}/graduate-anyway")]
+    [RequireDrivingPermission(DrivingPermissions.GraduationManage)]
+    [RequireDrivingPermission(DrivingPermissions.GraduationOverrideApprove)]
+    public async Task<IActionResult> GraduateAnyway(Guid profileId, [FromBody] ForceGraduateStudentRequest request, CancellationToken ct)
+    {
+        var reason = request.Reason?.Trim() ?? string.Empty;
+        if (reason.Length is < 20 or > 500)
+            return BadRequest(new { message = "Yine de mezun etme gerekçesi 20-500 karakter olmalıdır." });
+
+        var checklist = await BuildChecklistAsync(profileId, ct);
+        if (checklist is null) return NotFound(new { message = "Kursiyer bulunamadı." });
+        if (checklist.Eligible)
+            return Conflict(new { message = "Kursiyer zaten tüm koşulları sağlıyor. Normal “Mezun Et” işlemini kullanın.", checklist });
+
+        var profile = await db.StudentDrivingProfiles.SingleAsync(x => x.Id == profileId, ct);
+        var record = await db.DrivingGraduationRecords.SingleOrDefaultAsync(x => x.StudentDrivingProfileId == profileId, ct)
+            ?? new DrivingGraduationRecord { StudentDrivingProfileId = profileId };
+        if (record.Status == DrivingGraduationStatus.Graduated && record.GraduatedAtUtc.HasValue)
+            return Conflict(new { message = "Kursiyer zaten mezun edilmiş." });
+
+        var actorId = CurrentUserId();
+        if (actorId is null) return Forbid();
+        var incomplete = checklist.Items.Where(x => !x.Completed)
+            .Select(x => new { x.Key, x.Label, x.Detail }).ToList();
+
+        if (db.Entry(record).State == EntityState.Detached) db.DrivingGraduationRecords.Add(record);
+        record.Status = DrivingGraduationStatus.Graduated;
+        record.ChecklistJson = JsonSerializer.Serialize(checklist.Items);
+        record.CheckedAtUtc = DateTime.UtcNow;
+        record.GraduatedAtUtc = DateTime.UtcNow;
+        record.GraduatedByUserId = actorId;
+        record.Note = $"Yetkili kararıyla mezun edildi. Gerekçe: {reason}";
+        record.RevokedAtUtc = null;
+        record.RevokedByUserId = null;
+        record.RevocationReason = string.Empty;
+        profile.Status = DrivingStudentStatus.Graduated;
+
+        var pendingRequests = await db.DrivingGraduationActionRequests
+            .Where(x => x.StudentDrivingProfileId == profileId
+                && x.ActionType == DrivingGraduationActionType.EligibilityOverride
+                && (x.Status == DrivingGraduationActionStatus.Pending || x.Status == DrivingGraduationActionStatus.FirstApproved))
+            .ToListAsync(ct);
+        foreach (var pending in pendingRequests) pending.Status = DrivingGraduationActionStatus.Cancelled;
+
+        await db.SaveChangesAsync(ct);
+        await notifier.NotifyStudentAsync(profileId, "Mezuniyetiniz onaylandı",
+            "Kurum yetkilisi mezuniyet kaydınızı tamamladı. Belgeleriniz mezuniyet ekranından hazırlanabilir.",
+            DrivingNotificationCategories.Exam,
+            dedupeKey: $"graduation-force:{record.Id}:{record.GraduatedAtUtc:O}",
+            relatedEntityType: nameof(DrivingGraduationRecord), relatedEntityId: record.Id.ToString(), cancellationToken: ct);
+        await audit.LogChangeAsync("Kursiyer koşullar tamamlanmadan yetkili kararıyla mezun edildi", AuditCategory,
+            nameof(DrivingGraduationRecord), record.Id.ToString(), reason, null,
+            new { profileId, actorId, incomplete, cancelledRequestIds = pendingRequests.Select(x => x.Id).ToArray() }, ct);
+
+        return Ok(new { record.Id, status = record.Status.ToString(), record.GraduatedAtUtc, forced = true, incomplete });
+    }
+
     [HttpPost("students/{profileId:guid}/certificates")]
     [RequireDrivingPermission(DrivingPermissions.CertificateIssue)]
     public async Task<IActionResult> IssueCertificate(Guid profileId, [FromBody] IssueCertificateRequest request, CancellationToken ct)
@@ -305,9 +368,6 @@ public sealed class DrivingGraduationController(
         if (graduation is null) return Conflict(new { message = "Kursiyer mezun edilmeden belge oluşturulamaz." });
         var active = await db.DrivingCertificates.SingleOrDefaultAsync(x => x.StudentDrivingProfileId == profileId && x.CertificateType == type && x.Status == DrivingCertificateStatus.Active, ct);
         if (active is not null) return Ok(new { active.Id, active.DocumentNumber, type = active.CertificateType.ToString(), active.PdfFileUrl });
-        var settings = await ResolveSettingsAsync(ct);
-        var missing = await CertificateIssuanceMissingAsync(settings, ct);
-        if (missing.Count > 0) return Conflict(new { message = "Kurum ve sertifika ayarları tamamlanmadan belge düzenlenemez.", missingFields = missing });
         var certificate = await CreateCertificateAsync(graduation, profileId, type, null, string.Empty, ct);
         return Ok(new { certificate.Id, certificate.DocumentNumber, type = certificate.CertificateType.ToString(), certificate.PdfFileUrl });
     }
@@ -322,9 +382,6 @@ public sealed class DrivingGraduationController(
         if (old is null) return NotFound();
         var graduation = await db.DrivingGraduationRecords.SingleOrDefaultAsync(x => x.Id == old.GraduationRecordId && x.Status == DrivingGraduationStatus.Graduated, ct);
         if (graduation is null) return Conflict(new { message = "Aktif mezuniyet olmadan belge yeniden basılamaz." });
-        var settings = await ResolveSettingsAsync(ct);
-        var missing = await CertificateIssuanceMissingAsync(settings, ct);
-        if (missing.Count > 0) return Conflict(new { message = "Kurum ve sertifika ayarları tamamlanmadan belge yeniden basılamaz.", missingFields = missing });
         if (old.Status == DrivingCertificateStatus.Active) old.Status = DrivingCertificateStatus.Superseded;
         var certificate = await CreateCertificateAsync(graduation, old.StudentDrivingProfileId, old.CertificateType, old, reason, ct);
         await audit.LogChangeAsync("Sertifika yeniden basıldı", AuditCategory, nameof(DrivingCertificate), certificate.Id.ToString(), reason, new { old.Id, old.DocumentNumber }, new { certificate.Id, certificate.DocumentNumber }, ct);
@@ -424,12 +481,16 @@ public sealed class DrivingGraduationController(
         var logo = await ReadSafeCertificateImageAsync(settings.CertificateLogoUrl, ct);
         var signature = await ReadSafeCertificateImageAsync(settings.CertificateSignatureUrl, ct);
         var verificationUrl = $"{PublicVerificationBaseUrl()}/api/public/driving-certificates/{Uri.EscapeDataString(certificate.DocumentNumber)}/verify?token={Uri.EscapeDataString(token)}";
-        var snapshot = new CertificateSnapshot(tenant.Name, row.FullName, row.LicenseClass, director, settings.CertificateDirectorTitle);
+        var directorTitle = string.IsNullOrWhiteSpace(settings.CertificateDirectorTitle) ? "Kurum Müdürü" : settings.CertificateDirectorTitle;
+        var primaryColor = System.Text.RegularExpressions.Regex.IsMatch(settings.CertificatePrimaryColor ?? string.Empty, "^#[0-9A-Fa-f]{6}$")
+            ? settings.CertificatePrimaryColor!
+            : "#173B57";
+        var snapshot = new CertificateSnapshot(tenant.Name, row.FullName, row.LicenseClass, director, directorTitle);
         certificate.SnapshotJson = JsonSerializer.Serialize(snapshot);
         certificate.VerificationTokenHash = HashToken(token);
         var bytes = pdf.Generate(new DrivingCertificatePdfModel(tenant.Name, row.FullName, row.LicenseClass, certificate.DocumentNumber,
             certificate.CertificateType == DrivingCertificateType.Completion ? "EĞİTİM TAMAMLAMA BELGESİ" : "BAŞARI BELGESİ", certificate.IssuedAtUtc,
-            director, settings.CertificateDirectorTitle, settings.CertificatePrimaryColor, verificationUrl, logo, signature));
+            director, directorTitle, primaryColor, verificationUrl, logo, signature));
         await using var stream = new MemoryStream(bytes);
         var asset = await files.SaveAsync(stream, $"{certificate.DocumentNumber}.pdf", "application/pdf", "driving-certificates", $"{Request.Scheme}://{Request.Host}", ct);
         certificate.PdfFileUrl = asset.FileUrl; await db.SaveChangesAsync(ct);
@@ -523,12 +584,6 @@ public sealed class DrivingGraduationController(
         if (await ReadSafeCertificateImageAsync(settings.CertificateSignatureUrl, ct) is null) missing.Add("signatureUrl");
         return missing;
     }
-    private async Task<List<string>> CertificateIssuanceMissingAsync(DrivingSchoolSettings settings, CancellationToken ct)
-    {
-        var missing = await CertificateSetupMissingAsync(settings, ct);
-        if (!IsCertificateSettingsApproved(settings)) missing.Add("approval");
-        return missing;
-    }
     private static bool IsCertificateSettingsApproved(DrivingSchoolSettings settings) =>
         settings.CertificateSettingsApprovedAtUtc.HasValue
         && settings.CertificateSettingsApprovedRevision == settings.CertificateSettingsRevision;
@@ -569,6 +624,7 @@ public sealed class DrivingGraduationController(
 public sealed record GraduationChecklistItem(string Key, string Label, bool Completed, string Detail);
 public sealed record GraduationChecklistResponse(Guid StudentProfileId, string StudentName, bool Eligible, IReadOnlyList<GraduationChecklistItem> Items, DateTime CheckedAtUtc, decimal AttendancePercent, decimal MinimumAttendancePercent, string ExcusedAbsencePolicy);
 public sealed record GraduateStudentRequest(string? Note);
+public sealed record ForceGraduateStudentRequest(string? Reason);
 public sealed record GraduationActionRequest(string? Reason, string[]? ChecklistKeys);
 public sealed record GraduationDecisionRequest(string? Note);
 public sealed record IssueCertificateRequest(string Type);

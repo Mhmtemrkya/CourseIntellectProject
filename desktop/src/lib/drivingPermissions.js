@@ -49,6 +49,7 @@ export const DRIVING = {
   appointmentApprove: 'driving.appointment.approve',
 
   lessonViewAll: 'driving.lesson.view.all',
+  lessonManualRecord: 'driving.lesson.manual_record',
   lessonMarkNoShow: 'driving.lesson.noshow',
   lessonBalanceAdjust: 'driving.lessonbalance.adjust',
   theoryView: 'driving.theory.view',
@@ -97,29 +98,50 @@ export const OVERRIDE_LABELS = {
 
 let cached = null;
 let pending = null;
+let cacheGeneration = 0;
 
 const EMPTY = { roleKey: 'none', permissions: new Set(), isOwner: false, isBranchScoped: false, moduleAvailable: false };
 
 export async function getDrivingPermissions() {
   if (cached) return cached;
   if (!pending) {
-    pending = fetchDrivingPermissions()
-      .then((payload) => ({
-        roleKey: payload?.roleKey ?? 'none',
-        permissions: new Set(Array.isArray(payload?.permissions) ? payload.permissions : []),
-        isOwner: payload?.isOwner === true,
-        isBranchScoped: payload?.isBranchScoped === true,
-        moduleAvailable: payload?.moduleAvailable === true,
-      }))
-      // Yetki okunamazsa hiçbir şey gösterme: aksi hâlde kullanıcıya
-      // backend'in reddedeceği butonlar açılır.
-      .catch(() => EMPTY);
+    const requestGeneration = cacheGeneration;
+    const request = (async () => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const payload = await fetchDrivingPermissions();
+          const resolved = {
+            roleKey: payload?.roleKey ?? 'none',
+            permissions: new Set(Array.isArray(payload?.permissions) ? payload.permissions : []),
+            isOwner: payload?.isOwner === true,
+            isBranchScoped: payload?.isBranchScoped === true,
+            moduleAvailable: payload?.moduleAvailable === true,
+          };
+          // Kullanıcı/kurum bu istek sürerken değiştiyse eski yanıtı yeni
+          // oturumun önbelleğine yazma.
+          if (requestGeneration === cacheGeneration) cached = resolved;
+          return resolved;
+        } catch {
+          if (attempt < 2) {
+            await new Promise((resolve) => setTimeout(resolve, 350));
+          }
+        }
+      }
+
+      // Yetki okunamazsa güvenli biçimde hiçbir sürücü işlemi açma. Geçici
+      // hata sonucunu cache'lemiyoruz; sonraki render/çağrı yeniden deneyebilir.
+      return EMPTY;
+    })();
+    pending = request;
+    request.finally(() => {
+      if (pending === request) pending = null;
+    });
   }
-  cached = await pending;
-  return cached;
+  return pending;
 }
 
 export function resetDrivingPermissionCache() {
+  cacheGeneration += 1;
   cached = null;
   pending = null;
 }

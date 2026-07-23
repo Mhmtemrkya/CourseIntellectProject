@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { useToast } from '../../hooks/use-toast';
+import { maskTrPhone } from '../../lib/inputMasks';
 import {
   downloadDrivingContractForm, fetchDrivingContractFormSettings, fetchDrivingStudentDetail,
   fetchDrivingStudents, updateDrivingContractFormSettings, updateDrivingRegistrationIdentity,
@@ -133,7 +134,7 @@ function InstitutionSettingsModal({ initial, onClose, onSaved }) {
               <Field label="Müdür / kurucu adı" value={form.directorName} onChange={set('directorName')} />
               <Field label="İl" value={form.institutionCity} onChange={set('institutionCity')} />
               <Field label="İlçe" value={form.institutionDistrict} onChange={set('institutionDistrict')} />
-              <Field label="Telefon" value={form.institutionPhone} onChange={set('institutionPhone')} />
+              <Field label="Telefon" value={maskTrPhone(form.institutionPhone)} onChange={(value) => set('institutionPhone')(maskTrPhone(value))} placeholder="+90 5XX XXX XX XX" />
               <Field label="Yetkili mahkeme ili" value={form.jurisdictionCity} onChange={set('jurisdictionCity')} placeholder="Boşsa kurum ili" />
               <label className="flex flex-col gap-1 sm:col-span-2">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Adres</span>

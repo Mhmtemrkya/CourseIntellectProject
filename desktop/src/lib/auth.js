@@ -122,6 +122,15 @@ export function getUserHomePath(user) {
   });
 }
 
+// Bazı eski API/oturum sürümleri institutionType alanını taşımıyordu fakat
+// sürücü kursu modül bayrağını doğru gönderiyordu. Bu durumda hesabı normal
+// okul gibi yorumlamak yerine güvenli ve geriye uyumlu biçimde kurum türünü
+// bayraktan çıkarırız.
+export function resolveUserInstitutionType(user) {
+  if (user?.institutionType) return user.institutionType;
+  return user?.drivingSchoolModuleEnabled === true ? "DrivingSchool" : null;
+}
+
 function getProfilePathForRole(role) {
   switch (role) {
     case "teacher":
@@ -172,6 +181,7 @@ function getHomePathForModule(role, moduleKey, options = {}) {
     finance: "/finance/dashboard",
     "student-accounts": "/finance/student-accounts",
     collections: "/finance/collections",
+    refunds: "/finance/refunds",
     installments: "/finance/installments",
     "late-payments": "/finance/late-payments",
     billing: "/finance/invoices-receipts",
@@ -218,6 +228,7 @@ export function createDesktopUser(payload) {
   const tenantId = data?.user?.tenantId || null;
   const isPlatformAdmin = Boolean(data?.user?.isPlatformAdmin) || ((backendRole || "").toLowerCase() === "developer" && tenantId == null);
   const tenantName = data?.user?.tenantName || (isPlatformAdmin ? "Platform" : "SchoolAsist Desktop");
+  const institutionType = resolveUserInstitutionType(data?.user);
 
   return {
     id: data?.user?.id || "",
@@ -230,7 +241,7 @@ export function createDesktopUser(payload) {
     tenantId,
     tenantSlug: data?.user?.tenantSlug || "",
     tenant: tenantName,
-    institutionType: data?.user?.institutionType || null,
+    institutionType,
     drivingSchoolModuleEnabled: Boolean(data?.user?.drivingSchoolModuleEnabled),
     branch: data?.user?.campus || "Merkez Kampus",
     department: data?.user?.departmentOrBranch || "",
@@ -241,7 +252,7 @@ export function createDesktopUser(payload) {
     homePath: getUserHomePath({
       role,
       isPlatformAdmin,
-      institutionType: data?.user?.institutionType || null,
+      institutionType,
       drivingSchoolModuleEnabled: Boolean(data?.user?.drivingSchoolModuleEnabled),
       modules: data?.user?.modules || [],
       hasRoleManagementPolicy: Boolean(data?.user?.hasRoleManagementPolicy),

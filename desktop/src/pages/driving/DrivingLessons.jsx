@@ -1,15 +1,15 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, CheckCircle2, Clock3, Download, Gauge, Route, ShieldCheck, Star } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Activity, CheckCircle2, Clock3, Download, Gauge, Plus, Route, ShieldCheck, Star } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { PremiumPanel, PremiumStatusPill } from '../../components/ui/premium-dashboard';
 import { useToast } from '../../hooks/use-toast';
-import { fetchDrivingLessons } from '../../lib/api/modules';
+import { fetchDrivingAppointments, fetchDrivingLessons, recordManualDrivingLesson } from '../../lib/api/modules';
+import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import {
-  DRIVING_EVALUATION_CATEGORIES, DRIVING_EVALUATION_CRITERIA, downloadDrivingEvaluationCsv,
+  DRIVING_EVALUATION_CRITERIA, downloadDrivingEvaluationCsv,
   evaluationScores, lessonAverage,
 } from '../../lib/drivingEvaluation';
 import { DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard, itemVariants } from './_shared';
@@ -17,31 +17,59 @@ import { DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard, itemVar
 const today = () => new Date().toISOString().slice(0, 10);
 const daysAgo = (days) => { const value = new Date(); value.setDate(value.getDate() - days); return value.toISOString().slice(0, 10); };
 const dateTime = (value) => value ? new Date(value).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+const localInput = (value) => {
+  const date = value ? new Date(value) : new Date();
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+const initialManualForm = () => ({
+  appointmentId: '',
+  startedAtUtc: localInput(),
+  completedAtUtc: localInput(),
+  startKilometer: '',
+  endKilometer: '',
+  trafficRulesScore: '3',
+  vehicleControlScore: '3',
+  maneuversScore: '3',
+  safetyScore: '3',
+  instructorNote: '',
+  reason: '',
+});
 
 export default function DrivingLessons({ embedded = false }) {
   const { toast } = useToast();
+  const { can } = useDrivingPermissions();
   const [filters, setFilters] = useState({ from: daysAgo(30), to: today() });
   const [lessons, setLessons] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualForm, setManualForm] = useState(initialManualForm);
+  const canRecordManual = can(DRIVING.lessonManualRecord);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     try {
       const toExclusive = new Date(`${filters.to}T00:00:00`);
       toExclusive.setDate(toExclusive.getDate() + 1);
-      const rows = await fetchDrivingLessons({
+      const params = {
         from: new Date(`${filters.from}T00:00:00`).toISOString(),
         to: toExclusive.toISOString(),
-      });
+      };
+      const [rows, appointmentRows] = await Promise.all([
+        fetchDrivingLessons(params),
+        canRecordManual ? fetchDrivingAppointments(params) : Promise.resolve([]),
+      ]);
       setLessons(Array.isArray(rows) ? rows : []);
+      setAppointments(Array.isArray(appointmentRows) ? appointmentRows : []);
     } catch (error) {
       toast({ title: 'Direksiyon dersleri alınamadı', description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filters.from, filters.to, toast]);
+  }, [canRecordManual, filters.from, filters.to, toast]);
 
   useEffect(() => { load(); }, [load]);
   // Ders başlama/bitme canlı izlendiği için panel kendini tazeler.
@@ -58,14 +86,59 @@ export default function DrivingLessons({ embedded = false }) {
     };
   }, [lessons]);
 
-  const categoryData = useMemo(() => DRIVING_EVALUATION_CATEGORIES.map((category) => {
-    const values = lessons.map((lesson) => lesson[category.scoreKey]).filter((value) => value != null).map(Number).filter(Number.isFinite);
-    return { name: category.label, puan: values.length ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2)) : 0 };
-  }), [lessons]);
+  const eligibleAppointments = useMemo(() => {
+    const lessonAppointmentIds = new Set(lessons.map((lesson) => lesson.appointmentId));
+    return appointments.filter((appointment) =>
+      ['Planned', 'Approved', 'CheckedIn'].includes(appointment.status)
+      && !lessonAppointmentIds.has(appointment.id)
+      && new Date(appointment.endsAtUtc) <= new Date());
+  }, [appointments, lessons]);
 
   const exportReport = () => {
     downloadDrivingEvaluationCsv(`surus-degerlendirmeleri-${filters.from}-${filters.to}.csv`, lessons);
     toast({ title: 'Ayrıntılı sürüş raporu indirildi', description: `${lessons.length} ders ve 24 kriter dışa aktarıldı.` });
+  };
+
+  const selectManualAppointment = (appointmentId) => {
+    const appointment = eligibleAppointments.find((item) => item.id === appointmentId);
+    setManualForm((current) => ({
+      ...current,
+      appointmentId,
+      startedAtUtc: appointment ? localInput(appointment.startsAtUtc) : current.startedAtUtc,
+      completedAtUtc: appointment ? localInput(appointment.endsAtUtc) : current.completedAtUtc,
+    }));
+  };
+
+  const saveManualLesson = async (event) => {
+    event.preventDefault();
+    if (manualForm.reason.trim().length < 10) {
+      toast({ title: 'Gerekçe zorunlu', description: 'Manuel kayıt gerekçesi en az 10 karakter olmalıdır.', variant: 'destructive' });
+      return;
+    }
+    setManualSaving(true);
+    try {
+      await recordManualDrivingLesson({
+        ...manualForm,
+        startedAtUtc: new Date(manualForm.startedAtUtc).toISOString(),
+        completedAtUtc: new Date(manualForm.completedAtUtc).toISOString(),
+        startKilometer: Number(manualForm.startKilometer),
+        endKilometer: Number(manualForm.endKilometer),
+        trafficRulesScore: Number(manualForm.trafficRulesScore),
+        vehicleControlScore: Number(manualForm.vehicleControlScore),
+        maneuversScore: Number(manualForm.maneuversScore),
+        safetyScore: Number(manualForm.safetyScore),
+        instructorNote: manualForm.instructorNote.trim(),
+        reason: manualForm.reason.trim(),
+      });
+      toast({ title: 'Ders hareketi güvenle kaydedildi', description: 'Ders hakkı, kilometre ve denetim kaydı birlikte güncellendi.' });
+      setManualForm(initialManualForm());
+      setManualOpen(false);
+      await load(true);
+    } catch (error) {
+      toast({ title: 'Ders hareketi kaydedilemedi', description: error.message, variant: 'destructive' });
+    } finally {
+      setManualSaving(false);
+    }
   };
 
   const Wrapper = embedded ? Fragment : DrivingPage;
@@ -81,22 +154,22 @@ export default function DrivingLessons({ embedded = false }) {
         refreshing={refreshing}
         actions={(
           <>
-            <label className="space-y-1 text-xs font-bold">
+            <label className="w-full space-y-1 text-xs font-bold sm:w-auto">
               <span>Başlangıç</span>
-              <Input type="date" value={filters.from} max={filters.to} onChange={(e) => setFilters((x) => ({ ...x, from: e.target.value }))} />
+              <Input className="w-full sm:w-auto" type="date" value={filters.from} max={filters.to} onChange={(e) => setFilters((x) => ({ ...x, from: e.target.value }))} />
             </label>
-            <label className="space-y-1 text-xs font-bold">
+            <label className="w-full space-y-1 text-xs font-bold sm:w-auto">
               <span>Bitiş</span>
-              <Input type="date" value={filters.to} min={filters.from} onChange={(e) => setFilters((x) => ({ ...x, to: e.target.value }))} />
+              <Input className="w-full sm:w-auto" type="date" value={filters.to} min={filters.from} onChange={(e) => setFilters((x) => ({ ...x, to: e.target.value }))} />
             </label>
-            <Button variant="outline" disabled={!lessons.length} onClick={exportReport}>
+            <Button className="w-full sm:w-auto" variant="outline" disabled={!lessons.length} onClick={exportReport}>
               <Download className="mr-2 h-4 w-4" />CSV Raporu
             </Button>
           </>
         )}
       />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 [&>*]:h-full">
         <DrivingStatCard label="Devam Eden Ders" value={stats.ongoing} caption="Şu an direksiyonda" icon={Activity} tone="emerald" />
         <DrivingStatCard label="Tamamlanan Ders" value={stats.completed} caption="Seçili aralıkta" icon={CheckCircle2} tone="blue" />
         <DrivingStatCard label="İşlenen Süre" value={`${stats.minutes} dk`} caption="Defterden düşen" icon={Clock3} tone="brand" />
@@ -104,31 +177,57 @@ export default function DrivingLessons({ embedded = false }) {
       </div>
 
       <motion.div variants={itemVariants}>
-        <PremiumPanel title="Kategori Performansı" description="Değerlendirme kategorilerinin ortalaması">
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categoryData} margin={{ left: 8, right: 12 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--foreground) / 0.08)" />
-                <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                <YAxis domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                <Tooltip
-                  formatter={(value) => [`${value} / 5`, 'Ortalama']}
-                  contentStyle={{
-                    background: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: 12,
-                    color: 'hsl(var(--foreground))',
-                  }}
-                />
-                <Bar dataKey="puan" fill="hsl(var(--brand-accent))" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </PremiumPanel>
-      </motion.div>
-
-      <motion.div variants={itemVariants}>
-        <PremiumPanel title="Ders Hareketleri" description={`${lessons.length} ders kaydı`}>
+        <PremiumPanel
+          title="Ders Hareketleri"
+          description={`${lessons.length} ders kaydı`}
+          action={canRecordManual ? (
+            <Button size="sm" onClick={() => setManualOpen((value) => !value)}>
+              <Plus className="mr-1.5 h-4 w-4" /><span className="hidden sm:inline">Yeni Ders Kaydı</span><span className="sm:hidden">Yeni</span>
+            </Button>
+          ) : null}
+        >
+          {manualOpen && canRecordManual ? (
+            <form className="mb-5 space-y-4 rounded-2xl border border-[hsl(var(--brand-accent)/0.3)] bg-[hsl(var(--brand-accent)/0.04)] p-4" onSubmit={saveManualLesson}>
+              <div>
+                <h3 className="font-black">Yetkili manuel ders hareketi</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Yalnızca geçmiş ve henüz işlenmemiş bir randevu seçilebilir. İşlem ders bakiyesine, araç kilometresine ve denetim kaydına birlikte yansır.</p>
+              </div>
+              <label className="block space-y-1.5 text-sm font-semibold">
+                <span>Planlanmış randevu</span>
+                <select required className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={manualForm.appointmentId} onChange={(e) => selectManualAppointment(e.target.value)}>
+                  <option value="">Randevu seçin</option>
+                  {eligibleAppointments.map((item) => (
+                    <option key={item.id} value={item.id}>{dateTime(item.startsAtUtc)} • {item.studentName} • {item.instructorName} • {item.vehiclePlate}</option>
+                  ))}
+                </select>
+              </label>
+              {eligibleAppointments.length === 0 ? <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">Bu tarih aralığında manuel kayda uygun geçmiş randevu bulunmuyor.</p> : null}
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <label className="space-y-1.5 text-sm font-semibold"><span>Başlangıç</span><Input required type="datetime-local" value={manualForm.startedAtUtc} onChange={(e) => setManualForm((x) => ({ ...x, startedAtUtc: e.target.value }))} /></label>
+                <label className="space-y-1.5 text-sm font-semibold"><span>Bitiş</span><Input required type="datetime-local" value={manualForm.completedAtUtc} onChange={(e) => setManualForm((x) => ({ ...x, completedAtUtc: e.target.value }))} /></label>
+                <label className="space-y-1.5 text-sm font-semibold"><span>Başlangıç km</span><Input required inputMode="numeric" type="number" min="0" value={manualForm.startKilometer} onChange={(e) => setManualForm((x) => ({ ...x, startKilometer: e.target.value }))} /></label>
+                <label className="space-y-1.5 text-sm font-semibold"><span>Bitiş km</span><Input required inputMode="numeric" type="number" min="0" value={manualForm.endKilometer} onChange={(e) => setManualForm((x) => ({ ...x, endKilometer: e.target.value }))} /></label>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                  ['trafficRulesScore', 'Trafik kuralları'],
+                  ['vehicleControlScore', 'Araç hâkimiyeti'],
+                  ['maneuversScore', 'Manevralar'],
+                  ['safetyScore', 'Güvenlik'],
+                ].map(([key, label]) => (
+                  <label key={key} className="space-y-1.5 text-sm font-semibold"><span>{label} (1-5)</span><Input required type="number" min="1" max="5" value={manualForm[key]} onChange={(e) => setManualForm((x) => ({ ...x, [key]: e.target.value }))} /></label>
+                ))}
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                <label className="space-y-1.5 text-sm font-semibold"><span>Ders notu</span><Input maxLength={2000} placeholder="Derste çalışılan konular ve gözlemler" value={manualForm.instructorNote} onChange={(e) => setManualForm((x) => ({ ...x, instructorNote: e.target.value }))} /></label>
+                <label className="space-y-1.5 text-sm font-semibold"><span>Manuel kayıt gerekçesi</span><Input required minLength={10} maxLength={500} placeholder="Neden sonradan girildi? (en az 10 karakter)" value={manualForm.reason} onChange={(e) => setManualForm((x) => ({ ...x, reason: e.target.value }))} /></label>
+              </div>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" onClick={() => setManualOpen(false)}>Vazgeç</Button>
+                <Button disabled={manualSaving || !manualForm.appointmentId}>{manualSaving ? 'Kaydediliyor…' : 'Ders Hareketini Kaydet'}</Button>
+              </div>
+            </form>
+          ) : null}
           {loading ? (
             <div className="flex min-h-52 items-center justify-center"><LoadingDots /></div>
           ) : lessons.length === 0 ? (

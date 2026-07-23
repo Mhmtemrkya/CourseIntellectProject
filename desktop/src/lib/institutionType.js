@@ -5,7 +5,7 @@ import { fetchDrivingSchoolStatus } from './api/modules';
 let cached = null;
 let pending = null;
 
-export async function getInstitutionType() {
+export async function getInstitutionType(fallbackType = 'PrivateSchool') {
   if (cached) return cached;
   if (!pending) {
     // ÖNEMLİ: Yalnızca kesin (başarılı) bir sonucu kalıcı önbelleğe al. Eski
@@ -28,7 +28,7 @@ export async function getInstitutionType() {
         }
         await new Promise((resolve) => setTimeout(resolve, 400));
       }
-      return 'PrivateSchool';
+      return fallbackType;
     })().finally(() => {
       pending = null;
     });
@@ -65,7 +65,7 @@ const DRIVING_SCHOOL_ALLOWED = new Set([
   'notifications',      // bildirimler + duyurular
   'documents',          // belge merkezi
   // Finans ailesi (sürücü kursunda tam finans var)
-  'finance', 'billing', 'collections', 'installments', 'late-payments',
+  'finance', 'billing', 'collections', 'refunds', 'installments', 'late-payments',
   'discounts-scholarships', 'collection-calendar', 'reconciliation', 'bulk-actions',
   'overdue-rules', 'cash-report', 'ledger', 'finance-export', 'finance-audit-log',
   'finance-detail-hub', 'student-accounts', 'salary', 'payments', 'receipts', 'approvals',

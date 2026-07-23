@@ -14,12 +14,13 @@ import {
   X,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
+import { resolveUserInstitutionType } from "../../lib/auth";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../lib/i18n/LanguageContext";
-import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
+import { getDisabledFeatureKeys, isPathDisabled, resetTenantFeatureCache } from "../../lib/tenantFeatures";
 import { getDrivingPermissions, isDrivingPathAllowed, resetDrivingPermissionCache } from "../../lib/drivingPermissions";
 import { getInstitutionType, isModuleAllowedForInstitution, resetInstitutionTypeCache } from "../../lib/institutionType";
-import { getEntitlements, isModuleAllowed } from "../../lib/entitlements";
+import { getEntitlements, isModuleAllowed, resetEntitlementCache } from "../../lib/entitlements";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 import { cn } from "../../lib/utils";
 import brandLogo from "../../assets/brand/emblem.png";
@@ -151,7 +152,9 @@ export function PremiumSidebar() {
   // zaten geliyor (user.institutionType); onu başlangıç değeri olarak kullanırız.
   // Böylece async getInstitutionType() login anında geçici olarak başarısız olsa
   // bile sürücü kursu 'PrivateSchool'a düşüp TÜM sürücü menülerini gizlemez.
-  const [institutionType, setInstitutionType] = useState(user?.institutionType || null);
+  const [institutionType, setInstitutionType] = useState(
+    resolveUserInstitutionType(user),
+  );
   const [drivingPermissions, setDrivingPermissions] = useState(null);
   const [openGroups, setOpenGroups] = useState(() => new Set());
 
@@ -174,25 +177,25 @@ export function PremiumSidebar() {
       setEntitlements({ unrestricted: true, roles: {} });
       setInstitutionType(null);
     } else {
+      // Önbellekler kullanıcı/kurum kapsamlıdır. Aynı uygulamada çıkış yapıp
+      // başka kuruma girildiğinde önceki kurumun paket ve özellikleri taşınamaz.
+      resetTenantFeatureCache();
+      resetEntitlementCache();
+      resetInstitutionTypeCache();
+      resetDrivingPermissionCache();
       getDisabledFeatureKeys().then((keys) => {
         if (active) setDisabledFeatures(keys);
       });
       getEntitlements().then((value) => {
         if (active) setEntitlements(value);
       });
-      // Kurum türü önce oturum yükünden (authoritative) alınır; bu değer login
-      // yanıtında backend tarafından kesin olarak geliyor. Async algılama yalnız
-      // oturumda değer yoksa devreye girer — böylece geçici bir API hatasında
-      // sürücü kursu yanlışlıkla 'PrivateSchool' sanılıp tüm sürücü menüleri
-      // gizlenmez. Kiracı değişiminde önce oturum değeri güncellenir.
-      if (user?.institutionType) {
-        setInstitutionType(user.institutionType);
-      } else {
-        resetInstitutionTypeCache();
-        getInstitutionType().then((value) => {
-          if (active) setInstitutionType(value);
-        });
-      }
+      // Login yanıtını anında uygula; eski oturumlarda yalnız modül bayrağı
+      // varsa da DrivingSchool olarak çöz. Ardından sunucuyla yeniden doğrula.
+      const sessionType = resolveUserInstitutionType(user);
+      setInstitutionType(sessionType);
+      getInstitutionType(sessionType || "PrivateSchool").then((value) => {
+        if (active) setInstitutionType(value);
+      });
     }
     return () => {
       active = false;

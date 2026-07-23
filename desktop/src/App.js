@@ -35,6 +35,7 @@ import Chat from "./pages/chat/Chat";
 const FinanceDashboard = lazyWithReload(() => import("./pages/finance/FinanceDashboard"));
 const StudentAccounts = lazyWithReload(() => import("./pages/finance/StudentAccounts"));
 const Collections = lazyWithReload(() => import("./pages/finance/Collections"));
+const Refunds = lazyWithReload(() => import("./pages/finance/Refunds"));
 const Installments = lazyWithReload(() => import("./pages/finance/Installments"));
 const LatePayments = lazyWithReload(() => import("./pages/finance/LatePayments"));
 const InvoicesReceipts = lazyWithReload(() => import("./pages/finance/InvoicesReceipts"));
@@ -95,7 +96,6 @@ import StudentQuestions from "./pages/student/StudentQuestions";
 import StudentLive from "./pages/student/StudentLive";
 import StudentAssignments from "./pages/student/StudentAssignments";
 import StudentProfile from "./pages/student/StudentProfile";
-import StudentAI from "./pages/student/StudentAI";
 import StudentStudyPlan from "./pages/student/StudentStudyPlan";
 import StudentAttendanceScan from "./pages/student/StudentAttendanceScan";
 import StudentWrongAnswers from "./pages/student/StudentWrongAnswers";
@@ -138,6 +138,7 @@ const DrivingMebbisImports = lazyWithReload(() => import("./pages/driving/Drivin
 const DrivingMebbisReconciliations = lazyWithReload(() => import("./pages/driving/DrivingMebbisReconciliations"));
 const DrivingMebbisExamResults = lazyWithReload(() => import("./pages/driving/DrivingMebbisExamResults"));
 const DrivingMebbisCertificateNumbers = lazyWithReload(() => import("./pages/driving/DrivingMebbisCertificateNumbers"));
+const DrivingMebbisExport = lazyWithReload(() => import("./pages/driving/DrivingMebbisExport"));
 const DrivingDocumentReviewQueue = lazyWithReload(() => import("./pages/driving/DrivingDocumentReviewQueue"));
 
 // Parent Pages
@@ -378,6 +379,7 @@ function App() {
               <Route path="/driving/mebbis/reconciliations" element={<DrivingMebbisReconciliations />} />
               <Route path="/driving/mebbis/exam-results" element={<DrivingMebbisExamResults />} />
               <Route path="/driving/mebbis/certificate-numbers" element={<DrivingMebbisCertificateNumbers />} />
+              <Route path="/driving/mebbis/export" element={<DrivingMebbisExport />} />
               <Route path="/driving/mebbis/documents" element={<DrivingDocumentReviewQueue />} />
               <Route path="/driving/mebbis/errors" element={<Navigate to="/driving/mebbis" replace />} />
               <Route path="/admin/password-reset-requests" element={<PasswordResetRequests />} />
@@ -390,6 +392,7 @@ function App() {
               <Route path="/finance/expenses" element={<FinanceExpenses />} />
               <Route path="/finance/student-accounts" element={<StudentAccounts />} />
               <Route path="/finance/collections" element={<Collections />} />
+              <Route path="/finance/refunds" element={<Refunds />} />
               <Route path="/finance/installments" element={<Installments />} />
               <Route path="/finance/late-payments" element={<LatePayments />} />
               <Route path="/finance/invoices-receipts" element={<InvoicesReceipts />} />
@@ -487,7 +490,7 @@ function App() {
               <Route path="/s/question-box" element={<StudentQuestionBox />} />
               <Route path="/s/badges" element={<StudentBadges />} />
               <Route path="/s/profile" element={<StudentProfile />} />
-              <Route path="/s/ai" element={<StudentAI />} />
+              <Route path="/s/ai" element={<Navigate to="/s/dashboard" replace />} />
               <Route path="/s/notifications" element={<StudentNotifications />} />
               <Route path="/s/announcements" element={<StudentAnnouncements />} />
               <Route path="/s/settings" element={<StudentSettings />} />

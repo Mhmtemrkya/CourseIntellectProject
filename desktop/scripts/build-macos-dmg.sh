@@ -6,8 +6,8 @@ DESKTOP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$DESKTOP_DIR"
 
-swift scripts/generate-dmg-background.swift
 npm ci
-npm exec -- tauri build
 
-echo "DMG output: src-tauri/target/release/bundle/dmg/"
+# Dağıtılacak DMG hiçbir koşulda imzasız üretilmesin. Bu betik de tek ve
+# doğrulamalı üretim hattını kullanır.
+bash scripts/build-macos-signed.sh

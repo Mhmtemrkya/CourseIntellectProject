@@ -64,6 +64,8 @@ public static class DrivingPermissions
     public const string LessonViewAll = "driving.lesson.view.all";
     public const string LessonStart = "driving.lesson.start";
     public const string LessonComplete = "driving.lesson.complete";
+    /// <summary>Yetkili yöneticinin geçmiş bir randevuyu gerekçeli ve audit kayıtlı olarak ders hareketine dönüştürmesi.</summary>
+    public const string LessonManualRecord = "driving.lesson.manual_record";
     public const string LessonMarkNoShow = "driving.lesson.noshow";
 
     public const string TheoryView = "driving.theory.view";
@@ -140,7 +142,7 @@ public static class DrivingPermissions
         VehicleServiceView, VehicleServiceManage, VehicleServiceReport,
         InstructorView, InstructorCreate, InstructorUpdate, InstructorDeactivate, InstructorAssignmentManage,
         AppointmentView, AppointmentCreate, AppointmentUpdate, AppointmentCancel, AppointmentReschedule, AppointmentApprove,
-        LessonViewAll, LessonStart, LessonComplete, LessonMarkNoShow,
+        LessonViewAll, LessonStart, LessonComplete, LessonManualRecord, LessonMarkNoShow,
         TheoryView, TheoryManage, TheoryAttendance,
         ExamView, ExamManage, ExamResultEnter,
         GraduationView, GraduationManage, CertificateIssue, CertificateDeliver, CertificateRevoke,

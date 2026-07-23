@@ -7,9 +7,15 @@ import {
   loadDesktopSession,
   loginWithBackend,
   persistDesktopSession,
+  resolveUserInstitutionType,
 } from '../lib/auth';
 import { startPkceLogin, exchangePkceCode } from '../lib/auth/pkce';
 import { setActiveTenantContext } from '../lib/api/client';
+import { fetchDrivingSchoolStatus } from '../lib/api/modules';
+import { resetDrivingPermissionCache } from '../lib/drivingPermissions';
+import { resetEntitlementCache } from '../lib/entitlements';
+import { resetInstitutionTypeCache } from '../lib/institutionType';
+import { resetTenantFeatureCache } from '../lib/tenantFeatures';
 
 // Module-level helper: aktif abonelik kontrolü. Component içinde tanımlanırsa
 // her render'da yeni reference oluşur ve login/loginWithBrowser useCallback
@@ -22,6 +28,43 @@ function enforceActiveSubscription(payload) {
     );
     err.code = "SUBSCRIPTION_REQUIRED";
     throw err;
+  }
+}
+
+function resetTenantAccessCaches() {
+  resetDrivingPermissionCache();
+  resetEntitlementCache();
+  resetInstitutionTypeCache();
+  resetTenantFeatureCache();
+}
+
+async function reconcileInstitutionSession(currentSession) {
+  if (!currentSession?.user || currentSession.user.isPlatformAdmin) {
+    return currentSession;
+  }
+
+  const fallbackType = resolveUserInstitutionType(currentSession.user);
+  try {
+    const status = await fetchDrivingSchoolStatus();
+    const institutionType = status?.institutionType || fallbackType;
+    const drivingSchoolModuleEnabled =
+      typeof status?.moduleEnabled === 'boolean'
+        ? status.moduleEnabled
+        : currentSession.user.drivingSchoolModuleEnabled;
+    const user = {
+      ...currentSession.user,
+      institutionType,
+      drivingSchoolModuleEnabled,
+    };
+    return { ...currentSession, user };
+  } catch {
+    // Ağ geçici olarak kapalıysa login yanıtındaki güvenilir bilgiyi koru.
+    // Bayrak taşıyan eski oturumlar da burada DrivingSchool olarak iyileştirilir.
+    if (fallbackType === currentSession.user.institutionType) return currentSession;
+    return {
+      ...currentSession,
+      user: { ...currentSession.user, institutionType: fallbackType },
+    };
   }
 }
 
@@ -69,24 +112,12 @@ export function AppProvider({ children }) {
         // kursu sahibine okul menülerini sızdırıyordu. Kullanıcı gerekirse üst
         // bardaki kurum seçiciyle tekrar geçebilir.
         setActiveTenantContext(null);
-        // Eski masaüstü oturumlarında kurum türü login yanıtında saklanmıyordu.
-        // Kullanıcıyı yeniden girişe zorlamadan oturumu bir kez zenginleştir;
-        // aksi halde sürücü kursu hesabı eski /dashboard yoluna düşer.
-        if (!savedSession.user.institutionType) {
-          try {
-            const { fetchDrivingSchoolStatus } = await import('../lib/api/modules');
-            const status = await fetchDrivingSchoolStatus();
-            const enrichedUser = {
-              ...savedSession.user,
-              institutionType: status?.institutionType || null,
-              drivingSchoolModuleEnabled: status?.moduleEnabled === true,
-            };
-            savedSession = { ...savedSession, user: enrichedUser };
-            persistDesktopSession(savedSession);
-          } catch {
-            // API geçici olarak erişilemiyorsa mevcut güvenli oturumla devam et.
-          }
-        }
+        resetTenantAccessCaches();
+        // Her açılışta kurum türünü sunucudan uzlaştır. Yalnızca alan boşken
+        // kontrol etmek, eski/başka kuruma ait oturum değerinin kalıcı biçimde
+        // sidebar'a taşınmasına neden oluyordu.
+        savedSession = await reconcileInstitutionSession(savedSession);
+        persistDesktopSession(savedSession);
         if (!active) return;
         setSession(savedSession);
         setUser(savedSession.user);
@@ -102,8 +133,9 @@ export function AppProvider({ children }) {
     // Taze giriş ana kuruma başlar; önceki oturumdan kalan kurum bağlamı
     // (X-Tenant-Context) temizlenir ki yanlış kuruma çözülmesin.
     setActiveTenantContext(null);
+    resetTenantAccessCaches();
     const desktopUser = createDesktopUser(payload);
-    const nextSession = {
+    let nextSession = {
       accessToken: payload.accessToken,
       refreshToken: payload.refreshToken,
       expiresAtUtc: payload.expiresAtUtc,
@@ -112,9 +144,11 @@ export function AppProvider({ children }) {
     };
 
     persistDesktopSession(nextSession);
+    nextSession = await reconcileInstitutionSession(nextSession);
+    persistDesktopSession(nextSession);
     setSession(nextSession);
-    setUser(desktopUser);
-    return desktopUser;
+    setUser(nextSession.user);
+    return nextSession.user;
   }, []);
 
   const loginWithBrowser = useCallback(async () => {
@@ -122,8 +156,9 @@ export function AppProvider({ children }) {
     const payload = await exchangePkceCode(desktopApiBaseUrl, pkceResult);
     enforceActiveSubscription(payload);
     setActiveTenantContext(null);
+    resetTenantAccessCaches();
     const desktopUser = createDesktopUser(payload);
-    const nextSession = {
+    let nextSession = {
       accessToken: payload.accessToken,
       refreshToken: payload.refreshToken,
       expiresAtUtc: payload.expiresAtUtc,
@@ -132,9 +167,11 @@ export function AppProvider({ children }) {
     };
 
     persistDesktopSession(nextSession);
+    nextSession = await reconcileInstitutionSession(nextSession);
+    persistDesktopSession(nextSession);
     setSession(nextSession);
-    setUser(desktopUser);
-    return desktopUser;
+    setUser(nextSession.user);
+    return nextSession.user;
   }, []);
 
   const logout = useCallback(() => {
@@ -145,6 +182,7 @@ export function AppProvider({ children }) {
     // kalıp sonraki girişte de API'lere gidiyor ve yanlış kuruma çözülüyordu —
     // sürücü kursu sahibi girse bile okul kurumu çözülüp okul menüleri sızıyordu.
     setActiveTenantContext(null);
+    resetTenantAccessCaches();
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('ci-branch-selected');
     }

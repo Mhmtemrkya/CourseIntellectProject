@@ -20,7 +20,7 @@ export default function DrivingHub() {
         icon={CalendarClock}
       />
       <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="flex flex-wrap">
+        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-3">
           <TabsTrigger value="calendar">Takvim</TabsTrigger>
           <TabsTrigger value="scheduling">Randevu &amp; Öğrenci</TabsTrigger>
           <TabsTrigger value="lessons">Dersler</TabsTrigger>

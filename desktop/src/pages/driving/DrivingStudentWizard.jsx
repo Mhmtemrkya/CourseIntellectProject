@@ -17,6 +17,7 @@ import {
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
+import { isValidTcKimlik, isValidTrPhone, maskTcKimlik, maskTrPhone } from '../../lib/inputMasks';
 import { FileButton } from '../../components/ui/file-button';
 
 const selectClass = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
@@ -47,7 +48,7 @@ const emptyForm = {
   fullName: '', identityKind: 1, identityNumber: '', identitySerialNo: '', nationality: 'T.C.', birthDate: '',
   fatherName: '', motherName: '', birthPlace: '',
   gender: '', bloodType: '', occupation: '', educationLevel: '',
-  city: '', district: '', address: '', residenceAddress: '', phone: '', email: '', whatsAppPhone: '',
+  city: '', district: '', address: '', residenceAddress: '', phone: '', email: '',
   // Nüfus kayıt bloğu — matbu EK-1 müracaat formunun kimlik tablosunu doldurur.
   registrationCity: '', registrationDistrict: '', registrationNeighborhood: '', registrationStreet: '',
   registrationVolumeNo: '', registrationFamilyOrderNo: '', registrationOrderNo: '',
@@ -196,7 +197,7 @@ export default function DrivingStudentWizard() {
   const [form, setForm] = useState(() => ({
     ...emptyForm,
     fullName: searchParams.get('name') || emptyForm.fullName,
-    phone: searchParams.get('phone') || emptyForm.phone,
+    phone: maskTrPhone(searchParams.get('phone') || emptyForm.phone),
   }));
   const [reference, setReference] = useState({ packages: [], instructors: [], vehicles: [] });
   const [loading, setLoading] = useState(true);
@@ -418,11 +419,16 @@ export default function DrivingStudentWizard() {
   function validateStep(current) {
     if (current === 1) {
       if (form.fullName.trim().length < 3) return 'Ad soyad en az 3 karakter olmalıdır.';
-      if (form.identityNumber.trim().length < 5) return 'Kimlik numarası zorunludur.';
+      if (form.identityKind === 1 && !isValidTcKimlik(form.identityNumber)) return 'Geçerli, 11 haneli bir T.C. kimlik numarası girin.';
+      if (form.identityKind !== 1 && form.identityNumber.trim().length < 5) return 'Kimlik numarası zorunludur.';
       if (identityState.available === false) return 'Bu kimlik numarasıyla kayıtlı bir kursiyer zaten var.';
       if (!form.birthDate) return 'Doğum tarihi zorunludur.';
     }
-    if (current === 2 && phoneState.available === false) return 'Bu telefon numarasıyla kayıtlı bir kursiyer zaten var.';
+    if (current === 2) {
+      if (!isValidTrPhone(form.phone)) return 'Telefonu +90 5XX XXX XX XX biçiminde eksiksiz girin.';
+      if (form.emergencyContactPhone && !isValidTrPhone(form.emergencyContactPhone)) return 'Acil durum telefonunu +90 5XX XXX XX XX biçiminde girin.';
+      if (phoneState.available === false) return 'Bu telefon numarasıyla kayıtlı bir kursiyer zaten var.';
+    }
     if (current === 3) {
       if (!form.packageId) return 'Paket seçimi zorunludur.';
       if (!form.availableWeekdays && !form.availableWeekend) return 'En az bir zaman uygunluğu seçilmelidir.';
@@ -619,7 +625,14 @@ export default function DrivingStudentWizard() {
                 <Input
                   required
                   value={form.identityNumber}
-                  onChange={(e) => { set({ identityNumber: e.target.value.replace(/\s/g, '') }); setIdentityState({ checking: false, available: null, existingStudentName: null }); }}
+                  inputMode={form.identityKind === 1 ? 'numeric' : 'text'}
+                  pattern={form.identityKind === 1 ? '[0-9]{11}' : undefined}
+                  maxLength={form.identityKind === 1 ? 11 : 30}
+                  placeholder={form.identityKind === 1 ? '11 haneli T.C. kimlik no' : 'Kimlik / pasaport numarası'}
+                  onChange={(e) => {
+                    set({ identityNumber: form.identityKind === 1 ? maskTcKimlik(e.target.value) : e.target.value.replace(/\s/g, '').slice(0, 30) });
+                    setIdentityState({ checking: false, available: null, existingStudentName: null });
+                  }}
                   onBlur={checkIdentity}
                   className={identityState.available === false ? 'border-red-500' : identityState.available === true ? 'border-emerald-500' : undefined}
                 />
@@ -696,13 +709,17 @@ export default function DrivingStudentWizard() {
                   : phoneState.available === true ? 'Uygun — kurumda kayıtlı değil.' : 'Aynı numarayla mükerrer kayıt engellenir.'}
               >
                 <Input
+                  required
                   value={form.phone}
-                  onChange={(e) => { set({ phone: e.target.value }); setPhoneState({ checking: false, available: null, existingStudentName: null }); }}
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength={17}
+                  placeholder="+90 5XX XXX XX XX"
+                  onChange={(e) => { set({ phone: maskTrPhone(e.target.value) }); setPhoneState({ checking: false, available: null, existingStudentName: null }); }}
                   onBlur={checkPhone}
                   className={phoneState.available === false ? 'border-red-500' : phoneState.available === true ? 'border-emerald-500' : undefined}
                 />
               </Field>
-              <Field label="WhatsApp numarası"><Input value={form.whatsAppPhone} onChange={(e) => set({ whatsAppPhone: e.target.value })} /></Field>
               <Field label="E-posta"><Input type="email" value={form.email} onChange={(e) => set({ email: e.target.value })} /></Field>
               <Field label="İl"><Input value={form.city} onChange={(e) => set({ city: e.target.value })} /></Field>
               <Field label="İlçe"><Input value={form.district} onChange={(e) => set({ district: e.target.value })} /></Field>
@@ -740,7 +757,7 @@ export default function DrivingStudentWizard() {
                 <Input maxLength={120} value={form.identityIssuePlace} onChange={(e) => set({ identityIssuePlace: e.target.value })} />
               </Field>
               <Field label="Acil durum kişisi"><Input value={form.emergencyContactName} onChange={(e) => set({ emergencyContactName: e.target.value })} /></Field>
-              <Field label="Acil durum telefonu"><Input value={form.emergencyContactPhone} onChange={(e) => set({ emergencyContactPhone: e.target.value })} /></Field>
+              <Field label="Acil durum telefonu"><Input value={form.emergencyContactPhone} inputMode="tel" autoComplete="tel" maxLength={17} placeholder="+90 5XX XXX XX XX" onChange={(e) => set({ emergencyContactPhone: maskTrPhone(e.target.value) })} /></Field>
               <Field label="Biyografik fotoğraf" hint="Dosyadan yüklenen vesikalık.">
                 <div className="flex items-center gap-3">
                   {form.photoUrl && <img src={assetUrl(form.photoUrl)} alt="Biyografik" className="h-24 w-24 rounded-xl border object-cover" />}
@@ -1044,7 +1061,7 @@ export default function DrivingStudentWizard() {
                   KVKK aydınlatma metni okundu ve kişisel verilerin işlenmesine onay verildi (zorunlu).
                 </Check>
                 <Check checked={form.communicationConsent} onChange={(v) => set({ communicationConsent: v })}>
-                  Ticari elektronik ileti (SMS/e-posta/WhatsApp) gönderimine onay verildi.
+                  Ticari elektronik ileti (SMS/e-posta) gönderimine onay verildi.
                 </Check>
               </div>
 

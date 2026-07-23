@@ -29,7 +29,6 @@ import 'veli_weekly_report_page.dart';
 import 'cafeteria_weekly_menu_page.dart';
 import 'service_live_status_page.dart';
 import '../widgets/responsive_layout.dart';
-import '../features/assistant/presentation/assistant_page.dart';
 
 class VeliHomePage extends StatefulWidget {
   const VeliHomePage({super.key});
@@ -203,12 +202,6 @@ class _VeliHomePageState extends State<VeliHomePage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'parent-assistant',
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantPage())),
-        icon: const Icon(Icons.auto_awesome_rounded),
-        label: const Text('Asistan'),
-      ),
       body: SafeArea(
         child: Column(
           children: [

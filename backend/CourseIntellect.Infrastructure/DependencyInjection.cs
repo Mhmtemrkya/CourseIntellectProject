@@ -80,6 +80,7 @@ public static class DependencyInjection
         services.AddSingleton<IDrivingCertificatePdfService, DrivingCertificatePdfService>();
         services.AddSingleton<IDrivingReportPdfService, DrivingReportPdfService>();
         services.AddSingleton<IDrivingContractFormPdfService, DrivingContractFormPdfService>();
+        services.AddSingleton<IMebbisExportRenderer, MebbisExportRenderer>();
         services.AddScoped<IAccountingService, AccountingService>();
         services.AddScoped<IStaffManagementService, StaffManagementService>();
         services.AddScoped<INotificationService, NotificationService>();

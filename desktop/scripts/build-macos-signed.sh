@@ -92,21 +92,9 @@ node ./node_modules/@tauri-apps/cli/tauri.js build --bundles dmg
 
 # Yanlışlıkla imzasız/notarize edilmemiş bir dosyanın müşteriye gönderilmesini
 # engellemek için build başarılı olsa bile Apple güven zincirini ayrıca doğrula.
-APP_PATH="src-tauri/target/release/bundle/macos/SchoolAsist.app"
-DMG_PATH="$(find src-tauri/target/release/bundle/dmg -maxdepth 1 -type f -name '*.dmg' -print0 \
-  | xargs -0 ls -1t | head -1)"
+bash scripts/verify-macos-distribution.sh src-tauri/target
 
-if [ ! -d "$APP_PATH" ] || [ -z "$DMG_PATH" ] || [ ! -f "$DMG_PATH" ]; then
-  echo "HATA: Doğrulanacak uygulama veya DMG bulunamadı."
-  exit 1
-fi
-
-codesign --verify --deep --strict --verbose=2 "$APP_PATH"
-codesign -dv --verbose=4 "$APP_PATH" 2>&1 | grep -Fq "Authority=Developer ID Application:"
-spctl --assess --type execute --verbose=4 "$APP_PATH"
-xcrun stapler validate "$APP_PATH"
-spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG_PATH"
-xcrun stapler validate "$DMG_PATH"
+DMG_PATH="$(find src-tauri/target -type f -path '*/bundle/dmg/*.dmg' -print -quit)"
 
 echo ""
 echo "✓ Developer ID ile imzalanmış ve Apple tarafından notarize edilmiş DMG hazır:"

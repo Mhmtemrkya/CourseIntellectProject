@@ -662,7 +662,7 @@ export const TR_EN_EXT = {
   'Düşük': 'Low', 'Yüksek': 'High', 'Öncelik': 'Priority',
 
   // ── Sürücü kursu: atama ve uygunluk ──
-  'Atama, Çalışma Saatleri ve Kurallar': 'Assignment, Working Hours and Rules',
+  'Atama ve Çalışma Planı': 'Assignments and Working Schedule',
   'Uygunluk kuralları': 'Availability rules', 'Yeni atama': 'New assignment', 'Atamayı Kaydet': 'Save Assignment',
   'Aktif atamalar': 'Active assignments', 'Çalışma saatleri': 'Working hours',
   'Haftalık çalışma programı': 'Weekly working schedule', 'Çalışma Saatlerini Kaydet': 'Save Working Hours',

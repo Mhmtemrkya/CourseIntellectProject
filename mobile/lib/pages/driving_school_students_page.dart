@@ -93,6 +93,10 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
   int _ungroupedCount = 0;
   String _search = '';
   String _groupFilter = 'all'; // 'all' | 'ungrouped' | <groupId>
+  // Durum filtresi — varsayılan yalnız AKTİF kursiyerler. Mezun olanlar otomatik
+  // pasife düşer ve ana listede görünmez; çiplerden "Mezun" / "Askıda / İptal"
+  // seçilerek görülebilir. 'active' | 'graduated' | 'inactive' | 'all'
+  String _statusFilter = 'active';
   DrivingPermissionSnapshot _permissions = DrivingPermissionSnapshot.empty;
 
   bool _selectMode = false;
@@ -153,9 +157,28 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
   List<Map<String, dynamic>> get _activeGroups =>
       _groups.where((g) => g['isActive'] == true).toList();
 
+  // Pasif sayılan (ana listede gizlenen) durumlar.
+  static const _passiveStatuses = {'Graduated', 'Suspended', 'Cancelled'};
+
+  bool _statusMatches(dynamic status) {
+    final value = '$status';
+    switch (_statusFilter) {
+      case 'graduated':
+        return value == 'Graduated';
+      case 'inactive':
+        return value == 'Suspended' || value == 'Cancelled';
+      case 'all':
+        return true;
+      case 'active':
+      default:
+        return !_passiveStatuses.contains(value);
+    }
+  }
+
   List<Map<String, dynamic>> get _filtered {
     final term = _search.trim().toLowerCase();
     return _students.where((s) {
+      if (!_statusMatches(s['status'])) return false;
       final groupId = s['groupId'];
       if (_groupFilter == 'ungrouped' && groupId != null) return false;
       if (_groupFilter != 'all' &&
@@ -395,12 +418,17 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
                           ),
                         ),
                         const SizedBox(height: 12),
+                        _statusFilterChips(),
+                        const SizedBox(height: 8),
                         _groupFilterChips(),
                         const SizedBox(height: 12),
                         if (_filtered.isEmpty)
                           DrivingEmptyState(
                             icon: Icons.groups_rounded,
-                            title: _search.isEmpty && _groupFilter == 'all'
+                            title:
+                                _search.isEmpty &&
+                                    _groupFilter == 'all' &&
+                                    _statusFilter == 'active'
                                 ? 'Henüz kursiyer yok.'.tr
                                 : 'Eşleşen kursiyer yok.'.tr,
                           )
@@ -413,6 +441,52 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
                 if (_selectMode) _assignBar(),
               ],
             ),
+    );
+  }
+
+  Widget _statusFilterChips() {
+    final activeCount = _students
+        .where((s) => !_passiveStatuses.contains('${s['status']}'))
+        .length;
+    final graduatedCount = _students
+        .where((s) => '${s['status']}' == 'Graduated')
+        .length;
+    final inactiveCount = _students
+        .where(
+          (s) =>
+              '${s['status']}' == 'Suspended' ||
+              '${s['status']}' == 'Cancelled',
+        )
+        .length;
+    final chips = <Widget>[
+      _statusChip('active', 'Aktif'.tr, activeCount),
+      _statusChip('graduated', 'Mezun'.tr, graduatedCount),
+      _statusChip('inactive', 'Askıda / İptal'.tr, inactiveCount),
+    ];
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: chips.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (_, i) => chips[i],
+      ),
+    );
+  }
+
+  Widget _statusChip(String key, String label, int count) {
+    final selected = _statusFilter == key;
+    return ChoiceChip(
+      selected: selected,
+      onSelected: (_) => setState(() => _statusFilter = key),
+      label: Text('$label ($count)'),
+      labelStyle: TextStyle(
+        fontWeight: FontWeight.w700,
+        fontSize: 12,
+        color: selected ? Colors.white : null,
+      ),
+      selectedColor: Theme.of(context).colorScheme.primary,
+      showCheckmark: false,
     );
   }
 

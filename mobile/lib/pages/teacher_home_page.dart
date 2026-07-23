@@ -27,7 +27,6 @@ import 'package:student/widgets/responsive_layout.dart';
 import 'package:student/widgets/teacher_header.dart';
 
 import '../widgets/adaptive_scaffold.dart';
-import '../features/assistant/presentation/assistant_page.dart';
 
 class TeacherHomePage extends StatefulWidget {
   const TeacherHomePage({super.key});
@@ -657,13 +656,6 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          FloatingActionButton.extended(
-            heroTag: 'teacher-assistant',
-            onPressed: () => _openPage(const AssistantPage()),
-            icon: const Icon(Icons.auto_awesome_rounded),
-            label: const Text('Asistan'),
-          ),
-          const SizedBox(height: 10),
           FloatingActionButton.extended(
             heroTag: 'teacher-quick-action',
             onPressed: _openQuickCreateMenu,

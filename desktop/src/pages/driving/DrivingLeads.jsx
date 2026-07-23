@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/input';
 import { useToast } from '../../hooks/use-toast';
 import { createDrivingLead, fetchDrivingLeadPackageOptions, fetchDrivingLeads, updateDrivingLead } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
+import { isValidTrPhone, maskTrPhone } from '../../lib/inputMasks';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 
 const STATUS = {
@@ -63,6 +64,10 @@ export default function DrivingLeads() {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (!isValidTrPhone(form.phone)) {
+      toast({ title: 'Telefon eksik veya geçersiz', description: '+90 5XX XXX XX XX biçiminde bir cep telefonu girin.', variant: 'destructive' });
+      return;
+    }
     setSaving(true);
     try {
       await createDrivingLead(form);
@@ -113,7 +118,7 @@ export default function DrivingLeads() {
       {canManage && (
         <form onSubmit={submit} className="grid gap-3 rounded-2xl border p-4 sm:grid-cols-2 lg:grid-cols-6">
           <Input required className="lg:col-span-2" placeholder="Ad soyad" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-          <Input placeholder="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <Input required placeholder="+90 5XX XXX XX XX" inputMode="tel" autoComplete="tel" maxLength={17} value={form.phone} onChange={(e) => setForm({ ...form, phone: maskTrPhone(e.target.value) })} />
           <select
             required
             aria-label="Eğitim paketi"
@@ -170,7 +175,7 @@ export default function DrivingLeads() {
                     <span className="text-xs text-muted-foreground">{lead.licenseClass}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {lead.phone || 'Telefon yok'}
+                    {maskTrPhone(lead.phone) || 'Telefon yok'}
                     {lead.source ? ` • ${lead.source}` : ''}
                     {' • '}{new Date(lead.createdAtUtc).toLocaleDateString('tr-TR')}
                     {lead.note ? ` • ${lead.note}` : ''}

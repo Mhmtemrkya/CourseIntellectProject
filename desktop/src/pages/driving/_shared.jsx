@@ -48,7 +48,7 @@ export function DrivingPageHeader({ title, description, icon: Icon, actions, onR
           {description ? <p className="mt-1 text-muted-foreground">{description}</p> : null}
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
+      <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
         {actions}
         {onRefresh ? (
           <Button variant="outline" onClick={onRefresh} disabled={refreshing}>

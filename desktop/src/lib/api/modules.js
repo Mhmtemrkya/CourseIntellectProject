@@ -125,6 +125,14 @@ export const fetchDrivingMebbisWorkCenter = (params = {}) =>
 export const downloadDrivingMebbisWorkCenter = (params = {}) =>
   api.get('/api/driving-school/mebbis/work-center/export', { params, responseType: 'blob' });
 export const syncDrivingMebbisWorkCenter = () => api.post('/api/driving-school/mebbis/work-center/sync', {});
+
+// MEBBİS Dışa Aktarma — bölüm bölüm Excel/PDF (aday kaydında fotoğraf gömülü).
+export const fetchMebbisExportSections = () => api.get('/api/driving-school/mebbis/export/sections');
+export const downloadMebbisExport = (section, { groupId, format } = {}) =>
+  api.get(`/api/driving-school/mebbis/export/${section}`, {
+    params: { groupId: groupId || undefined, format: format || 'xlsx' },
+    responseType: 'blob',
+  });
 export const changeDrivingMebbisWorkStatus = (workType, subjectId, payload) =>
   api.put(`/api/driving-school/mebbis/work-center/items/${encodeURIComponent(workType)}/${subjectId}/status`, payload);
 export const fetchDrivingMebbisEntryAssistant = (profileId) =>
@@ -192,6 +200,7 @@ export const updateDrivingInstructorLifecycle = (instructorProfileId, payload) =
 export const fetchDrivingAppointments = (params = {}) => api.get('/api/driving-school/appointments', { params });
 export const createDrivingAppointment = (payload) => api.post('/api/driving-school/appointments', payload);
 export const fetchDrivingLessons = (params = {}) => api.get('/api/driving-school/lessons', { params });
+export const recordManualDrivingLesson = (payload) => api.post('/api/driving-school/lessons/manual', payload);
 
 // Raporlar: ekran, CSV ve PDF sunucudaki AYNI belgeden üretilir — istemci tarafında
 // yeniden hesap yapma, yoksa üç çıktı ayrışır.
@@ -215,6 +224,7 @@ export const scheduleDrivingExamRetry = (id, payload) => api.post(`/api/driving-
 export const fetchDrivingGraduationOverview = () => api.get('/api/driving-school/graduation/overview');
 export const fetchDrivingGraduationChecklist = (profileId) => api.get(`/api/driving-school/graduation/students/${profileId}/checklist`);
 export const graduateDrivingStudent = (profileId, note = '') => api.post(`/api/driving-school/graduation/students/${profileId}/graduate`, { note });
+export const forceGraduateDrivingStudent = (profileId, reason) => api.post(`/api/driving-school/graduation/students/${profileId}/graduate-anyway`, { reason });
 export const issueDrivingCertificate = (profileId, type) => api.post(`/api/driving-school/graduation/students/${profileId}/certificates`, { type });
 export const updateDrivingCertificateDelivery = (id, payload) => api.put(`/api/driving-school/graduation/certificates/${id}/delivery`, payload);
 export const downloadDrivingCertificate = (id) => api.get(`/api/driving-school/graduation/certificates/${id}/download`, { responseType: 'blob' });

@@ -810,11 +810,6 @@ export const PAGE_TOURS = {
       { title: 'Rozetlerin', body: 'Çalıştıkça rozet kazanırsın: soru çözme serileri, ödev teslimleri ve deneme başarıları rozet getirir. 🏅' },
     ],
   },
-  '/s/ai': {
-    steps: [
-      { title: 'AI Asistan', body: 'Ders çalışırken takıldığında yapay zeka asistanına sor; konu anlatımı ve soru çözümünde yardım alırsın.' },
-    ],
-  },
   '/s/library': {
     steps: [
       { title: 'Kütüphane', body: 'Kütüphanedeki kitapları ara, ödünç aldıklarını ve iade tarihlerini gör.' },

@@ -1495,6 +1495,111 @@ public sealed class DrivingSchoolController(
         return Ok(rows);
     }
 
+    /// <summary>
+    /// Yetkili yöneticinin daha önce planlanmış bir randevu için kaçırılan ders
+    /// hareketini girmesi. Serbest bir öğrenci/araç/öğretmen seçimi kabul edilmez:
+    /// tüm ilişkiler randevudan alınır, süre bakiyesi ve kilometre tek transaction
+    /// içinde güncellenir, gerekçe de audit kaydına yazılır.
+    /// </summary>
+    [HttpPost("lessons/manual")]
+    [RequireDrivingPermission(DrivingPermissions.LessonManualRecord)]
+    public async Task<IActionResult> RecordManualLesson([FromBody] RecordManualDrivingLessonRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var reason = request.Reason?.Trim() ?? string.Empty;
+        var note = request.InstructorNote?.Trim() ?? string.Empty;
+        if (reason.Length is < 10 or > 500)
+            return BadRequest(new { message = "Manuel ders kaydı gerekçesi 10-500 karakter olmalıdır." });
+        if (note.Length > 2000)
+            return BadRequest(new { message = "Ders notu en fazla 2000 karakter olabilir." });
+        if (request.StartedAtUtc.Kind == DateTimeKind.Unspecified || request.CompletedAtUtc.Kind == DateTimeKind.Unspecified)
+            return BadRequest(new { message = "Ders başlangıç ve bitiş saatleri saat dilimi bilgisiyle gönderilmelidir." });
+
+        var startedAtUtc = request.StartedAtUtc.ToUniversalTime();
+        var completedAtUtc = request.CompletedAtUtc.ToUniversalTime();
+        var duration = completedAtUtc - startedAtUtc;
+        if (completedAtUtc > DateTime.UtcNow.AddMinutes(5) || duration < TimeSpan.FromMinutes(15) || duration > TimeSpan.FromHours(4))
+            return BadRequest(new { message = "Ders süresi 15 dakika ile 4 saat arasında olmalı ve gelecek zamana yazılamaz." });
+        if (request.StartKilometer < 0 || request.EndKilometer < request.StartKilometer || request.EndKilometer > request.StartKilometer + 500)
+            return BadRequest(new { message = "Başlangıç/bitiş kilometresi geçersiz veya fark 500 km sınırını aşıyor." });
+        var scores = new[] { request.TrafficRulesScore, request.VehicleControlScore, request.ManeuversScore, request.SafetyScore };
+        if (scores.Any(x => x is < 1 or > 5))
+            return BadRequest(new { message = "Değerlendirme puanları 1-5 aralığında olmalıdır." });
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var appointment = await dbContext.DrivingAppointments
+            .SingleOrDefaultAsync(x => x.Id == request.AppointmentId, ct);
+        if (appointment is null) return NotFound(new { message = "Randevu bulunamadı." });
+        if (!DrivingAppointmentStatuses.Startable.Contains(appointment.Status))
+            return Conflict(new { message = $"Bu randevu manuel ders kaydına uygun değil ({DrivingAppointmentStatuses.Label(appointment.Status)})." });
+        if (await dbContext.DrivingLessons.AnyAsync(x => x.AppointmentId == appointment.Id, ct))
+            return Conflict(new { message = "Bu randevu için daha önce ders hareketi oluşturulmuş." });
+        if (Math.Abs((startedAtUtc - appointment.StartsAtUtc).TotalHours) > 24)
+            return BadRequest(new { message = "Ders başlangıcı planlanan randevu saatinden en fazla 24 saat sapabilir." });
+
+        var scheduledMinutes = Math.Max(1, (int)Math.Ceiling((appointment.EndsAtUtc - appointment.StartsAtUtc).TotalMinutes));
+        var chargedMinutes = Math.Max(1, (int)Math.Ceiling(duration.TotalMinutes));
+        if (chargedMinutes > scheduledMinutes)
+            return BadRequest(new { message = $"İşlenen süre planlanan {scheduledMinutes} dakikayı aşamaz." });
+
+        var vehicle = await dbContext.DrivingVehicles.SingleAsync(x => x.Id == appointment.VehicleId, ct);
+        var lesson = new CourseIntellect.Domain.Entities.DrivingLesson
+        {
+            AppointmentId = appointment.Id,
+            StudentDrivingProfileId = appointment.StudentDrivingProfileId,
+            InstructorProfileId = appointment.InstructorProfileId,
+            VehicleId = appointment.VehicleId,
+            StartedAtUtc = startedAtUtc,
+            CompletedAtUtc = completedAtUtc,
+            StartKilometer = request.StartKilometer,
+            EndKilometer = request.EndKilometer,
+            BrakesOk = true,
+            TiresOk = true,
+            LightsOk = true,
+            FluidsOk = true,
+            PreCheckNote = $"Yetkili manuel kayıt. Gerekçe: {reason}",
+            InstructorNote = note,
+            TrafficRulesScore = request.TrafficRulesScore,
+            VehicleControlScore = request.VehicleControlScore,
+            ManeuversScore = request.ManeuversScore,
+            SafetyScore = request.SafetyScore,
+            EvaluationVersion = 0,
+            EvaluationScoresJson = "{}",
+            ChargedMinutes = chargedMinutes,
+        };
+        var previousStatus = appointment.Status;
+        appointment.Status = DrivingAppointmentStatus.Completed;
+        if (request.EndKilometer > vehicle.CurrentKilometer)
+            vehicle.CurrentKilometer = request.EndKilometer;
+        dbContext.DrivingLessons.Add(lesson);
+
+        await ledgerService.AddAsync(appointment.StudentDrivingProfileId, DrivingLedgerEntryType.ReservationReleased, scheduledMinutes,
+            $"{appointment.StartsAtUtc:dd.MM.yyyy HH:mm} manuel ders kaydı için rezervasyon çözüldü",
+            appointmentId: appointment.Id, cancellationToken: ct);
+        await ledgerService.AddAsync(appointment.StudentDrivingProfileId, DrivingLedgerEntryType.LessonUsage, -chargedMinutes,
+            $"{startedAtUtc:dd.MM.yyyy HH:mm} tarihli yetkili manuel direksiyon dersi",
+            reason: reason, appointmentId: appointment.Id, drivingLessonId: lesson.Id, cancellationToken: ct);
+        AddStatusHistory(appointment.Id, previousStatus, DrivingAppointmentStatus.Completed,
+            "Yetkili manuel ders kaydı", reason);
+
+        await dbContext.SaveChangesAsync(ct);
+        await ledgerService.SyncProfileCacheAsync(appointment.StudentDrivingProfileId, ct);
+        await dbContext.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+
+        await auditLogService.LogChangeAsync("Direksiyon dersi manuel kaydedildi", AuditCategory, "DrivingLesson", lesson.Id.ToString(),
+            $"{vehicle.PlateNumber} — {chargedMinutes} dk, {request.StartKilometer}-{request.EndKilometer} km. Gerekçe: {reason}",
+            null, new { lesson.AppointmentId, lesson.StudentDrivingProfileId, lesson.InstructorProfileId, lesson.VehicleId, lesson.StartedAtUtc, lesson.CompletedAtUtc, lesson.ChargedMinutes }, ct);
+        await notifier.NotifyStudentAsync(appointment.StudentDrivingProfileId,
+            "Direksiyon dersiniz kaydedildi",
+            $"{DrivingAvailability.ToLocal(startedAtUtc):dd.MM.yyyy HH:mm} tarihli {chargedMinutes} dakikalık dersiniz kurum tarafından kaydedildi.",
+            DrivingNotificationCategories.Lesson,
+            dedupeKey: $"lesson-manual:{lesson.Id}",
+            relatedEntityType: "DrivingLesson", relatedEntityId: lesson.Id.ToString(), cancellationToken: ct);
+
+        return Ok(new { lesson.Id, lesson.CompletedAtUtc, lesson.ChargedMinutes, status = appointment.Status.ToString() });
+    }
+
     [HttpGet("vehicle-documents")]
     [RequireDrivingPermission(DrivingPermissions.VehicleDocumentView)]
     public async Task<IActionResult> GetVehicleDocuments([FromQuery] Guid? vehicleId, CancellationToken ct)
@@ -1828,6 +1933,18 @@ public sealed record AssignStudentGroupRequest(IReadOnlyList<Guid> ProfileIds, G
 public sealed record SaveDrivingAppointmentRequest(Guid StudentDrivingProfileId, Guid InstructorProfileId, Guid VehicleId, DateTime StartsAtUtc, DateTime EndsAtUtc, string? Notes, string? MeetingPoint, IReadOnlyList<string>? Overrides, string? OverrideReason);
 public sealed record StartDrivingLessonRequest(int StartKilometer, bool BrakesOk, bool TiresOk, bool LightsOk, bool FluidsOk, string? PreCheckNote);
 public sealed record CompleteDrivingLessonRequest(int EndKilometer, Dictionary<string, int>? Criteria, string? InstructorNote);
+public sealed record RecordManualDrivingLessonRequest(
+    Guid AppointmentId,
+    DateTime StartedAtUtc,
+    DateTime CompletedAtUtc,
+    int StartKilometer,
+    int EndKilometer,
+    int TrafficRulesScore,
+    int VehicleControlScore,
+    int ManeuversScore,
+    int SafetyScore,
+    string? InstructorNote,
+    string? Reason);
 public sealed record SaveDrivingVehicleDocumentRequest(Guid VehicleId, string DocumentType, string DocumentNumber, DateTime? StartsAtUtc, DateTime ExpiresAtUtc, string FileUrl, int ReminderDays, string? Description);
 public sealed record SaveDrivingVehicleServiceRecordRequest(Guid VehicleId, string RecordType, string Title, string? ServiceProvider, string? Description, string Priority, DateTime? ReportedAtUtc, int Kilometer, bool VehicleUsable, decimal LaborCost, decimal PartsCost, DateTime? NextServiceAtUtc, int? NextServiceKilometer);
 public sealed record CompleteVehicleServiceRecordRequest(string Resolution);

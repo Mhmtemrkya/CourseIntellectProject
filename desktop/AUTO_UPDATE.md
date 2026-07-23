@@ -24,6 +24,8 @@ git push origin desktop-v1.1.0
 
 GitHub Actions macOS universal ve Windows NSIS paketlerini, imzaları ve `latest.json` dosyasını aynı release altında üretir. Uygulamayı kullanan kişiler bir sonraki açılışta güncellemeyi görür.
 
+macOS işi, release yayınlanmadan önce hem oluşturulan `.app` dosyasını hem de DMG içindeki gerçek son kullanıcı uygulamasını denetler. Developer ID imzası, Apple notarization bileti, stapling, Gatekeeper kabulü veya DMG bütünlüğünden biri başarısızsa release taslak olarak kalır ve kullanıcılara yayınlanmaz.
+
 Yerelde sürüm dosyalarını birlikte güncellemek için:
 
 ```bash
@@ -34,6 +36,7 @@ npm run desktop:version -- 1.1.0
 ## Önemli
 
 - macOS otomatik güncelleme için uygulamanın Developer ID ile imzalanmış ve notarize edilmiş olması gerekir.
+- Daha önce üretilmiş imzasız/notarize edilmemiş DMG sonradan `xattr` ile güvenli bir dağıtıma dönüştürülemez. O dosyayı dağıtmayı bırakın ve bu iş akışıyla daha yüksek sürüm numaralı yeni bir release üretin.
 - `npm run desktop:build:prod` imza/notarization bilgileri eksikse artık hata verir; müşteriye yanlışlıkla Gatekeeper tarafından engellenecek DMG çıkarmaz. Yalnızca yerel test için gerekirse açıkça `npm run desktop:build:unsigned` kullanılabilir ve bu paket dağıtılmamalıdır.
 - Windows güncellemesi NSIS `passive` modunda çalışır; kurulum sırasında uygulama otomatik kapanır ve işlem bitince yeniden açılır.
 - GitHub deposu/Release varlıkları anonim indirilemiyorsa updater endpointi erişilebilen bir CDN veya backend adresine taşınmalıdır.

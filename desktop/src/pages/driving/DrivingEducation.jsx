@@ -90,9 +90,9 @@ export default function DrivingEducation() {
     setError('');
     try { setData(await fetchDrivingEducationOverview()); }
     catch (loadError) {
-      const message = loadError.message || 'Eğitim ve sınav verileri alınamadı.';
+      const message = loadError.message || 'Teorik eğitim verileri alınamadı.';
       setError(message);
-      toast({ title: 'Eğitim ve sınav verileri alınamadı', description: message, variant: 'destructive' });
+      toast({ title: 'Teorik eğitim verileri alınamadı', description: message, variant: 'destructive' });
     }
     finally { setLoading(false); }
   }, [toast]);
@@ -241,13 +241,13 @@ export default function DrivingEducation() {
     return (
       <DrivingPage testId="driving-education-page">
         <DrivingPageHeader
-          title="Teorik Eğitim ve Sınav Yönetimi"
-          description="Sınıftan yoklamaya, komisyondan tekrar sınavı ve ücrete kadar tek akış."
+          title="Teorik Eğitim Yönetimi"
+          description="Teorik sınıfları, ders programını ve yoklamayı tek yerden yönetin."
           icon={GraduationCap}
           onRefresh={load}
         />
         <ErrorBanner
-          title="Eğitim ve sınav verileri alınamadı"
+          title="Teorik eğitim verileri alınamadı"
           message={error || 'Sunucuya ulaşılamadı.'}
           onRetry={load}
         />
@@ -256,18 +256,16 @@ export default function DrivingEducation() {
   }
   return <DrivingPage testId="driving-education-page">
     <DrivingPageHeader
-      title="Teorik Eğitim ve Sınav Yönetimi"
-      description="Sınıftan yoklamaya, komisyondan tekrar sınavı ve ücrete kadar tek akış."
+      title="Teorik Eğitim Yönetimi"
+      description="Teorik sınıfları, ders programını ve yoklamayı tek yerden yönetin."
       icon={GraduationCap}
       onRefresh={load}
     />
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:h-full">
       <DrivingStatCard label="Teorik Sınıf" value={data.classes.length} caption="Açık sınıf" icon={Users} tone="violet" />
       <DrivingStatCard label="Planlı Ders" value={data.sessions.length} caption="Ders programında" icon={CalendarPlus} tone="brand" />
-      <DrivingStatCard label="Sınav" value={data.exams.length} caption="Planlanan oturum" icon={GraduationCap} tone="blue" />
-      <DrivingStatCard label="Aday" value={data.candidates?.length || 0} caption="Sınava kayıtlı" icon={ClipboardCheck} tone="emerald" />
     </div>
-    <Tabs defaultValue="classes"><TabsList className="flex flex-wrap"><TabsTrigger value="classes">Sınıflar</TabsTrigger><TabsTrigger value="sessions">Ders Programı & Yoklama</TabsTrigger><TabsTrigger value="exams">Sınavlar</TabsTrigger></TabsList>
+    <Tabs defaultValue="classes"><TabsList className="grid h-auto w-full grid-cols-2 sm:w-auto"><TabsTrigger value="classes">Sınıflar</TabsTrigger><TabsTrigger value="sessions">Ders Programı & Yoklama</TabsTrigger></TabsList>
       <TabsContent value="classes" className="mt-5 grid gap-5 xl:grid-cols-[380px_1fr]">
         {canTheoryManage && <Card><CardHeader><CardTitle>Yeni teorik sınıf</CardTitle></CardHeader><CardContent><form className="space-y-3" onSubmit={saveClass}><Input required placeholder="Sınıf adı" value={classForm.name} onChange={(e) => setClassForm({ ...classForm, name: e.target.value })} /><div className="grid grid-cols-2 gap-2"><Input required placeholder="Ehliyet sınıfı" value={classForm.licenseClass} onChange={(e) => setClassForm({ ...classForm, licenseClass: e.target.value })} /><Input required type="number" min="1" max="100" value={classForm.capacity} onChange={(e) => setClassForm({ ...classForm, capacity: e.target.value })} /></div><select required className="h-10 w-full rounded-md border bg-background px-3" value={classForm.instructorStaffId} onChange={(e) => setClassForm({ ...classForm, instructorStaffId: e.target.value })}><option value="">Öğretmen seçin</option>{instructors.map((x) => <option key={x.id} value={x.id}>{x.fullName}</option>)}</select><Input required type="datetime-local" value={classForm.startsAtUtc} onChange={(e) => setClassForm({ ...classForm, startsAtUtc: e.target.value })} /><Input required type="datetime-local" value={classForm.endsAtUtc} onChange={(e) => setClassForm({ ...classForm, endsAtUtc: e.target.value })} /><Input placeholder="Derslik" value={classForm.room} onChange={(e) => setClassForm({ ...classForm, room: e.target.value })} /><Button disabled={busy} className="w-full">Sınıfı Oluştur</Button></form></CardContent></Card>}
         <div className="space-y-3">

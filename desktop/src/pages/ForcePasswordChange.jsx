@@ -78,35 +78,36 @@ export default function ForcePasswordChange() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6">
-      <Card className="w-full max-w-md border-slate-800 bg-slate-900/80 backdrop-blur">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-white to-emerald-50 p-4 text-foreground dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 sm:p-6">
+      <Card className="w-full max-w-md border-slate-200 bg-white/95 shadow-2xl shadow-slate-300/40 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-black/30">
         <CardHeader className="text-center space-y-3">
-          <div className="mx-auto w-14 h-14 rounded-full bg-emerald-500/15 flex items-center justify-center">
-            <ShieldCheck className="w-7 h-7 text-emerald-400" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/15">
+            <ShieldCheck className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <CardTitle className="text-2xl text-white">Yeni Şifre Belirleyin</CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardTitle className="text-2xl text-slate-950 dark:text-white">Yeni Şifre Belirleyin</CardTitle>
+          <CardDescription className="text-slate-600 dark:text-slate-400">
             Hesabınızı güvende tutmak için ilk girişte şifrenizi yenilemeniz gerekiyor.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label className="text-slate-300">Yeni Şifre</Label>
+              <Label className="text-slate-800 dark:text-slate-300">Yeni Şifre</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <Input
                   type={showPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
                   placeholder="••••••••"
-                  className="bg-slate-800 border-slate-700 pl-9 pr-10 text-white"
+                  className="border-slate-300 bg-white pl-9 pr-10 text-slate-950 placeholder:text-slate-400 focus-visible:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                   autoFocus
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((value) => !value)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
+                  aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -114,8 +115,8 @@ export default function ForcePasswordChange() {
               {newPassword.length > 0 && (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Şifre Gücü</span>
-                    <span className="text-slate-300 font-medium">{strength.label}</span>
+                    <span className="text-slate-500 dark:text-slate-400">Şifre Gücü</span>
+                    <span className="font-medium text-slate-700 dark:text-slate-300">{strength.label}</span>
                   </div>
                   <Progress value={strength.score} className="h-1.5" />
                 </div>
@@ -123,20 +124,20 @@ export default function ForcePasswordChange() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-300">Şifreyi Doğrula</Label>
+              <Label className="text-slate-800 dark:text-slate-300">Şifreyi Doğrula</Label>
               <Input
                 type={showPassword ? 'text' : 'password'}
                 value={confirm}
                 onChange={(event) => setConfirm(event.target.value)}
                 placeholder="••••••••"
-                className="bg-slate-800 border-slate-700 text-white"
+                className="border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
             </div>
 
             {!allValid && (
-              <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-xs leading-relaxed text-amber-100">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-100">
                 Butonun açılması için aşağıdaki tüm maddeler yeşil olmalı. Örnek güçlü şifre:
-                <span className="font-semibold text-amber-50"> Course2026</span>
+                <span className="font-semibold text-amber-950 dark:text-amber-50"> Course2026</span>
               </div>
             )}
 
@@ -151,14 +152,14 @@ export default function ForcePasswordChange() {
             <Button
               type="submit"
               disabled={!allValid || saving}
-              className="w-full disabled:bg-slate-700 disabled:text-slate-300"
+              className="w-full disabled:bg-slate-200 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-300"
             >
               {saving ? 'Kaydediliyor...' : 'Şifreyi Güncelle ve Devam Et'}
             </Button>
             <button
               type="button"
               onClick={handleBackToLogin}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-800"
             >
               <LogOut className="h-4 w-4" />
               Giriş ekranına dön
@@ -172,8 +173,8 @@ export default function ForcePasswordChange() {
 
 function ValidationRow({ ok, text }) {
   return (
-    <li className={`flex items-center gap-2 ${ok ? 'text-emerald-300' : 'text-amber-200'}`}>
-      <span className={`w-2 h-2 rounded-full ${ok ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]' : 'bg-amber-400/80'}`} />
+    <li className={`flex items-center gap-2 ${ok ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-200'}`}>
+      <span className={`h-2 w-2 rounded-full ${ok ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.45)] dark:bg-emerald-400' : 'bg-amber-500 dark:bg-amber-400/80'}`} />
       {text}
     </li>
   );

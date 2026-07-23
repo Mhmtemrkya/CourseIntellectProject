@@ -50,10 +50,12 @@ Apple'a gönderip notarize eder ve bileti pakete "staple" eder. Çıktı:
 ## Doğrulama
 
 ```bash
-DMG=src-tauri/target/release/bundle/dmg/SchoolAsist_*_aarch64.dmg
-spctl -a -t open --context context:primary-signature -v "$DMG"   # accepted
-xcrun stapler validate "$DMG"                                     # validated
+bash scripts/verify-macos-distribution.sh src-tauri/target
 ```
+
+Bu denetim oluşturulan `.app`, DMG, DMG içindeki son kullanıcı `.app` dosyası,
+Developer ID kimliği, Apple noter bileti, Gatekeeper kabulü ve disk bütünlüğünü
+birlikte doğrular. Kontrollerden biri başarısızsa paket dağıtılmamalıdır.
 
 ## Sık karşılaşılanlar
 
@@ -66,7 +68,11 @@ xcrun stapler validate "$DMG"                                     # validated
   otomatik halleder).
 - **CI/CD:** Sertifikayı `.p12` olarak base64'leyip `APPLE_CERTIFICATE` ve
   `APPLE_CERTIFICATE_PASSWORD` env'leriyle sağlayabilirsiniz; Tauri geçici bir
-  keychain'e alır. API anahtarı yöntemiyle birlikte tam otomatik pipeline olur.
+  keychain'e alır. Pipeline, bu doğrulamaları geçemeyen bir macOS release'ini
+  yayınlamaz.
+- **Başka Mac'te yalnız `xattr -cr` sonrasında açılan eski DMG:** Bu paket
+  imzasız veya notarize edilmemiştir. Eski DMG sonradan güvenli hale getirilemez;
+  dağıtımı durdurulmalı ve yeni bir sürüm numarasıyla yeniden üretilmelidir.
 
 ## Windows
 

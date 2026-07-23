@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
-import '../features/assistant/presentation/assistant_page.dart';
 
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
@@ -381,11 +380,6 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
-          IconButton(
-            tooltip: 'SchoolAsist Asistan',
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantPage())),
-            icon: const Icon(Icons.auto_awesome_rounded),
-          ),
           IconButton(
             onPressed: () => Navigator.push(
               context,

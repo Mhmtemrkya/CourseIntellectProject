@@ -98,7 +98,6 @@ const navigationByRole = {
     { path: '/s/mock-exams', icon: ClipboardCheck, label: 'Deneme Sınavları', keywords: ['deneme', 'mock exam'] },
     { path: '/s/assignments', icon: FileText, label: 'Ödevler', keywords: ['assignment', 'ödev'] },
     { path: '/s/wrong-answers', icon: BarChart3, label: 'Yanlışlarım', keywords: ['wrong', 'yanlış'] },
-    { path: '/s/ai', icon: Brain, label: 'AI Asistan', keywords: ['ai', 'assistant'] },
     { path: '/s/chat', icon: MessageSquare, label: 'Mesajlar', keywords: ['mesaj', 'chat'] },
     { path: '/s/profile', icon: UserCheck, label: 'Profilim', keywords: ['profil', 'profile'] },
   ],
@@ -173,7 +172,6 @@ export function CommandPalette() {
         return [
           { path: '/s/question-practice', icon: Brain, label: 'Soru Çöz' },
           { path: '/s/study-plan', icon: ClipboardCheck, label: 'Çalışma Planımı Aç' },
-          { path: '/s/ai', icon: Brain, label: 'AI Asistanı Aç' },
         ];
       case 'parent':
         return [

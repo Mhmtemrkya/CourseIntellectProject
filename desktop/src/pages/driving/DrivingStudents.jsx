@@ -16,12 +16,23 @@ import {
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 import { assetUrl } from '../../lib/assetUrl';
+import { maskTrPhone } from '../../lib/inputMasks';
 import { FileButton } from '../../components/ui/file-button';
 
 const STATUS_LABELS = {
   PreRegistered: 'Ön kayıt', DocumentsPending: 'Evrak bekliyor', Active: 'Aktif',
   TheoryOngoing: 'Teorik eğitimde', PracticeOngoing: 'Direksiyonda', ExamPending: 'Sınav bekliyor',
-  Graduated: 'Mezun', Suspended: 'Askıda', Cancelled: 'İptal',
+  GraduationPending: 'Mezuniyet bekliyor', Graduated: 'Mezun', Suspended: 'Askıda', Cancelled: 'İptal',
+};
+
+// Kursiyer "pasif" sayılan durumlar — ana listeden gizlenir. Mezun olanlar
+// mezuniyet anında otomatik pasife düşer (backend Status=Graduated).
+const PASSIVE_STATUSES = ['Graduated', 'Suspended', 'Cancelled'];
+const STATUS_FILTERS = {
+  active: (s) => !PASSIVE_STATUSES.includes(s.status),
+  graduated: (s) => s.status === 'Graduated',
+  inactive: (s) => s.status === 'Suspended' || s.status === 'Cancelled',
+  all: () => true,
 };
 
 // Öğrenci evrakı durum rozetleri (detay ekranıyla aynı ton sözlüğü).
@@ -152,7 +163,7 @@ function StudentDocumentsModal({ profileId, onClose }) {
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-3">
                       <Info label="Kimlik no" value={overview.identityNumber || overview.tcNo} />
                       <Info label="Doğum" value={overview.birthDate} />
-                      <Info label="Telefon" value={overview.phone} />
+                      <Info label="Telefon" value={maskTrPhone(overview.phone)} />
                       <Info label="İl / İlçe" value={[overview.city, overview.district].filter(Boolean).join(' / ')} />
                       <Info label="İkametgâh" value={overview.residenceAddress} />
                       {overview.hasExistingLicense && (
@@ -327,6 +338,10 @@ export default function DrivingStudents() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState(() => searchParams.get('groupId') || 'all'); // 'all' | 'ungrouped' | <groupId>
+  // Durum filtresi — varsayılan yalnız AKTİF kursiyerler. Mezun olanlar otomatik
+  // pasife düşer ve ana listede görünmez; "Mezun" / "Askıda / İptal" filtresiyle
+  // görülebilir. 'active' | 'graduated' | 'inactive' | 'all'
+  const [statusFilter, setStatusFilter] = useState('active');
   const [selectedId, setSelectedId] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [roster, setRoster] = useState(null); // seçili grubun MEBBİS durum özeti
@@ -420,13 +435,15 @@ export default function DrivingStudents() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('tr-TR');
+    const statusMatch = STATUS_FILTERS[statusFilter] || STATUS_FILTERS.active;
     return students.filter((s) => {
+      if (!statusMatch(s)) return false;
       if (groupFilter === 'ungrouped' && s.groupId) return false;
       if (groupFilter !== 'all' && groupFilter !== 'ungrouped' && s.groupId !== groupFilter) return false;
       if (term && !(s.fullName || '').toLocaleLowerCase('tr-TR').includes(term)) return false;
       return true;
     });
-  }, [students, search, groupFilter]);
+  }, [students, search, groupFilter, statusFilter]);
 
   const activeCount = useMemo(() => students.filter((s) => !['Graduated', 'Suspended', 'Cancelled'].includes(s.status)).length, [students]);
   const graduatedCount = useMemo(() => students.filter((s) => s.status === 'Graduated').length, [students]);
@@ -508,10 +525,21 @@ export default function DrivingStudents() {
         )}
       />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-        <DrivingStatCard label="Aktif Kursiyer" value={activeCount} caption="Eğitimi süren" icon={GraduationCap} tone="emerald" />
-        <DrivingStatCard label="Mezun" value={graduatedCount} caption="Tamamlayan" icon={CheckCircle2} tone="violet" />
-        <DrivingStatCard label="Askıda / İptal" value={inactiveCount} caption="Pasif kayıt" icon={Users} tone="brand" />
+      {/* Durum kartları aynı zamanda filtre: varsayılan yalnız aktif kursiyerler
+          listelenir; mezun (otomatik pasif) veya askıda/iptal için karta tıkla. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 [&>*]:h-full">
+        <div className={statusFilter === 'active' ? 'rounded-2xl ring-2 ring-brand-primary' : ''}>
+          <DrivingStatCard label="Aktif Kursiyer" value={activeCount} caption="Eğitimi süren" icon={GraduationCap} tone="emerald"
+            onClick={() => setStatusFilter('active')} />
+        </div>
+        <div className={statusFilter === 'graduated' ? 'rounded-2xl ring-2 ring-brand-primary' : ''}>
+          <DrivingStatCard label="Mezun" value={graduatedCount} caption="Tamamlayan (pasif)" icon={CheckCircle2} tone="violet"
+            onClick={() => setStatusFilter((f) => (f === 'graduated' ? 'active' : 'graduated'))} />
+        </div>
+        <div className={statusFilter === 'inactive' ? 'rounded-2xl ring-2 ring-brand-primary' : ''}>
+          <DrivingStatCard label="Askıda / İptal" value={inactiveCount} caption="Pasif kayıt" icon={Users} tone="brand"
+            onClick={() => setStatusFilter((f) => (f === 'inactive' ? 'active' : 'inactive'))} />
+        </div>
       </div>
 
       <div className="relative max-w-sm">
@@ -600,51 +628,65 @@ export default function DrivingStudents() {
       {filtered.length === 0 ? (
         <DrivingNotice
           icon={Users}
-          title={search || groupFilter !== 'all' ? 'Eşleşen kursiyer yok.' : 'Henüz kursiyer eklenmedi.'}
-          message={search || groupFilter !== 'all' ? 'Filtreyi veya aramayı değiştirin.' : 'Yeni kursiyer ekleyerek başlayın.'}
-          action={!search && groupFilter === 'all' ? <Button onClick={() => navigate('/driving/students/new')}><Plus className="mr-2 h-4 w-4" />Yeni Kursiyer</Button> : null}
+          title={search || groupFilter !== 'all' || statusFilter !== 'active' ? 'Eşleşen kursiyer yok.' : 'Henüz kursiyer eklenmedi.'}
+          message={search || groupFilter !== 'all' || statusFilter !== 'active' ? 'Filtreyi veya aramayı değiştirin.' : 'Yeni kursiyer ekleyerek başlayın.'}
+          action={!search && groupFilter === 'all' && statusFilter === 'active' ? <Button onClick={() => navigate('/driving/students/new')}><Plus className="mr-2 h-4 w-4" />Yeni Kursiyer</Button> : null}
         />
       ) : (
-        <div className="grid gap-3 pb-24 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="space-y-3 pb-24">
           {filtered.map((student) => {
             const checked = selectedIds.has(student.id);
+            const downPaymentPending = pendingNames.has(String(student.fullName || '').trim().toLocaleLowerCase('tr-TR'));
             return (
               <button
                 type="button"
                 key={student.id}
                 onClick={() => (selectMode ? toggleSelect(student.id) : setSelectedId(student.id))}
-                className={`flex items-center justify-between gap-3 rounded-2xl border p-4 text-left transition ${
+                className={`group flex w-full flex-col gap-4 rounded-2xl border p-4 text-left transition sm:p-5 md:flex-row md:items-center ${
                   selectMode && checked
-                    ? 'border-brand-primary bg-brand-primary/[0.06]'
-                    : 'border-foreground/10 bg-foreground/[0.035] hover:border-[hsl(var(--brand-accent)/0.5)] hover:bg-foreground/[0.06]'
+                    ? 'border-brand-primary bg-brand-primary/[0.07] shadow-[0_10px_28px_hsl(var(--brand-accent)/0.08)]'
+                    : 'border-foreground/10 bg-foreground/[0.025] hover:-translate-y-0.5 hover:border-[hsl(var(--brand-accent)/0.45)] hover:bg-foreground/[0.05] hover:shadow-[0_12px_30px_hsl(var(--foreground)/0.06)]'
                 }`}
               >
-                <div className="flex min-w-0 items-center gap-3">
+                <div className="flex w-full min-w-0 items-center gap-3 md:w-[min(38%,360px)] md:shrink-0">
                   {selectMode && <Checkbox checked={checked} className="pointer-events-none" />}
                   {student.displayPhotoUrl || student.livePhotoUrl || student.photoUrl
-                    ? <img src={assetUrl(student.displayPhotoUrl || student.livePhotoUrl || student.photoUrl)} alt={student.fullName} className="h-11 w-11 shrink-0 rounded-2xl border object-cover" />
-                    : <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-primary/10 text-brand-primary"><Users className="h-5 w-5" /></div>}
+                    ? <img src={assetUrl(student.displayPhotoUrl || student.livePhotoUrl || student.photoUrl)} alt={student.fullName} className="h-14 w-14 shrink-0 rounded-2xl border border-foreground/10 object-cover shadow-sm sm:h-16 sm:w-16" />
+                    : <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-brand-primary/10 bg-brand-primary/10 text-brand-primary sm:h-16 sm:w-16"><Users className="h-6 w-6" /></div>}
                   <div className="min-w-0">
-                    <p className="truncate font-bold">
-                      {student.studentNumber != null && <span className="mr-1 text-xs font-black text-muted-foreground">#{student.studentNumber}</span>}
+                    <p className="truncate text-base font-black">
                       {student.fullName}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {student.licenseClass} • {transmissionLabel(student.transmissionType)}
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {student.studentNumber != null ? `Kursiyer No: #${student.studentNumber}` : 'Kursiyer numarası bekleniyor'}
                     </p>
-                    {student.groupName && (
-                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[hsl(var(--brand-accent)/0.12)] px-2 py-0.5 text-[10px] font-bold text-[hsl(var(--brand-accent))]">
-                        <Layers className="h-3 w-3" />{student.groupName}
-                      </span>
-                    )}
                   </div>
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
+
+                <div className="grid w-full min-w-0 grid-cols-2 gap-2 text-sm md:flex-1 md:grid-cols-3">
+                  <div className="rounded-xl border border-foreground/[0.08] bg-background/55 px-3 py-2.5">
+                    <span className="block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Ehliyet</span>
+                    <b className="mt-0.5 block truncate">{student.licenseClass} • {transmissionLabel(student.transmissionType)}</b>
+                  </div>
+                  <div className="rounded-xl border border-foreground/[0.08] bg-background/55 px-3 py-2.5">
+                    <span className="block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Grup / Dönem</span>
+                    <b className="mt-0.5 block truncate">{student.groupName || 'Henüz atanmadı'}</b>
+                  </div>
+                  <div className="col-span-2 rounded-xl border border-foreground/[0.08] bg-background/55 px-3 py-2.5 md:col-span-1">
+                    <span className="block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Kalan Ders Hakkı</span>
+                    <b className="mt-0.5 block">{student.remainingDrivingMinutes} dakika</b>
+                  </div>
+                </div>
+
+                <div className="flex w-full flex-wrap items-center gap-2 border-t border-foreground/[0.08] pt-3 md:w-[190px] md:shrink-0 md:flex-col md:items-end md:border-l md:border-t-0 md:pl-4 md:pt-0">
                   <Badge className="border-0 bg-violet-500/15 text-violet-600">{STATUS_LABELS[student.status] || student.status}</Badge>
-                  {pendingNames.has(String(student.fullName || '').trim().toLocaleLowerCase('tr-TR')) ? (
+                  {downPaymentPending ? (
                     <Badge className="border-0 bg-red-500/15 text-red-600"><XCircle className="mr-1 h-3 w-3" />Peşinat bekliyor</Badge>
                   ) : null}
-                  <span className="text-xs text-muted-foreground">{student.remainingDrivingMinutes} dk kaldı</span>
+                  <span className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-[hsl(var(--brand-accent))] md:ml-0 md:mt-1">
+                    {selectMode ? (checked ? 'Seçildi' : 'Seç') : 'Belgeleri yönet'}
+                    {!selectMode && <ExternalLink className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />}
+                  </span>
                 </div>
               </button>
             );
@@ -718,7 +760,7 @@ export default function DrivingStudents() {
                   ['TC', row.tcNo], ['Adı', row.firstName], ['Soyadı', row.lastName],
                   ['Baba adı', row.fatherName], ['Anne adı', row.motherName], ['Doğum yeri', row.birthPlace],
                   ['Doğum tarihi', row.birthDate], ['Öğrenim', row.educationLevel], ['Sınıf', row.licenseClass],
-                  ['Seri no', row.identitySerialNo], ['Telefon', row.phone],
+                  ['Seri no', row.identitySerialNo], ['Telefon', maskTrPhone(row.phone)],
                 ].filter(([, value]) => value);
                 return (
                   <div key={row.profileId} className={`rounded-2xl border p-3 ${entered ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-foreground/10'}`}>

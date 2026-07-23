@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertTriangle, ArrowLeft, CalendarClock, CheckCircle2, ClipboardList, CreditCard, Download,
-  FileCheck2, FileSignature, Gauge, History, Plus, Receipt, RefreshCw, StickyNote, TrendingUp, Undo2, Upload, UserRoundCheck, Wrench, XCircle,
+  FileCheck2, FileSignature, Gauge, History, Plus, Receipt, RefreshCw, StickyNote, TrendingUp, Upload, UserRoundCheck, Wrench, XCircle,
 } from 'lucide-react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from '../../components/ui/badge';
@@ -15,13 +15,14 @@ import { useToast } from '../../hooks/use-toast';
 import {
   addDrivingExtraMinutes, adjustDrivingLedger, createDrivingAppointment, createDrivingCharge,
   downloadDrivingStudentForm, downloadDrivingStudentDocument, fetchDrivingBranches, fetchDrivingCharges, fetchDrivingLedger,
-  fetchDrivingStudentDetail, fetchDrivingMebbisHistory, recordDrivingPayment, refundDrivingCharge, reviewDrivingStudentDocument,
+  fetchDrivingStudentDetail, fetchDrivingMebbisHistory, recordDrivingPayment, reviewDrivingStudentDocument,
   suggestDrivingInstructors, suggestDrivingVehicles, updateDrivingExamFees, updateDrivingStudentStatus,
   uploadDrivingStudentDocument, uploadFile,
 } from '../../lib/api/modules';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
+import { maskTrPhone } from '../../lib/inputMasks';
 import { createTypedDocumentUrl } from '../../lib/fileMime';
 import { FileButton } from '../../components/ui/file-button';
 import {
@@ -247,7 +248,6 @@ export default function DrivingStudentDetail() {
   const canOverrideDocuments = can(DRIVING.overrideStudentDocuments);
   const canAdjustBalance = can(DRIVING.lessonBalanceAdjust);
   const canCollect = can(DRIVING.financeCollect);
-  const canRefund = can(DRIVING.financeRefund);
   const canCreateAppointment = can(DRIVING.appointmentCreate);
   const [apptOpen, setApptOpen] = useState(false);
 
@@ -306,15 +306,6 @@ export default function DrivingStudentDetail() {
       minutes > 0 ? `Ek ders satıldı, ${minutes} dk eklendi` : 'Ücret kalemi eklendi',
     );
     if (ok) setChargeForm({ chargeType: chargeForm.chargeType, grossAmount: '', minutes: '', description: '' });
-  }
-
-  async function refundCharge(charge) {
-    const reason = window.prompt('İade nedeni (en az 5 karakter):');
-    if (!reason || reason.trim().length < 5) return;
-    await run(
-      () => refundDrivingCharge(charge.id, { reason: reason.trim() }),
-      'İade işlendi',
-    );
   }
 
   async function addExtraMinutes() {
@@ -604,8 +595,7 @@ export default function DrivingStudentDetail() {
               <Row label="Öğrenim" value={overview.educationLevel} />
               <Row label="İl / İlçe" value={[overview.city, overview.district].filter(Boolean).join(' / ')} />
               <Row label="İkametgâh" value={overview.residenceAddress} />
-              <Row label="Telefon" value={overview.studentPhone || overview.phone} />
-              <Row label="WhatsApp" value={overview.whatsAppPhone} />
+              <Row label="Telefon" value={maskTrPhone(overview.studentPhone || overview.phone)} />
               <Row label="E-posta" value={overview.email} />
               <Row label="Acil durum" value={[overview.emergencyContactName, overview.emergencyContactPhone].filter(Boolean).join(' • ')} />
               <Row label="Kayıt şubesi" value={overview.registrationBranchName} />
@@ -1120,14 +1110,14 @@ export default function DrivingStudentDetail() {
                       </div>
                       <div className="flex items-center gap-2">
                         <b>{money(item.netAmount)}</b>
-                        {canRefund && !item.refundedAtUtc && (
-                          <Button size="sm" variant="outline" disabled={busy} onClick={() => refundCharge(item)}>
-                            <Undo2 className="mr-1 h-3.5 w-3.5" />İade
-                          </Button>
-                        )}
                       </div>
                     </div>
                   ))}
+                  {charges.some((item) => !item.refundedAtUtc) && can(DRIVING.financeRefund) && (
+                    <Button variant="outline" className="w-full" onClick={() => navigate(`/finance/refunds?student=${profileId}`)}>
+                      İade işlemleri sayfasına git
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             )}

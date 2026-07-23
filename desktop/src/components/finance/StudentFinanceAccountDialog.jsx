@@ -1,18 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Loader2, Wallet, Receipt, RotateCcw, CreditCard, CheckCircle2, Clock3, XCircle,
-  AlertTriangle,
+  Loader2, Wallet, Receipt, CreditCard, CheckCircle2, Clock3, XCircle,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { LoadingDots } from '../animations/AnimatedIcon';
-import { FeatureGate } from '../FeatureGate';
 import { useToast } from '../../hooks/use-toast';
 import {
   fetchStudentFinanceAccount,
   recordFinancePayment,
-  refundFinancePayment,
   createFinancePaymentIntent,
   confirmFinancePayment,
 } from '../../lib/api/modules';
@@ -37,12 +34,6 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
   const [busy, setBusy] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Nakit');
-  const [refundPayment, setRefundPayment] = useState(null);
-  const [refundAmount, setRefundAmount] = useState('');
-  const [refundType, setRefundType] = useState('PaymentReversal');
-  const [refundReason, setRefundReason] = useState('');
-  const [refundChannel, setRefundChannel] = useState('Nakit');
-  const [refundReference, setRefundReference] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -101,71 +92,7 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
     }
   };
 
-  const doRefund = async () => {
-    const amount = Number(refundAmount);
-    if (!amount || amount <= 0) {
-      toast({ title: 'Geçerli bir iade tutarı girin.', variant: 'destructive' });
-      return;
-    }
-    if (!refundPayment || amount > Number(refundPayment.refundableAmount || 0)) {
-      toast({ title: 'İade tutarı makbuzun iade edilebilir tutarını aşamaz.', variant: 'destructive' });
-      return;
-    }
-    if (!refundReason.trim()) {
-      toast({ title: 'İade gerekçesi zorunludur.', variant: 'destructive' });
-      return;
-    }
-    if (refundChannel !== 'Nakit' && !refundReference.trim()) {
-      toast({ title: 'Kart ve banka iadelerinde işlem referansı zorunludur.', variant: 'destructive' });
-      return;
-    }
-    try {
-      setBusy(true);
-      await refundFinancePayment({
-        paymentId: refundPayment.id,
-        amount,
-        refundType,
-        reason: refundReason.trim(),
-        refundChannel,
-        externalReference: refundReference.trim() || null,
-      });
-      toast({ title: 'İade işlendi', description: tl(amount) });
-      setRefundAmount('');
-      setRefundReason('');
-      setRefundReference('');
-      setRefundPayment(null);
-      await load();
-    } catch (err) {
-      toast({ title: 'İade yapılamadı', description: err.message, variant: 'destructive' });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const startRefund = (payment) => {
-    const normalizedMethod = String(payment.method || '').toLocaleLowerCase('tr-TR');
-    setRefundPayment(payment);
-    setRefundAmount(String(payment.refundableAmount || ''));
-    setRefundType('PaymentReversal');
-    setRefundReason('');
-    setRefundChannel(
-      normalizedMethod.includes('kart') || normalizedMethod.includes('online')
-        ? 'Karta İade'
-        : normalizedMethod.includes('havale') || normalizedMethod.includes('eft')
-          ? 'Havale/EFT'
-          : 'Nakit',
-    );
-    setRefundReference('');
-  };
-
   const currency = account?.currency || 'TRY';
-  const refundTypeMax = refundPayment
-    ? refundType === 'AdvanceReturn'
-      ? Number(refundPayment.unallocatedRefundableAmount || 0)
-      : refundType === 'ContractReduction' && Number(refundPayment.allocatedRefundableAmount || 0) > 0
-        ? Number(refundPayment.allocatedRefundableAmount)
-        : Number(refundPayment.refundableAmount || 0)
-    : 0;
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -264,13 +191,6 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
                             <p className={`font-bold ${isRefund ? 'text-red-600' : 'text-emerald-600'}`}>{tl(item.amount, currency)}</p>
                             {!isRefund && item.refundedAmount > 0 ? <p className="text-[11px] text-red-600">İade edilen: {tl(item.refundedAmount, currency)}</p> : null}
                           </div>
-                          {!isRefund && item.refundableAmount > 0 ? (
-                            <FeatureGate module="collections" action="refund">
-                              <Button size="sm" variant="outline" onClick={() => startRefund(item)} disabled={busy}>
-                                <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> İade Et
-                              </Button>
-                            </FeatureGate>
-                          ) : null}
                         </div>
                       </div>
                       {isRefund ? (
@@ -285,62 +205,6 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
               </div>
             </div>
 
-            {refundPayment ? (
-              <div className="rounded-xl border border-amber-300/60 bg-amber-500/5 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="flex items-center gap-2 font-semibold"><RotateCcw className="h-4 w-4" /> Makbuzdan İade</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {refundPayment.receiptNo} · Tahsilat {tl(refundPayment.amount, currency)} · İade edilebilir {tl(refundPayment.refundableAmount, currency)}
-                    </p>
-                  </div>
-                  <Button size="sm" variant="ghost" onClick={() => setRefundPayment(null)} disabled={busy}>Vazgeç</Button>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <label className="text-xs font-semibold">İade türü
-                    <select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={refundType} onChange={(e) => setRefundType(e.target.value)}>
-                      <option value="PaymentReversal">Tahsilat iptali / düzeltmesi</option>
-                      {!refundPayment.isDownPayment ? <option value="AdvanceReturn">Fazla ödeme / avans iadesi</option> : null}
-                      {!refundPayment.isDownPayment ? <option value="ContractReduction">Ücret indirimi kaynaklı iade</option> : null}
-                    </select>
-                  </label>
-                  <label className="text-xs font-semibold">İade tutarı
-                    <Input className="mt-1" type="number" min="0.01" step="0.01" max={refundTypeMax} value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} />
-                    <span className="mt-1 block font-normal text-muted-foreground">Bu tür için en fazla {tl(refundTypeMax, currency)}</span>
-                  </label>
-                  <label className="text-xs font-semibold">İade kanalı
-                    <select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={refundChannel} onChange={(e) => setRefundChannel(e.target.value)}>
-                      {['Nakit', 'Karta İade', 'Havale/EFT'].map((channel) => <option key={channel} value={channel}>{channel}</option>)}
-                    </select>
-                  </label>
-                  <label className="text-xs font-semibold">Banka / POS referansı
-                    <Input className="mt-1" placeholder={refundChannel === 'Nakit' ? 'İsteğe bağlı' : 'Zorunlu'} value={refundReference} onChange={(e) => setRefundReference(e.target.value)} />
-                  </label>
-                  <label className="text-xs font-semibold sm:col-span-2">İade gerekçesi
-                    <Input className="mt-1" placeholder="Zorunlu açıklama" value={refundReason} onChange={(e) => setRefundReason(e.target.value)} maxLength={500} />
-                  </label>
-                </div>
-
-                <div className="mt-4 rounded-lg border bg-background/70 p-3 text-xs">
-                  <p className="flex items-center gap-1.5 font-semibold"><AlertTriangle className="h-4 w-4 text-amber-600" /> İşlem sonrası önizleme</p>
-                  <div className="mt-2 grid gap-1 sm:grid-cols-3">
-                    <span>Mevcut borç: <b>{tl(account.balance, currency)}</b></span>
-                    <span>İade: <b className="text-red-600">{tl(Number(refundAmount || 0), currency)}</b></span>
-                    <span>Öngörülen borç: <b>{tl(refundType === 'ContractReduction' ? account.balance : account.balance + Number(refundAmount || 0), currency)}</b></span>
-                  </div>
-                  <p className="mt-2 text-muted-foreground">
-                    {refundType === 'PaymentReversal' && 'İade edilen tahsilatın gerçek taksit mahsupları geri açılır.'}
-                    {refundType === 'AdvanceReturn' && 'Yalnızca taksitlere mahsup edilmemiş fazla ödeme iade edilir; taksitler açılmaz.'}
-                    {refundType === 'ContractReduction' && 'Tahsilat ve sözleşme bedeli birlikte azaltılır; öğrencinin mevcut borcu değişmez.'}
-                  </p>
-                </div>
-
-                <Button onClick={doRefund} disabled={busy || !refundReason.trim() || (refundChannel !== 'Nakit' && !refundReference.trim()) || Number(refundAmount) <= 0 || Number(refundAmount) > refundTypeMax} variant="outline" className="mt-4 w-full border-red-300 text-red-600 hover:bg-red-500/10">
-                  {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />} İadeyi Onayla
-                </Button>
-              </div>
-            ) : null}
           </div>
         )}
 

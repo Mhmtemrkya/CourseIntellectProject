@@ -1,78 +1,424 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Award, CheckCircle2, Circle, FileBadge2, RefreshCw, Settings2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
+import {
+  AlertTriangle, Award, CheckCircle2, Circle, Download, Eye, FileBadge2, Loader2, ShieldAlert,
+} from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { useToast } from '../../hooks/use-toast';
-import { fetchDrivingGraduationOverview, fetchDrivingGraduationChecklist, graduateDrivingStudent, issueDrivingCertificate, updateDrivingCertificateDelivery, updateDrivingCertificateMebbisNo, downloadDrivingCertificate, requestDrivingGraduationOverride, requestDrivingGraduationRevocation, approveDrivingGraduationAction, rejectDrivingGraduationAction, reissueDrivingCertificate, revokeDrivingCertificate } from '../../lib/api/modules';
+import {
+  approveDrivingGraduationAction,
+  downloadDrivingCertificate,
+  fetchDrivingGraduationChecklist,
+  fetchDrivingGraduationOverview,
+  forceGraduateDrivingStudent,
+  graduateDrivingStudent,
+  issueDrivingCertificate,
+  rejectDrivingGraduationAction,
+  reissueDrivingCertificate,
+  requestDrivingGraduationRevocation,
+  revokeDrivingCertificate,
+  updateDrivingCertificateDelivery,
+  updateDrivingCertificateMebbisNo,
+} from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
 import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 
-// Ham enum yerine Türkçe etiket: kartlarda "Graduated/Active/Pending" gibi kod görünmesin.
 const STATUS_LABELS = {
   PreRegistered: 'Ön kayıt', DocumentsPending: 'Evrak bekliyor', Active: 'Aktif', TheoryOngoing: 'Teorik eğitim',
   PracticeOngoing: 'Direksiyon', ExamPending: 'Sınav bekliyor', GraduationPending: 'Mezuniyet onayı',
   Graduated: 'Mezun', Suspended: 'Askıda', Cancelled: 'İptal', Revoked: 'Geri alındı', Pending: 'Bekliyor',
 };
-const CERT_TYPE_LABELS = { Completion: 'Tamamlama Belgesi', Achievement: 'Başarı Belgesi' };
+const CERT_TYPE_LABELS = { Completion: 'Eğitim Tamamlama Belgesi', Achievement: 'Başarı Belgesi' };
 const CERT_STATUS_LABELS = { Active: 'Aktif', Superseded: 'Yenilendi', Revoked: 'İptal edildi' };
 const DELIVERY_LABELS = { NotDelivered: 'Teslim edilmedi', Ready: 'Teslime hazır', Delivered: 'Teslim edildi', Returned: 'İade edildi' };
-const ACTION_TYPE_LABELS = { EligibilityOverride: 'Uygunluk istisnası', GraduationRevocation: 'Mezuniyet geri alma' };
 const ACTION_STATUS_LABELS = { Pending: 'Onay bekliyor', FirstApproved: 'İlk onay verildi', Approved: 'Onaylandı', Rejected: 'Reddedildi', Applied: 'Uygulandı', Cancelled: 'İptal edildi' };
+const CERTIFICATE_TYPES = ['Completion', 'Achievement'];
 const label = (map, value) => map[value] || value || '—';
 
 export default function DrivingGraduation() {
-  const { toast } = useToast(); const { can } = useDrivingPermissions(); const navigate = useNavigate();
+  const { toast } = useToast();
+  const { can } = useDrivingPermissions();
   const [data, setData] = useState({ students: [], graduations: [], certificates: [], actionRequests: [] });
-  const [checklists, setChecklists] = useState({}); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false);
-  const load = useCallback(async () => { setLoading(true); try { setData(await fetchDrivingGraduationOverview()); } catch (e) { toast({ title: 'Mezuniyet verileri alınamadı', description: e.message, variant: 'destructive' }); } finally { setLoading(false); } }, [toast]);
+  const [checklists, setChecklists] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [forceTarget, setForceTarget] = useState(null);
+  const [forceReason, setForceReason] = useState('');
+  const [documentPreview, setDocumentPreview] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setData(await fetchDrivingGraduationOverview());
+    } catch (error) {
+      toast({ title: 'Mezuniyet verileri alınamadı', description: error.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => { load(); }, [load]);
-  async function check(id) { try { const value = await fetchDrivingGraduationChecklist(id); setChecklists((x) => ({ ...x, [id]: value })); } catch (e) { toast({ title: 'Kontrol yapılamadı', description: e.message, variant: 'destructive' }); } }
-  async function run(action, success) { setSaving(true); try { await action(); toast({ title: success }); await load(); } catch (e) { toast({ title: 'İşlem tamamlanamadı', description: e.message, variant: 'destructive' }); } finally { setSaving(false); } }
-  async function download(certificate) { try { const blob = await downloadDrivingCertificate(certificate.id); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${certificate.documentNumber}.pdf`; anchor.click(); URL.revokeObjectURL(url); } catch (e) { toast({ title: 'Belge indirilemedi', description: e.message, variant: 'destructive' }); } }
+  useEffect(() => () => {
+    if (documentPreview?.url) URL.revokeObjectURL(documentPreview.url);
+  }, [documentPreview?.url]);
+
+  async function check(profileId) {
+    try {
+      const value = await fetchDrivingGraduationChecklist(profileId);
+      setChecklists((current) => ({ ...current, [profileId]: value }));
+    } catch (error) {
+      toast({ title: 'Kontrol yapılamadı', description: error.message, variant: 'destructive' });
+    }
+  }
+
+  async function run(action, success) {
+    setSaving(true);
+    try {
+      await action();
+      toast({ title: success });
+      await load();
+      return true;
+    } catch (error) {
+      toast({ title: 'İşlem tamamlanamadı', description: error.message, variant: 'destructive' });
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function openDocument(certificate) {
+    setDocumentPreview({ certificate, url: '', loading: true });
+    try {
+      const blob = await downloadDrivingCertificate(certificate.id);
+      const url = URL.createObjectURL(blob);
+      setDocumentPreview({ certificate, url, loading: false });
+    } catch (error) {
+      setDocumentPreview(null);
+      toast({ title: 'Belge görüntülenemedi', description: error.message, variant: 'destructive' });
+    }
+  }
+
+  async function createAndOpenDocument(student, type) {
+    setSaving(true);
+    try {
+      const created = await issueDrivingCertificate(student.id, type);
+      const certificate = {
+        ...created,
+        id: created.id,
+        studentDrivingProfileId: student.id,
+        type,
+        status: 'Active',
+        version: 1,
+        deliveryStatus: 'Ready',
+        issuedAtUtc: new Date().toISOString(),
+      };
+      await openDocument(certificate);
+      toast({ title: `${CERT_TYPE_LABELS[type]} oluşturuldu` });
+      await load();
+    } catch (error) {
+      toast({ title: 'Belge oluşturulamadı', description: error.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function downloadPreview() {
+    if (!documentPreview?.url) return;
+    const anchor = document.createElement('a');
+    anchor.href = documentPreview.url;
+    anchor.download = `${documentPreview.certificate.documentNumber || 'mezuniyet-belgesi'}.pdf`;
+    anchor.click();
+  }
+
+  async function submitForceGraduation() {
+    if (!forceTarget || forceReason.trim().length < 20) return;
+    const student = forceTarget.student;
+    const ok = await run(
+      () => forceGraduateDrivingStudent(student.id, forceReason.trim()),
+      `${student.fullName} yetkili kararıyla mezun edildi`,
+    );
+    if (ok) {
+      setForceTarget(null);
+      setForceReason('');
+      setChecklists((current) => ({ ...current, [student.id]: forceTarget.checklist }));
+    }
+  }
+
   if (loading) return <DrivingLoading />;
-  const setup = data.certificateSetup;
-  const missingLabels = { directorName: 'Müdür adı', directorTitle: 'Müdür unvanı', logoUrl: 'Kurum logosu', signatureUrl: 'İmza görseli', primaryColor: 'Sertifika rengi' };
-  const graduatedCount = (data.graduations || []).filter((x) => x.status === 'Graduated').length;
-  return <DrivingPage testId="driving-graduation-page">
-    <DrivingPageHeader
-      title="Mezuniyet & Sertifika"
-      description="Eğitim, sınav, evrak ve finans koşullarını tek kontrol listesinde kapatın."
-      icon={Award}
-      onRefresh={load}
-    />
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-      <DrivingStatCard label="Kursiyer" value={data.students.length} caption="Mezuniyet takibinde" icon={Award} tone="brand" />
-      <DrivingStatCard label="Mezun" value={graduatedCount} caption="Mezuniyeti onaylı" icon={CheckCircle2} tone="emerald" />
-      <DrivingStatCard label="Sertifika" value={(data.certificates || []).length} caption="Düzenlenen belge" icon={FileBadge2} tone="violet" />
-      <DrivingStatCard label="Bekleyen Talep" value={(data.actionRequests || []).filter((x) => x.status === 'Pending' || x.status === 'FirstApproved').length} caption="İki onaylı akış" icon={AlertTriangle} tone="amber" />
-    </div>
-    {setup && <Card className={setup.complete ? 'border-emerald-500/40' : 'border-amber-500/50'}><CardContent className="flex flex-wrap items-center justify-between gap-4 p-4"><div className="flex items-start gap-3">{setup.complete ? <CheckCircle2 className="mt-0.5 h-6 w-6 text-emerald-600" /> : <AlertTriangle className="mt-0.5 h-6 w-6 text-amber-600" />}<div><b>{setup.complete ? 'Kurum ve sertifika bilgileri hazır' : 'Kurum bilgileri tamamlanmalı'}</b><p className="text-sm text-muted-foreground">{setup.complete ? `${setup.directorName} • ${setup.directorTitle} • Asgari devam %${setup.minimumTheoryAttendancePercent}` : (setup.missingFields || []).map((x) => missingLabels[x] || x).join(', ')}</p></div></div>{can(DRIVING.settingsManage) && <Button variant="outline" onClick={() => navigate('/driving/assignments?tab=rules')}><Settings2 className="mr-2 h-4 w-4" />Kurum Bilgilerini Düzenle</Button>}</CardContent></Card>}
-    <div className="grid gap-4 xl:grid-cols-2">{data.students.map((student) => {
-      const graduation = data.graduations.find((x) => x.studentDrivingProfileId === student.id);
-      const certificates = data.certificates.filter((x) => x.studentDrivingProfileId === student.id);
-      const checklist = checklists[student.id];
-      const requests = (data.actionRequests || []).filter((x) => x.studentDrivingProfileId === student.id);
-      // İki onaylı istisna varsa kontrol listesi tamamlanmasa bile mezun edilebilir.
-      const hasApprovedOverride = requests.some((x) => x.actionType === 'EligibilityOverride' && x.status === 'Approved');
-      const canGraduateNow = checklist && !graduation?.graduatedAtUtc && (checklist.eligible || hasApprovedOverride);
-      const hasActiveType = (type) => certificates.some((c) => c.type === type && c.status === 'Active');
-      return <Card key={student.id}><CardHeader><CardTitle className="flex items-center justify-between gap-3"><span className="flex items-center gap-3">{student.photoUrl ? <img src={assetUrl(student.photoUrl)} alt={student.fullName} className="h-12 w-12 rounded-xl border object-cover" /> : null}{student.fullName}</span><Badge>{label(STATUS_LABELS, graduation?.status || student.status)}</Badge></CardTitle></CardHeader><CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">{student.licenseClass} • {student.transmissionType}</p>
-        <Button variant="outline" disabled={saving} onClick={() => check(student.id)}>Mezuniyet kontrolünü çalıştır</Button>
-        {checklist && <div className="space-y-2 rounded-xl border p-3">{checklist.items.map((item) => <div key={item.key} className="flex gap-2 text-sm">{item.completed ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Circle className="h-5 w-5 text-amber-500" />}<div><b>{item.label}</b><p className="text-muted-foreground">{item.detail}</p></div></div>)}
-          <div className="flex flex-wrap gap-2">{can(DRIVING.graduationManage) && canGraduateNow && <Button disabled={saving} onClick={() => run(() => graduateDrivingStudent(student.id, 'Kontrol listesi veya iki onaylı istisna tamamlandı.'), 'Kursiyer mezun edildi')}><Award className="mr-2 h-4 w-4" />Mezun Et</Button>}
-          {can(DRIVING.graduationOverrideRequest) && !checklist.eligible && <Button variant="outline" disabled={saving} onClick={() => { const reason = window.prompt('İstisna gerekçesi (en az 20 karakter):'); const checklistKeys = checklist.items.filter((x) => !x.completed && ['documents','theory','practice','finance','schedule'].includes(x.key)).map((x) => x.key); if (reason?.trim().length >= 20 && checklistKeys.length) run(() => requestDrivingGraduationOverride(student.id, { reason, checklistKeys }), 'İki onaylı istisna talebi açıldı'); }}>İstisna Talebi</Button>}</div>
-        </div>}
-        {graduation?.status === 'Graduated' && <div className="space-y-2 rounded-xl bg-emerald-500/5 p-3"><b>Mezuniyet: {new Date(graduation.graduatedAtUtc).toLocaleDateString('tr-TR')}</b>
-          {can(DRIVING.certificateIssue) && (!hasActiveType('Completion') || !hasActiveType('Achievement')) && <div className="flex flex-wrap gap-2">{!hasActiveType('Completion') && <Button size="sm" disabled={saving} onClick={() => run(() => issueDrivingCertificate(student.id, 'Completion'), 'Tamamlama belgesi oluşturuldu')}><FileBadge2 className="mr-1 h-4 w-4" />Tamamlama Belgesi</Button>}{!hasActiveType('Achievement') && <Button size="sm" variant="outline" disabled={saving} onClick={() => run(() => issueDrivingCertificate(student.id, 'Achievement'), 'Başarı belgesi oluşturuldu')}>Başarı Belgesi</Button>}</div>}
-          {can(DRIVING.graduationRevokeRequest) && <Button size="sm" variant="destructive" onClick={() => { const reason = window.prompt('Mezuniyet geri alma gerekçesi (en az 20 karakter):'); if (reason?.trim().length >= 20) run(() => requestDrivingGraduationRevocation(student.id, reason), 'İki onaylı geri alma talebi açıldı'); }}>Mezuniyeti Geri Alma Talebi</Button>}
-        </div>}
-        {requests.map((request) => <div key={request.id} className="rounded-xl border border-amber-300/60 bg-amber-500/5 p-3 text-sm"><b>{label(ACTION_TYPE_LABELS, request.actionType)} • {label(ACTION_STATUS_LABELS, request.status)}</b><p>{request.reason}</p>{can(DRIVING.graduationOverrideApprove) && ['Pending','FirstApproved'].includes(request.status) && <div className="mt-2 flex gap-2"><Button size="sm" onClick={() => run(() => approveDrivingGraduationAction(request.id, 'Kontrol edilerek onaylandı.'), 'Onay kaydedildi')}>Onayla</Button><Button size="sm" variant="outline" onClick={() => { const note = window.prompt('Ret gerekçesi:'); if (note?.trim().length >= 10) run(() => rejectDrivingGraduationAction(request.id, note), 'Talep reddedildi'); }}>Reddet</Button></div>}</div>)}
-        {certificates.map((certificate) => <div key={certificate.id} className="rounded-xl border p-3 text-sm"><div className="flex justify-between"><b>{certificate.documentNumber} <span className="text-muted-foreground">v{certificate.version}</span></b><div className="flex gap-1"><Badge>{label(CERT_STATUS_LABELS, certificate.status)}</Badge><Badge>{label(DELIVERY_LABELS, certificate.deliveryStatus)}</Badge></div></div><p>{label(CERT_TYPE_LABELS, certificate.type)} • {new Date(certificate.issuedAtUtc).toLocaleDateString('tr-TR')}</p><p className={certificate.mebbisCertificateNo ? 'text-emerald-600' : 'text-amber-600'}>MEBBİS no: {certificate.mebbisCertificateNo || 'girilmedi'}</p>{certificate.reissueReason && <p className="text-muted-foreground">Yeniden basım: {certificate.reissueReason}</p>}<div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => download(certificate)}>PDF İndir</Button>{can(DRIVING.certificateIssue) && <Button size="sm" variant="outline" onClick={() => { const value = window.prompt('MEBBİS sertifika numarası:', certificate.mebbisCertificateNo || ''); if (value !== null) run(() => updateDrivingCertificateMebbisNo(certificate.id, value.trim()), 'MEBBİS sertifika no işlendi'); }}>MEBBİS No</Button>}{can(DRIVING.certificateDeliver) && certificate.deliveryStatus !== 'Delivered' && <Button size="sm" variant="outline" onClick={() => { const deliveredTo = window.prompt('Teslim alan kişi:'); if (deliveredTo?.trim().length >= 3) run(() => updateDrivingCertificateDelivery(certificate.id, { status: 'Delivered', deliveredTo, note: '' }), 'Belge teslim edildi'); }}>Teslim Edildi İşaretle</Button>}{can(DRIVING.certificateIssue) && certificate.status === 'Active' && <Button size="sm" variant="outline" onClick={() => { const reason = window.prompt('Yeniden basım gerekçesi:'); if (reason?.trim().length >= 10) run(() => reissueDrivingCertificate(certificate.id, reason), 'Yeni belge sürümü oluşturuldu'); }}>Yeniden Bas</Button>}{can(DRIVING.certificateRevoke) && certificate.status === 'Active' && <Button size="sm" variant="destructive" onClick={() => { const reason = window.prompt('Sertifika iptal gerekçesi:'); if (reason?.trim().length >= 10) run(() => revokeDrivingCertificate(certificate.id, reason), 'Sertifika iptal edildi'); }}>İptal Et</Button>}</div></div>)}
-      </CardContent></Card>;
-    })}</div>
-  </DrivingPage>;
+
+  const graduatedCount = (data.graduations || []).filter((item) => item.status === 'Graduated').length;
+  const pendingRevocations = (data.actionRequests || []).filter((item) =>
+    item.actionType === 'GraduationRevocation' && ['Pending', 'FirstApproved'].includes(item.status)).length;
+
+  return (
+    <DrivingPage testId="driving-graduation-page">
+      <DrivingPageHeader
+        title="Mezuniyet & Belgeler"
+        description="Kursiyer mezuniyetlerini tamamlayın; başarı ve tamamlama belgelerini güvenli biçimde görüntüleyip indirin."
+        icon={Award}
+        onRefresh={load}
+      />
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <DrivingStatCard label="Kursiyer" value={data.students.length} caption="Mezuniyet takibinde" icon={Award} tone="brand" />
+        <DrivingStatCard label="Mezun" value={graduatedCount} caption="Mezuniyeti tamamlanan" icon={CheckCircle2} tone="emerald" />
+        <DrivingStatCard label="Belge" value={(data.certificates || []).length} caption="Güvenli PDF belgesi" icon={FileBadge2} tone="violet" />
+        <DrivingStatCard label="Geri Alma Talebi" value={pendingRevocations} caption="Karar bekleyen" icon={AlertTriangle} tone="amber" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        {data.students.map((student) => {
+          const graduation = data.graduations.find((item) => item.studentDrivingProfileId === student.id);
+          const certificates = data.certificates.filter((item) => item.studentDrivingProfileId === student.id);
+          const checklist = checklists[student.id];
+          const revocationRequests = (data.actionRequests || []).filter((item) =>
+            item.studentDrivingProfileId === student.id && item.actionType === 'GraduationRevocation');
+          const graduated = graduation?.status === 'Graduated';
+          const activeCertificate = (type) => certificates.find((item) => item.type === type && item.status === 'Active');
+          const canForceGraduate = can(DRIVING.graduationManage) && can(DRIVING.graduationOverrideApprove);
+
+          return (
+            <Card key={student.id} className="overflow-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-3">
+                    {student.photoUrl
+                      ? <img src={assetUrl(student.photoUrl)} alt={student.fullName} className="h-12 w-12 shrink-0 rounded-xl border object-cover" />
+                      : <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-muted"><Award className="h-5 w-5" /></span>}
+                    <span className="truncate">{student.fullName}</span>
+                  </span>
+                  <Badge>{label(STATUS_LABELS, graduation?.status || student.status)}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">{student.licenseClass} sınıfı • {student.transmissionType}</p>
+
+                {!graduated && (
+                  <Button variant="outline" disabled={saving} onClick={() => check(student.id)}>
+                    Mezuniyet kontrolünü çalıştır
+                  </Button>
+                )}
+
+                {checklist && !graduated && (
+                  <div className="space-y-3 rounded-xl border p-3">
+                    {checklist.items.map((item) => (
+                      <div key={item.key} className="flex gap-2 text-sm">
+                        {item.completed
+                          ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
+                          : <Circle className="h-5 w-5 shrink-0 text-amber-500" />}
+                        <div><b>{item.label}</b><p className="text-muted-foreground">{item.detail}</p></div>
+                      </div>
+                    ))}
+                    <div className="flex flex-wrap gap-2 border-t pt-3">
+                      {can(DRIVING.graduationManage) && checklist.eligible && (
+                        <Button disabled={saving} onClick={() => run(
+                          () => graduateDrivingStudent(student.id, 'Mezuniyet kontrol listesi tamamlandı.'),
+                          'Kursiyer mezun edildi',
+                        )}>
+                          <Award className="mr-2 h-4 w-4" /> Mezun Et
+                        </Button>
+                      )}
+                      {!checklist.eligible && canForceGraduate && (
+                        <Button
+                          variant="outline"
+                          className="border-amber-500/50 text-amber-700"
+                          disabled={saving}
+                          onClick={() => { setForceTarget({ student, checklist }); setForceReason(''); }}
+                        >
+                          <ShieldAlert className="mr-2 h-4 w-4" /> Yine de Mezun Et
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {graduated && (
+                  <div className="space-y-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.04] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <b className="text-emerald-700">Mezuniyet: {new Date(graduation.graduatedAtUtc).toLocaleDateString('tr-TR')}</b>
+                      <Badge className="border-0 bg-emerald-600 text-white">Tamamlandı</Badge>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {CERTIFICATE_TYPES.map((type) => {
+                        const certificate = activeCertificate(type);
+                        return (
+                          <div key={type} className="rounded-xl border bg-background p-3">
+                            <div className="flex items-start gap-2">
+                              <FileBadge2 className="mt-0.5 h-5 w-5 text-violet-600" />
+                              <div className="min-w-0">
+                                <p className="font-black">{CERT_TYPE_LABELS[type]}</p>
+                                <p className="mt-1 truncate text-xs text-muted-foreground">
+                                  {certificate ? certificate.documentNumber : 'Henüz oluşturulmadı'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-3">
+                              {certificate ? (
+                                <Button size="sm" variant="outline" className="w-full" onClick={() => openDocument(certificate)}>
+                                  <Eye className="mr-2 h-4 w-4" /> Görüntüle
+                                </Button>
+                              ) : can(DRIVING.certificateIssue) ? (
+                                <Button size="sm" variant="outline" className="w-full" disabled={saving} onClick={() => createAndOpenDocument(student, type)}>
+                                  <FileBadge2 className="mr-2 h-4 w-4" /> Oluştur ve Görüntüle
+                                </Button>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">Belge düzenleme yetkisi gerekli.</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {can(DRIVING.graduationRevokeRequest) && (
+                      <Button size="sm" variant="destructive" onClick={() => {
+                        const reason = window.prompt('Mezuniyet geri alma gerekçesi (en az 20 karakter):');
+                        if (reason?.trim().length >= 20) {
+                          run(() => requestDrivingGraduationRevocation(student.id, reason), 'İki onaylı geri alma talebi açıldı');
+                        }
+                      }}>
+                        Mezuniyeti Geri Alma Talebi
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {revocationRequests.map((request) => (
+                  <div key={request.id} className="rounded-xl border border-amber-300/60 bg-amber-500/5 p-3 text-sm">
+                    <b>Mezuniyet geri alma • {label(ACTION_STATUS_LABELS, request.status)}</b>
+                    <p>{request.reason}</p>
+                    {can(DRIVING.graduationOverrideApprove) && ['Pending', 'FirstApproved'].includes(request.status) && (
+                      <div className="mt-2 flex gap-2">
+                        <Button size="sm" onClick={() => run(
+                          () => approveDrivingGraduationAction(request.id, 'Kontrol edilerek onaylandı.'),
+                          'Onay kaydedildi',
+                        )}>Onayla</Button>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          const note = window.prompt('Ret gerekçesi:');
+                          if (note?.trim().length >= 10) run(() => rejectDrivingGraduationAction(request.id, note), 'Talep reddedildi');
+                        }}>Reddet</Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {certificates.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-black uppercase tracking-wide text-muted-foreground">Belge geçmişi</p>
+                    {certificates.map((certificate) => (
+                      <div key={certificate.id} className="rounded-xl border p-3 text-sm">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <button type="button" className="text-left" onClick={() => openDocument(certificate)}>
+                            <b className="hover:underline">{label(CERT_TYPE_LABELS, certificate.type)}</b>
+                            <p className="text-xs text-muted-foreground">{certificate.documentNumber} • v{certificate.version}</p>
+                          </button>
+                          <div className="flex gap-1">
+                            <Badge>{label(CERT_STATUS_LABELS, certificate.status)}</Badge>
+                            <Badge>{label(DELIVERY_LABELS, certificate.deliveryStatus)}</Badge>
+                          </div>
+                        </div>
+                        <p className={certificate.mebbisCertificateNo ? 'mt-2 text-emerald-600' : 'mt-2 text-amber-600'}>
+                          MEBBİS no: {certificate.mebbisCertificateNo || 'girilmedi'}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline" onClick={() => openDocument(certificate)}><Eye className="mr-1 h-3.5 w-3.5" />Görüntüle</Button>
+                          {can(DRIVING.certificateIssue) && (
+                            <Button size="sm" variant="outline" onClick={() => {
+                              const value = window.prompt('MEBBİS sertifika numarası:', certificate.mebbisCertificateNo || '');
+                              if (value !== null) run(() => updateDrivingCertificateMebbisNo(certificate.id, value.trim()), 'MEBBİS sertifika no işlendi');
+                            }}>MEBBİS No</Button>
+                          )}
+                          {can(DRIVING.certificateDeliver) && certificate.deliveryStatus !== 'Delivered' && (
+                            <Button size="sm" variant="outline" onClick={() => {
+                              const deliveredTo = window.prompt('Teslim alan kişi:');
+                              if (deliveredTo?.trim().length >= 3) {
+                                run(() => updateDrivingCertificateDelivery(certificate.id, { status: 'Delivered', deliveredTo, note: '' }), 'Belge teslim edildi');
+                              }
+                            }}>Teslim Edildi</Button>
+                          )}
+                          {can(DRIVING.certificateIssue) && certificate.status === 'Active' && (
+                            <Button size="sm" variant="outline" onClick={() => {
+                              const reason = window.prompt('Yeniden basım gerekçesi:');
+                              if (reason?.trim().length >= 10) run(() => reissueDrivingCertificate(certificate.id, reason), 'Yeni belge sürümü oluşturuldu');
+                            }}>Yeniden Bas</Button>
+                          )}
+                          {can(DRIVING.certificateRevoke) && certificate.status === 'Active' && (
+                            <Button size="sm" variant="destructive" onClick={() => {
+                              const reason = window.prompt('Belge iptal gerekçesi:');
+                              if (reason?.trim().length >= 10) run(() => revokeDrivingCertificate(certificate.id, reason), 'Belge iptal edildi');
+                            }}>İptal Et</Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <Dialog open={!!forceTarget} onOpenChange={(open) => { if (!open && !saving) setForceTarget(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-amber-600" /> Yine de Mezun Et</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+              <b>{forceTarget?.student.fullName}</b> tüm mezuniyet koşullarını tamamlamadı. Bu işlem kursiyeri doğrudan mezun eder ve eksik maddelerle birlikte denetim kaydına yazılır.
+            </div>
+            <div className="space-y-2">
+              {(forceTarget?.checklist.items || []).filter((item) => !item.completed).map((item) => (
+                <div key={item.key} className="flex gap-2 rounded-lg border p-2 text-xs">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                  <span><b>{item.label}:</b> {item.detail}</span>
+                </div>
+              ))}
+            </div>
+            <label className="text-sm font-bold">Zorunlu karar gerekçesi
+              <textarea
+                className="mt-1 min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                minLength={20}
+                maxLength={500}
+                value={forceReason}
+                onChange={(event) => setForceReason(event.target.value)}
+                placeholder="En az 20 karakter; audit kaydında saklanır."
+              />
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">{forceReason.trim().length}/20 minimum</span>
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={saving} onClick={() => setForceTarget(null)}>Vazgeç</Button>
+            <Button className="bg-amber-600 text-white hover:bg-amber-700" disabled={saving || forceReason.trim().length < 20} onClick={submitForceGraduation}>
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />} Yine de Mezun Et
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!documentPreview} onOpenChange={(open) => { if (!open) setDocumentPreview(null); }}>
+        <DialogContent className="h-[92vh] w-[96vw] max-w-5xl overflow-hidden p-0">
+          <DialogHeader className="border-b px-5 py-4">
+            <DialogTitle className="flex flex-wrap items-center justify-between gap-3 pr-8">
+              <span>{label(CERT_TYPE_LABELS, documentPreview?.certificate?.type)}</span>
+              {documentPreview?.url && (
+                <Button size="sm" onClick={downloadPreview}><Download className="mr-2 h-4 w-4" /> PDF İndir</Button>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 p-3">
+            {documentPreview?.loading
+              ? <div className="grid h-full place-items-center"><Loader2 className="h-8 w-8 animate-spin text-brand-primary" /></div>
+              : documentPreview?.url
+                ? <iframe title="Belge önizleme" src={documentPreview.url} className="h-full min-h-[72vh] w-full rounded-xl border bg-white" />
+                : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </DrivingPage>
+  );
 }

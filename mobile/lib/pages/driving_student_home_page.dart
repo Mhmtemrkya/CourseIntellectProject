@@ -4,7 +4,6 @@ import 'package:student/i18n/app_locale.dart';
 
 import '../services/driving_school_api_service.dart';
 import 'driving_appointment_request_page.dart';
-import '../features/assistant/presentation/assistant_page.dart';
 
 class DrivingStudentHomePage extends StatefulWidget {
   const DrivingStudentHomePage({super.key});
@@ -84,17 +83,6 @@ class _DrivingStudentHomePageState extends State<DrivingStudentHomePage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 100),
             children: [
-              Card(
-                color: const Color(0xFFF59E0B).withValues(alpha: .12),
-                child: ListTile(
-                  leading: const CircleAvatar(backgroundColor: Color(0xFFF59E0B), foregroundColor: Colors.white, child: Icon(Icons.auto_awesome_rounded)),
-                  title: const Text('SchoolAsist Asistan', style: TextStyle(fontWeight: FontWeight.w900)),
-                  subtitle: const Text('Ders hakkı, randevu ve sınav durumunu güvenle sor'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantPage())),
-                ),
-              ),
-              const SizedBox(height: 12),
               _ProfileHero(
                 profile: profile,
                 purchased: purchased,

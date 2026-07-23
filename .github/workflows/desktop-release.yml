@@ -28,11 +28,11 @@ jobs:
             args: "--bundles nsis"
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: desktop/package-lock.json
 
@@ -68,14 +68,21 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERTIFICATE_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH" -T /usr/bin/codesign
           security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -d user -s "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
           CERT_INFO="$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep 'Developer ID Application:' | head -1)"
           test -n "$CERT_INFO"
           CERT_ID="$(printf '%s' "$CERT_INFO" | awk -F'\"' '{print $2}')"
           echo "APPLE_SIGNING_IDENTITY=$CERT_ID" >> "$GITHUB_ENV"
+
+          xcrun notarytool history \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --output-format json >/dev/null
 
       - name: Sürümü etiketten ayarla
         working-directory: desktop
@@ -107,6 +114,12 @@ jobs:
           uploadUpdaterSignatures: true
           retryAttempts: 2
           args: ${{ matrix.args }}
+
+      - name: macOS dağıtım güven zincirini doğrula
+        if: matrix.platform == 'macos-latest'
+        working-directory: desktop
+        shell: bash
+        run: bash scripts/verify-macos-distribution.sh src-tauri/target
 
   finalize:
     name: Release'i doğrula ve yayınla

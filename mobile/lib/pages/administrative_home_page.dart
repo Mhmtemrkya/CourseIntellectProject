@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../features/assistant/presentation/assistant_page.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
@@ -90,11 +89,6 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
-          IconButton(
-            tooltip: 'SchoolAsist Asistan',
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantPage())),
-            icon: const Icon(Icons.auto_awesome_rounded),
-          ),
         ],
       ),
       child: ListView(

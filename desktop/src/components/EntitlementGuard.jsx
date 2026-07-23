@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { getUserHomePath } from '../lib/auth';
+import { getUserHomePath, resolveUserInstitutionType } from '../lib/auth';
 import { getUserRoles } from '../lib/permissions';
 import { getEntitlements, isModuleAllowed } from '../lib/entitlements';
 import { inferModuleKey } from './layout/ModernSidebar';
@@ -73,11 +73,13 @@ export function EntitlementGuard({ children }) {
       setEntitlements({ unrestricted: true, roles: {} });
       setInstitutionType('Platform');
     } else {
+      const sessionType = resolveUserInstitutionType(user);
+      setInstitutionType(sessionType);
       resetInstitutionTypeCache();
       getEntitlements().then((value) => {
         if (active) setEntitlements(value);
       });
-      getInstitutionType().then((value) => {
+      getInstitutionType(sessionType || 'PrivateSchool').then((value) => {
         if (active) setInstitutionType(value);
       });
     }
