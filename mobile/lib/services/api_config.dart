@@ -15,7 +15,7 @@ class ApiConfig {
 
   static const String _productionMarketingUrl = String.fromEnvironment(
     'COURSE_INTELLECT_PROD_MARKETING_URL',
-    defaultValue: '',
+    defaultValue: 'https://schoolasist.com',
   );
 
   static String? _overrideBaseUrl;

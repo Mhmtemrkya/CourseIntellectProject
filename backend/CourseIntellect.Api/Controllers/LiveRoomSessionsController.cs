@@ -9,9 +9,19 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/liveroomsessions")]
-public sealed class LiveRoomSessionsController(CourseIntellectDbContext dbContext) : ControllerBase
+public sealed class LiveRoomSessionsController(CourseIntellectDbContext dbContext, IConfiguration configuration) : ControllerBase
 {
     public const string SectionKey = "live-room-sessions";
+
+    /// <summary>
+    /// Öğretmen açık bir görüşme linki girmezse üretilen varsayılan Jitsi oda
+    /// tabanı. `LiveRoom:MeetBaseUrl` config'inden okunur (deploy'da değiştirilir);
+    /// varsayılan <c>https://meet.schoolasist.com</c>. Oda adı sınıf adından türer.
+    /// </summary>
+    private string MeetBaseUrl =>
+        (configuration["LiveRoom:MeetBaseUrl"]?.Trim().TrimEnd('/') is { Length: > 0 } configured
+            ? configured
+            : "https://meet.schoolasist.com");
 
     [HttpGet]
     public async Task<IActionResult> List(
@@ -87,7 +97,7 @@ public sealed class LiveRoomSessionsController(CourseIntellectDbContext dbContex
                 ClassName = request.ClassName.Trim(),
                 TimeLabel = request.TimeLabel.Trim(),
                 MeetingLink = string.IsNullOrWhiteSpace(request.MeetingLink)
-                    ? $"https://meet.courseintellect.live/{request.ClassName.Trim().ToLowerInvariant()}"
+                    ? $"{MeetBaseUrl}/{request.ClassName.Trim().ToLowerInvariant()}"
                     : request.MeetingLink.Trim(),
                 Status = "Active",
                 StartedAtUtc = DateTime.UtcNow,

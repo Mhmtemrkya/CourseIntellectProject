@@ -158,7 +158,7 @@ export default function ParentAttendance() {
 
   const contactSchool = () => {
     const subject = encodeURIComponent(`${selectedChild?.fullName || 'Öğrenci'} devamsızlık görüşmesi`);
-    window.location.href = `mailto:info@courseintellect.com?subject=${subject}`;
+    window.location.href = `mailto:info@schoolasist.com?subject=${subject}`;
   };
 
   if (loading) {

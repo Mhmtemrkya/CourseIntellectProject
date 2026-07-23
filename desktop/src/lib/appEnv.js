@@ -15,5 +15,5 @@ export function getDesktopApiBaseUrl() {
     return explicit;
   }
 
-  return 'https://api.courseintellect.com';
+  return 'https://maydanozasist.schoolasist.com';
 }

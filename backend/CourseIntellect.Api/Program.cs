@@ -166,10 +166,10 @@ builder.Services.AddRateLimiter(options =>
 
 var defaultCorsOrigins = new[]
 {
-    // Production web/API domains
-    "https://courseintellect.com",
-    "https://www.courseintellect.com",
-    "https://api.courseintellect.com",
+    // Production web/API domains (SchoolAsist)
+    "https://schoolasist.com",
+    "https://www.schoolasist.com",
+    "https://maydanozasist.schoolasist.com",
     // React dev (desktop & web)
     "http://localhost:3000",
     "http://127.0.0.1:3000",

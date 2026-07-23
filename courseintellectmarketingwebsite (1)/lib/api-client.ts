@@ -33,8 +33,8 @@ const AUTH_STORAGE_KEYS = ["courseintellect_user_auth", "courseintellect_auth"] 
 
 const DEFAULT_API_URL =
   typeof window !== "undefined"
-    ? "https://api.courseintellect.com"
-    : "https://api.courseintellect.com"
+    ? "https://maydanozasist.schoolasist.com"
+    : "https://maydanozasist.schoolasist.com"
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/$/, "")
 

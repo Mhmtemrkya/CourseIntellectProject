@@ -3,6 +3,7 @@ import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/content_api_service.dart';
+import 'package:student/services/app_env.dart';
 import 'package:student/services/live_room_api_service.dart';
 import 'package:student/services/material_download_service.dart';
 import 'package:student/widgets/teacher_header.dart';
@@ -473,8 +474,8 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
             Icons.link_rounded,
             "Bağlantı",
             _roomId == null
-                ? "meet.courseintellect.live/${widget.className}"
-                : "meet.courseintellect.live/${widget.className}".toLowerCase(),
+                ? "${AppEnv.meetHost}/${widget.className}"
+                : "${AppEnv.meetHost}/${widget.className}".toLowerCase(),
           ),
         ],
       ),

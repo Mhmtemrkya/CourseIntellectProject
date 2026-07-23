@@ -109,7 +109,7 @@ export const useAuthStore = create(
       },
 
       // Settings
-      baseUrl: 'https://api.courseintellect.com',
+      baseUrl: 'https://maydanozasist.schoolasist.com',
       setBaseUrl: (url) => set({ baseUrl: url }),
     }),
     {
