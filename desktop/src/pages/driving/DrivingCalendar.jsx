@@ -357,6 +357,7 @@ function CreateAppointmentDialog({ start, students, instructors, vehicles, appoi
   const { toast } = useToast();
   const [duration, setDuration] = useState(60);
   const [studentDrivingProfileId, setStudent] = useState('');
+  const [groupFilter, setGroupFilter] = useState('all'); // 'all' | 'ungrouped' | <groupId>
   const [instructorProfileId, setInstructor] = useState('');
   const [vehicleId, setVehicle] = useState('');
   const [notes, setNotes] = useState('');
@@ -379,6 +380,26 @@ function CreateAppointmentDialog({ start, students, instructors, vehicles, appoi
     () => students.filter((s) => BOOKABLE_STATUSES.includes(String(s.status))),
     [students],
   );
+
+  // Kursiyer grupları (dönemler) — seçilebilir öğrencilerden türetilir.
+  const groups = useMemo(() => {
+    const map = new Map();
+    bookableStudents.forEach((s) => { if (s.groupId) map.set(s.groupId, s.groupName || 'Grup'); });
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [bookableStudents]);
+  const hasUngrouped = useMemo(() => bookableStudents.some((s) => !s.groupId), [bookableStudents]);
+
+  // Gruba göre daralt: öğrenci seçerken kalabalık listede grubu bul.
+  const visibleStudents = useMemo(() => {
+    if (groupFilter === 'all') return bookableStudents;
+    if (groupFilter === 'ungrouped') return bookableStudents.filter((s) => !s.groupId);
+    return bookableStudents.filter((s) => s.groupId === groupFilter);
+  }, [bookableStudents, groupFilter]);
+
+  // Grup değişince seçili öğrenci filtre dışında kaldıysa seçimi düşür.
+  useEffect(() => {
+    if (studentDrivingProfileId && !visibleStudents.some((s) => s.id === studentDrivingProfileId)) setStudent('');
+  }, [visibleStudents, studentDrivingProfileId]);
 
   const student = useMemo(
     () => bookableStudents.find((s) => s.id === studentDrivingProfileId) || null,
@@ -452,11 +473,21 @@ function CreateAppointmentDialog({ start, students, instructors, vehicles, appoi
               {[30, 45, 60, 90, 120].map((m) => <option key={m} value={m}>{m} dk</option>)}
             </select>
           </div>
+          {groups.length > 0 && (
+            <div>
+              <label className="text-xs font-bold text-muted-foreground">Grup / Dönem filtresi</label>
+              <select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+                <option value="all">Tüm gruplar</option>
+                {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                {hasUngrouped && <option value="ungrouped">Gruba atanmamış</option>}
+              </select>
+            </div>
+          )}
           <div>
-            <label className="text-xs font-bold text-muted-foreground">Kursiyer *</label>
+            <label className="text-xs font-bold text-muted-foreground">Kursiyer * <span className="font-normal text-muted-foreground/70">({visibleStudents.length} kursiyer)</span></label>
             <select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={studentDrivingProfileId} onChange={(e) => setStudent(e.target.value)}>
               <option value="">Seçin…</option>
-              {bookableStudents.map((s) => <option key={s.id} value={s.id}>{s.studentNumber != null ? `#${s.studentNumber} ` : ''}{s.fullName}</option>)}
+              {visibleStudents.map((s) => <option key={s.id} value={s.id}>{s.studentNumber != null ? `#${s.studentNumber} ` : ''}{s.fullName}{s.groupName ? ` — ${s.groupName}` : ''}</option>)}
             </select>
           </div>
           <div>

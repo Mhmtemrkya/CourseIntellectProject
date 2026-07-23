@@ -107,6 +107,8 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
   bool get _canManageGroups =>
       _permissions.can(DrivingPermissions.studentUpdate);
   bool get _canCreate => _permissions.can(DrivingPermissions.studentCreate);
+  bool get _canDeactivate =>
+      _permissions.can(DrivingPermissions.studentDeactivate);
 
   @override
   void initState() {
@@ -530,10 +532,88 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     );
   }
 
+  void _snack(String msg, {bool error = false}) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: error ? Colors.red : null),
+      );
+    }
+  }
+
+  // Pasife alma: gerekçe (≥10 karakter) sorulur → Askıya alınır, her yerden
+  // gizlenir, yalnız "Askıda / İptal" filtresinde görünür (desktop ile parite).
+  Future<void> _deactivate(Map<String, dynamic> s) async {
+    final controller = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Pasife Al'.tr),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '"${s['fullName']}" pasife alınacak. Her yerden gizlenir; yalnız "Askıda / İptal" filtresinde görünür.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              minLines: 2,
+              maxLines: 4,
+              decoration: InputDecoration(
+                labelText: 'Gerekçe (en az 10 karakter)'.tr,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Vazgeç'.tr),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Pasife Al'.tr),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final reason = controller.text.trim();
+    if (reason.length < 10) {
+      _snack('Gerekçe en az 10 karakter olmalı.'.tr, error: true);
+      return;
+    }
+    try {
+      await DrivingSchoolApiService.instance.updateStudentLifecycle('${s['id']}', {
+        'status': 'Suspended',
+        'reason': reason,
+      });
+      _snack('Kursiyer pasife alındı.'.tr);
+      await _load();
+    } catch (e) {
+      _snack('$e', error: true);
+    }
+  }
+
+  Future<void> _reactivate(Map<String, dynamic> s) async {
+    try {
+      await DrivingSchoolApiService.instance.updateStudentLifecycle('${s['id']}', {
+        'automaticStatusEnabled': true,
+      });
+      _snack('Kursiyer aktifleştirildi.'.tr);
+      await _load();
+    } catch (e) {
+      _snack('$e', error: true);
+    }
+  }
+
   Widget _studentRow(Map<String, dynamic> s) {
     final id = '${s['id']}';
     final checked = _selected.contains(id);
     final groupName = s['groupName'];
+    final isPassive = _passiveStatuses.contains('${s['status']}');
+    final statusReason = '${s['statusChangeReason'] ?? ''}'.trim();
     final isPending = _pendingNames.contains(
       '${s['fullName'] ?? ''}'.trim().toLowerCase(),
     );
@@ -571,25 +651,52 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
       subtitle: [
         '${s['licenseClass'] ?? ''} • ${_transmission(s['transmissionType'])} • ${s['remainingDrivingMinutes'] ?? 0} dk kaldı',
         if (groupName != null) 'Grup: $groupName',
+        if (isPassive && statusReason.isNotEmpty) 'Sebep: $statusReason',
       ].join('\n'),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DrivingStatusPill(
-            label: _statusLabel(s['status']),
-            tone: DrivingTone.accent,
-          ),
-          if (isPending) ...[
-            const SizedBox(height: 4),
-            DrivingStatusPill(
-              label: 'Peşinat bekliyor'.tr,
-              tone: DrivingTone.danger,
+      trailing: _selectMode
+          ? null
+          : Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DrivingStatusPill(
+                  label: _statusLabel(s['status']),
+                  tone: isPassive ? DrivingTone.danger : DrivingTone.accent,
+                ),
+                if (isPending) ...[
+                  const SizedBox(height: 4),
+                  DrivingStatusPill(
+                    label: 'Peşinat bekliyor'.tr,
+                    tone: DrivingTone.danger,
+                  ),
+                ],
+                if (_canDeactivate) ...[
+                  const SizedBox(height: 2),
+                  isPassive
+                      ? TextButton.icon(
+                          onPressed: () => _reactivate(s),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF10B981),
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            minimumSize: const Size(0, 30),
+                          ),
+                          icon: const Icon(Icons.restore_rounded, size: 16),
+                          label: Text('Aktifleştir'.tr),
+                        )
+                      : TextButton.icon(
+                          onPressed: () => _deactivate(s),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFFEF4444),
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            minimumSize: const Size(0, 30),
+                          ),
+                          icon: const Icon(Icons.person_off_rounded, size: 16),
+                          label: Text('Pasife Al'.tr),
+                        ),
+                ],
+              ],
             ),
-          ],
-        ],
-      ),
       onTap: () => _selectMode ? _toggleSelect(id) : _openStudent(s),
     );
   }

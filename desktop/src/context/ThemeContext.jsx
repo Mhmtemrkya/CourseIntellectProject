@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { setCredentialsBrandLogo } from '../lib/credentialsPdf';
 import {
   generateBrandCSSVariables,
   applyBrandVariables,
@@ -138,12 +137,6 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
       existing.setAttribute('href', existing.dataset.originalHref);
     }
   }, [branding.tenantFavicon]);
-
-  // Üretilen PDF'ler (kimlik bilgileri vb.) kurumun logosunu kullansın; her
-  // çağrı yerinin ayrıca logo geçirmesine gerek kalmaz.
-  useEffect(() => {
-    setCredentialsBrandLogo(branding.tenantLogo || '');
-  }, [branding.tenantLogo]);
 
   // ─── Context Value ─────────────────────────────────────────────────
   const value = useMemo(

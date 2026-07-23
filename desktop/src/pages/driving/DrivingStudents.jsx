@@ -11,7 +11,7 @@ import { useToast } from '../../hooks/use-toast';
 import {
   assignDrivingStudentGroup, createDrivingStudentGroup, downloadDrivingMebbisRoster, downloadDrivingTermReport,
   downloadDrivingStudentDocument, fetchDrivingMebbisRoster, fetchDrivingStudentDetail, fetchDrivingStudentGroups, fetchDrivingStudents,
-  fetchPendingDownPayments, setDrivingMebbisEntered, uploadDrivingStudentDocument, uploadFile,
+  fetchPendingDownPayments, setDrivingMebbisEntered, updateDrivingStudentStatus, uploadDrivingStudentDocument, uploadFile,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
@@ -331,6 +331,8 @@ export default function DrivingStudents() {
   const [searchParams] = useSearchParams();
   const { can } = useDrivingPermissions();
   const canManageGroups = can(DRIVING.studentUpdate);
+  const canDeactivate = can(DRIVING.studentDeactivate);
+  const [busyStatusId, setBusyStatusId] = useState('');
   const [students, setStudents] = useState([]);
   const [groups, setGroups] = useState([]);
   const [ungroupedCount, setUngroupedCount] = useState(0);
@@ -458,6 +460,41 @@ export default function DrivingStudents() {
       return next;
     });
   }, []);
+
+  // Pasife alma: gerekçe (≥10 karakter) sorulur, kursiyer Askıya alınır → her
+  // yerden gizlenir, yalnız "Askıda/İptal" filtresinde (pasif kayıtlar) görünür.
+  const deactivate = useCallback(async (student) => {
+    const reason = window.prompt(`"${student.fullName}" pasife alınıyor.\n\nGerekçe (en az 10 karakter):`, '');
+    if (reason == null) return;
+    if (reason.trim().length < 10) {
+      toast({ title: 'Gerekçe en az 10 karakter olmalı', variant: 'destructive' });
+      return;
+    }
+    setBusyStatusId(student.id);
+    try {
+      await updateDrivingStudentStatus(student.id, { status: 'Suspended', reason: reason.trim() });
+      toast({ title: 'Kursiyer pasife alındı', description: 'Artık yalnızca "Askıda / İptal" filtresinde görünür.' });
+      await load(true);
+    } catch (error) {
+      toast({ title: 'Pasife alınamadı', description: error?.response?.data?.message || error.message, variant: 'destructive' });
+    } finally {
+      setBusyStatusId('');
+    }
+  }, [toast, load]);
+
+  // Aktifleştirme: otomatik durum yönetimini açar; kursiyer uygun aşamasına döner.
+  const reactivate = useCallback(async (student) => {
+    setBusyStatusId(student.id);
+    try {
+      await updateDrivingStudentStatus(student.id, { automaticStatusEnabled: true });
+      toast({ title: 'Kursiyer yeniden aktifleştirildi' });
+      await load(true);
+    } catch (error) {
+      toast({ title: 'Aktifleştirilemedi', description: error?.response?.data?.message || error.message, variant: 'destructive' });
+    } finally {
+      setBusyStatusId('');
+    }
+  }, [toast, load]);
 
   const doAssign = useCallback(async (groupId) => {
     const profileIds = [...selectedIds];
@@ -637,12 +674,15 @@ export default function DrivingStudents() {
           {filtered.map((student) => {
             const checked = selectedIds.has(student.id);
             const downPaymentPending = pendingNames.has(String(student.fullName || '').trim().toLocaleLowerCase('tr-TR'));
+            const isPassive = ['Suspended', 'Cancelled'].includes(student.status);
             return (
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 key={student.id}
                 onClick={() => (selectMode ? toggleSelect(student.id) : setSelectedId(student.id))}
-                className={`group flex w-full flex-col gap-4 rounded-2xl border p-4 text-left transition sm:p-5 md:flex-row md:items-center ${
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (selectMode ? toggleSelect(student.id) : setSelectedId(student.id)); } }}
+                className={`group flex w-full cursor-pointer flex-col gap-4 rounded-2xl border p-4 text-left transition sm:p-5 md:flex-row md:items-center ${
                   selectMode && checked
                     ? 'border-brand-primary bg-brand-primary/[0.07] shadow-[0_10px_28px_hsl(var(--brand-accent)/0.08)]'
                     : 'border-foreground/10 bg-foreground/[0.025] hover:-translate-y-0.5 hover:border-[hsl(var(--brand-accent)/0.45)] hover:bg-foreground/[0.05] hover:shadow-[0_12px_30px_hsl(var(--foreground)/0.06)]'
@@ -678,17 +718,46 @@ export default function DrivingStudents() {
                   </div>
                 </div>
 
-                <div className="flex w-full flex-wrap items-center gap-2 border-t border-foreground/[0.08] pt-3 md:w-[190px] md:shrink-0 md:flex-col md:items-end md:border-l md:border-t-0 md:pl-4 md:pt-0">
-                  <Badge className="border-0 bg-violet-500/15 text-violet-600">{STATUS_LABELS[student.status] || student.status}</Badge>
+                <div className="flex w-full flex-wrap items-center gap-2 border-t border-foreground/[0.08] pt-3 md:w-[210px] md:shrink-0 md:flex-col md:items-end md:border-l md:border-t-0 md:pl-4 md:pt-0">
+                  <Badge className={`border-0 ${isPassive ? 'bg-rose-500/15 text-rose-600' : 'bg-violet-500/15 text-violet-600'}`}>{STATUS_LABELS[student.status] || student.status}</Badge>
                   {downPaymentPending ? (
                     <Badge className="border-0 bg-red-500/15 text-red-600"><XCircle className="mr-1 h-3 w-3" />Peşinat bekliyor</Badge>
                   ) : null}
+                  {/* Pasif kursiyerin düşme sebebi yanında görünür. */}
+                  {isPassive && student.statusChangeReason ? (
+                    <p className="w-full text-right text-[11px] leading-snug text-muted-foreground md:text-right" title={student.statusChangeReason}>
+                      Sebep: {student.statusChangeReason}
+                    </p>
+                  ) : null}
+                  {!selectMode && canDeactivate && (
+                    isPassive ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyStatusId === student.id}
+                        onClick={(e) => { e.stopPropagation(); reactivate(student); }}
+                        className="border-emerald-400/50 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-300"
+                      >
+                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" />Aktifleştir
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyStatusId === student.id}
+                        onClick={(e) => { e.stopPropagation(); deactivate(student); }}
+                        className="border-rose-400/50 text-rose-700 hover:bg-rose-500/10 dark:text-rose-300"
+                      >
+                        <XCircle className="mr-1 h-3.5 w-3.5" />Pasife Al
+                      </Button>
+                    )
+                  )}
                   <span className="ml-auto inline-flex items-center gap-1 text-xs font-bold text-[hsl(var(--brand-accent))] md:ml-0 md:mt-1">
                     {selectMode ? (checked ? 'Seçildi' : 'Seç') : 'Belgeleri yönet'}
                     {!selectMode && <ExternalLink className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />}
                   </span>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>

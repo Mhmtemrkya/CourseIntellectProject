@@ -54,7 +54,43 @@ const statusTone = (status) => status === 'Passed' || status === 'Completed' ? '
 const iso = (value) => new Date(value).toISOString();
 
 function Checks({ items, selected, onChange }) {
-  return <div className="max-h-52 space-y-2 overflow-auto rounded-xl border p-3">{items.map((item) => <label key={item.id} className="flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={selected.includes(item.id)} onChange={() => onChange(selected.includes(item.id) ? selected.filter((id) => id !== item.id) : [...selected, item.id])} /><span><b>{item.fullName}</b>{item.licenseClass && <span className="ml-2 text-muted-foreground">{item.licenseClass}</span>}</span></label>)}</div>;
+  const [groupFilter, setGroupFilter] = useState('all'); // 'all' | 'ungrouped' | <groupId>
+  const groups = useMemo(() => {
+    const map = new Map();
+    items.forEach((x) => { if (x.groupId) map.set(x.groupId, x.groupName || 'Grup'); });
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [items]);
+  const hasUngrouped = useMemo(() => items.some((x) => !x.groupId), [items]);
+  const visible = useMemo(() => {
+    if (groupFilter === 'all') return items;
+    if (groupFilter === 'ungrouped') return items.filter((x) => !x.groupId);
+    return items.filter((x) => x.groupId === groupFilter);
+  }, [items, groupFilter]);
+  return (
+    <div className="space-y-2">
+      {groups.length > 0 && (
+        <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+          <option value="all">Tüm gruplar ({items.length})</option>
+          {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+          {hasUngrouped && <option value="ungrouped">Gruba atanmamış</option>}
+        </select>
+      )}
+      <div className="max-h-52 space-y-2 overflow-auto rounded-xl border p-3">
+        {visible.length === 0
+          ? <p className="py-4 text-center text-xs text-muted-foreground">Bu grupta uygun kursiyer yok.</p>
+          : visible.map((item) => (
+            <label key={item.id} className="flex cursor-pointer items-center gap-2 text-sm">
+              <input type="checkbox" checked={selected.includes(item.id)} onChange={() => onChange(selected.includes(item.id) ? selected.filter((id) => id !== item.id) : [...selected, item.id])} />
+              <span>
+                <b>{item.fullName}</b>
+                {item.groupName && <span className="ml-2 rounded bg-brand-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-brand-primary">{item.groupName}</span>}
+                {item.licenseClass && <span className="ml-2 text-muted-foreground">{item.licenseClass}</span>}
+              </span>
+            </label>
+          ))}
+      </div>
+    </div>
+  );
 }
 
 export default function DrivingEducation() {

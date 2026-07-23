@@ -1,0 +1,43 @@
+soru,ders,konu,zorluk,A,B,C,D,dogrucevap
+"Kırmızı ışıkta yanan trafik lambasında sürücü ne yapmalıdır?",Trafik,Işıklı İşaretler,Kolay,"Yavaşlayıp geçer","Durur ve beklemesi gerekir","Korna çalarak geçer","Sağa yanaşıp geçer",B
+"Sarı ışık yandığında sürücünün yapması gereken nedir?",Trafik,Işıklı İşaretler,Kolay,"Hızlanarak kavşağı geçmek","Durmaya hazırlanmak ve güvenliyse durmak","Geri gitmek","Farları yakmak",B
+"Yeşil ışıkta sürücü kavşağa girerken önceliği kime vermelidir?",Trafik,Kavşaklar,Orta,"Hiç kimseye","Kavşakta kalmış yaya ve araçlara","Arkadan gelen araca","Sağdaki araca",B
+"Kontrolsüz kavşakta geçiş önceliği kimindir?",Trafik,Kavşaklar,Orta,"Soldan gelen araç","Sağdan gelen araç","Büyük olan araç","Hızlı olan araç",B
+"Yerleşim yeri içinde otomobil için genel azami hız sınırı kaç km/s'dir?",Trafik,Hız Kuralları,Kolay,"30","50","70","90",B
+"Şehirlerarası çift yönlü karayolunda otomobilin azami hızı kaç km/s'dir?",Trafik,Hız Kuralları,Orta,"70","90","110","120",B
+"Otoyolda otomobil için azami hız sınırı kaç km/s'dir?",Trafik,Hız Kuralları,Orta,"90","110","120","140",C
+"Öndeki araç ile takip mesafesi neye göre ayarlanır?",Trafik,Takip Mesafesi,Orta,"Aracın rengine","Hız ve yol durumuna","Yolcu sayısına","Lastik markasına",B
+"Kavşaklara ve tepe üstlerine kaç metre kala önümüzdeki aracı geçmek yasaktır?",Trafik,Geçme Kuralları,Zor,"10 metre","30 metre","50 metre","100 metre",B
+"Sürücü öndeki aracı hangi şeritten geçer?",Trafik,Geçme Kuralları,Kolay,"Sağ şeritten","Sol şeritten","Banketten","Emniyet şeridinden",B
+"Dönel kavşakta (göbekli kavşak) geçiş önceliği kimindir?",Trafik,Kavşaklar,Orta,"Kavşağa girecek araçta","Kavşak içinde dönmekte olan araçta","Sağdaki araçta","Büyük araçta",B
+"Kırmızı zemin üzerine beyaz yatay çizgi bulunan levha neyi ifade eder?",Trafik,Trafik İşaretleri,Orta,"Girişi olmayan yol","Taşıt trafiğine kapalı yol","Dur","Park yasağı",A
+"Sekizgen biçimli kırmızı DUR levhasında sürücü ne yapar?",Trafik,Trafik İşaretleri,Kolay,"Yavaşlar","Mutlaka durur ve yol açık olunca geçer","Korna çalar","Farla uyarır",B
+"Üçgen biçimli kenarları kırmızı olan trafik levhaları hangi gruptandır?",Trafik,Trafik İşaretleri,Orta,"Tehlike uyarı işaretleri","Yasaklama işaretleri","Bilgi işaretleri","Mecburi yön işaretleri",A
+"Dairesel biçimli kırmızı çerçeveli levhalar genellikle neyi belirtir?",Trafik,Trafik İşaretleri,Orta,"Tehlike","Yasak ve tahdit","Bilgi","Konaklama",B
+"Yağmurlu havada sürücü ne yapmalıdır?",Trafik,Olumsuz Hava,Kolay,"Hızını artırmalı","Hızını azaltıp takip mesafesini artırmalı","Farları söndürmeli","Lastik havasını indirmeli",B
+"Sisli havada sürücü hangi ışıkları kullanmalıdır?",Trafik,Olumsuz Hava,Orta,"Uzun farları","Sis farlarını ve kısa farları","Dörtlü flaşörü sürekli","Hiçbir ışığı",B
+"Buzlanma olan yolda frene nasıl basılmalıdır?",Trafik,Olumsuz Hava,Orta,"Sert ve ani","Yumuşak ve kademeli","Ayağı hiç kullanmadan","Debriyaja basmadan sert",B
+"Gece karşıdan araç gelirken uzun far kullanan sürücü ne yapmalıdır?",Trafik,Gece Sürüşü,Kolay,"Uzun farda kalır","Kısa fara geçer","Farları söndürür","Korna çalar",B
+"Emniyet kemeri hangi hızlarda takılmalıdır?",Trafik,Güvenlik,Kolay,"Sadece otoyolda","Her hızda ve her yolda","Sadece şehir dışında","Sadece 90 üstünde",B
+"Alkollü içki alan sürücünün kandaki alkol miktarı otomobilde kaç promili geçemez?",Trafik,Kurallar,Orta,"0.00","0.50","0.80","1.00",B
+"Dönüş yapacak sürücü manevradan ne kadar önce sinyal vermelidir?",Trafik,Manevra,Kolay,"Manevra anında","Yeterli mesafeden önce","Manevradan sonra","Hiç gerekmez",B
+"Şerit değiştirecek sürücü önce ne yapmalıdır?",Trafik,Manevra,Kolay,"Direkt geçer","Ayna ve sinyalle çevreyi kontrol eder","Korna çalar","Hızlanır",B
+"Geri manevra yapan sürücünün önceliği nedir?",Trafik,Manevra,Orta,"Geri gidenin geçiş üstünlüğü vardır","Diğer araç ve yayalara yol vermek","Korna çalıp geçmek","Hızlı geri gitmek",B
+"Yaya geçidine yaklaşan sürücü ne yapmalıdır?",Trafik,Yayalar,Kolay,"Hızlanır","Yavaşlar ve geçen yayaya yol verir","Korna çalar","Farla uyarır",B
+"Okul geçidinde görevli varken sürücü nasıl davranır?",Trafik,Yayalar,Kolay,"Görmezden gelir","Görevlinin işaretine uyar","Hızlanır","Korna çalar",B
+"Trafikte geçiş üstünlüğüne sahip aracın sireni çaldığında sürücü ne yapar?",Trafik,Öncelik,Orta,"Hızlanır","Yol verir ve gerekirse durur","Takip eder","Korna çalar",B
+"Kavşaklarda hangi durumda korna çalınabilir?",Trafik,Kurallar,Orta,"İstenildiği zaman","Sadece tehlikeyi önlemek için","Selamlaşmak için","Sabırsızlıkta",B
+"Dörtlü ikaz (flaşör) lambası hangi durumda yakılır?",Trafik,Işıklar,Orta,"Park ederken sürekli","Arıza ya da tehlike anında aracı uyarı amaçlı","Gece şehir içinde","Yağmurda sürekli",B
+"Otoyolda emniyet şeridi ne amaçla kullanılır?",Trafik,Otoyol,Orta,"Sürekli seyir","Zorunlu hâller ve acil durumlar","Sollama","Hız denemesi",B
+"Bir aracın arkasındaki kırmızı üçgen reflektör neyi belirtir?",Trafik,Güvenlik,Orta,"Aracın yeni olduğunu","Arızalı ve durduğunu diğer sürücülere bildirmeyi","Yük taşıdığını","Acemi sürücü olduğunu",B
+"Kaygan yolda kızaklamayı önlemek için ne yapılır?",Trafik,Olumsuz Hava,Zor,"Ani direksiyon ve sert fren","Yumuşak hareket düşük hız ve uzun takip mesafesi","Debriyaja basmak","Hızlanmak",B
+"Trafik kazası sonrası ilk yapılması gereken nedir?",Trafik,Kaza,Orta,"Olay yerinden ayrılmak","Güvenliği sağlamak ve gerekli yerlere haber vermek","Aracı hemen çekmek","Fotoğraf çekmemek",B
+"Yaralının olduğu bir kazada araç neden hemen hareket ettirilmez?",Trafik,Kaza,Orta,"Trafik akışı için","Yaralının durumu ağırlaşabileceği için","Ceza almamak için","Sigorta için",B
+"Duraklama ile park etme arasındaki fark nedir?",Trafik,Duraklama-Park,Orta,"İkisi de aynıdır","Duraklama kısa süreli parktan uzun sürelidir","Duraklama sürücünün belirli kısa süre beklemesidir","Park sadece gece yapılır",C
+"Yaya kaldırımına park etmek neden yasaktır?",Trafik,Duraklama-Park,Kolay,"Estetik olmadığı için","Yayaların geçişini engellediği için","Yol dar olduğu için","Ceza olmadığı için",B
+"Kavşak içinde ve yaya geçidi üzerinde park etmek nasıldır?",Trafik,Duraklama-Park,Kolay,"Serbesttir","Yasaktır","İzinle serbesttir","Gece serbesttir",B
+"Karayolunda hangi durumda sollama yasaktır?",Trafik,Geçme Kuralları,Zor,"Düz ve görüşün açık olduğu yolda","Görüşün kısıtlı olduğu tepe ve viraj öncesi","Geniş yolda","Gündüz",B
+"Trafikte hız kesici (kasis) yaklaşan sürücü ne yapar?",Trafik,Hız Kuralları,Kolay,"Hızlanır","Yavaşlar","Korna çalar","Şerit değiştirir",B
+"Araçların gece dışında da ışık yakması gereken yer neresidir?",Trafik,Gece Sürüşü,Orta,"Otopark","Tüneller","Köprü","Kavşak",B
+"Trafik işaret levhalarına en uygun davranış nedir?",Trafik,Trafik İşaretleri,Kolay,"Duruma göre uymak","Her zaman uymak","Sadece gündüz uymak","Görmezden gelmek",B
+"Çocuğun araçta taşınması için en güvenli yol nedir?",Trafik,Güvenlik,Orta,"Kucakta","Yaşa uygun çocuk koltuğunda","Ön koltukta kemersiz","Bagajda",B

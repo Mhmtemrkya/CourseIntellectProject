@@ -1,0 +1,41 @@
+soru,ders,konu,zorluk,A,B,C,D,dogrucevap
+"İlk yardımın temel amacı nedir?",İlk Yardım,Temel Kavramlar,Kolay,"Kesin tedavi yapmak","Yaşamı korumak ve durumun kötüleşmesini önlemek","İlaç yazmak","Ameliyat yapmak",B
+"İlk yardım ile acil tedavi arasındaki temel fark nedir?",İlk Yardım,Temel Kavramlar,Orta,"İkisi de aynıdır","İlk yardım ilaçsız acil tedavi ilaç ve tıbbi araçla yapılır","İlk yardımı doktor yapar","Acil tedavi olay yerinde yapılmaz",B
+"Bilinci kapalı ve solunumu olan hastaya hangi pozisyon verilir?",İlk Yardım,Pozisyon,Orta,"Sırtüstü düz","Koma (yarı yüzükoyun yan) pozisyonu","Oturur pozisyon","Yüzüstü",B
+"Temel yaşam desteğinde ABC sıralaması neyi ifade eder?",İlk Yardım,Yaşam Desteği,Orta,"Ateş Baş Ciğer","Hava yolu Solunum Dolaşım","Ağrı Baskı Ciddiyet","Alkol Beyin Cilt",B
+"Yetişkinde kalp masajı göğsün neresine uygulanır?",İlk Yardım,Yaşam Desteği,Orta,"Karın üstüne","Göğüs kemiğinin alt yarısına","Sol memeye","Boyuna",B
+"Yetişkinde kalp masajı ile suni solunum oranı kaçtır?",İlk Yardım,Yaşam Desteği,Zor,"15 bası 2 soluk","30 bası 2 soluk","5 bası 1 soluk","10 bası 2 soluk",B
+"Yetişkinde kalp masajı dakikada kaç bası hızında yapılır?",İlk Yardım,Yaşam Desteği,Zor,"40-60","60-80","100-120","150-180",C
+"Hava yolu tıkanan bilinçli yetişkine hangi manevra uygulanır?",İlk Yardım,Solunum,Orta,"Kalp masajı","Heimlich (karına bası) manevrası","Yatırıp bekleme","Su içirme",B
+"Kanamayı durdurmak için ilk yapılması gereken nedir?",İlk Yardım,Kanamalar,Kolay,"Turnike takmak","Yara üzerine temiz bezle doğrudan baskı uygulamak","Su dökmek","Ovmak",B
+"Turnike ne zaman uygulanır?",İlk Yardım,Kanamalar,Zor,"Her kanamada","Baskı ile durmayan yaşamı tehdit eden şiddetli kanamada","Küçük sıyrıkta","Burun kanamasında",B
+"Burun kanamasında hastaya hangi pozisyon verilir?",İlk Yardım,Kanamalar,Orta,"Başı geriye atmak","Baş öne eğik burun kanatları sıkılır","Sırtüstü yatmak","Ayakta koşmak",B
+"Şok durumundaki hastaya hangi pozisyon uygundur?",İlk Yardım,Şok,Orta,"Oturtmak","Sırtüstü yatırıp ayakları yukarı kaldırmak","Yüzüstü yatırmak","Ayakta tutmak",B
+"Yanık bölgesine ilk yardımda ne yapılır?",İlk Yardım,Yanıklar,Kolay,"Diş macunu sürmek","Bol soğuk su ile soğutmak","Buz koymak","Patlatmak",B
+"Yanıkta yapılmaması gereken davranış hangisidir?",İlk Yardım,Yanıklar,Orta,"Soğuk su ile soğutmak","Su toplamış kabarcıkları patlatmak","Örtmek","Yüzük yüzükleri çıkarmak",B
+"Kırık şüphesi olan uzuv ne yapılır?",İlk Yardım,Kırık-Çıkık,Orta,"Yerine oturtulmaya çalışılır","Olduğu gibi hareketsiz (atelle) sabitlenir","Ovulur","Sıcak uygulanır",B
+"Bilinci kapalı hastada ilk kontrol edilmesi gereken nedir?",İlk Yardım,Değerlendirme,Orta,"Nabız sayısı","Bilinç ve solunumun olup olmadığı","Kan grubu","Yaşı",B
+"Bayılan bir kişiye ilk yardımda ne yapılır?",İlk Yardım,Bayılma,Kolay,"Su içirmek","Sırtüstü yatırıp ayaklarını yükseltmek","Ayağa kaldırmak","Yüzüne vurmak",B
+"Yaralı taşımada temel kural nedir?",İlk Yardım,Taşıma,Orta,"Hızlı taşımak","Zorunlu olmadıkça yaralıyı hareket ettirmemek","Sırtına almak","Sürükleyerek çekmek",B
+"Omurga yaralanması şüphesinde yaralı nasıl taşınır?",İlk Yardım,Taşıma,Zor,"Kucakta","Baş boyun ve gövde ekseni bozulmadan sert zeminde","Sırtına alınarak","Oturtularak",B
+"İlk yardımcı olay yerinde önce neyi sağlamalıdır?",İlk Yardım,Olay Yeri,Kolay,"Fotoğraf çekmek","Kendi ve çevre güvenliğini","İlaç bulmak","Yaralıyı kaldırmak",B
+"112 aranırken verilmesi gereken en önemli bilgi nedir?",İlk Yardım,Haberleşme,Kolay,"Aracın markası","Olayın yeri ve durumu yaralı sayısı","Hava durumu","Kişinin mesleği",B
+"Zehirlenmede ilk yardımcı ne yapmalıdır?",İlk Yardım,Zehirlenme,Orta,"Hemen kusturmak","112 aramak ve zehir kaynağını uzaklaştırmak","Süt içirmek","Bekleyip görmek",B
+"Solunum yolu ile zehirlenmede ilk iş nedir?",İlk Yardım,Zehirlenme,Orta,"Su içirmek","Hastayı temiz havaya çıkarmak","Kusturmak","Uyutmak",B
+"Bebeklerde (0-1 yaş) kalp masajı nasıl uygulanır?",İlk Yardım,Yaşam Desteği,Zor,"İki elle","İki parmakla göğüs kemiği alt yarısına","Yumrukla","Avuç içiyle sert",B
+"Yaralıda atardamar kanaması nasıl anlaşılır?",İlk Yardım,Kanamalar,Orta,"Koyu ve sızıntı şeklinde","Açık kırmızı ve fışkırır tarzda","Renksiz","Yavaş damlama",B
+"Kalp masajına ne zaman başlanır?",İlk Yardım,Yaşam Desteği,Orta,"Nabız hızlıysa","Bilinç solunum ve dolaşım yoksa","Hasta konuşuyorsa","Ateşi varsa",B
+"Elektrik çarpması olan kişiye dokunmadan önce ne yapılır?",İlk Yardım,Elektrik,Orta,"Hemen tutmak","Akım kaynağı kesilir","Su dökmek","İtmek",B
+"İlk yardımda yaraya pamuk konulmamasının nedeni nedir?",İlk Yardım,Yaralar,Orta,"Pahalı olduğu için","Yaraya yapışıp lif bırakabildiği için","Kanı emmediği için","Kokabildiği için",B
+"Kesik yaralanmalarda tetanoz riski neden önemlidir?",İlk Yardım,Yaralar,Orta,"Kanamayı artırır","Ciddi bir enfeksiyon hastalığına yol açabilir","Ağrıyı artırır","Önemsizdir",B
+"Yaralı değerlendirmesinde ikinci değerlendirmede neye bakılır?",İlk Yardım,Değerlendirme,Zor,"Sadece nabza","Baştan ayağa görünür yaralanmalara","Sadece bilince","Kan grubuna",B
+"Sıcak çarpması olan kişiye ne yapılır?",İlk Yardım,Sıcak-Soğuk,Orta,"Sıcak bir yere almak","Serin yere alıp vücudu soğutmak","Battaniyeye sarmak","Sıcak içecek vermek",B
+"Donma tehlikesinde uzva ne yapılmaz?",İlk Yardım,Sıcak-Soğuk,Orta,"Kuru örtü ile ısıtmak","Kar ile ovmak","Hastaneye götürmek","Sıcak ortama almak",B
+"Göze yabancı cisim kaçtığında ne yapılır?",İlk Yardım,Göz,Orta,"Ovuşturmak","Temiz su ile yıkamak ve ovmamak","Sivri cisimle çıkarmak","Kapatıp beklemek",B
+"Bilinci açık göğüs ağrısı olan kişiye hangi pozisyon rahatlatır?",İlk Yardım,Pozisyon,Orta,"Sırtüstü düz","Yarı oturur pozisyon","Yüzüstü","Ayakta",B
+"Kanamalı yaralıda değerli takılar neden çıkarılır?",İlk Yardım,Kanamalar,Kolay,"Kaybolmasın diye","Şişme olursa dolaşımı engellememesi için","Estetik için","Ağırlık yapmasın diye",B
+"Suni solunumda hava nereye üflenir?",İlk Yardım,Yaşam Desteği,Orta,"Kulağa","Ağız ya da buruna","Göze","Göğse",B
+"İlk yardımın ilkelerinden biri olan koruma neyi ifade eder?",İlk Yardım,Temel Kavramlar,Orta,"Yaralıyı taşımayı","Olay yerinde yeni kazaların oluşmasını önlemeyi","İlaç vermeyi","Beklemeyi",B
+"Yaralıda solunum yoksa ancak nabız varsa ne yapılır?",İlk Yardım,Yaşam Desteği,Zor,"Sadece beklenir","Suni solunuma devam edilir","Sadece kalp masajı","Su verilir",B
+"Ambulans gelene kadar bilinci kapalı hastada en kritik takip nedir?",İlk Yardım,Değerlendirme,Orta,"Ateş","Solunum ve nabzın sürekli kontrolü","Kan şekeri","Tansiyon aleti",B
+"İlk yardım çantasında bulunması gereken malzeme hangisidir?",İlk Yardım,Malzeme,Kolay,"Antibiyotik","Steril sargı bezi ve makas","Ağrı kesici iğne","Serum",B

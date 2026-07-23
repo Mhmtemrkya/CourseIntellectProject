@@ -105,8 +105,11 @@ public sealed class DrivingEducationController(
             reference = new
             {
                 instructors = await db.Staff.AsNoTracking().OrderBy(x => x.FullName).Select(x => new { x.Id, x.FullName }).ToListAsync(ct),
+                // Grup (dönem) bilgisi de döner: teorik sınıfa öğrenci atarken/filtrelerken görünür.
                 students = await db.StudentDrivingProfiles.AsNoTracking().Where(x => openStudentStatuses.Contains(x.Status))
-                    .Join(db.Students.AsNoTracking(), x => x.StudentId, x => x.Id, (profile, student) => new { id = profile.Id, student.FullName, profile.LicenseClass, status = profile.Status.ToString() })
+                    .Join(db.Students.AsNoTracking(), x => x.StudentId, x => x.Id, (profile, student) => new { profile, student.FullName })
+                    .GroupJoin(db.DrivingStudentGroups.AsNoTracking(), x => x.profile.StudentGroupId, g => (Guid?)g.Id, (x, gs) => new { x.profile, x.FullName, gs })
+                    .SelectMany(x => x.gs.DefaultIfEmpty(), (x, g) => new { id = x.profile.Id, x.FullName, x.profile.LicenseClass, status = x.profile.Status.ToString(), groupId = x.profile.StudentGroupId, groupName = g != null ? g.Name : null })
                     .OrderBy(x => x.FullName).ToListAsync(ct),
             };
         }
@@ -844,9 +847,23 @@ public sealed class DrivingEducationController(
 
         if (!passed && outOfAttempts)
         {
-            // Dönem düştü: personel görsün, dosya yeniden kayıt ister.
+            // Dönem düştü → kursiyer OTOMATİK PASİFE alınır (askıya), sebebi yazılır.
+            // Böylece 4 sınav hakkını doldurup geçemeyen aday listelerden düşer;
+            // "Pasif Kayıtlar"da sebebiyle görünür, gerekirse yeniden kayıtla açılır.
+            // AutomaticStatusEnabled=false: otomatik durum makinesi bunu geri açmasın.
+            if (student.Status is not (DrivingStudentStatus.Suspended or DrivingStudentStatus.Cancelled))
+                student.StatusBeforeSuspension = student.Status;
+            student.Status = DrivingStudentStatus.Suspended;
+            student.AutomaticStatusEnabled = false;
+            student.StatusChangeSource = "ExamRights";
+            student.StatusChangeReason = $"{DrivingExamRules.MaxAttempts} sınav hakkı doldu, {DrivingExamRules.ExamTypeLabel(exam.ExamType).ToLowerInvariant()} geçilemedi — dönem düştü.";
+            student.StatusChangedByUserId = null;
+            student.StatusChangedAtUtc = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+
+            // Personel görsün: dosya yeniden kayıt ister.
             await notifier.NotifyManagersAsync(
-                "Sınav hakkı doldu — dönem düştü",
+                "Sınav hakkı doldu — kursiyer pasife alındı",
                 $"{await StudentNameAsync(student.StudentId, ct)}: {DrivingExamRules.OutOfAttemptsMessage(exam.ExamType)}",
                 DrivingNotificationCategories.Exam,
                 dedupeKey: $"exam-out-of-attempts:{candidate.Id}",

@@ -3,56 +3,6 @@ import logoUrl from '../assets/brand/logo.png';
 
 let cachedFontBase64 = null;
 
-// Tenant marka renkleri ThemeContext tarafından root'a hex olarak yazılır;
-// PDF çıktısı da seçilen paletle üretilsin diye buradan okunur.
-function readBrandHex(varName, fallback) {
-  if (typeof document === 'undefined') return fallback;
-  const value = document.documentElement.style.getPropertyValue(varName).trim();
-  return /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
-}
-
-function hexToRgb(hex) {
-  const clean = hex.replace('#', '');
-  return [
-    parseInt(clean.slice(0, 2), 16),
-    parseInt(clean.slice(2, 4), 16),
-    parseInt(clean.slice(4, 6), 16),
-  ];
-}
-
-// Koyu bant üzerinde okunur kalması için rengi beyaza doğru açar.
-function tintTowardWhite([r, g, b], ratio) {
-  return [
-    Math.round(r + (255 - r) * ratio),
-    Math.round(g + (255 - g) * ratio),
-    Math.round(b + (255 - b) * ratio),
-  ];
-}
-
-// Kurum logosu tek yerden bildirilir (ThemeContext), böylece PDF üreten her
-// çağrı yerinin ayrıca logo geçirmesi gerekmez.
-let tenantBrandLogoUrl = '';
-export function setCredentialsBrandLogo(url) {
-  tenantBrandLogoUrl = url || '';
-}
-
-async function loadImageDataUrl(url) {
-  if (!url) return null;
-  try {
-    const response = await fetch(url, { credentials: 'include' });
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    return await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(String(reader.result || ''));
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
-
 async function loadLogoDataUrl() {
   try {
     const response = await fetch(logoUrl);
@@ -99,13 +49,13 @@ async function ensureUnicodeFont(doc) {
 
 export async function downloadCredentialsPdf({
   tenantName,
-  tenantLogoUrl,
   fullName,
   role,
   username,
   temporaryPassword,
   className,
   extra,
+  savePdf = true,
 }) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -113,14 +63,13 @@ export async function downloadCredentialsPdf({
   const hasUnicodeFont = await ensureUnicodeFont(doc);
   const fontFamily = hasUnicodeFont ? 'Roboto' : 'helvetica';
 
-  // Brand band — tenant ana rengi
-  const brandPrimary = hexToRgb(readBrandHex('--brand-primary-hex', '#0F172A'));
-  const brandAccent = hexToRgb(readBrandHex('--brand-accent-hex', '#C7D2FE'));
-  doc.setFillColor(...brandPrimary);
+  // Tüm hesap belgelerinde sabit SchoolAsist kurumsal kimliği kullanılır.
+  doc.setFillColor(15, 23, 42);
   doc.rect(0, 0, pageWidth, 110, 'F');
+  doc.setFillColor(245, 158, 11);
+  doc.rect(0, 106, pageWidth, 4, 'F');
 
-  // Kurumun kendi logosu varsa onu kullan; yoksa ürün logosuna düş.
-  const logoData = (await loadImageDataUrl(tenantLogoUrl || tenantBrandLogoUrl)) || (await loadLogoDataUrl());
+  const logoData = await loadLogoDataUrl();
   if (logoData) {
     try {
       doc.addImage(logoData, 'PNG', 36, 30, 50, 50);
@@ -132,12 +81,12 @@ export async function downloadCredentialsPdf({
   doc.setFont(fontFamily, 'bold');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
-  doc.text(tenantName || 'SchoolAsist', 100, 55);
+  doc.text('SchoolAsist', 100, 55);
 
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(11);
-  doc.setTextColor(...tintTowardWhite(brandAccent, 0.55));
-  doc.text('Hesap Bilgileriniz', 100, 78);
+  doc.setTextColor(203, 213, 225);
+  doc.text('Güvenli Hesap Bilgileri', 100, 78);
 
   // Subhead
   doc.setTextColor(15, 23, 42);
@@ -208,8 +157,11 @@ export async function downloadCredentialsPdf({
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(9);
   doc.setTextColor(148, 163, 184);
-  doc.text('SchoolAsist • Eğitim Yönetim Platformu', 36, doc.internal.pageSize.getHeight() - 30);
+  doc.text('SchoolAsist | Eğitim Yönetim Platformu', 36, doc.internal.pageSize.getHeight() - 30);
+  doc.text('schoolasist.com', pageWidth - 36, doc.internal.pageSize.getHeight() - 30, { align: 'right' });
 
   const safeName = (fullName || 'kullanici').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  doc.save(`courseintellect-${safeName}-bilgileri.pdf`);
+  const fileName = `schoolasist-${safeName}-hesap-bilgileri.pdf`;
+  if (savePdf) doc.save(fileName);
+  return { doc, fileName };
 }

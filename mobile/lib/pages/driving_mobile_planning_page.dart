@@ -813,7 +813,14 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
     final students = _list('students'),
         instructors = _list('instructors'),
         vehicles = _list('vehicles');
+    // Grup (dönem) listesi — öğrenciyi grupla filtrelemek için.
+    final groups = <String, String>{};
+    for (final s in students) {
+      final gid = '${s['groupId'] ?? ''}';
+      if (gid.isNotEmpty) groups[gid] = '${s['groupName'] ?? 'Grup'}';
+    }
     String? studentId, instructorId, vehicleId;
+    var groupFilter = 'all'; // 'all' | <groupId>
     var start = initialStart ?? DateTime.now().add(const Duration(days: 1));
     var end = start.add(const Duration(hours: 1));
     final meeting = TextEditingController(), note = TextEditingController();
@@ -860,14 +867,43 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (groups.isNotEmpty)
+                      DropdownButtonFormField<String>(
+                        initialValue: groupFilter,
+                        decoration: InputDecoration(labelText: 'Grup / Dönem'.tr),
+                        items: [
+                          DropdownMenuItem(value: 'all', child: Text('Tüm gruplar'.tr)),
+                          ...groups.entries.map(
+                            (e) => DropdownMenuItem(value: e.key, child: Text(e.value)),
+                          ),
+                        ],
+                        onChanged: (v) => setLocal(() {
+                          groupFilter = v ?? 'all';
+                          // Grup dışına düşen seçili öğrenciyi bırak.
+                          if (studentId != null &&
+                              groupFilter != 'all' &&
+                              students.firstWhere((x) => '${x['id']}' == studentId,
+                                      orElse: () => const {})['groupId']?.toString() !=
+                                  groupFilter) {
+                            studentId = null;
+                          }
+                        }),
+                      ),
                     DropdownButtonFormField<String>(
                       initialValue: studentId,
+                      isExpanded: true,
                       decoration: const InputDecoration(labelText: 'Kursiyer'),
                       items: students
+                          .where((x) =>
+                              groupFilter == 'all' ||
+                              '${x['groupId'] ?? ''}' == groupFilter)
                           .map(
                             (x) => DropdownMenuItem(
                               value: '${x['id']}',
-                              child: Text('${x['fullName']}'),
+                              child: Text(
+                                '${x['fullName']}${x['groupName'] != null ? ' — ${x['groupName']}' : ''}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           )
                           .toList(),

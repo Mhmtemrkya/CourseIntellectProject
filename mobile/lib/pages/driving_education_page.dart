@@ -711,10 +711,22 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
   }) async {
     final selected = <String>{};
     final fee = TextEditingController(text: '0');
+    // Grup (dönem) listesi — öğrenciyi grupla filtrele.
+    final groups = <String, String>{};
+    for (final s in students) {
+      final gid = '${s['groupId'] ?? ''}';
+      if (gid.isNotEmpty) groups[gid] = '${s['groupName'] ?? 'Grup'}';
+    }
+    var groupFilter = 'all';
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialog) => StatefulBuilder(
-        builder: (_, setState) => AlertDialog(
+        builder: (_, setState) {
+          final visible = students
+              .where((x) =>
+                  groupFilter == 'all' || '${x['groupId'] ?? ''}' == groupFilter)
+              .toList();
+          return AlertDialog(
           title: Text(theory ? 'Sınıfa öğrenci ata' : 'Sınava aday ekle'),
           content: SizedBox(
             width: 420,
@@ -729,14 +741,30 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                       labelText: 'Kişi başı sınav ücreti',
                     ),
                   ),
+                if (groups.isNotEmpty)
+                  DropdownButtonFormField<String>(
+                    initialValue: groupFilter,
+                    isExpanded: true,
+                    decoration: InputDecoration(labelText: 'Grup / Dönem'.tr),
+                    items: [
+                      DropdownMenuItem(value: 'all', child: Text('Tüm gruplar'.tr)),
+                      ...groups.entries.map(
+                        (e) => DropdownMenuItem(value: e.key, child: Text(e.value)),
+                      ),
+                    ],
+                    onChanged: (v) => setState(() => groupFilter = v ?? 'all'),
+                  ),
                 Expanded(
                   child: ListView(
-                    children: students
+                    children: visible
                         .map(
                           (x) => CheckboxListTile(
                             value: selected.contains('${x['id']}'),
                             title: Text('${x['fullName']}'),
-                            subtitle: Text('${x['licenseClass'] ?? ''}'),
+                            subtitle: Text([
+                              '${x['licenseClass'] ?? ''}',
+                              if (x['groupName'] != null) 'Grup: ${x['groupName']}',
+                            ].where((t) => t.isNotEmpty).join(' • ')),
                             onChanged: (v) => setState(() {
                               if (v == true) {
                                 selected.add('${x['id']}');
@@ -764,7 +792,8 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
               child: Text('Ekle'.tr),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
     if (ok == true) {

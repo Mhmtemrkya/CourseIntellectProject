@@ -869,8 +869,8 @@ public sealed class DrivingStudentsController(
                 profile.StatusChangeSource,
                 profile.StatusChangeReason,
                 profile.StatusChangedAtUtc,
-                canSchedule = DrivingStudentStatuses.Schedulable.Contains(profile.Status)
-                    && (missingLifecycleDocuments.Count == 0 || profile.TrainingOverrideActive),
+                // EVRAK ESNEK: randevu uygunluğu yalnız duruma bağlı; eksik evrak engel değil.
+                canSchedule = DrivingStudentStatuses.Schedulable.Contains(profile.Status),
                 row.student.FullName,
                 row.student.TcNo,
                 registrationBranchName,
@@ -975,7 +975,6 @@ public sealed class DrivingStudentsController(
 
         var reason = request.Reason?.Trim() ?? string.Empty;
         if (reason.Length > 500) return BadRequest(new { message = "Gerekçe en fazla 500 karakter olabilir." });
-        var missing = await MissingRequiredDocumentsAsync(profile, ct);
 
         if (request.AutomaticStatusEnabled == true)
         {
@@ -991,31 +990,17 @@ public sealed class DrivingStudentsController(
 
         var isDeactivation = requestedStatus is DrivingStudentStatus.Suspended or DrivingStudentStatus.Cancelled;
         if (isDeactivation && !await permissionService.HasAsync(User, DrivingPermissions.StudentDeactivate, ct)) return Forbid();
-        if ((isDeactivation || missing.Count > 0 && DrivingStudentStatuses.Schedulable.Contains(requestedStatus)) && reason.Length < 10)
-            return BadRequest(new { message = "Pasife alma veya uygunsuzluğu geçersiz kılma gerekçesi en az 10 karakter olmalıdır." });
+        if (isDeactivation && reason.Length < 10)
+            return BadRequest(new { message = "Pasife alma gerekçesi en az 10 karakter olmalıdır." });
 
-        // Eksik evrakla eğitim ancak ayrı override yetkisi + açık talep + gerekçeyle mümkündür.
-        if (DrivingStudentStatuses.Schedulable.Contains(requestedStatus))
-        {
-            if (missing.Count > 0 && !request.AllowIncompleteDocuments)
-                return BadRequest(new
-                {
-                    message = "Zorunlu evrakları tamamlanmayan kursiyer için yetkili istisna gerekir.",
-                    missingDocuments = missing.Select(x => DocumentLabel(x)),
-                    overridableWith = DrivingPermissions.OverrideStudentDocuments,
-                });
-            if (missing.Count > 0 && !await permissionService.HasAsync(User, DrivingPermissions.OverrideStudentDocuments, ct)) return Forbid();
-        }
+        // EVRAK ESNEK: eksik evrak eğitime almayı ENGELLEMEZ; override izni/talebi
+        // aranmaz. Durum serbestçe verilebilir; evrak yalnız bilgi olarak raporlanır.
 
         var before = profile.Status;
         if (isDeactivation && before is not DrivingStudentStatus.Suspended and not DrivingStudentStatus.Cancelled)
             profile.StatusBeforeSuspension = before;
         profile.Status = requestedStatus;
         profile.AutomaticStatusEnabled = request.AutomaticStatusEnabled ?? false;
-        profile.TrainingOverrideActive = missing.Count > 0 && DrivingStudentStatuses.Schedulable.Contains(requestedStatus);
-        profile.TrainingOverrideReason = profile.TrainingOverrideActive ? reason : string.Empty;
-        profile.TrainingOverrideByUserId = profile.TrainingOverrideActive ? CurrentUserId() : null;
-        profile.TrainingOverrideAtUtc = profile.TrainingOverrideActive ? DateTime.UtcNow : null;
         profile.StatusChangeSource = "Manual";
         profile.StatusChangeReason = reason;
         profile.StatusChangedByUserId = CurrentUserId();
@@ -1688,21 +1673,17 @@ public sealed class DrivingStudentsController(
         if (!profile.AutomaticStatusEnabled) return;
         var missing = await MissingRequiredDocumentsAsync(profile, ct);
         var before = profile.Status;
-        if (missing.Count == 0 && profile.Status is DrivingStudentStatus.PreRegistered or DrivingStudentStatus.DocumentsPending)
+        // EVRAK ESNEK (kullanıcı kararı): eksik evrak ARTIK kursiyeri düşürmez/askıya
+        // almaz — yalnız bilgi olarak raporlanır. Bu yüzden otomatik durum makinesi
+        // erken aşamayı (ön kayıt/evrak bekliyor) evraktan BAĞIMSIZ olarak Aktif'e
+        // yükseltir; evrak yüzünden geri düşürme dalları kaldırıldı.
+        if (profile.Status is DrivingStudentStatus.PreRegistered or DrivingStudentStatus.DocumentsPending)
             profile.Status = DrivingStudentStatus.Active;
-        else if (missing.Count == 0 && profile.Status == DrivingStudentStatus.Suspended && profile.StatusChangeSource == "Automatic")
+        else if (profile.Status == DrivingStudentStatus.Suspended && profile.StatusChangeSource == "Automatic")
+            // Geçmişte evrak yüzünden otomatik askıya alınmış kayıtları geri getir.
             profile.Status = profile.StatusBeforeSuspension is { } restore && DrivingStudentStatuses.Schedulable.Contains(restore)
                 ? restore
                 : DrivingStudentStatus.Active;
-        else if (missing.Count > 0 && profile.Status == DrivingStudentStatus.Active && !profile.TrainingOverrideActive)
-            profile.Status = DrivingStudentStatus.DocumentsPending;
-        else if (missing.Count > 0
-            && profile.Status is DrivingStudentStatus.TheoryOngoing or DrivingStudentStatus.PracticeOngoing or DrivingStudentStatus.ExamPending
-            && !profile.TrainingOverrideActive)
-        {
-            profile.StatusBeforeSuspension = profile.Status;
-            profile.Status = DrivingStudentStatus.Suspended;
-        }
         else return;
 
         profile.StatusChangeSource = "Automatic";
@@ -1731,7 +1712,8 @@ public sealed class DrivingStudentsController(
             profile.StatusChangeSource,
             profile.StatusChangeReason,
             profile.StatusChangedAtUtc,
-            canSchedule = DrivingStudentStatuses.Schedulable.Contains(profile.Status) && (missing.Count == 0 || profile.TrainingOverrideActive),
+            // EVRAK ESNEK: randevu uygunluğu yalnız duruma bağlı; eksik evrak engel değil.
+            canSchedule = DrivingStudentStatuses.Schedulable.Contains(profile.Status),
         };
     }
 

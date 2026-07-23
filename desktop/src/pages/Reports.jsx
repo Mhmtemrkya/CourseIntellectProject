@@ -51,6 +51,7 @@ import {
   updateStudent,
 } from '../lib/api/modules';
 import { formatCurrency, parseFinanceMoney } from '../lib/financeDocuments';
+import { downloadSchoolAsistReportPdf } from '../lib/schoolAsistReportPdf';
 import { useToast } from '../hooks/use-toast';
 
 const containerVariants = {
@@ -168,29 +169,6 @@ function buildStudentUpdatePayload(student, note) {
   };
 }
 
-function downloadText(name, content) {
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-function downloadCsv(name, rows) {
-  const csv = rows
-    .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 function AdministrativeReportOverview() {
   const { toast } = useToast();
   const [selectedReport, setSelectedReport] = useState(reportTypes[0]);
@@ -294,7 +272,7 @@ function AdministrativeReportOverview() {
   const displayTeacherRows = teacherRows;
 
   const displayStudentRows = useMemo(() => (
-    filteredStudents.slice(0, 8).map((student) => {
+    filteredStudents.map((student) => {
       const examScores = filteredExams.filter((exam) => recordMatchesStudent(exam, student));
       const averageScore = examScores.length
         ? Math.round(examScores.reduce((sum, item) => sum + Number(item.score || 0), 0) / examScores.length)
@@ -472,44 +450,32 @@ function AdministrativeReportOverview() {
     }
   }, [selectedStudentDetail, studentNotes, toast]);
 
-  const handleDownload = () => {
-    if (selectedReport?.id === 'performance') {
-      downloadCsv('performans-raporu.csv', [
-        ['Ders', 'Ortalama'],
-        ...subjectPerformance.map((row) => [row.subject, row.average]),
-      ]);
-      return;
-    }
+  const handleDownload = async () => {
+    const reportRows = selectedReport?.id === 'teachers'
+      ? displayTeacherRows
+      : selectedReport?.id === 'students'
+        ? displayStudentRows
+        : subjectPerformance;
 
-    if (selectedReport?.id === 'teachers') {
-      downloadCsv('ogretmen-raporu.csv', [
-        ['Öğretmen', 'Branş', 'Sınıf', 'Öğrenci', 'Ortalama'],
-        ...displayTeacherRows.map((row) => [row.name, row.branch, row.classes, row.studentCount, row.averageScore]),
-      ]);
-      return;
+    try {
+      await downloadSchoolAsistReportPdf({
+        report: selectedReport,
+        classFilter,
+        periodFilter,
+        stats,
+        rows: reportRows,
+      });
+      toast({
+        title: 'PDF hazırlandı',
+        description: `${selectedReport.name} SchoolAsist markasıyla indirildi.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'PDF oluşturulamadı',
+        description: err.message || 'Lütfen tekrar deneyin.',
+        variant: 'destructive',
+      });
     }
-
-    if (selectedReport?.id === 'students') {
-      downloadCsv('ogrenci-raporu.csv', [
-        ['Öğrenci', 'Sınıf', 'Program', 'Ortalama', 'Devam'],
-        ...displayStudentRows.map((row) => [row.name, row.className, row.programType, row.averageScore, row.attendanceRate]),
-      ]);
-      return;
-    }
-
-    const content = [
-      `Rapor: ${selectedReport.name}`,
-      `Sinif Filtresi: ${classFilter}`,
-      `Donem: ${periodFilter}`,
-      `Toplam Ogrenci: ${stats.totalStudents}`,
-      `Devam Orani: ${stats.attendanceRate}%`,
-      `Ortalama Puan: ${stats.averageScore}`,
-      `Aktif Sinav: ${stats.activeExams}`,
-      '',
-      'Ogrenci Ozeti:',
-      ...displayStudentRows.slice(0, 5).map((student) => `- ${student.name} | ${student.className} | Ortalama ${student.averageScore} | Devam ${student.attendanceRate}%`),
-    ].join('\n');
-    downloadText(`course-intellect-report-${selectedReport.id}.txt`, content);
   };
 
   if (loading) {
@@ -525,7 +491,7 @@ function AdministrativeReportOverview() {
         </div>
         <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={handleDownload}>
           <Download className="h-4 w-4 mr-2" />
-          Rapor İndir
+          PDF Raporu İndir
         </Button>
       </div>
 
@@ -663,7 +629,7 @@ function AdministrativeReportOverview() {
 
               {selectedReport?.id === 'students' ? (
                 <div className="space-y-4">
-                  {displayStudentRows.map((student) => (
+                  {displayStudentRows.slice(0, 8).map((student) => (
                     <button
                       type="button"
                       key={student.id}
@@ -696,7 +662,7 @@ function AdministrativeReportOverview() {
                   <div className="flex justify-end">
                     <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={handleDownload}>
                       <Download className="h-4 w-4 mr-2" />
-                      Metin Raporu İndir
+                      PDF Raporu İndir
                     </Button>
                   </div>
                 </div>

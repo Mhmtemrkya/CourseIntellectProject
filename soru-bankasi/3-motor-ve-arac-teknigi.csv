@@ -1,0 +1,41 @@
+soru,ders,konu,zorluk,A,B,C,D,dogrucevap
+"Motorun görevi nedir?",Motor ve Araç Tekniği,Motor,Kolay,"Yakıtı depolamak","Yakıtın kimyasal enerjisini mekanik enerjiye çevirmek","Aracı soğutmak","Sesi azaltmak",B
+"Dört zamanlı motorda zamanların doğru sıralaması hangisidir?",Motor ve Araç Tekniği,Motor,Zor,"Sıkıştırma-Emme-Ateşleme-Egzoz","Emme-Sıkıştırma-Ateşleme (İş)-Egzoz","Egzoz-Emme-İş-Sıkıştırma","Emme-Ateşleme-Egzoz-Sıkıştırma",B
+"Motor yağının temel görevi nedir?",Motor ve Araç Tekniği,Yağlama,Kolay,"Yakıt olmak","Hareketli parçaları yağlayıp aşınmayı azaltmak","Motoru ısıtmak","Rengini korumak",B
+"Motor yağ seviyesi hangi araçla kontrol edilir?",Motor ve Araç Tekniği,Yağlama,Kolay,"Su göstergesi","Yağ çubuğu (seviye çubuğu)","Kilometre saati","Termometre",B
+"Motorun aşırı ısınmasının nedeni ne olabilir?",Motor ve Araç Tekniği,Soğutma,Orta,"Yağ fazlalığı","Soğutma suyunun eksik olması","Lastik havası","Far arızası",B
+"Soğutma suyu (antifriz) neyi önler?",Motor ve Araç Tekniği,Soğutma,Orta,"Yağ kaçağını","Suyun donmasını ve aşırı ısınmayı","Fren tutmamasını","Akü boşalmasını",B
+"Aracın hareketini sağlayan gücü tekerleklere ileten sistem hangisidir?",Motor ve Araç Tekniği,Aktarma,Orta,"Fren sistemi","Güç aktarma organları (debriyaj-vites-şaft)","Aydınlatma","Direksiyon",B
+"Debriyaj (kavrama) ne işe yarar?",Motor ve Araç Tekniği,Aktarma,Orta,"Aracı durdurur","Motor ile şanzıman arasındaki bağlantıyı keser veya birleştirir","Yakıt basar","Akü şarj eder",B
+"Vites kutusunun görevi nedir?",Motor ve Araç Tekniği,Aktarma,Orta,"Yağ pompalamak","Hız ve çekiş ihtiyacına göre tork ayarlamak","Su soğutmak","Havayı temizlemek",B
+"Fren sisteminin görevi nedir?",Motor ve Araç Tekniği,Fren,Kolay,"Hızlanmak","Aracı yavaşlatmak ve durdurmak","Direksiyonu çevirmek","Yakıt vermek",B
+"ABS fren sistemi neyi önler?",Motor ve Araç Tekniği,Fren,Orta,"Yakıt tüketimini","Ani frende tekerleklerin kilitlenmesini","Motorun stop etmesini","Lastik patlamasını",B
+"El freni (park freni) genellikle hangi tekerleklere etki eder?",Motor ve Araç Tekniği,Fren,Orta,"Ön tekerlere","Arka tekerlere","Sadece sağ tekere","Yedek lastiğe",B
+"Fren hidroliğinin azalması neye yol açar?",Motor ve Araç Tekniği,Fren,Zor,"Motorun ısınmasına","Frenlerin tutmamasına","Farların sönmesine","Kornanın çalmamasına",B
+"Aracın yön değiştirmesini sağlayan sistem hangisidir?",Motor ve Araç Tekniği,Direksiyon,Kolay,"Fren","Direksiyon sistemi","Egzoz","Marş",B
+"Rot balans ayarının bozuk olması neye neden olur?",Motor ve Araç Tekniği,Direksiyon,Orta,"Motorun ısınmasına","Lastiklerin düzensiz aşınmasına ve titreşime","Akünün bitmesine","Farların yanmamasına",B
+"Akünün görevi nedir?",Motor ve Araç Tekniği,Elektrik,Orta,"Yakıt depolamak","Elektrik enerjisi depolayıp marş ve elektrik sistemine vermek","Su soğutmak","Yağlama yapmak",B
+"Şarj (alternatör) arızasında hangi belirti görülür?",Motor ve Araç Tekniği,Elektrik,Orta,"Motor susuz kalır","Akü şarj olmaz ve gösterge ikaz verir","Lastik patlar","Fren tutmaz",B
+"Marş motorunun görevi nedir?",Motor ve Araç Tekniği,Elektrik,Orta,"Aracı yavaşlatmak","Motoru ilk harekete geçirmek","Yakıt basmak","Işık vermek",B
+"Lastik diş derinliğinin azalması neyi etkiler?",Motor ve Araç Tekniği,Lastik,Orta,"Motor gücünü","Yol tutuş ve frenleme mesafesini","Akü ömrünü","Yağ seviyesini",B
+"Lastik hava basıncının düşük olması neye yol açar?",Motor ve Araç Tekniği,Lastik,Orta,"Daha az yakıt tüketimine","Fazla yakıt tüketimi ve lastiğin ısınıp aşınmasına","Motorun ısınmasına","Akünün bitmesine",B
+"Aracın gösterge panelinde yağ ikaz lambası yandığında ne yapılır?",Motor ve Araç Tekniği,Göstergeler,Orta,"Yolculuğa devam edilir","Araç durdurulur ve yağ kontrol edilir","Hızlanılır","Far açılır",B
+"Motor çalışırken kırmızı akü (şarj) lambası yanarsa sebebi ne olabilir?",Motor ve Araç Tekniği,Göstergeler,Zor,"Yağ fazlalığı","Şarj sisteminde arıza","Lastik basıncı","Fren aşınması",B
+"Hava filtresinin kirlenmesi neye yol açar?",Motor ve Araç Tekniği,Yakıt Sistemi,Orta,"Fren tutmamasına","Motor performansının düşmesi ve yakıt artışına","Akü bozulmasına","Far arızasına",B
+"Yakıt tüketimini artıran etkenlerden biri hangisidir?",Motor ve Araç Tekniği,Yakıt Sistemi,Orta,"Düzgün lastik basıncı","Ani hızlanma ve sert frenleme","Sabit hız","Bakımlı motor",B
+"Egzoz sisteminin görevlerinden biri nedir?",Motor ve Araç Tekniği,Egzoz,Orta,"Yakıt depolamak","Yanmış gazları dışarı atmak ve sesi azaltmak","Su soğutmak","Şarj etmek",B
+"Dizel motorlarda yakıt nasıl tutuşur?",Motor ve Araç Tekniği,Motor,Zor,"Bujiyle","Sıkıştırılan havanın ısısıyla kendiliğinden","Akü kıvılcımıyla","Marşla",B
+"Benzinli motorlarda ateşlemeyi hangi parça sağlar?",Motor ve Araç Tekniği,Motor,Orta,"Enjektör","Buji","Alternatör","Radyatör",B
+"Aracın periyodik bakımının amacı nedir?",Motor ve Araç Tekniği,Bakım,Kolay,"Sadece temizlik","Arızaları önleyip güvenli ve ekonomik kullanım sağlamak","Sigortayı ucuzlatmak","Hızı artırmak",B
+"Fren pedalı boşaldığında (yumuşadığında) olası neden nedir?",Motor ve Araç Tekniği,Fren,Zor,"Yağ fazlalığı","Fren hidroliği kaçağı veya hava yapması","Lastik havası","Far arızası",B
+"V kayışının (triger/kayış) kopması neye yol açabilir?",Motor ve Araç Tekniği,Aktarma,Zor,"Farların sönmesine","Şarjın kesilmesi ve motorun çalışmamasına","Lastik patlamasına","Kornanın bozulmasına",B
+"Soğuk havada motorun kolay çalışması için ne önemlidir?",Motor ve Araç Tekniği,Elektrik,Orta,"Lastik havası","Akünün sağlıklı ve dolu olması","Far ayarı","Cam sileceği",B
+"Radyatörün görevi nedir?",Motor ve Araç Tekniği,Soğutma,Kolay,"Yakıt basmak","Soğutma suyunu soğutmak","Elektrik üretmek","Yağ pompalamak",B
+"Aracın stop etmesinin (motorun susması) nedeni ne olabilir?",Motor ve Araç Tekniği,Yakıt Sistemi,Orta,"Fazla far","Yakıtın bitmesi veya yakıt sistemi arızası","Cam açık kalması","Lastik havası fazlalığı",B
+"Aracın uzun süre çalışmadan bekletilmesi hangi parçayı olumsuz etkiler?",Motor ve Araç Tekniği,Elektrik,Orta,"Lastik dişini","Aküyü (boşalır)","Farları","Camı",B
+"Otomatik şanzımanlı araçta D konumu neyi ifade eder?",Motor ve Araç Tekniği,Aktarma,Orta,"Geri","İleri sürüş","Park","Boş",B
+"Aracın çekiş gücünü artırmak için düşük vitese geçilir çünkü?",Motor ve Araç Tekniği,Aktarma,Zor,"Hız artsın diye","Yokuş ve zorlu koşullarda daha fazla tork gerektiği için","Yakıt bitsin diye","Fren tutsun diye",B
+"Motor devri (gösterge) yükseldikçe ne artar?",Motor ve Araç Tekniği,Göstergeler,Orta,"Fren gücü","Yakıt tüketimi","Lastik ömrü","Akü suyu",B
+"Aracın altından yağ damlaması neyi gösterir?",Motor ve Araç Tekniği,Bakım,Kolay,"Normal durum","Yağ kaçağı olabileceğini","Su fazlalığını","Şarj arızasını",B
+"Cam suyu deposu boşken silecek kullanmak neye yol açar?",Motor ve Araç Tekniği,Bakım,Kolay,"Motor ısınır","Cam çizilir ve görüş bozulur","Akü biter","Lastik aşınır",B
+"Aracın bakımında en sık değişen sıvı hangisidir?",Motor ve Araç Tekniği,Bakım,Orta,"Fren hidroliği","Motor yağı","Antifriz","Direksiyon yağı",B

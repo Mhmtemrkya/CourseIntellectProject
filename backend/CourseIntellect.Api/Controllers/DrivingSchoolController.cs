@@ -1118,18 +1118,16 @@ public sealed class DrivingSchoolController(
         var instructor = await dbContext.DrivingInstructorProfiles.SingleOrDefaultAsync(x => x.Id == request.InstructorProfileId && x.IsActive, ct);
         if (student is null || vehicle is null || instructor is null) return BadRequest(new { message = "Aktif öğrenci, araç veya öğretmen bulunamadı." });
 
-        var statusSchedulable = DrivingStudentStatuses.Schedulable.Contains(student.Status);
-        var documentsComplete = await HasCompleteStudentDocumentsAsync(student, ct);
-        var oneTimeDocumentOverride = overrides.Has(DrivingPermissions.OverrideStudentDocuments);
-        // Askı/iptal/mezuniyet sert engeldir; yalnız evrak bekleyen aday için açık, gerekçeli tek-randevu istisnası verilebilir.
-        if (!statusSchedulable && !(student.Status is DrivingStudentStatus.PreRegistered or DrivingStudentStatus.DocumentsPending && oneTimeDocumentOverride))
-            return BadRequest(new { message = "Kursiyer pasif veya eğitim aşamasına uygun değil." });
-        if (!documentsComplete && !student.TrainingOverrideActive && !oneTimeDocumentOverride)
-            return BadRequest(new
-            {
-                message = "Kursiyerin zorunlu evrakları tamamlanmamış. Yaşam döngüsünden yetkili istisna verin veya bu randevu için gerekçeli istisna kullanın.",
-                overridableWith = DrivingPermissions.OverrideStudentDocuments,
-            });
+        // EVRAK ESNEK (kullanıcı kararı): eksik evrak randevuyu ENGELLEMEZ; yalnız
+        // bilgi/uyarı olarak gösterilir (dashboard + evrak kuyruğu). Sert engel
+        // yalnızca gerçekten pasif/mezun durumdur — askıdaki/iptal/mezun kursiyere
+        // yeni randevu açılamaz. Evrak bekleyen aday (PreRegistered/DocumentsPending)
+        // dahil diğer tüm aşamalar randevu alabilir.
+        var blockedStatus = student.Status is DrivingStudentStatus.Suspended
+            or DrivingStudentStatus.Cancelled
+            or DrivingStudentStatus.Graduated;
+        if (blockedStatus)
+            return BadRequest(new { message = "Kursiyer pasif (askıda/iptal) veya mezun; yeni randevu açılamaz." });
 
         var vehicleUnfit = vehicle.IsInMaintenance || !vehicle.InspectionExpiresAtUtc.HasValue || !vehicle.InsuranceExpiresAtUtc.HasValue
             || vehicle.InspectionExpiresAtUtc <= request.EndsAtUtc || vehicle.InsuranceExpiresAtUtc <= request.EndsAtUtc;
@@ -1204,8 +1202,6 @@ public sealed class DrivingSchoolController(
         await transaction.CommitAsync(ct);
 
         var usedOverrides = overrides.Applied(vehicleUnfit, transmissionMismatch, conflict);
-        if (!documentsComplete && !student.TrainingOverrideActive && oneTimeDocumentOverride)
-            usedOverrides.Add(DrivingPermissions.OverrideStudentDocuments);
         // Uygunluk kurallarından bilerek ezilenler de aynı gerekçeyle audit'e düşer.
         var overriddenRules = violations
             .Where(x => x.OverridableWith is not null && overrides.Has(x.OverridableWith))
