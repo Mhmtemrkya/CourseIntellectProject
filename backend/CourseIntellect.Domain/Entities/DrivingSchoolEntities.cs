@@ -279,6 +279,18 @@ public sealed class DrivingAppointment : ITenantScopedEntity
 
     public Guid? CreatedByUserId { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    // ─── Otomatik tamamlanma ve yoklama (geldi/gelmedi) ───────────────────────
+    /// <summary>Randevu saati geçtiği için sistem tarafından otomatik "Tamamlandı" yapıldı mı?
+    /// (Öğretmenin değerlendirme akışıyla tamamladığı derslerde false kalır.)</summary>
+    public bool AutoCompleted { get; set; }
+
+    /// <summary>Ofis "geldi/gelmedi" işaretledi mi? Otomatik tamamlanan derste
+    /// yoklama teyidi bekler; işaretlenince true olur.</summary>
+    public bool AttendanceConfirmed { get; set; }
+
+    public Guid? AttendanceMarkedByUserId { get; set; }
+    public DateTime? AttendanceMarkedAtUtc { get; set; }
 }
 
 /// <summary>

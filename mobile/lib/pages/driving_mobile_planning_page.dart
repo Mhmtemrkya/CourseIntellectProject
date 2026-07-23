@@ -5,6 +5,7 @@ import 'package:student/i18n/app_locale.dart';
 import '../services/driving_school_api_service.dart';
 import '../services/driving_permissions_store.dart';
 import '../widgets/driving_ui.dart';
+import 'driving_today_attendance_tab.dart';
 
 class DrivingMobilePlanningPage extends StatefulWidget {
   const DrivingMobilePlanningPage({super.key});
@@ -43,7 +44,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 4, vsync: this);
+    _tabs = TabController(length: 5, vsync: this);
     _load();
   }
 
@@ -118,6 +119,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
         controller: _tabs,
         isScrollable: true,
         tabs: const [
+          Tab(icon: Icon(Icons.today_rounded), text: 'Bugün'),
           Tab(icon: Icon(Icons.calendar_month), text: 'Takvim'),
           Tab(icon: Icon(Icons.approval), text: 'Talepler'),
           Tab(icon: Icon(Icons.group_add), text: 'Kayıtlar'),
@@ -134,6 +136,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
         : TabBarView(
             controller: _tabs,
             children: [
+              const DrivingTodayAttendanceTab(),
               _calendarTab(),
               _requestsTab(),
               _recordsTab(),

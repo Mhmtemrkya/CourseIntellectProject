@@ -42,6 +42,7 @@ class DrivingPermissions {
   static const lessonViewAll = 'driving.lesson.view.all';
   static const lessonStart = 'driving.lesson.start';
   static const lessonComplete = 'driving.lesson.complete';
+  static const lessonMarkNoShow = 'driving.lesson.noshow';
   static const theoryView = 'driving.theory.view';
   static const theoryManage = 'driving.theory.manage';
   static const theoryAttendance = 'driving.theory.attendance';

@@ -14,6 +14,7 @@ public sealed class DrivingReminderJobService(
     IDrivingNotifier notifier,
     IDrivingTermAlertService termAlertService,
     IDrivingLedgerService ledgerService,
+    IDrivingAppointmentLifecycleService lifecycleService,
     ILogger<DrivingReminderJobService> logger) : IDrivingReminderJobService
 {
     /// <summary>Evrak süresi için uyarı basamakları (gün).</summary>
@@ -627,6 +628,16 @@ public sealed class DrivingReminderJobService(
             sent++;
         }
         return sent;
+    }
+
+    public async Task<int> RunAutoCompleteAppointmentsAsync(CancellationToken cancellationToken = default)
+    {
+        var total = 0;
+        await ForEachDrivingSchoolAsync(async () =>
+        {
+            total += await lifecycleService.AutoCompletePastDueForCurrentTenantAsync(cancellationToken);
+        }, "otomatik ders tamamlama", cancellationToken);
+        return total;
     }
 
     private async Task ForEachDrivingSchoolAsync(Func<Task> action, string label, CancellationToken cancellationToken)

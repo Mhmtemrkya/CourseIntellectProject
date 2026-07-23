@@ -315,10 +315,10 @@ export default function ExamSolvingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[78vh] rounded-[36px] bg-slate-950 p-10 text-white">
+      <div className="min-h-[78vh] rounded-[36px] border border-foreground/10 bg-[hsl(var(--ci-card))] p-10 text-foreground">
         <div className="flex h-full min-h-[520px] flex-col items-center justify-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-orange-400" />
-          <p className="text-slate-300">Çözüm ekranı hazırlanıyor...</p>
+          <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
+          <p className="text-muted-foreground">Çözüm ekranı hazırlanıyor...</p>
         </div>
       </div>
     );
@@ -326,14 +326,14 @@ export default function ExamSolvingPage() {
 
   if (error && !question) {
     return (
-      <div className="rounded-[36px] border border-red-400/20 bg-slate-950 p-10 text-white">
-        <button type="button" onClick={() => navigate(-1)} className="mb-8 inline-flex items-center gap-2 text-slate-300 hover:text-white">
+      <div className="rounded-[36px] border border-red-400/30 bg-[hsl(var(--ci-card))] p-10 text-foreground">
+        <button type="button" onClick={() => navigate(-1)} className="mb-8 inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Geri dön
         </button>
         <div className="mx-auto max-w-2xl rounded-[32px] border border-foreground/10 bg-foreground/5 p-8 text-center">
-          <X className="mx-auto h-12 w-12 text-red-300" />
+          <X className="mx-auto h-12 w-12 text-red-500" />
           <h1 className="mt-4 text-2xl font-black">Oturum başlatılamadı</h1>
-          <p className="mt-3 text-slate-300">{error}</p>
+          <p className="mt-3 text-muted-foreground">{error}</p>
           <button type="button" onClick={loadOrStart} className="mt-6 rounded-2xl bg-orange-500 px-6 py-3 font-bold text-white shadow-lg shadow-orange-500/25">
             Tekrar Dene
           </button>
@@ -361,7 +361,7 @@ export default function ExamSolvingPage() {
       />
 
       {requireFullscreen && !isFullscreen && examActive ? (
-        <div className="fixed left-1/2 top-4 z-50 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-amber-300/30 bg-amber-500/15 px-4 py-2 text-sm text-amber-100 backdrop-blur">
+        <div className="fixed left-1/2 top-4 z-50 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-700 backdrop-blur dark:text-amber-100">
           <Maximize className="h-4 w-4" />
           Bu sınav tam ekran gerektiriyor.
           <button type="button" onClick={enterFullscreen} className="rounded-xl bg-amber-500 px-3 py-1 text-xs font-bold text-white hover:bg-amber-600">
@@ -372,15 +372,15 @@ export default function ExamSolvingPage() {
 
       {showViolation ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur">
-          <div className="w-full max-w-md rounded-[28px] border border-red-400/30 bg-[#1a0d12] p-7 text-center text-white">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15 text-red-300">
+          <div className="w-full max-w-md rounded-[28px] border border-red-400/30 bg-[hsl(var(--ci-card))] p-7 text-center text-foreground shadow-2xl shadow-red-950/30">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15 text-red-600 dark:text-red-300">
               <ShieldAlert className="h-8 w-8" />
             </div>
             <h2 className="mt-4 text-xl font-black">Sınav ekranından ayrıldın</h2>
-            <p className="mt-2 text-sm text-slate-300">
+            <p className="mt-2 text-sm text-muted-foreground">
               Sınav sırasında başka sekme/pencereye geçmek yasaktır. Bu durum kaydedildi.
             </p>
-            <p className="mt-2 text-sm font-bold text-red-200">Uyarı sayısı: {violationCount}</p>
+            <p className="mt-2 text-sm font-bold text-red-600 dark:text-red-200">Uyarı sayısı: {violationCount}</p>
             <button type="button" onClick={() => setShowViolation(false)} className="mt-5 w-full rounded-2xl bg-orange-500 px-5 py-3 font-black text-white hover:bg-orange-600">
               Sınava Devam Et
             </button>
@@ -389,8 +389,8 @@ export default function ExamSolvingPage() {
       ) : null}
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="min-h-[82vh] overflow-hidden rounded-[36px] border border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground shadow-2xl shadow-slate-950/20">
       <div className="grid min-h-[82vh] grid-cols-[86px_minmax(0,1fr)_300px]">
-        <aside className="border-r border-foreground/10 bg-slate-950/80 p-4">
-          <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg shadow-orange-500/25">
+        <aside className="border-r border-foreground/10 bg-foreground/[0.03] p-4">
+          <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-lg shadow-orange-500/25">
             <Sparkles className="h-6 w-6" />
           </div>
           {[
@@ -398,7 +398,7 @@ export default function ExamSolvingPage() {
             [NotebookPen, 'Notlar', 'note'],
             [Grid2X2, 'Kağıt', 'solution'],
           ].map(([Icon, label, targetPanel]) => (
-            <button key={label} type="button" onClick={() => setPanel(targetPanel)} className="mb-4 flex w-full flex-col items-center gap-2 rounded-2xl px-2 py-3 text-xs text-slate-300 hover:bg-foreground/10 hover:text-white">
+            <button key={label} type="button" onClick={() => setPanel(targetPanel)} className="mb-4 flex w-full flex-col items-center gap-2 rounded-2xl px-2 py-3 text-xs text-muted-foreground hover:bg-foreground/10 hover:text-foreground">
               <Icon className="h-5 w-5" />
               {label}
             </button>
@@ -408,21 +408,21 @@ export default function ExamSolvingPage() {
         <main className="min-w-0 p-5">
           <header className="mb-5 flex items-center justify-between rounded-[28px] border border-foreground/10 bg-foreground/5 p-4 backdrop-blur">
             <div className="flex items-center gap-4">
-              <button type="button" onClick={guardedBack} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-foreground/10 bg-slate-950/60 text-slate-200 hover:bg-foreground/10">
+              <button type="button" onClick={guardedBack} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-foreground/10 bg-foreground/5 text-foreground hover:bg-foreground/10">
                 <ArrowLeft className="h-5 w-5" />
               </button>
               <div>
                 <h1 className="text-xl font-black">{session?.title}</h1>
-                <p className="text-sm text-slate-400">{session?.subject} · {session?.className || 'Çözüm Oturumu'}</p>
+                <p className="text-sm text-muted-foreground">{session?.subject} · {session?.className || 'Çözüm Oturumu'}</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-full border-4 border-orange-400 p-1 text-center text-sm font-black leading-5 text-orange-200">
+              <div className="h-14 w-14 rounded-full border-4 border-orange-400 p-1 text-center text-sm font-black leading-5 text-orange-600 dark:text-orange-200">
                 {Math.ceil(remainingSeconds / 60)}
                 <span className="block text-[10px]">dk</span>
               </div>
               <div className="min-w-[240px]">
-                <div className="mb-1 flex justify-between text-xs text-slate-400">
+                <div className="mb-1 flex justify-between text-xs text-muted-foreground">
                   <span>Süre: {formatSeconds(remainingSeconds)}</span>
                   <span>{progress}%</span>
                 </div>
@@ -437,21 +437,21 @@ export default function ExamSolvingPage() {
           </header>
 
           <div className="space-y-5">
-            <section className="rounded-[32px] border border-foreground/10 bg-slate-950/55 p-8">
+            <section className="rounded-[32px] border border-foreground/10 bg-foreground/[0.03] p-8">
               <div className="mb-5 flex flex-wrap items-center gap-3">
-                <span className="rounded-2xl bg-orange-500 px-4 py-2 text-sm font-black shadow-lg shadow-orange-500/25">Soru {currentIndex + 1}</span>
-                <span className="rounded-2xl bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-200">{question?.difficulty || 'Orta'}</span>
-                <span className="text-sm text-slate-400">{question?.subject} / {question?.topic}</span>
-                <button type="button" onClick={() => handleFlag('Marked')} className={`ml-auto rounded-2xl border px-3 py-2 text-sm ${question?.isFlagged ? 'border-orange-400 bg-orange-500/20 text-orange-100' : 'border-foreground/10 bg-foreground/5 text-slate-300'}`}>
+                <span className="rounded-2xl bg-orange-500 px-4 py-2 text-sm font-black text-white shadow-lg shadow-orange-500/25">Soru {currentIndex + 1}</span>
+                <span className="rounded-2xl bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-700 dark:text-orange-200">{question?.difficulty || 'Orta'}</span>
+                <span className="text-sm text-muted-foreground">{question?.subject} / {question?.topic}</span>
+                <button type="button" onClick={() => handleFlag('Marked')} className={`ml-auto rounded-2xl border px-3 py-2 text-sm ${question?.isFlagged ? 'border-orange-400 bg-orange-500/15 text-orange-700 dark:text-orange-100' : 'border-foreground/10 bg-foreground/5 text-muted-foreground hover:bg-foreground/10'}`}>
                   <Flag className="mr-2 inline h-4 w-4" /> İşaretle
                 </button>
               </div>
 
-              <p className="max-w-5xl text-xl font-semibold leading-9 text-slate-50">{question?.questionText}</p>
+              <p className="max-w-5xl text-xl font-semibold leading-9 text-foreground">{question?.questionText}</p>
               {imageUrl ? (
                 <img src={imageUrl} alt="Soru görseli" className="mt-5 max-h-[440px] w-full rounded-3xl border border-foreground/10 object-contain" />
               ) : (
-                <div className="mt-6 rounded-[28px] border border-foreground/10 bg-foreground/[0.03] p-10 text-center text-slate-400">
+                <div className="mt-6 rounded-[28px] border border-foreground/10 bg-foreground/[0.03] p-10 text-center text-muted-foreground">
                   Bu soruda görsel yok. Çözümünü aşağıdaki çözüm kağıdına yazabilirsin.
                 </div>
               )}
@@ -467,15 +467,15 @@ export default function ExamSolvingPage() {
                       key={`${option}-${index}`}
                       type="button"
                       onClick={() => handleAnswer(index)}
-                      className={`flex items-center rounded-2xl border px-4 py-4 text-left text-sm font-bold transition ${selected ? 'border-orange-400 bg-orange-500/20 text-orange-100 shadow-lg shadow-orange-500/15' : 'border-foreground/10 bg-foreground/5 text-slate-100 hover:border-orange-400/60'}`}
+                      className={`flex items-center rounded-2xl border px-4 py-4 text-left text-sm font-bold transition ${selected ? 'border-orange-400 bg-orange-500/15 text-orange-700 shadow-lg shadow-orange-500/15 dark:text-orange-100' : 'border-foreground/10 bg-foreground/5 text-foreground hover:border-orange-400/60'}`}
                     >
-                      <span className="mr-3 shrink-0 text-orange-300">{optionLabels[index]})</span>
+                      <span className="mr-3 shrink-0 text-orange-600 dark:text-orange-300">{optionLabels[index]})</span>
                       {optionImageUrl ? (
                         <img
                           src={optionImageUrl}
                           alt={`${optionLabels[index]} şıkkı`}
                           loading="lazy"
-                          className="max-h-40 w-auto rounded-xl border border-foreground/10 bg-white/5 object-contain"
+                          className="max-h-40 w-auto rounded-xl border border-foreground/10 bg-foreground/5 object-contain"
                         />
                       ) : (
                         <span>{raw}</span>
@@ -486,8 +486,8 @@ export default function ExamSolvingPage() {
                 </div>
               ) : (
                 <div className="mt-6 rounded-[24px] border border-foreground/10 bg-foreground/[0.035] p-4">
-                  <label className="mb-3 block text-sm font-bold text-slate-200">Cevabın</label>
-                  <textarea value={openAnswerDraft} onChange={(event) => setOpenAnswerDraft(event.target.value)} placeholder="Cevabını buraya yaz..." className="min-h-[120px] w-full resize-none rounded-2xl border border-foreground/10 bg-slate-950/65 p-4 text-white outline-none placeholder:text-slate-500 focus:border-orange-400" />
+                  <label className="mb-3 block text-sm font-bold text-foreground">Cevabın</label>
+                  <textarea value={openAnswerDraft} onChange={(event) => setOpenAnswerDraft(event.target.value)} placeholder="Cevabını buraya yaz..." className="min-h-[120px] w-full resize-none rounded-2xl border border-foreground/10 bg-background p-4 text-foreground outline-none placeholder:text-muted-foreground focus:border-orange-400" />
                   <button type="button" onClick={() => handleAnswer(-1, openAnswerDraft)} disabled={saving || !openAnswerDraft.trim()} className="mt-3 rounded-2xl bg-orange-500 px-5 py-3 font-black text-white disabled:opacity-50">
                     <Save className="mr-2 inline h-4 w-4" /> Cevabı Kaydet
                   </button>
@@ -506,7 +506,7 @@ export default function ExamSolvingPage() {
                     key={key}
                     type="button"
                     onClick={() => setPanel(key)}
-                    className={`flex-1 rounded-[20px] px-3 py-3 text-sm font-bold ${panel === key ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-slate-300 hover:bg-foreground/10'}`}
+                    className={`flex-1 rounded-[20px] px-3 py-3 text-sm font-bold ${panel === key ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-muted-foreground hover:bg-foreground/10'}`}
                   >
                     <Icon className="mr-2 inline h-4 w-4" /> {label}
                   </button>
@@ -522,26 +522,26 @@ export default function ExamSolvingPage() {
                   onSnapshot={handleSnapshot}
                 />
               ) : panel === 'note' ? (
-                <div className="rounded-[28px] border border-foreground/10 bg-slate-950/80 p-5">
+                <div className="rounded-[28px] border border-foreground/10 bg-foreground/[0.03] p-5">
                   <textarea
                     value={noteDraft}
                     onChange={(event) => setNoteDraft(event.target.value)}
                     placeholder="Bu soru için notunu yaz..."
-                    className="min-h-[360px] w-full resize-none rounded-3xl border border-foreground/10 bg-slate-900/70 p-5 text-white outline-none placeholder:text-slate-500 focus:border-orange-400"
+                    className="min-h-[360px] w-full resize-none rounded-3xl border border-foreground/10 bg-background p-5 text-foreground outline-none placeholder:text-muted-foreground focus:border-orange-400"
                   />
                   <button type="button" onClick={handleNote} className="mt-4 rounded-2xl bg-orange-500 px-5 py-3 font-black text-white">
                     <Save className="mr-2 inline h-4 w-4" /> Notu Kaydet
                   </button>
                 </div>
               ) : (
-                <div className="rounded-[28px] border border-foreground/10 bg-slate-950/80 p-5">
+                <div className="rounded-[28px] border border-foreground/10 bg-foreground/[0.03] p-5">
                   <div className="space-y-3">
                     {(question?.teacherReviews || []).length === 0 ? (
-                      <p className="rounded-2xl bg-foreground/5 p-4 text-sm text-slate-400">Henüz öğretmen yorumu yok.</p>
+                      <p className="rounded-2xl bg-foreground/5 p-4 text-sm text-muted-foreground">Henüz öğretmen yorumu yok.</p>
                     ) : question.teacherReviews.map((review) => (
                       <div key={review.id} className="rounded-2xl border border-foreground/10 bg-foreground/5 p-4">
-                        <p className="text-sm text-slate-200">{review.comment}</p>
-                        <p className="mt-2 text-xs text-slate-500">{review.teacherName}</p>
+                        <p className="text-sm text-foreground">{review.comment}</p>
+                        <p className="mt-2 text-xs text-muted-foreground">{review.teacherName}</p>
                       </div>
                     ))}
                   </div>
@@ -551,7 +551,7 @@ export default function ExamSolvingPage() {
                         value={teacherComment}
                         onChange={(event) => setTeacherComment(event.target.value)}
                         placeholder="Öğrenci çözümüne yorum ekle..."
-                        className="mt-4 min-h-[170px] w-full resize-none rounded-3xl border border-foreground/10 bg-slate-900/70 p-5 text-white outline-none placeholder:text-slate-500 focus:border-orange-400"
+                        className="mt-4 min-h-[170px] w-full resize-none rounded-3xl border border-foreground/10 bg-background p-5 text-foreground outline-none placeholder:text-muted-foreground focus:border-orange-400"
                       />
                       <button type="button" disabled={saving || !teacherComment.trim()} onClick={handleTeacherReview} className="mt-4 rounded-2xl bg-orange-500 px-5 py-3 font-black text-white disabled:opacity-50">
                         <Send className="mr-2 inline h-4 w-4" /> Yorumu Kaydet
@@ -564,12 +564,12 @@ export default function ExamSolvingPage() {
           </div>
 
           <footer className="mt-5 flex items-center justify-between rounded-[28px] border border-foreground/10 bg-foreground/5 p-4">
-            <button type="button" disabled={currentIndex === 0} onClick={() => setCurrentIndex((value) => Math.max(0, value - 1))} className="rounded-2xl border border-foreground/10 px-5 py-3 font-bold text-slate-200 disabled:opacity-40">
+            <button type="button" disabled={currentIndex === 0} onClick={() => setCurrentIndex((value) => Math.max(0, value - 1))} className="rounded-2xl border border-foreground/10 px-5 py-3 font-bold text-foreground disabled:opacity-40">
               <ArrowLeft className="mr-2 inline h-4 w-4" /> Önceki Soru
             </button>
             <div className="text-center">
               <p className="font-black">{currentIndex + 1} / {questions.length}</p>
-              <p className="text-xs text-slate-500">{autosaveLabel}</p>
+              <p className="text-xs text-muted-foreground">{autosaveLabel}</p>
             </div>
             <button type="button" disabled={currentIndex >= questions.length - 1} onClick={() => setCurrentIndex((value) => Math.min(questions.length - 1, value + 1))} className="rounded-2xl bg-orange-500 px-5 py-3 font-black text-white disabled:opacity-40">
               Sonraki Soru <ArrowRight className="ml-2 inline h-4 w-4" />
@@ -577,11 +577,11 @@ export default function ExamSolvingPage() {
           </footer>
         </main>
 
-        <aside className="border-l border-foreground/10 bg-slate-950/65 p-5">
+        <aside className="border-l border-foreground/10 bg-foreground/[0.03] p-5">
           <div className="mb-5 rounded-[28px] border border-foreground/10 bg-foreground/5 p-5">
             <div className="flex items-center justify-between">
-              <h2 className="font-black text-orange-200">Sorular</h2>
-              <FileDown className="h-5 w-5 text-slate-400" />
+              <h2 className="font-black text-orange-700 dark:text-orange-200">Sorular</h2>
+              <FileDown className="h-5 w-5 text-muted-foreground" />
             </div>
             <div className="mt-5 grid grid-cols-5 gap-3">
               {questions.map((item, index) => {
@@ -592,7 +592,7 @@ export default function ExamSolvingPage() {
                     key={item.attemptId}
                     type="button"
                     onClick={() => setCurrentIndex(index)}
-                    className={`relative h-12 rounded-2xl border text-sm font-black transition ${active ? 'border-orange-400 bg-orange-500/20 text-orange-100' : answered ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-100' : 'border-foreground/10 bg-foreground/5 text-slate-200'}`}
+                    className={`relative h-12 rounded-2xl border text-sm font-black transition ${active ? 'border-orange-400 bg-orange-500/15 text-orange-700 dark:text-orange-100' : answered ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-100' : 'border-foreground/10 bg-foreground/5 text-foreground'}`}
                   >
                     {index + 1}
                     {item.isFlagged ? <Bookmark className="absolute -right-1 -top-1 h-4 w-4 fill-orange-400 text-orange-400" /> : null}
@@ -602,19 +602,19 @@ export default function ExamSolvingPage() {
             </div>
           </div>
           <div className="rounded-[28px] border border-foreground/10 bg-foreground/5 p-5">
-            <h3 className="mb-4 font-black text-slate-100">Sınav İlerlemen</h3>
+            <h3 className="mb-4 font-black text-foreground">Sınav İlerlemen</h3>
             <div className="flex items-center gap-4">
-              <div className="flex h-24 w-24 items-center justify-center rounded-full border-[10px] border-purple-500/70 bg-purple-500/10 text-2xl font-black">
+              <div className="flex h-24 w-24 items-center justify-center rounded-full border-[10px] border-purple-500/60 bg-purple-500/10 text-2xl font-black text-foreground">
                 %{progress}
               </div>
-              <div className="space-y-3 text-sm text-slate-300">
-                <p>Toplam Soru: <b className="text-white">{questions.length}</b></p>
-                <p>Çözülen: <b className="text-emerald-300">{answeredCount}</b></p>
-                <p>Kalan: <b className="text-orange-200">{emptyCount}</b></p>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>Toplam Soru: <b className="text-foreground">{questions.length}</b></p>
+                <p>Çözülen: <b className="text-emerald-600 dark:text-emerald-300">{answeredCount}</b></p>
+                <p>Kalan: <b className="text-orange-600 dark:text-orange-200">{emptyCount}</b></p>
               </div>
             </div>
           </div>
-          {error ? <p className="mt-5 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">{error}</p> : null}
+          {error ? <p className="mt-5 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-100">{error}</p> : null}
         </aside>
       </div>
     </motion.div>
@@ -630,11 +630,11 @@ function SubmissionSuccessModal({ summary, onBackToExams, onResults }) {
         <div className="absolute -bottom-20 -left-12 h-48 w-48 rounded-full bg-orange-400/15 blur-3xl" />
         <div className="relative">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-emerald-400/15 ring-1 ring-emerald-300/30">
-            <CheckCircle2 className="h-11 w-11 text-emerald-300" />
+            <CheckCircle2 className="h-11 w-11 text-emerald-600 dark:text-emerald-300" />
           </div>
-          <p className="mt-6 text-xs font-black uppercase tracking-[0.24em] text-emerald-200/80">Teslim başarılı</p>
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.24em] text-emerald-700 dark:text-emerald-200/80">Teslim başarılı</p>
           <h2 className="mt-2 text-3xl font-black">Sınavınız öğretmeninize gönderilmiştir</h2>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-300">
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
             Cevapların kaydedildi ve sınav teslimleri ile öğrenci sınavları ekranında öğretmenin tarafından görüntülenebilir.
           </p>
           <div className="mt-6 grid grid-cols-3 gap-3 rounded-[28px] border border-foreground/10 bg-foreground/[0.04] p-3">
@@ -646,11 +646,11 @@ function SubmissionSuccessModal({ summary, onBackToExams, onResults }) {
             <button type="button" onClick={onBackToExams} className="rounded-2xl bg-orange-500 px-5 py-3 font-black text-white shadow-lg shadow-orange-500/25 hover:bg-orange-600">
               Sınavlarıma Dön
             </button>
-            <button type="button" onClick={onResults} className="rounded-2xl border border-foreground/12 bg-foreground/5 px-5 py-3 font-black text-white hover:bg-foreground/10">
+            <button type="button" onClick={onResults} className="rounded-2xl border border-foreground/15 bg-foreground/5 px-5 py-3 font-black text-foreground hover:bg-foreground/10">
               Sonuçlarım
             </button>
             {summary.report?.downloadUrl ? (
-              <a href={buildImageUrl(summary.report.downloadUrl)} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-300/30 px-5 py-3 font-black text-emerald-100 hover:bg-emerald-300/10">
+              <a href={buildImageUrl(summary.report.downloadUrl)} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-400/40 px-5 py-3 font-black text-emerald-700 hover:bg-emerald-300/10 dark:text-emerald-100">
                 <Download className="mr-2 inline h-4 w-4" /> PDF
               </a>
             ) : null}
@@ -663,9 +663,9 @@ function SubmissionSuccessModal({ summary, onBackToExams, onResults }) {
 
 function MetricBox({ label, value }) {
   return (
-    <div className="rounded-2xl bg-slate-950/70 p-4">
-      <div className="text-2xl font-black">{value}</div>
-      <div className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{label}</div>
+    <div className="rounded-2xl border border-foreground/10 bg-foreground/5 p-4">
+      <div className="text-2xl font-black text-foreground">{value}</div>
+      <div className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
     </div>
   );
 }

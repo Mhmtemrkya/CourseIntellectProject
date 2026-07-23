@@ -1,6 +1,7 @@
 import { CalendarClock } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { DrivingPage, DrivingPageHeader } from './_shared';
+import DrivingTodayAppointments from './DrivingTodayAppointments';
 import DrivingCalendar from './DrivingCalendar';
 import DrivingScheduling from './DrivingScheduling';
 import DrivingLessons from './DrivingLessons';
@@ -19,12 +20,16 @@ export default function DrivingHub() {
         description="Takvim, randevu ve dersler — tüm direksiyon işlemleri tek yerde."
         icon={CalendarClock}
       />
-      <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-3">
+      <Tabs defaultValue="today" className="w-full">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
+          <TabsTrigger value="today">Bugün</TabsTrigger>
           <TabsTrigger value="calendar">Takvim</TabsTrigger>
           <TabsTrigger value="scheduling">Randevu &amp; Öğrenci</TabsTrigger>
           <TabsTrigger value="lessons">Dersler</TabsTrigger>
         </TabsList>
+        <TabsContent value="today" className="mt-5">
+          <DrivingTodayAppointments />
+        </TabsContent>
         <TabsContent value="calendar" className="mt-5">
           <DrivingCalendar embedded />
         </TabsContent>

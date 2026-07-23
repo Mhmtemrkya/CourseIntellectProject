@@ -106,8 +106,16 @@ public sealed class DrivingMebbisExportController(
         return await query
             .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (p, s) => new { p, s.FullName, s.TcNo, s.BirthDate })
             .GroupJoin(dbContext.DrivingStudentGroups.AsNoTracking(), x => x.p.StudentGroupId, g => (Guid?)g.Id, (x, gs) => new { x.p, x.FullName, x.TcNo, x.BirthDate, gs })
-            .SelectMany(x => x.gs.DefaultIfEmpty(), (x, g) => new BaseRow(x.p, x.FullName, x.TcNo, x.BirthDate, g != null ? g.Name : string.Empty))
+            .SelectMany(x => x.gs.DefaultIfEmpty(), (x, g) => new
+            {
+                Profile = x.p,
+                x.FullName,
+                x.TcNo,
+                x.BirthDate,
+                GroupName = g != null ? g.Name : string.Empty,
+            })
             .OrderBy(x => x.Profile.StudentNumber)
+            .Select(x => new BaseRow(x.Profile, x.FullName, x.TcNo, x.BirthDate, x.GroupName))
             .ToListAsync(ct);
     }
 

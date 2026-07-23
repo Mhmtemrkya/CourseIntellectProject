@@ -2,8 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Brush, Eraser, Grid3X3, Highlighter, Maximize2, PenLine, Redo2, RotateCcw, Trash2, Undo2,
 } from 'lucide-react';
+import { useTheme } from '../../../context/ThemeContext';
 
-const COLORS = ['#fb923c', '#60a5fa', '#34d399', '#a78bfa', '#f8fafc', '#f43f5e'];
+// Kalem paleti temaya göre: son swatch "mürekkep" — koyuda açık, açıkta koyu ki
+// zeminde her zaman görünür kalsın. Diğer renkler iki temada da okunur.
+const paletteFor = (dark) => ['#f97316', '#2563eb', '#059669', '#7c3aed', dark ? '#f8fafc' : '#0f172a', '#e11d48'];
 const TOOLS = [
   { key: 'pen', label: 'Kalem', icon: PenLine },
   { key: 'highlighter', label: 'Fosfor', icon: Highlighter },
@@ -20,18 +23,29 @@ function createPoint(event, rect) {
   };
 }
 
-function drawPaper(ctx, width, height, paperMode) {
+function drawPaper(ctx, width, height, paperMode, dark) {
   ctx.clearRect(0, 0, width, height);
   const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, '#07111f');
-  gradient.addColorStop(1, '#0d1728');
+  if (dark) {
+    gradient.addColorStop(0, '#07111f');
+    gradient.addColorStop(1, '#0d1728');
+  } else {
+    // Açık temada temiz beyaz/çok açık gri kağıt.
+    gradient.addColorStop(0, '#ffffff');
+    gradient.addColorStop(1, '#f1f5f9');
+  }
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
 
   if (paperMode === 'blank') return;
 
   const size = paperMode === 'squared' ? 24 : 32;
-  ctx.strokeStyle = paperMode === 'squared' ? 'rgba(96, 165, 250, 0.12)' : 'rgba(148, 163, 184, 0.10)';
+  if (dark) {
+    ctx.strokeStyle = paperMode === 'squared' ? 'rgba(96, 165, 250, 0.12)' : 'rgba(148, 163, 184, 0.10)';
+  } else {
+    // Açık kağıtta ızgara çizgileri koyu tonda ki görünsün.
+    ctx.strokeStyle = paperMode === 'squared' ? 'rgba(37, 99, 235, 0.16)' : 'rgba(100, 116, 139, 0.20)';
+  }
   ctx.lineWidth = 1;
 
   for (let x = 0; x <= width; x += size) {
@@ -74,12 +88,14 @@ function drawStroke(ctx, stroke) {
 }
 
 export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeComplete, onSnapshot }) {
+  const { resolvedTheme } = useTheme();
+  const dark = resolvedTheme !== 'light';
   const canvasRef = useRef(null);
   const wrapperRef = useRef(null);
   const activeStrokeRef = useRef(null);
   const loadedAttemptRef = useRef(null);
   const [tool, setTool] = useState('pen');
-  const [color, setColor] = useState('#fb923c');
+  const [color, setColor] = useState('#f97316');
   const [width, setWidth] = useState(4);
   const [paperMode, setPaperMode] = useState('grid');
   const [strokes, setStrokes] = useState([]);
@@ -87,6 +103,7 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [baseImage, setBaseImage] = useState(null);
 
+  const palette = useMemo(() => paletteFor(dark), [dark]);
   const activeTool = useMemo(() => TOOLS.find((item) => item.key === tool), [tool]);
 
   const redraw = useCallback(() => {
@@ -94,7 +111,7 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
-    drawPaper(ctx, rect.width, rect.height, paperMode);
+    drawPaper(ctx, rect.width, rect.height, paperMode, dark);
     if (baseImage) {
       ctx.drawImage(baseImage, 0, 0, rect.width, rect.height);
     }
@@ -102,7 +119,7 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
     if (activeStrokeRef.current) {
       drawStroke(ctx, activeStrokeRef.current);
     }
-  }, [baseImage, paperMode, strokes]);
+  }, [baseImage, paperMode, strokes, dark]);
 
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -116,12 +133,12 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
     canvas.style.height = `${rect.height}px`;
     const ctx = canvas.getContext('2d');
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    drawPaper(ctx, rect.width, rect.height, paperMode);
+    drawPaper(ctx, rect.width, rect.height, paperMode, dark);
     if (baseImage) {
       ctx.drawImage(baseImage, 0, 0, rect.width, rect.height);
     }
     strokes.forEach((stroke) => drawStroke(ctx, stroke));
-  }, [baseImage, paperMode, strokes]);
+  }, [baseImage, paperMode, strokes, dark]);
 
   useEffect(() => {
     resizeCanvas();
@@ -224,11 +241,11 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
   }, [strokes, paperMode, redraw]);
 
   return (
-    <div className={`${isFullscreen ? 'fixed inset-4 z-50 bg-slate-950 p-4' : ''} rounded-[28px] border border-white/10 bg-slate-950/80 shadow-2xl shadow-orange-500/5`}>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-white">
+    <div className={`${isFullscreen ? 'fixed inset-4 z-50 bg-[hsl(var(--ci-card))] p-4' : ''} rounded-[28px] border border-foreground/10 bg-[hsl(var(--ci-card))] shadow-2xl shadow-orange-500/5`}>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-foreground/10 px-4 py-3 text-foreground">
         <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-orange-200/60">Çözüm Kağıdı</p>
-          <p className="text-sm text-slate-300">Mouse, trackpad, touch ve stylus destekli</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-orange-600/70 dark:text-orange-200/60">Çözüm Kağıdı</p>
+          <p className="text-sm text-muted-foreground">Mouse, trackpad, touch ve stylus destekli</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {TOOLS.map((item) => {
@@ -238,38 +255,38 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
                 key={item.key}
                 type="button"
                 onClick={() => setTool(item.key)}
-                className={`rounded-2xl border px-3 py-2 text-sm transition ${tool === item.key ? 'border-orange-400 bg-orange-500/20 text-orange-100' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                className={`rounded-2xl border px-3 py-2 text-sm transition ${tool === item.key ? 'border-orange-400 bg-orange-500/15 text-orange-700 dark:text-orange-100' : 'border-foreground/10 bg-foreground/5 text-muted-foreground hover:bg-foreground/10'}`}
                 title={item.label}
               >
                 <Icon className="h-4 w-4" />
               </button>
             );
           })}
-          <button type="button" onClick={undo} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-300 hover:bg-white/10" title="Geri al">
+          <button type="button" onClick={undo} className="rounded-2xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-muted-foreground hover:bg-foreground/10" title="Geri al">
             <Undo2 className="h-4 w-4" />
           </button>
-          <button type="button" onClick={redo} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-300 hover:bg-white/10" title="İleri al">
+          <button type="button" onClick={redo} className="rounded-2xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-muted-foreground hover:bg-foreground/10" title="İleri al">
             <Redo2 className="h-4 w-4" />
           </button>
-          <button type="button" onClick={clear} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-300 hover:bg-white/10" title="Temizle">
+          <button type="button" onClick={clear} className="rounded-2xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-muted-foreground hover:bg-foreground/10" title="Temizle">
             <Trash2 className="h-4 w-4" />
           </button>
-          <button type="button" onClick={() => setPaperMode((value) => (value === 'grid' ? 'squared' : value === 'squared' ? 'blank' : 'grid'))} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-300 hover:bg-white/10" title="Kağıt tipi">
+          <button type="button" onClick={() => setPaperMode((value) => (value === 'grid' ? 'squared' : value === 'squared' ? 'blank' : 'grid'))} className="rounded-2xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-muted-foreground hover:bg-foreground/10" title="Kağıt tipi">
             {paperMode === 'blank' ? <Brush className="h-4 w-4" /> : paperMode === 'squared' ? <Grid3X3 className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
           </button>
-          <button type="button" onClick={() => setIsFullscreen((value) => !value)} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-slate-300 hover:bg-white/10" title="Tam ekran">
+          <button type="button" onClick={() => setIsFullscreen((value) => !value)} className="rounded-2xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-muted-foreground hover:bg-foreground/10" title="Tam ekran">
             <Maximize2 className="h-4 w-4" />
           </button>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-        <span className="text-xs font-semibold text-slate-400">{activeTool?.label}</span>
-        {COLORS.map((item) => (
+        <span className="text-xs font-semibold text-muted-foreground">{activeTool?.label}</span>
+        {palette.map((item) => (
           <button
             key={item}
             type="button"
             onClick={() => setColor(item)}
-            className={`h-6 w-6 rounded-full border ${color === item ? 'border-white ring-2 ring-orange-400' : 'border-white/20'}`}
+            className={`h-6 w-6 rounded-full border ${color === item ? 'border-foreground ring-2 ring-orange-400' : 'border-foreground/20'}`}
             style={{ backgroundColor: item }}
             aria-label={`Renk ${item}`}
           />
@@ -282,10 +299,10 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
           onChange={(event) => setWidth(Number(event.target.value))}
           className="accent-orange-500"
         />
-        <span className="text-xs text-slate-400">{width}px</span>
-        {initialSnapshotUrl ? <span className="ml-auto text-xs text-emerald-300">Son kayıt yüklendi</span> : <span className="ml-auto text-xs text-slate-500">Autosave aktif</span>}
+        <span className="text-xs text-muted-foreground">{width}px</span>
+        {initialSnapshotUrl ? <span className="ml-auto text-xs text-emerald-600 dark:text-emerald-300">Son kayıt yüklendi</span> : <span className="ml-auto text-xs text-muted-foreground">Autosave aktif</span>}
       </div>
-      <div ref={wrapperRef} className={`${isFullscreen ? 'h-[calc(100vh-170px)]' : 'h-[520px]'} relative overflow-hidden rounded-b-[28px] border-t border-white/10`}>
+      <div ref={wrapperRef} className={`${isFullscreen ? 'h-[calc(100vh-170px)]' : 'h-[520px]'} relative overflow-hidden rounded-b-[28px] border-t border-foreground/10`}>
         <canvas
           ref={canvasRef}
           className="h-full w-full touch-none"

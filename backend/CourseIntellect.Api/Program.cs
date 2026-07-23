@@ -420,6 +420,12 @@ if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
     recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
         "driving-appointment-reminders", x => x.RunAppointmentRemindersAsync(CancellationToken.None), "0 12 * * *", utc);
 
+    // Bitiş saati geçmiş açık direksiyon randevularını otomatik tamamla: her 10 dk.
+    // (Ofis "Bugün" listesini açtığında da tembel tetiklenir; bu iş liste hiç
+    // açılmasa bile dakikaların işlenmesini ve mezuniyet sayımının doğru kalmasını garanti eder.)
+    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
+        "driving-auto-complete-appointments", x => x.RunAutoCompleteAppointmentsAsync(CancellationToken.None), "*/10 * * * *", utc);
+
     // Eksik evrak, azalan ders hakkı, gecikmiş ödeme: Pazartesi & Perşembe 09:00 TR.
     recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
         "driving-student-reminders", x => x.RunStudentRemindersAsync(CancellationToken.None), "0 6 * * 1,4", utc);

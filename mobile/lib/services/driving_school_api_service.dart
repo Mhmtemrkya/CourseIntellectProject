@@ -602,6 +602,19 @@ class DrivingSchoolApiService {
       (await _getList(
         '/api/driving-school/appointment-requests',
       )).cast<Map<String, dynamic>>();
+
+  // Bugünün direksiyon randevuları (saati geçen otomatik tamamlanır) + geldi/gelmedi.
+  Future<Map<String, dynamic>> todayAppointments({String? date}) => _get(
+    '/api/driving-school/appointments/today${date != null && date.isNotEmpty ? '?date=$date' : ''}',
+  );
+  Future<Map<String, dynamic>> markAttendance(
+    String id,
+    bool attended, {
+    String? note,
+  }) => _post('/api/driving-school/appointments/$id/attendance', {
+    'attended': attended,
+    if (note != null && note.isNotEmpty) 'note': note,
+  });
   Future<Map<String, dynamic>> decideAppointmentRequest(
     String id,
     Map<String, dynamic> body,

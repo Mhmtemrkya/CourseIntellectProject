@@ -276,6 +276,9 @@ export const approveDrivingAppointment = (id) => api.post(`/api/driving-school/a
 export const checkInDrivingAppointment = (id) => api.post(`/api/driving-school/appointments/${id}/check-in`, {});
 export const cancelDrivingAppointment = (id, reason) => api.post(`/api/driving-school/appointments/${id}/cancel`, { reason });
 export const markDrivingAppointmentNoShow = (id, note) => api.post(`/api/driving-school/appointments/${id}/no-show`, { note });
+// Bugünün direksiyon randevuları (otomatik tamamlanır) + geldi/gelmedi yoklaması.
+export const fetchDrivingTodayAppointments = (date) => api.get('/api/driving-school/appointments/today', { params: { date: date || undefined } });
+export const markDrivingAttendance = (id, attended, note) => api.post(`/api/driving-school/appointments/${id}/attendance`, { attended, note });
 export const rescheduleDrivingAppointment = (id, payload) => api.post(`/api/driving-school/appointments/${id}/reschedule`, payload);
 export const fetchDrivingAppointmentHistory = (id) => api.get(`/api/driving-school/appointments/${id}/history`);
 export const fetchDrivingLedger = (profileId) => api.get(`/api/driving-school/students/${profileId}/ledger`);

@@ -19,6 +19,10 @@ public interface IDrivingReminderJobService
     /// <summary>Yarınki direksiyon dersleri için öğrenci ve öğretmen hatırlatması.</summary>
     Task<int> RunAppointmentRemindersAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Bitiş saati geçmiş açık direksiyon randevularını otomatik "Tamamlandı"
+    /// yapar ve planlanan dakikayı işler (öğrenci geldi varsayımı; ofis geldi/gelmedi ile teyit eder).</summary>
+    Task<int> RunAutoCompleteAppointmentsAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Eksik/reddedilen evrak, azalan ders hakkı ve gecikmiş ödeme hatırlatmaları.</summary>
     Task<int> RunStudentRemindersAsync(CancellationToken cancellationToken = default);
 

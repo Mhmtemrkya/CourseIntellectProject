@@ -26,6 +26,7 @@ namespace CourseIntellect.Api.Controllers;
 public sealed class DrivingAppointmentsController(
     CourseIntellectDbContext dbContext,
     IDrivingLedgerService ledgerService,
+    IDrivingAppointmentLifecycleService lifecycleService,
     IDrivingAvailabilityService availabilityService,
     IDrivingNotifier notifier,
     IAuditLogService auditLogService) : ControllerBase
@@ -367,6 +368,158 @@ public sealed class DrivingAppointmentsController(
             relatedEntityType: "DrivingAppointment", relatedEntityId: appointment.Id.ToString(), cancellationToken: ct);
 
         return Ok(new { status = appointment.Status.ToString(), penaltyMinutes = penalty, remainingMinutes = balance.RemainingMinutes });
+    }
+
+    /// <summary>
+    /// Bir günün (varsayılan bugün) direksiyon randevuları. Önce bitiş saati geçmiş
+    /// açık randevular otomatik tamamlanır (dakika işlenir), sonra liste döner.
+    /// Otomatik tamamlanıp yoklaması teyit edilmemiş dersler "geldi/gelmedi" bekler.
+    /// </summary>
+    [HttpGet("appointments/today")]
+    [RequireDrivingPermission(DrivingPermissions.LessonViewAll)]
+    public async Task<IActionResult> GetTodayAppointments([FromQuery] DateOnly? date, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        // Tembel tetikleme: ofis listeyi açtığında geçmiş randevular tamamlanmış olsun.
+        await lifecycleService.AutoCompletePastDueForCurrentTenantAsync(ct);
+
+        var offset = DrivingAvailability.LocalUtcOffsetHours;
+        var localDay = date ?? DateOnly.FromDateTime(DateTime.UtcNow.AddHours(offset));
+        var startUtc = DateTime.SpecifyKind(localDay.ToDateTime(TimeOnly.MinValue).AddHours(-offset), DateTimeKind.Utc);
+        var endUtc = startUtc.AddDays(1);
+        var now = DateTime.UtcNow;
+
+        var rows = await dbContext.DrivingAppointments.AsNoTracking()
+            .Where(x => x.StartsAtUtc >= startUtc && x.StartsAtUtc < endUtc)
+            .Join(dbContext.StudentDrivingProfiles.AsNoTracking(), a => a.StudentDrivingProfileId, p => p.Id, (a, p) => new { a, p })
+            .Join(dbContext.Students.AsNoTracking(), x => x.p.StudentId, s => s.Id, (x, s) => new { x.a, x.p, studentName = s.FullName })
+            .GroupJoin(dbContext.DrivingInstructorProfiles.AsNoTracking(), x => x.a.InstructorProfileId, ip => ip.Id, (x, ips) => new { x.a, x.p, x.studentName, ips })
+            .SelectMany(x => x.ips.DefaultIfEmpty(), (x, ip) => new { x.a, x.p, x.studentName, instructorStaffId = ip != null ? (Guid?)ip.StaffId : null })
+            .GroupJoin(dbContext.Staff.AsNoTracking(), x => x.instructorStaffId, st => (Guid?)st.Id, (x, sts) => new { x.a, x.p, x.studentName, sts })
+            .SelectMany(x => x.sts.DefaultIfEmpty(), (x, st) => new { x.a, x.p, x.studentName, instructorName = st != null ? st.FullName : null })
+            .GroupJoin(dbContext.DrivingVehicles.AsNoTracking(), x => x.a.VehicleId, v => v.Id, (x, vs) => new { x.a, x.studentName, x.instructorName, vs })
+            .SelectMany(x => x.vs.DefaultIfEmpty(), (x, v) => new
+            {
+                x.a.Id,
+                x.a.StudentDrivingProfileId,
+                x.studentName,
+                x.instructorName,
+                plate = v != null ? v.PlateNumber : null,
+                x.a.StartsAtUtc,
+                x.a.EndsAtUtc,
+                x.a.Status,
+                x.a.AutoCompleted,
+                x.a.AttendanceConfirmed,
+                x.a.MeetingPoint,
+            })
+            .OrderBy(x => x.StartsAtUtc)
+            .ToListAsync(ct);
+
+        var apptIds = rows.Select(x => x.Id).ToList();
+        var chargedByAppt = await dbContext.DrivingLessons.AsNoTracking()
+            .Where(x => apptIds.Contains(x.AppointmentId))
+            .Select(x => new { x.AppointmentId, x.ChargedMinutes })
+            .ToListAsync(ct);
+        var chargedLookup = chargedByAppt.GroupBy(x => x.AppointmentId).ToDictionary(g => g.Key, g => g.Sum(x => x.ChargedMinutes));
+
+        var items = rows.Select(x => new
+        {
+            id = x.Id,
+            x.StudentDrivingProfileId,
+            x.studentName,
+            x.instructorName,
+            x.plate,
+            x.StartsAtUtc,
+            x.EndsAtUtc,
+            scheduledMinutes = Math.Max(1, (int)Math.Ceiling((x.EndsAtUtc - x.StartsAtUtc).TotalMinutes)),
+            status = x.Status.ToString(),
+            statusLabel = DrivingAppointmentStatuses.Label(x.Status),
+            x.AutoCompleted,
+            x.AttendanceConfirmed,
+            chargedMinutes = chargedLookup.GetValueOrDefault(x.Id),
+            x.MeetingPoint,
+            isPast = x.EndsAtUtc < now,
+            // Yoklama (geldi/gelmedi) yalnız otomatik tamamlanıp henüz teyit edilmemiş derste.
+            canMarkAttendance = x.AutoCompleted && !x.AttendanceConfirmed,
+        }).ToList();
+
+        return Ok(new
+        {
+            date = localDay.ToString("yyyy-MM-dd"),
+            items,
+            summary = new
+            {
+                total = items.Count,
+                completed = items.Count(x => x.status == nameof(DrivingAppointmentStatus.Completed)),
+                awaitingAttendance = items.Count(x => x.canMarkAttendance),
+                noShow = items.Count(x => x.status == nameof(DrivingAppointmentStatus.NoShow)),
+            },
+        });
+    }
+
+    /// <summary>
+    /// Otomatik tamamlanan bir direksiyon dersinin yoklamasını teyit eder.
+    /// <c>attended=true</c> (geldi): dakika işlenmiş kalır. <c>attended=false</c>
+    /// (gelmedi): ders <c>NoShow</c> olur, işlenen dakika PAKETE İADE edilir
+    /// (süreden düşülmez) ve otomatik ders kaydı silinir.
+    /// </summary>
+    [HttpPost("appointments/{id:guid}/attendance")]
+    [RequireDrivingPermission(DrivingPermissions.LessonMarkNoShow)]
+    public async Task<IActionResult> MarkAttendance(Guid id, [FromBody] MarkAttendanceRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var appointment = await dbContext.DrivingAppointments.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (appointment is null) return NotFound(new { message = "Randevu bulunamadı." });
+        if (!appointment.AutoCompleted || appointment.AttendanceConfirmed)
+            return Conflict(new { message = "Bu randevu için geldi/gelmedi teyidi beklenmiyor." });
+
+        appointment.AttendanceConfirmed = true;
+        appointment.AttendanceMarkedByUserId = CurrentUserId();
+        appointment.AttendanceMarkedAtUtc = DateTime.UtcNow;
+
+        if (request.Attended)
+        {
+            AddStatusHistory(appointment.Id, appointment.Status, appointment.Status,
+                "Öğrenci geldi (yoklama teyidi)", $"{(request.Note ?? string.Empty).Trim()}".Trim());
+            await dbContext.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            await auditLogService.LogChangeAsync("Direksiyon yoklaması: geldi", AuditCategory, "DrivingAppointment", appointment.Id.ToString(),
+                $"{appointment.StartsAtUtc:dd.MM.yyyy HH:mm} — öğrenci geldi, süre işlenmiş kaldı.",
+                null, new { attended = true }, ct);
+            return Ok(new { status = appointment.Status.ToString(), attended = true });
+        }
+
+        // Gelmedi: işlenen dakikayı iade et, otomatik ders kaydını sil, NoShow yaz.
+        var lesson = await dbContext.DrivingLessons.SingleOrDefaultAsync(x => x.AppointmentId == id, ct);
+        var refundMinutes = lesson?.ChargedMinutes ?? Math.Max(1, (int)Math.Ceiling((appointment.EndsAtUtc - appointment.StartsAtUtc).TotalMinutes));
+        var before = appointment.Status;
+        appointment.Status = DrivingAppointmentStatus.NoShow;
+
+        if (refundMinutes > 0)
+        {
+            await ledgerService.AddAsync(appointment.StudentDrivingProfileId, DrivingLedgerEntryType.RefundedMinutes, refundMinutes,
+                $"{appointment.StartsAtUtc:dd.MM.yyyy HH:mm} dersine gelmedi — otomatik işlenen süre iade edildi",
+                appointmentId: appointment.Id, reason: (request.Note ?? string.Empty).Trim(), cancellationToken: ct);
+        }
+        if (lesson is not null) dbContext.DrivingLessons.Remove(lesson);
+
+        AddStatusHistory(appointment.Id, before, DrivingAppointmentStatus.NoShow,
+            "Öğrenci gelmedi (yoklama)", $"{refundMinutes} dk pakete iade edildi, süreden düşülmedi. {(request.Note ?? string.Empty).Trim()}".Trim());
+
+        await dbContext.SaveChangesAsync(ct);
+        await ledgerService.SyncProfileCacheAsync(appointment.StudentDrivingProfileId, ct);
+        await dbContext.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+
+        var balance = await ledgerService.GetBalanceAsync(appointment.StudentDrivingProfileId, ct);
+        await auditLogService.LogChangeAsync("Direksiyon yoklaması: gelmedi", AuditCategory, "DrivingAppointment", appointment.Id.ToString(),
+            $"{appointment.StartsAtUtc:dd.MM.yyyy HH:mm} — öğrenci gelmedi, {refundMinutes} dk iade edildi.",
+            new { status = before.ToString() },
+            new { status = appointment.Status.ToString(), refundedMinutes = refundMinutes }, ct);
+
+        return Ok(new { status = appointment.Status.ToString(), refundedMinutes = refundMinutes, remainingMinutes = balance.RemainingMinutes });
     }
 
     /// <summary>
@@ -749,6 +902,8 @@ public sealed record UpdateDrivingSettingsRequest(
 public sealed record CancelAppointmentRequest(string? Reason);
 
 public sealed record MarkNoShowRequest(string? Note);
+
+public sealed record MarkAttendanceRequest(bool Attended, string? Note);
 
 public sealed record RescheduleAppointmentRequest(
     DateTime StartsAtUtc,

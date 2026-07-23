@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IEntitlementService, EntitlementService>();
         services.AddScoped<IDrivingPermissionService, DrivingPermissionService>();
         services.AddScoped<IDrivingLedgerService, DrivingLedgerService>();
+        services.AddScoped<IDrivingAppointmentLifecycleService, DrivingAppointmentLifecycleService>();
         services.AddScoped<IDrivingAvailabilityService, DrivingAvailabilityService>();
         services.AddScoped<IDrivingNotifier, DrivingNotifier>();
         services.AddScoped<IDrivingTermAlertService, DrivingTermAlertService>();
