@@ -24,6 +24,7 @@ import {
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
+import { createTypedDocumentUrl } from '../../lib/fileMime';
 import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 
 const STATUS_LABELS = {
@@ -93,7 +94,8 @@ export default function DrivingGraduation() {
     setDocumentPreview({ certificate, url: '', loading: true });
     try {
       const blob = await downloadDrivingCertificate(certificate.id);
-      const url = URL.createObjectURL(blob);
+      // Sertifika PDF'tir; MIME'i uzantıdan zorla, yoksa Tauri webview'inde iframe boş çıkar.
+      const { url } = await createTypedDocumentUrl(blob, `${certificate.documentNumber || 'mezuniyet-belgesi'}.pdf`);
       setDocumentPreview({ certificate, url, loading: false });
     } catch (error) {
       setDocumentPreview(null);
