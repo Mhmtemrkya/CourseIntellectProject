@@ -1,4 +1,5 @@
 using System.Globalization;
+using CourseIntellect.Domain.Services;
 using CourseIntellect.Application.DTOs.Analytics;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
@@ -192,35 +193,8 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
         _ => start.ToString("dd MMM", Tr),
     };
 
-    private static decimal ParseAmount(string? amount)
-    {
-        var cleaned = NormalizeMoneyNumber(amount);
-        return decimal.TryParse(cleaned, NumberStyles.Any, CultureInfo.InvariantCulture, out var value) ? value : 0;
-    }
-
-    private static string NormalizeMoneyNumber(string? amount)
-    {
-        var cleaned = new string((amount ?? string.Empty).Where(ch => char.IsDigit(ch) || ch == ',' || ch == '.' || ch == '-').ToArray());
-        var lastComma = cleaned.LastIndexOf(',');
-        var lastDot = cleaned.LastIndexOf('.');
-
-        if (lastComma >= 0 && lastDot >= 0)
-        {
-            return lastComma > lastDot
-                ? cleaned.Replace(".", string.Empty).Replace(',', '.')
-                : cleaned.Replace(",", string.Empty);
-        }
-        if (lastComma >= 0)
-        {
-            return cleaned.Replace(".", string.Empty).Replace(',', '.');
-        }
-        if (lastDot >= 0)
-        {
-            var decimals = cleaned.Length - lastDot - 1;
-            return decimals == 3 ? cleaned.Replace(".", string.Empty) : cleaned;
-        }
-        return cleaned;
-    }
+    // Para ayrıştırma tek kaynaktan (Domain/MoneyParser).
+    private static decimal ParseAmount(string? amount) => MoneyParser.Parse(amount);
 
     private sealed class MutableBucket
     {

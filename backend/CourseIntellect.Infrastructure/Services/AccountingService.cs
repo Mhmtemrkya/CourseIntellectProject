@@ -1,4 +1,5 @@
 using System.Globalization;
+using CourseIntellect.Domain.Services;
 using CourseIntellect.Application.DTOs.Accounting;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
@@ -138,6 +139,10 @@ public sealed class AccountingService(
     public async Task<AccountingCollectionDto> CreateCollectionAsync(CreateCollectionRequest request, Guid? createdByUserId = null, CancellationToken cancellationToken = default)
     {
         var amount = ParseAmount(request.Amount);
+        // Ödeme yöntemi boş/null gelebilir; tek yerde varsayılana ("Nakit") indirger ve
+        // hem kayıtta hem bildirim/audit/DTO'da aynı değeri kullanırız (aksi halde DTO'daki
+        // request.Method.Trim() null gelince tahsilat kaydedildikten sonra 500 veriyordu).
+        var method = string.IsNullOrWhiteSpace(request.Method) ? "Nakit" : request.Method.Trim();
         var payment = await studentFinanceService.RecordPaymentAsync(
             new RecordPaymentRequest(
                 request.StudentUserId,
@@ -145,15 +150,15 @@ public sealed class AccountingService(
                 null,
                 null,
                 amount,
-                string.IsNullOrWhiteSpace(request.Method) ? "Nakit" : request.Method.Trim(),
+                method,
                 request.Note?.Trim()),
             // Tahsil eden personel kaydedilsin ("kim tahsil etti"). Şube RecordPaymentAsync
             // içinde ApplyTenantContext ile aktörün şubesine damgalanır.
             createdByUserId,
             cancellationToken);
 
-        await AddNotificationAsync("Tahsilat tamamlandı", $"{request.Name} için {FormatAmount(amount)} tutarında {request.Method} tahsilatı alındı.", cancellationToken);
-        await AddAuditAsync("Tahsilat işlendi", $"{request.Name} için {request.Method} ile {FormatAmount(amount)} tutarında ödeme kaydedildi.", cancellationToken);
+        await AddNotificationAsync("Tahsilat tamamlandı", $"{request.Name} için {FormatAmount(amount)} tutarında {method} tahsilatı alındı.", cancellationToken);
+        await AddAuditAsync("Tahsilat işlendi", $"{request.Name} için {method} ile {FormatAmount(amount)} tutarında ödeme kaydedildi.", cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // Liste anında "kim, hangi şubeden" gösterebilsin diye dönen kayda da ekle
@@ -172,7 +177,7 @@ public sealed class AccountingService(
             request.Name.Trim(),
             request.ClassName?.Trim() ?? string.Empty,
             FormatAmount(amount),
-            request.Method.Trim(),
+            method,
             DateTime.Now.ToString("dd.MM.yyyy HH:mm", CultureInfo.GetCultureInfo("tr-TR")),
             payment.ReceiptNo,
             branchName,
@@ -325,13 +330,9 @@ public sealed class AccountingService(
         return DateTime.UtcNow.Date.AddMonths(1);
     }
 
-    private static decimal ParseAmount(string amount)
-    {
-        var cleaned = NormalizeMoneyNumber(amount);
-        return decimal.TryParse(cleaned, NumberStyles.Any, CultureInfo.InvariantCulture, out var value) ? value : 0;
-    }
-
-    private static string FormatAmount(decimal amount) => $"₺{amount.ToString("N2", CultureInfo.GetCultureInfo("tr-TR"))}";
+    // Para ayrıştırma/biçimleme tek kaynaktan (Domain/MoneyParser) gelir.
+    private static decimal ParseAmount(string amount) => MoneyParser.Parse(amount);
+    private static string FormatAmount(decimal amount) => MoneyParser.Format(amount);
 
     private static string NormalizeAmount(string amount)
     {
@@ -343,33 +344,6 @@ public sealed class AccountingService(
     {
         var normalized = (status ?? string.Empty).Trim().ToLowerInvariant();
         return normalized is "approved" or "onaylandı" or "onaylandi";
-    }
-
-    private static string NormalizeMoneyNumber(string? amount)
-    {
-        var cleaned = new string((amount ?? string.Empty).Where(ch => char.IsDigit(ch) || ch == ',' || ch == '.' || ch == '-').ToArray());
-        var lastComma = cleaned.LastIndexOf(',');
-        var lastDot = cleaned.LastIndexOf('.');
-
-        if (lastComma >= 0 && lastDot >= 0)
-        {
-            return lastComma > lastDot
-                ? cleaned.Replace(".", string.Empty).Replace(',', '.')
-                : cleaned.Replace(",", string.Empty);
-        }
-
-        if (lastComma >= 0)
-        {
-            return cleaned.Replace(".", string.Empty).Replace(',', '.');
-        }
-
-        if (lastDot >= 0)
-        {
-            var decimals = cleaned.Length - lastDot - 1;
-            return decimals == 3 ? cleaned.Replace(".", string.Empty) : cleaned;
-        }
-
-        return cleaned;
     }
 
     private static string TimeLabel()

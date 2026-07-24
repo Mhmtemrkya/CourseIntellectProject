@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Accounting;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
+using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
@@ -257,7 +258,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
             item.Id.ToString(),
             item.StudentName,
             request.ClassName?.Trim() ?? string.Empty,
-            $"₺{item.Amount:N2}",
+            MoneyParser.Format(item.Amount),
             item.Method,
             item.PaidAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
             item.Note));
@@ -394,19 +395,16 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     private static string CalculateNetAmount(string? totalAmount, string? rate)
     {
-        var total = ParseMoney(totalAmount);
-        var rateValue = ParsePercent(rate);
+        var total = Math.Max(0m, ParseMoney(totalAmount));
+        // Oran indirim/burs yüzdesidir; 0-100 dışına taşarsa net tutar negatife veya
+        // toplamın üstüne çıkardı. Aralığa sıkıştırıp tek biçimlendiriciden geçiririz.
+        var rateValue = Math.Clamp(ParsePercent(rate), 0m, 100m);
         var net = Math.Round(total - (total * rateValue / 100m), 2);
-        return $"₺{net:0.##}";
+        return MoneyParser.Format(net);
     }
 
-    private static decimal ParseMoney(string? value)
-    {
-        var normalized = NormalizeMoneyNumber(value);
-        return decimal.TryParse(normalized, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amount)
-            ? amount
-            : 0m;
-    }
+    // Para ayrıştırma tek kaynaktan (Domain/MoneyParser).
+    private static decimal ParseMoney(string? value) => MoneyParser.Parse(value);
 
     private static decimal ParsePercent(string? value)
     {
@@ -414,35 +412,6 @@ public sealed class AccountingController(IAccountingService accountingService, C
         return decimal.TryParse(normalized, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amount)
             ? amount
             : 0m;
-    }
-
-    private static string NormalizeMoneyNumber(string? value)
-    {
-        var cleaned = new string((value ?? "0")
-            .Where(ch => char.IsDigit(ch) || ch == ',' || ch == '.' || ch == '-')
-            .ToArray());
-        var lastComma = cleaned.LastIndexOf(',');
-        var lastDot = cleaned.LastIndexOf('.');
-
-        if (lastComma >= 0 && lastDot >= 0)
-        {
-            return lastComma > lastDot
-                ? cleaned.Replace(".", string.Empty).Replace(',', '.')
-                : cleaned.Replace(",", string.Empty);
-        }
-
-        if (lastComma >= 0)
-        {
-            return cleaned.Replace(".", string.Empty).Replace(',', '.');
-        }
-
-        if (lastDot >= 0)
-        {
-            var decimals = cleaned.Length - lastDot - 1;
-            return decimals == 3 ? cleaned.Replace(".", string.Empty) : cleaned;
-        }
-
-        return cleaned;
     }
 
     private async Task RecalculateInstallmentPaymentsAsync(
