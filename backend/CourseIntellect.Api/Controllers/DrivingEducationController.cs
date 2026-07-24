@@ -121,12 +121,21 @@ public sealed class DrivingEducationController(
     public async Task<IActionResult> CreateTheoryClass([FromBody] SaveTheoryClassRequest request, CancellationToken ct)
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
-        if (request.Name.Trim().Length is < 3 or > 150 || request.Capacity is < 1 or > 100 || request.EndsAtUtc <= request.StartsAtUtc)
-            return BadRequest(new { message = "Sınıf adı, kapasite veya tarih aralığı geçersiz." });
-        if (!await db.Staff.AnyAsync(x => x.Id == request.InstructorStaffId, ct)) return BadRequest(new { message = "Öğretmen bulunamadı." });
+
+        // Her koşula ayrı, anlaşılır mesaj (eski tek "geçersiz" mesajı hangi alanın hatalı
+        // olduğunu göstermiyordu); Name/LicenseClass null gelirse .Trim() 500 fırlatıyordu.
+        var name = request.Name?.Trim() ?? string.Empty;
+        var licenseClass = request.LicenseClass?.Trim().ToUpperInvariant() ?? string.Empty;
+        if (name.Length is < 3 or > 150) return BadRequest(new { message = "Sınıf adı 3-150 karakter olmalıdır." });
+        if (licenseClass.Length is < 1 or > 20) return BadRequest(new { message = "Ehliyet sınıfı zorunludur." });
+        if (request.Capacity is < 1 or > 100) return BadRequest(new { message = "Kapasite 1-100 kişi arasında olmalıdır." });
+        if (request.EndsAtUtc <= request.StartsAtUtc) return BadRequest(new { message = "Bitiş tarihi başlangıç tarihinden sonra olmalıdır." });
+        if (request.InstructorStaffId == Guid.Empty) return BadRequest(new { message = "Lütfen bir öğretmen seçin." });
+        if (!await db.Staff.AnyAsync(x => x.Id == request.InstructorStaffId, ct)) return BadRequest(new { message = "Seçilen öğretmen bulunamadı; listeyi yenileyin." });
+
         var entity = new DrivingTheoryClass
         {
-            Name = request.Name.Trim(), LicenseClass = request.LicenseClass.Trim().ToUpperInvariant(), InstructorStaffId = request.InstructorStaffId,
+            Name = name, LicenseClass = licenseClass, InstructorStaffId = request.InstructorStaffId,
             Capacity = request.Capacity, StartsAtUtc = request.StartsAtUtc, EndsAtUtc = request.EndsAtUtc, Room = request.Room?.Trim() ?? string.Empty,
         };
         db.DrivingTheoryClasses.Add(entity); await db.SaveChangesAsync(ct);
@@ -144,13 +153,34 @@ public sealed class DrivingEducationController(
         var distinct = request.StudentProfileIds.Distinct().ToList();
         var existing = await db.DrivingTheoryEnrollments.Where(x => x.TheoryClassId == id).Select(x => x.StudentDrivingProfileId).ToListAsync(ct);
         var additions = distinct.Except(existing).ToList();
-        if (existing.Count + additions.Count > group.Capacity) return Conflict(new { message = "Sınıf kapasitesi aşılamaz." });
+        if (additions.Count == 0) return BadRequest(new { message = "Eklenecek yeni kursiyer yok; seçilenler zaten bu sınıfta." });
+        if (existing.Count + additions.Count > group.Capacity) return Conflict(new { message = $"Sınıf kapasitesi aşılamaz ({group.Capacity} kişilik). Boş kontenjan: {Math.Max(0, group.Capacity - existing.Count)}." });
+
         var students = await db.StudentDrivingProfiles.Where(x => additions.Contains(x.Id)).ToListAsync(ct);
-        if (students.Count != additions.Count || students.Any(x => !x.LicenseClass.Equals(group.LicenseClass, StringComparison.OrdinalIgnoreCase) || x.Status is not (DrivingStudentStatus.Active or DrivingStudentStatus.TheoryOngoing)))
-            return BadRequest(new { message = "Öğrencilerden biri bulunamadı, evrakları tamam değil veya ehliyet sınıfı uyuşmuyor." });
+        var names = await db.Students.AsNoTracking().Where(s => students.Select(p => p.StudentId).Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.FullName, ct);
+        string NameOf(StudentDrivingProfile p) => names.TryGetValue(p.StudentId, out var n) && !string.IsNullOrWhiteSpace(n) ? n : "Kursiyer";
+
+        // Her kursiyer için ayrı, anlaşılır gerekçe döneriz; "biri hatalı" gibi genel mesaj vermeyiz.
+        var problems = new List<string>();
+        var missingIds = additions.Where(pid => students.All(p => p.Id != pid)).ToList();
+        if (missingIds.Count > 0) problems.Add($"{missingIds.Count} kursiyer bulunamadı (listeyi yenileyin).");
+        foreach (var p in students)
+        {
+            if (!p.LicenseClass.Equals(group.LicenseClass, StringComparison.OrdinalIgnoreCase))
+                problems.Add($"{NameOf(p)}: ehliyet sınıfı ({p.LicenseClass}) sınıfın sınıfı ({group.LicenseClass}) ile uyuşmuyor.");
+            else if (!DrivingStudentStatuses.TheoryEnrollable.Contains(p.Status))
+                problems.Add($"{NameOf(p)}: durumu ({DrivingStudentStatusLabels.Of(p.Status)}) teorik sınıfa atamaya uygun değil.");
+        }
+        if (problems.Count > 0) return BadRequest(new { message = string.Join(" ", problems.Distinct().Take(6)) });
+
         db.DrivingTheoryEnrollments.AddRange(additions.Select(studentId => new DrivingTheoryEnrollment { TheoryClassId = id, StudentDrivingProfileId = studentId }));
-        foreach (var student in students.Where(x => x.Status == DrivingStudentStatus.Active)) student.Status = DrivingStudentStatus.TheoryOngoing;
+        // Teoriye başlamamış (yeni kayıt/evrak bekleyen/aktif) kursiyerler teorik eğitime alınır.
+        foreach (var student in students.Where(x => x.Status is DrivingStudentStatus.PreRegistered or DrivingStudentStatus.DocumentsPending or DrivingStudentStatus.Active))
+            student.Status = DrivingStudentStatus.TheoryOngoing;
         await db.SaveChangesAsync(ct);
+        await audit.LogChangeAsync("Kursiyerler teorik sınıfa atandı", AuditCategory, nameof(DrivingTheoryClass), id.ToString(),
+            $"{group.Name}: {additions.Count} kursiyer eklendi.", null, new { classId = id, enrolled = additions.Count }, ct);
         return Ok(new { enrolled = additions.Count, total = existing.Count + additions.Count });
     }
 

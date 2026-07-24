@@ -47,6 +47,20 @@ public static class DrivingStudentStatuses
         DrivingStudentStatus.GraduationPending,
     };
 
+    /// <summary>
+    /// Teorik sınıfa/döneme atanabilecek durumlar. Yeni kayıt (evrakları henüz onaylanmamış)
+    /// kursiyerler de dahildir; teoriye başlamak için evrak onayı beklenmez. Teorik aşamayı
+    /// çoktan geçmiş (PracticeOngoing/ExamPending/GraduationPending) veya kurstan ayrılmış
+    /// adaylar dışarıda kalır.
+    /// </summary>
+    public static readonly IReadOnlySet<DrivingStudentStatus> TheoryEnrollable = new HashSet<DrivingStudentStatus>
+    {
+        DrivingStudentStatus.PreRegistered,
+        DrivingStudentStatus.DocumentsPending,
+        DrivingStudentStatus.Active,
+        DrivingStudentStatus.TheoryOngoing,
+    };
+
     /// <summary>Direksiyon randevusu alınabilecek durumlar — dosyası eksik veya askıdaki aday randevuya giremez.</summary>
     public static readonly IReadOnlySet<DrivingStudentStatus> Schedulable = new HashSet<DrivingStudentStatus>
     {

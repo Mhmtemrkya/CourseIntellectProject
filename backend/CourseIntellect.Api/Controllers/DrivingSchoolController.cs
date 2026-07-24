@@ -807,15 +807,6 @@ public sealed class DrivingSchoolController(
             .ToListAsync(ct);
         var attemptsByStudent = attempts.ToLookup(x => x.StudentDrivingProfileId);
 
-        var statusLabels = new Dictionary<DrivingStudentStatus, string>
-        {
-            [DrivingStudentStatus.PreRegistered] = "Ön kayıt", [DrivingStudentStatus.DocumentsPending] = "Evrak bekliyor",
-            [DrivingStudentStatus.Active] = "Aktif", [DrivingStudentStatus.TheoryOngoing] = "Teorik eğitimde",
-            [DrivingStudentStatus.PracticeOngoing] = "Direksiyonda", [DrivingStudentStatus.ExamPending] = "Sınav bekliyor",
-            [DrivingStudentStatus.GraduationPending] = "Mezuniyet onayı", [DrivingStudentStatus.Graduated] = "Mezun",
-            [DrivingStudentStatus.Suspended] = "Askıda", [DrivingStudentStatus.Cancelled] = "İptal",
-        };
-
         var rows = students.Select(student =>
         {
             var own = attemptsByStudent[student.Id].ToList();
@@ -838,7 +829,7 @@ public sealed class DrivingSchoolController(
             {
                 student.StudentNumber,
                 student.FullName,
-                status = statusLabels.GetValueOrDefault(student.Status, student.Status.ToString()),
+                status = DrivingStudentStatusLabels.Of(student.Status),
                 theoryAttempts = $"{theoryUsed}/{DrivingExamRules.MaxAttempts}",
                 practiceAttempts = $"{practiceUsed}/{DrivingExamRules.MaxAttempts}",
                 forfeited,
