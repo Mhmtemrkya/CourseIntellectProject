@@ -37,6 +37,7 @@ import {
 } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 import { isUserPassive } from '../../lib/userStatus';
+import { getInstitutionType } from '../../lib/institutionType';
 import { mergeBranches, readSavedStaffBranches, staffBranchConfigurationPayload } from '../../lib/staffBranches';
 import {
   isValidEmail,
@@ -73,6 +74,20 @@ const staffRoleFilters = [
   ...roles,
   { value: 'Accounting', label: 'Muhasebe' },
 ];
+
+// Sürücü kursu personeli: yalnız bu 4 rol seçilebilir. "Sekreter" backend'de ayrı
+// bir rol değildir → Administrative'e eşlenir (sürücü izin sisteminde Secretary).
+const drivingRoles = [
+  { value: 'Teacher', label: 'Öğretmen' },
+  { value: 'Secretary', label: 'Sekreter' },
+  { value: 'BranchManager', label: 'Şube Müdürü' },
+  { value: 'Administrative', label: 'İdari Personel' },
+];
+const drivingRoleValues = drivingRoles.map((r) => r.value);
+// Sürücü kursunda öğretmen branşı yalnız bu ikisi olabilir. Direksiyon/teorik
+// AYRIMI izin sisteminde DrivingInstructorProfile varlığından çözülür (Atama &
+// Kurallar ekranı) — burada seçilen değer branş etiketi olarak saklanır.
+const drivingTeacherBranches = ['Direksiyon Öğretmeni', 'Teorik Öğretmen'];
 
 const branchOptions = [
   'Matematik', 'Fizik', 'Kimya', 'Biyoloji',
@@ -137,6 +152,21 @@ export default function AdminStaffRegistration() {
   const [editForm, setEditForm] = useState({ role: '', branchId: '', customRoleId: '' });
   const [loading, setLoading] = useState(true);
   const [credentials, setCredentials] = useState(null);
+  const [isDrivingSchool, setIsDrivingSchool] = useState(false);
+
+  // Kurum türü sürücü kursuysa rol ve öğretmen branşı listeleri daraltılır.
+  useEffect(() => {
+    getInstitutionType()
+      .then((type) => setIsDrivingSchool(type === 'DrivingSchool'))
+      .catch(() => {});
+  }, []);
+
+  // Sürücü kursuna geçilince, seçili rol izinli 4 rolden biri değilse Öğretmen'e çek.
+  useEffect(() => {
+    if (isDrivingSchool && !drivingRoleValues.includes(form.role)) {
+      setForm((prev) => ({ ...prev, role: 'Teacher', departmentOrBranch: '' }));
+    }
+  }, [isDrivingSchool, form.role]);
 
   const loadRecent = useCallback(async () => {
     try {
@@ -173,6 +203,7 @@ export default function AdminStaffRegistration() {
             departmentOrBranch: value === 'Cafeteria' ? 'Yemekhane'
               : value === 'ServiceDriver' ? 'Servis Şoförü'
               : value === 'BranchManager' ? 'Şube Yönetimi'
+              : value === 'Secretary' ? 'Sekreter'
               : value === 'Administrative' ? 'İdari Personel'
               : String(value).startsWith('custom:')
                 ? (customRoles.find((r) => `custom:${r.id}` === value)?.name || 'Özel Rol')
@@ -228,9 +259,11 @@ export default function AdminStaffRegistration() {
       const selectedCustomRole = form.role.startsWith('custom:')
         ? customRoles.find((r) => `custom:${r.id}` === form.role)
         : null;
+      // "Secretary" backend'de ayrı rol değil; Administrative olarak gider
+      // (sürücü izin sisteminde bu rol Secretary'e çözülür).
       const backendRole = selectedCustomRole
         ? selectedCustomRole.baseRole
-        : form.role === 'ServiceDriver' ? 'Administrative' : form.role;
+        : (form.role === 'ServiceDriver' || form.role === 'Secretary') ? 'Administrative' : form.role;
       const departmentOrBranch = form.role === 'ServiceDriver' ? 'Servis Şoförü' : form.departmentOrBranch;
       const response = await createStaff({
         fullName: form.fullName.trim(),
@@ -288,6 +321,10 @@ export default function AdminStaffRegistration() {
         ? 'Servis Şoförü'
         : form.role === 'Cafeteria'
         ? 'Yemekhaneci'
+        : form.role === 'Secretary'
+        ? 'Sekreter'
+        : form.role === 'BranchManager'
+        ? 'Şube Müdürü'
         : form.role === 'Administrative' ? 'İdari Personel' : 'Öğretmen';
       const fullName = response?.fullName || form.fullName.trim();
       setCredentials({
@@ -373,9 +410,13 @@ export default function AdminStaffRegistration() {
     ...savedBranches,
     ...allStaff.filter((item) => item.role === 'Teacher').map((item) => item.departmentOrBranch).filter(Boolean),
   ]);
-  const branchList = form.role === 'Cafeteria'
-    ? cafeteriaBranches
-    : form.role === 'Administrative' || form.role === 'ServiceDriver' ? administrativeBranches : teacherBranches;
+  // Sürücü kursunda: rol listesi 4 rolle, öğretmen branşı 2 seçenekle sınırlanır.
+  const roleOptions = isDrivingSchool ? drivingRoles : roles;
+  const branchList = isDrivingSchool && form.role === 'Teacher'
+    ? drivingTeacherBranches
+    : form.role === 'Cafeteria'
+      ? cafeteriaBranches
+      : form.role === 'Administrative' || form.role === 'ServiceDriver' ? administrativeBranches : teacherBranches;
   const isServiceDriver = form.role === 'ServiceDriver';
 
   const createTeacherBranch = async (name) => {
@@ -428,10 +469,11 @@ export default function AdminStaffRegistration() {
                   <Select value={form.role} onValueChange={(v) => handleChange('role', v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {roles.map((r) => (
+                      {roleOptions.map((r) => (
                         <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                       ))}
-                      {customRoles.map((r) => (
+                      {/* Sürücü kursunda yalnız 4 sabit rol; özel roller gizlenir. */}
+                      {!isDrivingSchool && customRoles.map((r) => (
                         <SelectItem key={r.id} value={`custom:${r.id}`}>{r.name} (özel rol)</SelectItem>
                       ))}
                     </SelectContent>
@@ -445,6 +487,7 @@ export default function AdminStaffRegistration() {
                     onValueChange={(value) => handleChange('departmentOrBranch', value)}
                     options={branchList}
                     onCreate={createTeacherBranch}
+                    allowCreate={!isDrivingSchool}
                   />
                 ) : null}
                 {branches.length > 0 ? (
@@ -490,7 +533,8 @@ export default function AdminStaffRegistration() {
                   <Label>Kampüs</Label>
                   <Input value={form.campus} onChange={(e) => handleChange('campus', e.target.value)} />
                 </div>
-                {form.role === 'Teacher' && (
+                {/* Sınıf öğretmenliği okula özgü; sürücü kursunda gösterilmez. */}
+                {form.role === 'Teacher' && !isDrivingSchool && (
                   <div>
                     <Label>Sınıf Öğretmenliği (opsiyonel)</Label>
                     <Input value={form.homeroomClass} onChange={(e) => handleChange('homeroomClass', e.target.value)} placeholder="Örn: 9-A" />

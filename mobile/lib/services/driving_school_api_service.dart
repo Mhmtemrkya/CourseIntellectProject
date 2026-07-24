@@ -109,6 +109,11 @@ class DrivingSchoolApiService {
 
   Future<bool> isAvailable() async =>
       (await _get('/api/driving-school/status'))['available'] == true;
+  Future<String> institutionType() async =>
+      (await _get(
+        '/api/driving-school/status',
+      ))['institutionType']?.toString() ??
+      '';
   Future<Map<String, dynamic>> me() => _get('/api/driving-school/me');
   Future<Map<String, dynamic>> myPermissions() =>
       _get('/api/driving-school/permissions/me');

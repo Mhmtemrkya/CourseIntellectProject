@@ -6,6 +6,7 @@ import '../utils/input_formatters.dart';
 
 import '../services/admin_directory_api_service.dart';
 import '../services/admin_workflow_api_service.dart';
+import '../services/driving_school_api_service.dart';
 import '../services/auth_session_store.dart';
 import '../services/credentials_pdf_service.dart';
 import '../services/registration_api_service.dart';
@@ -74,6 +75,8 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   String _teacherMaritalStatus = 'Bekar';
   String _personnelMaritalStatus = 'Bekar';
   bool _saving = false;
+  // Sürücü kursuysa rol ve öğretmen branşı listeleri daraltılır.
+  bool _isDrivingSchool = false;
 
   @override
   void initState() {
@@ -83,6 +86,34 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     _loadBranches();
     _loadStaff();
     _loadCustomRoles();
+    _loadInstitutionType();
+  }
+
+  Future<void> _loadInstitutionType() async {
+    try {
+      final type = await DrivingSchoolApiService.instance.institutionType();
+      if (!mounted) return;
+      setState(() {
+        _isDrivingSchool = type == 'DrivingSchool';
+        if (_isDrivingSchool) {
+          // Sürücü kursu varsayılanları: öğretmen branşı direksiyon, personel sekreter.
+          if (_teacherBranch != 'Direksiyon Öğretmeni' &&
+              _teacherBranch != 'Teorik Öğretmen') {
+            _teacherBranch = 'Direksiyon Öğretmeni';
+          }
+          if (![
+            'Secretary',
+            'BranchManager',
+            'Administrative',
+          ].contains(_personnelRole)) {
+            _personnelRole = 'Secretary';
+            _personnelDepartment = 'Sekreter';
+          }
+        }
+      });
+    } catch (_) {
+      /* kurum türü okunamazsa okul varsayılanları kalır */
+    }
   }
 
   Future<void> _loadCustomRoles() async {
@@ -115,7 +146,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
         return t == 'şube' || t == 'sube' || t == 'kampüs' || t == 'kampus';
       }).toList();
       if (!mounted) return;
-      setState(() => _branches = branchUnits.isNotEmpty ? branchUnits : activeUnits);
+      setState(
+        () => _branches = branchUnits.isNotEmpty ? branchUnits : activeUnits,
+      );
     } catch (_) {
       /* şube yoksa alan gizli kalır */
     }
@@ -190,7 +223,8 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
           AdminHeroCard(
             eyebrow: 'İnsan kaynağı kayıt merkezi',
             title:
-                'Öğretmen, idari personel ve yemekhaneci profillerini kurumsal standartta oluşturun.'.tr,
+                'Öğretmen, idari personel ve yemekhaneci profillerini kurumsal standartta oluşturun.'
+                    .tr,
             description:
                 'Branş, departman, kampüs ve iletişim bilgileri tek akışta toplanır. Öğretmen hesapları için sistem giriş bilgisi otomatik üretilir.',
             colors: [Color(0xFF0F172A), Color(0xFF7C3AED)],
@@ -278,21 +312,35 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       labelText: 'Branş'.tr,
                       border: OutlineInputBorder(),
                     ),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'Matematik',
-                        child: Text('Matematik'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Fen Bilimleri',
-                        child: Text('Fen Bilimleri'),
-                      ),
-                      DropdownMenuItem(value: 'Türkçe', child: Text('Türkçe'.tr)),
-                      DropdownMenuItem(
-                        value: 'İngilizce',
-                        child: Text('İngilizce'.tr),
-                      ),
-                    ],
+                    items: _isDrivingSchool
+                        ? const [
+                            DropdownMenuItem(
+                              value: 'Direksiyon Öğretmeni',
+                              child: Text('Direksiyon Öğretmeni'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Teorik Öğretmen',
+                              child: Text('Teorik Öğretmen'),
+                            ),
+                          ]
+                        : [
+                            DropdownMenuItem(
+                              value: 'Matematik',
+                              child: Text('Matematik'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Fen Bilimleri',
+                              child: Text('Fen Bilimleri'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Türkçe',
+                              child: Text('Türkçe'.tr),
+                            ),
+                            DropdownMenuItem(
+                              value: 'İngilizce',
+                              child: Text('İngilizce'.tr),
+                            ),
+                          ],
                     onChanged: (value) => setState(
                       () => _teacherBranch = value ?? _teacherBranch,
                     ),
@@ -342,55 +390,58 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _teacherHomeroomClass,
-              decoration: InputDecoration(
-                labelText: 'Sınıf Öğretmenliği'.tr,
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                DropdownMenuItem(
-                  value: 'Sınıf öğretmenliği yok',
-                  child: Text('Sınıf öğretmenliği yok'.tr),
+            // Sınıf öğretmenliği ve ders girdiği sınıflar okula özgü; sürücü kursunda gizli.
+            if (!_isDrivingSchool) ...[
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _teacherHomeroomClass,
+                decoration: InputDecoration(
+                  labelText: 'Sınıf Öğretmenliği'.tr,
+                  border: OutlineInputBorder(),
                 ),
-                ..._classOptions.map(
-                  (item) => DropdownMenuItem(value: item, child: Text(item)),
+                items: [
+                  DropdownMenuItem(
+                    value: 'Sınıf öğretmenliği yok',
+                    child: Text('Sınıf öğretmenliği yok'.tr),
+                  ),
+                  ..._classOptions.map(
+                    (item) => DropdownMenuItem(value: item, child: Text(item)),
+                  ),
+                ],
+                onChanged: (value) => setState(
+                  () => _teacherHomeroomClass = value ?? _teacherHomeroomClass,
                 ),
-              ],
-              onChanged: (value) => setState(
-                () => _teacherHomeroomClass = value ?? _teacherHomeroomClass,
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Ders Girdiği Sınıflar'.tr,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _classOptions
-                  .map(
-                    (className) => FilterChip(
-                      selected: _teacherAssignedClasses.contains(className),
-                      label: Text(className),
-                      onSelected: (selected) {
-                        setState(() {
-                          if (selected) {
-                            _teacherAssignedClasses.add(className);
-                          } else {
-                            _teacherAssignedClasses.remove(className);
-                          }
-                        });
-                      },
-                    ),
-                  )
-                  .toList(),
-            ),
+              const SizedBox(height: 12),
+              Text(
+                'Ders Girdiği Sınıflar'.tr,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _classOptions
+                    .map(
+                      (className) => FilterChip(
+                        selected: _teacherAssignedClasses.contains(className),
+                        label: Text(className),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _teacherAssignedClasses.add(className);
+                            } else {
+                              _teacherAssignedClasses.remove(className);
+                            }
+                          });
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
             const SizedBox(height: 12),
             Row(
               children: [
@@ -473,30 +524,47 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 labelText: 'Personel Rolü'.tr,
                 border: OutlineInputBorder(),
               ),
-              items: [
-                DropdownMenuItem(
-                  value: 'BranchManager',
-                  child: Text('Şube Müdürü'.tr),
-                ),
-                DropdownMenuItem(
-                  value: 'Administrative',
-                  child: Text('İdari Personel'.tr),
-                ),
-                DropdownMenuItem(
-                  value: 'Cafeteria',
-                  child: Text('Yemekhaneci'),
-                ),
-                DropdownMenuItem(
-                  value: 'ServiceDriver',
-                  child: Text('Servis Şoförü'.tr),
-                ),
-                ..._customRoles.map(
-                  (r) => DropdownMenuItem(
-                    value: 'custom:${r['id']}',
-                    child: Text('${r['name']} (${'özel rol'.tr})'),
-                  ),
-                ),
-              ],
+              items: _isDrivingSchool
+                  // Sürücü kursu: yalnız Sekreter / Şube Müdürü / İdari Personel.
+                  // (Öğretmen ayrı sekmede; Yemekhaneci/Servis/özel rol gizli.)
+                  ? [
+                      DropdownMenuItem(
+                        value: 'Secretary',
+                        child: Text('Sekreter'.tr),
+                      ),
+                      DropdownMenuItem(
+                        value: 'BranchManager',
+                        child: Text('Şube Müdürü'.tr),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Administrative',
+                        child: Text('İdari Personel'.tr),
+                      ),
+                    ]
+                  : [
+                      DropdownMenuItem(
+                        value: 'BranchManager',
+                        child: Text('Şube Müdürü'.tr),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Administrative',
+                        child: Text('İdari Personel'.tr),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Cafeteria',
+                        child: Text('Yemekhaneci'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ServiceDriver',
+                        child: Text('Servis Şoförü'.tr),
+                      ),
+                      ..._customRoles.map(
+                        (r) => DropdownMenuItem(
+                          value: 'custom:${r['id']}',
+                          child: Text('${r['name']} (${'özel rol'.tr})'),
+                        ),
+                      ),
+                    ],
               onChanged: (value) {
                 if (value == null) return;
                 setState(() {
@@ -507,12 +575,14 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       ? 'Servis Şoförü'
                       : value == 'BranchManager'
                       ? 'Şube Yönetimi'
+                      : value == 'Secretary'
+                      ? 'Sekreter'
                       : value.startsWith('custom:')
                       ? (_customRoles
-                              .where((r) => 'custom:${r['id']}' == value)
-                              .firstOrNull?['name']
-                              ?.toString() ??
-                          'Özel Rol')
+                                .where((r) => 'custom:${r['id']}' == value)
+                                .firstOrNull?['name']
+                                ?.toString() ??
+                            'Özel Rol')
                       : 'Öğrenci Isleri';
                 });
               },
@@ -872,7 +942,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       ('ServiceDriver', 'Servis Şoförü'),
       ('Cafeteria', 'Yemekhaneci'),
     ];
-    final selected = roles.firstWhere((r) => r.$1 == _staffRoleFilter, orElse: () => roles.first);
+    final selected = roles.firstWhere(
+      (r) => r.$1 == _staffRoleFilter,
+      orElse: () => roles.first,
+    );
     String norm(String v) => v.trim().toLowerCase();
     final filtered = _allStaff.where((s) {
       final role = norm(s.role);
@@ -896,7 +969,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             }).toList(),
           ),
           const SizedBox(height: 12),
-          Text('${selected.$2} • ${filtered.length} kişi', style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(
+            '${selected.$2} • ${filtered.length} kişi',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 8),
           if (filtered.isEmpty)
             Text('Bu rolde kayıtlı personel yok.'.tr)
@@ -908,10 +984,16 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                   children: [
                     CircleAvatar(
                       radius: 16,
-                      backgroundColor: const Color(0xFF7C3AED).withValues(alpha: 0.12),
+                      backgroundColor: const Color(
+                        0xFF7C3AED,
+                      ).withValues(alpha: 0.12),
                       child: Text(
                         s.fullName.isEmpty ? '?' : s.fullName.characters.first,
-                        style: const TextStyle(color: Color(0xFF7C3AED), fontWeight: FontWeight.w800, fontSize: 13),
+                        style: const TextStyle(
+                          color: Color(0xFF7C3AED),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -919,9 +1001,15 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(s.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          Text(
+                            s.fullName,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
                           if (s.departmentOrBranch.isNotEmpty)
-                            Text(s.departmentOrBranch, style: Theme.of(context).textTheme.bodySmall),
+                            Text(
+                              s.departmentOrBranch,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                         ],
                       ),
                     ),
@@ -976,7 +1064,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
         maritalStatus: _teacherMaritalStatus,
         childCount: int.tryParse(_teacherChildCountController.text.trim()) ?? 0,
         note: _teacherNoteController.text.trim(),
-        branchId: (_branchId != null && _branchId!.isNotEmpty) ? _branchId : null,
+        branchId: (_branchId != null && _branchId!.isNotEmpty)
+            ? _branchId
+            : null,
       );
       if (!mounted) return;
       setState(() => _saving = false);
@@ -1026,11 +1116,15 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       final isServiceDriver = _personnelRole == 'ServiceDriver';
       // Özel rol: taban rolü backend'e, kimliği customRoleId olarak gider.
       final customRole = _personnelRole.startsWith('custom:')
-          ? _customRoles.where((r) => 'custom:${r['id']}' == _personnelRole).firstOrNull
+          ? _customRoles
+                .where((r) => 'custom:${r['id']}' == _personnelRole)
+                .firstOrNull
           : null;
+      // "Secretary" backend'de ayrı rol değil; Administrative olarak gider
+      // (sürücü izin sisteminde Secretary'e çözülür).
       final backendRole = customRole != null
           ? customRole['baseRole'].toString()
-          : isServiceDriver
+          : (isServiceDriver || _personnelRole == 'Secretary')
           ? 'Administrative'
           : _personnelRole;
       final department = isServiceDriver
@@ -1052,7 +1146,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
         childCount:
             int.tryParse(_personnelChildCountController.text.trim()) ?? 0,
         note: _personnelNoteController.text.trim(),
-        branchId: (_branchId != null && _branchId!.isNotEmpty) ? _branchId : null,
+        branchId: (_branchId != null && _branchId!.isNotEmpty)
+            ? _branchId
+            : null,
         customRoleId: customRole?['id']?.toString(),
       );
       createdStaffUserId = credentials.userId;
@@ -1107,6 +1203,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             ? 'Servis Şoförü'
             : _personnelRole == 'Cafeteria'
             ? 'Yemekhaneci'
+            : _personnelRole == 'Secretary'
+            ? 'Sekreter'
+            : _personnelRole == 'BranchManager'
+            ? 'Şube Müdürü'
             : 'İdari Personel',
         description: isServiceDriver
             ? 'Şoför hesabı, servis aracı ve ilk rota oluşturuldu. Rota pasif kaydedildi; durak ve öğrenci atamasından sonra aktifleştirebilirsiniz.'
@@ -1238,7 +1338,8 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       if (!withLogin) ...[
                         const SizedBox(height: 10),
                         Text(
-                          'Bu kayıt su an kurum içi personel profili olarak tutulur.'.tr,
+                          'Bu kayıt su an kurum içi personel profili olarak tutulur.'
+                              .tr,
                           style: Theme.of(dialogContext).textTheme.bodySmall,
                         ),
                       ],
@@ -1321,10 +1422,12 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       ),
       hint: Text('Şube seçin'.tr),
       items: _branches
-          .map((b) => DropdownMenuItem(
-                value: b['id'] as String?,
-                child: Text((b['name'] as String?) ?? ''),
-              ))
+          .map(
+            (b) => DropdownMenuItem(
+              value: b['id'] as String?,
+              child: Text((b['name'] as String?) ?? ''),
+            ),
+          )
           .toList(),
       onChanged: (value) => setState(() => _branchId = value),
     );
