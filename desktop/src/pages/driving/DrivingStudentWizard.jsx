@@ -18,6 +18,7 @@ import {
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
 import { isValidTcKimlik, isValidTrPhone, maskTcKimlik, maskTrPhone } from '../../lib/inputMasks';
+import { PROFESSIONS, OTHER_PROFESSION } from '../../lib/professions';
 import { FileButton } from '../../components/ui/file-button';
 
 const selectClass = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
@@ -72,6 +73,32 @@ function Field({ label, hint, children }) {
       {children}
       {hint && <span className="block text-xs font-normal text-muted-foreground">{hint}</span>}
     </label>
+  );
+}
+
+// Meslek seçimi: sıralı liste (Öğrenci dahil) + "Diğer" seçilince serbest metin.
+function ProfessionField({ value, onChange }) {
+  const known = PROFESSIONS.includes(value) && value !== OTHER_PROFESSION;
+  const [manualOther, setManualOther] = useState(false);
+  const other = manualOther || (Boolean(value) && !known);
+  return (
+    <>
+      <select
+        className={selectClass}
+        value={other ? OTHER_PROFESSION : (known ? value : '')}
+        onChange={(e) => {
+          const next = e.target.value;
+          if (next === OTHER_PROFESSION) { setManualOther(true); onChange(''); }
+          else { setManualOther(false); onChange(next); }
+        }}
+      >
+        <option value="">Seçin</option>
+        {PROFESSIONS.map((x) => <option key={x} value={x}>{x}</option>)}
+      </select>
+      {other && (
+        <Input className="mt-2" placeholder="Mesleğinizi yazın" value={value} onChange={(e) => onChange(e.target.value)} />
+      )}
+    </>
   );
 }
 
@@ -696,7 +723,7 @@ export default function DrivingStudentWizard() {
                   {['İlkokul', 'Ortaokul', 'Lise', 'Ön lisans', 'Lisans', 'Lisansüstü'].map((x) => <option key={x} value={x}>{x}</option>)}
                 </select>
               </Field>
-              <Field label="Meslek"><Input value={form.occupation} onChange={(e) => set({ occupation: e.target.value })} /></Field>
+              <Field label="Meslek"><ProfessionField value={form.occupation} onChange={(v) => set({ occupation: v })} /></Field>
             </div>
           )}
 
