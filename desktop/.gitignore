@@ -19,6 +19,10 @@
 .env.test.local
 .env.production.local
 /src-tauri/target
+
+# macOS imzalama/notarization gizli kimlik bilgileri — ASLA commit edilmez
+scripts/signing.env.local
+*.p8
 /src-tauri/gen
 /.tauri/*.key
 /.tauri/*.key.pub

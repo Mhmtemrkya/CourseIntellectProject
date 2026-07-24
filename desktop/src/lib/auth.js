@@ -1,16 +1,11 @@
-import { desktopAppEnv, getDesktopApiBaseUrl } from "./appEnv";
+import {
+  desktopAppEnv,
+  getDesktopApiBaseUrl,
+  getOrderedDesktopApiCandidates,
+  setActiveDesktopApiBaseUrl,
+} from "./appEnv";
 
 export const desktopApiBaseUrl = getDesktopApiBaseUrl();
-
-function getDesktopApiCandidates() {
-  const candidates = [
-    desktopApiBaseUrl,
-  ]
-    .map((value) => (value || "").trim().replace(/\/$/, ""))
-    .filter(Boolean);
-
-  return [...new Set(candidates)];
-}
 
 function unwrapBackendPayload(payload) {
   if (payload && typeof payload === "object" && payload.data && typeof payload.data === "object") {
@@ -295,7 +290,7 @@ export async function loginWithBackend(username, password) {
 
   const tauriFetch = await getTauriFetch();
   const fetchFn = tauriFetch || fetch;
-  const candidates = getDesktopApiCandidates();
+  const candidates = getOrderedDesktopApiCandidates();
   let response = null;
   let lastConnectionError = null;
 
@@ -310,6 +305,7 @@ export async function loginWithBackend(username, password) {
       });
 
       if (response) {
+        setActiveDesktopApiBaseUrl(baseUrl);
         break;
       }
     } catch (error) {

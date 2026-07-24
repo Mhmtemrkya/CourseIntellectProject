@@ -6,26 +6,28 @@ SEARCH_ROOT="${1:-src-tauri/target}"
 APP_PATH="$(find "$SEARCH_ROOT" -type d -path '*/bundle/macos/SchoolAsist.app' -print -quit)"
 DMG_PATH="$(find "$SEARCH_ROOT" -type f -path '*/bundle/dmg/*.dmg' -print -quit)"
 
-if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
-  echo "HATA: Doğrulanacak SchoolAsist.app bulunamadı: $SEARCH_ROOT"
-  exit 1
-fi
-
 if [ -z "$DMG_PATH" ] || [ ! -f "$DMG_PATH" ]; then
   echo "HATA: Doğrulanacak DMG bulunamadı: $SEARCH_ROOT"
   exit 1
 fi
 
-echo "Uygulama imzası doğrulanıyor: $APP_PATH"
-codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
+  echo "Uygulama imzası doğrulanıyor: $APP_PATH"
+  codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 
-SIGNATURE_INFO="$(codesign -dv --verbose=4 "$APP_PATH" 2>&1)"
-printf '%s\n' "$SIGNATURE_INFO" | grep -Fq "Authority=Developer ID Application:"
-printf '%s\n' "$SIGNATURE_INFO" | grep -Eq '^TeamIdentifier=[A-Z0-9]+$'
+  SIGNATURE_INFO="$(codesign -dv --verbose=4 "$APP_PATH" 2>&1)"
+  printf '%s\n' "$SIGNATURE_INFO" | grep -Fq "Authority=Developer ID Application:"
+  printf '%s\n' "$SIGNATURE_INFO" | grep -Eq '^TeamIdentifier=[A-Z0-9]+$'
 
-echo "Apple noter bileti ve Gatekeeper kabulü doğrulanıyor..."
-xcrun stapler validate "$APP_PATH"
-spctl --assess --type execute --verbose=4 "$APP_PATH"
+  echo "Apple noter bileti ve Gatekeeper kabulü doğrulanıyor..."
+  xcrun stapler validate "$APP_PATH"
+  spctl --assess --type execute --verbose=4 "$APP_PATH"
+else
+  # Tauri yalnız `dmg` hedefi üretildiğinde geçici macOS bundle'ını başarıyla
+  # paketledikten sonra temizler. Asıl dağıtılan uygulamayı aşağıda DMG içinden
+  # bağlayıp doğrulamak güven zinciri açısından yeterli ve daha doğrudur.
+  echo "Bilgi: geçici .app Tauri tarafından temizlenmiş; DMG içindeki uygulama doğrulanacak."
+fi
 
 # Tauri noter biletini çalıştırılabilir .app paketine staple eder. Dış DMG bir
 # taşıma kabıdır ve ayrıca staple edilmiş olmayabilir; güvenlik kararı DMG
@@ -54,6 +56,9 @@ if [ ! -d "$PACKAGED_APP" ]; then
 fi
 
 codesign --verify --deep --strict --verbose=2 "$PACKAGED_APP"
+SIGNATURE_INFO="$(codesign -dv --verbose=4 "$PACKAGED_APP" 2>&1)"
+printf '%s\n' "$SIGNATURE_INFO" | grep -Fq "Authority=Developer ID Application:"
+printf '%s\n' "$SIGNATURE_INFO" | grep -Eq '^TeamIdentifier=[A-Z0-9]+$'
 xcrun stapler validate "$PACKAGED_APP"
 spctl --assess --type execute --verbose=4 "$PACKAGED_APP"
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# macOS'ta Tauri derlemesini bozan iki ortam kalıntısını derleme öncesi temizler.
-# İkisi de "kod doğru ama build patlıyor" sınıfından olduğu için hatayı kaynakta
+# macOS'ta Tauri derlemesini bozan üç ortam kalıntısını derleme öncesi temizler.
+# Bunlar "kod doğru ama build patlıyor" sınıfından olduğu için hatayı kaynakta
 # aramak zaman kaybettiriyor; bu yüzden otomatik hâle getirildi.
 #
 # 1) com.apple.provenance özniteliği (proc-macro .dylib'leri)
@@ -15,7 +15,18 @@
 #    özniteliktir. "can't find crate" hataları SONUÇTUR: proc-macro yüklenemeyince
 #    ona bağlı crate'ler çözülemez.
 #
-# 2) Bağlı kalmış DMG diskleri
+# 2) Eski bundle üzerindeki Finder / resource-fork öznitelikleri
+#    Desktop veya iCloud/File Provider altındaki projelerde macOS, daha önce
+#    üretilen .app paketine com.apple.FinderInfo, com.apple.ResourceFork,
+#    com.apple.fileprovider.* ve com.apple.provenance ekleyebiliyor. Tauri aynı
+#    bundle dizinini yeniden kullandığında codesign şu hatayla paketi reddeder:
+#
+#      resource fork, Finder information, or similar detritus not allowed
+#
+#    Yalnızca yeniden üretilebilir target/*/bundle çıktılarını temizliyoruz;
+#    kaynak dosyalara ve kullanıcı belgelerine dokunulmuyor.
+#
+# 3) Bağlı kalmış DMG diskleri
 #    bundle_dmg.sh, ikon yerleşimini Finder'a AppleScript ile yaptırmak için
 #    DMG'yi /Volumes/dmg.XXXXXX altına geçici olarak bağlar. Başarılı derlemeler
 #    bile bu diski bazen ayırmadan bitiyor (sızıntı ölçüldü). Biriken diskler ve
@@ -36,12 +47,13 @@ set -u
 [ "$(uname -s)" = "Darwin" ] || exit 0
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+target_root="${CARGO_TARGET_DIR:-$root/src-tauri/target}"
 
 # ── 1) provenance temizliği ─────────────────────────────────────────────────
 if command -v xattr >/dev/null 2>&1; then
   cleared=0
   for profile in debug release; do
-    deps="$root/src-tauri/target/$profile/deps"
+    deps="$target_root/$profile/deps"
     [ -d "$deps" ] || continue
     for lib in "$deps"/*.dylib; do
       [ -e "$lib" ] || continue
@@ -51,9 +63,23 @@ if command -v xattr >/dev/null 2>&1; then
     done
   done
   [ "$cleared" -gt 0 ] && echo "preflight: provenance özniteliği temizlendi ($cleared kitaplık)"
+
+  bundle_cleared=0
+  for profile in debug release; do
+    bundle="$target_root/$profile/bundle"
+    [ -d "$bundle" ] || continue
+    if [ -n "$(xattr -lr "$bundle" 2>/dev/null)" ]; then
+      if xattr -cr "$bundle" 2>/dev/null; then
+        bundle_cleared=$((bundle_cleared + 1))
+      else
+        echo "preflight UYARI: bundle öznitelikleri tamamen temizlenemedi: $bundle" >&2
+      fi
+    fi
+  done
+  [ "$bundle_cleared" -gt 0 ] && echo "preflight: Finder/resource-fork öznitelikleri temizlendi ($bundle_cleared bundle)"
 fi
 
-# ── 2) bağlı kalmış DMG disklerini ayır ─────────────────────────────────────
+# ── 3) bağlı kalmış DMG disklerini ayır ─────────────────────────────────────
 if command -v hdiutil >/dev/null 2>&1; then
   # Ürün adı tauri.conf.json'dan okunur; yeniden adlandırmada script bozulmasın.
   conf="$root/src-tauri/tauri.conf.json"

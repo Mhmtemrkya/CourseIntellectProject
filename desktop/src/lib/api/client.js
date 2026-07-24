@@ -1,5 +1,9 @@
 import { clearDesktopSession, desktopApiBaseUrl, loadDesktopSession } from '../auth';
-import { desktopAppEnv } from '../appEnv';
+import {
+  desktopAppEnv,
+  getOrderedDesktopApiCandidates,
+  setActiveDesktopApiBaseUrl,
+} from '../appEnv';
 
 // Owner/admin tarafından seçilen şube filtresi (X-Branch-Filter header'ı).
 // null = "Tüm Şubeler" (header gönderilmez). BranchContext bunu set eder.
@@ -73,16 +77,6 @@ function describeApiError(body, status) {
 
 async function request(method, url, data, config = {}) {
   const session = loadDesktopSession();
-  const fullUrl = new URL(url, desktopApiBaseUrl);
-
-  if (config.params) {
-    Object.entries(config.params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        fullUrl.searchParams.set(key, String(value));
-      }
-    });
-  }
-
   const headers = { ...(config.headers || {}) };
   if (session?.accessToken) {
     headers['Authorization'] = `Bearer ${session.accessToken}`;
@@ -115,7 +109,40 @@ async function request(method, url, data, config = {}) {
     fetchOptions.body = isFormData ? data : JSON.stringify(data);
   }
 
-  const response = await apiFetch(fullUrl.toString(), fetchOptions);
+  const isAbsoluteUrl = /^https?:\/\//i.test(String(url));
+  const candidates = isAbsoluteUrl
+    ? [desktopApiBaseUrl]
+    : getOrderedDesktopApiCandidates();
+  let response = null;
+  let lastConnectionError = null;
+
+  for (const baseUrl of candidates) {
+    const fullUrl = new URL(url, baseUrl);
+    if (config.params) {
+      Object.entries(config.params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          fullUrl.searchParams.set(key, String(value));
+        }
+      });
+    }
+
+    try {
+      response = await apiFetch(
+        isAbsoluteUrl ? String(url) : fullUrl.toString(),
+        fetchOptions
+      );
+      if (!isAbsoluteUrl) setActiveDesktopApiBaseUrl(baseUrl);
+      break;
+    } catch (error) {
+      lastConnectionError = error;
+    }
+  }
+
+  if (!response) {
+    const error = new Error('Backend bağlantısı kurulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.');
+    error.cause = lastConnectionError;
+    throw error;
+  }
 
   if (response.status === 401) {
     clearDesktopSession();
