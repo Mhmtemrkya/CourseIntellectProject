@@ -98,6 +98,38 @@ public sealed class PlatformOperationsController(IPlatformOperationsService plat
         return deleted ? NoContent() : NotFound();
     }
 
+    [HttpPost("tenants/{id:guid}/reset-data")]
+    [Authorize(Roles = "Admin,Developer")]
+    public async Task<IActionResult> ResetTenantData(
+        Guid id,
+        [FromBody] ResetTenantDataRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (HasTenantContext()) return Forbid();
+
+        var expectedConfirmation = $"RESET:{id:D}";
+        if (!string.Equals(request.Confirmation?.Trim(), expectedConfirmation, StringComparison.Ordinal))
+        {
+            return BadRequest(new
+            {
+                message = "Kurum sıfırlama onayı geçersiz.",
+                expectedConfirmation
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.PreserveUsername))
+        {
+            return BadRequest(new { message = "Korunacak yönetici kullanıcı adı zorunludur." });
+        }
+
+        var result = await platformOperationsService.ResetTenantDataAsync(
+            id,
+            request.PreserveUsername.Trim(),
+            cancellationToken);
+
+        return result is null ? NotFound() : Ok(result);
+    }
+
     [HttpPut("support-tickets/{id:guid}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateSupportTicket(Guid id, [FromBody] UpdateSupportTicketRequest request, CancellationToken cancellationToken)

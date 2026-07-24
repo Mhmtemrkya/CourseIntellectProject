@@ -4,6 +4,9 @@ using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
 
 namespace CourseIntellect.Infrastructure.Services;
 
@@ -412,6 +415,127 @@ public sealed class PlatformOperationsService(
         return deleted > 0;
     }
 
+    public async Task<ResetTenantDataResult?> ResetTenantDataAsync(
+        Guid id,
+        string preserveUsername,
+        CancellationToken cancellationToken = default)
+    {
+        var tenant = await dbContext.Set<TenantWorkspace>()
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (tenant is null)
+        {
+            return null;
+        }
+
+        var normalizedUsername = preserveUsername.Trim();
+        var preservedUser = await dbContext.Users
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync(
+                x => x.TenantId == id
+                     && x.Username == normalizedUsername
+                     && x.PrimaryRole == UserRole.Admin,
+                cancellationToken);
+        if (preservedUser is null)
+        {
+            throw new InvalidOperationException(
+                $"Korunacak aktif kurum yöneticisi bulunamadı: {normalizedUsername}");
+        }
+
+        var preservedContentCount = await dbContext.ContentItems
+            .IgnoreQueryFilters()
+            .CountAsync(x => x.TenantId == id, cancellationToken);
+        var preservedQuestionCount = await dbContext.QuestionBankItems
+            .IgnoreQueryFilters()
+            .CountAsync(x => x.TenantId == id, cancellationToken);
+        var usersToDelete = await dbContext.Users
+            .IgnoreQueryFilters()
+            .Where(x => x.TenantId == id && x.Id != preservedUser.Id)
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        var preservedTypes = new HashSet<Type>
+        {
+            typeof(ContentItem),
+            typeof(QuestionBankItem),
+            typeof(AppUser)
+        };
+        var tenantTables = GetTenantScopedTables(preservedTypes);
+        var orderedTables = OrderTenantTablesForDeletion(tenantTables);
+        var deletedByTable = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var dbTransaction = transaction.GetDbTransaction();
+        var connection = (NpgsqlConnection)dbContext.Database.GetDbConnection();
+
+        foreach (var table in orderedTables)
+        {
+            var deleted = await DeleteTenantRowsAsync(
+                connection,
+                dbTransaction,
+                table,
+                id,
+                cancellationToken);
+            if (deleted > 0)
+            {
+                deletedByTable[table.Name] = deleted;
+            }
+        }
+
+        if (usersToDelete.Count > 0)
+        {
+            foreach (var dependency in GetDirectUserDependencies())
+            {
+                var deleted = await DeleteUserDependenciesAsync(
+                    connection,
+                    dbTransaction,
+                    dependency,
+                    usersToDelete,
+                    cancellationToken);
+                if (deleted > 0)
+                {
+                    deletedByTable[dependency.Name] =
+                        deletedByTable.GetValueOrDefault(dependency.Name) + deleted;
+                }
+            }
+
+            var usersTable = GetMappedTable(typeof(AppUser), nameof(AppUser.TenantId));
+            var deletedUsers = await DeleteOtherTenantUsersAsync(
+                connection,
+                dbTransaction,
+                usersTable,
+                id,
+                preservedUser.Id,
+                cancellationToken);
+            if (deletedUsers > 0)
+            {
+                deletedByTable[usersTable.Name] =
+                    deletedByTable.GetValueOrDefault(usersTable.Name) + deletedUsers;
+            }
+        }
+
+        tenant.AdminUserId = preservedUser.Id;
+        tenant.UserCount = 1;
+        tenant.BranchCount = 0;
+        tenant.StudentCount = 0;
+        tenant.StaffCount = 0;
+        tenant.CollectedAmount = 0;
+        tenant.StorageUsedGb = 0;
+        tenant.ApiUsage = 0;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        var deletedRecordCount = deletedByTable.Values.Sum();
+        return new ResetTenantDataResult(
+            id,
+            tenant.Name,
+            preservedUser.Username,
+            preservedContentCount,
+            preservedQuestionCount,
+            usersToDelete.Count,
+            deletedRecordCount,
+            deletedByTable);
+    }
+
     private async Task<IReadOnlyList<TenantWorkspaceDto>> MapTenantDtosAsync(IReadOnlyList<TenantWorkspace> entities, CancellationToken cancellationToken)
     {
         var adminUserIds = entities
@@ -447,6 +571,188 @@ public sealed class PlatformOperationsService(
             .IgnoreQueryFilters()
             .Where(x => x.TenantId == tenantId)
             .ExecuteDeleteAsync(cancellationToken);
+    }
+
+    private IReadOnlyList<MappedTable> GetTenantScopedTables(IReadOnlySet<Type> preservedTypes)
+    {
+        return dbContext.Model.GetEntityTypes()
+            .Where(entityType =>
+                typeof(ITenantScopedEntity).IsAssignableFrom(entityType.ClrType)
+                && !preservedTypes.Contains(entityType.ClrType))
+            .Select(entityType => TryGetMappedTable(entityType, nameof(ITenantScopedEntity.TenantId)))
+            .Where(table => table is not null)
+            .Select(table => table!)
+            .DistinctBy(table => table.Key)
+            .ToList();
+    }
+
+    private IReadOnlyList<MappedTable> OrderTenantTablesForDeletion(IReadOnlyList<MappedTable> tables)
+    {
+        var byKey = tables.ToDictionary(table => table.Key);
+        var edges = tables.ToDictionary(table => table.Key, _ => new HashSet<string>());
+        var incoming = tables.ToDictionary(table => table.Key, _ => 0);
+
+        foreach (var entityType in dbContext.Model.GetEntityTypes())
+        {
+            var dependent = TryGetMappedTable(entityType, nameof(ITenantScopedEntity.TenantId));
+            if (dependent is null || !byKey.ContainsKey(dependent.Key))
+            {
+                continue;
+            }
+
+            foreach (var foreignKey in entityType.GetForeignKeys())
+            {
+                var principal = TryGetMappedTable(
+                    foreignKey.PrincipalEntityType,
+                    nameof(ITenantScopedEntity.TenantId));
+                if (principal is null
+                    || principal.Key == dependent.Key
+                    || !byKey.ContainsKey(principal.Key)
+                    || !edges[dependent.Key].Add(principal.Key))
+                {
+                    continue;
+                }
+
+                incoming[principal.Key]++;
+            }
+        }
+
+        var queue = new Queue<string>(incoming.Where(item => item.Value == 0).Select(item => item.Key));
+        var ordered = new List<MappedTable>(tables.Count);
+        while (queue.TryDequeue(out var key))
+        {
+            ordered.Add(byKey[key]);
+            foreach (var principalKey in edges[key])
+            {
+                incoming[principalKey]--;
+                if (incoming[principalKey] == 0)
+                {
+                    queue.Enqueue(principalKey);
+                }
+            }
+        }
+
+        foreach (var table in tables.Where(table => ordered.All(item => item.Key != table.Key)))
+        {
+            ordered.Add(table);
+        }
+
+        return ordered;
+    }
+
+    private IReadOnlyList<UserDependency> GetDirectUserDependencies()
+    {
+        var userEntity = dbContext.Model.FindEntityType(typeof(AppUser))
+            ?? throw new InvalidOperationException("AppUser eşlemesi bulunamadı.");
+        var dependencies = new List<UserDependency>();
+
+        foreach (var foreignKey in dbContext.Model.GetEntityTypes()
+                     .SelectMany(entityType => entityType.GetForeignKeys())
+                     .Where(foreignKey => foreignKey.PrincipalEntityType == userEntity
+                                          && foreignKey.Properties.Count == 1))
+        {
+            var tableName = foreignKey.DeclaringEntityType.GetTableName();
+            if (string.IsNullOrWhiteSpace(tableName))
+            {
+                continue;
+            }
+
+            var schema = foreignKey.DeclaringEntityType.GetSchema() ?? "public";
+            var store = StoreObjectIdentifier.Table(tableName, schema);
+            var column = foreignKey.Properties[0].GetColumnName(store);
+            if (!string.IsNullOrWhiteSpace(column))
+            {
+                dependencies.Add(new UserDependency(schema, tableName, column));
+            }
+        }
+
+        return dependencies.DistinctBy(item => item.Key).ToList();
+    }
+
+    private MappedTable GetMappedTable(Type clrType, string tenantProperty)
+    {
+        var entityType = dbContext.Model.FindEntityType(clrType)
+            ?? throw new InvalidOperationException($"{clrType.Name} eşlemesi bulunamadı.");
+        return TryGetMappedTable(entityType, tenantProperty)
+            ?? throw new InvalidOperationException($"{clrType.Name} tablo eşlemesi bulunamadı.");
+    }
+
+    private static MappedTable? TryGetMappedTable(IEntityType entityType, string tenantProperty)
+    {
+        var tableName = entityType.GetTableName();
+        if (string.IsNullOrWhiteSpace(tableName))
+        {
+            return null;
+        }
+
+        var schema = entityType.GetSchema() ?? "public";
+        var store = StoreObjectIdentifier.Table(tableName, schema);
+        var property = entityType.FindProperty(tenantProperty);
+        var column = property?.GetColumnName(store);
+        return string.IsNullOrWhiteSpace(column)
+            ? null
+            : new MappedTable(schema, tableName, column);
+    }
+
+    private static async Task<int> DeleteTenantRowsAsync(
+        NpgsqlConnection connection,
+        System.Data.Common.DbTransaction transaction,
+        MappedTable table,
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = (NpgsqlTransaction)transaction;
+        command.CommandText =
+            $"DELETE FROM {Quote(table.Schema)}.{Quote(table.Name)} WHERE {Quote(table.TenantColumn)} = @tenantId";
+        command.Parameters.AddWithValue("tenantId", tenantId);
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task<int> DeleteUserDependenciesAsync(
+        NpgsqlConnection connection,
+        System.Data.Common.DbTransaction transaction,
+        UserDependency dependency,
+        IReadOnlyList<Guid> userIds,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = (NpgsqlTransaction)transaction;
+        command.CommandText =
+            $"DELETE FROM {Quote(dependency.Schema)}.{Quote(dependency.Name)} " +
+            $"WHERE {Quote(dependency.UserColumn)} = ANY(@userIds)";
+        command.Parameters.AddWithValue("userIds", userIds.ToArray());
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task<int> DeleteOtherTenantUsersAsync(
+        NpgsqlConnection connection,
+        System.Data.Common.DbTransaction transaction,
+        MappedTable usersTable,
+        Guid tenantId,
+        Guid preservedUserId,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = (NpgsqlTransaction)transaction;
+        command.CommandText =
+            $"DELETE FROM {Quote(usersTable.Schema)}.{Quote(usersTable.Name)} " +
+            $"WHERE {Quote(usersTable.TenantColumn)} = @tenantId AND {Quote("id")} <> @preservedUserId";
+        command.Parameters.AddWithValue("tenantId", tenantId);
+        command.Parameters.AddWithValue("preservedUserId", preservedUserId);
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static string Quote(string identifier) => $"\"{identifier.Replace("\"", "\"\"")}\"";
+
+    private sealed record MappedTable(string Schema, string Name, string TenantColumn)
+    {
+        public string Key => $"{Schema}.{Name}";
+    }
+
+    private sealed record UserDependency(string Schema, string Name, string UserColumn)
+    {
+        public string Key => $"{Schema}.{Name}.{UserColumn}";
     }
 
     private async Task<(AppUser User, string TemporaryPassword)> CreateTenantAdminUserAsync(TenantWorkspace tenant, CancellationToken cancellationToken)
