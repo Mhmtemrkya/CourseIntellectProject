@@ -126,7 +126,7 @@ class StudentXpService {
 
     if (hasSolutionAsset) {
       amount += 3;
-      bonuses.add('Cozum eki bonusu +3 XP');
+      bonuses.add('Çözüm eki bonusu +3 XP');
     }
 
     return StudentXpReward(

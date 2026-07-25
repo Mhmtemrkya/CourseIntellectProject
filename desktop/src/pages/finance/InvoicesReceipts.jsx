@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText, Download, Printer, Search,
-  Eye, CheckCircle, XCircle, Plus,
+  Eye, CheckCircle, XCircle, Plus, CircleDollarSign,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -25,7 +25,9 @@ import { Label } from '../../components/ui/label';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { createCollection, createInvoice, fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
+import {
+  createCollection, createInvoice, fetchAccountingDashboard, fetchStudents, markInvoicePaid,
+} from '../../lib/api/modules';
 import {
   buildFinanceDocumentHtml,
   downloadCsvRows,
@@ -51,8 +53,10 @@ const itemVariants = {
 
 function statusFromInvoice(invoice) {
   const status = normalizeFinanceText(invoice.status);
-  if (status.includes('paid') || status.includes('oden') || status.includes('odendi') || status.includes('onay')) return 'paid';
+  if (status === 'paid' || status.includes('odendi') || status.includes('onay')) return 'paid';
+  if (invoice.dueDateUtc && new Date(invoice.dueDateUtc) < new Date()) return 'overdue';
   if (status.includes('overdue') || status.includes('gec')) return 'overdue';
+  if (status.includes('unpaid') || status.includes('odenmedi') || status.includes('bekli')) return 'unpaid';
   return 'unpaid';
 }
 
@@ -63,34 +67,50 @@ function InvoiceCreateDialog({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     studentKey: '',
+    counterparty: '',
+    title: '',
+    invoiceNumber: '',
     amount: '',
-    category: 'Kurs Ucreti',
+    category: 'Öğrenci Faturaları',
     date: new Date().toISOString().slice(0, 10),
+    dueDate: new Date().toISOString().slice(0, 10),
     reason: '',
+    paymentStatus: 'unpaid',
+    paymentMethod: 'Nakit',
   });
 
   useEffect(() => {
     if (!open) {
       setForm({
         studentKey: '',
+        counterparty: '',
+        title: '',
+        invoiceNumber: '',
         amount: '',
-        category: 'Kurs Ucreti',
+        category: 'Öğrenci Faturaları',
         date: new Date().toISOString().slice(0, 10),
+        dueDate: new Date().toISOString().slice(0, 10),
         reason: '',
+        paymentStatus: 'unpaid',
+        paymentMethod: 'Nakit',
       });
     }
   }, [open]);
 
-  const selectedStudent = useMemo(
-    () => students.find((student) => (student.username || student.fullName) === form.studentKey),
-    [students, form.studentKey],
-  );
-
   const handleSave = async () => {
-    if (!selectedStudent || !form.amount) {
+    const amount = Number(form.amount);
+    if (!form.title.trim() || !form.counterparty.trim() || !Number.isFinite(amount) || amount <= 0) {
       toast({
-        title: 'Eksik bilgi',
-        description: 'Öğrenci ve tutar zorunlu.',
+        title: 'Eksik veya geçersiz bilgi',
+        description: 'Fatura başlığı, ilgili kişi/kurum ve sıfırdan büyük tutar zorunludur.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (form.dueDate && form.dueDate < form.date) {
+      toast({
+        title: 'Son ödeme tarihi geçersiz',
+        description: 'Son ödeme tarihi fatura tarihinden önce olamaz.',
         variant: 'destructive',
       });
       return;
@@ -99,16 +119,21 @@ function InvoiceCreateDialog({
     try {
       setSaving(true);
       const created = await createInvoice({
-        title: `${selectedStudent.fullName} - ${form.category}`,
+        title: form.title.trim(),
+        counterparty: form.counterparty.trim(),
+        invoiceNumber: form.invoiceNumber.trim() || null,
         category: form.category,
         amount: form.amount,
         date: form.date,
-        reason: form.reason || 'Masaüstü panelden oluşturuldu',
+        dueDateUtc: form.dueDate ? new Date(`${form.dueDate}T12:00:00`).toISOString() : null,
+        reason: form.reason.trim(),
+        isPaid: form.paymentStatus === 'paid',
+        paymentMethod: form.paymentStatus === 'paid' ? form.paymentMethod : null,
       });
       onCreated(created);
       toast({
         title: 'Fatura oluşturuldu',
-        description: 'Fatura backend’e kaydedildi.',
+        description: `Fatura ${form.paymentStatus === 'paid' ? 'ödendi' : 'ödenmedi'} durumunda kaydedildi.`,
       });
       onOpenChange(false);
     } catch (err) {
@@ -124,15 +149,24 @@ function InvoiceCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Yeni Fatura</DialogTitle>
+          <DialogTitle>Profesyonel Fatura Kaydı</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>Öğrenci</Label>
-            <Select value={form.studentKey} onValueChange={(value) => setForm((prev) => ({ ...prev, studentKey: value }))}>
-              <SelectTrigger><SelectValue placeholder="Öğrenci seçin" /></SelectTrigger>
+            <Label>Öğrenciden hızlı doldur (isteğe bağlı)</Label>
+            <Select value={form.studentKey} onValueChange={(value) => {
+              const student = students.find((item) => (item.username || item.fullName) === value);
+              setForm((prev) => ({
+                ...prev,
+                studentKey: value,
+                counterparty: student?.fullName || prev.counterparty,
+                title: student ? `${student.fullName} - Eğitim Hizmeti` : prev.title,
+                category: student ? 'Öğrenci Faturaları' : prev.category,
+              }));
+            }}>
+              <SelectTrigger><SelectValue placeholder="Öğrenci seçmeden manuel giriş yapabilirsiniz" /></SelectTrigger>
               <SelectContent>
                 {students.map((student) => (
                   <SelectItem key={student.username || student.fullName} value={student.username || student.fullName}>
@@ -144,22 +178,79 @@ function InvoiceCreateDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Tutar</Label>
-              <Input type="number" value={form.amount} onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))} />
+              <Label>İlgili kişi / kurum *</Label>
+              <Input value={form.counterparty} placeholder="Öğrenci, veli veya tedarikçi" onChange={(e) => setForm((prev) => ({ ...prev, counterparty: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label>Tarih</Label>
-              <Input type="date" value={form.date} onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))} />
+              <Label>Fatura numarası</Label>
+              <Input value={form.invoiceNumber} placeholder="Boşsa otomatik oluşturulur" onChange={(e) => setForm((prev) => ({ ...prev, invoiceNumber: e.target.value }))} />
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Kategori</Label>
-            <Input value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))} />
+            <Label>Fatura başlığı *</Label>
+            <Input value={form.title} placeholder="Örn. Temmuz 2026 eğitim hizmeti" onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Toplam tutar (₺) *</Label>
+              <Input type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Kategori *</Label>
+              <Select value={form.category} onValueChange={(value) => setForm((prev) => ({ ...prev, category: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Öğrenci Faturaları">Öğrenci Faturaları</SelectItem>
+                  <SelectItem value="Dershane Mekan Giderleri">Mekân ve İşletme Giderleri</SelectItem>
+                  <SelectItem value="Diğer Gider Faturaları">Diğer Gider Faturaları</SelectItem>
+                  <SelectItem value="Maaş Faturaları">Personel ve Maaş Giderleri</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Fatura tarihi *</Label>
+              <Input type="date" value={form.date} onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Son ödeme tarihi</Label>
+              <Input type="date" value={form.dueDate} onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))} />
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Açıklama</Label>
-            <Input value={form.reason} onChange={(e) => setForm((prev) => ({ ...prev, reason: e.target.value }))} />
+            <Input value={form.reason} placeholder="Hizmet dönemi, gider detayı veya kurum içi not" onChange={(e) => setForm((prev) => ({ ...prev, reason: e.target.value }))} />
           </div>
+          <div className="space-y-2">
+            <Label>Ödeme durumu *</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant={form.paymentStatus === 'unpaid' ? 'default' : 'outline'} onClick={() => setForm((prev) => ({ ...prev, paymentStatus: 'unpaid' }))}>
+                <XCircle className="mr-2 h-4 w-4" />Ödenmedi
+              </Button>
+              <Button type="button" variant={form.paymentStatus === 'paid' ? 'default' : 'outline'} onClick={() => setForm((prev) => ({ ...prev, paymentStatus: 'paid' }))}>
+                <CheckCircle className="mr-2 h-4 w-4" />Ödendi
+              </Button>
+            </div>
+          </div>
+          {form.paymentStatus === 'paid' ? (
+            <div className="space-y-2">
+              <Label>Ödeme yöntemi *</Label>
+              <Select value={form.paymentMethod} onValueChange={(value) => setForm((prev) => ({ ...prev, paymentMethod: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Nakit">Nakit</SelectItem>
+                  <SelectItem value="Kredi Kartı">Kredi Kartı</SelectItem>
+                  <SelectItem value="Havale/EFT">Havale / EFT</SelectItem>
+                  <SelectItem value="Çek">Çek</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-700">
+              Fatura ödenmedi olarak kaydedilecek. Ödeme geldiğinde işlem sütunundaki “Ödendi” düğmesini kullanabilirsiniz.
+            </p>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
@@ -247,6 +338,95 @@ function ReceiptCreateDialog({
   );
 }
 
+function MarkPaidDialog({
+  invoice, onOpenChange, onPaid,
+}) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('Nakit');
+  const [paidDate, setPaidDate] = useState(new Date().toISOString().slice(0, 10));
+  const [note, setNote] = useState('');
+
+  useEffect(() => {
+    if (!invoice) {
+      setPaymentMethod('Nakit');
+      setPaidDate(new Date().toISOString().slice(0, 10));
+      setNote('');
+    }
+  }, [invoice]);
+
+  const save = async () => {
+    if (!invoice) return;
+    try {
+      setSaving(true);
+      const updated = await markInvoicePaid(invoice.id, {
+        paymentMethod,
+        paidAtUtc: new Date(`${paidDate}T12:00:00`).toISOString(),
+        note: note.trim() || null,
+      });
+      onPaid(updated);
+      onOpenChange(false);
+      toast({
+        title: 'Fatura ödendi olarak işaretlendi',
+        description: `${updated.invoiceNumber || updated.id} numaralı faturanın ödeme kaydı tamamlandı.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Ödeme durumu güncellenemedi',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={Boolean(invoice)} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Faturayı Ödendi Olarak İşaretle</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-3">
+          <div className="rounded-xl border bg-muted/30 p-4">
+            <p className="font-semibold">{invoice?.title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {invoice?.invoiceNumber || invoice?.id} • {formatCurrency(invoice?.amount)}
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>Ödeme yöntemi *</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Nakit">Nakit</SelectItem>
+                <SelectItem value="Kredi Kartı">Kredi Kartı</SelectItem>
+                <SelectItem value="Havale/EFT">Havale / EFT</SelectItem>
+                <SelectItem value="Çek">Çek</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Ödeme tarihi *</Label>
+            <Input type="date" value={paidDate} onChange={(event) => setPaidDate(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Ödeme notu</Label>
+            <Input value={note} placeholder="Dekont veya açıklama bilgisi (isteğe bağlı)" onChange={(event) => setNote(event.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
+          <Button onClick={save} disabled={saving}>
+            <CheckCircle className="mr-2 h-4 w-4" />
+            {saving ? 'Kaydediliyor...' : 'Ödendi Olarak İşaretle'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function InvoicesReceipts() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('invoices');
@@ -261,6 +441,7 @@ export default function InvoicesReceipts() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [invoiceToMarkPaid, setInvoiceToMarkPaid] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -367,6 +548,14 @@ export default function InvoicesReceipts() {
       ...prev,
       collections: [created, ...(prev?.collections || [])],
     }));
+  };
+
+  const handleInvoicePaid = (updated) => {
+    setDashboard((prev) => ({
+      ...prev,
+      invoices: (prev?.invoices || []).map((invoice) => (invoice.id === updated.id ? updated : invoice)),
+    }));
+    setSelectedRecord((current) => (current?.id === updated.id ? { ...updated, type: 'invoice' } : current));
   };
 
   const handleBulkPrint = () => {
@@ -598,7 +787,7 @@ export default function InvoicesReceipts() {
                 <TableBody>
                   {filteredInvoices.map((invoice) => (
                     <TableRow key={invoice.id}>
-                      <TableCell className="font-mono text-sm">{invoice.id}</TableCell>
+                      <TableCell className="font-mono text-sm">{invoice.invoiceNumber || invoice.id}</TableCell>
                       <TableCell className="font-medium">
                         <div>
                           <p>{invoice.title}</p>
@@ -609,7 +798,12 @@ export default function InvoicesReceipts() {
                       <TableCell>₺{parseFinanceMoney(invoice.amount).toLocaleString('tr-TR')}</TableCell>
                       <TableCell>{getStatusBadge(statusFromInvoice(invoice))}</TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
+                        <div className="flex flex-wrap gap-1">
+                          {statusFromInvoice(invoice) !== 'paid' ? (
+                            <Button size="sm" className="h-8 bg-emerald-600 px-2 text-white hover:bg-emerald-700" onClick={() => setInvoiceToMarkPaid(invoice)}>
+                              <CircleDollarSign className="mr-1 h-4 w-4" />Ödendi
+                            </Button>
+                          ) : null}
                           <Button variant="ghost" size="icon" onClick={() => openRecordDetail(invoice, 'invoice')}>
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -687,6 +881,11 @@ export default function InvoicesReceipts() {
         students={students}
         onCreated={handleReceiptCreated}
       />
+      <MarkPaidDialog
+        invoice={invoiceToMarkPaid}
+        onOpenChange={(open) => { if (!open) setInvoiceToMarkPaid(null); }}
+        onPaid={handleInvoicePaid}
+      />
 
       <Dialog open={Boolean(selectedRecord)} onOpenChange={(open) => { if (!open) setSelectedRecord(null); }}>
         <DialogContent className="max-w-2xl">
@@ -712,7 +911,7 @@ export default function InvoicesReceipts() {
                 <Card>
                   <CardContent className="p-4">
                     <p className="text-sm text-muted-foreground">Kayıt No</p>
-                    <p className="mt-1 font-semibold">{selectedRecord.id}</p>
+                    <p className="mt-1 font-semibold">{selectedRecord.invoiceNumber || selectedRecord.id}</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -728,7 +927,11 @@ export default function InvoicesReceipts() {
                     <p><strong>Başlık:</strong> {selectedRecord.title}</p>
                     <p><strong>Kategori:</strong> {selectedRecord.category}</p>
                     <p><strong>Durum:</strong> {statusFromInvoice(selectedRecord)}</p>
-                    <p><strong>Açıklama:</strong> {selectedRecord.subtitle || '-'}</p>
+                    <p><strong>İlgili kişi/kurum:</strong> {selectedRecord.counterparty || '-'}</p>
+                    <p><strong>Fatura tarihi:</strong> {selectedRecord.issueDateUtc ? new Date(selectedRecord.issueDateUtc).toLocaleDateString('tr-TR') : selectedRecord.subtitle}</p>
+                    <p><strong>Son ödeme tarihi:</strong> {selectedRecord.dueDateUtc ? new Date(selectedRecord.dueDateUtc).toLocaleDateString('tr-TR') : '-'}</p>
+                    <p><strong>Ödeme yöntemi:</strong> {selectedRecord.paymentMethod || '-'}</p>
+                    <p><strong>Açıklama:</strong> {selectedRecord.note || selectedRecord.subtitle || '-'}</p>
                   </>
                 ) : (
                   <>
@@ -745,6 +948,11 @@ export default function InvoicesReceipts() {
           <DialogFooter>
             {selectedRecord ? (
               <>
+                {selectedRecord.type === 'invoice' && statusFromInvoice(selectedRecord) !== 'paid' ? (
+                  <Button onClick={() => setInvoiceToMarkPaid(selectedRecord)}>
+                    <CircleDollarSign className="mr-2 h-4 w-4" />Ödendi Olarak İşaretle
+                  </Button>
+                ) : null}
                 <Button variant="outline" onClick={() => handleDownloadRecord(selectedRecord, selectedRecord.type)}>İndir</Button>
                 <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => handlePrintRecord(selectedRecord, selectedRecord.type)}>Yazdır</Button>
               </>

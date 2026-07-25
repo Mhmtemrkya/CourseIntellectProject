@@ -202,7 +202,7 @@ export default function CashReport() {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle>Odeme Yontemi Dagilimi</CardTitle>
+            <CardTitle>Ödeme Yöntemi Dağılımı</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex h-6 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800">
@@ -229,15 +229,15 @@ export default function CashReport() {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle>Son Islemler</CardTitle>
+            <CardTitle>Son İşlemler</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Ogrenci</TableHead>
+                  <TableHead>Öğrenci</TableHead>
                   <TableHead>Tutar</TableHead>
-                  <TableHead>Yontem</TableHead>
+                  <TableHead>Yöntem</TableHead>
                   <TableHead>Tarih</TableHead>
                 </TableRow>
               </TableHeader>
@@ -245,7 +245,7 @@ export default function CashReport() {
                 {collections.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      Henuz islem kaydi yok.
+                      Henüz işlem kaydı yok.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -254,7 +254,7 @@ export default function CashReport() {
                       <TableCell className="font-medium">{c.name || c.studentName || c.description || '-'}</TableCell>
                       <TableCell className="font-mono">{formatCurrency(parseAmount(c.amount))}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{c.method || c.paymentMethod || c.type || 'Belirtilmemis'}</Badge>
+                        <Badge variant="outline">{c.method || c.paymentMethod || c.type || 'Belirtilmemiş'}</Badge>
                       </TableCell>
                       <TableCell>{c.time || (c.date ? new Date(c.date).toLocaleDateString('tr-TR') : '-')}</TableCell>
                     </TableRow>

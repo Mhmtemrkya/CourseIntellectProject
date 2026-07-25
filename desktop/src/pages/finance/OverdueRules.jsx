@@ -40,26 +40,26 @@ function normalizeChannel(channel) {
 const defaultRules = [
   {
     id: 1,
-    name: 'Ilk Hatirlatma',
+    name: 'İlk Hatırlatma',
     daysAfterDue: 3,
     channel: 'notification',
-    template: 'Sayin {parentName}, {studentName} icin {amount} TL tutarinda odemeniz gecmistir. Lutfen en kisa surede odemenizi yapiniz.',
+    template: 'Sayın {parentName}, {studentName} için {amount} TL tutarında ödemenizin vadesi geçmiştir. Lütfen en kısa sürede ödemenizi yapınız.',
     enabled: true,
   },
   {
     id: 2,
-    name: 'Ikinci Hatirlatma',
+    name: 'İkinci Hatırlatma',
     daysAfterDue: 7,
     channel: 'email',
-    template: 'Sayin {parentName}, {amount} TL tutarindaki odemeniz 7 gundur gecmis durumdadir.',
+    template: 'Sayın {parentName}, {amount} TL tutarındaki ödemeniz 7 gündür gecikmiş durumdadır.',
     enabled: true,
   },
   {
     id: 3,
-    name: 'Son Uyari',
+    name: 'Son Uyarı',
     daysAfterDue: 15,
     channel: 'both',
-    template: 'Sayin {parentName}, {amount} TL tutarindaki odemeniz 15 gundur gecmistir. Acil odeme yapmaniz gerekmektedir.',
+    template: 'Sayın {parentName}, {amount} TL tutarındaki ödemeniz 15 gündür gecikmiştir. Acil ödeme yapmanız gerekmektedir.',
     enabled: false,
   },
 ];
@@ -153,7 +153,7 @@ export default function OverdueRules() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">Gecikme Kurallari</h1>
-            <p className="text-sm text-muted-foreground">Otomatik mobil bildirim ve uyari kurallari</p>
+            <p className="text-sm text-muted-foreground">Otomatik mobil bildirim ve uyarı kuralları</p>
           </div>
         </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingRule(null); setForm({ name: '', daysAfterDue: 3, channel: 'notification', template: '', enabled: true }); } }}>
@@ -162,12 +162,12 @@ export default function OverdueRules() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingRule ? 'Kurali Duzenle' : 'Yeni Kural Ekle'}</DialogTitle>
+              <DialogTitle>{editingRule ? 'Kuralı Düzenle' : 'Yeni Kural Ekle'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
                 <Label>Kural Adi *</Label>
-                <Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Ornegin: Ilk Hatirlatma" />
+                <Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Örneğin: İlk Hatırlatma" />
               </div>
               <div>
                 <Label>Vade Sonrasi Gun</Label>
@@ -201,7 +201,7 @@ export default function OverdueRules() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Iptal</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>İptal</Button>
               <FeatureGate module="overdue-rules" action="define">
                 <Button onClick={handleSave}>
                   <Save className="h-4 w-4 mr-1" /> Kaydet
@@ -218,7 +218,7 @@ export default function OverdueRules() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
               <Settings className="h-12 w-12 mb-3 opacity-40" />
-              <p>Henuz kural tanimlanmamis.</p>
+              <p>Henüz kural tanımlanmamış.</p>
             </CardContent>
           </Card>
         </motion.div>

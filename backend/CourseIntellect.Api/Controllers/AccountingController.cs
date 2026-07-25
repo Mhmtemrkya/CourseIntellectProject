@@ -142,8 +142,73 @@ public sealed class AccountingController(IAccountingService accountingService, C
     [RequireEntitlement("billing", "invoice-create")]
     public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceRequest request, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(request.Title))
+            return BadRequest(new { message = "Fatura başlığı zorunludur.", action = "Faturanın hangi hizmet veya gider için düzenlendiğini yazın." });
+        if (string.IsNullOrWhiteSpace(request.Category))
+            return BadRequest(new { message = "Fatura kategorisi zorunludur.", action = "Listeden faturaya uygun kategoriyi seçin." });
+        decimal amount;
+        try { amount = MoneyParser.Parse(request.Amount); }
+        catch { return BadRequest(new { message = "Fatura tutarı geçerli değil.", action = "Sıfırdan büyük sayısal bir tutar girin." }); }
+        if (amount <= 0)
+            return BadRequest(new { message = "Fatura tutarı sıfırdan büyük olmalıdır.", action = "Faturanın toplam tutarını kontrol edin." });
+        if (!DateTime.TryParse(request.Date, out var issueDate))
+            return BadRequest(new { message = "Fatura tarihi geçerli değil.", action = "Fatura tarihini takvimden yeniden seçin." });
+        if (request.DueDateUtc.HasValue && request.DueDateUtc.Value.Date < issueDate.Date)
+            return BadRequest(new { message = "Son ödeme tarihi fatura tarihinden önce olamaz.", action = "Son ödeme tarihini fatura tarihine eşit veya daha ileri seçin." });
+        if (request.IsPaid && string.IsNullOrWhiteSpace(request.PaymentMethod))
+            return BadRequest(new { message = "Ödenmiş faturada ödeme yöntemi zorunludur.", action = "Nakit, kredi kartı veya havale/EFT seçeneklerinden birini seçin." });
+        if (!string.IsNullOrWhiteSpace(request.InvoiceNumber)
+            && await dbContext.AccountingInvoices.AnyAsync(x => x.InvoiceNumber == request.InvoiceNumber.Trim().ToUpper(), cancellationToken))
+            return Conflict(new { message = "Bu fatura numarası daha önce kullanılmış.", action = "Farklı bir fatura numarası girin veya alanı boş bırakarak otomatik numara oluşturun." });
+
         var item = await accountingService.CreateInvoiceAsync(request, cancellationToken);
         return Ok(item);
+    }
+
+    [HttpPut("invoices/{id:guid}/mark-paid")]
+    [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("billing", "invoice-create")]
+    public async Task<IActionResult> MarkInvoicePaid(Guid id, [FromBody] MarkInvoicePaidRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.PaymentMethod))
+            return BadRequest(new { message = "Ödeme yöntemi zorunludur.", action = "Ödemenin nakit, kredi kartı veya havale/EFT olarak nasıl alındığını seçin." });
+
+        var invoice = await dbContext.AccountingInvoices.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (invoice is null)
+            return NotFound(new { message = "Ödendi olarak işaretlenecek fatura bulunamadı.", action = "Fatura listesini yenileyip kaydı yeniden seçin." });
+        if (string.Equals(invoice.Status, "Ödendi", StringComparison.OrdinalIgnoreCase))
+            return Conflict(new { message = "Bu fatura zaten ödendi olarak kayıtlı.", action = "Fatura detayından ödeme tarihini ve yöntemini kontrol edin." });
+
+        invoice.Status = "Ödendi";
+        invoice.PaidAtUtc = (request.PaidAtUtc ?? DateTime.UtcNow).ToUniversalTime();
+        invoice.PaymentMethod = request.PaymentMethod.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Note))
+            invoice.Note = string.IsNullOrWhiteSpace(invoice.Note)
+                ? request.Note.Trim()
+                : $"{invoice.Note} • {request.Note.Trim()}";
+
+        await dbContext.AccountingAuditLogs.AddAsync(new AccountingAuditLog
+        {
+            Title = "Fatura ödendi olarak işaretlendi",
+            Detail = $"{invoice.InvoiceNumber} numaralı fatura {invoice.PaymentMethod} yöntemiyle ödendi.",
+            Time = DateTime.UtcNow.ToString("dd.MM.yyyy • HH:mm"),
+        }, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Ok(new AccountingInvoiceDto(
+            invoice.Id.ToString(),
+            string.IsNullOrWhiteSpace(invoice.InvoiceNumber) ? invoice.Id.ToString() : invoice.InvoiceNumber,
+            invoice.Title,
+            invoice.Counterparty,
+            invoice.Category,
+            invoice.Subtitle,
+            invoice.Amount,
+            invoice.Status,
+            invoice.IssueDateUtc,
+            invoice.DueDateUtc,
+            invoice.PaidAtUtc,
+            invoice.PaymentMethod,
+            invoice.Note));
     }
 
     [HttpPost("salaries")]

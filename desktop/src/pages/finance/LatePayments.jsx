@@ -136,8 +136,8 @@ export default function LatePayments() {
     const selectedPayments = filteredPayments.filter((item) => selected.includes(item.id));
     try {
       await Promise.all(selectedPayments.map((payment) => createAccountingNotification({
-        title: `${payment.student} - Geciken Odeme`,
-        message: `${payment.parent} için ${payment.student} adlı öğrencinin ödemesinde gecikme var. Lutfen iletisime gecin. Kanal: ${type === 'sms' ? 'SMS' : 'E-posta'}`,
+        title: `${payment.student} - Geciken Ödeme`,
+        message: `${payment.parent} için ${payment.student} adlı öğrencinin ödemesinde gecikme var. Lütfen iletişime geçin. Kanal: ${type === 'sms' ? 'SMS' : 'E-posta'}`,
       })));
       toast({
         title: `${type === 'sms' ? 'SMS' : 'E-posta'} gönderildi`,

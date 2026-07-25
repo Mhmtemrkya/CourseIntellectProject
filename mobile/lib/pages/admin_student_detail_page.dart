@@ -40,16 +40,21 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
         _student = refreshed;
         _togglingStatus = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(makePassive
-            ? 'Öğrenci pasife alındı (giriş yapamaz).'.tr
-            : 'Öğrenci aktifleştirildi.'.tr),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            makePassive
+                ? 'Öğrenci pasife alındı (giriş yapamaz).'.tr
+                : 'Öğrenci aktifleştirildi.'.tr,
+          ),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
       setState(() => _togglingStatus = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Durum değiştirilemedi: $error')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Durum değiştirilemedi: $error')));
     }
   }
 
@@ -76,7 +81,7 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
       builder: (dialogContext) => AlertDialog(
         title: Text('Öğrenciyi Sil'.tr),
         content: Text(
-          '${_student.fullName} adli öğrenciyi ve kullanıcı kaydini silmek istediginize emin misiniz? Bu islem geri alinamaz.',
+          '${_student.fullName} adlı öğrenciyi ve kullanıcı kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
         ),
         actions: [
           TextButton(
@@ -142,8 +147,12 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : Icon(
-                    _isActive ? Icons.pause_circle_outline : Icons.play_circle_outline,
-                    color: _isActive ? const Color(0xFFB45309) : const Color(0xFF15803D),
+                    _isActive
+                        ? Icons.pause_circle_outline
+                        : Icons.play_circle_outline,
+                    color: _isActive
+                        ? const Color(0xFFB45309)
+                        : const Color(0xFF15803D),
                   ),
             onPressed: _togglingStatus ? null : _toggleStatus,
           ),

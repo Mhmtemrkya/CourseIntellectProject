@@ -615,11 +615,16 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.ToTable("accounting_invoices");
             entity.HasKey(x => x.Id);
             ConfigureTenantScope(entity);
+            entity.Property(x => x.InvoiceNumber).HasMaxLength(60).IsRequired();
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
+            entity.Property(x => x.Counterparty).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Category).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Subtitle).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Amount).HasMaxLength(40).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.PaymentMethod).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(1000).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.InvoiceNumber }).IsUnique();
         });
 
         modelBuilder.Entity<AccountingSalary>(entity =>

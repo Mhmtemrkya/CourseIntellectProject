@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  createDrivingVehicle, fetchDrivingAssignments, fetchDrivingVehicleDocuments, fetchDrivingVehicleServiceRecords, fetchDrivingVehicles,
+  createDrivingVehicle, fetchDrivingAssignments, fetchDrivingVehicleDocuments, fetchDrivingVehicleServiceRecords, fetchDrivingVehicles, updateDrivingVehicleStatus,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
@@ -37,6 +37,20 @@ const DOCUMENT_STATUS = {
   ExpiringSoon: { label: 'Süresi yaklaşıyor', className: 'bg-amber-500/15 text-amber-600' },
   Expired: { label: 'Süresi doldu', className: 'bg-red-500/15 text-red-600' },
 };
+
+// Aracın işletme durumu iki bayraktan türetilir: pasif > bakımda > uygun.
+const VEHICLE_STATUS = {
+  active: { label: 'Uygun', className: 'bg-emerald-500/15 text-emerald-600', icon: CheckCircle2 },
+  maintenance: { label: 'Bakımda', className: 'bg-red-500/15 text-red-600', icon: Wrench },
+  passive: { label: 'Pasif', className: 'bg-muted text-muted-foreground', icon: Lock },
+};
+const vehicleStatus = (v) => (!v.isActive ? 'passive' : v.isInMaintenance ? 'maintenance' : 'active');
+const STATUS_FILTERS = [
+  { key: 'all', label: 'Tümü' },
+  { key: 'active', label: 'Uygun' },
+  { key: 'maintenance', label: 'Bakımda' },
+  { key: 'passive', label: 'Pasif' },
+];
 
 const transmissionLabel = (value) => (value === 1 || value === 'Manual' ? 'Manuel' : 'Otomatik');
 const money = (value) => `₺${Number(value || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`;
@@ -87,9 +101,7 @@ function VehicleDetailModal({ vehicle, onClose }) {
           <DialogTitle className="flex items-center gap-2">
             <CarFront className="h-5 w-5 text-[hsl(var(--brand-accent))]" />
             {vehicle.plateNumber}
-            {vehicle.isInMaintenance
-              ? <Badge className="border-0 bg-red-500/15 text-red-600"><Wrench className="mr-1 h-3 w-3" />Bakımda</Badge>
-              : <Badge className="border-0 bg-emerald-500/15 text-emerald-600">Kullanımda</Badge>}
+            {(() => { const t = VEHICLE_STATUS[vehicleStatus(vehicle)]; const I = t.icon; return <Badge className={`border-0 ${t.className}`}><I className="mr-1 h-3 w-3" />{t.label}</Badge>; })()}
           </DialogTitle>
         </DialogHeader>
 
@@ -194,12 +206,29 @@ export default function DrivingVehicles() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selected, setSelected] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [vehicleForm, setVehicleForm] = useState(initialVehicle);
   const [saving, setSaving] = useState(false);
+  const [statusSaving, setStatusSaving] = useState('');
 
   const canCreate = can(DRIVING.vehicleCreate);
+  const canUpdate = can(DRIVING.vehicleUpdate);
+
+  const changeStatus = async (vehicle, status) => {
+    if (status === vehicleStatus(vehicle)) return;
+    setStatusSaving(vehicle.id);
+    try {
+      const updated = await updateDrivingVehicleStatus(vehicle.id, status);
+      setVehicles((list) => list.map((v) => (v.id === vehicle.id ? { ...v, ...updated } : v)));
+      toast({ title: 'Araç durumu güncellendi', description: `${vehicle.plateNumber} → ${VEHICLE_STATUS[status].label}` });
+    } catch (error) {
+      toast({ title: 'Durum değiştirilemedi', description: error.message, variant: 'destructive' });
+    } finally {
+      setStatusSaving('');
+    }
+  };
   // Evrak & Bakım sekmesi, eskiden ayrı sayfa olan ekranın izinlerini taşır;
   // ikisinden birini göremeyen kullanıcıya sekme hiç açılmaz.
   const canSeeCompliance = can(DRIVING.vehicleDocumentView) || can(DRIVING.vehicleServiceView);
@@ -242,12 +271,19 @@ export default function DrivingVehicles() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('tr-TR');
-    if (!term) return vehicles;
-    return vehicles.filter((v) => `${v.plateNumber} ${v.brand} ${v.model}`.toLocaleLowerCase('tr-TR').includes(term));
-  }, [vehicles, search]);
+    return vehicles.filter((v) => {
+      if (statusFilter !== 'all' && vehicleStatus(v) !== statusFilter) return false;
+      if (term && !`${v.plateNumber} ${v.brand} ${v.model}`.toLocaleLowerCase('tr-TR').includes(term)) return false;
+      return true;
+    });
+  }, [vehicles, search, statusFilter]);
 
-  const inMaintenance = useMemo(() => vehicles.filter((v) => v.isInMaintenance).length, [vehicles]);
+  const inMaintenance = useMemo(() => vehicles.filter((v) => v.isInMaintenance && v.isActive).length, [vehicles]);
   const activeCount = useMemo(() => vehicles.filter((v) => v.isActive && !v.isInMaintenance).length, [vehicles]);
+  const passiveCount = useMemo(() => vehicles.filter((v) => !v.isActive).length, [vehicles]);
+  const statusCounts = useMemo(() => ({
+    all: vehicles.length, active: activeCount, maintenance: inMaintenance, passive: passiveCount,
+  }), [vehicles.length, activeCount, inMaintenance, passiveCount]);
 
   if (loading) return <DrivingLoading />;
 
@@ -270,10 +306,11 @@ export default function DrivingVehicles() {
         </TabsList>
 
         <TabsContent value="fleet" className="mt-5 space-y-5">
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <DrivingStatCard label="Toplam Araç" value={vehicles.length} caption="Filoda kayıtlı" icon={CarFront} tone="brand" />
-        <DrivingStatCard label="Kullanımda" value={activeCount} caption="Uygun araç" icon={ShieldCheck} tone="emerald" />
+        <DrivingStatCard label="Uygun" value={activeCount} caption="Kullanıma hazır" icon={ShieldCheck} tone="emerald" />
         <DrivingStatCard label="Bakımda" value={inMaintenance} caption="Kullanım dışı" icon={Wrench} tone={inMaintenance ? 'rose' : 'emerald'} />
+        <DrivingStatCard label="Pasif" value={passiveCount} caption="Hizmet dışı" icon={Lock} tone={passiveCount ? 'amber' : 'emerald'} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -286,6 +323,21 @@ export default function DrivingVehicles() {
             {showAdd ? <><X className="mr-2 h-4 w-4" />Vazgeç</> : <><Plus className="mr-2 h-4 w-4" />Araç Ekle</>}
           </Button>
         )}
+      </div>
+
+      {/* Duruma göre filtrele */}
+      <div className="flex flex-wrap gap-2">
+        {STATUS_FILTERS.map((f) => (
+          <button
+            type="button"
+            key={f.key}
+            onClick={() => setStatusFilter(f.key)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${statusFilter === f.key ? 'border-brand-primary bg-brand-primary/10 text-brand-primary' : 'border-foreground/10 text-muted-foreground hover:bg-foreground/5'}`}
+          >
+            {f.label}
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${statusFilter === f.key ? 'bg-brand-primary/20' : 'bg-foreground/10'}`}>{statusCounts[f.key] ?? 0}</span>
+          </button>
+        ))}
       </div>
 
       {showAdd && canCreate && (
@@ -311,35 +363,47 @@ export default function DrivingVehicles() {
           message={search ? 'Aramanızı değiştirin.' : (canCreate ? 'Yukarıdaki “Araç Ekle” ile filoya araç ekleyin.' : 'Filoya araç eklemek filo sorumlusunun yetkisindedir.')}
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((vehicle) => (
-            <button
-              type="button"
-              key={vehicle.id}
-              onClick={() => setSelected(vehicle)}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 text-left transition hover:border-[hsl(var(--brand-accent)/0.5)] hover:bg-foreground/[0.06]"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-primary/10 text-brand-primary">
-                  <CarFront className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate font-bold">{vehicle.plateNumber}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {vehicle.brand} {vehicle.model} • {vehicle.licenseClass} • {transmissionLabel(vehicle.transmissionType)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                {vehicle.isInMaintenance
-                  ? <Badge className="border-0 bg-red-500/15 text-red-600"><Wrench className="mr-1 h-3 w-3" />Bakımda</Badge>
-                  : <Badge className="border-0 bg-emerald-500/15 text-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" />Uygun</Badge>}
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <div className="space-y-2">
+          {filtered.map((vehicle) => {
+            const status = vehicleStatus(vehicle);
+            const tone = VEHICLE_STATUS[status];
+            const StatusIcon = tone.icon;
+            return (
+              <div
+                key={vehicle.id}
+                className="flex flex-wrap items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 transition hover:border-[hsl(var(--brand-accent)/0.5)] sm:p-4"
+              >
+                <button type="button" onClick={() => setSelected(vehicle)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-primary/10 text-brand-primary">
+                    <CarFront className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-bold">{vehicle.plateNumber}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {vehicle.brand} {vehicle.model} • {vehicle.licenseClass} • {transmissionLabel(vehicle.transmissionType)}
+                    </p>
+                  </div>
+                </button>
+                <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
                   <Gauge className="h-3 w-3" />{Number(vehicle.currentKilometer || 0).toLocaleString('tr-TR')} km
                 </span>
+                <Badge className={`border-0 ${tone.className}`}><StatusIcon className="mr-1 h-3 w-3" />{tone.label}</Badge>
+                {canUpdate && (
+                  <select
+                    className="h-9 rounded-md border border-input bg-background px-2 text-xs font-semibold disabled:opacity-50"
+                    value={status}
+                    disabled={statusSaving === vehicle.id}
+                    onChange={(e) => changeStatus(vehicle, e.target.value)}
+                    title="Araç durumunu değiştir"
+                  >
+                    <option value="active">Uygun</option>
+                    <option value="maintenance">Bakımda</option>
+                    <option value="passive">Pasif</option>
+                  </select>
+                )}
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
 

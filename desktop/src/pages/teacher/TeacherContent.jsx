@@ -352,7 +352,7 @@ export default function TeacherContent() {
       });
       toast({
         title: 'İçerik oluşturuldu',
-        description: `${created.title} ogrenci ekraninda gorunecek sekilde kaydedildi.`,
+        description: `${created.title} öğrenci ekranında görünecek şekilde kaydedildi.`,
       });
     } catch (err) {
       toast({
@@ -456,7 +456,7 @@ export default function TeacherContent() {
       setEditingContent(false);
       toast({
         title: 'İçerik silindi',
-        description: 'Kayit ogretmen panelinden kaldirildi.',
+        description: 'Kayıt öğretmen panelinden kaldırıldı.',
       });
     } catch (err) {
       toast({
@@ -1392,7 +1392,7 @@ export default function TeacherContent() {
                   onClick={() => handleOpenContentFile(selectedContent.fileName, true)}
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  Indir
+                  İndir
                 </Button>
                 <Button
                   variant="outline"

@@ -77,6 +77,7 @@ public sealed class StaffManagementService(
 
     public async Task<StaffCredentialsDto> CreateStaffAsync(CreateStaffRequest request, CancellationToken cancellationToken = default)
     {
+        var fullName = PersonNameFormatter.FormatFullName(request.FullName);
         if (!Enum.TryParse<UserRole>(request.Role, true, out var parsedRole) ||
             parsedRole is not UserRole.Teacher and not UserRole.Administrative and not UserRole.Cafeteria and not UserRole.BranchManager)
         {
@@ -176,7 +177,7 @@ public sealed class StaffManagementService(
             : (request.DepartmentOrBranch ?? string.Empty);
         var username = await usernameGenerator.GenerateAsync(
             tenantId,
-            request.FullName,
+            fullName,
             new UsernameContext(
                 Role: roleName,
                 ClassName: primaryHint,
@@ -188,7 +189,7 @@ public sealed class StaffManagementService(
             TenantId = tenantId,
             BranchId = request.BranchId,
             CustomRoleId = request.CustomRoleId,
-            FullName = request.FullName,
+            FullName = fullName,
             Username = username,
             PasswordHash = passwordHasher.Hash(password),
             PrimaryRole = parsedRole,
@@ -204,7 +205,7 @@ public sealed class StaffManagementService(
         {
             TenantId = user.TenantId,
             UserId = user.Id,
-            FullName = request.FullName,
+            FullName = fullName,
             TcNo = tcNo,
             Phone = phone,
             Email = email,
@@ -346,7 +347,8 @@ public sealed class StaffManagementService(
         var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == staff.UserId, cancellationToken)
             ?? throw new InvalidOperationException("Kullanıcı bulunamadı.");
 
-        staff.FullName = request.FullName;
+        var fullName = PersonNameFormatter.FormatFullName(request.FullName);
+        staff.FullName = fullName;
         staff.DepartmentOrBranch = request.DepartmentOrBranch;
         staff.Phone = request.Phone;
         staff.Email = request.Email;
@@ -359,7 +361,7 @@ public sealed class StaffManagementService(
         staff.Note = request.Note;
         if (request.PhotoUrl is not null) staff.PhotoUrl = request.PhotoUrl.Trim();
 
-        user.FullName = request.FullName;
+        user.FullName = fullName;
         user.Campus = request.Campus;
         user.DepartmentOrBranch = request.DepartmentOrBranch;
         if (request.PhotoUrl is not null) user.PhotoUrl = request.PhotoUrl.Trim();

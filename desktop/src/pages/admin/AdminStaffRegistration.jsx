@@ -118,7 +118,7 @@ const emptyForm = {
   email: '',
   education: 'Lisans',
   startDate: '',
-  campus: 'Merkez Kampus',
+  campus: 'Merkez Kampüs',
   homeroomClass: '',
   maritalStatus: 'Bekar',
   childCount: 0,

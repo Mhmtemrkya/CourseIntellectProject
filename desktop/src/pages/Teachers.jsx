@@ -218,7 +218,7 @@ function TeacherFormFields({ form, setForm, branches, classes, onCreateBranch })
         </div>
       )}
       <div className="space-y-2">
-        <Label>Kampus</Label>
+        <Label>Kampüs</Label>
         <Input value={form.campus} onChange={(e) => setForm((p) => ({ ...p, campus: e.target.value }))} />
       </div>
       <div className="space-y-2">
@@ -285,7 +285,7 @@ function AddTeacherDialog({
     phone: '',
     education: 'Lisans',
     startDate: '',
-    campus: 'Merkez Kampus',
+    campus: 'Merkez Kampüs',
     homeroomClass: '',
     assignedClasses: [],
     maritalStatus: 'Bekar',
@@ -435,7 +435,7 @@ function EditTeacherDialog({
         departmentOrBranch: teacher.departmentOrBranch || '',
         phone: maskTrPhone(teacher.phone || ''),
         education: teacher.education || 'Lisans',
-        campus: teacher.campus || 'Merkez Kampus',
+        campus: teacher.campus || 'Merkez Kampüs',
         homeroomClass: teacher.homeroomClass || '',
         assignedClasses: Array.isArray(teacher.assignedClasses) ? [...teacher.assignedClasses] : [],
         maritalStatus: teacher.maritalStatus || 'Bekar',

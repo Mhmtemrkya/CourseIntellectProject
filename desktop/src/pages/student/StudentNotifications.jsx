@@ -88,7 +88,7 @@ export default function StudentNotifications() {
       );
       toast({ title: 'Okundu olarak isaretlendi.' });
     } catch {
-      toast({ title: 'Islem basarisiz.', variant: 'destructive' });
+      toast({ title: 'İşlem başarısız.', variant: 'destructive' });
     }
   };
 
@@ -131,7 +131,7 @@ export default function StudentNotifications() {
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="all">
-              Tumu ({notifications.length})
+              Tümü ({notifications.length})
             </TabsTrigger>
             <TabsTrigger value="unread">
               Okunmamis ({unreadCount})
@@ -149,7 +149,7 @@ export default function StudentNotifications() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
               <BellRing className="h-12 w-12 mb-3 opacity-40" />
-              <p>Duyuru bulunamadi.</p>
+              <p>Duyuru bulunamadı.</p>
             </CardContent>
           </Card>
         </motion.div>

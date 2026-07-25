@@ -415,6 +415,35 @@ public sealed class DrivingSchoolController(
         return Ok(entity);
     }
 
+    // Aracın işletme durumunu elle değiştir: Aktif (uygun) / Bakımda / Pasif.
+    // Bakım bilgisi servis kayıtlarından da otomatik güncellenir; bu uç yöneticinin
+    // doğrudan (örn. muayeneye götürme, hurdaya ayırma) müdahalesi içindir.
+    [HttpPut("vehicles/{id:guid}/status")]
+    [RequireDrivingPermission(DrivingPermissions.VehicleUpdate)]
+    public async Task<IActionResult> UpdateVehicleStatus(Guid id, [FromBody] UpdateVehicleStatusRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var vehicle = await dbContext.DrivingVehicles.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (vehicle is null) return NotFound(new { message = "Araç bulunamadı." });
+
+        var status = (request.Status ?? string.Empty).Trim().ToLowerInvariant();
+        var before = VehicleSnapshot(vehicle);
+        switch (status)
+        {
+            case "active": vehicle.IsActive = true; vehicle.IsInMaintenance = false; break;
+            case "maintenance": vehicle.IsActive = true; vehicle.IsInMaintenance = true; break;
+            case "passive": vehicle.IsActive = false; vehicle.IsInMaintenance = false; break;
+            default: return BadRequest(new { message = "Durum geçersiz. Geçerli değerler: Active, Maintenance, Passive." });
+        }
+
+        await dbContext.SaveChangesAsync(ct);
+        var label = status switch { "active" => "Uygun", "maintenance" => "Bakımda", _ => "Pasif" };
+        var reason = string.IsNullOrWhiteSpace(request.Reason) ? string.Empty : $" Gerekçe: {request.Reason.Trim()}";
+        await auditLogService.LogChangeAsync("Araç durumu değiştirildi", AuditCategory, "DrivingVehicle", vehicle.Id.ToString(),
+            $"{vehicle.PlateNumber} → {label}.{reason}", before, VehicleSnapshot(vehicle), ct);
+        return Ok(vehicle);
+    }
+
     [HttpGet("instructors")]
     [RequireDrivingPermission(DrivingPermissions.InstructorView)]
     public async Task<IActionResult> GetInstructors(CancellationToken ct)
@@ -1946,6 +1975,7 @@ public sealed class DrivingSchoolController(
 
 public sealed record SaveDrivingPackageRequest(string Name, string LicenseClass, TransmissionType TransmissionType, int DrivingLessonMinutes, int TheoryLessonMinutes, decimal Price);
 public sealed record SaveDrivingVehicleRequest(string PlateNumber, string Brand, string Model, int ModelYear, string LicenseClass, TransmissionType TransmissionType, int CurrentKilometer, DateTime? InspectionExpiresAtUtc, DateTime? InsuranceExpiresAtUtc);
+public sealed record UpdateVehicleStatusRequest(string Status, string? Reason);
 public sealed record SaveDrivingInstructorRequest(Guid StaffId, IReadOnlyList<string> LicenseClasses, bool CanTeachManual, bool CanTeachAutomatic, string? WorkingPermitNo = null, DateTime? WorkingPermitExpiresAtUtc = null);
 public sealed record UpdateWorkingPermitRequest(string? WorkingPermitNo, DateTime? WorkingPermitExpiresAtUtc);
 public sealed record UpdateInstructorLifecycleRequest(

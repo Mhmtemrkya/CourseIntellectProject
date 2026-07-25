@@ -697,7 +697,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             const SizedBox(height: 12),
             _field(
               controller: _personnelEducationController,
-              label: 'Egitim / Uzmanlik',
+              label: 'Eğitim / Uzmanlık',
             ),
             if (_personnelRole == 'ServiceDriver') ...[
               const SizedBox(height: 12),
@@ -863,7 +863,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             const SizedBox(height: 10),
             const _InfoRow(
               title: 'Personel Profili',
-              value: 'Departman ve kampus kaydı kurumsal listede yer alir',
+              value: 'Departman ve kampüs kaydı kurumsal listede yer alır',
             ),
             _InfoRow(
               title: 'Erişim'.tr,

@@ -120,7 +120,7 @@ export default function Tenants() {
         : '';
       toast({ title: 'Kurum Onaylandi', description: `${tenant.name} aktif olarak isaretlendi.${credentialsNote}` });
     } catch (err) {
-      toast({ title: 'Onay basarisiz', description: err.message || 'Lutfen tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Onay başarısız', description: err.message || 'Lütfen tekrar deneyin.', variant: 'destructive' });
     } finally {
       setActionLoading(null);
     }

@@ -63,7 +63,7 @@ class _AccountingSalaryDetailPageState
       builder: (ctx) => AlertDialog(
         title: const Text('Bordroyu Sil'),
         content: Text(
-          '${_salary.employee} bordrosunu silmek istediginize emin misiniz?',
+          '${_salary.employee} bordrosunu silmek istediğinize emin misiniz?',
         ),
         actions: [
           TextButton(
@@ -105,7 +105,7 @@ class _AccountingSalaryDetailPageState
     return AccountingScaffold(
       appBar: AppBar(
         title: const Text(
-          'Bordro Detayi',
+          'Bordro Detayı',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -337,7 +337,10 @@ class _SalaryEditDialogState extends State<_SalaryEditDialog> {
               decoration: const InputDecoration(labelText: 'Durum'),
               items: [
                 DropdownMenuItem(value: 'Bekliyor', child: Text('Bekliyor')),
-                DropdownMenuItem(value: 'Planlandı', child: Text('Planlandı'.tr)),
+                DropdownMenuItem(
+                  value: 'Planlandı',
+                  child: Text('Planlandı'.tr),
+                ),
                 DropdownMenuItem(value: 'Ödendi', child: Text('Ödendi'.tr)),
                 DropdownMenuItem(
                   value: 'Reddedildi',

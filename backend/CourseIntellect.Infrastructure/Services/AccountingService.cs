@@ -82,27 +82,41 @@ public sealed class AccountingService(
 
     public async Task<AccountingInvoiceDto> CreateInvoiceAsync(CreateInvoiceRequest request, CancellationToken cancellationToken = default)
     {
+        var issueDate = DateTime.TryParse(
+            request.Date,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeLocal,
+            out var parsedIssueDate)
+            ? parsedIssueDate.ToUniversalTime()
+            : DateTime.UtcNow;
         var invoice = new AccountingInvoice
         {
             Title = request.Title.Trim(),
+            Counterparty = request.Counterparty?.Trim() ?? string.Empty,
             Category = request.Category.Trim(),
-            Subtitle = $"{request.Date.Trim()} • PDF",
+            Subtitle = request.DueDateUtc.HasValue
+                ? $"{issueDate.ToLocalTime():dd.MM.yyyy} • Vade {request.DueDateUtc.Value.ToLocalTime():dd.MM.yyyy}"
+                : $"{issueDate.ToLocalTime():dd.MM.yyyy}",
             Amount = NormalizeAmount(request.Amount),
-            Status = "Bekliyor"
+            Status = request.IsPaid ? "Ödendi" : "Ödenmedi",
+            IssueDateUtc = issueDate,
+            DueDateUtc = request.DueDateUtc?.ToUniversalTime(),
+            PaidAtUtc = request.IsPaid ? DateTime.UtcNow : null,
+            PaymentMethod = request.IsPaid ? request.PaymentMethod?.Trim() ?? string.Empty : string.Empty,
+            Note = request.Reason.Trim(),
         };
+        invoice.InvoiceNumber = string.IsNullOrWhiteSpace(request.InvoiceNumber)
+            ? $"FTR-{issueDate:yyyyMMdd}-{invoice.Id.ToString("N")[..8].ToUpperInvariant()}"
+            : request.InvoiceNumber.Trim().ToUpperInvariant();
         await dbContext.AccountingInvoices.AddAsync(invoice, cancellationToken);
-        var approval = new AccountingApproval
-        {
-            Title = request.Title.Trim(),
-            Reason = request.Reason.Trim(),
-            Category = request.Category.Trim(),
-            Status = "Bekliyor",
-            SourceType = "invoice",
-            SourceKey = invoice.Id.ToString()
-        };
-        await dbContext.AccountingApprovals.AddAsync(approval, cancellationToken);
-        await AddNotificationAsync("Yeni fatura oluşturuldu", $"{invoice.Title} kaydı onay akışına gönderildi.", cancellationToken);
-        await AddAuditAsync("Fatura kaydı açıldı", $"{invoice.Title} için {invoice.Amount} tutarında yeni kayıt oluşturuldu.", cancellationToken);
+        await AddNotificationAsync(
+            "Yeni fatura oluşturuldu",
+            $"{invoice.InvoiceNumber} numaralı fatura {invoice.Status.ToLowerInvariant()} durumunda kaydedildi.",
+            cancellationToken);
+        await AddAuditAsync(
+            "Fatura kaydı açıldı",
+            $"{invoice.InvoiceNumber} • {invoice.Title} • {invoice.Amount} • {invoice.Status}.",
+            cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToDto(invoice);
     }
@@ -352,7 +366,20 @@ public sealed class AccountingService(
         return $"{now.Hour:00}:{now.Minute:00}";
     }
 
-    private static AccountingInvoiceDto ToDto(AccountingInvoice x) => new(x.Id.ToString(), x.Title, x.Category, x.Subtitle, x.Amount, x.Status);
+    private static AccountingInvoiceDto ToDto(AccountingInvoice x) => new(
+        x.Id.ToString(),
+        string.IsNullOrWhiteSpace(x.InvoiceNumber) ? x.Id.ToString() : x.InvoiceNumber,
+        x.Title,
+        x.Counterparty,
+        x.Category,
+        x.Subtitle,
+        x.Amount,
+        x.Status,
+        x.IssueDateUtc,
+        x.DueDateUtc,
+        x.PaidAtUtc,
+        x.PaymentMethod,
+        x.Note);
     private static AccountingSalaryDto ToDto(AccountingSalary x) => new(x.Id.ToString(), x.Employee, x.Role, x.Amount, x.PayDate, x.Status);
     private static AccountingApprovalDto ToDto(AccountingApproval x) => new(x.Id.ToString(), x.Title, x.Reason, x.Category, x.Status, x.SourceType, x.SourceKey);
     private static AccountingNotificationDto ToDto(AccountingNotification x) => new(x.Id.ToString(), x.Title, x.Message, x.Time, x.Unread);

@@ -34,15 +34,21 @@ String _normalizeInvoiceCategory(Object? value) {
 
 String _normalizeInvoiceStatus(Object? value) {
   final normalized = _normalizeFinanceText(value).toLowerCase();
+  if (normalized.contains('unpaid') ||
+      normalized.contains('ödenmedi') ||
+      normalized.contains('odenmedi') ||
+      normalized.contains('bekli')) {
+    return 'Ödenmedi';
+  }
   if (normalized.contains('paid') ||
-      normalized.contains('öden') ||
-      normalized.contains('oden')) {
+      normalized.contains('ödendi') ||
+      normalized.contains('odendi')) {
     return 'Ödendi';
   }
   if (normalized.contains('overdue') || normalized.contains('gec')) {
     return 'Gecikmiş';
   }
-  return 'Bekliyor';
+  return 'Ödenmedi';
 }
 
 String _normalizeSalaryStatus(Object? value) {
@@ -114,39 +120,67 @@ String _normalizeApprovalCategory(Object? value) {
 
 class InvoiceRecord {
   final String id;
+  final String invoiceNumber;
   final String title;
+  final String counterparty;
   final String category;
   final String subtitle;
   final String amount;
   String status;
+  final DateTime? issueDateUtc;
+  final DateTime? dueDateUtc;
+  final DateTime? paidAtUtc;
+  final String paymentMethod;
+  final String note;
 
   InvoiceRecord({
     this.id = '',
+    this.invoiceNumber = '',
     required this.title,
+    this.counterparty = '',
     required this.category,
     required this.subtitle,
     required this.amount,
     required this.status,
+    this.issueDateUtc,
+    this.dueDateUtc,
+    this.paidAtUtc,
+    this.paymentMethod = '',
+    this.note = '',
   });
 
   factory InvoiceRecord.fromMap(Map<String, dynamic> map) {
     return InvoiceRecord(
       id: map['id'] as String? ?? '',
+      invoiceNumber: map['invoiceNumber'] as String? ?? '',
       title: _normalizeFinanceText(map['title']),
+      counterparty: _normalizeFinanceText(map['counterparty']),
       category: _normalizeInvoiceCategory(map['category']),
       subtitle: _normalizeFinanceText(map['subtitle']),
       amount: _normalizeFinanceText(map['amount']),
       status: _normalizeInvoiceStatus(map['status']),
+      issueDateUtc: DateTime.tryParse('${map['issueDateUtc'] ?? ''}'),
+      dueDateUtc: DateTime.tryParse('${map['dueDateUtc'] ?? ''}'),
+      paidAtUtc: DateTime.tryParse('${map['paidAtUtc'] ?? ''}'),
+      paymentMethod: _normalizeFinanceText(map['paymentMethod']),
+      note: _normalizeFinanceText(map['note']),
     );
   }
 
   Map<String, dynamic> toMap() => {
     'id': id,
+    'invoiceNumber': invoiceNumber,
     'title': title,
+    'counterparty': counterparty,
     'category': category,
     'subtitle': subtitle,
     'amount': amount,
     'status': status,
+    'issueDateUtc': issueDateUtc?.toIso8601String(),
+    'dueDateUtc': dueDateUtc?.toIso8601String(),
+    'paidAtUtc': paidAtUtc?.toIso8601String(),
+    'paymentMethod': paymentMethod,
+    'note': note,
   };
 }
 
@@ -545,17 +579,42 @@ class AccountingFinanceStore extends ChangeNotifier {
 
   Future<void> addInvoice({
     required String title,
+    required String counterparty,
     required String category,
     required String amount,
     required String date,
+    required String dueDate,
     required String reason,
+    required bool isPaid,
+    required String paymentMethod,
+    String invoiceNumber = '',
   }) async {
     await AccountingApiService.instance.createInvoice(
       title: title,
+      counterparty: counterparty,
       category: category,
       amount: amount,
       date: date,
+      dueDate: dueDate,
       reason: reason,
+      isPaid: isPaid,
+      paymentMethod: paymentMethod,
+      invoiceNumber: invoiceNumber,
+    );
+    await loadDashboard();
+  }
+
+  Future<void> markInvoicePaid({
+    required String id,
+    required String paymentMethod,
+    required String paidDate,
+    String note = '',
+  }) async {
+    await AccountingApiService.instance.markInvoicePaid(
+      invoiceId: id,
+      paymentMethod: paymentMethod,
+      paidDate: paidDate,
+      note: note,
     );
     await loadDashboard();
   }

@@ -238,7 +238,7 @@ export function createDesktopUser(payload) {
     tenant: tenantName,
     institutionType,
     drivingSchoolModuleEnabled: Boolean(data?.user?.drivingSchoolModuleEnabled),
-    branch: data?.user?.campus || "Merkez Kampus",
+    branch: data?.user?.campus || "Merkez Kampüs",
     department: data?.user?.departmentOrBranch || "",
     extraRoles: data?.user?.extraRoles || [],
     modules: data?.user?.modules || [],

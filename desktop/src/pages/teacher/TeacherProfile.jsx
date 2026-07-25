@@ -131,9 +131,9 @@ export default function TeacherProfile() {
                 <User className="h-12 w-12 text-brand-primary" />
               </div>
               <div className="pb-2">
-                <h1 className="text-2xl font-bold">{profile?.fullName || user?.name || 'Ogretmen'}</h1>
+                <h1 className="text-2xl font-bold">{profile?.fullName || user?.name || 'Öğretmen'}</h1>
                 <p className="text-sm text-muted-foreground">
-                  {profile?.departmentOrBranch || user?.department || 'Ogretmen'} - {user?.branch || 'Merkez Kampus'}
+                  {profile?.departmentOrBranch || user?.department || 'Öğretmen'} - {user?.branch || 'Merkez Kampüs'}
                 </p>
               </div>
             </div>
@@ -148,7 +148,7 @@ export default function TeacherProfile() {
             <BookOpen className="h-8 w-8 text-brand-primary" />
             <div>
               <p className="text-2xl font-bold">{stats.exams}</p>
-              <p className="text-xs text-muted-foreground">Sinav</p>
+              <p className="text-xs text-muted-foreground">Sınav</p>
             </div>
           </CardContent>
         </Card>
@@ -157,7 +157,7 @@ export default function TeacherProfile() {
             <Award className="h-8 w-8 text-brand-accent" />
             <div>
               <p className="text-2xl font-bold">{stats.homework}</p>
-              <p className="text-xs text-muted-foreground">Odev</p>
+              <p className="text-xs text-muted-foreground">Ödev</p>
             </div>
           </CardContent>
         </Card>
@@ -197,7 +197,7 @@ export default function TeacherProfile() {
               <div className="flex items-center gap-3">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-muted-foreground">Kampus</p>
+                  <p className="text-muted-foreground">Kampüs</p>
                   <p className="font-medium">{profile?.campus || user?.branch || '-'}</p>
                 </div>
               </div>
@@ -218,7 +218,7 @@ export default function TeacherProfile() {
               <div className="flex items-center gap-3">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-muted-foreground">Kullanici Adi</p>
+                  <p className="text-muted-foreground">Kullanıcı Adı</p>
                   <p className="font-medium">{profile?.username || user?.username || '-'}</p>
                 </div>
               </div>

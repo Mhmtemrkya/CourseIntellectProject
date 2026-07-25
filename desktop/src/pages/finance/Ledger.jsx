@@ -264,8 +264,8 @@ export default function Ledger() {
           <BookOpen className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Ogrenci Hesap Defteri</h1>
-          <p className="text-sm text-muted-foreground">Ogrenci bazli borc/alacak takibi</p>
+          <h1 className="text-2xl font-bold">Öğrenci Hesap Defteri</h1>
+          <p className="text-sm text-muted-foreground">Öğrenci bazlı borç/alacak takibi</p>
         </div>
       </motion.div>
 
@@ -276,7 +276,7 @@ export default function Ledger() {
             <Users className="h-8 w-8 text-blue-500" />
             <div>
               <p className="text-2xl font-bold">{students.length}</p>
-              <p className="text-xs text-muted-foreground">Toplam Ogrenci</p>
+              <p className="text-xs text-muted-foreground">Toplam Öğrenci</p>
             </div>
           </CardContent>
         </Card>
@@ -294,7 +294,7 @@ export default function Ledger() {
             <TrendingUp className="h-8 w-8 text-orange-500" />
             <div>
               <p className="text-lg font-bold">{formatCurrency(totals.balance)}</p>
-              <p className="text-xs text-muted-foreground">Kalan Borc</p>
+              <p className="text-xs text-muted-foreground">Kalan Borç</p>
             </div>
           </CardContent>
         </Card>
@@ -303,7 +303,7 @@ export default function Ledger() {
             <AlertCircle className="h-8 w-8 text-red-500" />
             <div>
               <p className="text-2xl font-bold">{totals.overdue}</p>
-              <p className="text-xs text-muted-foreground">Gecikme Olan</p>
+              <p className="text-xs text-muted-foreground">Gecikmesi Olan</p>
             </div>
           </CardContent>
         </Card>
@@ -313,12 +313,12 @@ export default function Ledger() {
       <motion.div variants={itemVariants} className="flex gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-10" placeholder="Ogrenci veya sinif ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="pl-10" placeholder="Öğrenci veya sınıf ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tumu</SelectItem>
+            <SelectItem value="all">Tümü</SelectItem>
             <SelectItem value="overdue">Geciken</SelectItem>
             <SelectItem value="unpaid">Borcu Olan</SelectItem>
             <SelectItem value="paid">Tamamlanan</SelectItem>
@@ -333,10 +333,10 @@ export default function Ledger() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Ogrenci</TableHead>
-                  <TableHead>Sinif</TableHead>
-                  <TableHead>Toplam Borc</TableHead>
-                  <TableHead>Odenen</TableHead>
+                  <TableHead>Öğrenci</TableHead>
+                  <TableHead>Sınıf</TableHead>
+                  <TableHead>Toplam Borç</TableHead>
+                  <TableHead>Ödenen</TableHead>
                   <TableHead>Kalan</TableHead>
                   <TableHead>Durum</TableHead>
                   <TableHead className="text-right">Detay</TableHead>
@@ -346,7 +346,7 @@ export default function Ledger() {
                 {filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      Sonuc bulunamadi.
+                      Sonuç bulunamadı.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -361,7 +361,7 @@ export default function Ledger() {
                         {item.hasOverdue ? (
                           <Badge className="bg-red-100 text-red-700">Gecikme</Badge>
                         ) : item.balance <= 0 ? (
-                          <Badge className="bg-green-100 text-green-700">Tamamlandi</Badge>
+                          <Badge className="bg-green-100 text-green-700">Tamamlandı</Badge>
                         ) : (
                           <Badge className="bg-yellow-100 text-yellow-700">Devam Ediyor</Badge>
                         )}
@@ -389,17 +389,17 @@ export default function Ledger() {
       <Dialog open={!!selectedStudent} onOpenChange={(v) => { if (!v) { setSelectedStudent(null); setAccountDetail(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{selectedStudent?.name} - Hesap Detayi</DialogTitle>
+            <DialogTitle>{selectedStudent?.name} - Hesap Detayı</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div className="p-3 bg-muted rounded-lg text-center">
                 <p className="font-bold">{formatCurrency(selectedStudent?.totalDue)}</p>
-                <p className="text-xs text-muted-foreground">Toplam Borc</p>
+                <p className="text-xs text-muted-foreground">Toplam Borç</p>
               </div>
               <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg text-center">
                 <p className="font-bold text-green-600">{formatCurrency(selectedStudent?.totalPaid)}</p>
-                <p className="text-xs text-muted-foreground">Odenen</p>
+                <p className="text-xs text-muted-foreground">Ödenen</p>
               </div>
               <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg text-center">
                 <p className="font-bold text-orange-600">{formatCurrency(selectedStudent?.balance)}</p>
@@ -407,7 +407,7 @@ export default function Ledger() {
               </div>
             </div>
             <div>
-              <h4 className="font-medium mb-2">Son Odemeler</h4>
+              <h4 className="font-medium mb-2">Son Ödemeler</h4>
               {detailLoading ? (
                 <div className="flex justify-center py-6"><LoadingDots /></div>
               ) : payments.length > 0 ? (
@@ -421,7 +421,7 @@ export default function Ledger() {
                   </div>
                 ))
               ) : (
-                <p className="py-4 text-center text-sm text-muted-foreground">Bu ogrenci icin odeme kaydi bulunmuyor.</p>
+                <p className="py-4 text-center text-sm text-muted-foreground">Bu öğrenci için ödeme kaydı bulunmuyor.</p>
               )}
             </div>
           </div>

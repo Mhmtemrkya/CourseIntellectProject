@@ -96,7 +96,7 @@ export default function ParentExcuseRequest() {
 
   const handleSubmit = async () => {
     if (!form.childName || !form.date || !form.reason) {
-      toast({ title: 'Lutfen zorunlu alanlari doldurun.', variant: 'destructive' });
+      toast({ title: 'Lütfen zorunlu alanları doldurun.', variant: 'destructive' });
       return;
     }
     try {
@@ -206,7 +206,7 @@ export default function ParentExcuseRequest() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">Mazeret Bildirimi</h1>
-            <p className="text-sm text-muted-foreground">Devamsizlik icin mazeret gonderin</p>
+            <p className="text-sm text-muted-foreground">Devamsızlık için mazeret gönderin</p>
           </div>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -217,12 +217,12 @@ export default function ParentExcuseRequest() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Mazeret Bildirimi Olustur</DialogTitle>
+              <DialogTitle>Mazeret Bildirimi Oluştur</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {children.length > 1 && (
                 <div>
-                  <Label>Ogrenci</Label>
+                  <Label>Öğrenci</Label>
                   <Select value={form.childName} onValueChange={(v) => setForm((p) => ({ ...p, childName: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -234,7 +234,7 @@ export default function ParentExcuseRequest() {
                 </div>
               )}
               <div>
-                <Label>Devamsizlik Tarihi *</Label>
+                <Label>Devamsızlık Tarihi *</Label>
                 <Input
                   type="date"
                   value={form.date}
@@ -242,7 +242,7 @@ export default function ParentExcuseRequest() {
                 />
               </div>
               <div>
-                <Label>Mazeret Turu</Label>
+                <Label>Mazeret Türü</Label>
                 <Select value={form.type} onValueChange={(v) => setForm((p) => ({ ...p, type: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -253,9 +253,9 @@ export default function ParentExcuseRequest() {
                 </Select>
               </div>
               <div>
-                <Label>Aciklama *</Label>
+                <Label>Açıklama *</Label>
                 <Textarea
-                  placeholder="Mazeret nedenini aciklayiniz..."
+                  placeholder="Mazeret nedenini açıklayınız..."
                   value={form.reason}
                   onChange={(e) => setForm((p) => ({ ...p, reason: e.target.value }))}
                   rows={3}
@@ -286,9 +286,9 @@ export default function ParentExcuseRequest() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Iptal</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>İptal</Button>
               <Button onClick={handleSubmit} disabled={saving}>
-                <Send className="h-4 w-4 mr-1" /> {saving ? 'Gonderiliyor...' : 'Gonder'}
+                <Send className="h-4 w-4 mr-1" /> {saving ? 'Gönderiliyor...' : 'Gönder'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -320,7 +320,7 @@ export default function ParentExcuseRequest() {
             <Calendar className="h-8 w-8 text-red-500" />
             <div>
               <p className="text-2xl font-bold">{absences.length}</p>
-              <p className="text-xs text-muted-foreground">Toplam Devamsizlik</p>
+              <p className="text-xs text-muted-foreground">Toplam Devamsızlık</p>
             </div>
           </CardContent>
         </Card>
@@ -330,13 +330,13 @@ export default function ParentExcuseRequest() {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle>Mazeret Gecmisi</CardTitle>
+            <CardTitle>Mazeret Geçmişi</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Ogrenci</TableHead>
+                  <TableHead>Öğrenci</TableHead>
                   <TableHead>Tarih</TableHead>
                   <TableHead>Neden</TableHead>
                   <TableHead>Durum</TableHead>
@@ -347,7 +347,7 @@ export default function ParentExcuseRequest() {
                 {excuses.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      Henuz mazeret bildirimi yapilmamis.
+                      Henüz mazeret bildirimi yapılmamış.
                     </TableCell>
                   </TableRow>
                 ) : (

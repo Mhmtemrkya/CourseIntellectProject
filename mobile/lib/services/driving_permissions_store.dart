@@ -24,6 +24,7 @@ class DrivingPermissions {
 
   static const vehicleView = 'driving.vehicle.view';
   static const vehicleCreate = 'driving.vehicle.create';
+  static const vehicleUpdate = 'driving.vehicle.update';
   static const vehicleDocumentView = 'driving.vehicle.document.view';
   static const vehicleDocumentUpload = 'driving.vehicle.document.upload';
   static const vehicleServiceView = 'driving.vehicle.service.view';

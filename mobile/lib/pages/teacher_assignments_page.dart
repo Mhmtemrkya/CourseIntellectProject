@@ -270,7 +270,8 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Sınıflara verdiğin ödevleri takip et, teslim durumlarını gör ve yeni ödevler oluştur.".tr,
+            "Sınıflara verdiğin ödevleri takip et, teslim durumlarını gör ve yeni ödevler oluştur."
+                .tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -756,7 +757,7 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Iptal'),
+          child: const Text('İptal'),
         ),
         ElevatedButton(
           onPressed: () {

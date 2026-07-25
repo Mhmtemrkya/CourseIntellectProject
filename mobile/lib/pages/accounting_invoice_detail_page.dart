@@ -25,11 +25,7 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
             )
             .firstOrNull ??
         invoice;
-    final approvalStatus = current.id.isEmpty
-        ? ''
-        : store.approvalStatusFor('Invoice', current.id);
-    final approvalLabel = approvalStatus.isEmpty ? 'Bekliyor' : approvalStatus;
-    final approvalComplete = approvalLabel == 'Onaylandı';
+    final isPaid = current.status == 'Ödendi';
 
     return AccountingScaffold(
       appBar: AppHeader(title: 'Fatura Detayı'.tr),
@@ -58,10 +54,32 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
                 AccountingSectionTitle(title: 'Belge Özeti'.tr),
                 const SizedBox(height: 14),
                 _DetailRow(label: 'Belge Adı'.tr, value: current.title),
+                _DetailRow(
+                  label: 'Fatura No',
+                  value: current.invoiceNumber.isEmpty
+                      ? current.id
+                      : current.invoiceNumber,
+                ),
+                _DetailRow(
+                  label: 'İlgili Kişi/Kurum',
+                  value: current.counterparty.isEmpty
+                      ? '-'
+                      : current.counterparty,
+                ),
                 _DetailRow(label: 'Kategori', value: current.category),
                 _DetailRow(label: 'Kayıt Bilgisi'.tr, value: current.subtitle),
                 _DetailRow(label: 'Toplam Tutar', value: current.amount),
-                _DetailRow(label: 'Onay Durumu', value: approvalLabel),
+                _DetailRow(label: 'Ödeme Durumu', value: current.status),
+                _DetailRow(
+                  label: 'Ödeme Yöntemi',
+                  value: current.paymentMethod.isEmpty
+                      ? '-'
+                      : current.paymentMethod,
+                ),
+                _DetailRow(
+                  label: 'Açıklama',
+                  value: current.note.isEmpty ? '-' : current.note,
+                ),
               ],
             ),
           ),
@@ -77,24 +95,24 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
                   icon: Icons.receipt_long_outlined,
                   title: 'Belge oluşturuldu'.tr,
                   subtitle:
-                      'Muhasebe kaydı sisteme işlendi ve belge numarası üretildi.'.tr,
+                      'Muhasebe kaydı sisteme işlendi ve belge numarası üretildi.'
+                          .tr,
                 ),
                 _FlowTile(
                   color: accentColor,
                   icon: Icons.verified_outlined,
-                  title: approvalComplete
-                      ? 'Onay tamamlandı'
-                      : 'Onay süreci izleniyor',
-                  subtitle: approvalComplete
-                      ? 'Yönetici onayı tamamlandı, belge aktif mali kayıtlara işlendi.'
-                      : 'Belge şu an inceleme sürecinde; karar sonrası durum güncellenecek.',
+                  title: isPaid ? 'Ödeme tamamlandı' : 'Ödeme bekleniyor',
+                  subtitle: isPaid
+                      ? '${current.paymentMethod} yöntemiyle ödeme kaydı tamamlandı.'
+                      : 'Ödeme geldiğinde fatura listesindeki “Ödendi” işlemini kullanın.',
                 ),
                 _FlowTile(
                   color: accentColor,
                   icon: Icons.picture_as_pdf_outlined,
                   title: 'Belge çıktısı hazır'.tr,
                   subtitle:
-                      'Makbuz ve PDF paylaşımı için belge formatı hazır tutuluyor.'.tr,
+                      'Makbuz ve PDF paylaşımı için belge formatı hazır tutuluyor.'
+                          .tr,
                   isLast: true,
                 ),
               ],

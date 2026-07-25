@@ -459,6 +459,17 @@ class DrivingSchoolApiService {
     await _post('/api/driving-school/vehicles', body);
   }
 
+  /// Aracın işletme durumunu değiştirir: 'Active' | 'Maintenance' | 'Passive'.
+  Future<Map<String, dynamic>> updateVehicleStatus(
+    String id,
+    String status, {
+    String? reason,
+  }) {
+    final body = <String, dynamic>{'status': status};
+    if (reason != null) body['reason'] = reason;
+    return _put('/api/driving-school/vehicles/$id/status', body);
+  }
+
   Future<List<Map<String, dynamic>>> instructorAppointments() async =>
       (await _getList(
         '/api/driving-school/instructor/my-appointments',

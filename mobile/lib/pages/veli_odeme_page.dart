@@ -223,7 +223,7 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
           ),
           SizedBox(height: 12),
           if (installments.isEmpty)
-            Text('Bagli öğrenci için henüz taksit planı bulunmuyor.'.tr)
+            Text('Bağlı öğrenci için henüz taksit planı bulunmuyor.'.tr)
           else
             ...installments.map(
               (item) => _InstallmentRow(
@@ -248,12 +248,15 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Ödeme Geçmişi".tr, style: TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            "Ödeme Geçmişi".tr,
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           SizedBox(height: 12),
           if (store.collections
               .where((item) => item.name == studentName)
               .isEmpty)
-            Text('Bagli öğrenci için henüz tahsilat kaydı bulunmuyor.'.tr)
+            Text('Bağlı öğrenci için henüz tahsilat kaydı bulunmuyor.'.tr)
           else
             ...store.collections
                 .where((item) => item.name == studentName)

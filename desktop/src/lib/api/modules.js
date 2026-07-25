@@ -96,6 +96,7 @@ export const updateDrivingPackage = (id, payload) => api.put(`/api/driving-schoo
 export const deleteDrivingPackage = (id) => api.delete(`/api/driving-school/packages/${id}`);
 export const fetchDrivingVehicles = () => api.get('/api/driving-school/vehicles');
 export const createDrivingVehicle = (payload) => api.post('/api/driving-school/vehicles', payload);
+export const updateDrivingVehicleStatus = (id, status, reason) => api.put(`/api/driving-school/vehicles/${id}/status`, { status, reason });
 export const fetchDrivingInstructors = () => api.get('/api/driving-school/instructors');
 export const createDrivingInstructor = (payload) => api.post('/api/driving-school/instructors', payload);
 export const fetchDrivingStudents = (params = {}) => api.get('/api/driving-school/students', { params });
@@ -1299,6 +1300,11 @@ export async function deleteCollection(id) {
 
 export async function createInvoice(payload) {
   const response = await api.post('/api/accounting/invoices', payload);
+  return response;
+}
+
+export async function markInvoicePaid(id, payload) {
+  const response = await api.put(`/api/accounting/invoices/${id}/mark-paid`, payload);
   return response;
 }
 

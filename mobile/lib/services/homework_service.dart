@@ -46,7 +46,7 @@ class HomeworkService extends ChangeNotifier {
       'submissions': <Map<String, dynamic>>[
         {
           'student': 'Ali Yilmaz',
-          'note': 'Cozum notlarını da ekledim.',
+          'note': 'Çözüm notlarını da ekledim.',
           'files': ['Ali_Limit_Cozum.pdf'],
           'submittedAt': DateTime(2026, 3, 17, 18, 30).toIso8601String(),
         },

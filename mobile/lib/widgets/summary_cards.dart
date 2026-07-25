@@ -252,7 +252,7 @@ class _SummaryCardsState extends State<SummaryCards> {
               Row(
                 children: [
                   Text(
-                    'Detayi ac',
+                    'Detayı aç',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: color,
                       fontWeight: FontWeight.w800,

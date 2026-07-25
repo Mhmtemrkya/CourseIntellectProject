@@ -85,7 +85,7 @@ class _AdminTaskCenterPageState extends State<AdminTaskCenterPage> {
         page: const TeacherMeetingApprovalsPage(),
       ),
       _AdminTaskItem(
-        title: '$campusCount kampus için sube görünümü güncel',
+        title: '$campusCount kampüs için şube görünümü güncel',
         category: 'Raporlama',
         color: const Color(0xFF7C3AED),
         page: const AdminBranchComparisonPage(),
@@ -104,78 +104,98 @@ class _AdminTaskCenterPageState extends State<AdminTaskCenterPage> {
         children: <Widget>[
           ...tasks.map(
             (task) => InkWell(
-                borderRadius: BorderRadius.circular(22),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => task.page),
-                ),
-                child: AdminPanel(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      Icon(Icons.task_alt_rounded, color: task.color),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          task.title,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
+              borderRadius: BorderRadius.circular(22),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => task.page),
+              ),
+              child: AdminPanel(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.task_alt_rounded, color: task.color),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        task.title,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      Text(
-                        task.category,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.chevron_right_rounded),
-                    ],
-                  ),
+                    ),
+                    Text(
+                      task.category,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right_rounded),
+                  ],
                 ),
               ),
+            ),
           ),
           const SizedBox(height: 12),
           AdminSectionTitle(title: 'Oluşturulan Görevler'.tr),
           const SizedBox(height: 12),
           if (_loadingTasks)
-            const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: CircularProgressIndicator(),
+              ),
+            )
           else if (_backendTasks.isEmpty)
             AdminPanel(child: Text('Henüz oluşturulmuş idari görev yok.'.tr))
           else
-            ..._backendTasks.map((task) => AdminPanel(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${task['title'] ?? 'Görev'}',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
-                            ),
+            ..._backendTasks.map(
+              (task) => AdminPanel(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${task['title'] ?? 'Görev'}',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
                           ),
-                          Text(_statusLabel('${task['status'] ?? ''}'), style: Theme.of(context).textTheme.bodySmall),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text('${task['assignedToName'] ?? 'Atanmamış'} • ${task['category'] ?? 'Genel'}'),
-                      const SizedBox(height: 4),
-                      Text('Başlangıç: ${_fmt(task['startDateUtc'])} • Bitiş: ${_fmt(task['endDateUtc'])}'),
-                      if ('${task['rejectionReason'] ?? ''}'.trim().isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEF4444).withValues(alpha: 0.10),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text('Mazeret: ${task['rejectionReason']}'),
+                        ),
+                        Text(
+                          _statusLabel('${task['status'] ?? ''}'),
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${task['assignedToName'] ?? 'Atanmamış'} • ${task['category'] ?? 'Genel'}',
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Başlangıç: ${_fmt(task['startDateUtc'])} • Bitiş: ${_fmt(task['endDateUtc'])}',
+                    ),
+                    if ('${task['rejectionReason'] ?? ''}'
+                        .trim()
+                        .isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFFEF4444,
+                          ).withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text('Mazeret: ${task['rejectionReason']}'),
+                      ),
                     ],
-                  ),
-                )),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

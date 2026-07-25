@@ -3,6 +3,7 @@ using CourseIntellect.Application.DTOs.Users;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
+using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -99,7 +100,7 @@ public sealed class UserDirectoryService(
         var user = new AppUser
         {
             TenantId = ResolveCurrentTenantId(),
-            FullName = request.Name,
+            FullName = PersonNameFormatter.FormatFullName(request.Name),
             Username = request.Email,
             PasswordHash = passwordHasher.Hash(request.Password),
             PrimaryRole = role,
@@ -126,7 +127,7 @@ public sealed class UserDirectoryService(
             .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (user is null) return null;
 
-        if (request.Name is not null) user.FullName = request.Name;
+        if (request.Name is not null) user.FullName = PersonNameFormatter.FormatFullName(request.Name);
         if (request.Email is not null) user.Username = request.Email;
         if (request.Password is not null) user.PasswordHash = passwordHasher.Hash(request.Password);
         if (request.Role is not null && Enum.TryParse<UserRole>(request.Role, true, out var role))

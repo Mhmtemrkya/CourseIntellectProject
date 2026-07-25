@@ -85,11 +85,11 @@ class _AdminCoursesPageState extends State<AdminCoursesPage> {
     final classNames = <String>{
       for (final student in StudentRegistryStore.instance.students)
         if (student.className.isNotEmpty) student.className,
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => _CourseFormDialog(course: existing, classNames: classNames),
+      builder: (ctx) =>
+          _CourseFormDialog(course: existing, classNames: classNames),
     );
     if (result == null) return;
     try {
@@ -125,8 +125,8 @@ class _AdminCoursesPageState extends State<AdminCoursesPage> {
             existing != null
                 ? 'Kurs güncellendi.'
                 : (result['announce'] == true
-                    ? 'Kurs oluşturuldu ve duyuru yayınlandı.'
-                    : 'Kurs oluşturuldu.'),
+                      ? 'Kurs oluşturuldu ve duyuru yayınlandı.'
+                      : 'Kurs oluşturuldu.'),
           ),
         ),
       );
@@ -145,7 +145,7 @@ class _AdminCoursesPageState extends State<AdminCoursesPage> {
       builder: (ctx) => AlertDialog(
         title: const Text('Kursu Sil'),
         content: Text(
-          '${course.name} kursunu silmek istediginize emin misiniz?',
+          '${course.name} kursunu silmek istediğinize emin misiniz?',
         ),
         actions: [
           TextButton(
@@ -402,13 +402,18 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
                 value: _announce,
                 onChanged: (v) => setState(() => _announce = v),
                 title: Text('Duyuru olarak yayınla'.tr),
-                subtitle: Text('Seçili rollerin duyurularında göster + mobil bildirim'.tr),
+                subtitle: Text(
+                  'Seçili rollerin duyurularında göster + mobil bildirim'.tr,
+                ),
                 contentPadding: EdgeInsets.zero,
               ),
               if (_announce) ...[
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Hedef Roller', style: Theme.of(context).textTheme.bodySmall),
+                  child: Text(
+                    'Hedef Roller',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Wrap(
@@ -428,14 +433,22 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
                     );
                   }).toList(),
                 ),
-                if (_audiences.contains('Ogrenci') && widget.classNames.isNotEmpty) ...[
+                if (_audiences.contains('Ogrenci') &&
+                    widget.classNames.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
                     initialValue: _announceClass,
-                    decoration: InputDecoration(labelText: 'Sınıf (opsiyonel)'.tr),
+                    decoration: InputDecoration(
+                      labelText: 'Sınıf (opsiyonel)'.tr,
+                    ),
                     items: [
-                      DropdownMenuItem(value: null, child: Text('Tüm öğrenciler'.tr)),
-                      ...widget.classNames.map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text('Tüm öğrenciler'.tr),
+                      ),
+                      ...widget.classNames.map(
+                        (c) => DropdownMenuItem(value: c, child: Text(c)),
+                      ),
                     ],
                     onChanged: (v) => setState(() => _announceClass = v),
                   ),
@@ -444,7 +457,9 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
                 TextField(
                   controller: _announceMessage,
                   maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Duyuru Metni (opsiyonel)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Duyuru Metni (opsiyonel)',
+                  ),
                 ),
               ],
             ],

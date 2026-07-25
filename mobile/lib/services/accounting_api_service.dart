@@ -104,18 +104,54 @@ class AccountingApiService {
 
   Future<InvoiceRecord> createInvoice({
     required String title,
+    required String counterparty,
     required String category,
     required String amount,
     required String date,
+    required String dueDate,
     required String reason,
+    required bool isPaid,
+    required String paymentMethod,
+    String invoiceNumber = '',
   }) async {
     final response = await _authorizedJson('POST', '/api/accounting/invoices', {
       'title': title,
+      'counterparty': counterparty,
+      'invoiceNumber': invoiceNumber.trim().isEmpty
+          ? null
+          : invoiceNumber.trim(),
       'category': category,
       'amount': amount,
       'date': date,
+      'dueDateUtc': dueDate.isEmpty
+          ? null
+          : DateTime.parse('${dueDate}T12:00:00').toUtc().toIso8601String(),
       'reason': reason,
+      'isPaid': isPaid,
+      'paymentMethod': isPaid ? paymentMethod : null,
     });
+    return InvoiceRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
+  }
+
+  Future<InvoiceRecord> markInvoicePaid({
+    required String invoiceId,
+    required String paymentMethod,
+    required String paidDate,
+    String note = '',
+  }) async {
+    final response = await _authorizedJson(
+      'PUT',
+      '/api/accounting/invoices/$invoiceId/mark-paid',
+      {
+        'paymentMethod': paymentMethod,
+        'paidAtUtc': DateTime.parse(
+          '${paidDate}T12:00:00',
+        ).toUtc().toIso8601String(),
+        'note': note.trim().isEmpty ? null : note.trim(),
+      },
+    );
     return InvoiceRecord.fromMap(
       Map<String, dynamic>.from(jsonDecode(response.body) as Map),
     );

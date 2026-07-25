@@ -45,7 +45,7 @@ class SmartInsightService {
 
     return [
       {
-        'title': 'Devamsızlık odakli etut planı',
+        'title': 'Devamsızlık odaklı etüt planı',
         'subtitle':
             '$absent devamsızlık kaydı sistem tarafından izlendi. Desteğe ihtiyacı olan öğrenciler için plan açılabilir.',
         'action': 'Plani Ac',

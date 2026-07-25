@@ -49,12 +49,12 @@ export default function AdminBranchComparison() {
       // Group by campus/branch
       const branchMap = new Map();
       for (const s of studentList) {
-        const campus = s.campus || s.branch || 'Merkez Kampus';
+        const campus = s.campus || s.branch || 'Merkez Kampüs';
         if (!branchMap.has(campus)) branchMap.set(campus, { name: campus, students: 0, staff: 0, teachers: 0 });
         branchMap.get(campus).students++;
       }
       for (const s of staffList) {
-        const campus = s.campus || s.branch || 'Merkez Kampus';
+        const campus = s.campus || s.branch || 'Merkez Kampüs';
         if (!branchMap.has(campus)) branchMap.set(campus, { name: campus, students: 0, staff: 0, teachers: 0 });
         branchMap.get(campus).staff++;
         if (String(s.primaryRole || '').toLowerCase() === 'teacher') {
@@ -95,7 +95,7 @@ export default function AdminBranchComparison() {
           <GitBranch className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Sube Karsilastirmasi</h1>
+          <h1 className="text-2xl font-bold">Şube Karşılaştırması</h1>
           <p className="text-sm text-muted-foreground">{branches.length} sube analizi</p>
         </div>
       </motion.div>
@@ -107,7 +107,7 @@ export default function AdminBranchComparison() {
             <MapPin className="h-8 w-8 text-blue-500" />
             <div>
               <p className="text-2xl font-bold">{branches.length}</p>
-              <p className="text-xs text-muted-foreground">Sube</p>
+              <p className="text-xs text-muted-foreground">Şube</p>
             </div>
           </CardContent>
         </Card>
@@ -116,7 +116,7 @@ export default function AdminBranchComparison() {
             <GraduationCap className="h-8 w-8 text-green-500" />
             <div>
               <p className="text-2xl font-bold">{totals.students}</p>
-              <p className="text-xs text-muted-foreground">Toplam Ogrenci</p>
+              <p className="text-xs text-muted-foreground">Toplam Öğrenci</p>
             </div>
           </CardContent>
         </Card>
@@ -134,7 +134,7 @@ export default function AdminBranchComparison() {
             <BarChart3 className="h-8 w-8 text-orange-500" />
             <div>
               <p className="text-2xl font-bold">{totals.teachers > 0 ? Math.round(totals.students / totals.teachers) : '-'}:1</p>
-              <p className="text-xs text-muted-foreground">Ort. Ogrenci/Ogretmen</p>
+              <p className="text-xs text-muted-foreground">Ort. Öğrenci/Öğretmen</p>
             </div>
           </CardContent>
         </Card>
@@ -144,14 +144,14 @@ export default function AdminBranchComparison() {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle>Ogrenci Dagilimi</CardTitle>
+            <CardTitle>Öğrenci Dağılımı</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {branches.map((b) => (
               <div key={b.name} className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="font-medium">{b.name}</span>
-                  <span className="text-muted-foreground">{b.students} ogrenci</span>
+                  <span className="text-muted-foreground">{b.students} öğrenci</span>
                 </div>
                 <div className="ci-chart-track h-4 rounded-full overflow-hidden">
                   <div
@@ -169,24 +169,24 @@ export default function AdminBranchComparison() {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle>Detayli Karsilastirma</CardTitle>
+            <CardTitle>Detaylı Karşılaştırma</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Sube</TableHead>
-                  <TableHead>Ogrenci</TableHead>
-                  <TableHead>Ogretmen</TableHead>
+                  <TableHead>Şube</TableHead>
+                  <TableHead>Öğrenci</TableHead>
+                  <TableHead>Öğretmen</TableHead>
                   <TableHead>Toplam Personel</TableHead>
-                  <TableHead>Ogrenci/Ogretmen</TableHead>
+                  <TableHead>Öğrenci/Öğretmen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {branches.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      Sube verisi bulunamadi.
+                      Şube verisi bulunamadı.
                     </TableCell>
                   </TableRow>
                 ) : (

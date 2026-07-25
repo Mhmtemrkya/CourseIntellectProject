@@ -69,7 +69,8 @@ class _AdministrativeDocumentsPageState
           AdminHeroCard(
             eyebrow: 'Evrak kontrolü',
             title:
-                'Kayıt dosyaları, veli sözleşmeleri ve eksik belge süreçlerini yönetin.'.tr,
+                'Kayıt dosyaları, veli sözleşmeleri ve eksik belge süreçlerini yönetin.'
+                    .tr,
             description:
                 'Öğrenci bazlı evrak durumu, eksik belge ve sözleşme takibi bu ekranda toplanır.',
             colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
@@ -283,7 +284,7 @@ class _AdministrativeDocumentsPageState
                     ),
                     DropdownMenuItem(
                       value: 'contract',
-                      child: Text('Sozlesme'),
+                      child: Text('Sözleşme'),
                     ),
                     DropdownMenuItem(
                       value: 'school',

@@ -92,7 +92,7 @@ export default function AdminProfile() {
               <Input value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label>Kampus</Label>
+              <Label>Kampüs</Label>
               <Input value={form.branch} onChange={(event) => setForm((prev) => ({ ...prev, branch: event.target.value }))} />
             </div>
             <div className="space-y-2">

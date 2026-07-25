@@ -51,6 +51,30 @@ DrivingTone _docTone(dynamic status) {
   }
 }
 
+/// Aracın işletme durumu iki bayraktan türetilir: pasif > bakımda > uygun.
+String _vehicleStatus(Map<String, dynamic> v) =>
+    v['isActive'] != true ? 'passive' : (v['isInMaintenance'] == true ? 'maintenance' : 'active');
+
+class _VehicleStatusMeta {
+  final String label;
+  final DrivingTone tone;
+  final IconData icon;
+  const _VehicleStatusMeta(this.label, this.tone, this.icon);
+}
+
+const Map<String, _VehicleStatusMeta> _vehicleStatusMeta = {
+  'active': _VehicleStatusMeta('Uygun', DrivingTone.success, Icons.check_circle_rounded),
+  'maintenance': _VehicleStatusMeta('Bakımda', DrivingTone.danger, Icons.build_rounded),
+  'passive': _VehicleStatusMeta('Pasif', DrivingTone.neutral, Icons.lock_rounded),
+};
+
+// Arayüzdeki durum anahtarını backend'in beklediği değere çevirir.
+const Map<String, String> _vehicleStatusApi = {
+  'active': 'Active',
+  'maintenance': 'Maintenance',
+  'passive': 'Passive',
+};
+
 /// Araçla ilgili HER ŞEYİN tek merkezi: filo listesi + araç ekleme + evrak ve
 /// bakım kayıtları. Paket tanımları "Paketler" ekranındadır.
 class DrivingSchoolVehiclesPage extends StatefulWidget {
@@ -71,6 +95,7 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
   List<Map<String, dynamic>> _documents = const [];
   List<Map<String, dynamic>> _serviceRecords = const [];
   String _search = '';
+  String _statusFilter = 'all'; // all | active | maintenance | passive
 
   @override
   void initState() {
@@ -134,11 +159,35 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
 
   List<Map<String, dynamic>> get _filtered {
     final term = _search.trim().toLowerCase();
-    if (term.isEmpty) return _vehicles;
     return _vehicles.where((v) {
+      if (_statusFilter != 'all' && _vehicleStatus(v) != _statusFilter) return false;
+      if (term.isEmpty) return true;
       final hay = '${v['plateNumber'] ?? ''} ${v['brand'] ?? ''} ${v['model'] ?? ''}'.toLowerCase();
       return hay.contains(term);
     }).toList();
+  }
+
+  Future<void> _changeStatus(Map<String, dynamic> vehicle, String status) async {
+    if (status == _vehicleStatus(vehicle)) return;
+    try {
+      final updated = await _service.updateVehicleStatus(
+        '${vehicle['id']}',
+        _vehicleStatusApi[status]!,
+      );
+      if (!mounted) return;
+      setState(() {
+        final i = _vehicles.indexWhere((x) => x['id'] == vehicle['id']);
+        if (i >= 0) _vehicles[i] = {..._vehicles[i], ...updated};
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Araç durumu güncellendi'.tr)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Durum değiştirilemedi'.tr)),
+      );
+    }
   }
 
   void _openVehicle(Map<String, dynamic> vehicle) {
@@ -152,8 +201,9 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
 
   @override
   Widget build(BuildContext context) {
-    final inMaintenance = _vehicles.where((v) => v['isInMaintenance'] == true).length;
-    final active = _vehicles.where((v) => v['isActive'] == true && v['isInMaintenance'] != true).length;
+    final inMaintenance = _vehicles.where((v) => _vehicleStatus(v) == 'maintenance').length;
+    final active = _vehicles.where((v) => _vehicleStatus(v) == 'active').length;
+    final passive = _vehicles.where((v) => _vehicleStatus(v) == 'passive').length;
 
     return DrivingScaffold(
       appBar: AppBar(
@@ -183,15 +233,28 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
           : TabBarView(
               controller: _tabs,
               children: [
-                _fleetTab(active: active, inMaintenance: inMaintenance),
+                _fleetTab(active: active, inMaintenance: inMaintenance, passive: passive),
                 _complianceTab(),
               ],
             ),
     );
   }
 
-  Widget _fleetTab({required int active, required int inMaintenance}) =>
-      RefreshIndicator(
+  Widget _fleetTab({required int active, required int inMaintenance, required int passive}) {
+    final canUpdate = _permissions.can(DrivingPermissions.vehicleUpdate);
+    final counts = {
+      'all': _vehicles.length,
+      'active': active,
+      'maintenance': inMaintenance,
+      'passive': passive,
+    };
+    const filters = {
+      'all': 'Tümü',
+      'active': 'Uygun',
+      'maintenance': 'Bakımda',
+      'passive': 'Pasif',
+    };
+    return RefreshIndicator(
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -205,9 +268,11 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
               metrics: [
                 DrivingHeroMetric(label: 'Toplam'.tr, value: '${_vehicles.length}'),
                 const SizedBox(width: 10),
-                DrivingHeroMetric(label: 'Kullanımda'.tr, value: '$active'),
+                DrivingHeroMetric(label: 'Uygun'.tr, value: '$active'),
                 const SizedBox(width: 10),
                 DrivingHeroMetric(label: 'Bakımda'.tr, value: '$inMaintenance'),
+                const SizedBox(width: 10),
+                DrivingHeroMetric(label: 'Pasif'.tr, value: '$passive'),
               ],
             ),
             const SizedBox(height: 16),
@@ -221,6 +286,18 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            // Duruma göre filtrele
+            Wrap(
+              spacing: 8,
+              children: filters.entries.map((e) {
+                return ChoiceChip(
+                  label: Text('${e.value.tr} (${counts[e.key] ?? 0})'),
+                  selected: _statusFilter == e.key,
+                  onSelected: (_) => setState(() => _statusFilter = e.key),
+                );
+              }).toList(),
+            ),
             const SizedBox(height: 14),
             if (_filtered.isEmpty)
               DrivingEmptyState(
@@ -229,17 +306,43 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
               )
             else
               ..._filtered.map((v) {
-                final maintenance = v['isInMaintenance'] == true;
+                final status = _vehicleStatus(v);
+                final meta = _vehicleStatusMeta[status]!;
                 return DrivingListRow(
                   icon: Icons.directions_car_rounded,
-                  iconColor: maintenance ? const Color(0xFFEF4444) : null,
+                  iconColor: status == 'maintenance'
+                      ? const Color(0xFFEF4444)
+                      : (status == 'passive' ? const Color(0xFF9CA3AF) : null),
                   title: '${v['plateNumber'] ?? '—'}',
                   subtitle:
                       '${v['brand'] ?? ''} ${v['model'] ?? ''} • ${v['licenseClass'] ?? ''} • ${_transmission(v['transmissionType'])}',
-                  trailing: DrivingStatusPill(
-                    label: maintenance ? 'Bakımda' : 'Uygun',
-                    tone: maintenance ? DrivingTone.danger : DrivingTone.success,
-                    icon: maintenance ? Icons.build_rounded : Icons.check_circle_rounded,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DrivingStatusPill(label: meta.label.tr, tone: meta.tone, icon: meta.icon),
+                      if (canUpdate)
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert_rounded, size: 20),
+                          tooltip: 'Durumu değiştir'.tr,
+                          onSelected: (s) => _changeStatus(v, s),
+                          itemBuilder: (_) => _vehicleStatusMeta.entries
+                              .map((e) => PopupMenuItem<String>(
+                                    value: e.key,
+                                    child: Row(
+                                      children: [
+                                        Icon(e.value.icon, size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(e.value.label.tr),
+                                        if (e.key == status) ...[
+                                          const SizedBox(width: 6),
+                                          const Icon(Icons.check_rounded, size: 16),
+                                        ],
+                                      ],
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                    ],
                   ),
                   onTap: () => _openVehicle(v),
                 );
@@ -247,6 +350,7 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
           ],
         ),
       );
+  }
 
   Widget _complianceTab() {
     final open = _serviceRecords.where((x) => x['status'] == 'Open').toList();
@@ -795,7 +899,7 @@ class _VehicleDetailSheetState extends State<_VehicleDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final v = widget.vehicle;
-    final maintenance = v['isInMaintenance'] == true;
+    final statusMeta = _vehicleStatusMeta[_vehicleStatus(v)]!;
 
     return DraggableScrollableSheet(
       expand: false,
@@ -821,8 +925,9 @@ class _VehicleDetailSheetState extends State<_VehicleDetailSheet> {
                   ),
                   const SizedBox(width: 10),
                   DrivingStatusPill(
-                    label: maintenance ? 'Bakımda' : 'Kullanımda',
-                    tone: maintenance ? DrivingTone.danger : DrivingTone.success,
+                    label: statusMeta.label.tr,
+                    tone: statusMeta.tone,
+                    icon: statusMeta.icon,
                   ),
                 ],
               ),

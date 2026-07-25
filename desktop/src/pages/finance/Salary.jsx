@@ -274,7 +274,7 @@ export default function Salary() {
               <div>
                 <Label>Personel *</Label>
                 <Select value={form.staffName} onValueChange={(v) => setForm((p) => ({ ...p, staffName: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Personel secin" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Personel seçin" /></SelectTrigger>
                   <SelectContent>
                     {staff.map((s) => (
                       <SelectItem key={s.id || s.fullName} value={s.fullName}>{s.fullName} ({s.primaryRole || 'Personel'})</SelectItem>
@@ -420,7 +420,7 @@ export default function Salary() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Iptal</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>İptal</Button>
               <Button onClick={handleCreate} disabled={saving}>
                 {saving ? 'Kaydediliyor...' : 'Kaydet'}
               </Button>
@@ -454,7 +454,7 @@ export default function Salary() {
             <Calendar className="h-8 w-8 text-purple-500" />
             <div>
               <p className="text-2xl font-bold">{months[new Date().getMonth()]}</p>
-              <p className="text-xs text-muted-foreground">Mevcut Donem</p>
+              <p className="text-xs text-muted-foreground">Mevcut Dönem</p>
             </div>
           </CardContent>
         </Card>
@@ -492,7 +492,7 @@ export default function Salary() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Personel</TableHead>
-                  <TableHead>Donem</TableHead>
+                  <TableHead>Dönem</TableHead>
                   <TableHead>Tutar</TableHead>
                   <TableHead>Durum</TableHead>
                   <TableHead>Rol</TableHead>
@@ -502,7 +502,7 @@ export default function Salary() {
                 {filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      {salaries.length === 0 ? 'Henuz maas kaydi yok.' : 'Sonuc bulunamadi.'}
+                      {salaries.length === 0 ? 'Henüz maaş kaydı yok.' : 'Sonuç bulunamadı.'}
                     </TableCell>
                   </TableRow>
                 ) : (

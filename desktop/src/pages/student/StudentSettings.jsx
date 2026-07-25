@@ -65,21 +65,21 @@ export default function StudentSettings() {
 
   const handlePasswordChange = async () => {
     if (!passwordForm.currentPassword || !passwordForm.newPassword) {
-      toast({ title: 'Lutfen tum alanlari doldurun.', variant: 'destructive' });
+      toast({ title: 'Lütfen tüm alanları doldurun.', variant: 'destructive' });
       return;
     }
     if (passwordForm.newPassword.length < 8) {
-      toast({ title: 'Yeni sifre en az 8 karakter olmali.', variant: 'destructive' });
+      toast({ title: 'Yeni şifre en az 8 karakter olmalı.', variant: 'destructive' });
       return;
     }
     if (!/[A-Z]/.test(passwordForm.newPassword) ||
         !/[a-z]/.test(passwordForm.newPassword) ||
         !/[0-9]/.test(passwordForm.newPassword)) {
-      toast({ title: 'Sifre buyuk harf, kucuk harf ve rakam icermeli.', variant: 'destructive' });
+      toast({ title: 'Şifre büyük harf, küçük harf ve rakam içermeli.', variant: 'destructive' });
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast({ title: 'Yeni sifreler eslesmiyor.', variant: 'destructive' });
+      toast({ title: 'Yeni şifreler eşleşmiyor.', variant: 'destructive' });
       return;
     }
     try {
@@ -88,10 +88,10 @@ export default function StudentSettings() {
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
       });
-      toast({ title: 'Sifreniz basariyla degistirildi.' });
+      toast({ title: 'Şifreniz başarıyla değiştirildi.' });
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Sifre degistirilemedi.';
+      const message = err?.response?.data?.message || err?.message || 'Şifre değiştirilemedi.';
       toast({ title: message, variant: 'destructive' });
     } finally {
       setSaving(false);
@@ -139,13 +139,13 @@ export default function StudentSettings() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">Ayarlar</h1>
-          <p className="text-sm text-muted-foreground">{user?.name || 'Ogrenci'} - Hesap ve tercih ayarlari</p>
+          <p className="text-sm text-muted-foreground">{user?.name || 'Öğrenci'} - Hesap ve tercih ayarları</p>
         </div>
       </motion.div>
 
       <Tabs defaultValue="password">
         <TabsList>
-          <TabsTrigger value="password"><Lock className="h-4 w-4 mr-1" /> Sifre Degistir</TabsTrigger>
+          <TabsTrigger value="password"><Lock className="h-4 w-4 mr-1" /> Şifre Değiştir</TabsTrigger>
           <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-1" /> Bildirimler</TabsTrigger>
           <TabsTrigger value="account"><User className="h-4 w-4 mr-1" /> Hesap</TabsTrigger>
         </TabsList>
@@ -156,18 +156,18 @@ export default function StudentSettings() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" /> Sifre Degistir
+                  <Shield className="h-5 w-5" /> Şifre Değiştir
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 max-w-md">
                 <div>
-                  <Label>Mevcut Sifre</Label>
+                  <Label>Mevcut Şifre</Label>
                   <div className="relative">
                     <Input
                       type={showOld ? 'text' : 'password'}
                       value={passwordForm.currentPassword}
                       onChange={(e) => setPasswordForm((p) => ({ ...p, currentPassword: e.target.value }))}
-                      placeholder="Mevcut sifrenizi girin"
+                      placeholder="Mevcut şifrenizi girin"
                     />
                     <Button
                       variant="ghost" size="sm"
@@ -179,13 +179,13 @@ export default function StudentSettings() {
                   </div>
                 </div>
                 <div>
-                  <Label>Yeni Sifre</Label>
+                  <Label>Yeni Şifre</Label>
                   <div className="relative">
                     <Input
                       type={showNew ? 'text' : 'password'}
                       value={passwordForm.newPassword}
                       onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))}
-                      placeholder="Yeni sifrenizi girin"
+                      placeholder="Yeni şifrenizi girin"
                     />
                     <Button
                       variant="ghost" size="sm"
@@ -196,17 +196,17 @@ export default function StudentSettings() {
                     </Button>
                   </div>
                   {passwordForm.newPassword && passwordForm.newPassword.length < 6 && (
-                    <p className="text-xs text-red-500 mt-1">En az 6 karakter olmali</p>
+                    <p className="text-xs text-red-500 mt-1">En az 6 karakter olmalı</p>
                   )}
                 </div>
                 <div>
-                  <Label>Yeni Sifre (Tekrar)</Label>
+                  <Label>Yeni Şifre (Tekrar)</Label>
                   <div className="relative">
                     <Input
                       type={showConfirm ? 'text' : 'password'}
                       value={passwordForm.confirmPassword}
                       onChange={(e) => setPasswordForm((p) => ({ ...p, confirmPassword: e.target.value }))}
-                      placeholder="Yeni sifrenizi tekrar girin"
+                      placeholder="Yeni şifrenizi tekrar girin"
                     />
                     <Button
                       variant="ghost" size="sm"
@@ -217,11 +217,11 @@ export default function StudentSettings() {
                     </Button>
                   </div>
                   {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
-                    <p className="text-xs text-red-500 mt-1">Sifreler eslesmiyor</p>
+                    <p className="text-xs text-red-500 mt-1">Şifreler eşleşmiyor</p>
                   )}
                 </div>
                 <Button onClick={handlePasswordChange} disabled={saving}>
-                  <Save className="h-4 w-4 mr-1" /> {saving ? 'Kaydediliyor...' : 'Sifreyi Degistir'}
+                  <Save className="h-4 w-4 mr-1" /> {saving ? 'Kaydediliyor...' : 'Şifreyi Değiştir'}
                 </Button>
               </CardContent>
             </Card>
@@ -239,11 +239,11 @@ export default function StudentSettings() {
               </CardHeader>
               <CardContent className="space-y-4 max-w-md">
                 {[
-                  { key: 'emailNotifications', label: 'E-posta Bildirimleri', desc: 'Onemli guncellemeler icin e-posta alin' },
-                  { key: 'pushNotifications', label: 'Push Bildirimleri', desc: 'Anlik bildirimler' },
-                  { key: 'examReminders', label: 'Sinav Hatirlatmalari', desc: 'Yaklasan sinavlar icin hatirlatma' },
-                  { key: 'homeworkReminders', label: 'Odev Hatirlatmalari', desc: 'Odev teslim tarihi yaklastiginda uyari' },
-                  { key: 'messageAlerts', label: 'Mesaj Uyarilari', desc: 'Yeni mesaj geldiginde bildirim' },
+                  { key: 'emailNotifications', label: 'E-posta Bildirimleri', desc: 'Önemli güncellemeler için e-posta alın' },
+                  { key: 'pushNotifications', label: 'Anlık Bildirimler', desc: 'Anlık bildirimler' },
+                  { key: 'examReminders', label: 'Sınav Hatırlatmaları', desc: 'Yaklaşan sınavlar için hatırlatma' },
+                  { key: 'homeworkReminders', label: 'Ödev Hatırlatmaları', desc: 'Ödev teslim tarihi yaklaştığında uyarı' },
+                  { key: 'messageAlerts', label: 'Mesaj Uyarıları', desc: 'Yeni mesaj geldiğinde bildirim' },
                 ].map(({ key, label, desc }) => (
                   <div key={key} className="flex items-center justify-between py-2">
                     <div>
@@ -280,7 +280,7 @@ export default function StudentSettings() {
                     <p className="font-medium">{user?.name || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Kullanici Adi</p>
+                    <p className="text-muted-foreground">Kullanıcı Adı</p>
                     <p className="font-medium">{user?.username || '-'}</p>
                   </div>
                   <div>
@@ -292,11 +292,11 @@ export default function StudentSettings() {
                     <p className="font-medium capitalize">{user?.role || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Kampus</p>
+                    <p className="text-muted-foreground">Kampüs</p>
                     <p className="font-medium">{user?.branch || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Bolum</p>
+                    <p className="text-muted-foreground">Bölüm</p>
                     <p className="font-medium">{user?.department || '-'}</p>
                   </div>
                 </div>

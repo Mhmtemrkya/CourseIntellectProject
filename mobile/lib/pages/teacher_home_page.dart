@@ -698,7 +698,11 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               const SizedBox(height: 12),
               _notificationsPanel(theme, isDark),
               const SizedBox(height: 18),
-              _sectionHeader(theme, title: "Riskli Öğrenciler".tr, actionText: ""),
+              _sectionHeader(
+                theme,
+                title: "Riskli Öğrenciler".tr,
+                actionText: "",
+              ),
               const SizedBox(height: 12),
               ...riskyStudents.map(
                 (item) => _riskStudentCard(theme, isDark, item),
@@ -712,7 +716,11 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               const SizedBox(height: 12),
               _classComparisonCard(theme, isDark),
               const SizedBox(height: 18),
-              _sectionHeader(theme, title: "Akıllı Öneriler".tr, actionText: ""),
+              _sectionHeader(
+                theme,
+                title: "Akıllı Öneriler".tr,
+                actionText: "",
+              ),
               const SizedBox(height: 12),
               ...suggestions.map(
                 (item) => _suggestionCard(theme, isDark, item),
@@ -813,7 +821,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           ),
           const SizedBox(height: 8),
           Text(
-            "$selectedFilter odakli görevler, riskli öğrenciler, sınıf karşılaştırmaları ve aksiyon önerileri tek ekranda.",
+            "$selectedFilter odaklı görevler, riskli öğrenciler, sınıf karşılaştırmaları ve aksiyon önerileri tek ekranda.",
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.45,
@@ -825,7 +833,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               final wide = constraints.maxWidth > 640;
               final statCards = [
                 _heroStat("Bugünku Ders", "${scheduleItems.length}"),
-                _heroStat("Akıllı Uyari", "${notifications.length}"),
+                _heroStat("Akıllı Uyarı", "${notifications.length}"),
                 _heroStat("Riskli Öğrenci", "${riskyStudents.length}"),
               ];
 
@@ -1334,7 +1342,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             Text('Zaman: ${item["time"]}'),
             const SizedBox(height: 8),
             Text(
-              'Bu kayıt, sınıf performansı, veli geri bildirimi ve katılım hareketlerine göre akıllı olarak oluşturuldu.'.tr,
+              'Bu kayıt, sınıf performansı, veli geri bildirimi ve katılım hareketlerine göre akıllı olarak oluşturuldu.'
+                  .tr,
             ),
           ],
         ),
@@ -1364,9 +1373,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Ortalama, trend ve risk seviyeleri birlikte listelenir.'.tr,
-            ),
+            Text('Ortalama, trend ve risk seviyeleri birlikte listelenir.'.tr),
             const SizedBox(height: 16),
             ...classComparison.map(
               (item) => ListTile(

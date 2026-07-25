@@ -129,7 +129,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Iptal"),
+              child: const Text("İptal"),
             ),
             ElevatedButton(
               onPressed: () {
@@ -306,7 +306,8 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              "Ekran paylaşımı aktif. Öğrenciler paylaştığınız içeriği görüyor.".tr,
+                              "Ekran paylaşımı aktif. Öğrenciler paylaştığınız içeriği görüyor."
+                                  .tr,
                               style: TextStyle(fontWeight: FontWeight.w600),
                             ),
                           ),
@@ -378,7 +379,8 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
           ),
           const SizedBox(height: 10),
           Text(
-            "Öğrenciler bağlandı, ders akışınız hazır. Şimdi paylaşım yapabilir, kamera ve mikrofon kontrollerini yönetebilirsin.".tr,
+            "Öğrenciler bağlandı, ders akışınız hazır. Şimdi paylaşım yapabilir, kamera ve mikrofon kontrollerini yönetebilirsin."
+                .tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,

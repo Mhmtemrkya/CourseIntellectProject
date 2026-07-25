@@ -54,9 +54,15 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
 
   Future<void> _loadAnalytics() async {
     try {
-      final result = await AdminWorkflowApiService.instance.getAnalytics(period: _period);
+      final result = await AdminWorkflowApiService.instance.getAnalytics(
+        period: _period,
+      );
       if (!mounted) return;
-      setState(() => _totals = Map<String, dynamic>.from(result['totals'] as Map? ?? const {}));
+      setState(
+        () => _totals = Map<String, dynamic>.from(
+          result['totals'] as Map? ?? const {},
+        ),
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _totals = const {});
@@ -101,7 +107,7 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
     final operations = [
       (
         'Şube Yönetimi',
-        '$campusCount aktif kampus görünüyor',
+        '$campusCount aktif kampüs görünüyor',
         Icons.apartment_outlined,
         const Color(0xFF2563EB),
       ),
@@ -119,7 +125,7 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
       ),
       (
         'Duyuru Merkezi',
-        '${_finance.notifications.length} bildirim/duyuru akışına bagli',
+        '${_finance.notifications.length} bildirim/duyuru akışına bağlı',
         Icons.campaign_outlined,
         const Color(0xFFB45309),
       ),
@@ -149,8 +155,8 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
         children: [
           AdminHeroCard(
             eyebrow: 'Kurumsal operasyon',
-            title:
-                'Şube, insan kaynağı ve günlük operasyon akışlarını yönetin.'.tr,
+            title: 'Şube, insan kaynağı ve günlük operasyon akışlarını yönetin.'
+                .tr,
             description:
                 'Yönetici panelinde saha işleyişi, destek süreçleri ve iç iletişim aynı çatı altında izlenir.',
             metrics: [
@@ -168,7 +174,9 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
               children: [
                 Text(
                   'Dönemsel Özet'.tr,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -188,12 +196,28 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
                 Row(
                   children: [
                     if (widget.showFinance) ...[
-                      _summaryChip('Kazanç', _finance.formatAmount(((_totals['revenue'] as num?) ?? 0).round()), const Color(0xFF16A34A)),
+                      _summaryChip(
+                        'Kazanç',
+                        _finance.formatAmount(
+                          ((_totals['revenue'] as num?) ?? 0).round(),
+                        ),
+                        const Color(0xFF16A34A),
+                      ),
                       const SizedBox(width: 8),
-                      _summaryChip('Gider', _finance.formatAmount(((_totals['expense'] as num?) ?? 0).round()), const Color(0xFFDC2626)),
+                      _summaryChip(
+                        'Gider',
+                        _finance.formatAmount(
+                          ((_totals['expense'] as num?) ?? 0).round(),
+                        ),
+                        const Color(0xFFDC2626),
+                      ),
                       const SizedBox(width: 8),
                     ],
-                    _summaryChip('Kayıt', '${_totals['registrations'] ?? 0}', const Color(0xFF2563EB)),
+                    _summaryChip(
+                      'Kayıt',
+                      '${_totals['registrations'] ?? 0}',
+                      const Color(0xFF2563EB),
+                    ),
                   ],
                 ),
               ],
@@ -424,9 +448,20 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12)),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w900), overflow: TextOverflow.ellipsis),
+            Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w900),
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),

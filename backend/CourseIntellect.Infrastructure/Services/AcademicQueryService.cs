@@ -194,6 +194,7 @@ public sealed class AcademicQueryService(
         bool linkExistingParent = false,
         bool validateParentPhone = false)
     {
+        var fullName = PersonNameFormatter.FormatFullName(request.FullName);
         var tenantId = ResolveCurrentTenantId()
             ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
         var tcNo = SchoolRegistrationRules.NormalizeTcNo(request.TcNo, required: requireTcNo);
@@ -230,7 +231,7 @@ public sealed class AcademicQueryService(
             .ToListAsync(cancellationToken));
         var username = await usernameGenerator.GenerateAsync(
             tenantId,
-            request.FullName,
+            fullName,
             new UsernameContext(Role: "Student", ClassName: request.ClassName),
             cancellationToken);
         var password = PasswordGenerator.Generate();
@@ -238,7 +239,7 @@ public sealed class AcademicQueryService(
         var user = new AppUser
         {
             TenantId = tenantId,
-            FullName = request.FullName,
+            FullName = fullName,
             Username = username,
             PasswordHash = passwordHasher.Hash(password),
             PrimaryRole = UserRole.Student,
@@ -255,7 +256,7 @@ public sealed class AcademicQueryService(
         AppUser? parentUser = null;
         string? parentPlainPassword = null;
         var parentIsExisting = false;
-        var parentName = (request.ParentName ?? string.Empty).Trim();
+        var parentName = PersonNameFormatter.FormatFullName(request.ParentName);
         if (!string.IsNullOrWhiteSpace(parentName))
         {
             if (linkExistingParent && parentPhone.Length > 0)
@@ -300,14 +301,14 @@ public sealed class AcademicQueryService(
         {
             TenantId = user.TenantId,
             UserId = user.Id,
-            FullName = request.FullName,
+            FullName = fullName,
             TcNo = tcNo,
             ClassName = request.ClassName,
             CurrentSchool = request.CurrentSchool,
             SchoolNumber = schoolNumber,
             BirthDate = request.BirthDate,
             ProgramType = request.ProgramType,
-            ParentName = request.ParentName ?? string.Empty,
+            ParentName = parentName,
             ParentPhone = request.ParentPhone ?? string.Empty,
             ParentEmail = request.ParentEmail,
             ParentUserId = parentUser?.Id,
@@ -372,14 +373,15 @@ public sealed class AcademicQueryService(
         SchoolRegistrationRules.ValidateBirthDate(request.BirthDate);
         await EnsureTcNoAvailableAsync(user.TenantId, tcNo, user.Id, cancellationToken);
 
-        student.FullName = request.FullName;
+        var fullName = PersonNameFormatter.FormatFullName(request.FullName);
+        student.FullName = fullName;
         student.TcNo = tcNo;
         student.ClassName = request.ClassName;
         student.CurrentSchool = request.CurrentSchool;
         // Okul numarası kayıt anında kurum bazında üretilir ve sonradan değiştirilemez.
         student.BirthDate = request.BirthDate;
         student.ProgramType = request.ProgramType;
-        student.ParentName = request.ParentName;
+        student.ParentName = PersonNameFormatter.FormatFullName(request.ParentName);
         student.ParentPhone = request.ParentPhone;
         student.ParentEmail = request.ParentEmail;
         student.Address = request.Address;
@@ -387,7 +389,7 @@ public sealed class AcademicQueryService(
         // PhotoUrl null gelirse mevcut foto korunur (kısmi güncelleme); '' gelirse temizlenir.
         if (request.PhotoUrl is not null) student.PhotoUrl = request.PhotoUrl.Trim();
 
-        user.FullName = request.FullName;
+        user.FullName = fullName;
         user.DepartmentOrBranch = request.ClassName;
         user.TcNo = tcNo;
         if (request.PhotoUrl is not null) user.PhotoUrl = request.PhotoUrl.Trim();

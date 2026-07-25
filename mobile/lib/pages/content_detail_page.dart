@@ -893,7 +893,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 subtitle: Text(
-                                  'Bolum ${item.playlistOrder ?? 1} • ${item.subject}',
+                                  'Bölüm ${item.playlistOrder ?? 1} • ${item.subject}',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
