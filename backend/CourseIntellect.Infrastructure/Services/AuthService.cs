@@ -29,6 +29,12 @@ public sealed class AuthService(
     private const string PasswordResetUsed = "Used";
     private const string PasswordResetExpired = "Expired";
 
+    // Abonelik kapısı: açıkken kurum üyeleri en az bir "paid" platform faturası olmadan
+    // giriş yapamaz. Şimdilik VARSAYILAN KAPALI — kurumlar faturasız da girebilsin diye.
+    // Geri açmak için config: "Subscription:GateEnabled" = true.
+    private readonly bool _subscriptionGateEnabled =
+        bool.TryParse(configuration["Subscription:GateEnabled"], out var gate) && gate;
+
     // Hesap kilitleme: bir kullanıcı adı için pencere içinde eşik kadar başarısız
     // deneme olursa geçici olarak kilitlenir. Son başarılı girişten sonrası sayılır.
     private readonly int _lockoutMaxFailed =
@@ -506,9 +512,10 @@ public sealed class AuthService(
         var isPlatformAdmin = user.PrimaryRole == UserRole.Developer && user.TenantId is null;
 
         // Kurum üyesi mi? (platform admin değil ve tenant'a bağlı)
-        // En az bir "paid" abonelik faturası yoksa SubscriptionRequired = true.
+        // Abonelik kapısı yalnızca açıkken uygulanır; kapalıyken (varsayılan) hiçbir
+        // kurum faturasız diye bloklanmaz — böylece doğrudan giriş yapılabilir.
         var subscriptionRequired = false;
-        if (!isPlatformAdmin && tenant?.Id is Guid tenantId)
+        if (_subscriptionGateEnabled && !isPlatformAdmin && tenant?.Id is Guid tenantId)
         {
             var hasPaid = await dbContext.PlatformSubscriptionInvoices
                 .AsNoTracking()
