@@ -38,6 +38,32 @@ const DEFAULT_API_URL =
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/$/, "")
 
+function friendlyApiError(status: number, payload: any): string {
+  const trace = payload?.traceId ? ` Takip kodu: ${payload.traceId}.` : ""
+  if (status >= 500) {
+    return `İşlem şu anda tamamlanamadı. Sunucuda beklenmeyen bir sorun oluştu. Kısa bir süre sonra tekrar deneyin; sorun devam ederse destek ekibine başvurun.${trace}`
+  }
+
+  const serverMessage = payload?.message || payload?.error?.message
+  const technical = /request failed|internal server error|http error|status code/i.test(serverMessage || "")
+  const fallback =
+    status === 401
+      ? "Oturumunuz sona erdi. Lütfen yeniden giriş yapın."
+      : status === 403
+        ? "Bu işlem için yetkiniz bulunmuyor. Kurum yöneticinizden gerekli yetkiyi isteyin."
+        : status === 404
+          ? "İstenen kayıt bulunamadı. Sayfayı yenileyip tekrar deneyin."
+          : status === 409
+            ? "İşlem güncel kayıtla çakıştı. Bilgileri yenileyip tekrar deneyin."
+            : status === 429
+              ? "Kısa sürede çok fazla işlem yapıldı. Biraz bekleyip tekrar deneyin."
+              : "İşlem tamamlanamadı. Bilgileri kontrol edip tekrar deneyin."
+  const message = !serverMessage || technical ? fallback : serverMessage
+  const action = payload?.action ? ` Yapmanız gereken: ${payload.action}` : ""
+  const reason = payload?.reason ? ` Nedeni: ${payload.reason}` : ""
+  return `${message}${reason}${action}${trace}`
+}
+
 function buildUrl(path: string, query?: ApiRequestOptions["query"]) {
   const url = path.startsWith("http") ? new URL(path) : new URL(path, API_BASE_URL)
   if (query) {
@@ -111,9 +137,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
   if (!response.ok) {
     const errorPayload = isJson ? await response.json() : null
-    const error = new ApiRequestError(
-      errorPayload?.message || errorPayload?.error?.message || "Request failed."
-    )
+    const error = new ApiRequestError(friendlyApiError(response.status, errorPayload))
     error.code = errorPayload?.code || errorPayload?.error?.code
     error.details = errorPayload?.details || errorPayload?.error?.details
     error.status = response.status

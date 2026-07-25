@@ -336,6 +336,53 @@ public sealed class DrivingSchoolController(
         return Ok(entity);
     }
 
+    [HttpPut("packages/{id:guid}")]
+    [RequireDrivingPermission(DrivingPermissions.PackageUpdate)]
+    public async Task<IActionResult> UpdatePackage(Guid id, [FromBody] SaveDrivingPackageRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var error = ValidatePackage(request); if (error is not null) return BadRequest(new { message = error });
+
+        var entity = await dbContext.DrivingPackages.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null) return NotFound(new { message = "Paket bulunamadı." });
+
+        var oldSnapshot = PackageSnapshot(entity);
+        entity.Name = request.Name.Trim();
+        entity.LicenseClass = request.LicenseClass.Trim().ToUpperInvariant();
+        entity.TransmissionType = request.TransmissionType;
+        entity.DrivingLessonMinutes = request.DrivingLessonMinutes;
+        entity.TheoryLessonMinutes = request.TheoryLessonMinutes;
+        entity.Price = request.Price;
+
+        await dbContext.SaveChangesAsync(ct);
+        await auditLogService.LogChangeAsync("Paket güncellendi", AuditCategory, "DrivingPackage", entity.Id.ToString(),
+            $"\"{entity.Name}\" — {entity.LicenseClass} / {entity.TransmissionType}, {entity.DrivingLessonMinutes} dk, {entity.Price:N2} ₺.",
+            oldSnapshot, PackageSnapshot(entity), ct);
+        return Ok(entity);
+    }
+
+    [HttpDelete("packages/{id:guid}")]
+    [RequireDrivingPermission(DrivingPermissions.PackageDelete)]
+    public async Task<IActionResult> DeletePackage(Guid id, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+
+        var entity = await dbContext.DrivingPackages.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null) return NotFound(new { message = "Paket bulunamadı." });
+
+        if (await dbContext.StudentDrivingProfiles.AnyAsync(x => x.PackageId == id, ct))
+        {
+            return Conflict(new { message = "Kursiyere atanmış paket silinemez." });
+        }
+
+        var oldSnapshot = PackageSnapshot(entity);
+        dbContext.DrivingPackages.Remove(entity);
+        await dbContext.SaveChangesAsync(ct);
+        await auditLogService.LogChangeAsync("Paket silindi", AuditCategory, "DrivingPackage", entity.Id.ToString(),
+            $"\"{entity.Name}\" paketi silindi.", oldSnapshot, null, ct);
+        return NoContent();
+    }
+
     [HttpGet("vehicles")]
     [RequireDrivingPermission(DrivingPermissions.VehicleView)]
     public async Task<IActionResult> GetVehicles(CancellationToken ct)

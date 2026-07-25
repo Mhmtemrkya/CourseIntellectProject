@@ -314,8 +314,7 @@ export async function loginWithBackend(username, password) {
   }
 
   if (!response) {
-    const reason = lastConnectionError?.message ? ` (${lastConnectionError.message})` : "";
-    throw new Error(`Backend baglantisi kurulamadi${reason}`);
+    throw new Error("Giriş sunucusuna bağlantı kurulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.");
   }
 
   if (response.status === 401) {
@@ -348,7 +347,7 @@ export async function loginWithBackend(username, password) {
   }
 
   if (!response.ok) {
-    throw new Error(`Giriş sırasında sunucu hatası oluştu (${response.status}).`);
+    throw new Error("Giriş işlemi şu anda tamamlanamadı. Kısa bir süre sonra tekrar deneyin; sorun devam ederse destek ekibine başvurun.");
   }
 
   const payload = await response.json();

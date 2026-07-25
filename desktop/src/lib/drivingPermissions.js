@@ -24,6 +24,7 @@ export const DRIVING = {
   packageView: 'driving.package.view',
   packageCreate: 'driving.package.create',
   packageUpdate: 'driving.package.update',
+  packageDelete: 'driving.package.delete',
   packageChange: 'driving.package.change',
 
   vehicleView: 'driving.vehicle.view',

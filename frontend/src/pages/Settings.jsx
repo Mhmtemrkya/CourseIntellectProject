@@ -44,7 +44,7 @@ export default function Settings() {
   const { user } = useApp();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const [baseUrl, setBaseUrl] = useState('https://api.courseintellect.com');
+  const [baseUrl, setBaseUrl] = useState('https://maydanozasist.schoolasist.com');
   const [testing, setTesting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [reducedMotion, setReducedMotion] = useState(false);

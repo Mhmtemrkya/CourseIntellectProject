@@ -16,6 +16,24 @@ class DrivingSchoolOperationsPage extends StatefulWidget {
 
 class _DrivingSchoolOperationsPageState
     extends State<DrivingSchoolOperationsPage> {
+  static const _licenseClasses = [
+    'A',
+    'A1',
+    'A2',
+    'B',
+    'BE',
+    'C',
+    'C1',
+    'CE',
+    'C1E',
+    'D',
+    'D1',
+    'DE',
+    'D1E',
+    'F',
+    'M',
+  ];
+
   bool _loading = true;
   String? _error;
   DrivingPermissionSnapshot _permissions = DrivingPermissionSnapshot.empty;
@@ -112,9 +130,35 @@ class _DrivingSchoolOperationsPageState
                         subtitle: Text(
                           '${p['licenseClass']} • ${p['transmissionType'] == 1 ? 'Manuel' : 'Otomatik'} • ${p['drivingLessonMinutes']} dk',
                         ),
-                        trailing: Text(
-                          '₺${p['price']}',
-                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '₺${p['price']}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            if (_permissions.can(
+                              DrivingPermissions.packageUpdate,
+                            ))
+                              IconButton(
+                                tooltip: 'Düzenle'.tr,
+                                onPressed: () => _packageSheet(p),
+                                icon: const Icon(Icons.edit_outlined),
+                              ),
+                            if (_permissions.can(
+                              DrivingPermissions.packageDelete,
+                            ))
+                              IconButton(
+                                tooltip: 'Sil'.tr,
+                                onPressed: () => _confirmDeletePackage(p),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
@@ -124,27 +168,43 @@ class _DrivingSchoolOperationsPageState
           ),
   );
 
-  Future<void> _packageSheet() async {
-    final name = TextEditingController(),
-        license = TextEditingController(text: 'B'),
-        driving = TextEditingController(text: '840'),
-        theory = TextEditingController(text: '720'),
-        price = TextEditingController(text: '0');
-    var transmission = 1;
+  Future<void> _packageSheet([Map<String, dynamic>? existing]) async {
+    final name = TextEditingController(text: existing?['name']?.toString()),
+        driving = TextEditingController(
+          text: existing?['drivingLessonMinutes']?.toString() ?? '840',
+        ),
+        theory = TextEditingController(
+          text: existing?['theoryLessonMinutes']?.toString() ?? '720',
+        ),
+        price = TextEditingController(
+          text: existing?['price']?.toString() ?? '0',
+        );
+    var licenseClass = existing?['licenseClass']?.toString() ?? 'B';
+    if (!_licenseClasses.contains(licenseClass)) licenseClass = 'B';
+    var transmission =
+        int.tryParse(existing?['transmissionType']?.toString() ?? '') ?? 1;
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setLocal) => DrivingFormSheet(
-          title: 'Yeni Eğitim Paketi'.tr,
+          title: existing == null
+              ? 'Yeni Eğitim Paketi'.tr
+              : 'Eğitim Paketini Düzenle'.tr,
           fields: [
             TextField(
               controller: name,
               decoration: const InputDecoration(labelText: 'Paket adı'),
             ),
-            TextField(
-              controller: license,
+            DropdownButtonFormField<String>(
+              initialValue: licenseClass,
               decoration: const InputDecoration(labelText: 'Ehliyet sınıfı'),
+              items: _licenseClasses
+                  .map(
+                    (item) => DropdownMenuItem(value: item, child: Text(item)),
+                  )
+                  .toList(),
+              onChanged: (value) => setLocal(() => licenseClass = value ?? 'B'),
             ),
             DropdownButtonFormField<int>(
               initialValue: transmission,
@@ -174,19 +234,67 @@ class _DrivingSchoolOperationsPageState
             ),
           ],
           onSave: () async {
-            await DrivingSchoolApiService.instance.createPackage({
+            final payload = {
               'name': name.text,
-              'licenseClass': license.text,
+              'licenseClass': licenseClass,
               'transmissionType': transmission,
               'drivingLessonMinutes': int.tryParse(driving.text) ?? 0,
               'theoryLessonMinutes': int.tryParse(theory.text) ?? 0,
               'price': double.tryParse(price.text) ?? 0,
-            });
+            };
+            if (existing == null) {
+              await DrivingSchoolApiService.instance.createPackage(payload);
+            } else {
+              await DrivingSchoolApiService.instance.updatePackage(
+                existing['id'].toString(),
+                payload,
+              );
+            }
             if (context.mounted) Navigator.pop(context);
           },
         ),
       ),
     );
     await _load();
+  }
+
+  Future<void> _confirmDeletePackage(Map<String, dynamic> item) async {
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Paketi Sil'.tr),
+        content: Text(
+          '“${item['name']}” paketini silmek istediğinize emin misiniz?'.tr,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('Vazgeç'.tr),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Sil'.tr),
+          ),
+        ],
+      ),
+    );
+    if (approved != true) return;
+
+    try {
+      await DrivingSchoolApiService.instance.deletePackage(
+        item['id'].toString(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Paket silindi'.tr)));
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString()), backgroundColor: Colors.red),
+      );
+    }
   }
 }

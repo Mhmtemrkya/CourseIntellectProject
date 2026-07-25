@@ -1,6 +1,5 @@
 const env = (process.env.REACT_APP_COURSE_INTELLECT_ENV || 'development').trim().toLowerCase();
-const PRODUCTION_API_URL = 'https://api.courseintellect.com';
-const SCHOOLASIST_API_FALLBACK_URL = 'https://maydanozasist.schoolasist.com';
+const PRODUCTION_API_URL = 'https://maydanozasist.schoolasist.com';
 
 export const desktopAppEnv = {
   current: env,
@@ -28,7 +27,6 @@ export function getDesktopApiCandidates() {
   return [
     getDesktopApiBaseUrl(),
     PRODUCTION_API_URL,
-    SCHOOLASIST_API_FALLBACK_URL,
   ]
     .map(normalizeApiBaseUrl)
     .filter((value, index, values) => value && values.indexOf(value) === index);

@@ -19,6 +19,8 @@ class DrivingPermissions {
 
   static const packageView = 'driving.package.view';
   static const packageCreate = 'driving.package.create';
+  static const packageUpdate = 'driving.package.update';
+  static const packageDelete = 'driving.package.delete';
 
   static const vehicleView = 'driving.vehicle.view';
   static const vehicleCreate = 'driving.vehicle.create';

@@ -56,27 +56,20 @@ describe('production API resilience', () => {
     jest.restoreAllMocks();
   });
 
-  it('includes both production API origins without duplicates', () => {
-    expect(getDesktopApiCandidates()).toEqual(expect.arrayContaining([
-      'https://api.courseintellect.com',
+  it('uses only the SchoolAsist production API origin', () => {
+    expect(getDesktopApiCandidates()).toEqual([
       'https://maydanozasist.schoolasist.com',
-    ]));
-    expect(new Set(getDesktopApiCandidates()).size).toBe(getDesktopApiCandidates().length);
+    ]);
   });
 
-  it('falls back to the secondary API when the primary connection fails', async () => {
+  it('does not fall back to a retired API when the connection fails', async () => {
     const fetchMock = jest.spyOn(global, 'fetch')
-      .mockRejectedValueOnce(new TypeError('network unavailable'))
-      .mockResolvedValueOnce({
-        status: 401,
-        ok: false,
-      });
+      .mockRejectedValueOnce(new TypeError('network unavailable'));
 
     await expect(loginWithBackend('test@example.com', 'invalid-password'))
-      .rejects.toThrow('Kullanıcı adı veya şifre yanlış.');
+      .rejects.toThrow('Giriş sunucusuna bağlantı kurulamadı');
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://api.courseintellect.com/api/auth/login');
-    expect(fetchMock.mock.calls[1][0]).toBe('https://maydanozasist.schoolasist.com/api/auth/login');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://maydanozasist.schoolasist.com/api/auth/login');
   });
 });

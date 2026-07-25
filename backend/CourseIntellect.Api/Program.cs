@@ -441,6 +441,57 @@ if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
 }
 
 app.UseForwardedHeaders();
+app.UseMiddleware<CourseIntellect.Api.Middleware.UserFriendlyExceptionMiddleware>();
+app.UseStatusCodePages(async statusCodeContext =>
+{
+    var response = statusCodeContext.HttpContext.Response;
+    var traceId = statusCodeContext.HttpContext.TraceIdentifier;
+    var payload = response.StatusCode switch
+    {
+        StatusCodes.Status401Unauthorized => new
+        {
+            code = "SESSION_REQUIRED",
+            message = "Oturumunuz sona ermiş veya giriş bilgileriniz doğrulanamamış.",
+            reason = "Bu işlem için geçerli bir kullanıcı oturumu gerekiyor.",
+            action = "Lütfen yeniden giriş yapıp işlemi tekrar deneyin.",
+            traceId,
+        },
+        StatusCodes.Status403Forbidden => new
+        {
+            code = "PERMISSION_REQUIRED",
+            message = "Bu işlemi yapmaya yetkiniz bulunmuyor.",
+            reason = "Kullanıcı rolünüz veya kurum yetkiniz bu işlem için yeterli değil.",
+            action = "Kurum yöneticinizden ilgili yetkiyi vermesini isteyin.",
+            traceId,
+        },
+        StatusCodes.Status404NotFound => new
+        {
+            code = "RESOURCE_NOT_FOUND",
+            message = "İstenen kayıt veya sayfa bulunamadı.",
+            reason = "Kayıt silinmiş, değiştirilmiş veya bağlantı artık geçerli olmayabilir.",
+            action = "Listeyi yenileyip kaydı yeniden seçin.",
+            traceId,
+        },
+        StatusCodes.Status429TooManyRequests => new
+        {
+            code = "TOO_MANY_REQUESTS",
+            message = "Kısa sürede çok fazla işlem yapıldı.",
+            reason = "Güvenlik amacıyla istekler geçici olarak sınırlandırıldı.",
+            action = "Kısa bir süre bekleyip tekrar deneyin.",
+            traceId,
+        },
+        _ => new
+        {
+            code = "REQUEST_NOT_COMPLETED",
+            message = "İşlem tamamlanamadı.",
+            reason = "İstek sunucu tarafından sonuçlandırılamadı.",
+            action = "Bilgileri kontrol edip tekrar deneyin. Sorun sürerse destek ekibine başvurun.",
+            traceId,
+        },
+    };
+    response.ContentType = "application/json; charset=utf-8";
+    await response.WriteAsJsonAsync(payload);
+});
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();

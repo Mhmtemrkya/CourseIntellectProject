@@ -100,7 +100,7 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           REACT_APP_COURSE_INTELLECT_ENV: production
-          REACT_APP_COURSE_INTELLECT_API_URL: https://api.courseintellect.com
+          REACT_APP_COURSE_INTELLECT_API_URL: https://maydanozasist.schoolasist.com
         with:
           projectPath: desktop
           tagName: desktop-v__VERSION__

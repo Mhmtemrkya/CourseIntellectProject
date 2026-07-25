@@ -92,6 +92,8 @@ export const fetchDrivingPermissions = () => api.get('/api/driving-school/permis
 export const fetchDrivingPermissionCatalog = () => api.get('/api/driving-school/permissions/catalog');
 export const fetchDrivingPackages = () => api.get('/api/driving-school/packages');
 export const createDrivingPackage = (payload) => api.post('/api/driving-school/packages', payload);
+export const updateDrivingPackage = (id, payload) => api.put(`/api/driving-school/packages/${id}`, payload);
+export const deleteDrivingPackage = (id) => api.delete(`/api/driving-school/packages/${id}`);
 export const fetchDrivingVehicles = () => api.get('/api/driving-school/vehicles');
 export const createDrivingVehicle = (payload) => api.post('/api/driving-school/vehicles', payload);
 export const fetchDrivingInstructors = () => api.get('/api/driving-school/instructors');

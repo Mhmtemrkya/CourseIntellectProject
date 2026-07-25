@@ -63,16 +63,53 @@ async function apiFetch(url, options = {}) {
  * kullanıcı "Request failed (400)" görüyordu. Alan adlarıyla birlikte
  * özetliyoruz ki hatanın nerede olduğu belli olsun.
  */
-function describeApiError(body, status) {
-  if (!body) return `Sunucu hatası (${status})`;
-  if (body.message) return body.message;
-  if (body.errors && typeof body.errors === 'object') {
+const TECHNICAL_ERROR_PATTERN = /request failed|internal server error|http error|status code|sunucu hatası\s*\(\d+\)|işlem başarısız\s*\(\d+\)/i;
+
+function operationLabel(method) {
+  switch (String(method || '').toUpperCase()) {
+    case 'GET': return 'Bilgiler alınırken';
+    case 'POST': return 'Kayıt işlemi sırasında';
+    case 'PUT':
+    case 'PATCH': return 'Güncelleme sırasında';
+    case 'DELETE': return 'Silme işlemi sırasında';
+    default: return 'İşlem sırasında';
+  }
+}
+
+function statusGuidance(status) {
+  if (status === 400 || status === 422) return 'Formdaki bilgileri ve zorunlu alanları kontrol edip tekrar deneyin.';
+  if (status === 401) return 'Oturumunuz sona ermiş olabilir. Yeniden giriş yapıp tekrar deneyin.';
+  if (status === 403) return 'Bu işlem için kurum yöneticinizden gerekli yetkiyi isteyin.';
+  if (status === 404) return 'Listeyi yenileyip ilgili kaydı yeniden seçin.';
+  if (status === 409) return 'Kayıt başka bir işlemle çakışıyor. Güncel bilgileri kontrol edip tekrar deneyin.';
+  if (status === 429) return 'Kısa bir süre bekleyip tekrar deneyin.';
+  if (status >= 500) return 'Kısa bir süre sonra tekrar deneyin. Sorun devam ederse destek ekibine başvurun.';
+  return 'Bilgileri kontrol edip işlemi tekrar deneyin.';
+}
+
+export function describeApiError(body, status, method = '') {
+  const operation = operationLabel(method);
+  const traceId = body?.traceId ? ` Takip kodu: ${body.traceId}.` : '';
+
+  if (status >= 500) {
+    return `${operation} beklenmeyen bir sorun oluştu. ${statusGuidance(status)}${traceId}`;
+  }
+
+  let detail = body?.message || body?.error?.message || '';
+  if (body?.errors && typeof body.errors === 'object') {
     const parts = Object.entries(body.errors)
       .map(([field, messages]) => `${field}: ${[].concat(messages).join(' ')}`)
       .filter(Boolean);
-    if (parts.length) return parts.join(' • ');
+    if (parts.length) detail = parts.join(' • ');
   }
-  return body.detail || body.title || `Sunucu hatası (${status})`;
+  detail ||= body?.detail || body?.title || '';
+  if (!detail || TECHNICAL_ERROR_PATTERN.test(detail)) {
+    detail = `${operation} işlem tamamlanamadı.`;
+  }
+
+  const action = body?.action || statusGuidance(status);
+  const reason = body?.reason ? ` Nedeni: ${body.reason}` : '';
+  return `${detail}${reason} Yapmanız gereken: ${action}${traceId}`;
 }
 
 async function request(method, url, data, config = {}) {
@@ -139,7 +176,7 @@ async function request(method, url, data, config = {}) {
   }
 
   if (!response) {
-    const error = new Error('Backend bağlantısı kurulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.');
+    const error = new Error('Sunucuya bağlantı kurulamadı. İnternet bağlantınızı kontrol edin, ardından işlemi tekrar deneyin.');
     error.cause = lastConnectionError;
     throw error;
   }
@@ -156,12 +193,12 @@ async function request(method, url, data, config = {}) {
         window.location.assign(loginPath);
       }
     }
-    throw new Error('Unauthorized');
+    throw new Error('Oturumunuz sona erdi. Lütfen yeniden giriş yapıp işlemi tekrar deneyin.');
   }
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
-    const error = new Error(describeApiError(errorBody, response.status));
+    const error = new Error(describeApiError(errorBody, response.status, method));
     // Gövdeyi taşı: bazı uçlar hatanın yanında makine-okunur ipucu döner
     // (ör. randevu kuralını hangi override koduyla ezebileceğin).
     error.status = response.status;

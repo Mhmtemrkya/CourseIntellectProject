@@ -10,6 +10,50 @@ class DrivingSchoolApiService {
   DrivingSchoolApiService._();
   static final instance = DrivingSchoolApiService._();
 
+  String _errorMessage(http.Response response, String operation) {
+    Map<String, dynamic>? payload;
+    try {
+      payload = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    } catch (_) {}
+
+    final traceId = payload?['traceId']?.toString();
+    final trace = traceId == null || traceId.isEmpty
+        ? ''
+        : ' Takip kodu: $traceId.';
+    if (response.statusCode >= 500) {
+      return '$operation sırasında beklenmeyen bir sorun oluştu. '
+          'Kısa bir süre sonra tekrar deneyin; sorun devam ederse destek ekibine başvurun.$trace';
+    }
+
+    final serverMessage = payload?['message']?.toString().trim() ?? '';
+    final technical = RegExp(
+      r'request failed|internal server error|http error|status code|işlem başarısız \(\d+\)',
+      caseSensitive: false,
+    ).hasMatch(serverMessage);
+    final fallback = switch (response.statusCode) {
+      401 =>
+        'Oturumunuz sona erdi. Lütfen yeniden giriş yapıp işlemi tekrar deneyin.',
+      403 =>
+        'Bu işlem için yetkiniz bulunmuyor. Kurum yöneticinizden gerekli yetkiyi isteyin.',
+      404 => 'İstenen kayıt bulunamadı. Listeyi yenileyip kaydı yeniden seçin.',
+      409 =>
+        'İşlem güncel kayıtla çakıştı. Bilgileri yenileyip tekrar deneyin.',
+      429 =>
+        'Kısa sürede çok fazla işlem yapıldı. Biraz bekleyip tekrar deneyin.',
+      _ =>
+        '$operation tamamlanamadı. Bilgileri ve zorunlu alanları kontrol edip tekrar deneyin.',
+    };
+    final message = serverMessage.isEmpty || technical
+        ? fallback
+        : serverMessage;
+    final reason = payload?['reason']?.toString().trim();
+    final action = payload?['action']?.toString().trim();
+    return '$message'
+        '${reason == null || reason.isEmpty ? '' : ' Nedeni: $reason'}'
+        '${action == null || action.isEmpty ? '' : ' Yapmanız gereken: $action'}'
+        '$trace';
+  }
+
   Future<Map<String, dynamic>> _get(String path) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) throw StateError('Oturum bulunamadı.');
@@ -21,11 +65,7 @@ class DrivingSchoolApiService {
       },
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError(
-        response.statusCode == 403
-            ? 'Bu modüle erişim yetkiniz yok.'
-            : 'İstek başarısız (${response.statusCode}).',
-      );
+      throw StateError(_errorMessage(response, 'Bilgiler alınırken'));
     }
     return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
   }
@@ -46,13 +86,7 @@ class DrivingSchoolApiService {
       body: jsonEncode(body),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      var message = 'İşlem başarısız (${response.statusCode}).';
-      try {
-        message =
-            (jsonDecode(response.body) as Map)['message']?.toString() ??
-            message;
-      } catch (_) {}
-      throw StateError(message);
+      throw StateError(_errorMessage(response, 'Kayıt işlemi'));
     }
     return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
   }
@@ -73,13 +107,7 @@ class DrivingSchoolApiService {
       body: jsonEncode(body),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      var message = 'İşlem başarısız (${response.statusCode}).';
-      try {
-        message =
-            (jsonDecode(response.body) as Map)['message']?.toString() ??
-            message;
-      } catch (_) {}
-      throw StateError(message);
+      throw StateError(_errorMessage(response, 'Güncelleme işlemi'));
     }
     return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
   }
@@ -95,13 +123,7 @@ class DrivingSchoolApiService {
       },
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      var message = 'İşlem başarısız (${response.statusCode}).';
-      try {
-        message =
-            (jsonDecode(response.body) as Map)['message']?.toString() ??
-            message;
-      } catch (_) {}
-      throw StateError(message);
+      throw StateError(_errorMessage(response, 'Silme işlemi'));
     }
     if (response.body.isEmpty) return const {};
     return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
@@ -423,6 +445,14 @@ class DrivingSchoolApiService {
 
   Future<void> createPackage(Map<String, dynamic> body) async {
     await _post('/api/driving-school/packages', body);
+  }
+
+  Future<void> updatePackage(String id, Map<String, dynamic> body) async {
+    await _put('/api/driving-school/packages/$id', body);
+  }
+
+  Future<void> deletePackage(String id) async {
+    await _delete('/api/driving-school/packages/$id');
   }
 
   Future<void> createVehicle(Map<String, dynamic> body) async {
