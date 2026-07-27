@@ -90,7 +90,9 @@ public sealed class DrivingMebbisExamResultsController(CourseIntellectDbContext 
         var scoreMismatch = candidate.Score.HasValue && importedScore.HasValue && candidate.Score.Value != importedScore.Value;
         var retryRequired = incomingPassed == false && remaining > 0;
         var outOfAttempts = incomingPassed == false && remaining == 0;
-        var fee = exam.ExamType == DrivingExamType.TheoryEExam ? profile.TheoryExamFee : profile.DrivingExamFee;
+        // Teorik sınav için otomatik ücret oluşturulmaz; yalnız direksiyon
+        // sınavı paket dışı ücret olarak takip edilir.
+        var fee = exam.ExamType == DrivingExamType.DrivingPractice ? profile.DrivingExamFee : 0m;
         var extraLessonMinutes = incomingPassed == false && exam.ExamType == DrivingExamType.DrivingPractice ? settings.FailedPracticeExtraLessonMinutes : 0;
         var extraLessonFee = extraLessonMinutes > 0 ? settings.FailedPracticeExtraLessonFee : 0;
         var totalFinancialImpact = (retryRequired ? fee : 0) + extraLessonFee;

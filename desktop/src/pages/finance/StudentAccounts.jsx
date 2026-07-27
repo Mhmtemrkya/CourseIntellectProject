@@ -23,7 +23,15 @@ import { useToast } from '../../hooks/use-toast';
 import { SheetHeader, SheetTitle, SheetDescription } from '../../components/ui/sheet';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { createAccountingNotification, createCollection, fetchAccountingDashboard, fetchStudentFinanceAccount, fetchStudents } from '../../lib/api/modules';
+import {
+  createAccountingNotification,
+  createCollection,
+  fetchAccountingDashboard,
+  fetchFinanceSummaries,
+  fetchStudentFinanceAccount,
+  fetchStudents,
+  updateDrivingExamFees,
+} from '../../lib/api/modules';
 import PendingDownPayments from '../../components/finance/PendingDownPayments';
 import {
   buildFinanceDocumentHtml,
@@ -49,14 +57,14 @@ function parseMoney(value) {
   return parseFinanceMoney(value);
 }
 
-function buildAccount(student, dashboard) {
+function buildAccount(student, dashboard, summary) {
   const invoices = (dashboard?.invoices || []).filter((item) => String(item.title || '').toLowerCase().includes(String(student.fullName).toLowerCase()));
   const collections = (dashboard?.collections || []).filter((item) => String(item.name || '').toLowerCase() === String(student.fullName).toLowerCase());
   const installments = (dashboard?.installments || []).filter((item) => String(item.student || '').toLowerCase() === String(student.fullName).toLowerCase());
   const installmentTotal = installments.reduce((sum, item) => sum + parseMoney(item.amount), 0);
-  const totalFee = installmentTotal || invoices.reduce((sum, item) => sum + parseMoney(item.amount), 0);
-  const paid = collections.reduce((sum, item) => sum + parseMoney(item.amount), 0);
-  const remaining = Math.max(0, totalFee - paid);
+  const totalFee = Number(summary?.netTotal) || installmentTotal || invoices.reduce((sum, item) => sum + parseMoney(item.amount), 0);
+  const paid = summary ? Number(summary.paidTotal) || 0 : collections.reduce((sum, item) => sum + parseMoney(item.amount), 0);
+  const remaining = summary ? Number(summary.courseRemaining) || 0 : Math.max(0, totalFee - paid);
   const overdue = installments.some((item) => normalizeFinanceText(item.status).includes('gec'));
   const status = totalFee > 0 && paid >= totalFee ? 'paid' : overdue ? 'overdue' : 'current';
   return {
@@ -67,10 +75,20 @@ function buildAccount(student, dashboard) {
     branchName: student.branchName || student.branch || '',
     parent: student.parentName,
     totalFee,
+    grossTotal: Number(summary?.grossTotal) || totalFee,
+    discountTotal: Number(summary?.discountTotal) || 0,
+    downPaymentTotal: Number(summary?.downPaymentTotal) || 0,
+    downPaymentPaidTotal: Number(summary?.downPaymentPaidTotal) || 0,
+    hasPendingDownPayment: Boolean(summary?.hasPendingDownPayment),
     paid,
     remaining,
     installmentCount: installments.length,
-    status,
+    status: summary?.status ? normalizeFinanceText(summary.status).includes('over') ? 'overdue' : normalizeFinanceText(summary.status).includes('paid') ? 'paid' : 'current' : status,
+    drivingStudentProfileId: summary?.drivingStudentProfileId,
+    drivingExamFee: Number(summary?.drivingExamFee) || 0,
+    drivingExamFeePaid: Boolean(summary?.drivingExamFeePaid),
+    drivingExamAttemptNo: Number(summary?.drivingExamAttemptNo) || 1,
+    drivingExamDate: summary?.drivingExamDate,
     collections,
     invoices,
     installments,
@@ -95,9 +113,12 @@ function StudentAccountDrawer({
   onExportStatement,
   onPrintStatement,
   creatingCollection,
+  onUpdated,
 }) {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(true);
+  const [examFeeDraft, setExamFeeDraft] = useState(null);
+  const [savingExamFee, setSavingExamFee] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -121,7 +142,40 @@ function StudentAccountDrawer({
     .sort((a, b) => new Date(a.dueDateUtc) - new Date(b.dueDateUtc));
   const totalFee = Number(detail?.netTotal) || account.totalFee;
   const paid = Number(detail?.paidTotal) || account.paid;
-  const remaining = Math.max(0, totalFee - paid);
+  const remaining = detail ? Number(detail.courseRemaining) || 0 : Math.max(0, totalFee - paid);
+  const grossTotal = Number(detail?.grossTotal) || account.grossTotal;
+  const discountTotal = Number(detail?.discountTotal) || account.discountTotal;
+  const downPaymentTotal = Number(detail?.downPaymentTotal) || account.downPaymentTotal;
+  const downPaymentPaidTotal = Number(detail?.downPaymentPaidTotal) || account.downPaymentPaidTotal;
+  const drivingExamFee = Number(detail?.drivingExamFee) || 0;
+  const drivingExamFeePaid = Boolean(detail?.drivingExamFeePaid);
+  const drivingExamAttemptNo = Number(detail?.drivingExamAttemptNo) || 1;
+
+  const saveExamFee = async () => {
+    if (!detail?.drivingStudentProfileId || !examFeeDraft) return;
+    const amount = Number(examFeeDraft.amount) || 0;
+    if (amount < 0) return;
+    try {
+      setSavingExamFee(true);
+      await updateDrivingExamFees(detail.drivingStudentProfileId, {
+        theoryExamFee: 0,
+        theoryExamFeePaid: false,
+        drivingExamFee: amount,
+        drivingExamFeePaid: amount > 0 && examFeeDraft.paid,
+        drivingExamDate: examFeeDraft.date ? new Date(`${examFeeDraft.date}T12:00:00`).toISOString() : null,
+      });
+      setDetail((current) => ({
+        ...current,
+        drivingExamFee: amount,
+        drivingExamFeePaid: amount > 0 && examFeeDraft.paid,
+        drivingExamDate: examFeeDraft.date || null,
+      }));
+      setExamFeeDraft(null);
+      onUpdated?.();
+    } finally {
+      setSavingExamFee(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -142,12 +196,13 @@ function StudentAccountDrawer({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          [totalFee, 'Toplam Ücret', 'text-foreground'],
+          [grossTotal, 'Kurs Ücreti', 'text-foreground'],
+          [discountTotal, 'İndirim', 'text-blue-600'],
+          [downPaymentPaidTotal, downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? `Peşinat • ₺${downPaymentTotal.toLocaleString('tr-TR')} bekleniyor` : 'Ödenen Peşinat', downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? 'text-amber-600' : 'text-green-600'],
           [paid, 'Ödenen', 'text-green-600'],
           [remaining, 'Kalan Ücret', remaining > 0 ? 'text-red-600' : 'text-green-600'],
-          [installments.length, 'Taksit Sayısı', 'text-foreground', true],
         ].map(([value, label, color, isCount]) => (
           <Card key={label}>
             <CardContent className="p-4 text-center">
@@ -157,6 +212,50 @@ function StudentAccountDrawer({
           </Card>
         ))}
       </div>
+
+      <Card className="border-brand-primary/20">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold">Direksiyon sınav ücreti</p>
+              <p className="text-sm text-muted-foreground">{drivingExamAttemptNo}. sınav girişi • Kurs ücretinden ayrı takip edilir</p>
+            </div>
+            {detail?.drivingStudentProfileId ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setExamFeeDraft({
+                  amount: drivingExamFee,
+                  paid: drivingExamFeePaid,
+                  date: detail?.drivingExamDate?.slice?.(0, 10) || '',
+                })}
+              >
+                Düzenle
+              </Button>
+            ) : null}
+          </div>
+          {examFeeDraft ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+              <Input type="number" min="0" value={examFeeDraft.amount} onChange={(event) => setExamFeeDraft({ ...examFeeDraft, amount: event.target.value })} placeholder="Ücret (₺)" />
+              <Input type="date" value={examFeeDraft.date} onChange={(event) => setExamFeeDraft({ ...examFeeDraft, date: event.target.value })} />
+              <div className="flex gap-2">
+                <Button type="button" variant={examFeeDraft.paid ? 'default' : 'outline'} onClick={() => setExamFeeDraft({ ...examFeeDraft, paid: !examFeeDraft.paid })}>
+                  {examFeeDraft.paid ? 'Ödendi' : 'Ödenmedi'}
+                </Button>
+                <Button type="button" onClick={saveExamFee} disabled={savingExamFee}>{savingExamFee ? 'Kaydediliyor…' : 'Kaydet'}</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <b className="text-xl">₺{drivingExamFee.toLocaleString('tr-TR')}</b>
+              <Badge className={drivingExamFee > 0 && drivingExamFeePaid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
+                {drivingExamFee > 0 && drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
+              </Badge>
+              <span className="text-sm text-muted-foreground">{formatDateUtc(detail?.drivingExamDate)}</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {detailLoading ? (
         <div className="flex justify-center py-6"><LoadingDots /></div>
@@ -229,8 +328,10 @@ export default function StudentAccounts() {
   const [classFilter, setClassFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [examFeeFilter, setExamFeeFilter] = useState('all');
   const [students, setStudents] = useState([]);
   const [dashboard, setDashboard] = useState(null);
+  const [summaries, setSummaries] = useState([]);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [activeCollectionId, setActiveCollectionId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -240,12 +341,14 @@ export default function StudentAccounts() {
     try {
       setLoading(true);
       setError('');
-      const [studentList, accounting] = await Promise.all([
+      const [studentList, accounting, financeSummaries] = await Promise.all([
         fetchStudents(),
         fetchAccountingDashboard(),
+        fetchFinanceSummaries(),
       ]);
       setStudents(studentList);
       setDashboard(accounting);
+      setSummaries(financeSummaries);
     } catch (err) {
       setError(err.message || 'Cari hesaplar alınamadı.');
     } finally {
@@ -257,7 +360,12 @@ export default function StudentAccounts() {
     loadData();
   }, [loadData]);
 
-  const accounts = useMemo(() => students.map((student) => buildAccount(student, dashboard)), [students, dashboard]);
+  const accounts = useMemo(() => students.map((student) => {
+    const summary = summaries.find((item) =>
+      (item.studentUserId && item.studentUserId === student.userId)
+      || normalizeFinanceText(item.studentName) === normalizeFinanceText(student.fullName));
+    return buildAccount(student, dashboard, summary);
+  }), [students, dashboard, summaries]);
   const classes = useMemo(() => [...new Set([
     ...accounts.map((item) => item.className).filter(Boolean),
     ...FALLBACK_CLASSES,
@@ -424,8 +532,11 @@ export default function StudentAccounts() {
     const matchesClass = classFilter === 'all' || account.className === classFilter;
     const matchesBranch = branchFilter === 'all' || account.branchName === branchFilter;
     const matchesStatus = statusFilter === 'all' || account.status === statusFilter;
-    return matchesSearch && matchesClass && matchesBranch && matchesStatus;
-  }), [accounts, search, classFilter, branchFilter, statusFilter]);
+    const matchesExamFee = examFeeFilter === 'all'
+      || (examFeeFilter === 'paid' && account.drivingExamFee > 0 && account.drivingExamFeePaid)
+      || (examFeeFilter === 'unpaid' && (!account.drivingExamFeePaid || account.drivingExamFee <= 0));
+    return matchesSearch && matchesClass && matchesBranch && matchesStatus && matchesExamFee;
+  }), [accounts, search, classFilter, branchFilter, statusFilter, examFeeFilter]);
 
   const getStatusBadge = (status) => {
     const styles = {
@@ -516,6 +627,16 @@ export default function StudentAccounts() {
                 <SelectItem value="overdue">Gecikmiş</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={examFeeFilter} onValueChange={setExamFeeFilter}>
+              <SelectTrigger className="w-full md:w-44">
+                <SelectValue placeholder="Sınav ücreti" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tüm sınav ücretleri</SelectItem>
+                <SelectItem value="paid">Sınav ücreti ödendi</SelectItem>
+                <SelectItem value="unpaid">Sınav ücreti ödenmedi</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -527,10 +648,11 @@ export default function StudentAccounts() {
               <TableRow>
                 <TableHead>Öğrenci</TableHead>
                 <TableHead>Sınıf</TableHead>
-                <TableHead>Toplam Ücret</TableHead>
-                <TableHead>Ödenen</TableHead>
-                <TableHead>Kalan Ücret</TableHead>
-                <TableHead>Taksit Sayısı</TableHead>
+                <TableHead>Kurs Ücreti</TableHead>
+                <TableHead>İndirim</TableHead>
+                <TableHead>Peşinat</TableHead>
+                <TableHead>Kalan</TableHead>
+                <TableHead>Direksiyon Sınavı</TableHead>
                 <TableHead>Durum</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -548,7 +670,9 @@ export default function StudentAccounts() {
                       onExportStatement={handleExportStatement}
                       onPrintStatement={handlePrintStatement}
                       creatingCollection={activeCollectionId === account.id}
+                      onUpdated={loadData}
                     />,
+                    { size: 'wide' },
                   )}
                 >
                   <TableCell>
@@ -567,12 +691,28 @@ export default function StudentAccounts() {
                   <TableCell>
                     <Badge variant="outline">{account.className}</Badge>
                   </TableCell>
-                  <TableCell>₺{account.totalFee.toLocaleString('tr-TR')}</TableCell>
-                  <TableCell className="text-green-600">₺{account.paid.toLocaleString('tr-TR')}</TableCell>
+                  <TableCell className="font-medium">₺{account.grossTotal.toLocaleString('tr-TR')}</TableCell>
+                  <TableCell className="text-blue-600">₺{account.discountTotal.toLocaleString('tr-TR')}</TableCell>
+                  <TableCell>
+                    {account.downPaymentTotal <= 0 ? (
+                      <span className="text-sm text-muted-foreground">Peşinat yok</span>
+                    ) : account.hasPendingDownPayment ? (
+                      <div><b className="text-amber-600">Ödenmedi</b><p className="text-xs text-muted-foreground">₺{account.downPaymentTotal.toLocaleString('tr-TR')}</p></div>
+                    ) : (
+                      <div><b className="text-green-600">₺{account.downPaymentPaidTotal.toLocaleString('tr-TR')}</b><p className="text-xs text-muted-foreground">Ödendi</p></div>
+                    )}
+                  </TableCell>
                   <TableCell className={account.remaining > 0 ? 'text-red-600 font-bold' : 'text-green-600'}>
                     ₺{account.remaining.toLocaleString('tr-TR')}
                   </TableCell>
-                  <TableCell className="text-center">{account.installmentCount}</TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <span className="text-sm font-medium">{account.drivingExamAttemptNo}. giriş • ₺{account.drivingExamFee.toLocaleString('tr-TR')}</span>
+                      <Badge className={account.drivingExamFee > 0 && account.drivingExamFeePaid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
+                        {account.drivingExamFee > 0 && account.drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
+                      </Badge>
+                    </div>
+                  </TableCell>
                   <TableCell>{getStatusBadge(account.status)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -589,7 +729,9 @@ export default function StudentAccounts() {
                             onExportStatement={handleExportStatement}
                             onPrintStatement={handlePrintStatement}
                             creatingCollection={activeCollectionId === account.id}
+                            onUpdated={loadData}
                           />,
+                          { size: 'wide' },
                         )}
                         >
                           <Eye className="h-4 w-4 mr-2" /> Detay

@@ -35,6 +35,7 @@ export default function DrivingExamRights() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [feeFilter, setFeeFilter] = useState('all');
   const [form, setForm] = useState(null);
   // Sınav ücretleri paket dışıdır; taksite girmez, ödeme durumu buradan güncellenir.
   const [feeForm, setFeeForm] = useState(null);
@@ -62,12 +63,16 @@ export default function DrivingExamRights() {
 
   const students = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('tr-TR');
-    if (!query) return data.students || [];
-    return (data.students || []).filter((student) =>
-      `${student.fullName} ${student.studentNumber} ${student.licenseClass}`
+    return (data.students || []).filter((student) => {
+      const matchesQuery = !query || `${student.fullName} ${student.studentNumber} ${student.licenseClass}`
         .toLocaleLowerCase('tr-TR')
-        .includes(query));
-  }, [data.students, search]);
+        .includes(query);
+      const matchesFee = feeFilter === 'all'
+        || (feeFilter === 'paid' && Number(student.drivingExamFee) > 0 && student.drivingExamFeePaid)
+        || (feeFilter === 'unpaid' && (!student.drivingExamFeePaid || Number(student.drivingExamFee) <= 0));
+      return matchesQuery && matchesFee;
+    });
+  }, [data.students, search, feeFilter]);
 
   const openNew = (student, examType) => {
     const rights = examType === 'TheoryEExam' ? student.theory : student.practice;
@@ -120,8 +125,6 @@ export default function DrivingExamRights() {
   const openFees = (student) => setFeeForm({
     profileId: student.profileId,
     fullName: student.fullName,
-    theoryExamFee: student.theoryExamFee ?? 0,
-    theoryExamFeePaid: Boolean(student.theoryExamFeePaid),
     drivingExamFee: student.drivingExamFee ?? 0,
     drivingExamFeePaid: Boolean(student.drivingExamFeePaid),
     drivingExamDate: student.drivingExamDate?.slice(0, 10) || '',
@@ -129,19 +132,18 @@ export default function DrivingExamRights() {
 
   const submitFees = async (event) => {
     event.preventDefault();
-    const theory = Number(feeForm.theoryExamFee) || 0;
     const driving = Number(feeForm.drivingExamFee) || 0;
-    if (theory < 0 || driving < 0) {
+    if (driving < 0) {
       toast({ title: 'Ücret negatif olamaz.', variant: 'destructive' });
       return;
     }
     setSavingFee(true);
     try {
       await updateDrivingExamFees(feeForm.profileId, {
-        theoryExamFee: theory,
+        theoryExamFee: 0,
         drivingExamFee: driving,
         // Ücret girilmemişse "ödendi" işareti anlamsız olur; sıfırlanır.
-        theoryExamFeePaid: theory > 0 ? Boolean(feeForm.theoryExamFeePaid) : false,
+        theoryExamFeePaid: false,
         drivingExamFeePaid: driving > 0 ? Boolean(feeForm.drivingExamFeePaid) : false,
         drivingExamDate: feeForm.drivingExamDate ? new Date(`${feeForm.drivingExamDate}T12:00:00`).toISOString() : null,
       });
@@ -184,9 +186,16 @@ export default function DrivingExamRights() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Kursiyer adı, numarası veya ehliyet sınıfı ara..." className="pl-10" />
+          <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Kursiyer adı, numarası veya ehliyet sınıfı ara..." className="pl-10" />
+            </div>
+            <select className="h-10 rounded-md border bg-background px-3 text-sm" value={feeFilter} onChange={(event) => setFeeFilter(event.target.value)}>
+              <option value="all">Tüm ücret durumları</option>
+              <option value="paid">Ücreti ödenenler</option>
+              <option value="unpaid">Ücreti ödenmeyenler</option>
+            </select>
           </div>
         </CardContent>
       </Card>
@@ -236,7 +245,7 @@ export default function DrivingExamRights() {
                 <div className="rounded-xl border border-dashed p-3 sm:col-span-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="flex items-center gap-1.5 text-sm font-bold">
-                      <Banknote className="h-4 w-4 text-brand-primary" />Sınav ücretleri
+                      <Banknote className="h-4 w-4 text-brand-primary" />Direksiyon sınav ücreti
                     </span>
                     {canEditFees && (
                       <Button size="sm" variant="outline" onClick={() => openFees(student)}>
@@ -244,23 +253,16 @@ export default function DrivingExamRights() {
                       </Button>
                     )}
                   </div>
-                  <div className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">
-                    {[
-                      ['Teorik', student.theoryExamFee, student.theoryExamFeePaid],
-                      ['Direksiyon', student.drivingExamFee, student.drivingExamFeePaid],
-                    ].map(([label, fee, paid]) => (
-                      <div key={label} className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2.5 py-1.5">
-                        <span className="text-muted-foreground">{label}</span>
-                        {Number(fee) > 0 ? (
-                          <span className="flex items-center gap-1.5">
-                            <b>₺{Number(fee).toLocaleString('tr-TR')}</b>
-                            <Badge className={paid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
-                              {paid ? 'Ödendi' : 'Bekliyor'}
-                            </Badge>
-                          </span>
-                        ) : <span className="text-xs text-muted-foreground">Ücret girilmedi</span>}
-                      </div>
-                    ))}
+                  <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2.5 py-2 text-sm">
+                    <span className="text-muted-foreground">{(student.practice?.used || 0) > 0 ? student.practice.used : 1}. sınav girişi</span>
+                    {Number(student.drivingExamFee) > 0 ? (
+                      <span className="flex items-center gap-1.5">
+                        <b>₺{Number(student.drivingExamFee).toLocaleString('tr-TR')}</b>
+                        <Badge className={student.drivingExamFeePaid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
+                          {student.drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
+                        </Badge>
+                      </span>
+                    ) : <span className="text-xs text-muted-foreground">Ücret girilmedi • Ödenmedi</span>}
                   </div>
                   <p className="mt-1.5 text-[11px] text-muted-foreground">Kurs ücretine ve taksitlere dâhil değildir.</p>
                 </div>
@@ -287,6 +289,11 @@ export default function DrivingExamRights() {
                   <Badge variant="outline" className={attempt.status === 'Passed' ? 'border-emerald-500/40 text-emerald-700' : 'border-red-500/40 text-red-700'}>
                     {attempt.status === 'Passed' ? 'Geçti' : 'Kaldı'}
                   </Badge>
+                  {attempt.examType === 'DrivingPractice' && (
+                    <Badge className={student?.drivingExamFeePaid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
+                      ₺{Number(student?.drivingExamFee || 0).toLocaleString('tr-TR')} • {student?.drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
+                    </Badge>
+                  )}
                   {canEnter && <Button size="sm" variant="outline" onClick={() => openEdit(attempt)}><Pencil className="mr-1 h-3.5 w-3.5" />Düzenle</Button>}
                 </div>
               </div>
@@ -343,7 +350,7 @@ export default function DrivingExamRights() {
       <Dialog open={Boolean(feeForm)} onOpenChange={(open) => !open && setFeeForm(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Sınav Ücretleri — {feeForm?.fullName}</DialogTitle>
+            <DialogTitle>Direksiyon Sınav Ücreti — {feeForm?.fullName}</DialogTitle>
             <DialogDescription>
               Bu ücretler kurs paketine ve taksitlere dâhil değildir; ayrı tahsil edilir.
               Ödeme durumunu buradan güncelleyebilirsiniz.
@@ -352,11 +359,10 @@ export default function DrivingExamRights() {
           {feeForm && (
             <form onSubmit={submitFees} className="space-y-4">
               {[
-                ['Teorik (e-sınav) ücreti', 'theoryExamFee', 'theoryExamFeePaid'],
                 ['Direksiyon sınav ücreti', 'drivingExamFee', 'drivingExamFeePaid'],
               ].map(([label, feeKey, paidKey]) => (
                 <div key={feeKey} className="rounded-xl border p-3">
-                  <label className="text-xs font-bold text-muted-foreground">{label}</label>
+                  <label className="text-xs font-bold text-muted-foreground">{label} • {(data.students?.find((item) => item.profileId === feeForm.profileId)?.practice?.used || 0) || 1}. giriş</label>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <Input
                       type="number" min="0" step="1" className="w-40"

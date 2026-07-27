@@ -1,5 +1,6 @@
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
+using CourseIntellect.Domain.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -2275,8 +2276,49 @@ public sealed class CourseIntellectDbContext : DbContext
             && (EffectiveBranchId == null || x.BranchId == EffectiveBranchId));
     }
 
+    /// <summary>
+    /// Kişi adlarını kurum standardına getirir: ad(lar) baş harfi büyük, SOYAD tamamen büyük.
+    ///
+    /// Kural her yazma yolunda tek tek uygulanmaya çalışıldığında sürekli atlanıyordu
+    /// (aday adayı, sürücü kaydı, mobil uçlar…). Bu yüzden tenant damgası gibi
+    /// KALICILIK SINIRINDA zorlanır: hangi servis yazarsa yazsın biçim garantidir.
+    ///
+    /// Yalnızca KİŞİ KAYDININ kendi ad alanları dönüştürülür (FullName, ParentName).
+    /// Kapsam bilinçli olarak dardır:
+    ///  • "Name" gibi belirsiz alanlar dışarıdadır — "B Sınıfı Standart PAKET" olmamalı.
+    ///  • StudentName/TeacherName gibi DENORMALİZE kopyalar (tahsilat, yoklama satırları)
+    ///    dışarıdadır: bunlar kaynaktaki addan kopyalanır, kaynak zaten biçimli olduğu
+    ///    için doğru gelir. Bağımsız biçimlendirilirlerse eski kayıtlarla yapılan
+    ///    ada göre eşleştirmeler bozulur.
+    ///  • Denetim kaydındaki ActorName tarihsel kayıttır, sonradan değiştirilmez.
+    /// </summary>
+    private static readonly string[] PersonNameProperties = ["FullName", "ParentName"];
+
+    private void ApplyPersonNameFormat()
+    {
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified)) continue;
+            // Denetim kayıtları geçmişi yansıtır; sonradan biçimlendirilmez.
+            if (entry.Entity is AuditLogEntry) continue;
+
+            foreach (var name in PersonNameProperties)
+            {
+                var property = entry.Properties.FirstOrDefault(x =>
+                    x.Metadata.Name == name && x.Metadata.ClrType == typeof(string));
+                if (property is null) continue;
+                if (entry.State == EntityState.Modified && !property.IsModified) continue;
+                if (property.CurrentValue is not string value || value.Length == 0) continue;
+
+                var formatted = PersonNameFormatter.FormatFullName(value);
+                if (!string.Equals(formatted, value, StringComparison.Ordinal)) property.CurrentValue = formatted;
+            }
+        }
+    }
+
     private void ApplyTenantContext()
     {
+        ApplyPersonNameFormat();
         var tenantId = CurrentTenantId;
         if (tenantId.HasValue)
         {

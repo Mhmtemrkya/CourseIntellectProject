@@ -337,7 +337,7 @@ public sealed class DrivingMebbisImportsController(
 
         if (retryRequired && createRetryFee)
         {
-            var amount = exam.ExamType == DrivingExamType.TheoryEExam ? student.TheoryExamFee : student.DrivingExamFee;
+            var amount = exam.ExamType == DrivingExamType.DrivingPractice ? student.DrivingExamFee : 0m;
             if (amount > 0 && student.EnrollmentContractId.HasValue)
                 retryChargeId = await CreateImportedChargeAsync(student, amount, DrivingChargeType.ExamFee, $"{DrivingExamRules.ExamTypeLabel(exam.ExamType)} tekrar ücreti — MEBBİS sonucu", 0, ct);
         }

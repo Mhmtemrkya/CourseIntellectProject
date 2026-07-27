@@ -535,7 +535,10 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
   void _snack(String msg, {bool error = false}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: error ? Colors.red : null),
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: error ? Colors.red : null,
+        ),
       );
     }
   }
@@ -585,10 +588,10 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
       return;
     }
     try {
-      await DrivingSchoolApiService.instance.updateStudentLifecycle('${s['id']}', {
-        'status': 'Suspended',
-        'reason': reason,
-      });
+      await DrivingSchoolApiService.instance.updateStudentLifecycle(
+        '${s['id']}',
+        {'status': 'Suspended', 'reason': reason},
+      );
       _snack('Kursiyer pasife alındı.'.tr);
       await _load();
     } catch (e) {
@@ -598,9 +601,10 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
 
   Future<void> _reactivate(Map<String, dynamic> s) async {
     try {
-      await DrivingSchoolApiService.instance.updateStudentLifecycle('${s['id']}', {
-        'automaticStatusEnabled': true,
-      });
+      await DrivingSchoolApiService.instance.updateStudentLifecycle(
+        '${s['id']}',
+        {'automaticStatusEnabled': true},
+      );
       _snack('Kursiyer aktifleştirildi.'.tr);
       await _load();
     } catch (e) {
@@ -842,13 +846,9 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
   }
 
   Future<void> _editExamFees(Map<String, dynamic> overview) async {
-    final theoryCtrl = TextEditingController(
-      text: '${(overview['theoryExamFee'] as num?)?.toInt() ?? 0}',
-    );
     final drivingCtrl = TextEditingController(
       text: '${(overview['drivingExamFee'] as num?)?.toInt() ?? 0}',
     );
-    var theoryPaid = overview['theoryExamFeePaid'] == true;
     var drivingPaid = overview['drivingExamFeePaid'] == true;
     DateTime? examDate = overview['drivingExamDate'] != null
         ? DateTime.tryParse('${overview['drivingExamDate']}')
@@ -858,24 +858,11 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text('Sınav ücretleri'.tr),
+          title: Text('Direksiyon sınav ücreti'.tr),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: theoryCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: '${'Teorik (e-sınav)'.tr} (₺)',
-                  ),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text('Teorik ödendi'.tr),
-                  value: theoryPaid,
-                  onChanged: (v) => setDialogState(() => theoryPaid = v),
-                ),
                 TextField(
                   controller: drivingCtrl,
                   keyboardType: TextInputType.number,
@@ -925,9 +912,9 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                 try {
                   await DrivingSchoolApiService.instance.updateExamFees(
                     widget.profileId,
-                    theoryExamFee: num.tryParse(theoryCtrl.text.trim()) ?? 0,
+                    theoryExamFee: 0,
                     drivingExamFee: num.tryParse(drivingCtrl.text.trim()) ?? 0,
-                    theoryExamFeePaid: theoryPaid,
+                    theoryExamFeePaid: false,
                     drivingExamFeePaid: drivingPaid,
                     drivingExamDate: examDate?.toUtc().toIso8601String(),
                   );
@@ -946,7 +933,6 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
         ),
       ),
     );
-    theoryCtrl.dispose();
     drivingCtrl.dispose();
     if (saved == true) _reload();
   }
@@ -1415,12 +1401,7 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                   ],
                 ),
                 _examFeeRow(
-                  'Teorik (e-sınav)'.tr,
-                  overview['theoryExamFee'],
-                  overview['theoryExamFeePaid'] == true,
-                ),
-                _examFeeRow(
-                  'Direksiyon sınavı'.tr,
+                  '${'Direksiyon sınavı'.tr} • ${((data['examRights']?['practice']?['used'] as num?)?.toInt() ?? 1)}. giriş',
                   overview['drivingExamFee'],
                   overview['drivingExamFeePaid'] == true,
                 ),

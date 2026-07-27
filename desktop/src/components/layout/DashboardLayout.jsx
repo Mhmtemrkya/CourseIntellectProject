@@ -24,7 +24,7 @@ const pageTransition = {
 };
 
 export function DashboardLayout() {
-  const { isAuthenticated, isAuthLoading, user, drawerOpen, drawerContent, closeDrawer, sidebarCollapsed } = useApp();
+  const { isAuthenticated, isAuthLoading, user, drawerOpen, drawerContent, drawerOptions, closeDrawer, sidebarCollapsed } = useApp();
   const location = useLocation();
   const pageRef = useRef(null);
   const [isServiceDriver, setIsServiceDriver] = useState(false);
@@ -126,7 +126,7 @@ export function DashboardLayout() {
 
       {/* Right Drawer */}
       <Sheet open={drawerOpen} onOpenChange={closeDrawer}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent className={`w-full overflow-y-auto ${drawerOptions?.size === 'wide' ? 'sm:max-w-3xl xl:max-w-5xl' : 'sm:max-w-lg'}`}>
           {drawerContent}
         </SheetContent>
       </Sheet>

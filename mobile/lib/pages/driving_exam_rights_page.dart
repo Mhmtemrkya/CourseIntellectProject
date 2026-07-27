@@ -23,6 +23,7 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
   DrivingPermissionSnapshot _permissions = DrivingPermissionSnapshot.empty;
   Map<String, dynamic> _data = const {};
   String _search = '';
+  String _feeFilter = 'all';
 
   @override
   void initState() {
@@ -88,10 +89,18 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
     final attempts = _rows('attempts');
     final query = _search.trim().toLowerCase();
     final visibleStudents = students.where((student) {
-      if (query.isEmpty) return true;
-      return '${student['fullName']} ${student['studentNumber']} ${student['licenseClass']}'
-          .toLowerCase()
-          .contains(query);
+      final matchesQuery =
+          query.isEmpty ||
+          '${student['fullName']} ${student['studentNumber']} ${student['licenseClass']}'
+              .toLowerCase()
+              .contains(query);
+      final fee = (student['drivingExamFee'] as num?)?.toDouble() ?? 0;
+      final paid = student['drivingExamFeePaid'] == true;
+      final matchesFee =
+          _feeFilter == 'all' ||
+          (_feeFilter == 'paid' && fee > 0 && paid) ||
+          (_feeFilter == 'unpaid' && (fee <= 0 || !paid));
+      return matchesQuery && matchesFee;
     }).toList();
 
     return RefreshIndicator(
@@ -130,6 +139,26 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            initialValue: _feeFilter,
+            decoration: InputDecoration(
+              labelText: 'Direksiyon sınav ücreti'.tr,
+              prefixIcon: const Icon(Icons.payments_rounded),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            items: [
+              DropdownMenuItem(
+                value: 'all',
+                child: Text('Tüm ücret durumları'.tr),
+              ),
+              DropdownMenuItem(value: 'paid', child: Text('Ödendi'.tr)),
+              DropdownMenuItem(value: 'unpaid', child: Text('Ödenmedi'.tr)),
+            ],
+            onChanged: (value) => setState(() => _feeFilter = value ?? 'all'),
           ),
           const SizedBox(height: 14),
           if (visibleStudents.isEmpty)
@@ -230,11 +259,9 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
   );
 
   Future<void> _openFeeSheet(Map<String, dynamic> student) async {
-    final theoryCtrl = TextEditingController(
-        text: (student['theoryExamFee'] as num?)?.toStringAsFixed(0) ?? '0');
     final drivingCtrl = TextEditingController(
-        text: (student['drivingExamFee'] as num?)?.toStringAsFixed(0) ?? '0');
-    var theoryPaid = student['theoryExamFeePaid'] == true;
+      text: (student['drivingExamFee'] as num?)?.toStringAsFixed(0) ?? '0',
+    );
     var drivingPaid = student['drivingExamFeePaid'] == true;
     var saving = false;
 
@@ -244,25 +271,39 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) => Padding(
           padding: EdgeInsets.fromLTRB(
-              16, 16, 16, MediaQuery.of(sheetContext).viewInsets.bottom + 16),
+            16,
+            16,
+            16,
+            MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${'Sınav Ücretleri'.tr} — ${student['fullName'] ?? ''}',
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+              Text(
+                '${'Direksiyon Sınav Ücreti'.tr} — ${student['fullName'] ?? ''}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
+              ),
               const SizedBox(height: 4),
               Text(
-                'Bu ücretler kurs paketine ve taksitlere dâhil değildir; ayrı tahsil edilir.'.tr,
+                'Bu ücretler kurs paketine ve taksitlere dâhil değildir; ayrı tahsil edilir.'
+                    .tr,
                 style: Theme.of(sheetContext).textTheme.bodySmall,
               ),
               const SizedBox(height: 14),
               for (final item in [
-                ['Teorik (e-sınav) ücreti'.tr, theoryCtrl, true],
-                ['Direksiyon sınav ücreti'.tr, drivingCtrl, false],
+                ['Direksiyon sınav ücreti'.tr, drivingCtrl],
               ]) ...[
-                Text(item[0] as String,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                Text(
+                  '${item[0]} • ${((student['practice'] as Map?)?['used'] as num?)?.toInt() ?? 1}. giriş',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -273,7 +314,9 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
                         decoration: InputDecoration(
                           isDense: true,
                           prefixText: '₺',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         onChanged: (_) => setSheetState(() {}),
                       ),
@@ -281,23 +324,18 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
                     const SizedBox(width: 10),
                     // Ücret girilmeden "ödendi" işaretlenemez.
                     Switch(
-                      value: (item[2] as bool) ? theoryPaid : drivingPaid,
-                      onChanged: (double.tryParse(
-                                  (item[1] as TextEditingController).text.trim()) ??
-                              0) >
-                          0
-                          ? (value) => setSheetState(() {
-                                if (item[2] as bool) {
-                                  theoryPaid = value;
-                                } else {
-                                  drivingPaid = value;
-                                }
-                              })
+                      value: drivingPaid,
+                      onChanged:
+                          (double.tryParse(
+                                    (item[1] as TextEditingController).text
+                                        .trim(),
+                                  ) ??
+                                  0) >
+                              0
+                          ? (value) => setSheetState(() => drivingPaid = value)
                           : null,
                     ),
-                    Text((item[2] as bool)
-                        ? (theoryPaid ? 'Ödendi'.tr : 'Bekliyor'.tr)
-                        : (drivingPaid ? 'Ödendi'.tr : 'Bekliyor'.tr)),
+                    Text(drivingPaid ? 'Ödendi'.tr : 'Ödenmedi'.tr),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -309,25 +347,28 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
                       ? null
                       : () async {
                           setSheetState(() => saving = true);
-                          final theory = double.tryParse(theoryCtrl.text.trim()) ?? 0;
-                          final driving = double.tryParse(drivingCtrl.text.trim()) ?? 0;
+                          final driving =
+                              double.tryParse(drivingCtrl.text.trim()) ?? 0;
                           try {
                             await _service.updateExamFees(
                               '${student['profileId']}',
-                              theoryExamFee: theory,
+                              theoryExamFee: 0,
                               drivingExamFee: driving,
-                              theoryExamFeePaid: theory > 0 && theoryPaid,
+                              theoryExamFeePaid: false,
                               drivingExamFeePaid: driving > 0 && drivingPaid,
-                              drivingExamDate: student['drivingExamDate'] as String?,
+                              drivingExamDate:
+                                  student['drivingExamDate'] as String?,
                             );
-                            if (sheetContext.mounted) Navigator.pop(sheetContext);
+                            if (sheetContext.mounted) {
+                              Navigator.pop(sheetContext);
+                            }
                             await _load();
                           } catch (error) {
                             setSheetState(() => saving = false);
                             if (sheetContext.mounted) {
-                              ScaffoldMessenger.of(sheetContext).showSnackBar(
-                                SnackBar(content: Text('$error')),
-                              );
+                              ScaffoldMessenger.of(
+                                sheetContext,
+                              ).showSnackBar(SnackBar(content: Text('$error')));
                             }
                           }
                         },
@@ -339,7 +380,6 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
         ),
       ),
     );
-    theoryCtrl.dispose();
     drivingCtrl.dispose();
   }
 
@@ -347,7 +387,6 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
   /// ayrı tahsil edilir. Ödeme durumu buradan güncellenebilir.
   Widget _examFeeSection(Map<String, dynamic> student) {
     final canEditFees = _permissions.can(DrivingPermissions.financeCollect);
-    final theoryFee = (student['theoryExamFee'] as num?)?.toDouble() ?? 0;
     final drivingFee = (student['drivingExamFee'] as num?)?.toDouble() ?? 0;
     return Container(
       padding: const EdgeInsets.all(12),
@@ -363,8 +402,10 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
               const Icon(Icons.payments_rounded, size: 18),
               const SizedBox(width: 6),
               Expanded(
-                child: Text('Sınav ücretleri'.tr,
-                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                child: Text(
+                  'Direksiyon sınav ücreti'.tr,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
               if (canEditFees)
                 TextButton.icon(
@@ -375,12 +416,16 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
             ],
           ),
           const SizedBox(height: 6),
-          _feeRow('Teorik'.tr, theoryFee, student['theoryExamFeePaid'] == true),
-          const SizedBox(height: 4),
-          _feeRow('Direksiyon'.tr, drivingFee, student['drivingExamFeePaid'] == true),
+          _feeRow(
+            '${((student['practice'] as Map?)?['used'] as num?)?.toInt() ?? 1}. giriş',
+            drivingFee,
+            student['drivingExamFeePaid'] == true,
+          ),
           const SizedBox(height: 6),
-          Text('Kurs ücretine ve taksitlere dâhil değildir.'.tr,
-              style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            'Kurs ücretine ve taksitlere dâhil değildir.'.tr,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ],
       ),
     );
@@ -388,17 +433,24 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
 
   Widget _feeRow(String label, double fee, bool paid) => Row(
     children: [
-      Expanded(child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
+      Expanded(
+        child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ),
       if (fee > 0) ...[
-        Text('₺${fee.toStringAsFixed(0)}',
-            style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text(
+          '₺${fee.toStringAsFixed(0)}',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
         const SizedBox(width: 8),
         DrivingStatusPill(
           label: paid ? 'Ödendi'.tr : 'Bekliyor'.tr,
           tone: paid ? DrivingTone.success : DrivingTone.warning,
         ),
       ] else
-        Text('Ücret girilmedi'.tr, style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          'Ücret girilmedi'.tr,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
     ],
   );
 
@@ -508,7 +560,11 @@ class _DrivingExamRightsPageState extends State<DrivingExamRightsPage> {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         subtitle: Text(
-          '${_typeLabel(attempt['examType'])} • ${attempt['attemptNo']}. giriş • ${_date(attempt['examDateUtc'])}',
+          [
+            '${_typeLabel(attempt['examType'])} • ${attempt['attemptNo']}. giriş • ${_date(attempt['examDateUtc'])}',
+            if (attempt['examType'] == 'DrivingPractice')
+              '₺${((student?['drivingExamFee'] as num?) ?? 0).toStringAsFixed(0)} • ${student?['drivingExamFeePaid'] == true ? 'Ödendi'.tr : 'Ödenmedi'.tr}',
+          ].join('\n'),
         ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,

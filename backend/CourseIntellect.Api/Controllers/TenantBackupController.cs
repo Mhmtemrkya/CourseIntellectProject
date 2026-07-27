@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http.Features;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
@@ -95,10 +96,19 @@ public sealed class TenantBackupController(
         // Ters vekil (nginx) yanıtı tamponlamasın: arşiv üretilirken akmaya başlasın.
         Response.Headers["X-Accel-Buffering"] = "no";
 
+        // ZipArchive gövdeye SENKRON yazar; ASP.NET Core'da yanıt gövdesine senkron
+        // yazma varsayılan olarak yasaktır ve akış yarıda kopar (canlıda indirme
+        // 5 baytlık bozuk dosya olarak geliyordu). Bu istek için izin verilir;
+        // BufferedStream ile de bloklayan yazma sayısı 128 KB'lık bloklara iner.
+        var bodyControl = HttpContext.Features.Get<IHttpBodyControlFeature>();
+        if (bodyControl is not null) bodyControl.AllowSynchronousIO = true;
+
         TenantBackupResult result;
         try
         {
-            result = await backupService.WriteArchiveAsync(Response.Body, includeFiles, ct);
+            await using var buffered = new BufferedStream(Response.Body, 128 * 1024);
+            result = await backupService.WriteArchiveAsync(buffered, includeFiles, ct);
+            await buffered.FlushAsync(ct);
         }
         catch (OperationCanceledException)
         {

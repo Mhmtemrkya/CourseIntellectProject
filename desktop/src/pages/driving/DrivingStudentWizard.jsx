@@ -232,8 +232,8 @@ export default function DrivingStudentWizard() {
   const [uploading, setUploading] = useState(false);
   const [identityState, setIdentityState] = useState({ checking: false, available: null, existingStudentName: null });
   const [phoneState, setPhoneState] = useState({ checking: false, available: null, existingStudentName: null });
-  // NVİ doğrulaması: { checking, verified: true|false|null, message }
-  const [nviState, setNviState] = useState({ checking: false, verified: undefined, message: null });
+  // Kimlik kontrolü: { checking, ok: true|false|undefined, message, checks[] }
+  const [nviState, setNviState] = useState({ checking: false, ok: undefined, message: null, checks: [] });
   const [draftId, setDraftId] = useState(null);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [result, setResult] = useState(null);
@@ -356,7 +356,7 @@ export default function DrivingStudentWizard() {
     return missing;
   }, [form]);
 
-  const examFeesTotal = (Number(form.theoryExamFee) || 0) + (Number(form.drivingExamFee) || 0);
+  const examFeesTotal = Number(form.drivingExamFee) || 0;
   const grandTotal = netAmount + examFeesTotal;
   const downPaymentAmount = Number(form.finance.downPayment) || 0;
   const remainingAfterDownPayment = Math.max(0, netAmount - downPaymentAmount);
@@ -393,16 +393,28 @@ export default function DrivingStudentWizard() {
   }
 
   async function verifyWithNvi() {
-    setNviState({ checking: true, verified: undefined, message: null });
+    setNviState({ checking: true, ok: undefined, message: null, checks: [] });
     try {
       const response = await verifyDrivingIdentity({
         identityNumber: form.identityNumber.trim(),
         fullName: form.fullName.trim(),
         birthDate: form.birthDate,
+        // Yaş şartı seçilen ehliyet sınıfına göre denetlenir.
+        licenseClass: selectedPackage?.licenseClass || form.licenseClass || '',
       });
-      setNviState({ checking: false, verified: response.verified, message: response.message });
+      setNviState({
+        checking: false,
+        ok: response.ok,
+        message: response.message,
+        checks: response.checks || [],
+      });
+      // Sunucu adı kurum standardına göre biçimlendirir; forma da yansıtılır ki
+      // kullanıcı kaydın nasıl görüneceğini kontrol anında görsün.
+      if (response.formattedName && response.formattedName !== form.fullName) {
+        set({ fullName: response.formattedName });
+      }
     } catch (error) {
-      setNviState({ checking: false, verified: null, message: error.message });
+      setNviState({ checking: false, ok: undefined, message: error.message, checks: [] });
     }
   }
 
@@ -489,7 +501,8 @@ export default function DrivingStudentWizard() {
         licenseIssueDate: null,
         licenseExpiryDate: null,
         identityIssueDate: form.identityIssueDate ? new Date(form.identityIssueDate).toISOString() : null,
-        theoryExamFee: Number(form.theoryExamFee) || 0,
+        theoryExamFee: 0,
+        theoryExamFeePaid: false,
         drivingExamFee: Number(form.drivingExamFee) || 0,
         preferredInstructorProfileId: form.preferredInstructorProfileId || null,
         preferredVehicleId: form.preferredVehicleId || null,
@@ -671,30 +684,51 @@ export default function DrivingStudentWizard() {
               <Field label="Kimlik seri no" hint="Kimlik kartının üzerindeki seri numarası (ör. A12 345678)">
                 <Input maxLength={20} value={form.identitySerialNo} onChange={(e) => set({ identitySerialNo: e.target.value })} />
               </Field>
-              {/* NVİ resmî doğrulaması: MEBBİS'te "kimlik uyuşmuyor" reti yaşanmasın. */}
+              {/* Kimlik kontrolü: her biri kesin sonuç veren yerel kontroller +
+                  (yapılandırılmışsa) NVİ. Tek "doğrulandı" yerine kontrol listesi. */}
               {form.identityKind === 1 && (
-                <div className={`sm:col-span-2 flex flex-wrap items-center gap-3 rounded-xl border p-3 ${
-                  nviState.verified === true ? 'border-emerald-500/40 bg-emerald-500/5'
-                    : nviState.verified === false ? 'border-red-500/40 bg-red-500/5'
+                <div className={`sm:col-span-2 rounded-xl border p-3 ${
+                  nviState.ok === true ? 'border-emerald-500/40 bg-emerald-500/5'
+                    : nviState.ok === false ? 'border-red-500/40 bg-red-500/5'
                     : 'border-foreground/10'
                 }`}>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={nviState.checking || form.identityNumber.trim().length !== 11 || !form.fullName.trim() || !form.birthDate}
-                    onClick={verifyWithNvi}
-                  >
-                    {nviState.checking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                    NVİ ile Doğrula
-                  </Button>
-                  <span className={`text-sm ${
-                    nviState.verified === true ? 'font-bold text-emerald-600'
-                      : nviState.verified === false ? 'font-bold text-red-600'
-                      : 'text-muted-foreground'
-                  }`}>
-                    {nviState.message || 'TC + ad soyad + doğum tarihi resmî NVİ kaydıyla karşılaştırılır (MEBBİS reti önlenir).'}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={nviState.checking || form.identityNumber.trim().length !== 11 || !form.fullName.trim() || !form.birthDate}
+                      onClick={verifyWithNvi}
+                    >
+                      {nviState.checking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                      Kimliği Kontrol Et
+                    </Button>
+                    <span className={`text-sm ${
+                      nviState.ok === true ? 'font-bold text-emerald-600'
+                        : nviState.ok === false ? 'font-bold text-red-600'
+                        : 'text-muted-foreground'
+                    }`}>
+                      {nviState.message
+                        || 'TC kontrol basamağı, ad-soyad biçimi, ehliyet sınıfına göre yaş şartı ve mükerrer kayıt denetlenir.'}
+                    </span>
+                  </div>
+                  {nviState.checks?.length > 0 && (
+                    <ul className="mt-3 space-y-1.5 border-t pt-3">
+                      {nviState.checks.map((item) => (
+                        <li key={item.key} className="flex items-start gap-2 text-sm">
+                          {item.status === 'pass'
+                            ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                            : item.status === 'fail'
+                              ? <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                              : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />}
+                          <span>
+                            <b>{item.label}:</b>{' '}
+                            <span className={item.status === 'fail' ? 'text-red-600' : 'text-muted-foreground'}>{item.message}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
               <Field label="Baba adı" hint="MEBBİS aday kaydında zorunludur.">
@@ -960,18 +994,7 @@ export default function DrivingStudentWizard() {
                 <div className="rounded-2xl border p-4 sm:col-span-2">
                   <b className="text-sm">Sınav ücretleri (paket dışı)</b>
                   <p className="mb-3 text-xs text-muted-foreground">İlgili sınavı işaretleyip ücreti girin. Genel toplama eklenir; ödeme durumu sonradan da güncellenebilir.</p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border p-3">
-                      <Check checked={Number(form.theoryExamFee) > 0} onChange={(v) => set({ theoryExamFee: v ? (Number(form.theoryExamFee) || 0) : 0, theoryExamFeePaid: v ? form.theoryExamFeePaid : false })}>
-                        Teorik (e-sınav) ücreti
-                      </Check>
-                      <div className="mt-2 flex items-center gap-2">
-                        <Input type="number" min="0" placeholder="₺" value={form.theoryExamFee || ''} onChange={(e) => set({ theoryExamFee: e.target.value })} />
-                        <label className="flex shrink-0 items-center gap-1 text-xs font-semibold">
-                          <input type="checkbox" checked={form.theoryExamFeePaid} onChange={(e) => set({ theoryExamFeePaid: e.target.checked })} />Ödendi
-                        </label>
-                      </div>
-                    </div>
+                  <div className="grid gap-3">
                     <div className="rounded-xl border p-3">
                       <Check checked={Number(form.drivingExamFee) > 0} onChange={(v) => set({ drivingExamFee: v ? (Number(form.drivingExamFee) || 0) : 0, drivingExamFeePaid: v ? form.drivingExamFeePaid : false })}>
                         Direksiyon sınav ücreti
@@ -1045,14 +1068,6 @@ export default function DrivingStudentWizard() {
                     </div>
                     {examFeesTotal > 0 ? (
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                        {Number(form.theoryExamFee) > 0 && (
-                          <span>
-                            Teorik ₺{Number(form.theoryExamFee).toLocaleString('tr-TR')}
-                            <b className={form.theoryExamFeePaid ? 'text-emerald-600' : 'text-amber-600'}>
-                              {form.theoryExamFeePaid ? ' • ödendi' : ' • bekliyor'}
-                            </b>
-                          </span>
-                        )}
                         {Number(form.drivingExamFee) > 0 && (
                           <span>
                             Direksiyon ₺{Number(form.drivingExamFee).toLocaleString('tr-TR')}

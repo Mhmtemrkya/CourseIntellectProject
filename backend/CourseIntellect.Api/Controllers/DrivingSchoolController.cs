@@ -132,6 +132,13 @@ public sealed class DrivingSchoolController(
             return BadRequest(new { message = "Tarih aralığı geçersiz." });
         var openStatuses = DrivingStudentStatuses.Open.ToArray();
         var activeStudents = await dbContext.StudentDrivingProfiles.AsNoTracking().CountAsync(x => openStatuses.Contains(x.Status), cancellationToken);
+        // Mezun kursiyer: toplam sayı (durum bazlı) + seçili dönemde mezun olan.
+        // Toplam kümülatiftir; dönem sayısı karta alt bilgi olarak yazılır.
+        var graduatedStudents = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .CountAsync(x => x.Status == DrivingStudentStatus.Graduated, cancellationToken);
+        var graduatedInPeriod = await dbContext.DrivingGraduationRecords.AsNoTracking()
+            .CountAsync(x => x.Status == DrivingGraduationStatus.Graduated
+                && x.GraduatedAtUtc >= today && x.GraduatedAtUtc < tomorrow, cancellationToken);
         var activeInstructors = await dbContext.DrivingInstructorProfiles.AsNoTracking().CountAsync(x => x.IsActive, cancellationToken);
         var activeVehicles = await dbContext.DrivingVehicles.AsNoTracking().CountAsync(x => x.IsActive && !x.IsInMaintenance && x.InspectionExpiresAtUtc > DateTime.UtcNow && x.InsuranceExpiresAtUtc > DateTime.UtcNow, cancellationToken);
         var vehiclesInMaintenance = await dbContext.DrivingVehicles.AsNoTracking().CountAsync(x => x.IsInMaintenance, cancellationToken);
@@ -292,6 +299,8 @@ public sealed class DrivingSchoolController(
             kpis = new
             {
                 activeStudents,
+                graduatedStudents,
+                graduatedInPeriod,
                 todayDrivingLessons,
                 todayTheoryLessons,
                 activeInstructors,
@@ -567,7 +576,7 @@ public sealed class DrivingSchoolController(
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
         var rows = await dbContext.DrivingInstructorProfiles.AsNoTracking()
-            .Join(dbContext.Staff.AsNoTracking(), p => p.StaffId, s => s.Id, (p, s) => new { p.Id, p.StaffId, s.FullName, p.LicenseClasses, p.CanTeachManual, p.CanTeachAutomatic, p.WorkingPermitNo, p.WorkingPermitExpiresAtUtc, p.IsActive, p.AutomaticStatusEnabled, p.ComplianceOverrideActive, p.ComplianceOverrideReason, p.ComplianceOverrideAtUtc, p.StatusChangeSource, p.StatusChangeReason, p.StatusChangedAtUtc })
+            .Join(dbContext.VisibleDrivingStaff().AsNoTracking(), p => p.StaffId, s => s.Id, (p, s) => new { p.Id, p.StaffId, s.FullName, p.LicenseClasses, p.CanTeachManual, p.CanTeachAutomatic, p.WorkingPermitNo, p.WorkingPermitExpiresAtUtc, p.IsActive, p.AutomaticStatusEnabled, p.ComplianceOverrideActive, p.ComplianceOverrideReason, p.ComplianceOverrideAtUtc, p.StatusChangeSource, p.StatusChangeReason, p.StatusChangedAtUtc })
             .OrderBy(x => x.FullName).ToListAsync(ct);
         var now = DateTime.UtcNow;
         return Ok(rows.Select(x => new
@@ -590,7 +599,7 @@ public sealed class DrivingSchoolController(
         if (!request.CanTeachManual && !request.CanTeachAutomatic) return BadRequest(new { message = "En az bir vites yetkinliği seçilmelidir." });
         var classes = request.LicenseClasses.Select(x => x.Trim().ToUpperInvariant()).Distinct().ToArray();
         if (classes.Length == 0 || classes.Any(x => !LicenseClasses.Contains(x))) return BadRequest(new { message = "Ehliyet sınıfı geçersiz." });
-        var staff = await dbContext.Staff.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.StaffId, ct);
+        var staff = await dbContext.VisibleDrivingStaff().AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.StaffId, ct);
         if (staff is null) return BadRequest(new { message = "Personel bulunamadı." });
         if ((request.WorkingPermitNo?.Length ?? 0) > 60) return BadRequest(new { message = "Çalışma izni numarası en fazla 60 karakter olabilir." });
         if (!string.IsNullOrWhiteSpace(request.WorkingPermitNo) != request.WorkingPermitExpiresAtUtc.HasValue)

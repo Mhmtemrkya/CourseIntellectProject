@@ -94,6 +94,7 @@ export function AppProvider({ children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerContent, setDrawerContent] = useState(null);
+  const [drawerOptions, setDrawerOptions] = useState(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
@@ -210,14 +211,18 @@ export function AppProvider({ children }) {
     }
   }, [user]);
 
-  const openDrawer = (content) => {
+  const openDrawer = (content, options = null) => {
     setDrawerContent(content);
+    setDrawerOptions(options);
     setDrawerOpen(true);
   };
 
   const closeDrawer = () => {
     setDrawerOpen(false);
-    setTimeout(() => setDrawerContent(null), 300);
+    setTimeout(() => {
+      setDrawerContent(null);
+      setDrawerOptions(null);
+    }, 300);
   };
 
   const value = useMemo(() => ({
@@ -236,6 +241,7 @@ export function AppProvider({ children }) {
     setSidebarCollapsed,
     drawerOpen,
     drawerContent,
+    drawerOptions,
     openDrawer,
     closeDrawer,
     commandPaletteOpen,
@@ -248,6 +254,7 @@ export function AppProvider({ children }) {
     sidebarCollapsed,
     drawerOpen,
     drawerContent,
+    drawerOptions,
     commandPaletteOpen,
     setUserRole,
     markPasswordChanged,

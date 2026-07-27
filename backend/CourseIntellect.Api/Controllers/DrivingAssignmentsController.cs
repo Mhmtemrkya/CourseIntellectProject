@@ -42,7 +42,7 @@ public sealed class DrivingAssignmentsController(
 
         var rows = await query
             .Join(dbContext.DrivingInstructorProfiles.AsNoTracking(), x => x.InstructorProfileId, x => x.Id, (assignment, profile) => new { assignment, profile.StaffId })
-            .Join(dbContext.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (x, staff) => new { x.assignment, InstructorName = staff.FullName })
+            .Join(dbContext.VisibleDrivingStaff().AsNoTracking(), x => x.StaffId, x => x.Id, (x, staff) => new { x.assignment, InstructorName = staff.FullName })
             .Join(dbContext.DrivingVehicles.AsNoTracking(), x => x.assignment.VehicleId, x => x.Id, (x, vehicle) => new
             {
                 x.assignment.Id,
@@ -81,7 +81,7 @@ public sealed class DrivingAssignmentsController(
 
         var instructor = await dbContext.DrivingInstructorProfiles.AsNoTracking()
             .Where(x => x.Id == request.InstructorProfileId)
-            .Join(dbContext.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (profile, staff) => new { profile.Id, profile.LicenseClasses, profile.CanTeachManual, profile.CanTeachAutomatic, staff.FullName })
+            .Join(dbContext.VisibleDrivingStaff().AsNoTracking(), x => x.StaffId, x => x.Id, (profile, staff) => new { profile.Id, profile.LicenseClasses, profile.CanTeachManual, profile.CanTeachAutomatic, staff.FullName })
             .SingleOrDefaultAsync(ct);
         if (instructor is null) return BadRequest(new { message = "Öğretmen bulunamadı." });
 
@@ -210,7 +210,7 @@ public sealed class DrivingAssignmentsController(
 
         var rows = await query
             .Join(dbContext.DrivingInstructorProfiles.AsNoTracking(), x => x.InstructorProfileId, x => x.Id, (leave, profile) => new { leave, profile.StaffId })
-            .Join(dbContext.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (x, staff) => new
+            .Join(dbContext.VisibleDrivingStaff().AsNoTracking(), x => x.StaffId, x => x.Id, (x, staff) => new
             {
                 x.leave.Id,
                 x.leave.InstructorProfileId,
@@ -236,7 +236,7 @@ public sealed class DrivingAssignmentsController(
 
         var instructor = await dbContext.DrivingInstructorProfiles.AsNoTracking()
             .Where(x => x.Id == request.InstructorProfileId)
-            .Join(dbContext.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (_, staff) => staff.FullName)
+            .Join(dbContext.VisibleDrivingStaff().AsNoTracking(), x => x.StaffId, x => x.Id, (_, staff) => staff.FullName)
             .SingleOrDefaultAsync(ct);
         if (instructor is null) return BadRequest(new { message = "Öğretmen bulunamadı." });
 

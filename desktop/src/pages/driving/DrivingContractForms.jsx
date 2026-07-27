@@ -104,7 +104,7 @@ function InstitutionSettingsModal({ initial, onClose, onSaved }) {
         ...form,
         theoryHourlyFee: Number(form.theoryHourlyFee) || 0,
         drivingHourlyFee: Number(form.drivingHourlyFee) || 0,
-        theoryExamFee: Number(form.theoryExamFee) || 0,
+        theoryExamFee: 0,
         drivingExamFee: Number(form.drivingExamFee) || 0,
         theoryHours: Number(form.theoryHours) || 34,
         drivingHours: Number(form.drivingHours) || 16,
@@ -152,7 +152,6 @@ function InstitutionSettingsModal({ initial, onClose, onSaved }) {
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Teorik saat ücreti (₺)" type="number" value={form.theoryHourlyFee} onChange={set('theoryHourlyFee')} />
               <Field label="Direksiyon saat ücreti (₺)" type="number" value={form.drivingHourlyFee} onChange={set('drivingHourlyFee')} />
-              <Field label="Teorik sınav ücreti (₺)" type="number" value={form.theoryExamFee} onChange={set('theoryExamFee')} />
               <Field label="Direksiyon sınav ücreti (₺)" type="number" value={form.drivingExamFee} onChange={set('drivingExamFee')} />
               <Field label="Zorunlu teorik ders saati" type="number" value={form.theoryHours} onChange={set('theoryHours')} />
               <Field label="Zorunlu direksiyon ders saati" type="number" value={form.drivingHours} onChange={set('drivingHours')} />

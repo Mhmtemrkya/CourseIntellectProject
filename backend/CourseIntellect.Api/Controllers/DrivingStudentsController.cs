@@ -1,3 +1,4 @@
+using System.Globalization;
 using CourseIntellect.Api.Authorization;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.DTOs.Students;
@@ -213,9 +214,9 @@ public sealed class DrivingStudentsController(
             LicenseIssueDate = request.HasExistingLicense ? request.LicenseIssueDate : null,
             LicenseExpiryDate = request.HasExistingLicense ? request.LicenseExpiryDate : null,
             LicenseIssuePlace = request.HasExistingLicense ? request.LicenseIssuePlace?.Trim() ?? string.Empty : string.Empty,
-            TheoryExamFee = Math.Max(0, request.TheoryExamFee),
+            TheoryExamFee = 0,
             DrivingExamFee = Math.Max(0, request.DrivingExamFee),
-            TheoryExamFeePaid = request.TheoryExamFeePaid,
+            TheoryExamFeePaid = false,
             DrivingExamFeePaid = request.DrivingExamFeePaid,
             CourseStartsAtUtc = request.CourseStartsAtUtc,
             PreferredInstructorProfileId = request.PreferredInstructorProfileId,
@@ -369,9 +370,15 @@ public sealed class DrivingStudentsController(
     }
 
     /// <summary>
-    /// NVİ kimlik doğrulaması: TC + ad soyad + doğum yılı devlet kaydıyla eşleşiyor mu?
-    /// Yanlış yazılmış ad/TC daha kayıt anında yakalanır — MEBBİS'te ret yaşanmaz.
-    /// Servise ulaşılamazsa <c>verified=null</c> döner; kayıt engellenmez.
+    /// Kimlik kontrolü. Tek bir "doğrulandı/doğrulanmadı" yerine, her biri ayrı ayrı
+    /// KESİN sonuç veren kontrollerden oluşan bir liste döner:
+    /// TC kontrol basamağı, ad-soyad biçimi, ehliyet sınıfına göre yaş şartı ve
+    /// kurum içi mükerrer kayıt. Bunlar internet/servis gerektirmez, her zaman çalışır.
+    ///
+    /// NVİ (KPS) doğrulaması yalnızca kurumda yapılandırılmışsa denenir. NVİ'nin
+    /// herkese açık servisi kapatıldığı için yapılandırılmamış kurulumda bu satır
+    /// "tanımlı değil" der — eskiden hep "servise ulaşılamıyor" yazıp doğrulama
+    /// yapıyormuş gibi görünüyordu.
     /// </summary>
     [HttpPost("students/verify-identity")]
     [RequireDrivingPermission(DrivingPermissions.StudentCreate)]
@@ -379,29 +386,110 @@ public sealed class DrivingStudentsController(
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
 
+        var checks = new List<object>();
+        var blocking = false;
+        void Add(string key, string label, string status, string message)
+        {
+            checks.Add(new { key, label, status, message });
+            if (status == "fail") blocking = true;
+        }
+
+        // 1) TC kimlik kontrol basamağı — matematiksel, kesin.
         var identity = (request.IdentityNumber ?? string.Empty).Trim();
-        if (!DrivingStudentRules.IsValidTurkishId(identity))
-            return Ok(new { verified = false, message = "TC kimlik numarası kontrol basamağı geçersiz." });
+        var identityValid = DrivingStudentRules.IsValidTurkishId(identity);
+        Add("identity", "TC kimlik numarası", identityValid ? "pass" : "fail",
+            identityValid
+                ? "Kontrol basamağı doğru."
+                : "Kontrol basamağı tutmuyor — numara hatalı yazılmış.");
 
-        var fullName = (request.FullName ?? string.Empty).Trim();
-        var lastSpace = fullName.LastIndexOf(' ');
-        if (lastSpace <= 0) return Ok(new { verified = (bool?)null, message = "Ad ve soyad birlikte girilmelidir." });
-        var firstName = fullName[..lastSpace];
-        var lastName = fullName[(lastSpace + 1)..];
+        // 2) Ad-soyad biçimi.
+        var fullName = PersonNameFormatter.FormatFullName(request.FullName);
+        var nameParts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var nameHasDigits = fullName.Any(char.IsDigit);
+        if (nameParts.Length < 2 || nameHasDigits)
+        {
+            Add("name", "Ad soyad", "fail",
+                nameHasDigits ? "Ad soyad rakam içeremez." : "Ad ve soyad birlikte girilmelidir.");
+        }
+        else
+        {
+            Add("name", "Ad soyad", "pass", $"Kayıt biçimi: {fullName}");
+        }
 
-        if (!DateTime.TryParse(request.BirthDate, out var birth))
-            return Ok(new { verified = (bool?)null, message = "Doğum tarihi girilmeden doğrulama yapılamaz." });
+        // 3) Doğum tarihi + ehliyet sınıfına göre asgari yaş (Karayolları Trafik Yönetmeliği).
+        if (!DateTime.TryParse(request.BirthDate, CultureInfo.InvariantCulture, DateTimeStyles.None, out var birth))
+        {
+            Add("age", "Doğum tarihi", "fail", "Geçerli bir doğum tarihi girilmedi.");
+        }
+        else
+        {
+            var now = DateTime.UtcNow;
+            var age = DrivingLicenseAgeRules.AgeAt(birth, now);
+            var licenseClass = (request.LicenseClass ?? string.Empty).Trim();
+            var meets = DrivingLicenseAgeRules.MeetsMinimumAge(licenseClass, birth, now);
+            var required = DrivingLicenseAgeRules.MinimumAgeFor(licenseClass);
+            if (meets is null)
+            {
+                Add("age", "Yaş şartı", "info", $"Aday {age} yaşında. Sınıf seçilince yaş şartı da denetlenir.");
+            }
+            else if (meets.Value)
+            {
+                Add("age", "Yaş şartı", "pass", $"{licenseClass} sınıfı için {required} yaş şartı sağlanıyor (aday {age} yaşında).");
+            }
+            else
+            {
+                Add("age", "Yaş şartı", "fail", $"{licenseClass} sınıfı için en az {required} yaş gerekir; aday {age} yaşında.");
+            }
+        }
 
-        var verified = await identityVerification.VerifyTurkishIdAsync(identity, firstName, lastName, birth.Year, ct);
+        // 4) Kurum içi mükerrer kayıt.
+        if (identityValid)
+        {
+            var duplicate = await FindDuplicateAsync(identity, ct);
+            Add("duplicate", "Mükerrer kayıt", duplicate is null ? "pass" : "fail",
+                duplicate is null ? "Bu kimlikle kayıtlı kursiyer yok." : $"Bu kimlik zaten kayıtlı: {duplicate}");
+        }
+
+        // 5) NVİ/KPS — yalnız yapılandırılmışsa.
+        if (!identityVerification.IsConfigured)
+        {
+            Add("nvi", "NVİ doğrulaması", "info",
+                "Kurumda KPS/NVİ aboneliği tanımlı değil. NVİ'nin herkese açık servisi kapatıldığından "
+                + "resmî doğrulama yapılamıyor; yukarıdaki kontroller yerel olarak uygulanır.");
+        }
+        else if (identityValid && DateTime.TryParse(request.BirthDate, CultureInfo.InvariantCulture, DateTimeStyles.None, out var nviBirth)
+            && nameParts.Length >= 2)
+        {
+            var given = string.Join(' ', nameParts[..^1]);
+            var surname = nameParts[^1];
+            var result = await identityVerification.VerifyTurkishIdAsync(identity, given, surname, nviBirth.Year, ct);
+            switch (result.Status)
+            {
+                case IdentityVerificationStatus.Verified:
+                    Add("nvi", "NVİ doğrulaması", "pass", "Nüfus kaydıyla eşleşti.");
+                    break;
+                case IdentityVerificationStatus.Mismatch:
+                    Add("nvi", "NVİ doğrulaması", "fail", "Nüfus kaydıyla eşleşmedi — ad, soyad, TC veya doğum yılını kontrol edin.");
+                    break;
+                default:
+                    Add("nvi", "NVİ doğrulaması", "info", result.Detail ?? "Servise şu an ulaşılamıyor; kayıt sürdürülebilir.");
+                    break;
+            }
+        }
+
+        var passed = checks.Count(x => (string)x.GetType().GetProperty("status")!.GetValue(x)! == "pass");
         return Ok(new
         {
-            verified,
-            message = verified switch
-            {
-                true => "NVİ kaydıyla doğrulandı.",
-                false => "NVİ kaydıyla eşleşmedi — ad, soyad, TC veya doğum yılını kontrol edin.",
-                null => "NVİ servisine şu an ulaşılamıyor; kayıt doğrulamasız sürdürülebilir.",
-            },
+            // Geriye dönük uyumluluk: eski arayüz tek bir "verified" bekliyordu.
+            verified = blocking ? false : (bool?)true,
+            ok = !blocking,
+            formattedName = fullName,
+            passed,
+            total = checks.Count,
+            message = blocking
+                ? "Bazı kontroller başarısız — aşağıdaki uyarıları giderin."
+                : "Tüm kimlik kontrolleri geçti.",
+            checks,
         });
     }
 
@@ -1120,23 +1208,24 @@ public sealed class DrivingStudentsController(
         if (!await CanUseModuleAsync(ct)) return Forbid();
         var profile = await dbContext.StudentDrivingProfiles.SingleOrDefaultAsync(x => x.Id == profileId, ct);
         if (profile is null) return NotFound(new { message = "Kursiyer bulunamadı." });
-        if (request.TheoryExamFee < 0 || request.DrivingExamFee < 0) return BadRequest(new { message = "Ücret negatif olamaz." });
-        if (request.TheoryExamFee > 1_000_000 || request.DrivingExamFee > 1_000_000) return BadRequest(new { message = "Ücret makul aralıkta olmalıdır." });
+        if (request.DrivingExamFee < 0) return BadRequest(new { message = "Ücret negatif olamaz." });
+        if (request.DrivingExamFee > 1_000_000) return BadRequest(new { message = "Ücret makul aralıkta olmalıdır." });
 
         if (request.DrivingExamDate is { } examDate && (examDate < DateTime.UtcNow.AddYears(-5) || examDate > DateTime.UtcNow.AddYears(5)))
             return BadRequest(new { message = "Direksiyon sınav tarihi makul bir aralıkta olmalıdır." });
 
         var before = new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid, profile.DrivingExamDate };
-        profile.TheoryExamFee = request.TheoryExamFee;
+        // Teorik sınav ücreti artık uygulamada takip edilmiyor. Eski istemciler
+        // alanı göndermeye devam etse bile eski borcun yeniden görünmesini önle.
+        profile.TheoryExamFee = 0;
         profile.DrivingExamFee = request.DrivingExamFee;
-        profile.TheoryExamFeePaid = request.TheoryExamFeePaid;
+        profile.TheoryExamFeePaid = false;
         profile.DrivingExamFeePaid = request.DrivingExamFeePaid;
         profile.DrivingExamDate = request.DrivingExamDate;
         await dbContext.SaveChangesAsync(ct);
 
         await auditLogService.LogChangeAsync("Sınav ücretleri güncellendi", AuditCategory, "StudentDrivingProfile", profile.Id.ToString(),
-            $"Teorik: {profile.TheoryExamFee:N2}₺ ({(profile.TheoryExamFeePaid ? "ödendi" : "ödenmedi")}), "
-                + $"Direksiyon: {profile.DrivingExamFee:N2}₺ ({(profile.DrivingExamFeePaid ? "ödendi" : "ödenmedi")})"
+            $"Direksiyon: {profile.DrivingExamFee:N2}₺ ({(profile.DrivingExamFeePaid ? "ödendi" : "ödenmedi")})"
                 + (profile.DrivingExamDate is { } d ? $", sınav: {d:dd.MM.yyyy}" : string.Empty) + ".",
             before,
             new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid, profile.DrivingExamDate },
@@ -1297,7 +1386,7 @@ public sealed class DrivingStudentsController(
         settings.FormJurisdictionCity = Trim(request.JurisdictionCity, 60);
         settings.FormTheoryHourlyFee = request.TheoryHourlyFee;
         settings.FormDrivingHourlyFee = request.DrivingHourlyFee;
-        settings.FormTheoryExamFee = request.TheoryExamFee;
+        settings.FormTheoryExamFee = 0;
         settings.FormDrivingExamFee = request.DrivingExamFee;
         settings.FormTheoryHours = request.TheoryHours;
         settings.FormDrivingHours = request.DrivingHours;
@@ -2065,7 +2154,7 @@ public sealed record ReviewStudentDocumentRequest(
     string? Note,
     int ExpectedVersion = 0);
 
-public sealed record VerifyIdentityRequest(string? IdentityNumber, string? FullName, string? BirthDate);
+public sealed record VerifyIdentityRequest(string? IdentityNumber, string? FullName, string? BirthDate, string? LicenseClass);
 
 /// <summary>EK-1 müracaat formundaki "nüfus cüzdanındaki kayıtlara göre" bloğu.</summary>
 public sealed record UpdateDrivingRegistrationIdentityRequest(

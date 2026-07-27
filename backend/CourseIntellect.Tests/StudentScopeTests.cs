@@ -40,8 +40,9 @@ public sealed class StudentScopeTests : IDisposable
 
         Assert.NotNull(allowed);
         Assert.Equal(2, allowed!.Count);
-        Assert.Contains("Çocuk Bir", allowed);
-        Assert.DoesNotContain("Başka Öğrenci", allowed);
+        // Adlar kayıt sırasında kurum standardına getirilir (soyad büyük harf).
+        Assert.Contains("Çocuk BİR", allowed);
+        Assert.DoesNotContain("Başka ÖĞRENCİ", allowed);
     }
 
     [Fact]

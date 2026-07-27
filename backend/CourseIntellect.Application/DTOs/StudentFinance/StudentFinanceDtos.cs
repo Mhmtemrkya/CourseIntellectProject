@@ -112,7 +112,18 @@ public sealed record StudentFinanceAccountDto(
     IReadOnlyList<FinanceInstallmentDto> Installments,
     IReadOnlyList<FinancePaymentDto> Payments,
     decimal GrossCollectedTotal = 0,
-    decimal RefundedTotal = 0);
+    decimal RefundedTotal = 0,
+    decimal GrossTotal = 0,
+    decimal DiscountTotal = 0,
+    decimal DownPaymentTotal = 0,
+    decimal DownPaymentPaidTotal = 0,
+    bool HasPendingDownPayment = false,
+    Guid? DrivingStudentProfileId = null,
+    decimal DrivingExamFee = 0,
+    bool DrivingExamFeePaid = false,
+    int DrivingExamAttemptNo = 1,
+    DateTime? DrivingExamDate = null,
+    decimal CourseRemaining = 0);
 
 public sealed record StudentFinanceSummaryDto(
     Guid? StudentUserId,
@@ -124,7 +135,18 @@ public sealed record StudentFinanceSummaryDto(
     decimal Balance,
     int OverdueCount,
     DateTime? NextDueDateUtc,
-    string Status);
+    string Status,
+    decimal GrossTotal = 0,
+    decimal DiscountTotal = 0,
+    decimal DownPaymentTotal = 0,
+    decimal DownPaymentPaidTotal = 0,
+    bool HasPendingDownPayment = false,
+    Guid? DrivingStudentProfileId = null,
+    decimal DrivingExamFee = 0,
+    bool DrivingExamFeePaid = false,
+    int DrivingExamAttemptNo = 1,
+    DateTime? DrivingExamDate = null,
+    decimal CourseRemaining = 0);
 
 // ---- Faz 2: iade, hatırlatma, dashboard ----
 public sealed record RefundRequest(

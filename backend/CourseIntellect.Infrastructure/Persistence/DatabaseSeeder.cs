@@ -497,12 +497,15 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
             }
         ], cancellationToken);
 
+        // InvoiceNumber (tenant_id, InvoiceNumber) benzersiz indeksine tabidir ve
+        // varsayılanı boş metindir; numara verilmezse örnek faturaların hepsi aynı
+        // ("") değerle çakışır ve tohumlama patlar (uygulama hiç açılmaz).
         await dbContext.AccountingInvoices.AddRangeAsync(
         [
-            new AccountingInvoice { Title = "Ogrenci Faturasi #184", Category = "Öğrenci Faturaları", Subtitle = "12 Mart 2026 • PDF", Amount = "₺18.400", Status = "Onaylandı" },
-            new AccountingInvoice { Title = "Mekan Gideri #026", Category = "Dershane Mekan Giderleri", Subtitle = "11 Mart 2026 • PDF", Amount = "₺9.250", Status = "Onaylandı" },
-            new AccountingInvoice { Title = "Teknik Servis #041", Category = "Diğer Gider Faturaları", Subtitle = "10 Mart 2026 • PDF", Amount = "₺4.850", Status = "Bekliyor" },
-            new AccountingInvoice { Title = "Maaş Dökümü #022", Category = "Maaş Faturaları", Subtitle = "08 Mart 2026 • PDF", Amount = "₺52.000", Status = "Onaylandı" }
+            new AccountingInvoice { InvoiceNumber = "DEMO-2026-0001", Title = "Ogrenci Faturasi #184", Category = "Öğrenci Faturaları", Subtitle = "12 Mart 2026 • PDF", Amount = "₺18.400", Status = "Onaylandı" },
+            new AccountingInvoice { InvoiceNumber = "DEMO-2026-0002", Title = "Mekan Gideri #026", Category = "Dershane Mekan Giderleri", Subtitle = "11 Mart 2026 • PDF", Amount = "₺9.250", Status = "Onaylandı" },
+            new AccountingInvoice { InvoiceNumber = "DEMO-2026-0003", Title = "Teknik Servis #041", Category = "Diğer Gider Faturaları", Subtitle = "10 Mart 2026 • PDF", Amount = "₺4.850", Status = "Bekliyor" },
+            new AccountingInvoice { InvoiceNumber = "DEMO-2026-0004", Title = "Maaş Dökümü #022", Category = "Maaş Faturaları", Subtitle = "08 Mart 2026 • PDF", Amount = "₺52.000", Status = "Onaylandı" }
         ], cancellationToken);
 
         await dbContext.AccountingSalaries.AddRangeAsync(

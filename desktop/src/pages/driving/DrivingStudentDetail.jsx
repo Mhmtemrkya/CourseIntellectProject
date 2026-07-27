@@ -340,9 +340,9 @@ export default function DrivingStudentDetail() {
     setSavingFees(true);
     try {
       await updateDrivingExamFees(profileId, {
-        theoryExamFee: Number(examFeeDraft.theoryExamFee) || 0,
+        theoryExamFee: 0,
         drivingExamFee: Number(examFeeDraft.drivingExamFee) || 0,
-        theoryExamFeePaid: !!examFeeDraft.theoryExamFeePaid,
+        theoryExamFeePaid: false,
         drivingExamFeePaid: !!examFeeDraft.drivingExamFeePaid,
         drivingExamDate: examFeeDraft.drivingExamDate ? new Date(examFeeDraft.drivingExamDate).toISOString() : null,
       });
@@ -641,9 +641,7 @@ export default function DrivingStudentDetail() {
               <CardTitle>Sınav ücretleri</CardTitle>
               {canCollect && examFeeDraft === null && (
                 <Button variant="outline" size="sm" onClick={() => setExamFeeDraft({
-                  theoryExamFee: overview.theoryExamFee || 0,
                   drivingExamFee: overview.drivingExamFee || 0,
-                  theoryExamFeePaid: !!overview.theoryExamFeePaid,
                   drivingExamFeePaid: !!overview.drivingExamFeePaid,
                   drivingExamDate: overview.drivingExamDate ? overview.drivingExamDate.slice(0, 10) : '',
                 })}>Düzenle</Button>
@@ -653,49 +651,23 @@ export default function DrivingStudentDetail() {
               {examFeeDraft === null ? (
                 <>
                   <div className="flex items-center justify-between border-b py-2 text-sm">
-                    <span className="text-muted-foreground">Teorik (e-sınav)</span>
-                    <span className="flex items-center gap-2">
-                      <b>{money(overview.theoryExamFee)}</b>
-                      {overview.theoryExamFee > 0 && (
-                        <Badge className={`border-0 ${overview.theoryExamFeePaid ? 'bg-emerald-500/15 text-emerald-600' : 'bg-red-500/15 text-red-600'}`}>
-                          {overview.theoryExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
-                        </Badge>
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between border-b py-2 text-sm">
-                    <span className="text-muted-foreground">Direksiyon sınavı</span>
+                    <span className="text-muted-foreground">Direksiyon sınavı • {examRights?.practice?.used || 1}. giriş</span>
                     <span className="flex items-center gap-2">
                       <b>{money(overview.drivingExamFee)}</b>
-                      {overview.drivingExamFee > 0 && (
-                        <Badge className={`border-0 ${overview.drivingExamFeePaid ? 'bg-emerald-500/15 text-emerald-600' : 'bg-red-500/15 text-red-600'}`}>
-                          {overview.drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
-                        </Badge>
-                      )}
+                      <Badge className={`border-0 ${overview.drivingExamFee > 0 && overview.drivingExamFeePaid ? 'bg-emerald-500/15 text-emerald-600' : 'bg-red-500/15 text-red-600'}`}>
+                        {overview.drivingExamFee > 0 && overview.drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
+                      </Badge>
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-b py-2 text-sm">
                     <span className="text-muted-foreground">Direksiyon sınav tarihi</span>
                     <b>{dateOnly(overview.drivingExamDate)}</b>
                   </div>
-                  <div className="flex items-center justify-between py-2 text-sm">
-                    <span className="text-muted-foreground">Toplam sınav ücreti</span>
-                    <b>{money((overview.theoryExamFee || 0) + (overview.drivingExamFee || 0))}</b>
-                  </div>
                 </>
               ) : (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground">Teorik (e-sınav) ücreti (₺)</label>
-                    <div className="mt-1 flex items-center gap-2">
-                      <Input type="number" min="0" value={examFeeDraft.theoryExamFee} onChange={(e) => setExamFeeDraft({ ...examFeeDraft, theoryExamFee: e.target.value })} />
-                      <label className="flex shrink-0 items-center gap-1 text-xs font-semibold">
-                        <input type="checkbox" checked={examFeeDraft.theoryExamFeePaid} onChange={(e) => setExamFeeDraft({ ...examFeeDraft, theoryExamFeePaid: e.target.checked })} />Ödendi
-                      </label>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground">Direksiyon sınav ücreti (₺)</label>
+                    <label className="text-xs font-semibold text-muted-foreground">Direksiyon sınav ücreti (₺) • {examRights?.practice?.used || 1}. giriş</label>
                     <div className="mt-1 flex items-center gap-2">
                       <Input type="number" min="0" value={examFeeDraft.drivingExamFee} onChange={(e) => setExamFeeDraft({ ...examFeeDraft, drivingExamFee: e.target.value })} />
                       <label className="flex shrink-0 items-center gap-1 text-xs font-semibold">

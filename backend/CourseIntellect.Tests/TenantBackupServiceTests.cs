@@ -66,8 +66,9 @@ public sealed class TenantBackupServiceTests
         var entries = await ReadArchiveAsync(db, Path.Combine(Path.GetTempPath(), $"backup-{Guid.NewGuid():N}"), includeFiles: false);
         var users = entries.Single(x => x.Key.EndsWith("users.json", StringComparison.OrdinalIgnoreCase)).Value;
 
-        Assert.Contains("A Yönetici", users, StringComparison.Ordinal);
-        Assert.DoesNotContain("B Yönetici", users, StringComparison.Ordinal);
+        // Adlar kayıtta biçimlendirilir: "A Yönetici" → "A YÖNETİCİ".
+        Assert.Contains("A YÖNETİCİ", users, StringComparison.Ordinal);
+        Assert.DoesNotContain("B YÖNETİCİ", users, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -170,6 +171,64 @@ public sealed class TenantBackupServiceTests
         {
             Directory.Delete(uploadsRoot, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Yanıt gövdesini taklit eder: GERİ SARILAMAZ (CanSeek=false).
+    ///
+    /// Canlıda indirme bozuluyordu çünkü ZipArchive gövdeye SENKRON yazıyor ve
+    /// ASP.NET Core'da bu varsayılan olarak yasak; akış yarıda kopup 5 baytlık
+    /// bozuk dosya üretiyordu. Uç nokta artık bu istek için senkron yazmayı açıyor
+    /// (bkz. TenantBackupController), bu yüzden burada senkron yazmaya izin verilir —
+    /// ama geri sarma hâlâ yasaktır: arşiv üretimi Position/Seek'e bağlı olmamalı.
+    /// </summary>
+    private sealed class NonSeekableStream : Stream
+    {
+        private readonly MemoryStream inner = new();
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => inner.Length;
+        public override long Position { get => inner.Position; set => throw new NotSupportedException(); }
+        public byte[] ToArray() => inner.ToArray();
+
+        public override void Write(byte[] buffer, int offset, int count) => inner.Write(buffer, offset, count);
+        public override void Write(ReadOnlySpan<byte> buffer) => inner.Write(buffer);
+        public override void WriteByte(byte value) => inner.WriteByte(value);
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            inner.WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) =>
+            inner.WriteAsync(buffer, cancellationToken);
+
+        public override void Flush() { }
+        public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+    }
+
+    [Fact]
+    public async Task Archive_IsValidOverNonSeekableResponseStream()
+    {
+        using var db = new TestDb();
+        SeedTwoTenants(db);
+        db.Context.SetTenantOverride(TenantA);
+
+        var uploads = Path.Combine(Path.GetTempPath(), $"backup-{Guid.NewGuid():N}");
+        await using var response = new NonSeekableStream();
+        // Uç noktadaki gibi tamponlanmış yazma.
+        await using (var buffered = new BufferedStream(response, 128 * 1024))
+        {
+            await CreateService(db, uploads).WriteArchiveAsync(buffered, includeFiles: false);
+            await buffered.FlushAsync();
+        }
+
+        var bytes = response.ToArray();
+        Assert.True(bytes.Length > 1000, $"arşiv yalnız {bytes.Length} bayt — akış yarıda kopmuş.");
+        using var archive = new ZipArchive(new MemoryStream(bytes), ZipArchiveMode.Read);
+        Assert.Contains(archive.Entries, x => x.FullName == "MANIFEST.json");
+        Assert.Contains(archive.Entries, x => x.FullName == "veri/users.json");
     }
 
     private sealed class TestHostEnvironment(string root) : IHostEnvironment

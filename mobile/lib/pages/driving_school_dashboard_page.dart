@@ -200,6 +200,13 @@ class _DrivingSchoolDashboardPageState
                     onTap: () => _openDashboardMetric(context, 'students'),
                   ),
                   DrivingKpiCard(
+                    label: 'Mezun Kursiyer',
+                    value: '${kpis['graduatedStudents'] ?? 0}',
+                    icon: Icons.workspace_premium_rounded,
+                    color: const Color(0xFF059669),
+                    onTap: () => _openDashboardMetric(context, 'graduation'),
+                  ),
+                  DrivingKpiCard(
                     label: 'Direksiyon Dersi',
                     value: '${kpis['todayDrivingLessons'] ?? 0}',
                     icon: Icons.route_rounded,
@@ -753,6 +760,7 @@ class _DrivingSchoolDashboardPageState
       'expenses' => const DrivingExpensesPage(),
       'terms' => const DrivingTermOpeningWizardPage(),
       'education' => const DrivingEducationPage(),
+      'graduation' => const DrivingGraduationPage(),
       _ => const DrivingMebbisWorkCenterPage(),
     };
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));

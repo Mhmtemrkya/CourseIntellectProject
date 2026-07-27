@@ -54,6 +54,53 @@ ThemeData buildDynamicTheme(
       backgroundColor: card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: card,
+      surfaceTintColor: Colors.transparent,
+      headerBackgroundColor: brand,
+      headerForegroundColor: Colors.white,
+      elevation: isDark ? 0 : 12,
+      shadowColor: Colors.black.withValues(alpha: 0.18),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      dividerColor: divider,
+      dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) return hint;
+        if (states.contains(WidgetState.selected)) return Colors.white;
+        return text;
+      }),
+      dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return brandAccent;
+        return Colors.transparent;
+      }),
+      todayForegroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return Colors.white;
+        return brandAccent;
+      }),
+      todayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return brandAccent;
+        return brandAccent.withValues(alpha: 0.10);
+      }),
+      todayBorder: BorderSide(color: brandAccent, width: 1.4),
+      yearForegroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return Colors.white;
+        return text;
+      }),
+      yearBackgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return brandAccent;
+        return Colors.transparent;
+      }),
+      yearOverlayColor: WidgetStatePropertyAll(
+        brandAccent.withValues(alpha: 0.10),
+      ),
+      cancelButtonStyle: TextButton.styleFrom(
+        foregroundColor: muted,
+        textStyle: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+      confirmButtonStyle: TextButton.styleFrom(
+        foregroundColor: brandAccent,
+        textStyle: const TextStyle(fontWeight: FontWeight.w900),
+      ),
+    ),
     dividerColor: divider,
     colorScheme: colorScheme,
     splashColor: brandAccent.withValues(alpha: 0.10),

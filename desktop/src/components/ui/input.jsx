@@ -1,8 +1,13 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { DatePickerInput } from "@/components/ui/date-picker-input"
 
 const Input = React.forwardRef(({ className, type, ...props }, ref) => {
+  if (type === "date") {
+    return <DatePickerInput ref={ref} className={className} {...props} />
+  }
+
   return (
     <input
       type={type}

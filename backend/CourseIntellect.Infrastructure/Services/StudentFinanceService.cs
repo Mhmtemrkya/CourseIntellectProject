@@ -4,6 +4,7 @@ using CourseIntellect.Application.DTOs.Notifications;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
+using CourseIntellect.Domain.Enums;
 using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -286,6 +287,42 @@ public sealed class StudentFinanceService(
             .Select(item => (DateTime?)item.DueDateUtc)
             .FirstOrDefault();
 
+        var drivingProfile = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(item => item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
+            .OrderByDescending(item => item.RegisteredAtUtc)
+            .Select(item => new
+            {
+                item.Id,
+                item.DrivingExamFee,
+                item.DrivingExamFeePaid,
+                item.DrivingExamDate,
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+        var drivingAttemptNo = drivingProfile is null
+            ? 1
+            : await dbContext.DrivingExamCandidates.AsNoTracking()
+                .Where(item => item.StudentDrivingProfileId == drivingProfile.Id
+                    && item.Status != DrivingExamCandidateStatus.Cancelled)
+                .Join(
+                    dbContext.DrivingExamSessions.AsNoTracking()
+                        .Where(item => item.ExamType == DrivingExamType.DrivingPractice),
+                    candidate => candidate.ExamSessionId,
+                    session => session.Id,
+                    (candidate, _) => (int?)candidate.AttemptNo)
+                .MaxAsync(cancellationToken) ?? 1;
+        // Ek ders/sınav gibi DrivingCharge kalemleri sözleşme toplamına teknik
+        // olarak eklenir. "Kurs ücreti" kolonu yalnız ilk kayıt bedelini göstermeli.
+        var additionalCharges = await dbContext.DrivingCharges.AsNoTracking()
+            .Where(item => item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
+            .Select(item => new { item.GrossAmount, item.FinanceInstallmentId })
+            .ToListAsync(cancellationToken);
+        var additionalChargeGross = additionalCharges.Sum(item => item.GrossAmount);
+        var grossTotal = Math.Max(0, contracts.Sum(item => item.GrossAmount) - additionalChargeGross);
+        var discountTotal = contracts.Sum(item => item.DiscountAmount);
+        var downPaymentTotal = contracts.Sum(item => item.DownPayment);
+        var downPaymentPaidTotal = contracts.Sum(item =>
+            item.DownPaymentPaid ? Math.Max(item.DownPaymentPaidAmount, item.DownPayment) : item.DownPaymentPaidAmount);
+
         var installmentsByContract = installments
             .GroupBy(item => item.EnrollmentContractId)
             .ToDictionary(group => group.Key, group => group.ToList());
@@ -307,7 +344,21 @@ public sealed class StudentFinanceService(
                 item.Amount > 0 ? Math.Max(0, item.Amount - refundedByPayment.GetValueOrDefault(item.Id)) : 0,
                 allocatedRefundableByPayment.GetValueOrDefault(item.Id))).ToList(),
             grossCollected,
-            refundedTotal);
+            refundedTotal,
+            grossTotal,
+            discountTotal,
+            downPaymentTotal,
+            downPaymentPaidTotal,
+            contracts.Any(item => item.DownPayment > 0 && !item.DownPaymentPaid),
+            drivingProfile?.Id,
+            drivingProfile?.DrivingExamFee ?? 0,
+            drivingProfile?.DrivingExamFeePaid ?? false,
+            drivingAttemptNo,
+            drivingProfile?.DrivingExamDate,
+            installments
+                .Where(item => !additionalCharges.Any(charge => charge.FinanceInstallmentId == item.Id))
+                .Sum(item => Math.Max(0, item.Amount - item.PaidAmount))
+                + contracts.Where(item => item.DownPayment > 0 && !item.DownPaymentPaid).Sum(item => item.DownPayment));
     }
 
     public async Task<FinancePaymentDto> RecordPaymentAsync(
@@ -570,6 +621,47 @@ public sealed class StudentFinanceService(
             .GroupBy(item => item.EnrollmentContractId)
             .ToDictionary(group => group.Key, group => group.ToList());
 
+        var profileRows = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(item => item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
+            .Select(item => new
+            {
+                item.Id,
+                ContractId = item.EnrollmentContractId!.Value,
+                item.DrivingExamFee,
+                item.DrivingExamFeePaid,
+                item.DrivingExamDate,
+            })
+            .ToListAsync(cancellationToken);
+        var profileIds = profileRows.Select(item => item.Id).ToList();
+        var attemptsByProfile = profileIds.Count == 0
+            ? new Dictionary<Guid, int>()
+            : (await dbContext.DrivingExamCandidates.AsNoTracking()
+                .Where(item => profileIds.Contains(item.StudentDrivingProfileId)
+                    && item.Status != DrivingExamCandidateStatus.Cancelled)
+                .Join(
+                    dbContext.DrivingExamSessions.AsNoTracking()
+                        .Where(item => item.ExamType == DrivingExamType.DrivingPractice),
+                    candidate => candidate.ExamSessionId,
+                    session => session.Id,
+                    (candidate, _) => new { candidate.StudentDrivingProfileId, candidate.AttemptNo })
+                .ToListAsync(cancellationToken))
+                .GroupBy(item => item.StudentDrivingProfileId)
+                .ToDictionary(group => group.Key, group => group.Max(item => item.AttemptNo));
+        var profilesByContract = profileRows
+            .GroupBy(item => item.ContractId)
+            .ToDictionary(group => group.Key, group => group.OrderByDescending(item => item.DrivingExamDate).First());
+        var chargeRows = await dbContext.DrivingCharges.AsNoTracking()
+            .Where(item => item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
+            .Select(item => new { ContractId = item.EnrollmentContractId!.Value, item.GrossAmount, item.FinanceInstallmentId })
+            .ToListAsync(cancellationToken);
+        var chargeGrossByContract = chargeRows
+            .GroupBy(item => item.ContractId)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.GrossAmount));
+        var chargeInstallmentIds = chargeRows
+            .Where(item => item.FinanceInstallmentId != null)
+            .Select(item => item.FinanceInstallmentId!.Value)
+            .ToHashSet();
+
         return contracts
             .GroupBy(ResolveStudentKey)
             .Select(group =>
@@ -584,6 +676,15 @@ public sealed class StudentFinanceService(
                     .Select(item => (DateTime?)item.DueDateUtc)
                     .FirstOrDefault();
                 var first = group.First();
+                var gross = Math.Max(0, group.Sum(item =>
+                    item.GrossAmount - chargeGrossByContract.GetValueOrDefault(item.Id)));
+                var discount = group.Sum(item => item.DiscountAmount);
+                var downPayment = group.Sum(item => item.DownPayment);
+                var downPaymentPaid = group.Sum(item =>
+                    item.DownPaymentPaid ? Math.Max(item.DownPaymentPaidAmount, item.DownPayment) : item.DownPaymentPaidAmount);
+                var drivingProfile = group
+                    .Select(item => profilesByContract.GetValueOrDefault(item.Id))
+                    .FirstOrDefault(item => item is not null);
                 var balance = FinanceTotals.Outstanding(net, paid);
                 return new StudentFinanceSummaryDto(
                     first.StudentUserId,
@@ -595,7 +696,21 @@ public sealed class StudentFinanceService(
                     balance,
                     overdue,
                     nextDue,
-                    ResolveStatus(balance, overdue, net));
+                    ResolveStatus(balance, overdue, net),
+                    gross,
+                    discount,
+                    downPayment,
+                    downPaymentPaid,
+                    group.Any(item => item.DownPayment > 0 && !item.DownPaymentPaid),
+                    drivingProfile?.Id,
+                    drivingProfile?.DrivingExamFee ?? 0,
+                    drivingProfile?.DrivingExamFeePaid ?? false,
+                    drivingProfile is null ? 1 : attemptsByProfile.GetValueOrDefault(drivingProfile.Id, 1),
+                    drivingProfile?.DrivingExamDate,
+                    studentInstallments
+                        .Where(item => !chargeInstallmentIds.Contains(item.Id))
+                        .Sum(item => Math.Max(0, item.Amount - item.PaidAmount))
+                        + group.Where(item => item.DownPayment > 0 && !item.DownPaymentPaid).Sum(item => item.DownPayment));
             })
             .ToList();
     }

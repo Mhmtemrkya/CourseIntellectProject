@@ -27,6 +27,7 @@ import {
 // olanlar (aktif kursiyer, filo) her zaman "şu an"ın fotoğrafıdır.
 const KPI_META = [
   ['activeStudents', 'Aktif Kursiyer', Users, 'brand', 'Eğitimi süren adaylar', '/driving/students'],
+  ['graduatedStudents', 'Mezun Kursiyer', GraduationCap, 'emerald', 'Mezuniyeti tamamlanan', '/driving/graduation'],
   ['todayDrivingLessons', 'Direksiyon Dersi', CarFront, 'amber', null, '/driving/lessons'],
   ['todayTheoryLessons', 'Teorik Ders', GraduationCap, 'violet', null, '/driving/education'],
   ['activeInstructors', 'Aktif Eğitmen', Users, 'emerald', 'Derse çıkabilen eğitmen', '/driving/assignments'],
@@ -204,9 +205,13 @@ export default function DrivingSchoolDashboard() {
               const value = CURRENCY_KPIS.has(key)
                 ? `₺${Number(raw).toLocaleString('tr-TR')}`
                 : raw;
+              // Mezun sayısı kümülatiftir; seçili dönemde mezun olan varsa alt bilgide belirtilir.
+              const graduatedInPeriod = Number(data.kpis?.graduatedInPeriod || 0);
               const cardCaption = key === 'pendingInstallmentAmount'
                 ? `${Number(data.kpis?.pendingInstallments || 0).toLocaleString('tr-TR')} ödenmemiş taksit`
-                : RANGE_KPIS.has(key) ? PERIOD_CAPTION[period] : caption;
+                : key === 'graduatedStudents' && graduatedInPeriod > 0
+                  ? `${graduatedInPeriod} kişi ${PERIOD_CAPTION[period].toLocaleLowerCase('tr-TR')}`
+                  : RANGE_KPIS.has(key) ? PERIOD_CAPTION[period] : caption;
               return (
                 <DrivingStatCard
                   key={key}

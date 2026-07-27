@@ -38,7 +38,7 @@ public sealed class DrivingAppointmentRequestsController(
         if (!await CanStudentScheduleAsync(profile, ct))
             return Conflict(new { message = "Dosyanız eğitim/randevu için henüz uygun değil. Kurs personelinizle görüşün." });
         var instructors = await db.DrivingInstructorProfiles.AsNoTracking().Where(x => x.IsActive)
-            .Join(db.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (p, s) => new { p, s.FullName })
+            .Join(db.VisibleDrivingStaff().AsNoTracking(), x => x.StaffId, x => x.Id, (p, s) => new { p, s.FullName })
             .Where(x => x.p.LicenseClasses.Contains(profile.LicenseClass) && (profile.TransmissionType == TransmissionType.Manual ? x.p.CanTeachManual : x.p.CanTeachAutomatic))
             .Select(x => new { x.p.Id, x.FullName, preferred = x.p.Id == profile.PreferredInstructorProfileId }).OrderByDescending(x => x.preferred).ThenBy(x => x.FullName).ToListAsync(ct);
         var vehicles = await db.DrivingVehicles.AsNoTracking().Where(x => x.IsActive && !x.IsInMaintenance && x.LicenseClass == profile.LicenseClass && x.TransmissionType == profile.TransmissionType)
@@ -206,7 +206,7 @@ public sealed class DrivingAppointmentRequestsController(
             .SelectMany(x => x.gs.DefaultIfEmpty(), (x, g) => new { x.p.Id, x.p.StudentId, x.FullName, x.p.LicenseClass, transmissionType = x.p.TransmissionType.ToString(), status = x.p.Status.ToString(), groupId = x.p.StudentGroupId, groupName = g != null ? g.Name : null })
             .OrderBy(x => x.FullName).ToListAsync(ct);
         var instructorRows = await db.DrivingInstructorProfiles.AsNoTracking()
-            .Join(db.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (p, s) => new
+            .Join(db.VisibleDrivingStaff().AsNoTracking(), x => x.StaffId, x => x.Id, (p, s) => new
             {
                 p.Id, p.StaffId, s.FullName, p.LicenseClasses, p.CanTeachManual,
                 p.CanTeachAutomatic, p.IsActive, p.WorkingPermitNo,
@@ -230,7 +230,7 @@ public sealed class DrivingAppointmentRequestsController(
         var vehicles = await db.DrivingVehicles.AsNoTracking().Where(x => x.IsActive).Select(x => new { x.Id, x.PlateNumber, x.LicenseClass, transmissionType = x.TransmissionType.ToString(), x.IsInMaintenance }).OrderBy(x => x.PlateNumber).ToListAsync(ct);
         var packages = await db.DrivingPackages.AsNoTracking().Where(x => x.IsActive).Select(x => new { x.Id, x.Name, x.LicenseClass, transmissionType = x.TransmissionType.ToString() }).ToListAsync(ct);
         var baseStudents = await db.Students.AsNoTracking().Where(s => !db.StudentDrivingProfiles.Any(p => p.StudentId == s.Id)).Select(x => new { x.Id, x.FullName }).OrderBy(x => x.FullName).Take(500).ToListAsync(ct);
-        var staff = await db.Staff.AsNoTracking().Where(s => !db.DrivingInstructorProfiles.Any(p => p.StaffId == s.Id)).Select(x => new { x.Id, x.FullName }).OrderBy(x => x.FullName).Take(500).ToListAsync(ct);
+        var staff = await db.VisibleDrivingStaff().AsNoTracking().Where(s => !db.DrivingInstructorProfiles.Any(p => p.StaffId == s.Id)).Select(x => new { x.Id, x.FullName }).OrderBy(x => x.FullName).Take(500).ToListAsync(ct);
         return Ok(new { students, instructors, vehicles, packages, baseStudents, staff });
     }
 

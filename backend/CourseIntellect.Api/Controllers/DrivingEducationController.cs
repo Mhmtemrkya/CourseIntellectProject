@@ -593,6 +593,9 @@ public sealed class DrivingEducationController(
                 x.status,
                 theory = Rights(x.profileId, DrivingExamType.TheoryEExam),
                 practice = Rights(x.profileId, DrivingExamType.DrivingPractice),
+                x.DrivingExamFee,
+                x.DrivingExamFeePaid,
+                x.DrivingExamDate,
             }),
             attempts,
         });
@@ -729,7 +732,8 @@ public sealed class DrivingEducationController(
         if (existingCount + ids.Count > exam.Capacity) return Conflict(new { message = "Sınav kapasitesi aşılamaz." });
         var students = await db.StudentDrivingProfiles.Where(x => ids.Contains(x.Id)).ToListAsync(ct);
         if (students.Count != ids.Count) return BadRequest(new { message = "Kursiyerlerden biri bulunamadı." });
-        if (request.FeeAmount > 0 && students.Any(x => x.EnrollmentContractId == null)) return BadRequest(new { message = "Sınav ücreti için tüm adayların aktif sözleşmesi olmalıdır." });
+        var drivingFeeAmount = exam.ExamType == DrivingExamType.DrivingPractice ? request.FeeAmount : 0m;
+        if (drivingFeeAmount > 0 && students.Any(x => x.EnrollmentContractId == null)) return BadRequest(new { message = "Sınav ücreti için tüm adayların aktif sözleşmesi olmalıdır." });
         foreach (var student in students)
         {
             if (await HasPassedAsync(student.Id, exam.ExamType, ct))
@@ -765,7 +769,7 @@ public sealed class DrivingEducationController(
             var attempt = (await db.DrivingExamCandidates.Where(x => x.StudentDrivingProfileId == student.Id)
                 .Join(db.DrivingExamSessions.Where(x => x.ExamType == exam.ExamType), x => x.ExamSessionId, x => x.Id, (candidate, _) => (int?)candidate.AttemptNo).MaxAsync(ct) ?? 0) + 1;
             var candidate = new DrivingExamCandidate { ExamSessionId = id, StudentDrivingProfileId = student.Id, AttemptNo = attempt };
-            if (request.FeeAmount > 0) candidate.DrivingChargeId = await CreateExamChargeAsync(student, request.FeeAmount, exam.Title, ct);
+            if (drivingFeeAmount > 0) candidate.DrivingChargeId = await CreateExamChargeAsync(student, drivingFeeAmount, exam.Title, ct);
             db.DrivingExamCandidates.Add(candidate); student.Status = DrivingStudentStatus.ExamPending;
             await notifier.NotifyStudentAsync(student.Id, "Sınavınız planlandı", $"{exam.Title}: {exam.StartsAtUtc:dd.MM.yyyy HH:mm}, {exam.Location}.", DrivingNotificationCategories.Exam, dedupeKey: $"exam-planned:{candidate.Id}", relatedEntityType: nameof(DrivingExamCandidate), relatedEntityId: candidate.Id.ToString(), cancellationToken: ct);
         }

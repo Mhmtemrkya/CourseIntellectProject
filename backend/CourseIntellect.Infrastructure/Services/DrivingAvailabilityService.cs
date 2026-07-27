@@ -181,7 +181,7 @@ public sealed class DrivingAvailabilityService(CourseIntellectDbContext dbContex
         var candidates = await dbContext.DrivingInstructorProfiles.AsNoTracking()
             .Where(x => x.IsActive)
             .Where(x => student.TransmissionType == TransmissionType.Manual ? x.CanTeachManual : x.CanTeachAutomatic)
-            .Join(dbContext.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (profile, staff) => new { profile.Id, profile.LicenseClasses, staff.FullName })
+            .Join(dbContext.VisibleDrivingStaff().AsNoTracking(), x => x.StaffId, x => x.Id, (profile, staff) => new { profile.Id, profile.LicenseClasses, staff.FullName })
             .ToListAsync(cancellationToken);
 
         var results = new List<AvailableInstructor>();

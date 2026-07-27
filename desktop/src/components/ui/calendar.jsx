@@ -19,7 +19,14 @@ function Calendar({
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption_label: "flex h-9 items-center gap-1 px-3 text-sm font-semibold",
+        caption_dropdowns: "flex items-center justify-center gap-2",
+        dropdown_month:
+          "relative inline-flex h-9 items-center rounded-xl border border-foreground/10 bg-[hsl(var(--ci-field)/0.78)] transition hover:border-[hsl(var(--brand-accent)/0.35)] focus-within:border-[hsl(var(--brand-accent)/0.6)] focus-within:ring-2 focus-within:ring-[hsl(var(--brand-accent)/0.14)]",
+        dropdown_year:
+          "relative inline-flex h-9 items-center rounded-xl border border-foreground/10 bg-[hsl(var(--ci-field)/0.78)] transition hover:border-[hsl(var(--brand-accent)/0.35)] focus-within:border-[hsl(var(--brand-accent)/0.6)] focus-within:ring-2 focus-within:ring-[hsl(var(--brand-accent)/0.14)]",
+        dropdown:
+          "absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
