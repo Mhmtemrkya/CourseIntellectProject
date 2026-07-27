@@ -23,7 +23,7 @@ import { assetUrl } from '../../lib/assetUrl';
 const HOUR_START = 7;
 const HOUR_END = 22;
 const HOURS = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i);
-const SLOT_HEIGHT = 56; // 1 saat = 56px
+const SLOT_HEIGHT = 68; // 1 saat = 68px; ders kartları ve yarım saat alanları sıkışmasın.
 
 const STATUS_TONE = {
   Draft: 'bg-slate-500', Requested: 'bg-sky-500', WaitingApproval: 'bg-amber-500',
@@ -544,7 +544,7 @@ function AppointmentCard({ appointment, canReschedule, dragged, onSelect, compac
       onDragStart={() => { dragged.current = appointment; }}
       onDragEnd={() => { dragged.current = null; }}
       onClick={() => onSelect(appointment)}
-      className={`w-full overflow-hidden rounded-lg border-l-4 px-2 py-1 text-left text-xs transition hover:brightness-110 ${
+      className={`w-full overflow-hidden rounded-lg border-l-4 px-2.5 py-1.5 text-left text-xs transition hover:brightness-110 ${
         movable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
       } ${tone.replace('bg-', 'border-l-')} bg-card shadow-sm`}
       title={`${appointment.studentName} • ${appointment.instructorName} • ${appointment.vehiclePlate}`}
@@ -575,11 +575,11 @@ function TimeGrid({ days, appointments, canReschedule, dragged, onDropSlot, onSe
   return (
     <Card>
       <CardContent className="overflow-x-auto p-0">
-        <div className="min-w-[720px]">
+        <div style={{ minWidth: days.length === 1 ? 760 : 1120 }}>
           {/* Gün başlıkları */}
-          <div className="flex border-b" style={{ paddingLeft: 56 }}>
+          <div className="flex border-b" style={{ paddingLeft: 68 }}>
             {days.map((day) => (
-              <div key={day.toISOString()} className={`flex-1 border-l py-2 text-center text-sm font-bold ${sameDay(day, now) ? 'bg-violet-500/5 text-violet-600' : ''}`}>
+              <div key={day.toISOString()} className={`flex-1 border-l py-3 text-center text-sm font-bold ${sameDay(day, now) ? 'bg-violet-500/5 text-violet-600' : ''}`}>
                 {day.toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric' })}
               </div>
             ))}
@@ -587,9 +587,9 @@ function TimeGrid({ days, appointments, canReschedule, dragged, onDropSlot, onSe
 
           <div className="flex">
             {/* Saat sütunu */}
-            <div className="w-14 shrink-0">
+            <div className="w-[68px] shrink-0">
               {HOURS.map((hour) => (
-                <div key={hour} className="border-b pr-1 text-right text-[11px] text-muted-foreground" style={{ height: SLOT_HEIGHT }}>
+                <div key={hour} className="border-b pr-2 pt-2 text-right text-xs font-medium text-muted-foreground" style={{ height: SLOT_HEIGHT }}>
                   {String(hour).padStart(2, '0')}:00
                 </div>
               ))}
@@ -620,7 +620,7 @@ function TimeGrid({ days, appointments, canReschedule, dragged, onDropSlot, onSe
                     const start = new Date(appointment.startsAtUtc);
                     const end = new Date(appointment.endsAtUtc);
                     const top = ((start.getHours() + start.getMinutes() / 60) - HOUR_START) * SLOT_HEIGHT;
-                    const height = Math.max(24, ((end - start) / 3600000) * SLOT_HEIGHT - 2);
+                    const height = Math.max(30, ((end - start) / 3600000) * SLOT_HEIGHT - 3);
                     if (top < 0 || top > (HOUR_END - HOUR_START) * SLOT_HEIGHT) return null;
 
                     return (
@@ -630,7 +630,7 @@ function TimeGrid({ days, appointments, canReschedule, dragged, onDropSlot, onSe
                           canReschedule={canReschedule}
                           dragged={dragged}
                           onSelect={onSelect}
-                          compact={height < 44}
+                          compact={height < 52}
                         />
                       </div>
                     );
@@ -660,13 +660,13 @@ function ResourceGrid({ days, resources, appointments, canReschedule, dragged, o
   return (
     <Card>
       <CardContent className="overflow-x-auto p-0">
-        <div className="min-w-[720px]">
+        <div style={{ minWidth: days.length === 1 ? 760 : 1120 }}>
           <div className="flex border-b">
-            <div className="w-40 shrink-0 py-2 pl-3 text-sm font-bold">
+            <div className="w-48 shrink-0 py-3 pl-4 text-sm font-bold">
               <Columns3 className="mr-1 inline h-3.5 w-3.5" />Kaynak
             </div>
             {days.map((day) => (
-              <div key={day.toISOString()} className="flex-1 border-l py-2 text-center text-sm font-bold">
+              <div key={day.toISOString()} className="flex-1 border-l py-3 text-center text-sm font-bold">
                 {day.toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric' })}
               </div>
             ))}
@@ -674,7 +674,7 @@ function ResourceGrid({ days, resources, appointments, canReschedule, dragged, o
 
           {resources.map((resource) => (
             <div key={resource.id} className="flex border-b">
-              <div className="w-40 shrink-0 self-center py-2 pl-3 text-sm font-semibold">{resource.label}</div>
+              <div className="w-48 shrink-0 self-center py-3 pl-4 text-sm font-semibold">{resource.label}</div>
               {days.map((day) => {
                 const cell = appointments.filter(
                   (x) => x[key] === resource.id && sameDay(new Date(x.startsAtUtc), day),
@@ -682,7 +682,7 @@ function ResourceGrid({ days, resources, appointments, canReschedule, dragged, o
                 return (
                   <div
                     key={day.toISOString()}
-                    className="min-h-[64px] flex-1 space-y-1 border-l p-1 transition hover:bg-violet-500/5"
+                    className="min-h-[84px] flex-1 space-y-1.5 border-l p-2 transition hover:bg-violet-500/5"
                     onDragOver={(e) => e.preventDefault()}
                     // Kaynak görünümünde saat bilgisi yok; bırakılan randevu aynı
                     // saatinde kalır, yalnızca günü değişir.
@@ -720,42 +720,44 @@ function MonthGrid({ days, anchor, appointments, onSelect }) {
 
   return (
     <Card>
-      <CardContent className="p-0">
-        <div className="grid grid-cols-7 border-b">
-          {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((label) => (
-            <div key={label} className="py-2 text-center text-sm font-bold">{label}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {days.map((day) => {
-            const dayAppointments = appointments.filter((x) => sameDay(new Date(x.startsAtUtc), day));
-            const outside = day.getMonth() !== anchor.getMonth();
-            return (
-              <div
-                key={day.toISOString()}
-                className={`min-h-[110px] space-y-1 border-b border-l p-1.5 ${outside ? 'bg-muted/30 opacity-60' : ''} ${sameDay(day, now) ? 'bg-violet-500/5' : ''}`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className={`text-xs font-bold ${sameDay(day, now) ? 'text-violet-600' : ''}`}>{day.getDate()}</span>
-                  {dayAppointments.length > 0 && <Badge variant="outline" className="h-4 px-1 text-[10px]">{dayAppointments.length}</Badge>}
+      <CardContent className="overflow-x-auto p-0">
+        <div className="min-w-[980px]">
+          <div className="grid grid-cols-7 border-b">
+            {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((label) => (
+              <div key={label} className="py-3 text-center text-sm font-bold">{label}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7">
+            {days.map((day) => {
+              const dayAppointments = appointments.filter((x) => sameDay(new Date(x.startsAtUtc), day));
+              const outside = day.getMonth() !== anchor.getMonth();
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={`min-h-[140px] space-y-1.5 border-b border-l p-2 ${outside ? 'bg-muted/30 opacity-60' : ''} ${sameDay(day, now) ? 'bg-violet-500/5' : ''}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold ${sameDay(day, now) ? 'text-violet-600' : ''}`}>{day.getDate()}</span>
+                    {dayAppointments.length > 0 && <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{dayAppointments.length}</Badge>}
+                  </div>
+                  {dayAppointments.slice(0, 3).map((appointment) => (
+                    <button
+                      key={appointment.id}
+                      type="button"
+                      onClick={() => onSelect(appointment)}
+                      className="flex w-full items-center gap-1 truncate rounded px-1.5 py-1 text-left text-[11px] hover:bg-muted"
+                    >
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_TONE[appointment.status] || 'bg-muted'}`} />
+                      <span className="truncate">{hhmm(new Date(appointment.startsAtUtc))} {appointment.studentName}</span>
+                    </button>
+                  ))}
+                  {dayAppointments.length > 3 && (
+                    <p className="pl-1 text-[11px] text-muted-foreground">+{dayAppointments.length - 3} daha</p>
+                  )}
                 </div>
-                {dayAppointments.slice(0, 3).map((appointment) => (
-                  <button
-                    key={appointment.id}
-                    type="button"
-                    onClick={() => onSelect(appointment)}
-                    className="flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[11px] hover:bg-muted"
-                  >
-                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_TONE[appointment.status] || 'bg-muted'}`} />
-                    <span className="truncate">{hhmm(new Date(appointment.startsAtUtc))} {appointment.studentName}</span>
-                  </button>
-                ))}
-                {dayAppointments.length > 3 && (
-                  <p className="pl-1 text-[11px] text-muted-foreground">+{dayAppointments.length - 3} daha</p>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </CardContent>
     </Card>

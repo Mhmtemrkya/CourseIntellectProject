@@ -19,6 +19,8 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
 import { useApp } from '../../context/AppContext';
+import { resolveUserInstitutionType } from '../../lib/auth';
+import DrivingCollectModal from '../../components/finance/DrivingCollectModal';
 import { useToast } from '../../hooks/use-toast';
 import { SheetHeader, SheetTitle, SheetDescription } from '../../components/ui/sheet';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
@@ -27,6 +29,8 @@ import {
   createAccountingNotification,
   createCollection,
   fetchAccountingDashboard,
+  fetchDrivingBranches,
+  fetchDrivingCollectionList,
   fetchFinanceSummaries,
   fetchStudentFinanceAccount,
   fetchStudents,
@@ -64,11 +68,12 @@ function buildAccount(student, dashboard, summary) {
   const installmentTotal = installments.reduce((sum, item) => sum + parseMoney(item.amount), 0);
   const totalFee = Number(summary?.netTotal) || installmentTotal || invoices.reduce((sum, item) => sum + parseMoney(item.amount), 0);
   const paid = summary ? Number(summary.paidTotal) || 0 : collections.reduce((sum, item) => sum + parseMoney(item.amount), 0);
-  const remaining = summary ? Number(summary.courseRemaining) || 0 : Math.max(0, totalFee - paid);
+  const remaining = summary ? Number(summary.totalPayable) || 0 : Math.max(0, totalFee - paid);
   const overdue = installments.some((item) => normalizeFinanceText(item.status).includes('gec'));
   const status = totalFee > 0 && paid >= totalFee ? 'paid' : overdue ? 'overdue' : 'current';
   return {
     id: student.id,
+    userId: student.userId,
     name: student.fullName,
     username: student.username,
     className: student.className,
@@ -115,20 +120,32 @@ function StudentAccountDrawer({
   creatingCollection,
   onUpdated,
 }) {
+  // Sürücü kursunda "veli" kavramı yoktur; kursiyerin muhatabı kendisidir.
+  const { user } = useApp();
+  const isDrivingSchool = resolveUserInstitutionType(user) === 'DrivingSchool';
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(true);
+  const [detailError, setDetailError] = useState('');
   const [examFeeDraft, setExamFeeDraft] = useState(null);
   const [savingExamFee, setSavingExamFee] = useState(false);
 
   useEffect(() => {
     let active = true;
     setDetailLoading(true);
-    fetchStudentFinanceAccount(account?.username ? { studentName: account.name } : { studentName: account?.name })
+    setDetailError('');
+    fetchStudentFinanceAccount(account?.userId
+      ? { studentUserId: account.userId }
+      : { studentName: account?.name })
       .then((data) => { if (active) setDetail(data); })
-      .catch(() => { if (active) setDetail(null); })
+      .catch((error) => {
+        if (active) {
+          setDetail(null);
+          setDetailError(error.message || 'Cari hesap ayrıntıları alınamadı.');
+        }
+      })
       .finally(() => { if (active) setDetailLoading(false); });
     return () => { active = false; };
-  }, [account?.name, account?.username]);
+  }, [account?.name, account?.userId]);
 
   if (!account) return null;
 
@@ -140,9 +157,12 @@ function StudentAccountDrawer({
   const upcomingInstallments = installments
     .filter((item) => !isInstallmentPaid(item))
     .sort((a, b) => new Date(a.dueDateUtc) - new Date(b.dueDateUtc));
-  const totalFee = Number(detail?.netTotal) || account.totalFee;
-  const paid = Number(detail?.paidTotal) || account.paid;
-  const remaining = detail ? Number(detail.courseRemaining) || 0 : Math.max(0, totalFee - paid);
+  const totalFee = detail ? Number(detail.netTotal) || 0 : account.totalFee;
+  const paid = detail ? Number(detail.paidTotal) || 0 : account.paid;
+  const remaining = detail ? Number(detail.totalPayable) || 0 : account.remaining;
+  const courseRemaining = detail ? Number(detail.courseRemaining) || 0 : 0;
+  const additionalChargeRemaining = detail ? Number(detail.additionalChargeRemaining) || 0 : 0;
+  const standaloneExamFeeRemaining = detail ? Number(detail.standaloneExamFeeRemaining) || 0 : 0;
   const grossTotal = Number(detail?.grossTotal) || account.grossTotal;
   const discountTotal = Number(detail?.discountTotal) || account.discountTotal;
   const downPaymentTotal = Number(detail?.downPaymentTotal) || account.downPaymentTotal;
@@ -164,12 +184,10 @@ function StudentAccountDrawer({
         drivingExamFeePaid: amount > 0 && examFeeDraft.paid,
         drivingExamDate: examFeeDraft.date ? new Date(`${examFeeDraft.date}T12:00:00`).toISOString() : null,
       });
-      setDetail((current) => ({
-        ...current,
-        drivingExamFee: amount,
-        drivingExamFeePaid: amount > 0 && examFeeDraft.paid,
-        drivingExamDate: examFeeDraft.date || null,
-      }));
+      const refreshed = await fetchStudentFinanceAccount(account?.userId
+        ? { studentUserId: account.userId }
+        : { studentName: account?.name });
+      setDetail(refreshed);
       setExamFeeDraft(null);
       onUpdated?.();
     } finally {
@@ -192,7 +210,9 @@ function StudentAccountDrawer({
         </Avatar>
         <div>
           <h3 className="text-lg font-semibold">{account.name}</h3>
-          <p className="text-sm text-muted-foreground">{account.className} • Veli: {account.parent}</p>
+          <p className="text-sm text-muted-foreground">
+            {isDrivingSchool ? account.className : `${account.className} • Veli: ${account.parent}`}
+          </p>
         </div>
       </div>
 
@@ -200,9 +220,12 @@ function StudentAccountDrawer({
         {[
           [grossTotal, 'Kurs Ücreti', 'text-foreground'],
           [discountTotal, 'İndirim', 'text-blue-600'],
+          [Math.max(0, grossTotal - discountTotal), 'Net Kurs Ücreti', 'text-foreground'],
           [downPaymentPaidTotal, downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? `Peşinat • ₺${downPaymentTotal.toLocaleString('tr-TR')} bekleniyor` : 'Ödenen Peşinat', downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? 'text-amber-600' : 'text-green-600'],
-          [paid, 'Ödenen', 'text-green-600'],
-          [remaining, 'Kalan Ücret', remaining > 0 ? 'text-red-600' : 'text-green-600'],
+          [paid, 'Toplam Tahsil Edilen', 'text-green-600'],
+          [courseRemaining, 'Kurs Borcu', courseRemaining > 0 ? 'text-red-600' : 'text-green-600'],
+          [additionalChargeRemaining, 'Ek Ücret Borcu', additionalChargeRemaining > 0 ? 'text-red-600' : 'text-green-600'],
+          [remaining, 'Toplam Ödenecek', remaining > 0 ? 'text-red-600' : 'text-green-600'],
         ].map(([value, label, color, isCount]) => (
           <Card key={label}>
             <CardContent className="p-4 text-center">
@@ -212,6 +235,8 @@ function StudentAccountDrawer({
           </Card>
         ))}
       </div>
+
+      {detailError ? <ErrorBanner title="Cari hesap ayrıntıları alınamadı" message={detailError} /> : null}
 
       <Card className="border-brand-primary/20">
         <CardContent className="p-4">
@@ -252,6 +277,11 @@ function StudentAccountDrawer({
                 {drivingExamFee > 0 && drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
               </Badge>
               <span className="text-sm text-muted-foreground">{formatDateUtc(detail?.drivingExamDate)}</span>
+              {standaloneExamFeeRemaining > 0 ? (
+                <span className="text-sm font-semibold text-red-600">
+                  Toplam borca ₺{standaloneExamFeeRemaining.toLocaleString('tr-TR')} dâhil
+                </span>
+              ) : null}
             </div>
           )}
         </CardContent>
@@ -322,7 +352,14 @@ function StudentAccountDrawer({
 }
 
 export default function StudentAccounts() {
-  const { openDrawer } = useApp();
+  const { openDrawer, user } = useApp();
+  // Sürücü kursunda "veli" kavramı yoktur; kursiyerin muhatabı kendisidir.
+  const isDrivingSchool = resolveUserInstitutionType(user) === 'DrivingSchool';
+  // Sürücü kursunda tahsilat, "Ödeme Al" ile AYNI pencereden alınır: taksit planı
+  // görünür, taksit seçilir, ödenmiş taksitler pasiftir, makbuz + tarih-saat düşer.
+  const [drivingRows, setDrivingRows] = useState([]);
+  const [drivingBranches, setDrivingBranches] = useState([]);
+  const [collectTarget, setCollectTarget] = useState(null);
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('all');
@@ -362,8 +399,10 @@ export default function StudentAccounts() {
 
   const accounts = useMemo(() => students.map((student) => {
     const summary = summaries.find((item) =>
-      (item.studentUserId && item.studentUserId === student.userId)
-      || normalizeFinanceText(item.studentName) === normalizeFinanceText(student.fullName));
+      item.studentUserId && item.studentUserId === student.userId)
+      || summaries.find((item) =>
+        !item.studentUserId
+        && normalizeFinanceText(item.studentName) === normalizeFinanceText(student.fullName));
     return buildAccount(student, dashboard, summary);
   }), [students, dashboard, summaries]);
   const classes = useMemo(() => [...new Set([
@@ -376,20 +415,22 @@ export default function StudentAccounts() {
     title: 'Öğrenci Cari Hesap Ekstresi',
     subtitle: `${account.name} için tahsilat, fatura ve bakiye özeti`,
     code: `EXT-${account.id}`,
-    badge: `${account.className || 'Sınıf yok'} • ${account.parent || 'Veli bilgisi yok'}`,
+    badge: isDrivingSchool
+      ? (account.className || 'Sınıf yok')
+      : `${account.className || 'Sınıf yok'} • ${account.parent || 'Veli bilgisi yok'}`,
     summary: [
       { label: 'Toplam Ücret', value: formatCurrency(account.totalFee) },
       { label: 'Ödenen', value: formatCurrency(account.paid) },
-      { label: account.balance < 0 ? 'Kalan Borç' : 'Pozitif Bakiye', value: formatCurrency(Math.abs(account.balance)) },
+      { label: 'Toplam Ödenecek', value: formatCurrency(account.remaining) },
       { label: 'Durum', value: account.status === 'overdue' ? 'Gecikmiş' : account.status === 'paid' ? 'Ödendi' : 'Güncel' },
     ],
     sections: [
       {
-        title: 'Öğrenci Bilgileri',
+        title: isDrivingSchool ? 'Kursiyer Bilgileri' : 'Öğrenci Bilgileri',
         rows: [
-          { label: 'Öğrenci', value: account.name },
-          { label: 'Sınıf', value: account.className || 'Belirtilmedi' },
-          { label: 'Veli', value: account.parent || 'Belirtilmedi' },
+          { label: isDrivingSchool ? 'Kursiyer' : 'Öğrenci', value: account.name },
+          { label: isDrivingSchool ? 'Ehliyet sınıfı' : 'Sınıf', value: account.className || 'Belirtilmedi' },
+          ...(isDrivingSchool ? [] : [{ label: 'Veli', value: account.parent || 'Belirtilmedi' }]),
           { label: 'Hesap Durumu', value: account.status === 'overdue' ? 'Gecikmiş bakiye takibi' : account.status === 'paid' ? 'Hesap kapanmış' : 'Aktif hesap' },
         ],
       },
@@ -417,12 +458,12 @@ export default function StudentAccounts() {
       {
         title: 'Tahsilat Tavsiyesi',
         rows: [
-          { label: 'Önerilen Sonraki Aksiyon', value: account.totalFee - account.paid > 0 ? 'Tahsilat girişi yapılmalı' : 'Ek işlem gerekmiyor' },
-          { label: 'Açık Tutar', value: formatCurrency(Math.max(0, account.totalFee - account.paid)) },
+          { label: 'Önerilen Sonraki Aksiyon', value: account.remaining > 0 ? 'Tahsilat girişi yapılmalı' : 'Ek işlem gerekmiyor' },
+          { label: 'Açık Tutar', value: formatCurrency(account.remaining) },
         ],
       },
     ],
-  }), []);
+  }), [isDrivingSchool]);
 
   const applyCollectionToDashboard = useCallback((account, collection) => {
     setDashboard((prev) => {
@@ -434,8 +475,46 @@ export default function StudentAccounts() {
     });
   }, []);
 
+  // Sürücü kursunda kursiyer listesi bir kez çekilir; cari hesap satırını
+  // kursiyer profiline (profileId) bağlamak için gerekir.
+  useEffect(() => {
+    if (!isDrivingSchool) return;
+    let active = true;
+    Promise.all([
+      fetchDrivingCollectionList().catch(() => []),
+      fetchDrivingBranches().catch(() => []),
+    ]).then(([rows, branchList]) => {
+      if (!active) return;
+      setDrivingRows(rows || []);
+      setDrivingBranches(branchList || []);
+    });
+    return () => { active = false; };
+  }, [isDrivingSchool]);
+
+  const normalizeName = (value) => (value || '').trim().toLocaleLowerCase('tr-TR');
+
+  /// Cari hesap satırını sürücü kursiyerine bağlar: önce kullanıcı kimliği, yoksa ad.
+  const resolveDrivingRow = useCallback((account) => drivingRows.find((row) =>
+    (account.userId && row.studentUserId && row.studentUserId === account.userId)
+    || normalizeName(row.fullName) === normalizeName(account.name)), [drivingRows]);
+
   const handleCreateCollection = useCallback(async (account) => {
-    const remaining = Math.max(0, account.totalFee - account.paid);
+    // Sürücü kursu: taksit seçimli ortak tahsilat penceresi açılır.
+    if (isDrivingSchool) {
+      const row = resolveDrivingRow(account);
+      if (!row) {
+        toast({
+          title: 'Kursiyer bulunamadı',
+          description: `${account.name} sürücü kursu kayıtlarıyla eşleşmedi. Listeyi yenileyip tekrar deneyin.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      setCollectTarget(row);
+      return;
+    }
+
+    const remaining = Math.max(0, account.remaining);
     if (remaining <= 0) {
       toast({
         title: 'Tahsilat gerekmiyor',
@@ -448,6 +527,8 @@ export default function StudentAccounts() {
       setActiveCollectionId(account.id);
       const payload = await createCollection({
         name: account.name,
+        studentUserId: account.userId,
+        className: account.className,
         amount: `₺${remaining.toLocaleString('tr-TR')}`,
         method: 'Kart',
         note: `${account.className} cari hesap tahsilatı`,
@@ -466,7 +547,7 @@ export default function StudentAccounts() {
     } finally {
       setActiveCollectionId(null);
     }
-  }, [applyCollectionToDashboard, toast]);
+  }, [applyCollectionToDashboard, toast, isDrivingSchool, resolveDrivingRow]);
 
   const handleExportStatement = useCallback((account) => {
     const html = buildStatementHtml(account);
@@ -486,7 +567,7 @@ export default function StudentAccounts() {
   }, [buildStatementHtml, toast]);
 
   const handleBulkCollection = async () => {
-    const debtors = filteredAccounts.filter((account) => account.totalFee - account.paid > 0);
+    const debtors = filteredAccounts.filter((account) => account.remaining > 0);
     if (debtors.length === 0) {
       toast({
         title: 'Toplu tahsilat gerekmiyor',
@@ -498,9 +579,11 @@ export default function StudentAccounts() {
     try {
       setBulkProcessing(true);
       for (const account of debtors) {
-        const remaining = Math.max(0, account.totalFee - account.paid);
+        const remaining = Math.max(0, account.remaining);
         const created = await createCollection({
           name: account.name,
+          studentUserId: account.userId,
+          className: account.className,
           amount: `₺${remaining.toLocaleString('tr-TR')}`,
           method: 'Toplu Tahsilat',
           note: `${account.className} toplu tahsilat`,
@@ -684,7 +767,9 @@ export default function StudentAccounts() {
                       </Avatar>
                       <div>
                         <p className="font-medium">{account.name}</p>
-                        <p className="text-sm text-muted-foreground">Veli: {account.parent}</p>
+                        {!isDrivingSchool && (
+                          <p className="text-sm text-muted-foreground">Veli: {account.parent}</p>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -755,6 +840,21 @@ export default function StudentAccounts() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Sürücü kursu tahsilatı: "Ödeme Al" ile aynı pencere — taksit planı,
+          taksit seçimi, ödenmiş taksitlerin pasifliği ve makbuz burada. */}
+      {collectTarget && (
+        <DrivingCollectModal
+          row={collectTarget}
+          branches={drivingBranches}
+          onClose={() => setCollectTarget(null)}
+          onDone={() => {
+            setCollectTarget(null);
+            loadData();
+            toast({ title: 'Tahsilat kaydedildi', description: 'Cari hesap güncellendi.' });
+          }}
+        />
+      )}
     </motion.div>
   );
 }

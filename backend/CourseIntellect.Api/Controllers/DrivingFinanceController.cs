@@ -422,7 +422,7 @@ public sealed class DrivingFinanceController(
             // yok say, tenant'ı elle uygula — yoksa yalnız aktörün şubesi görünürdü.
             .Join(dbContext.Students.IgnoreQueryFilters().Where(s => s.TenantId == tenantId),
                 p => p.StudentId, s => s.Id,
-                (p, s) => new { p.Id, p.StudentNumber, s.FullName, p.Status, p.StudentGroupId, p.EnrollmentContractId, RegBranchId = s.BranchId, p.RegisteredByUserId })
+                (p, s) => new { p.Id, p.StudentNumber, s.FullName, s.UserId, p.Status, p.StudentGroupId, p.EnrollmentContractId, RegBranchId = s.BranchId, p.RegisteredByUserId })
             .ToListAsync(ct);
 
         var groups = await dbContext.DrivingStudentGroups.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name, ct);
@@ -465,6 +465,9 @@ public sealed class DrivingFinanceController(
                 profileId = x.Id,
                 x.StudentNumber,
                 x.FullName,
+                // Okul tarafındaki cari hesap ekranı kursiyeri kullanıcı kimliğiyle
+                // eşleştirip aynı tahsilat modalını açabilsin diye döner.
+                studentUserId = x.UserId,
                 status = x.Status.ToString(),
                 priority,
                 groupId = x.StudentGroupId,

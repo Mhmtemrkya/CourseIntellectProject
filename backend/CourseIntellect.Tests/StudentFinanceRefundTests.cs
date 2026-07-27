@@ -1,6 +1,8 @@
 using CourseIntellect.Application.DTOs.Admin;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
+using CourseIntellect.Domain.Entities;
+using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -97,6 +99,89 @@ public sealed class StudentFinanceRefundTests : IDisposable
         Assert.Equal("Kısmi", updated.DownPaymentStatus);
         Assert.False(updated.DownPaymentPaid);
         Assert.Equal(contract.Id, updated.Id);
+    }
+
+    [Fact]
+    public async Task SameNamedStudents_AreSeparatedByStudentUserId()
+    {
+        var service = Service;
+        var firstUserId = Guid.NewGuid();
+        var secondUserId = Guid.NewGuid();
+        await service.CreateEnrollmentAsync(new CreateEnrollmentRequest(
+            firstUserId, "Ada Yılmaz", "B", "2026", 1_000m, 0, null, 0, 1,
+            DateTime.UtcNow.AddMonths(1), "TRY", null), null);
+        await service.CreateEnrollmentAsync(new CreateEnrollmentRequest(
+            secondUserId, "Ada Yılmaz", "B", "2026", 2_000m, 0, null, 0, 1,
+            DateTime.UtcNow.AddMonths(1), "TRY", null), null);
+
+        await service.RecordPaymentAsync(new RecordPaymentRequest(
+            secondUserId, "Ada Yılmaz", null, null, 500m, "Nakit", null), null);
+
+        var summaries = await service.GetAllSummariesAsync(null);
+        Assert.Equal(2, summaries.Count);
+        Assert.Equal(0m, summaries.Single(x => x.StudentUserId == firstUserId).PaidTotal);
+        Assert.Equal(500m, summaries.Single(x => x.StudentUserId == secondUserId).PaidTotal);
+        Assert.Equal(1_500m, summaries.Single(x => x.StudentUserId == secondUserId).TotalPayable);
+    }
+
+    [Fact]
+    public async Task PartialDownPayment_TotalPayableUsesOnlyUnpaidPart()
+    {
+        var service = Service;
+        var contract = await service.CreateEnrollmentAsync(new CreateEnrollmentRequest(
+            Guid.NewGuid(), "Deniz Kaya", "B", "2026", 1_000m, 0, null, 400m, 1,
+            DateTime.UtcNow.AddMonths(1), "TRY", null, "Nakit", true), null);
+        var downPayment = await db.Context.FinancePayments.SingleAsync(x => x.EnrollmentContractId == contract.Id);
+
+        await service.RefundPaymentAsync(new RefundRequest(
+            downPayment.Id, 100m, "PaymentReversal", "Peşinat düzeltmesi", "Nakit", null), null);
+
+        var account = await service.GetAccountAsync(contract.StudentUserId, null);
+        Assert.Equal(700m, account.CourseRemaining);
+        Assert.Equal(700m, account.TotalPayable);
+        Assert.Equal("Deniz Kaya", account.StudentName);
+    }
+
+    [Fact]
+    public async Task FullCollection_ClosesStandaloneDrivingExamFee()
+    {
+        var service = Service;
+        var user = new AppUser
+        {
+            FullName = "Ece Demir",
+            Username = $"ece-{Guid.NewGuid():N}",
+            PasswordHash = "test",
+            PrimaryRole = UserRole.Student,
+        };
+        var student = new StudentProfile { UserId = user.Id, FullName = user.FullName, ClassName = "B" };
+        var package = new DrivingPackage { Name = "B Paketi", LicenseClass = "B", Price = 1_000m };
+        db.Context.AddRange(user, student, package);
+        await db.Context.SaveChangesAsync();
+
+        var contract = await service.CreateEnrollmentAsync(new CreateEnrollmentRequest(
+            user.Id, user.FullName, "B", "2026", 1_000m, 0, null, 0, 1,
+            DateTime.UtcNow.AddMonths(1), "TRY", null), null);
+        var profile = new StudentDrivingProfile
+        {
+            StudentId = student.Id,
+            PackageId = package.Id,
+            EnrollmentContractId = contract.Id,
+            DrivingExamFee = 300m,
+            DrivingExamFeePaid = false,
+        };
+        db.Context.StudentDrivingProfiles.Add(profile);
+        await db.Context.SaveChangesAsync();
+
+        var before = await service.GetAccountAsync(user.Id, null);
+        Assert.Equal(1_300m, before.TotalPayable);
+        Assert.Equal(300m, before.StandaloneExamFeeRemaining);
+
+        await service.RecordPaymentAsync(new RecordPaymentRequest(
+            user.Id, user.FullName, contract.Id, null, 1_300m, "Nakit", null), null);
+
+        var after = await service.GetAccountAsync(user.Id, null);
+        Assert.Equal(0m, after.TotalPayable);
+        Assert.True((await db.Context.StudentDrivingProfiles.SingleAsync()).DrivingExamFeePaid);
     }
 
     private static Task<EnrollmentContractDto> CreateContractAsync(

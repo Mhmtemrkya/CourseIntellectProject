@@ -123,7 +123,10 @@ public sealed record StudentFinanceAccountDto(
     bool DrivingExamFeePaid = false,
     int DrivingExamAttemptNo = 1,
     DateTime? DrivingExamDate = null,
-    decimal CourseRemaining = 0);
+    decimal CourseRemaining = 0,
+    decimal AdditionalChargeRemaining = 0,
+    decimal StandaloneExamFeeRemaining = 0,
+    decimal TotalPayable = 0);
 
 public sealed record StudentFinanceSummaryDto(
     Guid? StudentUserId,
@@ -146,7 +149,10 @@ public sealed record StudentFinanceSummaryDto(
     bool DrivingExamFeePaid = false,
     int DrivingExamAttemptNo = 1,
     DateTime? DrivingExamDate = null,
-    decimal CourseRemaining = 0);
+    decimal CourseRemaining = 0,
+    decimal AdditionalChargeRemaining = 0,
+    decimal StandaloneExamFeeRemaining = 0,
+    decimal TotalPayable = 0);
 
 // ---- Faz 2: iade, hatırlatma, dashboard ----
 public sealed record RefundRequest(
