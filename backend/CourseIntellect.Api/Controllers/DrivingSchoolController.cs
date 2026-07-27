@@ -430,7 +430,10 @@ public sealed class DrivingSchoolController(
     }
 
     [HttpGet("vehicles")]
-    [RequireDrivingPermission(DrivingPermissions.VehicleView)]
+    // Randevu oluşturabilen kullanıcı araç seçimini yapabilmelidir; ayrıca
+    // VehicleView vermek zorunda bırakmak bazı şube hesaplarında boş listeye
+    // neden oluyordu. Değiştirme/silme uçlarının yetkileri ayrı kalır.
+    [RequireDrivingPermission(DrivingPermissions.VehicleView, DrivingPermissions.AppointmentCreate)]
     public async Task<IActionResult> GetVehicles(CancellationToken ct)
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
@@ -571,7 +574,9 @@ public sealed class DrivingSchoolController(
     }
 
     [HttpGet("instructors")]
-    [RequireDrivingPermission(DrivingPermissions.InstructorView)]
+    // Randevu oluşturma formundaki zorunlu öğretmen seçimi için AppointmentCreate
+    // tek başına yeterlidir. Profil yönetimi uçları Instructor* izinlerinde kalır.
+    [RequireDrivingPermission(DrivingPermissions.InstructorView, DrivingPermissions.AppointmentCreate)]
     public async Task<IActionResult> GetInstructors(CancellationToken ct)
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
@@ -719,7 +724,9 @@ public sealed class DrivingSchoolController(
     }
 
     [HttpGet("students")]
-    [RequireDrivingPermission(DrivingPermissions.StudentView)]
+    // Randevu oluşturma ekranı kursiyer seçmeden çalışamaz. Bu okuma izni yalnız
+    // listeyi açar; kursiyer güncelleme ve finans uçları kendi izinlerinde kalır.
+    [RequireDrivingPermission(DrivingPermissions.StudentView, DrivingPermissions.AppointmentCreate)]
     public async Task<IActionResult> GetStudents([FromQuery] Guid? groupId, [FromQuery] bool? ungrouped, CancellationToken ct = default)
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();

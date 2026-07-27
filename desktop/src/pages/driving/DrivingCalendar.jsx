@@ -110,8 +110,8 @@ export default function DrivingCalendar({ embedded = false }) {
           transmissionType: filters.transmissionType || undefined,
           status: filters.status || undefined,
         }),
-        can(DRIVING.instructorView) ? fetchDrivingInstructors() : Promise.resolve([]),
-        can(DRIVING.vehicleView) ? fetchDrivingVehicles() : Promise.resolve([]),
+        (can(DRIVING.instructorView) || can(DRIVING.appointmentCreate)) ? fetchDrivingInstructors() : Promise.resolve([]),
+        (can(DRIVING.vehicleView) || can(DRIVING.appointmentCreate)) ? fetchDrivingVehicles() : Promise.resolve([]),
         can(DRIVING.appointmentCreate) ? fetchDrivingStudents().catch(() => []) : Promise.resolve([]),
       ]);
       setAppointments(rows || []);

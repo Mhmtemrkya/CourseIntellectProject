@@ -195,7 +195,7 @@ public sealed class DrivingAppointmentRequestsController(
     }
 
     [HttpGet("mobile/planning-reference")]
-    [RequireDrivingPermission(DrivingPermissions.AppointmentView)]
+    [RequireDrivingPermission(DrivingPermissions.AppointmentView, DrivingPermissions.AppointmentCreate)]
     public async Task<IActionResult> PlanningReference(CancellationToken ct)
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
