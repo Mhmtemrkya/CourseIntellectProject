@@ -69,6 +69,22 @@ public static class DrivingStudentStatuses
         DrivingStudentStatus.PracticeOngoing,
         DrivingStudentStatus.ExamPending,
     };
+
+    // ── Veritabanı sorgularında kullanılacak dizi karşılıkları ────────────────
+    // EF Core, IReadOnlySet<T>.Contains çağrısını SQL'e ÇEVİREMEZ; yukarıdaki
+    // kümeler bir Where() içinde kullanılırsa sorgu çalışma anında patlar
+    // (Dönem Açma Sihirbazı canlıda bu yüzden 500 veriyordu). Sorgularda daima
+    // aşağıdaki dizi karşılıklarını kullanın; bellek içi kontroller için kümeler
+    // uygundur. Tutarlılıkları DrivingStatusQueryTranslationTests ile kilitlidir.
+
+    /// <summary><see cref="Open"/> kümesinin sorgu içinde kullanılabilir dizi karşılığı.</summary>
+    public static readonly DrivingStudentStatus[] OpenList = [.. Open];
+
+    /// <summary><see cref="TheoryEnrollable"/> kümesinin sorgu içinde kullanılabilir dizi karşılığı.</summary>
+    public static readonly DrivingStudentStatus[] TheoryEnrollableList = [.. TheoryEnrollable];
+
+    /// <summary><see cref="Schedulable"/> kümesinin sorgu içinde kullanılabilir dizi karşılığı.</summary>
+    public static readonly DrivingStudentStatus[] SchedulableList = [.. Schedulable];
 }
 
 /// <summary>MEB'in sürücü kursu dosyasında aradığı belge türleri.</summary>

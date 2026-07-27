@@ -32,12 +32,14 @@ const KPI_META = [
   ['activeInstructors', 'Aktif Eğitmen', Users, 'emerald', 'Derse çıkabilen eğitmen', '/driving/assignments'],
   ['activeVehicles', 'Aktif Araç', CarFront, 'cyan', 'Kullanıma hazır filo', '/driving/vehicles'],
   ['vehiclesInMaintenance', 'Bakımdaki Araç', Wrench, 'rose', 'Servisteki araç', '/driving/fleet-compliance'],
-  ['missingDocuments', 'Eksik Evrak', AlertTriangle, 'amber', 'Dosyası tamamlanmamış', '/driving/mebbis/documents'],
-  ['expiringDocuments', 'Süresi Dolan Evrak', ShieldCheck, 'amber', 'Yakında geçersiz olacak', '/driving/mebbis/documents'],
+  ['studentsMissingDocuments', 'Eksik Evrak', AlertTriangle, 'amber', 'Dosyası tamamlanmamış kursiyer', '/driving/mebbis/documents'],
+  ['missingDocuments', 'Araç Evrakı Eksik', AlertTriangle, 'rose', 'Muayene/sigorta yok veya süresi dolmuş', '/driving/fleet-compliance'],
+  ['expiringDocuments', 'Araç Evrakı Doluyor', ShieldCheck, 'amber', '30 gün içinde geçersiz olacak', '/driving/fleet-compliance'],
   ['upcomingExams', 'Yaklaşan Sınav', CalendarClock, 'blue', 'Planlanmış sınav', '/driving/education'],
   ['termCriticalAlerts', 'Kritik Dönem Uyarısı', AlertTriangle, 'rose', 'Hemen müdahale edilmeli', '/driving/mebbis/term-opening'],
   ['mebbisReadyNotEntered', 'MEBBİS Girişi Bekleyen', ShieldCheck, 'amber', 'Hazır fakat girilmemiş', '/driving/mebbis'],
   ['todayCollections', 'Tahsilat', Banknote, 'emerald', null, '/driving/collection'],
+  ['pendingInstallmentAmount', 'Bekleyen Taksitler', CalendarClock, 'amber', null, '/finance/installments'],
   ['todayExpenses', 'Gider', TrendingDown, 'rose', null, '/finance/expenses'],
   ['todayNet', 'Net (Tahsilat − Gider)', Wallet, 'brand', null, '/finance/expenses'],
 ];
@@ -45,7 +47,7 @@ const KPI_META = [
 // Aralıkla değişen KPI'lar — açıklamalarına seçili dönem yazılır.
 const RANGE_KPIS = new Set(['todayDrivingLessons', 'todayTheoryLessons', 'todayCollections', 'todayExpenses', 'todayNet']);
 // Para birimi olarak biçimlendirilecek KPI'lar.
-const CURRENCY_KPIS = new Set(['todayCollections', 'todayExpenses', 'todayNet']);
+const CURRENCY_KPIS = new Set(['todayCollections', 'pendingInstallmentAmount', 'todayExpenses', 'todayNet']);
 
 const PERIODS = [
   ['day', 'Günlük'],
@@ -202,7 +204,9 @@ export default function DrivingSchoolDashboard() {
               const value = CURRENCY_KPIS.has(key)
                 ? `₺${Number(raw).toLocaleString('tr-TR')}`
                 : raw;
-              const cardCaption = RANGE_KPIS.has(key) ? PERIOD_CAPTION[period] : caption;
+              const cardCaption = key === 'pendingInstallmentAmount'
+                ? `${Number(data.kpis?.pendingInstallments || 0).toLocaleString('tr-TR')} ödenmemiş taksit`
+                : RANGE_KPIS.has(key) ? PERIOD_CAPTION[period] : caption;
               return (
                 <DrivingStatCard
                   key={key}

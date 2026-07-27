@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarDays, ClipboardCheck, Pencil, Search } from 'lucide-react';
+import { Banknote, CalendarDays, CheckCircle2, ClipboardCheck, Loader2, Lock, Pencil, Search } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '../../components/ui/input';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { useToast } from '../../hooks/use-toast';
-import { fetchDrivingExamRights, saveDrivingExamRight } from '../../lib/api/modules';
+import { fetchDrivingExamRights, saveDrivingExamRight, updateDrivingExamFees } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
 import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
@@ -36,8 +36,12 @@ export default function DrivingExamRights() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [form, setForm] = useState(null);
+  // Sınav ücretleri paket dışıdır; taksite girmez, ödeme durumu buradan güncellenir.
+  const [feeForm, setFeeForm] = useState(null);
+  const [savingFee, setSavingFee] = useState(false);
 
   const canEnter = can(DRIVING.examResultEnter);
+  const canEditFees = can(DRIVING.financeCollect);
 
   const load = useCallback(async (refresh = false) => {
     refresh ? setRefreshing(true) : setLoading(true);
@@ -113,6 +117,44 @@ export default function DrivingExamRights() {
     }
   };
 
+  const openFees = (student) => setFeeForm({
+    profileId: student.profileId,
+    fullName: student.fullName,
+    theoryExamFee: student.theoryExamFee ?? 0,
+    theoryExamFeePaid: Boolean(student.theoryExamFeePaid),
+    drivingExamFee: student.drivingExamFee ?? 0,
+    drivingExamFeePaid: Boolean(student.drivingExamFeePaid),
+    drivingExamDate: student.drivingExamDate?.slice(0, 10) || '',
+  });
+
+  const submitFees = async (event) => {
+    event.preventDefault();
+    const theory = Number(feeForm.theoryExamFee) || 0;
+    const driving = Number(feeForm.drivingExamFee) || 0;
+    if (theory < 0 || driving < 0) {
+      toast({ title: 'Ücret negatif olamaz.', variant: 'destructive' });
+      return;
+    }
+    setSavingFee(true);
+    try {
+      await updateDrivingExamFees(feeForm.profileId, {
+        theoryExamFee: theory,
+        drivingExamFee: driving,
+        // Ücret girilmemişse "ödendi" işareti anlamsız olur; sıfırlanır.
+        theoryExamFeePaid: theory > 0 ? Boolean(feeForm.theoryExamFeePaid) : false,
+        drivingExamFeePaid: driving > 0 ? Boolean(feeForm.drivingExamFeePaid) : false,
+        drivingExamDate: feeForm.drivingExamDate ? new Date(`${feeForm.drivingExamDate}T12:00:00`).toISOString() : null,
+      });
+      toast({ title: 'Sınav ücretleri güncellendi' });
+      setFeeForm(null);
+      await load(true);
+    } catch (feeError) {
+      toast({ title: 'Sınav ücretleri kaydedilemedi', description: feeError.message, variant: 'destructive' });
+    } finally {
+      setSavingFee(false);
+    }
+  };
+
   if (permissionsLoading || loading) return <DrivingLoading />;
 
   const attempts = data.attempts || [];
@@ -164,19 +206,64 @@ export default function DrivingExamRights() {
                   ['TheoryEExam', 'Teorik', student.theory],
                   ['DrivingPractice', 'Direksiyon', student.practice],
                 ].map(([examType, label, rights]) => (
-                  <div key={examType} className="rounded-xl border bg-muted/25 p-3">
+                  <div key={examType} className={`rounded-xl border p-3 ${rights?.passed ? 'border-emerald-500/30 bg-emerald-500/[0.06] opacity-80' : 'bg-muted/25'}`}>
                     <div className="flex items-center justify-between gap-2">
                       <b>{label}</b>
-                      <Badge className={rights?.remaining === 0 ? 'bg-red-600 text-white' : ''}>{rights?.used || 0}/{rights?.max || 4} hak</Badge>
+                      {rights?.passed
+                        ? <Badge className="bg-emerald-600 text-white"><CheckCircle2 className="mr-1 h-3 w-3" />Geçti</Badge>
+                        : <Badge className={rights?.remaining === 0 ? 'bg-red-600 text-white' : ''}>{rights?.used || 0}/{rights?.max || 4} hak</Badge>}
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                       <span className="text-muted-foreground">Kalan</span><b className="text-right">{rights?.remaining ?? 4}</b>
                       <span className="text-muted-foreground">Son puan</span><b className="text-right">{rights?.lastScore ?? '—'}</b>
                       <span className="text-muted-foreground">Son tarih</span><b className="text-right">{dateLabel(rights?.lastExamDateUtc)}</b>
                     </div>
-                    {canEnter && <Button className="mt-3 w-full" size="sm" onClick={() => openNew(student, examType)} disabled={(rights?.used || 0) >= (rights?.max || 4)}>Sonuç Gir</Button>}
+                    {canEnter && (
+                      <Button
+                        className="mt-3 w-full"
+                        size="sm"
+                        onClick={() => openNew(student, examType)}
+                        disabled={rights?.passed || (rights?.used || 0) >= (rights?.max || 4)}
+                        title={rights?.passed ? 'Bu sınav geçildiği için yeni sonuç girişi kapalıdır.' : undefined}
+                      >
+                        {rights?.passed ? <><Lock className="mr-1.5 h-3.5 w-3.5" />Sınav Geçildi</> : 'Sonuç Gir'}
+                      </Button>
+                    )}
                   </div>
                 ))}
+
+                {/* Sınav ücreti paket dışıdır: taksite eklenmez, ayrı tahsil edilir. */}
+                <div className="rounded-xl border border-dashed p-3 sm:col-span-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-sm font-bold">
+                      <Banknote className="h-4 w-4 text-brand-primary" />Sınav ücretleri
+                    </span>
+                    {canEditFees && (
+                      <Button size="sm" variant="outline" onClick={() => openFees(student)}>
+                        <Pencil className="mr-1 h-3.5 w-3.5" />Düzenle
+                      </Button>
+                    )}
+                  </div>
+                  <div className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">
+                    {[
+                      ['Teorik', student.theoryExamFee, student.theoryExamFeePaid],
+                      ['Direksiyon', student.drivingExamFee, student.drivingExamFeePaid],
+                    ].map(([label, fee, paid]) => (
+                      <div key={label} className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2.5 py-1.5">
+                        <span className="text-muted-foreground">{label}</span>
+                        {Number(fee) > 0 ? (
+                          <span className="flex items-center gap-1.5">
+                            <b>₺{Number(fee).toLocaleString('tr-TR')}</b>
+                            <Badge className={paid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
+                              {paid ? 'Ödendi' : 'Bekliyor'}
+                            </Badge>
+                          </span>
+                        ) : <span className="text-xs text-muted-foreground">Ücret girilmedi</span>}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">Kurs ücretine ve taksitlere dâhil değildir.</p>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -197,6 +284,9 @@ export default function DrivingExamRights() {
                 </div></div>
                 <div className="flex items-center gap-2">
                   <Badge className={attempt.status === 'Passed' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}>{attempt.score ?? '—'} puan</Badge>
+                  <Badge variant="outline" className={attempt.status === 'Passed' ? 'border-emerald-500/40 text-emerald-700' : 'border-red-500/40 text-red-700'}>
+                    {attempt.status === 'Passed' ? 'Geçti' : 'Kaldı'}
+                  </Badge>
                   {canEnter && <Button size="sm" variant="outline" onClick={() => openEdit(attempt)}><Pencil className="mr-1 h-3.5 w-3.5" />Düzenle</Button>}
                 </div>
               </div>
@@ -244,6 +334,72 @@ export default function DrivingExamRights() {
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setForm(null)}>Vazgeç</Button>
                 <Button disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(feeForm)} onOpenChange={(open) => !open && setFeeForm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sınav Ücretleri — {feeForm?.fullName}</DialogTitle>
+            <DialogDescription>
+              Bu ücretler kurs paketine ve taksitlere dâhil değildir; ayrı tahsil edilir.
+              Ödeme durumunu buradan güncelleyebilirsiniz.
+            </DialogDescription>
+          </DialogHeader>
+          {feeForm && (
+            <form onSubmit={submitFees} className="space-y-4">
+              {[
+                ['Teorik (e-sınav) ücreti', 'theoryExamFee', 'theoryExamFeePaid'],
+                ['Direksiyon sınav ücreti', 'drivingExamFee', 'drivingExamFeePaid'],
+              ].map(([label, feeKey, paidKey]) => (
+                <div key={feeKey} className="rounded-xl border p-3">
+                  <label className="text-xs font-bold text-muted-foreground">{label}</label>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Input
+                      type="number" min="0" step="1" className="w-40"
+                      value={feeForm[feeKey]}
+                      onChange={(event) => setFeeForm({ ...feeForm, [feeKey]: event.target.value })}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={Number(feeForm[feeKey]) <= 0}
+                        onClick={() => setFeeForm({ ...feeForm, [paidKey]: true })}
+                        className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition disabled:opacity-40 ${feeForm[paidKey] ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600' : 'border-foreground/15 text-muted-foreground hover:bg-foreground/5'}`}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />Ödendi
+                      </button>
+                      <button
+                        type="button"
+                        disabled={Number(feeForm[feeKey]) <= 0}
+                        onClick={() => setFeeForm({ ...feeForm, [paidKey]: false })}
+                        className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition disabled:opacity-40 ${!feeForm[paidKey] ? 'border-amber-500 bg-amber-500/10 text-amber-600' : 'border-foreground/15 text-muted-foreground hover:bg-foreground/5'}`}
+                      >
+                        Bekliyor
+                      </button>
+                    </div>
+                  </div>
+                  {Number(feeForm[feeKey]) <= 0 && (
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">Ücret girilmeden ödeme durumu işaretlenemez.</p>
+                  )}
+                </div>
+              ))}
+              <div>
+                <label className="text-xs font-bold text-muted-foreground">Direksiyon sınav tarihi (opsiyonel)</label>
+                <Input
+                  type="date" className="mt-1"
+                  value={feeForm.drivingExamDate}
+                  onChange={(event) => setFeeForm({ ...feeForm, drivingExamDate: event.target.value })}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => setFeeForm(null)} disabled={savingFee}>Vazgeç</Button>
+                <Button type="submit" disabled={savingFee}>
+                  {savingFee ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Kaydediliyor…</> : 'Kaydet'}
+                </Button>
               </DialogFooter>
             </form>
           )}

@@ -4,6 +4,7 @@ using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Domain.Permissions;
+using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -343,9 +344,20 @@ public sealed class DrivingFinanceController(
         var rawPayments = await dbContext.FinancePayments.IgnoreQueryFilters().AsNoTracking()
             .Where(x => x.EnrollmentContractId == contractId && x.TenantId == tenantId)
             .OrderByDescending(x => x.PaidAtUtc)
-            .Select(x => new { x.Id, x.Amount, x.Method, x.ReceiptNo, x.Note, x.PaidAtUtc, x.BranchId, x.CreatedByUserId })
+            .Select(x => new
+            {
+                x.Id, x.Amount, x.Method, x.ReceiptNo, x.Note, x.PaidAtUtc, x.BranchId, x.CreatedByUserId,
+                x.EntryType, x.OriginalPaymentId, x.RefundStatus,
+            })
             .ToListAsync(ct);
-        var paidTotal = rawPayments.Sum(x => x.Amount);
+        var paidTotal = FinanceTotals.NetCollected(rawPayments.Select(x => x.Amount));
+
+        // Her makbuz için kalan iade edilebilir tutar: "Ödeme Al"dan alınan tahsilatlar
+        // İadeler ekranında görünsün diye gerekir (yalnız ücret kalemleri görünüyordu).
+        var refundedByPayment = rawPayments
+            .Where(x => x.OriginalPaymentId != null && x.Amount < 0 && x.RefundStatus != "Failed")
+            .GroupBy(x => x.OriginalPaymentId!.Value)
+            .ToDictionary(g => g.Key, g => g.Sum(x => -x.Amount));
 
         var payBranchIds = rawPayments.Where(x => x.BranchId != null).Select(x => x.BranchId!.Value).Distinct().ToList();
         var payCollectorIds = rawPayments.Where(x => x.CreatedByUserId != null).Select(x => x.CreatedByUserId!.Value).Distinct().ToList();
@@ -354,6 +366,11 @@ public sealed class DrivingFinanceController(
         var recentPayments = rawPayments.Select(x => new
         {
             x.Id, x.Amount, x.Method, x.ReceiptNo, x.Note, x.PaidAtUtc,
+            entryType = x.Amount < 0 ? "Refund" : string.IsNullOrWhiteSpace(x.EntryType) ? "Collection" : x.EntryType,
+            refundedAmount = refundedByPayment.GetValueOrDefault(x.Id),
+            refundableAmount = x.Amount > 0
+                ? Math.Max(0, x.Amount - refundedByPayment.GetValueOrDefault(x.Id))
+                : 0m,
             branchName = x.BranchId is Guid b && payBranchNames.TryGetValue(b, out var bn) ? bn : null,
             collectedByName = x.CreatedByUserId is Guid c && payCollectorNames.TryGetValue(c, out var cn) ? cn : null,
         }).ToList();
@@ -375,7 +392,7 @@ public sealed class DrivingFinanceController(
             // Peşinat tanımlı ama tahsil edilmemişse modalda ayrıca tahsil edilebilir.
             downPaymentPending = contract.DownPayment > 0 && !contract.DownPaymentPaid,
             paidTotal,
-            remaining = Math.Max(0, contract.NetAmount - paidTotal),
+            remaining = FinanceTotals.Outstanding(contract.NetAmount, paidTotal),
             overdueTotal = overdueRows.Sum(x => x.remaining),
             overdueCount = overdueRows.Count,
             installments,
@@ -430,6 +447,19 @@ public sealed class DrivingFinanceController(
                 ? l.Where(i => i.Amount - i.PaidAmount > 0).ToList()
                 : [];
             DateTime? nextDue = unpaid.Count > 0 ? unpaid.Min(i => i.DueDateUtc) : null;
+            // Ödenmemiş taksitlerin ay bazlı dökümü: "Ödeme Al" ekranı ay filtresini
+            // ve o ayın vade sıralamasını bunun üzerinden kurar (ek istek gerekmez).
+            var unpaidByMonth = unpaid
+                .GroupBy(i => new { i.DueDateUtc.Year, i.DueDateUtc.Month })
+                .Select(g => new
+                {
+                    month = $"{g.Key.Year:D4}-{g.Key.Month:D2}",
+                    dueDateUtc = g.Min(i => i.DueDateUtc),
+                    amount = g.Sum(i => i.Amount - i.PaidAmount),
+                    count = g.Count(),
+                })
+                .OrderBy(x => x.dueDateUtc)
+                .ToList();
             return new
             {
                 profileId = x.Id,
@@ -445,6 +475,7 @@ public sealed class DrivingFinanceController(
                 hasContract = x.EnrollmentContractId != null,
                 remaining = unpaid.Sum(i => i.Amount - i.PaidAmount),
                 nextDueDateUtc = nextDue,
+                unpaidByMonth,
                 overdueAmount = unpaid.Where(i => i.DueDateUtc < now).Sum(i => i.Amount - i.PaidAmount),
                 overdueCount = unpaid.Count(i => i.DueDateUtc < now),
             };
@@ -609,7 +640,8 @@ public sealed class DrivingFinanceController(
             {
                 contractedNet = contracts.Sum(x => x.NetAmount),
                 totalDiscount = contracts.Sum(x => x.DiscountAmount),
-                collectedInPeriod = payments.Sum(x => x.Amount),
+                collectedInPeriod = FinanceTotals.NetCollected(payments.Select(x => x.Amount)),
+                grossCollectedInPeriod = FinanceTotals.Gross(payments.Select(x => x.Amount)),
                 refundedInPeriod = refunded,
                 outstanding = installments.Sum(x => x.Amount - x.PaidAmount),
                 overdueAmount = overdue.Sum(x => x.Amount - x.PaidAmount),
@@ -660,14 +692,14 @@ public sealed class DrivingFinanceController(
             .ToListAsync(ct);
 
         var now = DateTime.UtcNow;
-        var paid = payments.Sum(x => x.Amount);
+        var paid = FinanceTotals.NetCollected(payments.Select(x => x.Amount));
 
         return Ok(new
         {
             hasContract = true,
             netAmount = contract?.NetAmount ?? 0,
             paidTotal = paid,
-            remaining = (contract?.NetAmount ?? 0) - paid,
+            remaining = FinanceTotals.Outstanding(contract?.NetAmount ?? 0, paid),
             overdueCount = installments.Count(x => x.PaidAmount < x.Amount && x.DueDateUtc < now),
             nextInstallment = installments
                 .Where(x => x.PaidAmount < x.Amount)

@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { Separator } from '../../components/ui/separator';
 import { Switch } from '../../components/ui/switch';
 import { useApp } from '../../context/AppContext';
+import { resolveUserEmail } from '../../lib/auth';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { LegalDocumentsPanel } from '../../components/legal/LegalDocumentsPanel';
@@ -63,7 +64,7 @@ export default function ParentProfile() {
 
   const profile = useMemo(() => ({
     name: children[0]?.parentName || user?.name || 'Veli',
-    email: children[0]?.parentEmail || `${user?.username || 'veli'}@courseintellect.local`,
+    email: children[0]?.parentEmail || resolveUserEmail(user) || 'E-posta yok',
     phone: children[0]?.parentPhone || 'Telefon yok',
     address: 'Adres bilgisi sistemde tutulmuyor',
   }), [children, user]);

@@ -581,7 +581,12 @@ public sealed class DrivingMebbisController(
                 row.FullName, $"Kursiyer #{row.p.StudentNumber}", "Aday kaydı", DisplayPhoto(row.p.LivePhotoUrl, row.p.PhotoUrl), initial, missing,
                 row.p.StudentGroupId is Guid gid && groupMap.TryGetValue(gid, out var group) ? group.RegistrationDeadlineUtc : null, stateMap));
 
-            var pendingDocs = profileDocs.Where(x => x.Status == StudentDocumentStatus.PendingApproval).ToList();
+            // Yalnız Evrak Onay Kuyruğu'nda incelenebilen türler sayılır; aksi halde
+            // iş merkezinde görünüp hiçbir ekrandan onaylanamayan iş kalıyordu.
+            var pendingDocs = profileDocs
+                .Where(x => x.Status == StudentDocumentStatus.PendingApproval
+                    && DrivingStudentRules.ReviewableDocumentTypes.Contains(x.DocumentType))
+                .ToList();
             if (pendingDocs.Count > 0)
                 items.Add(ToDto(DrivingMebbisWorkType.DocumentApproval, row.p.Id, row.p.Id, row.p.StudentGroupId,
                     row.FullName, $"{pendingDocs.Count} evrak onay bekliyor", "Evrak onayı", DisplayPhoto(row.p.LivePhotoUrl, row.p.PhotoUrl), DrivingMebbisWorkStatus.Preparing,

@@ -256,19 +256,19 @@ export default function Salary() {
             <Wallet className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Maas Yonetimi</h1>
-            <p className="text-sm text-muted-foreground">Personel maas takibi ve odemeler</p>
+            <h1 className="text-2xl font-bold">Maaş Yönetimi</h1>
+            <p className="text-sm text-muted-foreground">Personel maaş takibi ve ödemeler</p>
           </div>
         </div>
         <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) resetForm(); }}>
           <DialogTrigger asChild>
             <FeatureGate module="salary" action="define">
-              <Button><Plus className="h-4 w-4 mr-1" /> Maas Kaydi Ekle</Button>
+              <Button><Plus className="h-4 w-4 mr-1" /> Maaş Kaydı Ekle</Button>
             </FeatureGate>
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Yeni Maas Kaydi</DialogTitle>
+              <DialogTitle>Yeni Maaş Kaydı</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -445,7 +445,7 @@ export default function Salary() {
             <DollarSign className="h-8 w-8 text-green-500" />
             <div>
               <p className="text-2xl font-bold">{formatCurrency(totalSalary)}</p>
-              <p className="text-xs text-muted-foreground">Toplam Maas</p>
+              <p className="text-xs text-muted-foreground">Toplam Maaş</p>
             </div>
           </CardContent>
         </Card>

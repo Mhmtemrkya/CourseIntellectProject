@@ -139,7 +139,8 @@ public sealed class AccountingService(
             Category = "Maaş",
             Status = "Bekliyor",
             SourceType = "salary",
-            SourceKey = salary.Id.ToString()
+            SourceKey = salary.Id.ToString(),
+            UpdatedAtUtc = DateTime.UtcNow,
         };
         await dbContext.AccountingApprovals.AddAsync(approval, cancellationToken);
         await AddNotificationAsync("Yeni bordro kaydı", $"{salary.Employee} için bordro yönetici onayına gönderildi.", cancellationToken);
@@ -245,6 +246,7 @@ public sealed class AccountingService(
         var approval = await dbContext.AccountingApprovals.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (approval is null) return null;
         approval.Status = request.Status.Trim();
+        approval.UpdatedAtUtc = DateTime.UtcNow;
 
         if (approval.SourceType == "invoice")
         {
@@ -381,7 +383,7 @@ public sealed class AccountingService(
         x.PaymentMethod,
         x.Note);
     private static AccountingSalaryDto ToDto(AccountingSalary x) => new(x.Id.ToString(), x.Employee, x.Role, x.Amount, x.PayDate, x.Status);
-    private static AccountingApprovalDto ToDto(AccountingApproval x) => new(x.Id.ToString(), x.Title, x.Reason, x.Category, x.Status, x.SourceType, x.SourceKey);
+    private static AccountingApprovalDto ToDto(AccountingApproval x) => new(x.Id.ToString(), x.Title, x.Reason, x.Category, x.Status, x.SourceType, x.SourceKey, x.UpdatedAtUtc);
     private static AccountingNotificationDto ToDto(AccountingNotification x) => new(x.Id.ToString(), x.Title, x.Message, x.Time, x.Unread);
     private static AccountingAuditLogDto ToDto(AccountingAuditLog x) => new(x.Id.ToString(), x.Title, x.Detail, x.Time);
 }

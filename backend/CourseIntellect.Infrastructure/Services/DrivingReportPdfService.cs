@@ -45,7 +45,8 @@ public sealed class DrivingReportPdfService : IDrivingReportPdfService
 
                     row.ConstantItem(150).AlignRight().Column(meta =>
                     {
-                        meta.Item().AlignRight().Text($"{Local(model.FromUtc):dd.MM.yyyy} – {Local(model.ToUtc):dd.MM.yyyy}").SemiBold();
+                        // ToUtc dışlayıcı üst sınırdır; kapsanan son gün yazdırılır.
+                        meta.Item().AlignRight().Text($"{Local(model.FromUtc):dd.MM.yyyy} – {Local(model.ToUtc.AddSeconds(-1)):dd.MM.yyyy}").SemiBold();
                         meta.Item().AlignRight().PaddingTop(2).Text($"Döküm: {generatedAt:dd.MM.yyyy HH:mm}").FontSize(8).FontColor("#8496A6");
                     });
                 });

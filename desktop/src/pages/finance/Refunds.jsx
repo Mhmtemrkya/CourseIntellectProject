@@ -12,6 +12,7 @@ import { useToast } from '../../hooks/use-toast';
 import {
   fetchDrivingCharges,
   fetchDrivingCollectionList,
+  fetchDrivingPaymentContext,
   fetchFinanceSummaries,
   fetchStudentFinanceAccount,
   refundDrivingCharge,
@@ -99,7 +100,17 @@ export default function Refunds() {
     setForm(EMPTY_FORM);
     try {
       if (isDrivingSchool) {
-        setDetail({ charges: await fetchDrivingCharges(studentId) || [], currency: 'TRY' });
+        // Ücret kalemleri + "Ödeme Al"dan alınan makbuzlar birlikte yüklenir:
+        // yalnız kalemler okunduğunda tahsil edilen para iade edilemiyordu.
+        const [charges, context] = await Promise.all([
+          fetchDrivingCharges(studentId).catch(() => []),
+          fetchDrivingPaymentContext(studentId).catch(() => null),
+        ]);
+        setDetail({
+          charges: charges || [],
+          payments: context?.recentPayments || [],
+          currency: 'TRY',
+        });
       } else {
         const student = students.find((item) => item.id === String(studentId));
         setDetail(await fetchStudentFinanceAccount({
@@ -130,25 +141,38 @@ export default function Refunds() {
       `${item.name || ''} ${item.secondary || ''}`.toLocaleLowerCase('tr-TR').includes(needle));
   }, [search, students]);
 
-  const records = isDrivingSchool ? detail?.charges || [] : detail?.payments || [];
-  const refundable = records.filter((item) => (
-    isDrivingSchool
-      ? !item.refundedAtUtc && Number(item.netAmount) > 0
-      : item.entryType !== 'Refund' && Number(item.amount) > 0 && Number(item.refundableAmount) > 0
-  ));
-  const history = records.filter((item) => (
-    isDrivingSchool ? !!item.refundedAtUtc : item.entryType === 'Refund' || Number(item.amount) < 0
-  ));
+  // Kayıtlar iki türlü olabilir: sürücü kursu ücret kalemi ("charge") veya
+  // gerçek tahsilat makbuzu ("payment"). İade akışı türe göre ayrışır.
+  const records = useMemo(() => {
+    const payments = (detail?.payments || []).map((item) => ({ ...item, kind: 'payment' }));
+    if (!isDrivingSchool) return payments;
+    const charges = (detail?.charges || []).map((item) => ({ ...item, kind: 'charge' }));
+    return [...charges, ...payments];
+  }, [detail, isDrivingSchool]);
+
+  const isCharge = (item) => item?.kind === 'charge';
+  const recordRefundable = (item) => (isCharge(item)
+    ? (item.refundedAtUtc ? 0 : Number(item.netAmount) || 0)
+    : Number(item.refundableAmount) || 0);
+  const recordLabel = (item) => (isCharge(item)
+    ? CHARGE_LABELS[item.chargeType] || item.chargeType
+    : paymentLabel(item));
+
+  const refundable = records.filter((item) => (isCharge(item)
+    ? recordRefundable(item) > 0
+    : item.entryType !== 'Refund' && Number(item.amount) > 0 && recordRefundable(item) > 0));
+  const history = records.filter((item) => (isCharge(item)
+    ? !!item.refundedAtUtc
+    : item.entryType === 'Refund' || Number(item.amount) < 0));
   const currency = detail?.currency || 'TRY';
   const selectedStudent = students.find((item) => item.id === String(selectedId));
-  const refundableTotal = refundable.reduce(
-    (sum, item) => sum + Number(isDrivingSchool ? item.netAmount : item.refundableAmount || 0), 0,
-  );
+  const refundableTotal = refundable.reduce((sum, item) => sum + recordRefundable(item), 0);
   const refundedTotal = history.reduce(
-    (sum, item) => sum + Math.abs(Number(isDrivingSchool ? item.refundedAmount : item.amount || 0)), 0,
+    (sum, item) => sum + Math.abs(Number(isCharge(item) ? item.refundedAmount : item.amount) || 0), 0,
   );
+  const selectedIsCharge = isCharge(selectedRecord);
   const maxAmount = selectedRecord
-    ? Number(isDrivingSchool
+    ? Number(selectedIsCharge
       ? selectedRecord.netAmount
       : form.type === 'AdvanceReturn'
         ? selectedRecord.unallocatedRefundableAmount || 0
@@ -168,7 +192,7 @@ export default function Refunds() {
     setSelectedRecord(record);
     setForm({
       ...EMPTY_FORM,
-      amount: String(isDrivingSchool ? record.netAmount : record.refundableAmount || ''),
+      amount: String(isCharge(record) ? record.netAmount : record.refundableAmount || ''),
       channel: normalizedMethod.includes('kart') || normalizedMethod.includes('online')
         ? 'Karta İade'
         : normalizedMethod.includes('havale') || normalizedMethod.includes('eft')
@@ -184,18 +208,18 @@ export default function Refunds() {
       toast({ title: 'Geçerli bir iade tutarı girin.', variant: 'destructive' });
       return;
     }
-    if (form.reason.trim().length < (isDrivingSchool ? 5 : 1)) {
-      toast({ title: isDrivingSchool ? 'Gerekçe en az 5 karakter olmalıdır.' : 'İade gerekçesi zorunludur.', variant: 'destructive' });
+    if (form.reason.trim().length < (selectedIsCharge ? 5 : 1)) {
+      toast({ title: selectedIsCharge ? 'Gerekçe en az 5 karakter olmalıdır.' : 'İade gerekçesi zorunludur.', variant: 'destructive' });
       return;
     }
-    if (!isDrivingSchool && form.channel !== 'Nakit' && !form.reference.trim()) {
+    if (!selectedIsCharge && form.channel !== 'Nakit' && !form.reference.trim()) {
       toast({ title: 'Kart ve banka iadelerinde işlem referansı zorunludur.', variant: 'destructive' });
       return;
     }
 
     try {
       setBusy(true);
-      if (isDrivingSchool) {
+      if (selectedIsCharge) {
         await refundDrivingCharge(selectedRecord.id, { amount, reason: form.reason.trim() });
       } else {
         await refundFinancePayment({
@@ -224,14 +248,14 @@ export default function Refunds() {
         <div>
           <p className="flex items-center gap-2 font-black"><RotateCcw className="h-4 w-4 text-red-600" /> İade bilgileri</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {isDrivingSchool ? CHARGE_LABELS[selectedRecord.chargeType] || selectedRecord.chargeType : paymentLabel(selectedRecord)}
+            {recordLabel(selectedRecord)}
             {' · '}En fazla {money(maxAmount, currency)}
           </p>
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedRecord(null)} disabled={busy}>Vazgeç</Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        {!isDrivingSchool && (
+        {!selectedIsCharge && (
           <label className="text-xs font-bold">İade türü
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.type} onChange={(e) => {
               const nextType = e.target.value;
@@ -251,7 +275,7 @@ export default function Refunds() {
         <label className="text-xs font-bold">İade tutarı
           <Input className="mt-1" type="number" min="0.01" step="0.01" max={maxAmount} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
         </label>
-        {!isDrivingSchool && (
+        {!selectedIsCharge && (
           <>
             <label className="text-xs font-bold">İade kanalı
               <select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
@@ -341,11 +365,11 @@ export default function Refunds() {
                   {refundable.map((item) => (
                     <div key={item.id} className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
-                        <p className="truncate font-black">{isDrivingSchool ? CHARGE_LABELS[item.chargeType] || item.chargeType : paymentLabel(item)}</p>
+                        <p className="truncate font-black">{recordLabel(item)}</p>
                         <p className="mt-1 text-xs text-muted-foreground">{dateTime(item.createdAtUtc || item.paidAtUtc)}{item.method ? ` · ${item.method}` : ''}</p>
                       </div>
                       <div className="flex items-center justify-between gap-3 sm:justify-end">
-                        <div className="text-right"><p className="font-black">{money(isDrivingSchool ? item.netAmount : item.refundableAmount, currency)}</p><p className="text-[11px] text-muted-foreground">İade edilebilir</p></div>
+                        <div className="text-right"><p className="font-black">{money(recordRefundable(item), currency)}</p><p className="text-[11px] text-muted-foreground">İade edilebilir</p></div>
                         {isDrivingSchool ? (
                           canSubmitDrivingRefund && <Button variant="outline" className="border-red-500/30 text-red-600" onClick={() => startRefund(item)}>İade Et</Button>
                         ) : (
@@ -370,8 +394,8 @@ export default function Refunds() {
                   {history.map((item) => (
                     <div key={item.id} className="rounded-xl border border-red-500/20 bg-red-500/[0.03] p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div><p className="font-black">{isDrivingSchool ? CHARGE_LABELS[item.chargeType] || item.chargeType : paymentLabel(item)}</p><p className="mt-1 text-xs text-muted-foreground">{dateTime(item.refundedAtUtc || item.paidAtUtc)}</p></div>
-                        <Badge className="border-0 bg-red-500/10 text-red-600">{money(Math.abs(Number(isDrivingSchool ? item.refundedAmount : item.amount)), currency)}</Badge>
+                        <div><p className="font-black">{recordLabel(item)}</p><p className="mt-1 text-xs text-muted-foreground">{dateTime(item.refundedAtUtc || item.paidAtUtc)}</p></div>
+                        <Badge className="border-0 bg-red-500/10 text-red-600">{money(Math.abs(Number(isCharge(item) ? item.refundedAmount : item.amount) || 0), currency)}</Badge>
                       </div>
                       <p className="mt-2 border-t pt-2 text-xs text-muted-foreground">{item.refundReason || item.note || 'Gerekçe kaydı'}{item.externalReference ? ` · Referans: ${item.externalReference}` : ''}</p>
                     </div>

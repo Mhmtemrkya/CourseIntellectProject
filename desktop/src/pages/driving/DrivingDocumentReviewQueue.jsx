@@ -89,7 +89,7 @@ export default function DrivingDocumentReviewQueue() {
   return <DrivingPage testId="driving-document-review-queue-page">
     <DrivingPageHeader title="Evrak Onay Kuyruğu" description="MEBBİS’e bağlı kursiyer belgelerini güvenli, sürümlü ve denetlenebilir şekilde inceleyin." icon={FileClock} onRefresh={load} />
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-      <DrivingStatCard label="Onay bekleyen" value={summary.pending || 0} caption="İnceleme gerekli" icon={FileClock} tone="amber" />
+      <DrivingStatCard label="Onay bekleyen" value={summary.pending || 0} caption="İnceleme gerekli belge" icon={FileClock} tone="amber" />
       <DrivingStatCard label="Yeniden yükleme" value={summary.reuploadRequested || 0} caption="Kursiyer aksiyonu" icon={RotateCcw} tone="brand" />
       <DrivingStatCard label="Reddedilen" value={summary.rejected || 0} caption="Açık retler" icon={XCircle} tone="amber" />
     </div>

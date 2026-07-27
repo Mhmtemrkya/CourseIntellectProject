@@ -109,7 +109,7 @@ export default function DrivingMebbisWorkCenter() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <DrivingStatCard label="Açık iş" value={activeCount} caption="Doğrulama bekleyen" icon={Clock3} tone="brand" />
         <DrivingStatCard label="Eksik bilgi" value={summary.missingInformation || 0} caption="Aday kayıtları" icon={FileWarning} tone="amber" />
-        <DrivingStatCard label="Evrak onayı" value={summary.documentApproval || 0} caption="Kontrol bekliyor" icon={Users} tone="violet" />
+        <DrivingStatCard label="Evrak onayı" value={summary.documentApproval || 0} caption="Kontrol bekleyen kursiyer" icon={Users} tone="violet" />
         <DrivingStatCard label="Hatalı" value={(summary.error || 0) + (summary.correctionPending || 0)} caption="Müdahale gerekli" icon={AlertTriangle} tone="amber" />
         <DrivingStatCard label="Doğrulandı" value={summary.verified || 0} caption="İkinci kontrol tamam" icon={ShieldCheck} tone="emerald" />
       </div>

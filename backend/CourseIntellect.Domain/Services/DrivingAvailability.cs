@@ -58,6 +58,23 @@ public static class DrivingAvailability
         => permitExpiresAtUtc is not { } expires || expires > lessonStartsAtUtc;
 
     /// <summary>
+    /// Öğretmen profilindeki çalışma izni alanları kendi içinde tutarlı mı?
+    /// Eski/henüz belge takibi açılmamış kayıtlarda iki alan da boşsa profil
+    /// çalışmaya devam eder. Alanlardan biri girildiyse ikisi de zorunludur ve
+    /// bitiş tarihi değerlendirme anından ileri olmalıdır.
+    /// </summary>
+    public static bool IsWorkingPermitConfigurationReady(
+        string? permitNo,
+        DateTime? permitExpiresAtUtc,
+        DateTime atUtc)
+    {
+        var hasNumber = !string.IsNullOrWhiteSpace(permitNo);
+        var hasExpiry = permitExpiresAtUtc.HasValue;
+        if (!hasNumber && !hasExpiry) return true;
+        return hasNumber && hasExpiry && permitExpiresAtUtc > atUtc;
+    }
+
+    /// <summary>
     /// Araç, MTSK yaş sınırını aşıyor mu? Sınır 0 = kapalı; model yılı
     /// girilmemişse (0) kural uygulanmaz. Yaş = ders yılı − model yılı.
     /// </summary>

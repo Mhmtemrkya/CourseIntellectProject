@@ -1878,6 +1878,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.CertificateSignatureUrl).HasMaxLength(700);
             entity.Property(x => x.CertificatePrimaryColor).HasMaxLength(20);
             entity.Property(x => x.FormInstitutionName).HasMaxLength(200);
+            entity.Property(x => x.FormInstitutionCode).HasMaxLength(40);
             entity.Property(x => x.FormInstitutionCity).HasMaxLength(60);
             entity.Property(x => x.FormInstitutionDistrict).HasMaxLength(60);
             entity.Property(x => x.FormInstitutionAddress).HasMaxLength(400);

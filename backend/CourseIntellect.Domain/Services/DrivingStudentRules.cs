@@ -24,6 +24,25 @@ public static class DrivingStudentRules
         StudentDocumentType.Residence,
     ];
 
+    /// <summary>
+    /// Evrak Onay Kuyruğu ekranında incelenebilen belge türleri. MEBBİS İş Merkezi'ndeki
+    /// "Evrak onayı" sayacı da bu kümeyi kullanır: aksi halde kuyrukta hiç görünmeyen
+    /// (dolayısıyla onaylanamayan) bir belge iş merkezinde açık iş olarak sayılıyor ve
+    /// iki ekran farklı rakam gösteriyordu.
+    /// </summary>
+    public static readonly IReadOnlyList<StudentDocumentType> ReviewableDocumentTypes =
+    [
+        StudentDocumentType.HealthReport,
+        StudentDocumentType.Diploma,
+        StudentDocumentType.CriminalRecord,
+        StudentDocumentType.BiometricPhoto,
+        StudentDocumentType.Identity,
+        StudentDocumentType.Residence,
+        StudentDocumentType.ParentalConsent,
+        StudentDocumentType.ExistingLicense,
+        StudentDocumentType.ForeignStudentDocument,
+    ];
+
     /// <summary>18 yaşından küçük adayda veli izin belgesi de zorunludur.</summary>
     public static IReadOnlyList<StudentDocumentType> RequiredDocumentsFor(string? birthDate, DateTime nowUtc)
     {

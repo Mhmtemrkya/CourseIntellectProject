@@ -85,7 +85,7 @@ public sealed class DrivingContractFormPdfService : IDrivingContractFormPdfServi
                         Pair(t, 3, "Baba Adı", d.FatherName.ToUpper(Tr));
                         Pair(t, 3, "Doğum Yeri", d.BirthPlace.ToUpper(Tr));
                         Pair(t, 3, "Ana Adı", d.MotherName.ToUpper(Tr));
-                        Pair(t, 3, "Doğum Tarihi (Gün/Ay/Yıl)", d.BirthDate);
+                        Pair(t, 3, "Doğum Tarihi (Gün/Ay/Yıl)", BirthDateText(d.BirthDate));
 
                         Band(t, 6, "NÜFUSA KAYITLI OLDUĞU YER");
 
@@ -105,7 +105,7 @@ public sealed class DrivingContractFormPdfService : IDrivingContractFormPdfServi
                         t.Cell().ColumnSpan(6).Border(1).BorderColor(Line).Padding(4).Column(addr =>
                         {
                             addr.Item().Text($"İkametgah Adresi ve Tel :  {d.ResidenceAddress}");
-                            addr.Item().Text($"Ev Telefon: {d.HomePhone} - Cep Telefon: {d.Phone}");
+                            addr.Item().Text($"Ev Telefon: {PhoneText(d.HomePhone)} - Cep Telefon: {PhoneText(d.Phone)}");
                         });
 
                         Band(t, 6, "DAHA ÖNCE ALINMIŞ SÜRÜCÜ BELGESİ VARSA");
@@ -228,7 +228,7 @@ public sealed class DrivingContractFormPdfService : IDrivingContractFormPdfServi
                     t.Cell().Border(1).BorderColor(Line).MinHeight(150).Text(string.Empty);
                 });
 
-                col.Item().PaddingTop(3).PaddingLeft(10).Text(d.Phone).FontSize(9);
+                col.Item().PaddingTop(3).PaddingLeft(10).Text(PhoneText(d.Phone)).FontSize(9);
             });
         });
 
@@ -270,7 +270,7 @@ public sealed class DrivingContractFormPdfService : IDrivingContractFormPdfServi
                     Field(t, "Ev Adresi", d.ResidenceAddress);
                     Field(t, "Adresi", d.InstitutionAddress.ToUpper(Tr));
 
-                    Field(t, "Tel No", d.Phone);
+                    Field(t, "Tel No", PhoneText(d.Phone));
                     Field(t, "Tel No", d.InstitutionPhone);
 
                     Field(t, "Almak İstediği Sertifika Sınıfı", d.LicenseClass.ToUpper(Tr));
@@ -520,6 +520,37 @@ public sealed class DrivingContractFormPdfService : IDrivingContractFormPdfServi
     private static string Money(decimal value) => value.ToString("N2", Tr);
 
     private static DateTime Local(DateTime utc) => utc.AddHours(3);
+
+    /// <summary>
+    /// Kursiyer dosyasındaki serbest metin doğum tarihini matbu formun beklediği
+    /// gün/ay/yıl düzenine çevirir. Kayıt "2000-04-15" olarak saklanıyor ve forma
+    /// aynen basılıyordu; alan başlığı "Gün/Ay/Yıl" olduğu için yanlış okunuyordu.
+    /// Çözümlenemeyen değer olduğu gibi bırakılır (veri kaybolmasın).
+    /// </summary>
+    private static string BirthDateText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var text = value.Trim();
+        string[] formats = ["yyyy-MM-dd", "yyyy/MM/dd", "dd.MM.yyyy", "dd/MM/yyyy", "yyyy-MM-ddTHH:mm:ss", "o"];
+        return DateTime.TryParseExact(text, formats, Tr, DateTimeStyles.None, out var parsed)
+            || DateTime.TryParse(text, Tr, DateTimeStyles.None, out parsed)
+            ? parsed.ToString("dd/MM/yyyy", Tr)
+            : text;
+    }
+
+    /// <summary>
+    /// Telefonu "0533 111 22 33" biçiminde okunur hâle getirir; ham "905331112233"
+    /// matbu evrakta okunmuyordu. Tanınmayan biçim olduğu gibi bırakılır.
+    /// </summary>
+    private static string PhoneText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        if (digits.StartsWith("90", StringComparison.Ordinal) && digits.Length == 12) digits = digits[2..];
+        else if (digits.Length == 11 && digits[0] == '0') digits = digits[1..];
+        if (digits.Length != 10) return value.Trim();
+        return $"0{digits[..3]} {digits[3..6]} {digits[6..8]} {digits[8..]}";
+    }
 
     private static string Or(string value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value;
 

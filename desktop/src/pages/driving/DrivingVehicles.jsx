@@ -3,12 +3,12 @@ import { AlertTriangle, CarFront, CheckCircle2, FileCheck2, Gauge, Lock, Plus, S
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  createDrivingVehicle, fetchDrivingAssignments, fetchDrivingVehicleDocuments, fetchDrivingVehicleServiceRecords, fetchDrivingVehicles, updateDrivingVehicleStatus,
+  createDrivingVehicle, fetchDrivingAssignments, fetchDrivingVehicleDocuments, fetchDrivingVehicleServiceRecords, fetchDrivingVehicles, renewDrivingVehicleCompliance, updateDrivingVehicleStatus,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
@@ -38,13 +38,14 @@ const DOCUMENT_STATUS = {
   Expired: { label: 'Süresi doldu', className: 'bg-red-500/15 text-red-600' },
 };
 
-// Aracın işletme durumu iki bayraktan türetilir: pasif > bakımda > uygun.
+// Bakım seçimi açıkça yapıldıysa onu göster; aksi halde evrakı geçersiz veya
+// işletme tarafından kapatılmış araç pasiftir.
 const VEHICLE_STATUS = {
   active: { label: 'Uygun', className: 'bg-emerald-500/15 text-emerald-600', icon: CheckCircle2 },
   maintenance: { label: 'Bakımda', className: 'bg-red-500/15 text-red-600', icon: Wrench },
   passive: { label: 'Pasif', className: 'bg-muted text-muted-foreground', icon: Lock },
 };
-const vehicleStatus = (v) => (!v.isActive ? 'passive' : v.isInMaintenance ? 'maintenance' : 'active');
+const vehicleStatus = (v) => (v.isInMaintenance ? 'maintenance' : !v.isActive ? 'passive' : 'active');
 const STATUS_FILTERS = [
   { key: 'all', label: 'Tümü' },
   { key: 'active', label: 'Uygun' },
@@ -212,12 +213,20 @@ export default function DrivingVehicles() {
   const [vehicleForm, setVehicleForm] = useState(initialVehicle);
   const [saving, setSaving] = useState(false);
   const [statusSaving, setStatusSaving] = useState('');
+  const [renewalVehicle, setRenewalVehicle] = useState(null);
+  const [renewalForm, setRenewalForm] = useState({ inspectionExpiresAtUtc: '', insuranceExpiresAtUtc: '' });
+  const [renewalSaving, setRenewalSaving] = useState(false);
 
   const canCreate = can(DRIVING.vehicleCreate);
   const canUpdate = can(DRIVING.vehicleUpdate);
 
   const changeStatus = async (vehicle, status) => {
     if (status === vehicleStatus(vehicle)) return;
+    if (status === 'active' && (vehicle.requiresInspectionRenewal || vehicle.requiresInsuranceRenewal)) {
+      setRenewalVehicle(vehicle);
+      setRenewalForm({ inspectionExpiresAtUtc: '', insuranceExpiresAtUtc: '' });
+      return;
+    }
     setStatusSaving(vehicle.id);
     try {
       const updated = await updateDrivingVehicleStatus(vehicle.id, status);
@@ -227,6 +236,33 @@ export default function DrivingVehicles() {
       toast({ title: 'Durum değiştirilemedi', description: error.message, variant: 'destructive' });
     } finally {
       setStatusSaving('');
+    }
+  };
+
+  const renewCompliance = async (event) => {
+    event.preventDefault();
+    if (!renewalVehicle) return;
+    setRenewalSaving(true);
+    try {
+      await renewDrivingVehicleCompliance(renewalVehicle.id, {
+        inspectionExpiresAtUtc: renewalVehicle.requiresInspectionRenewal && renewalForm.inspectionExpiresAtUtc
+          ? new Date(`${renewalForm.inspectionExpiresAtUtc}T12:00:00`).toISOString()
+          : null,
+        insuranceExpiresAtUtc: renewalVehicle.requiresInsuranceRenewal && renewalForm.insuranceExpiresAtUtc
+          ? new Date(`${renewalForm.insuranceExpiresAtUtc}T12:00:00`).toISOString()
+          : null,
+        activateWhenCompliant: true,
+      });
+      toast({
+        title: 'Araç yeniden uygun',
+        description: `${renewalVehicle.plateNumber} için eksik/geçmiş bilgiler yenilendi ve araç uygun duruma alındı.`,
+      });
+      setRenewalVehicle(null);
+      await load(true);
+    } catch (error) {
+      toast({ title: 'Uygunluk bilgileri yenilenemedi', description: error.message, variant: 'destructive' });
+    } finally {
+      setRenewalSaving(false);
     }
   };
   // Evrak & Bakım sekmesi, eskiden ayrı sayfa olan ekranın izinlerini taşır;
@@ -278,9 +314,9 @@ export default function DrivingVehicles() {
     });
   }, [vehicles, search, statusFilter]);
 
-  const inMaintenance = useMemo(() => vehicles.filter((v) => v.isInMaintenance && v.isActive).length, [vehicles]);
+  const inMaintenance = useMemo(() => vehicles.filter((v) => v.isInMaintenance).length, [vehicles]);
   const activeCount = useMemo(() => vehicles.filter((v) => v.isActive && !v.isInMaintenance).length, [vehicles]);
-  const passiveCount = useMemo(() => vehicles.filter((v) => !v.isActive).length, [vehicles]);
+  const passiveCount = useMemo(() => vehicles.filter((v) => !v.isActive && !v.isInMaintenance).length, [vehicles]);
   const statusCounts = useMemo(() => ({
     all: vehicles.length, active: activeCount, maintenance: inMaintenance, passive: passiveCount,
   }), [vehicles.length, activeCount, inMaintenance, passiveCount]);
@@ -382,6 +418,15 @@ export default function DrivingVehicles() {
                     <p className="truncate text-xs text-muted-foreground">
                       {vehicle.brand} {vehicle.model} • {vehicle.licenseClass} • {transmissionLabel(vehicle.transmissionType)}
                     </p>
+                    {vehicle.automaticComplianceHold && (
+                      <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-red-600">
+                        <AlertTriangle className="h-3 w-3" />
+                        {[
+                          vehicle.requiresInspectionRenewal ? 'Muayene süresi dolmuş' : null,
+                          vehicle.requiresInsuranceRenewal ? 'Sigorta süresi dolmuş' : null,
+                        ].filter(Boolean).join(' • ')}
+                      </p>
+                    )}
                   </div>
                 </button>
                 <span className="hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
@@ -418,6 +463,42 @@ export default function DrivingVehicles() {
       </Tabs>
 
       {selected && <VehicleDetailModal vehicle={selected} onClose={() => setSelected(null)} />}
+
+      <Dialog open={Boolean(renewalVehicle)} onOpenChange={(open) => { if (!open && !renewalSaving) setRenewalVehicle(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eksik Bilgileri Yenile · {renewalVehicle?.plateNumber}</DialogTitle>
+            <DialogDescription>
+              Araç, zorunlu belgesi eksik veya süresi dolduğu için otomatik pasife alındı. Yalnızca eksik alanları yenilediğinizde otomatik olarak “Uygun” olacaktır.
+            </DialogDescription>
+          </DialogHeader>
+          {renewalVehicle && (
+            <form className="space-y-4" onSubmit={renewCompliance}>
+              <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] p-3 text-sm">
+                <b>Yenilenmesi gerekenler</b>
+                <ul className="mt-1 list-inside list-disc text-muted-foreground">
+                  {renewalVehicle.requiresInspectionRenewal && <li>Muayene geçerlilik tarihi</li>}
+                  {renewalVehicle.requiresInsuranceRenewal && <li>Trafik sigortası geçerlilik tarihi</li>}
+                </ul>
+              </div>
+              {renewalVehicle.requiresInspectionRenewal && (
+                <Field label="Yeni muayene bitiş tarihi">
+                  <Input required type="date" min={new Date().toISOString().slice(0, 10)} value={renewalForm.inspectionExpiresAtUtc} onChange={(e) => setRenewalForm((form) => ({ ...form, inspectionExpiresAtUtc: e.target.value }))} />
+                </Field>
+              )}
+              {renewalVehicle.requiresInsuranceRenewal && (
+                <Field label="Yeni sigorta bitiş tarihi">
+                  <Input required type="date" min={new Date().toISOString().slice(0, 10)} value={renewalForm.insuranceExpiresAtUtc} onChange={(e) => setRenewalForm((form) => ({ ...form, insuranceExpiresAtUtc: e.target.value }))} />
+                </Field>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="outline" disabled={renewalSaving} onClick={() => setRenewalVehicle(null)}>Vazgeç</Button>
+                <Button disabled={renewalSaving}>{renewalSaving ? 'Yenileniyor…' : 'Yenile ve Uygun Yap'}</Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </DrivingPage>
   );
 }

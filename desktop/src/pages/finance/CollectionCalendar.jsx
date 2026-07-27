@@ -63,17 +63,21 @@ export default function CollectionCalendar() {
   }, [loadCalendar]);
 
   const calendarEntries = useMemo(() => {
-    const collectionItems = (dashboard?.collections || []).map((item) => {
-      const date = normalizeDate(String(item.time || '').replace(' • ', ' '));
-      return {
-        ...item,
-        label: item.name || 'Tahsilat',
-        detail: `${item.className || 'Sınıf yok'} • ${item.method || 'Ödeme'}`,
-        amountValue: parseFinanceMoney(item.amount),
-        entryDate: date,
-        status: 'İşlendi',
-      };
-    });
+    // İade belgeleri "planlı/işlenmiş tahsilat" değildir; takvim toplamına girerse
+    // dönem planı eksiye düşer. Takvim yalnız gerçek tahsilat ve taksitleri gösterir.
+    const collectionItems = (dashboard?.collections || [])
+      .filter((item) => item.entryType !== 'Refund' && parseFinanceMoney(item.amount) >= 0)
+      .map((item) => {
+        const date = normalizeDate(String(item.time || '').replace(' • ', ' '));
+        return {
+          ...item,
+          label: item.name || 'Tahsilat',
+          detail: `${item.className || 'Sınıf yok'} • ${item.method || 'Ödeme'}`,
+          amountValue: parseFinanceMoney(item.amount),
+          entryDate: date,
+          status: 'İşlendi',
+        };
+      });
     const installmentItems = (dashboard?.installments || []).map((item) => {
       const date = normalizeDate(item.dueDate || item.due);
       return {

@@ -143,9 +143,17 @@ export default function AdminFinance() {
     const totalReceivable = hasFinance
       ? Number(enrollmentFinance.netTotal) || 0
       : invoices.reduce((sum, item) => sum + parseMoney(item.amount), 0);
+    // Geriye dönük yolda da iadeler tahsilatı eksiye düşürmesin: brüt tahsilattan
+    // en fazla brüt kadar iade mahsup edilir.
+    const collectedFallback = (() => {
+      const amounts = collections.map((item) => parseMoney(item.amount));
+      const gross = amounts.filter((value) => value > 0).reduce((sum, value) => sum + value, 0);
+      const refunded = amounts.filter((value) => value < 0).reduce((sum, value) => sum - value, 0);
+      return gross - Math.min(gross, refunded);
+    })();
     const totalCollected = hasFinance
       ? Number(enrollmentFinance.collectedTotal) || 0
-      : collections.reduce((sum, item) => sum + parseMoney(item.amount), 0);
+      : collectedFallback;
     const pending = hasFinance
       ? Number(enrollmentFinance.outstandingTotal) || 0
       : installments.filter((item) => !isPaidStatus(item.status)).reduce((sum, item) => sum + parseMoney(item.amount), 0);

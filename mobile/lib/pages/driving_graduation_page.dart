@@ -13,22 +13,48 @@ import '../services/uploads_api_service.dart';
 
 // Ham enum yerine Türkçe etiket: kartlarda "Graduated/Active/Pending" kodları görünmesin.
 const _statusLabels = {
-  'PreRegistered': 'Ön kayıt', 'DocumentsPending': 'Evrak bekliyor', 'Active': 'Aktif',
-  'TheoryOngoing': 'Teorik eğitim', 'PracticeOngoing': 'Direksiyon', 'ExamPending': 'Sınav bekliyor',
-  'GraduationPending': 'Mezuniyet onayı', 'Graduated': 'Mezun', 'Suspended': 'Askıda',
-  'Cancelled': 'İptal', 'Revoked': 'Geri alındı', 'Pending': 'Bekliyor',
+  'PreRegistered': 'Ön kayıt',
+  'DocumentsPending': 'Evrak bekliyor',
+  'Active': 'Aktif',
+  'TheoryOngoing': 'Teorik eğitim',
+  'PracticeOngoing': 'Direksiyon',
+  'ExamPending': 'Sınav bekliyor',
+  'GraduationPending': 'Mezuniyet onayı',
+  'Graduated': 'Mezun',
+  'Suspended': 'Askıda',
+  'Cancelled': 'İptal',
+  'Revoked': 'Geri alındı',
+  'Pending': 'Bekliyor',
 };
-const _certTypeLabels = {'Completion': 'Tamamlama Belgesi', 'Achievement': 'Başarı Belgesi'};
-const _certStatusLabels = {'Active': 'Aktif', 'Superseded': 'Yenilendi', 'Revoked': 'İptal edildi'};
+const _certTypeLabels = {
+  'Completion': 'Tamamlama Belgesi',
+  'Achievement': 'Başarı Belgesi',
+};
+const _certStatusLabels = {
+  'Active': 'Aktif',
+  'Superseded': 'Yenilendi',
+  'Revoked': 'İptal edildi',
+};
 const _deliveryLabels = {
-  'NotDelivered': 'Teslim edilmedi', 'Ready': 'Teslime hazır', 'Delivered': 'Teslim edildi', 'Returned': 'İade edildi',
+  'NotDelivered': 'Teslim edilmedi',
+  'Ready': 'Teslime hazır',
+  'Delivered': 'Teslim edildi',
+  'Returned': 'İade edildi',
 };
-const _actionTypeLabels = {'EligibilityOverride': 'Uygunluk istisnası', 'GraduationRevocation': 'Mezuniyet geri alma'};
+const _actionTypeLabels = {
+  'EligibilityOverride': 'Uygunluk istisnası',
+  'GraduationRevocation': 'Mezuniyet geri alma',
+};
 const _actionStatusLabels = {
-  'Pending': 'Onay bekliyor', 'FirstApproved': 'İlk onay verildi', 'Approved': 'Onaylandı',
-  'Rejected': 'Reddedildi', 'Applied': 'Uygulandı', 'Cancelled': 'İptal edildi',
+  'Pending': 'Onay bekliyor',
+  'FirstApproved': 'İlk onay verildi',
+  'Approved': 'Onaylandı',
+  'Rejected': 'Reddedildi',
+  'Applied': 'Uygulandı',
+  'Cancelled': 'İptal edildi',
 };
-String _lbl(Map<String, String> map, dynamic value) => map['$value'] ?? '${value ?? '—'}';
+String _lbl(Map<String, String> map, dynamic value) =>
+    map['$value'] ?? '${value ?? '—'}';
 
 class DrivingGraduationPage extends StatefulWidget {
   const DrivingGraduationPage({super.key});
@@ -50,6 +76,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
       _data['certificateSetup'] is Map
       ? Map<String, dynamic>.from(_data['certificateSetup'] as Map)
       : null;
+  bool get _canPrintCertificate => _data['canPrintCertificate'] == true;
   String _certificateSetupDetail() {
     final setup = _certificateSetup;
     if (setup == null) return '';
@@ -59,6 +86,10 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
     const labels = {
       'directorName': 'Müdür adı',
       'directorTitle': 'Müdür unvanı',
+      'institutionName': 'Resmî kurum adı',
+      'institutionCode': 'MEBBİS kurum kodu',
+      'institutionCity': 'Kurum ili',
+      'institutionDistrict': 'Kurum ilçesi',
       'logoUrl': 'Kurum logosu',
       'signatureUrl': 'İmza görseli',
       'primaryColor': 'Sertifika rengi',
@@ -98,6 +129,10 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
         settings.addAll({
           'certificateDirectorName': certificate['directorName'],
           'certificateDirectorTitle': certificate['directorTitle'],
+          'certificateInstitutionName': certificate['institutionName'],
+          'certificateInstitutionCode': certificate['institutionCode'],
+          'certificateInstitutionCity': certificate['institutionCity'],
+          'certificateInstitutionDistrict': certificate['institutionDistrict'],
           'certificateLogoUrl': certificate['logoUrl'],
           'certificateSignatureUrl': certificate['signatureUrl'],
           'certificatePrimaryColor': certificate['primaryColor'],
@@ -389,7 +424,8 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                   ),
                               ],
                             ),
-                          if (_permissions.can(
+                          if (_canPrintCertificate &&
+                              _permissions.can(
                                 DrivingPermissions.certificateIssue,
                               ) &&
                               graduation?['graduatedAtUtc'] != null &&
@@ -500,16 +536,19 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                               ),
                               trailing: PopupMenuButton<String>(
                                 onSelected: (value) {
-                                  if (value == 'share') {
+                                  if (value == 'share' &&
+                                      _canPrintCertificate) {
                                     _shareCertificate(certificate);
                                   }
-                                  if (value == 'mebbis') {
+                                  if (value == 'mebbis' &&
+                                      _canPrintCertificate) {
                                     _editMebbisNo(certificate);
                                   }
                                   if (value == 'deliver') {
                                     _deliver(certificate);
                                   }
-                                  if (value == 'reissue') {
+                                  if (value == 'reissue' &&
+                                      _canPrintCertificate) {
                                     _certificateReason(certificate, false);
                                   }
                                   if (value == 'revoke') {
@@ -517,13 +556,15 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                   }
                                 },
                                 itemBuilder: (_) => [
-                                  PopupMenuItem(
-                                    value: 'share',
-                                    child: Text('PDF indir / paylaş'.tr),
-                                  ),
-                                  if (_permissions.can(
-                                    DrivingPermissions.certificateIssue,
-                                  ))
+                                  if (_canPrintCertificate)
+                                    PopupMenuItem(
+                                      value: 'share',
+                                      child: Text('PDF indir / paylaş'.tr),
+                                    ),
+                                  if (_canPrintCertificate &&
+                                      _permissions.can(
+                                        DrivingPermissions.certificateIssue,
+                                      ))
                                     PopupMenuItem(
                                       value: 'mebbis',
                                       child: Text('MEBBİS No'.tr),
@@ -537,7 +578,8 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                       value: 'deliver',
                                       child: Text('Teslim edildi'.tr),
                                     ),
-                                  if (_permissions.can(
+                                  if (_canPrintCertificate &&
+                                      _permissions.can(
                                         DrivingPermissions.certificateIssue,
                                       ) &&
                                       certificate['status'] == 'Active')
@@ -578,9 +620,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
         content: TextField(
           controller: controller,
           textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(
-            labelText: 'MEBBİS sertifika no',
-          ),
+          decoration: const InputDecoration(labelText: 'MEBBİS sertifika no'),
         ),
         actions: [
           TextButton(
@@ -838,6 +878,18 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
     final director = TextEditingController(
       text: '${_settings['certificateDirectorName'] ?? ''}',
     );
+    final institutionName = TextEditingController(
+      text: '${_settings['certificateInstitutionName'] ?? ''}',
+    );
+    final institutionCode = TextEditingController(
+      text: '${_settings['certificateInstitutionCode'] ?? ''}',
+    );
+    final institutionCity = TextEditingController(
+      text: '${_settings['certificateInstitutionCity'] ?? ''}',
+    );
+    final institutionDistrict = TextEditingController(
+      text: '${_settings['certificateInstitutionDistrict'] ?? ''}',
+    );
     final title = TextEditingController(
       text: '${_settings['certificateDirectorTitle'] ?? 'Kurum Müdürü'}',
     );
@@ -908,6 +960,28 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                     controller: director,
                     decoration: const InputDecoration(
                       labelText: 'Kurum müdürü',
+                    ),
+                  ),
+                  TextField(
+                    controller: institutionName,
+                    decoration: const InputDecoration(
+                      labelText: 'Resmî kurum adı',
+                    ),
+                  ),
+                  TextField(
+                    controller: institutionCode,
+                    decoration: const InputDecoration(
+                      labelText: 'MEBBİS kurum kodu',
+                    ),
+                  ),
+                  TextField(
+                    controller: institutionCity,
+                    decoration: const InputDecoration(labelText: 'Kurum ili'),
+                  ),
+                  TextField(
+                    controller: institutionDistrict,
+                    decoration: const InputDecoration(
+                      labelText: 'Kurum ilçesi',
                     ),
                   ),
                   TextField(
@@ -983,6 +1057,10 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
     }
     if (director.text.trim().length < 2 ||
         title.text.trim().length < 2 ||
+        institutionName.text.trim().length < 2 ||
+        institutionCode.text.trim().length < 2 ||
+        institutionCity.text.trim().length < 2 ||
+        institutionDistrict.text.trim().length < 2 ||
         logoUrl.isEmpty ||
         signatureUrl.isEmpty) {
       _message('Müdür, unvan, kurum logosu ve imza zorunludur.', error: true);
@@ -993,6 +1071,10 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
       'excusedAbsencePolicy': policy,
       'directorName': director.text.trim(),
       'directorTitle': title.text.trim(),
+      'institutionName': institutionName.text.trim(),
+      'institutionCode': institutionCode.text.trim(),
+      'institutionCity': institutionCity.text.trim(),
+      'institutionDistrict': institutionDistrict.text.trim(),
       'primaryColor': color.text.trim().toUpperCase(),
       'logoUrl': logoUrl,
       'signatureUrl': signatureUrl,

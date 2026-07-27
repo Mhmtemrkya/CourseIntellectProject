@@ -358,7 +358,8 @@ export default function DrivingStudentWizard() {
 
   const examFeesTotal = (Number(form.theoryExamFee) || 0) + (Number(form.drivingExamFee) || 0);
   const grandTotal = netAmount + examFeesTotal;
-  const remainingAfterDownPayment = Math.max(0, netAmount - Number(form.finance.downPayment || 0));
+  const downPaymentAmount = Number(form.finance.downPayment) || 0;
+  const remainingAfterDownPayment = Math.max(0, netAmount - downPaymentAmount);
   const perInstallment = form.finance.installmentCount > 0
     ? remainingAfterDownPayment / Number(form.finance.installmentCount)
     : 0;
@@ -459,6 +460,9 @@ export default function DrivingStudentWizard() {
     if (current === 3) {
       if (!form.packageId) return 'Paket seçimi zorunludur.';
       if (!form.availableWeekdays && !form.availableWeekend) return 'En az bir zaman uygunluğu seçilmelidir.';
+    }
+    if (current === 5 && canSeeFinance) {
+      if (downPaymentAmount > netAmount) return 'Peşinat, kurs ücretinden (net tutar) büyük olamaz.';
     }
     if (current === 6 && !form.kvkkConsent) return 'KVKK onayı olmadan kayıt tamamlanamaz.';
     return null;
@@ -982,14 +986,98 @@ export default function DrivingStudentWizard() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border bg-muted/40 p-4 sm:col-span-2">
-                  <div className="grid gap-2 sm:grid-cols-4">
-                    <div><span className="text-xs text-muted-foreground">Net tutar</span><p className="text-xl font-black">₺{netAmount.toLocaleString('tr-TR')}</p></div>
-                    <div><span className="text-xs text-muted-foreground">Sınav ücretleri</span><p className="text-xl font-black">₺{examFeesTotal.toLocaleString('tr-TR')}</p></div>
-                    <div><span className="text-xs text-muted-foreground">Genel toplam</span><p className="text-xl font-black text-brand-primary">₺{grandTotal.toLocaleString('tr-TR')}</p></div>
-                    <div><span className="text-xs text-muted-foreground">Taksit tutarı</span><p className="text-xl font-black">{perInstallment > 0 ? `₺${perInstallment.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : '—'}</p></div>
+                {/* Özet, paranın nasıl bölündüğünü adım adım gösterir: kurs ücretinden
+                    peşinat düşülür, kalan taksitlenir. Sınav ücretleri taksite GİRMEZ;
+                    ayrı kutuda ve ödeme durumuyla birlikte durur. */}
+                <div className="space-y-3 sm:col-span-2">
+                  <div className="rounded-2xl border bg-muted/40 p-4">
+                    <b className="text-sm">Kurs ücreti ve taksitlendirme</b>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                      <div>
+                        <span className="text-xs text-muted-foreground">Kurs ücreti (net)</span>
+                        <p className="text-xl font-black">₺{netAmount.toLocaleString('tr-TR')}</p>
+                        {Number(form.finance.discountAmount) > 0 && (
+                          <p className="text-[11px] text-muted-foreground">₺{Number(form.finance.grossAmount || 0).toLocaleString('tr-TR')} − ₺{Number(form.finance.discountAmount).toLocaleString('tr-TR')} indirim</p>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Peşinat</span>
+                        <p className={`text-xl font-black ${downPaymentAmount > 0 ? 'text-emerald-600' : ''}`}>
+                          {downPaymentAmount > 0 ? `− ₺${downPaymentAmount.toLocaleString('tr-TR')}` : '₺0'}
+                        </p>
+                        {downPaymentAmount > 0 && (
+                          <p className={`text-[11px] font-semibold ${form.finance.downPaymentPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
+                            {form.finance.downPaymentPaid ? `Kayıtta tahsil edilecek (${form.finance.downPaymentMethod})` : 'Tahsil edilmedi'}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Taksitlendirilecek</span>
+                        <p className="text-xl font-black">₺{remainingAfterDownPayment.toLocaleString('tr-TR')}</p>
+                        <p className="text-[11px] text-muted-foreground">Kurs ücreti − peşinat</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-muted-foreground">Taksit tutarı</span>
+                        <p className="text-xl font-black text-brand-primary">{perInstallment > 0 ? `₺${perInstallment.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : '—'}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {Number(form.finance.installmentCount) > 0
+                            ? `${form.finance.installmentCount} taksit${form.finance.firstInstallmentDate ? ` • ilk vade ${new Date(form.finance.firstInstallmentDate).toLocaleDateString('tr-TR')}` : ''}`
+                            : 'Taksit sayısı girilmedi'}
+                        </p>
+                      </div>
+                    </div>
+                    {remainingAfterDownPayment > 0 && Number(form.finance.installmentCount) === 0 && (
+                      <p className="mt-2 text-[11px] font-semibold text-amber-600">
+                        Taksit sayısı 0 — kalan ₺{remainingAfterDownPayment.toLocaleString('tr-TR')} için taksit planı oluşturulmaz.
+                      </p>
+                    )}
+                    {downPaymentAmount > netAmount && (
+                      <p className="mt-2 text-[11px] font-semibold text-red-600">
+                        Peşinat kurs ücretinden büyük olamaz.
+                      </p>
+                    )}
                   </div>
-                  <p className="mt-2 text-[11px] text-muted-foreground">Taksitlendirme yalnızca kurs ücreti (net tutar) üzerinden yapılır; sınav ücretleri ayrı takip edilir.</p>
+
+                  <div className="rounded-2xl border border-dashed p-4">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <b className="text-sm">Sınav ücretleri (taksite dâhil değil)</b>
+                      <span className="text-lg font-black">₺{examFeesTotal.toLocaleString('tr-TR')}</span>
+                    </div>
+                    {examFeesTotal > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                        {Number(form.theoryExamFee) > 0 && (
+                          <span>
+                            Teorik ₺{Number(form.theoryExamFee).toLocaleString('tr-TR')}
+                            <b className={form.theoryExamFeePaid ? 'text-emerald-600' : 'text-amber-600'}>
+                              {form.theoryExamFeePaid ? ' • ödendi' : ' • bekliyor'}
+                            </b>
+                          </span>
+                        )}
+                        {Number(form.drivingExamFee) > 0 && (
+                          <span>
+                            Direksiyon ₺{Number(form.drivingExamFee).toLocaleString('tr-TR')}
+                            <b className={form.drivingExamFeePaid ? 'text-emerald-600' : 'text-amber-600'}>
+                              {form.drivingExamFeePaid ? ' • ödendi' : ' • bekliyor'}
+                            </b>
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-xs text-muted-foreground">Sınav ücreti girilmedi.</p>
+                    )}
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Sınav ücretleri kurs ücretine ve taksitlere eklenmez; ayrı tahsil edilir ve
+                      ödeme durumu “Sınav Hakları” ekranından güncellenebilir.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-baseline justify-between gap-2 rounded-2xl border bg-brand-primary/[0.06] p-4">
+                    <span className="text-sm font-bold">Kursiyerden tahsil edilecek toplam</span>
+                    <span className="text-xl font-black text-brand-primary">₺{grandTotal.toLocaleString('tr-TR')}</span>
+                    <span className="w-full text-[11px] text-muted-foreground">
+                      Kurs ücreti ₺{netAmount.toLocaleString('tr-TR')} + sınav ücretleri ₺{examFeesTotal.toLocaleString('tr-TR')}
+                    </span>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1059,8 +1147,18 @@ export default function DrivingStudentWizard() {
                     <b className="text-sm text-muted-foreground">Finans</b>
                     <p className="text-lg font-black">₺{netAmount.toLocaleString('tr-TR')}</p>
                     <p className="text-sm text-muted-foreground">
-                      Peşinat ₺{Number(form.finance.downPayment || 0).toLocaleString('tr-TR')} • {form.finance.installmentCount || 0} taksit
+                      Peşinat ₺{downPaymentAmount.toLocaleString('tr-TR')}
+                      {downPaymentAmount > 0 ? (form.finance.downPaymentPaid ? ' (tahsil edilecek)' : ' (bekliyor)') : ''}
+                      {' • '}
+                      {Number(form.finance.installmentCount) > 0
+                        ? `${form.finance.installmentCount} × ₺${perInstallment.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`
+                        : 'taksit yok'}
                     </p>
+                    {examFeesTotal > 0 && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Ayrıca sınav ücreti ₺{examFeesTotal.toLocaleString('tr-TR')} (taksite dâhil değil)
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

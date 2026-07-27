@@ -51,7 +51,7 @@ public static class DrivingPermissionCatalog
         InstructorView,
         AppointmentView, AppointmentCreate, AppointmentUpdate, AppointmentCancel, AppointmentReschedule,
         LessonViewAll,
-        TheoryView, ExamView, GraduationView, GraduationManage, CertificateIssue, CertificateDeliver,
+        TheoryView, ExamView, GraduationView, GraduationManage, CertificateDeliver,
         GraduationOverrideRequest, GraduationRevokeRequest,
         FinanceView, FinanceCollect,
         ReportView,
@@ -136,7 +136,10 @@ public static class DrivingPermissionCatalog
         new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase)
         {
             ["Administrative"] = new HashSet<string>(
-                All.Where(x => !OverrideCodes.Contains(x) && x != PermissionManage && x != SettingsManage),
+                All.Where(x => !OverrideCodes.Contains(x)
+                    && x != PermissionManage
+                    && x != SettingsManage
+                    && x != CertificateIssue),
                 StringComparer.OrdinalIgnoreCase),
             ["Accounting"] = new HashSet<string>(AccountingSet.Concat([AuditView]), StringComparer.OrdinalIgnoreCase),
             ["Teacher"] = new HashSet<string>(

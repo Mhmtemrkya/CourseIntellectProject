@@ -313,10 +313,16 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
           registryStudent?.className ??
           studentCollections.map((item) => item.className).firstOrNull ??
           'Genel';
-      final paid = studentCollections.fold<int>(
-        0,
-        (sum, item) => sum + _store.parseAmount(item.amount),
-      );
+      // Net tahsilat: brütten en fazla brüt kadar iade düşülür. Aksi halde
+      // kaynağı silinmiş iade kaydı "ödenen"i eksiye, "kalan"ı plan tutarının
+      // üstüne çıkarıyordu.
+      final gross = studentCollections
+          .where((item) => !item.isRefund)
+          .fold<int>(0, (sum, item) => sum + _store.parseAmount(item.amount));
+      final refunded = studentCollections
+          .where((item) => item.isRefund)
+          .fold<int>(0, (sum, item) => sum + _store.parseAmount(item.amount).abs());
+      final paid = gross - (refunded > gross ? gross : refunded);
       final planned = studentInstallments.fold<int>(
         0,
         (sum, item) => sum + _store.parseAmount(item.amount),

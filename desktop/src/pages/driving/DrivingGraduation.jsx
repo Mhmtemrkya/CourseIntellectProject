@@ -154,6 +154,7 @@ export default function DrivingGraduation() {
   const graduatedCount = (data.graduations || []).filter((item) => item.status === 'Graduated').length;
   const pendingRevocations = (data.actionRequests || []).filter((item) =>
     item.actionType === 'GraduationRevocation' && ['Pending', 'FirstApproved'].includes(item.status)).length;
+  const canPrintCertificate = data.canPrintCertificate === true;
 
   return (
     <DrivingPage testId="driving-graduation-page">
@@ -192,7 +193,10 @@ export default function DrivingGraduation() {
                       : <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-muted"><Award className="h-5 w-5" /></span>}
                     <span className="truncate">{student.fullName}</span>
                   </span>
-                  <Badge>{label(STATUS_LABELS, graduation?.status || student.status)}</Badge>
+                  {/* Rozet kursiyerin eğitim durumunu gösterir. Önce mezuniyet
+                      KAYDININ durumu (Active/Pending gibi yaşam döngüsü değeri)
+                      okunuyordu; evrak bekleyen kursiyer "Aktif" görünüyordu. */}
+                  <Badge>{label(STATUS_LABELS, graduated ? 'Graduated' : student.status)}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -258,16 +262,18 @@ export default function DrivingGraduation() {
                               </div>
                             </div>
                             <div className="mt-3">
-                              {certificate ? (
+                              {certificate && canPrintCertificate ? (
                                 <Button size="sm" variant="outline" className="w-full" onClick={() => openDocument(certificate)}>
                                   <Eye className="mr-2 h-4 w-4" /> Görüntüle
                                 </Button>
-                              ) : can(DRIVING.certificateIssue) ? (
+                              ) : !certificate && canPrintCertificate && can(DRIVING.certificateIssue) ? (
                                 <Button size="sm" variant="outline" className="w-full" disabled={saving} onClick={() => createAndOpenDocument(student, type)}>
                                   <FileBadge2 className="mr-2 h-4 w-4" /> Oluştur ve Görüntüle
                                 </Button>
                               ) : (
-                                <p className="text-xs text-muted-foreground">Belge düzenleme yetkisi gerekli.</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Yalnız Şube Müdürü veya Kurum Yöneticisi belge oluşturup görüntüleyebilir.
+                                </p>
                               )}
                             </div>
                           </div>
@@ -313,7 +319,7 @@ export default function DrivingGraduation() {
                     {certificates.map((certificate) => (
                       <div key={certificate.id} className="rounded-xl border p-3 text-sm">
                         <div className="flex flex-wrap items-start justify-between gap-2">
-                          <button type="button" className="text-left" onClick={() => openDocument(certificate)}>
+                          <button type="button" className="text-left" disabled={!canPrintCertificate} onClick={() => canPrintCertificate && openDocument(certificate)}>
                             <b className="hover:underline">{label(CERT_TYPE_LABELS, certificate.type)}</b>
                             <p className="text-xs text-muted-foreground">{certificate.documentNumber} • v{certificate.version}</p>
                           </button>
@@ -326,8 +332,8 @@ export default function DrivingGraduation() {
                           MEBBİS no: {certificate.mebbisCertificateNo || 'girilmedi'}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
-                          <Button size="sm" variant="outline" onClick={() => openDocument(certificate)}><Eye className="mr-1 h-3.5 w-3.5" />Görüntüle</Button>
-                          {can(DRIVING.certificateIssue) && (
+                          {canPrintCertificate && <Button size="sm" variant="outline" onClick={() => openDocument(certificate)}><Eye className="mr-1 h-3.5 w-3.5" />Görüntüle</Button>}
+                          {canPrintCertificate && can(DRIVING.certificateIssue) && (
                             <Button size="sm" variant="outline" onClick={() => {
                               const value = window.prompt('MEBBİS sertifika numarası:', certificate.mebbisCertificateNo || '');
                               if (value !== null) run(() => updateDrivingCertificateMebbisNo(certificate.id, value.trim()), 'MEBBİS sertifika no işlendi');
@@ -341,7 +347,7 @@ export default function DrivingGraduation() {
                               }
                             }}>Teslim Edildi</Button>
                           )}
-                          {can(DRIVING.certificateIssue) && certificate.status === 'Active' && (
+                          {canPrintCertificate && can(DRIVING.certificateIssue) && certificate.status === 'Active' && (
                             <Button size="sm" variant="outline" onClick={() => {
                               const reason = window.prompt('Yeniden basım gerekçesi:');
                               if (reason?.trim().length >= 10) run(() => reissueDrivingCertificate(certificate.id, reason), 'Yeni belge sürümü oluşturuldu');

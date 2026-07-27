@@ -8,8 +8,17 @@ import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
 
-const _recordType = {'Maintenance': 'Bakım', 'Fault': 'Arıza', 'Damage': 'Hasar'};
-const _priority = {'Low': 'Düşük', 'Normal': 'Normal', 'High': 'Yüksek', 'Critical': 'Kritik'};
+const _recordType = {
+  'Maintenance': 'Bakım',
+  'Fault': 'Arıza',
+  'Damage': 'Hasar',
+};
+const _priority = {
+  'Low': 'Düşük',
+  'Normal': 'Normal',
+  'High': 'Yüksek',
+  'Critical': 'Kritik',
+};
 const _assignmentType = {
   'Primary': 'Birincil',
   'Secondary': 'İkincil',
@@ -22,7 +31,8 @@ const _documentStatus = {
   'Expired': 'Süresi doldu',
 };
 
-String _transmission(dynamic v) => (v == 1 || v == 'Manual') ? 'Manuel' : 'Otomatik';
+String _transmission(dynamic v) =>
+    (v == 1 || v == 'Manual') ? 'Manuel' : 'Otomatik';
 
 String _dateOnly(dynamic value) {
   final raw = '${value ?? ''}';
@@ -51,9 +61,11 @@ DrivingTone _docTone(dynamic status) {
   }
 }
 
-/// Aracın işletme durumu iki bayraktan türetilir: pasif > bakımda > uygun.
-String _vehicleStatus(Map<String, dynamic> v) =>
-    v['isActive'] != true ? 'passive' : (v['isInMaintenance'] == true ? 'maintenance' : 'active');
+/// Bakım açıkça seçildiyse bakımda göster; aksi halde backend'in evrak
+/// geçerliliğinden türettiği isActive değeri pasif/uygun durumunu belirler.
+String _vehicleStatus(Map<String, dynamic> v) => v['isInMaintenance'] == true
+    ? 'maintenance'
+    : (v['isActive'] != true ? 'passive' : 'active');
 
 class _VehicleStatusMeta {
   final String label;
@@ -63,9 +75,21 @@ class _VehicleStatusMeta {
 }
 
 const Map<String, _VehicleStatusMeta> _vehicleStatusMeta = {
-  'active': _VehicleStatusMeta('Uygun', DrivingTone.success, Icons.check_circle_rounded),
-  'maintenance': _VehicleStatusMeta('Bakımda', DrivingTone.danger, Icons.build_rounded),
-  'passive': _VehicleStatusMeta('Pasif', DrivingTone.neutral, Icons.lock_rounded),
+  'active': _VehicleStatusMeta(
+    'Uygun',
+    DrivingTone.success,
+    Icons.check_circle_rounded,
+  ),
+  'maintenance': _VehicleStatusMeta(
+    'Bakımda',
+    DrivingTone.danger,
+    Icons.build_rounded,
+  ),
+  'passive': _VehicleStatusMeta(
+    'Pasif',
+    DrivingTone.neutral,
+    Icons.lock_rounded,
+  ),
 };
 
 // Arayüzdeki durum anahtarını backend'in beklediği değere çevirir.
@@ -81,7 +105,8 @@ class DrivingSchoolVehiclesPage extends StatefulWidget {
   const DrivingSchoolVehiclesPage({super.key});
 
   @override
-  State<DrivingSchoolVehiclesPage> createState() => _DrivingSchoolVehiclesPageState();
+  State<DrivingSchoolVehiclesPage> createState() =>
+      _DrivingSchoolVehiclesPageState();
 }
 
 class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
@@ -160,15 +185,28 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
   List<Map<String, dynamic>> get _filtered {
     final term = _search.trim().toLowerCase();
     return _vehicles.where((v) {
-      if (_statusFilter != 'all' && _vehicleStatus(v) != _statusFilter) return false;
+      if (_statusFilter != 'all' && _vehicleStatus(v) != _statusFilter) {
+        return false;
+      }
       if (term.isEmpty) return true;
-      final hay = '${v['plateNumber'] ?? ''} ${v['brand'] ?? ''} ${v['model'] ?? ''}'.toLowerCase();
+      final hay =
+          '${v['plateNumber'] ?? ''} ${v['brand'] ?? ''} ${v['model'] ?? ''}'
+              .toLowerCase();
       return hay.contains(term);
     }).toList();
   }
 
-  Future<void> _changeStatus(Map<String, dynamic> vehicle, String status) async {
+  Future<void> _changeStatus(
+    Map<String, dynamic> vehicle,
+    String status,
+  ) async {
     if (status == _vehicleStatus(vehicle)) return;
+    if (status == 'active' &&
+        (vehicle['requiresInspectionRenewal'] == true ||
+            vehicle['requiresInsuranceRenewal'] == true)) {
+      await _renewComplianceAndActivate(vehicle);
+      return;
+    }
     try {
       final updated = await _service.updateVehicleStatus(
         '${vehicle['id']}',
@@ -179,13 +217,142 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
         final i = _vehicles.indexWhere((x) => x['id'] == vehicle['id']);
         if (i >= 0) _vehicles[i] = {..._vehicles[i], ...updated};
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Araç durumu güncellendi'.tr)),
-      );
-    } catch (_) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Araç durumu güncellendi'.tr)));
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Durum değiştirilemedi'.tr)),
+        SnackBar(
+          content: Text('${'Durum değiştirilemedi'.tr}: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _renewComplianceAndActivate(Map<String, dynamic> vehicle) async {
+    final needsInspection = vehicle['requiresInspectionRenewal'] == true;
+    final needsInsurance = vehicle['requiresInsuranceRenewal'] == true;
+    DateTime? inspection;
+    DateTime? insurance;
+    final firstValidDay = DateUtils.dateOnly(
+      DateTime.now(),
+    ).add(const Duration(days: 1));
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setLocal) {
+          final complete =
+              (!needsInspection || inspection != null) &&
+              (!needsInsurance || insurance != null);
+          return AlertDialog(
+            title: Text('Eksik Bilgileri Yenile · ${vehicle['plateNumber']}'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Araç zorunlu belgesi eksik veya süresi dolduğu için otomatik pasiftir. Yalnızca gerekli tarihleri yenilediğinizde uygun duruma alınır.',
+                  ),
+                  const SizedBox(height: 14),
+                  if (needsInspection)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.fact_check_rounded),
+                      title: const Text('Yeni muayene bitiş tarihi'),
+                      subtitle: Text(
+                        inspection == null
+                            ? 'Zorunlu'
+                            : _dateOnly(inspection!.toIso8601String()),
+                      ),
+                      trailing: const Icon(Icons.calendar_month_rounded),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: inspection ?? firstValidDay,
+                          firstDate: firstValidDay,
+                          lastDate: firstValidDay.add(
+                            const Duration(days: 3650),
+                          ),
+                        );
+                        if (picked != null) {
+                          setLocal(() => inspection = picked);
+                        }
+                      },
+                    ),
+                  if (needsInsurance)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.verified_user_rounded),
+                      title: const Text('Yeni sigorta bitiş tarihi'),
+                      subtitle: Text(
+                        insurance == null
+                            ? 'Zorunlu'
+                            : _dateOnly(insurance!.toIso8601String()),
+                      ),
+                      trailing: const Icon(Icons.calendar_month_rounded),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: insurance ?? firstValidDay,
+                          firstDate: firstValidDay,
+                          lastDate: firstValidDay.add(
+                            const Duration(days: 3650),
+                          ),
+                        );
+                        if (picked != null) {
+                          setLocal(() => insurance = picked);
+                        }
+                      },
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Vazgeç'),
+              ),
+              FilledButton.icon(
+                onPressed: complete
+                    ? () => Navigator.pop(dialogContext, true)
+                    : null,
+                icon: const Icon(Icons.verified_rounded),
+                label: const Text('Yenile ve Uygun Yap'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    DateTime? safeNoon(DateTime? value) =>
+        value == null ? null : DateTime(value.year, value.month, value.day, 12);
+    try {
+      await _service.renewVehicleCompliance(
+        '${vehicle['id']}',
+        inspectionExpiresAtUtc: safeNoon(inspection),
+        insuranceExpiresAtUtc: safeNoon(insurance),
+        activateWhenCompliant: true,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${vehicle['plateNumber']} yenilendi ve uygun duruma alındı.',
+          ),
+        ),
+      );
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$error'), backgroundColor: Colors.red),
       );
     }
   }
@@ -201,9 +368,13 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
 
   @override
   Widget build(BuildContext context) {
-    final inMaintenance = _vehicles.where((v) => _vehicleStatus(v) == 'maintenance').length;
+    final inMaintenance = _vehicles
+        .where((v) => _vehicleStatus(v) == 'maintenance')
+        .length;
     final active = _vehicles.where((v) => _vehicleStatus(v) == 'active').length;
-    final passive = _vehicles.where((v) => _vehicleStatus(v) == 'passive').length;
+    final passive = _vehicles
+        .where((v) => _vehicleStatus(v) == 'passive')
+        .length;
 
     return DrivingScaffold(
       appBar: AppBar(
@@ -211,7 +382,10 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
         bottom: TabBar(
           controller: _tabs,
           tabs: [
-            Tab(icon: const Icon(Icons.directions_car_rounded), text: 'Filo'.tr),
+            Tab(
+              icon: const Icon(Icons.directions_car_rounded),
+              text: 'Filo'.tr,
+            ),
             Tab(
               icon: const Icon(Icons.verified_user_rounded),
               text: 'Evrak & Bakım'.tr,
@@ -233,14 +407,22 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
           : TabBarView(
               controller: _tabs,
               children: [
-                _fleetTab(active: active, inMaintenance: inMaintenance, passive: passive),
+                _fleetTab(
+                  active: active,
+                  inMaintenance: inMaintenance,
+                  passive: passive,
+                ),
                 _complianceTab(),
               ],
             ),
     );
   }
 
-  Widget _fleetTab({required int active, required int inMaintenance, required int passive}) {
+  Widget _fleetTab({
+    required int active,
+    required int inMaintenance,
+    required int passive,
+  }) {
     final canUpdate = _permissions.can(DrivingPermissions.vehicleUpdate);
     final counts = {
       'all': _vehicles.length,
@@ -255,101 +437,120 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
       'passive': 'Pasif',
     };
     return RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-          children: [
-            DrivingHero(
-              eyebrow: 'FİLO'.tr,
-              title: 'Araçlar'.tr,
-              description:
-                  'Bir araca dokunarak bakım, evrak ve atama bilgilerini inceleyin.'.tr,
-              icon: Icons.directions_car_filled_rounded,
-              metrics: [
-                DrivingHeroMetric(label: 'Toplam'.tr, value: '${_vehicles.length}'),
-                const SizedBox(width: 10),
-                DrivingHeroMetric(label: 'Uygun'.tr, value: '$active'),
-                const SizedBox(width: 10),
-                DrivingHeroMetric(label: 'Bakımda'.tr, value: '$inMaintenance'),
-                const SizedBox(width: 10),
-                DrivingHeroMetric(label: 'Pasif'.tr, value: '$passive'),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              onChanged: (v) => setState(() => _search = v),
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search_rounded),
-                hintText: 'Plaka veya marka ara...'.tr,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        children: [
+          DrivingHero(
+            eyebrow: 'FİLO'.tr,
+            title: 'Araçlar'.tr,
+            description:
+                'Bir araca dokunarak bakım, evrak ve atama bilgilerini inceleyin.'
+                    .tr,
+            icon: Icons.directions_car_filled_rounded,
+            metrics: [
+              DrivingHeroMetric(
+                label: 'Toplam'.tr,
+                value: '${_vehicles.length}',
+              ),
+              const SizedBox(width: 10),
+              DrivingHeroMetric(label: 'Uygun'.tr, value: '$active'),
+              const SizedBox(width: 10),
+              DrivingHeroMetric(label: 'Bakımda'.tr, value: '$inMaintenance'),
+              const SizedBox(width: 10),
+              DrivingHeroMetric(label: 'Pasif'.tr, value: '$passive'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            onChanged: (v) => setState(() => _search = v),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search_rounded),
+              hintText: 'Plaka veya marka ara...'.tr,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
-            const SizedBox(height: 12),
-            // Duruma göre filtrele
-            Wrap(
-              spacing: 8,
-              children: filters.entries.map((e) {
-                return ChoiceChip(
-                  label: Text('${e.value.tr} (${counts[e.key] ?? 0})'),
-                  selected: _statusFilter == e.key,
-                  onSelected: (_) => setState(() => _statusFilter = e.key),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 14),
-            if (_filtered.isEmpty)
-              DrivingEmptyState(
+          ),
+          const SizedBox(height: 12),
+          // Duruma göre filtrele
+          Wrap(
+            spacing: 8,
+            children: filters.entries.map((e) {
+              return ChoiceChip(
+                label: Text('${e.value.tr} (${counts[e.key] ?? 0})'),
+                selected: _statusFilter == e.key,
+                onSelected: (_) => setState(() => _statusFilter = e.key),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 14),
+          if (_filtered.isEmpty)
+            DrivingEmptyState(
+              icon: Icons.directions_car_rounded,
+              title: _search.isEmpty
+                  ? 'Filoda araç yok.'.tr
+                  : 'Eşleşen araç yok.'.tr,
+            )
+          else
+            ..._filtered.map((v) {
+              final status = _vehicleStatus(v);
+              final meta = _vehicleStatusMeta[status]!;
+              final complianceIssues = [
+                if (v['requiresInspectionRenewal'] == true)
+                  'Muayene süresi dolmuş',
+                if (v['requiresInsuranceRenewal'] == true)
+                  'Sigorta süresi dolmuş',
+              ];
+              return DrivingListRow(
                 icon: Icons.directions_car_rounded,
-                title: _search.isEmpty ? 'Filoda araç yok.'.tr : 'Eşleşen araç yok.'.tr,
-              )
-            else
-              ..._filtered.map((v) {
-                final status = _vehicleStatus(v);
-                final meta = _vehicleStatusMeta[status]!;
-                return DrivingListRow(
-                  icon: Icons.directions_car_rounded,
-                  iconColor: status == 'maintenance'
-                      ? const Color(0xFFEF4444)
-                      : (status == 'passive' ? const Color(0xFF9CA3AF) : null),
-                  title: '${v['plateNumber'] ?? '—'}',
-                  subtitle:
-                      '${v['brand'] ?? ''} ${v['model'] ?? ''} • ${v['licenseClass'] ?? ''} • ${_transmission(v['transmissionType'])}',
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      DrivingStatusPill(label: meta.label.tr, tone: meta.tone, icon: meta.icon),
-                      if (canUpdate)
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert_rounded, size: 20),
-                          tooltip: 'Durumu değiştir'.tr,
-                          onSelected: (s) => _changeStatus(v, s),
-                          itemBuilder: (_) => _vehicleStatusMeta.entries
-                              .map((e) => PopupMenuItem<String>(
-                                    value: e.key,
-                                    child: Row(
-                                      children: [
-                                        Icon(e.value.icon, size: 18),
-                                        const SizedBox(width: 8),
-                                        Text(e.value.label.tr),
-                                        if (e.key == status) ...[
-                                          const SizedBox(width: 6),
-                                          const Icon(Icons.check_rounded, size: 16),
-                                        ],
-                                      ],
-                                    ),
-                                  ))
-                              .toList(),
-                        ),
-                    ],
-                  ),
-                  onTap: () => _openVehicle(v),
-                );
-              }),
-          ],
-        ),
-      );
+                iconColor: status == 'maintenance'
+                    ? const Color(0xFFEF4444)
+                    : (status == 'passive' ? const Color(0xFF9CA3AF) : null),
+                title: '${v['plateNumber'] ?? '—'}',
+                subtitle:
+                    '${v['brand'] ?? ''} ${v['model'] ?? ''} • ${v['licenseClass'] ?? ''} • ${_transmission(v['transmissionType'])}'
+                    '${complianceIssues.isEmpty ? '' : '\n${complianceIssues.join(' • ')}'}',
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DrivingStatusPill(
+                      label: meta.label.tr,
+                      tone: meta.tone,
+                      icon: meta.icon,
+                    ),
+                    if (canUpdate)
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert_rounded, size: 20),
+                        tooltip: 'Durumu değiştir'.tr,
+                        onSelected: (s) => _changeStatus(v, s),
+                        itemBuilder: (_) => _vehicleStatusMeta.entries
+                            .map(
+                              (e) => PopupMenuItem<String>(
+                                value: e.key,
+                                child: Row(
+                                  children: [
+                                    Icon(e.value.icon, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(e.value.label.tr),
+                                    if (e.key == status) ...[
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.check_rounded, size: 16),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                  ],
+                ),
+                onTap: () => _openVehicle(v),
+              );
+            }),
+        ],
+      ),
+    );
   }
 
   Widget _complianceTab() {
@@ -369,11 +570,14 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
             ..._documents.map(
               (document) => DrivingListRow(
                 icon: Icons.description_rounded,
-                title: '${document['plateNumber'] ?? '—'} • ${document['documentType'] ?? ''}',
+                title:
+                    '${document['plateNumber'] ?? '—'} • ${document['documentType'] ?? ''}',
                 subtitle:
                     '${document['documentNumber'] ?? ''} • Bitiş: ${_dateOnly(document['expiresAtUtc'])}',
                 trailing: DrivingStatusPill(
-                  label: _documentStatus['${document['status']}'] ?? '${document['status']}',
+                  label:
+                      _documentStatus['${document['status']}'] ??
+                      '${document['status']}',
                   tone: _docTone(document['status']),
                 ),
               ),
@@ -392,10 +596,12 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
                 iconColor: record['vehicleUsable'] == true
                     ? const Color(0xFFF59E0B)
                     : const Color(0xFFEF4444),
-                title: '${record['plateNumber'] ?? '—'} • ${record['title'] ?? ''}',
+                title:
+                    '${record['plateNumber'] ?? '—'} • ${record['title'] ?? ''}',
                 subtitle:
                     '${_recordType['${record['recordType']}'] ?? record['recordType']} • ${_priority['${record['priority']}'] ?? record['priority']}',
-                trailing: _permissions.can(DrivingPermissions.vehicleServiceManage)
+                trailing:
+                    _permissions.can(DrivingPermissions.vehicleServiceManage)
                     ? IconButton(
                         icon: const Icon(Icons.task_alt_rounded),
                         tooltip: 'Kaydı kapat',
@@ -469,7 +675,9 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
                       final picked = await showDatePicker(
                         context: context,
                         firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 3650)),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 3650),
+                        ),
                       );
                       setLocal(() => inspection = picked ?? inspection);
                     },
@@ -487,7 +695,9 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
                       final picked = await showDatePicker(
                         context: context,
                         firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 3650)),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 3650),
+                        ),
                       );
                       setLocal(() => insurance = picked ?? insurance);
                     },
@@ -595,19 +805,31 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
               initialValue: type,
               decoration: const InputDecoration(labelText: 'Belge türü'),
               items: [
-                DropdownMenuItem(value: 'Inspection', child: Text('Muayene'.tr)),
+                DropdownMenuItem(
+                  value: 'Inspection',
+                  child: Text('Muayene'.tr),
+                ),
                 DropdownMenuItem(
                   value: 'TrafficInsurance',
                   child: Text('Trafik Sigortası'.tr),
                 ),
-                DropdownMenuItem(value: 'Registration', child: Text('Ruhsat'.tr)),
+                DropdownMenuItem(
+                  value: 'Registration',
+                  child: Text('Ruhsat'.tr),
+                ),
                 DropdownMenuItem(value: 'Casco', child: Text('Kasko'.tr)),
-                DropdownMenuItem(value: 'Emission', child: Text('Egzoz Emisyon'.tr)),
+                DropdownMenuItem(
+                  value: 'Emission',
+                  child: Text('Egzoz Emisyon'.tr),
+                ),
                 DropdownMenuItem(
                   value: 'CourseUsage',
                   child: Text('Kurs Kullanım Belgesi'.tr),
                 ),
-                DropdownMenuItem(value: 'DualControl', child: Text('Çift Kumanda'.tr)),
+                DropdownMenuItem(
+                  value: 'DualControl',
+                  child: Text('Çift Kumanda'.tr),
+                ),
                 DropdownMenuItem(value: 'Other', child: Text('Diğer'.tr)),
               ],
               onChanged: (v) => setLocal(() => type = v ?? type),
@@ -624,12 +846,16 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
                       final picked = await showDatePicker(
                         context: context,
                         firstDate: DateTime(2000),
-                        lastDate: DateTime.now().add(const Duration(days: 7300)),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 7300),
+                        ),
                       );
                       setLocal(() => starts = picked ?? starts);
                     },
                     child: Text(
-                      starts == null ? 'Başlangıç' : _dateOnly(starts!.toIso8601String()),
+                      starts == null
+                          ? 'Başlangıç'
+                          : _dateOnly(starts!.toIso8601String()),
                     ),
                   ),
                 ),
@@ -639,13 +865,19 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
                     onPressed: () async {
                       final picked = await showDatePicker(
                         context: context,
-                        firstDate: DateTime.now().subtract(const Duration(days: 3650)),
-                        lastDate: DateTime.now().add(const Duration(days: 7300)),
+                        firstDate: DateTime.now().subtract(
+                          const Duration(days: 3650),
+                        ),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 7300),
+                        ),
                       );
                       setLocal(() => expires = picked ?? expires);
                     },
                     child: Text(
-                      expires == null ? 'Bitiş' : _dateOnly(expires!.toIso8601String()),
+                      expires == null
+                          ? 'Bitiş'
+                          : _dateOnly(expires!.toIso8601String()),
                     ),
                   ),
                 ),
@@ -679,7 +911,9 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
                 expires == null ||
                 file == null ||
                 number.text.trim().length < 2) {
-              throw StateError('Araç, belge, numara ve bitiş tarihi zorunludur.');
+              throw StateError(
+                'Araç, belge, numara ve bitiş tarihi zorunludur.',
+              );
             }
             final url = await _service.uploadVehicleDocument(file!);
             await _service.createVehicleDocument({
@@ -719,7 +953,9 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setLocal) => DrivingFormSheet(
-          title: canManage ? 'Bakım / Arıza Bildir'.tr : 'Arıza / Hasar Bildir'.tr,
+          title: canManage
+              ? 'Bakım / Arıza Bildir'.tr
+              : 'Arıza / Hasar Bildir'.tr,
           fields: [
             DropdownButtonFormField<String>(
               initialValue: vehicleId.isEmpty ? null : vehicleId,
@@ -745,7 +981,10 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
               decoration: const InputDecoration(labelText: 'Kayıt türü'),
               items: [
                 if (canManage)
-                  DropdownMenuItem(value: 'Maintenance', child: Text('Bakım'.tr)),
+                  DropdownMenuItem(
+                    value: 'Maintenance',
+                    child: Text('Bakım'.tr),
+                  ),
                 DropdownMenuItem(value: 'Fault', child: Text('Arıza'.tr)),
                 DropdownMenuItem(value: 'Damage', child: Text('Hasar'.tr)),
               ],
@@ -844,7 +1083,9 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
           controller: controller,
           maxLength: 2000,
           maxLines: 3,
-          decoration: const InputDecoration(labelText: 'Çözüm ve yapılan işlemler'),
+          decoration: const InputDecoration(
+            labelText: 'Çözüm ve yapılan işlemler',
+          ),
         ),
         actions: [
           TextButton(
@@ -859,7 +1100,10 @@ class _DrivingSchoolVehiclesPageState extends State<DrivingSchoolVehiclesPage>
       ),
     );
     if (confirmed == true && controller.text.trim().length >= 3) {
-      await _service.completeVehicleServiceRecord('${record['id']}', controller.text);
+      await _service.completeVehicleServiceRecord(
+        '${record['id']}',
+        controller.text,
+      );
       await _load();
     }
   }
@@ -884,9 +1128,22 @@ class _VehicleDetailSheetState extends State<_VehicleDetailSheet> {
     final vehicleId = '${widget.vehicle['id']}';
     final plate = '${widget.vehicle['plateNumber']}';
     _future = Future.wait([
-      service.vehicleServiceRecords().then((r) => r.where((x) => '${x['vehicleId']}' == vehicleId).toList()).catchError((_) => <Map<String, dynamic>>[]),
-      service.instructorVehicleAssignments().then((r) => r.where((x) => '${x['vehicleId']}' == vehicleId).toList()).catchError((_) => <Map<String, dynamic>>[]),
-      service.vehicleDocuments().then((r) => r.where((x) => '${x['plateNumber']}' == plate).toList()).catchError((_) => <Map<String, dynamic>>[]),
+      service
+          .vehicleServiceRecords()
+          .then(
+            (r) => r.where((x) => '${x['vehicleId']}' == vehicleId).toList(),
+          )
+          .catchError((_) => <Map<String, dynamic>>[]),
+      service
+          .instructorVehicleAssignments()
+          .then(
+            (r) => r.where((x) => '${x['vehicleId']}' == vehicleId).toList(),
+          )
+          .catchError((_) => <Map<String, dynamic>>[]),
+      service
+          .vehicleDocuments()
+          .then((r) => r.where((x) => '${x['plateNumber']}' == plate).toList())
+          .catchError((_) => <Map<String, dynamic>>[]),
     ]);
   }
 
@@ -921,7 +1178,10 @@ class _VehicleDetailSheetState extends State<_VehicleDetailSheet> {
                 children: [
                   Text(
                     '${v['plateNumber']}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   DrivingStatusPill(
@@ -948,18 +1208,27 @@ class _VehicleDetailSheetState extends State<_VehicleDetailSheet> {
               if (loading)
                 const _SheetLoading()
               else if (assignments.isEmpty)
-                DrivingEmptyState(icon: Icons.person_off_rounded, title: 'Atanmış öğretmen yok.'.tr)
+                DrivingEmptyState(
+                  icon: Icons.person_off_rounded,
+                  title: 'Atanmış öğretmen yok.'.tr,
+                )
               else
-                ...assignments.map((a) => DrivingListRow(
-                      icon: Icons.person_pin_rounded,
-                      iconColor: const Color(0xFF3B82F6),
-                      title: '${a['instructorName'] ?? '—'}',
-                      subtitle: _assignmentType['${a['assignmentType']}'] ?? '${a['assignmentType'] ?? 'Atama'}',
-                      trailing: DrivingStatusPill(
-                        label: a['isActive'] == true ? 'Aktif' : 'Pasif',
-                        tone: a['isActive'] == true ? DrivingTone.success : DrivingTone.neutral,
-                      ),
-                    )),
+                ...assignments.map(
+                  (a) => DrivingListRow(
+                    icon: Icons.person_pin_rounded,
+                    iconColor: const Color(0xFF3B82F6),
+                    title: '${a['instructorName'] ?? '—'}',
+                    subtitle:
+                        _assignmentType['${a['assignmentType']}'] ??
+                        '${a['assignmentType'] ?? 'Atama'}',
+                    trailing: DrivingStatusPill(
+                      label: a['isActive'] == true ? 'Aktif' : 'Pasif',
+                      tone: a['isActive'] == true
+                          ? DrivingTone.success
+                          : DrivingTone.neutral,
+                    ),
+                  ),
+                ),
 
               const SizedBox(height: 16),
               const DrivingSectionTitle(title: 'Bakım ve arıza kayıtları'),
@@ -967,7 +1236,10 @@ class _VehicleDetailSheetState extends State<_VehicleDetailSheet> {
               if (loading)
                 const _SheetLoading()
               else if (records.isEmpty)
-                DrivingEmptyState(icon: Icons.build_circle_rounded, title: 'Kayıt yok.'.tr)
+                DrivingEmptyState(
+                  icon: Icons.build_circle_rounded,
+                  title: 'Kayıt yok.'.tr,
+                )
               else
                 ...records.map((r) {
                   final open = r['status'] == 'Open';
@@ -980,7 +1252,7 @@ class _VehicleDetailSheetState extends State<_VehicleDetailSheet> {
                     trailing: DrivingStatusPill(
                       label: open ? 'Açık' : 'Kapandı',
                       tone: open ? DrivingTone.warning : DrivingTone.success,
-                    ), 
+                    ),
                   );
                 }),
 
@@ -990,28 +1262,39 @@ class _VehicleDetailSheetState extends State<_VehicleDetailSheet> {
               if (loading)
                 const _SheetLoading()
               else if (documents.isEmpty)
-                DrivingEmptyState(icon: Icons.folder_off_rounded, title: 'Evrak yok.'.tr)
+                DrivingEmptyState(
+                  icon: Icons.folder_off_rounded,
+                  title: 'Evrak yok.'.tr,
+                )
               else
-                ...documents.map((d) => DrivingListRow(
-                      icon: Icons.description_rounded,
-                      iconColor: const Color(0xFF3B82F6),
-                      title: '${d['documentType'] ?? '—'}',
-                      subtitle: '${d['documentNumber'] ?? ''} • Bitiş: ${_dateOnly(d['expiresAtUtc'])}',
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if ((d['fileUrl'] as String?)?.isNotEmpty == true)
-                            IconButton(
-                              icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                              onPressed: () => _openFile(d['fileUrl'] as String?),
+                ...documents.map(
+                  (d) => DrivingListRow(
+                    icon: Icons.description_rounded,
+                    iconColor: const Color(0xFF3B82F6),
+                    title: '${d['documentType'] ?? '—'}',
+                    subtitle:
+                        '${d['documentNumber'] ?? ''} • Bitiş: ${_dateOnly(d['expiresAtUtc'])}',
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if ((d['fileUrl'] as String?)?.isNotEmpty == true)
+                          IconButton(
+                            icon: const Icon(
+                              Icons.open_in_new_rounded,
+                              size: 18,
                             ),
-                          DrivingStatusPill(
-                            label: _documentStatus['${d['status']}'] ?? '${d['status']}',
-                            tone: _docTone(d['status']),
+                            onPressed: () => _openFile(d['fileUrl'] as String?),
                           ),
-                        ],
-                      ),
-                    )),
+                        DrivingStatusPill(
+                          label:
+                              _documentStatus['${d['status']}'] ??
+                              '${d['status']}',
+                          tone: _docTone(d['status']),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           );
         },
@@ -1025,7 +1308,7 @@ class _SheetLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: CircularProgressIndicator()),
-      );
+    padding: EdgeInsets.symmetric(vertical: 16),
+    child: Center(child: CircularProgressIndicator()),
+  );
 }

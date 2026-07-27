@@ -230,6 +230,8 @@ export default function DrivingStudentDetail() {
   const [charges, setCharges] = useState([]);
   const [mebbisHistory, setMebbisHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Sekme durumu bileşen dışında tutulur; yeniden yüklemede sıfırlanmasın.
+  const [activeTab, setActiveTab] = useState('overview');
   const [busy, setBusy] = useState(false);
   const [rejectReasons, setRejectReasons] = useState({});
   const [paymentForm, setPaymentForm] = useState({ amount: '', method: 'Nakit', financeInstallmentId: '', branchId: '' });
@@ -251,8 +253,11 @@ export default function DrivingStudentDetail() {
   const canCreateAppointment = can(DRIVING.appointmentCreate);
   const [apptOpen, setApptOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // İlk açılışta tam ekran yükleme gösterilir; sonraki yenilemelerde ekran
+  // sökülmez. Aksi halde (ör. evrak yüklendikten sonra) sekme ağacı unmount olup
+  // "Genel bakış"a dönüyor ve kullanıcı her belge için sekmeyi yeniden açıyordu.
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const [detail, ledgerState, chargeList, mebbisTimeline] = await Promise.all([
         fetchDrivingStudentDetail(profileId),
@@ -343,7 +348,7 @@ export default function DrivingStudentDetail() {
       });
       toast({ title: 'Sınav ücretleri güncellendi' });
       setExamFeeDraft(null);
-      await load();
+      await load({ silent: true });
     } catch (error) {
       toast({ title: 'Güncellenemedi', description: error.message, variant: 'destructive' });
     } finally {
@@ -374,7 +379,7 @@ export default function DrivingStudentDetail() {
     try {
       await action();
       toast({ title: success });
-      await load();
+      await load({ silent: true });
     } catch (error) {
       toast({ title: 'İşlem tamamlanamadı', description: error.message, variant: 'destructive' });
     } finally {
@@ -406,7 +411,7 @@ export default function DrivingStudentDetail() {
         fileName: file.name,
       });
       toast({ title: 'Belge yüklendi, onay bekliyor' });
-      await load();
+      await load({ silent: true });
     } catch (error) {
       toast({ title: 'Belge yüklenemedi', description: error.message, variant: 'destructive' });
     } finally {
@@ -496,7 +501,7 @@ export default function DrivingStudentDetail() {
             setLifecycleForm({ status: overview.status, automaticStatusEnabled: overview.automaticStatusEnabled !== false, allowIncompleteDocuments: false, reason: '' });
             setLifecycleOpen(true);
           }}><UserRoundCheck className="mr-2 h-4 w-4" />Durum ve uygunluk</Button>}
-          <Button variant="outline" onClick={load}><RefreshCw className="mr-2 h-4 w-4" />Yenile</Button>
+          <Button variant="outline" onClick={() => load({ silent: true })}><RefreshCw className="mr-2 h-4 w-4" />Yenile</Button>
           <Button variant="outline" disabled={!lessons.length} onClick={exportEvaluations}><Download className="mr-2 h-4 w-4" />Gelişim Raporu</Button>
         </div>
       </div>
@@ -534,7 +539,7 @@ export default function DrivingStudentDetail() {
         </DialogContent>
       </Dialog>
 
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="overview">Genel bakış</TabsTrigger>
           <TabsTrigger value="training">Direksiyon</TabsTrigger>
@@ -1232,7 +1237,7 @@ export default function DrivingStudentDetail() {
           studentName={overview.fullName}
           canOverride={can}
           onClose={() => setApptOpen(false)}
-          onCreated={() => { setApptOpen(false); load(); }}
+          onCreated={() => { setApptOpen(false); load({ silent: true }); }}
         />
       )}
 

@@ -59,7 +59,7 @@ import {
   KeyRound,
   ChevronDown,
 } from "lucide-react";
-import { Activity, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserRoundCheck, UserX, TrendingDown } from "lucide-react";
+import { Activity, Archive, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserRoundCheck, UserX, TrendingDown } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import {
   Tooltip,
@@ -256,6 +256,12 @@ export const menuConfigs = {
       icon: CheckSquare,
       label: "Kayıt Geçmişi",
       color: "#64748b",
+    },
+    {
+      path: "/admin/data-backup",
+      icon: CheckSquare,
+      label: "Verilerimi İndir",
+      color: "#334155",
     },
     {
       path: "/admin/org-units",
@@ -1105,7 +1111,7 @@ const ROLE_MENU_GROUPS = {
     { id: "finance", title: "Finans", modules: ["finance", "student-accounts", "collections", "refunds", "installments", "billing", "late-payments", "discounts-scholarships", "collection-calendar", "reconciliation", "bulk-actions", "overdue-rules", "salary", "cash-report", "ledger", "finance-export", "finance-audit-log", "finance-detail-hub"] },
     { id: "communication", title: "İletişim", modules: ["notifications", "meetings", "chat", "support"] },
     { id: "services", title: "Servis & Yemekhane", modules: ["service", "cafeteria"] },
-    { id: "system", title: "Sistem", modules: ["role-management", "rbac", "audit-log", "profile", "system"] },
+    { id: "system", title: "Sistem", modules: ["role-management", "rbac", "audit-log", "data-backup", "profile", "system"] },
   ],
   administrative: [
     { id: "main", title: "Ana Panel", modules: ["operations", "tasks", "schedule", "duties"] },
@@ -1314,6 +1320,7 @@ const MODULE_MENU_REGISTRY = {
   },
   "staff-hr": { default: { path: "/admin/staff-hr", icon: Users, label: "Personel / İK", color: "#10b981" } },
   "audit-log": { default: { path: "/admin/audit-log", icon: Activity, label: "Kayıt Geçmişi", color: "#6366f1" } },
+  "data-backup": { default: { path: "/admin/data-backup", icon: Archive, label: "Verilerimi İndir", color: "#334155" } },
   "org-units": { default: { path: "/admin/org-units", icon: Layers, label: "Organizasyon Birimleri", color: "#f97316" } },
   rbac: { default: { path: "/admin/rbac", icon: Shield, label: "Yetki Matrisi", color: "#a855f7" } },
 };
@@ -1411,6 +1418,7 @@ export function inferModuleKey(item) {
     "/admin/role-management": "role-management",
     "/admin/staff-hr": "staff-hr",
     "/admin/audit-log": "audit-log",
+    "/admin/data-backup": "data-backup",
     "/admin/org-units": "org-units",
     "/admin/rbac": "rbac",
     "/library": "library",
@@ -1547,6 +1555,18 @@ export function buildGroupedMenuItems(items, primaryRole) {
     const targetGroup = groups.find((group) => group.modules.includes(moduleKey)
       || (group.paths || []).includes(item.path)) || fallback;
     targetGroup.items.push({ ...item, moduleKey });
+  }
+
+  // Personel kaydı, yönetici kayıt akışının başlangıç noktasıdır. Menü;
+  // yetki, paket ve kurum türü filtrelerinden geçtikten sonra kurulduğu için
+  // sıralamayı burada sabitlemek masaüstü ve mobil çekmecede aynı sonucu verir.
+  const registrationGroup = groups.find((group) => group.id === "registrations");
+  if (registrationGroup) {
+    registrationGroup.items.sort((left, right) => {
+      const leftPriority = left.path === "/admin/staff-registration" ? 0 : 1;
+      const rightPriority = right.path === "/admin/staff-registration" ? 0 : 1;
+      return leftPriority - rightPriority;
+    });
   }
 
   return [...groups, fallback].filter((group) => group.items.length > 0);

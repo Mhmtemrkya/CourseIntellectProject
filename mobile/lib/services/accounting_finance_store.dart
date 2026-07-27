@@ -275,6 +275,11 @@ class CollectionRecord {
   // "Kim, hangi şubeden tahsil etti" — backend AccountingCollectionDto'dan gelir.
   final String branchName;
   final String collectedByName;
+  // "Collection" veya "Refund". İade belgeleri negatif tutarlıdır; tahsilat
+  // toplamlarına karışırsa kasa/dönem tutarları eksiye düşer.
+  final String entryType;
+
+  bool get isRefund => entryType == 'Refund' || amount.contains('-');
 
   CollectionRecord({
     this.id = '',
@@ -286,6 +291,7 @@ class CollectionRecord {
     required this.note,
     this.branchName = '',
     this.collectedByName = '',
+    this.entryType = 'Collection',
   });
 
   factory CollectionRecord.fromMap(Map<String, dynamic> map) {
@@ -299,6 +305,9 @@ class CollectionRecord {
       note: _normalizeFinanceText(map['note']),
       branchName: _normalizeFinanceText(map['branchName']),
       collectedByName: _normalizeFinanceText(map['collectedByName']),
+      entryType: _normalizeFinanceText(map['entryType']).isEmpty
+          ? 'Collection'
+          : _normalizeFinanceText(map['entryType']),
     );
   }
 
@@ -312,6 +321,7 @@ class CollectionRecord {
     'note': note,
     'branchName': branchName,
     'collectedByName': collectedByName,
+    'entryType': entryType,
   };
 }
 
@@ -478,6 +488,18 @@ class AccountingFinanceStore extends ChangeNotifier {
   List<SalaryRecord> salaries = [];
   List<ApprovalRecord> approvals = [];
   List<CollectionRecord> collections = [];
+
+  /// Yalnız gerçek para girişi olan tahsilatlar (iade belgeleri hariç).
+  /// Toplam/dönem metrikleri bunu kullanır; iadeler [refundTotal] ile ayrı verilir.
+  /// Karışık kullanılırsa kasa ve dönem tahsilatı eksiye düşer.
+  List<CollectionRecord> get collectionsOnly =>
+      collections.where((item) => !item.isRefund).toList();
+
+  /// İadelerin mutlak toplamı.
+  int get refundTotal => collections
+      .where((item) => item.isRefund)
+      .fold<int>(0, (sum, item) => sum + parseAmount(item.amount).abs());
+
   List<InstallmentRecord> installments = [];
   List<AccountingBenefitRecord> benefits = [];
   List<FinanceNotificationRecord> notifications = [];

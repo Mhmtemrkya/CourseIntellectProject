@@ -152,7 +152,7 @@ export default function OverdueRules() {
             <AlertTriangle className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Gecikme Kurallari</h1>
+            <h1 className="text-2xl font-bold">Gecikme Kuralları</h1>
             <p className="text-sm text-muted-foreground">Otomatik mobil bildirim ve uyarı kuralları</p>
           </div>
         </div>
@@ -236,7 +236,7 @@ export default function OverdueRules() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium">{rule.name}</span>
-                        <Badge variant="outline">{rule.daysAfterDue} gun sonra</Badge>
+                        <Badge variant="outline">{rule.daysAfterDue} gün sonra</Badge>
                         <Badge variant="secondary" className="flex items-center gap-1">
                           {ch.icon} {ch.label}
                         </Badge>

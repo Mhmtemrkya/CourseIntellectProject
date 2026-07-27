@@ -76,21 +76,33 @@ export default function DiscountsScholarships() {
     loadData();
   }, [loadData]);
 
-  const benefits = useMemo(() => (dashboard?.benefits || []).map((item) => ({
+  const benefits = useMemo(() => (dashboard?.benefits || []).map((item) => {
+    const rate = Number(String(item.rate || '0').replace('%', '').replace(',', '.')) || 0;
+    const totalAmount = parseMoney(item.totalAmount);
+    const netAmount = parseMoney(item.netAmount);
+    // Öncelik sözleşmeye işlenmiş gerçek fark; henüz işlenmemiş tanımlarda
+    // (brüt = net) oran üzerinden hesaplanır. Aksi halde aktif indirimi olan
+    // öğrenci varken "Toplam İndirim ₺0" görünüyordu.
+    const byAmount = Math.max(0, totalAmount - netAmount);
+    const discountAmount = byAmount > 0
+      ? byAmount
+      : (rate > 0 && totalAmount > 0 ? Math.round((totalAmount * rate) / 100) : 0);
+    return {
     id: item.id,
     name: item.studentName,
     username: item.studentUsername,
     className: item.className,
     type: item.benefitType,
     title: item.title,
-    rate: Number(String(item.rate || '0').replace('%', '').replace(',', '.')) || 0,
-    totalAmount: parseMoney(item.totalAmount),
-    netAmount: parseMoney(item.netAmount),
-    discountAmount: Math.max(0, parseMoney(item.totalAmount) - parseMoney(item.netAmount)),
+    rate,
+    totalAmount,
+    netAmount,
+    discountAmount,
     status: ['Onay Bekliyor', 'Bekliyor'].includes(item.status) ? 'Aktif' : (item.status || 'Aktif'),
     note: item.note || '',
     createdAtLabel: item.createdAtLabel || '',
-  })), [dashboard]);
+    };
+  }), [dashboard]);
 
   const discounts = useMemo(() => {
     return benefits.filter((item) => item.type === 'İndirim');

@@ -8,6 +8,13 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
 import { formatCurrency, parseFinanceMoney } from '../../lib/financeDocuments';
 
+// Backend ISO tarih döner; ekranda yerel biçimde gösterilir.
+function formatDateTime(value) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  return parsed.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
 export default function AuditLog() {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,15 +37,22 @@ export default function AuditLog() {
   }, [loadLogs]);
 
   const logs = useMemo(() => ([
-    ...(dashboard?.collections || []).slice(0, 5).map((item) => ({
-      id: `collection-${item.id}`,
-      title: 'Tahsilat işlendi',
-      detail: `${item.name} için ${formatCurrency(item.amount)} tutarlı kayıt işlendi`,
-      type: 'Tahsilat',
-      icon: Wallet,
-      tone: 'emerald',
-      time: item.time || 'Zaman yok',
-    })),
+    // İade belgeleri negatif tutarlıdır; "Tahsilat işlendi" başlığıyla listelenince
+    // yanlış okunuyordu. Kendi başlığı ve tonuyla gösterilir.
+    ...(dashboard?.collections || []).slice(0, 5).map((item) => {
+      const isRefund = item.entryType === 'Refund' || parseFinanceMoney(item.amount) < 0;
+      return {
+        id: `collection-${item.id}`,
+        title: isRefund ? 'İade işlendi' : 'Tahsilat işlendi',
+        detail: isRefund
+          ? `${item.name} için ${formatCurrency(Math.abs(parseFinanceMoney(item.amount)))} tutarlı iade yapıldı`
+          : `${item.name} için ${formatCurrency(item.amount)} tutarlı kayıt işlendi`,
+        type: isRefund ? 'İade' : 'Tahsilat',
+        icon: Wallet,
+        tone: isRefund ? 'rose' : 'emerald',
+        time: item.time || '—',
+      };
+    }),
     ...(dashboard?.invoices || []).slice(0, 5).map((item) => ({
       id: `invoice-${item.id}`,
       title: 'Fatura üretildi',
@@ -46,7 +60,7 @@ export default function AuditLog() {
       type: 'Fatura',
       icon: Receipt,
       tone: 'sky',
-      time: item.date || item.subtitle || 'Zaman yok',
+      time: item.date || item.subtitle || '—',
     })),
     ...(dashboard?.approvals || []).slice(0, 5).map((item) => ({
       id: `approval-${item.id}`,
@@ -55,9 +69,14 @@ export default function AuditLog() {
       type: 'Onay',
       icon: ShieldCheck,
       tone: 'amber',
-      time: item.updatedAtUtc || item.createdAtUtc || 'Zaman yok',
+      time: item.updatedAtUtc ? formatDateTime(item.updatedAtUtc) : '—',
     })),
-  ].sort((a, b) => String(b.time).localeCompare(String(a.time)))), [dashboard]);
+    // Zamanı olan kayıtlar önce, zamansızlar (eski onay satırları) sona.
+  ].sort((a, b) => {
+    if (a.time === '—') return 1;
+    if (b.time === '—') return -1;
+    return String(b.time).localeCompare(String(a.time));
+  })), [dashboard]);
 
   const summary = useMemo(() => ({
     count: logs.length,

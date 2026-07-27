@@ -229,6 +229,27 @@ public sealed class DrivingAvailabilityTests
         => Assert.True(DrivingAvailability.IsWorkingPermitValid(null, LocalTime(2026, 7, 14, 10)));
 
     [Fact]
+    public void WorkingPermitConfiguration_CompletelyUntracked_IsReady()
+        => Assert.True(DrivingAvailability.IsWorkingPermitConfigurationReady(
+            null, null, LocalTime(2026, 7, 14, 10)));
+
+    [Theory]
+    [InlineData("MEB-123", false)]
+    [InlineData("", true)]
+    public void WorkingPermitConfiguration_PartialData_IsNotReady(string permitNo, bool hasExpiry)
+        => Assert.False(DrivingAvailability.IsWorkingPermitConfigurationReady(
+            permitNo,
+            hasExpiry ? LocalTime(2027, 7, 14, 10) : null,
+            LocalTime(2026, 7, 14, 10)));
+
+    [Fact]
+    public void WorkingPermitConfiguration_CompleteFutureData_IsReady()
+        => Assert.True(DrivingAvailability.IsWorkingPermitConfigurationReady(
+            "MEB-123",
+            LocalTime(2027, 7, 14, 10),
+            LocalTime(2026, 7, 14, 10)));
+
+    [Fact]
     public void WorkingPermit_ValidUntilAfterLesson_Passes()
         => Assert.True(DrivingAvailability.IsWorkingPermitValid(
             LocalTime(2026, 12, 31, 0), LocalTime(2026, 7, 14, 10)));

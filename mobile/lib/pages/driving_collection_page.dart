@@ -45,6 +45,8 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
   String _bucket = 'active';
   String _groupId = 'all';
   String _search = '';
+  // Vade ayı filtresi: 'all' veya 'yyyy-MM'.
+  String _dueMonth = 'all';
   bool _canCollect = false;
   // Peşinatı beklenen (tahsil edilmemiş) sözleşmeler.
   List<Map<String, dynamic>> _pending = [];
@@ -102,10 +104,60 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
     }
   }
 
+  /// Listede geçen tüm vade ayları (ödenmemiş taksitlerden) — filtre seçenekleri.
+  List<Map<String, dynamic>> get _monthOptions {
+    final map = <String, Map<String, dynamic>>{};
+    for (final r in _rows) {
+      for (final m in (r['unpaidByMonth'] as List? ?? const [])) {
+        final key = '${m['month']}';
+        final cur = map[key] ?? {'month': key, 'amount': 0.0, 'students': 0};
+        cur['amount'] = (cur['amount'] as double) + _num(m['amount']);
+        cur['students'] = (cur['students'] as int) + 1;
+        map[key] = cur;
+      }
+    }
+    final list = map.values.toList()
+      ..sort((a, b) => '${a['month']}'.compareTo('${b['month']}'));
+    return list;
+  }
+
+  /// Ay seçiliyken yalnız o ayda taksidi olanlar gelir ve vadesi en yakın olan
+  /// başa alınır; seçim yoksa sunucudan gelen sıra korunur.
   List<Map<String, dynamic>> get _filtered {
     final term = _search.trim().toLowerCase();
-    if (term.isEmpty) return _rows;
-    return _rows.where((r) => '${r['fullName'] ?? ''}'.toLowerCase().contains(term)).toList();
+    var list = _rows;
+    if (_dueMonth != 'all') {
+      list = _rows
+          .map((r) {
+            final hit = (r['unpaidByMonth'] as List? ?? const [])
+                .cast<Map<String, dynamic>>()
+                .where((m) => '${m['month']}' == _dueMonth)
+                .toList();
+            if (hit.isEmpty) return null;
+            return {...r, 'monthDue': hit.first};
+          })
+          .whereType<Map<String, dynamic>>()
+          .toList()
+        ..sort((a, b) {
+          final ad = DateTime.tryParse('${(a['monthDue'] as Map)['dueDateUtc']}');
+          final bd = DateTime.tryParse('${(b['monthDue'] as Map)['dueDateUtc']}');
+          if (ad != null && bd != null && ad != bd) return ad.compareTo(bd);
+          return _num(b['overdueAmount']).compareTo(_num(a['overdueAmount']));
+        });
+    }
+    if (term.isEmpty) return list;
+    return list.where((r) => '${r['fullName'] ?? ''}'.toLowerCase().contains(term)).toList();
+  }
+
+  /// "2026-09" → "Eylül 2026"
+  String _monthLabel(String value) {
+    final parts = value.split('-');
+    if (parts.length != 2) return value;
+    const names = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    final month = int.tryParse(parts[1]) ?? 0;
+    if (month < 1 || month > 12) return value;
+    return '${names[month - 1]} ${parts[0]}';
   }
 
   Future<void> _collect(Map<String, dynamic> row) async {
@@ -312,9 +364,57 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
                       _load();
                     },
                   ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: _dueMonth,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      prefixIcon: const Icon(Icons.event_rounded, size: 20),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    items: [
+                      DropdownMenuItem(value: 'all', child: Text('Tüm aylar'.tr)),
+                      ..._monthOptions.map((m) => DropdownMenuItem(
+                            value: '${m['month']}',
+                            child: Text('${_monthLabel('${m['month']}')} (${m['students']})'),
+                          )),
+                    ],
+                    onChanged: (v) => setState(() => _dueMonth = v ?? 'all'),
+                  ),
+                  if (_dueMonth != 'all') ...[
+                    const SizedBox(height: 8),
+                    Card(
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${_monthLabel(_dueMonth)} • ${_filtered.length} ${'kursiyer'.tr}',
+                                style: const TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            Text(
+                              _money(_filtered.fold<double>(
+                                  0, (sum, r) => sum + _num((r['monthDue'] as Map?)?['amount']))),
+                              style: const TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   if (_filtered.isEmpty)
-                    DrivingEmptyState(icon: Icons.check_circle_rounded, title: 'Kayıt yok.'.tr)
+                    DrivingEmptyState(
+                      icon: Icons.check_circle_rounded,
+                      title: _dueMonth == 'all'
+                          ? 'Kayıt yok.'.tr
+                          : '${_monthLabel(_dueMonth)} ${'için ödenmemiş taksit yok.'.tr}',
+                    )
                   else
                     ..._filtered.map(_row),
                 ],
@@ -325,6 +425,8 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
 
   Widget _row(Map<String, dynamic> r) {
     final overdue = (r['overdueAmount'] as num?)?.toDouble() ?? 0;
+    // Ay filtresi seçiliyken satır o ayın vadesini ve tutarını gösterir.
+    final monthDue = r['monthDue'] as Map<String, dynamic>?;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -348,13 +450,22 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${r['nextDueDateUtc'] != null ? '${'Vade'.tr}: ${_dateOnly(r['nextDueDateUtc'])}' : 'Vade yok'.tr} • ${'Kayıt'.tr}: ${r['registrationBranchName'] ?? '—'}',
+                    monthDue != null
+                        ? '${_monthLabel(_dueMonth)} ${'vadesi'.tr}: ${_dateOnly(monthDue['dueDateUtc'])}'
+                            '${(monthDue['count'] as num? ?? 1) > 1 ? ' (${monthDue['count']} ${'taksit'.tr})' : ''}'
+                        : '${r['nextDueDateUtc'] != null ? '${'Vade'.tr}: ${_dateOnly(r['nextDueDateUtc'])}' : 'Vade yok'.tr} • ${'Kayıt'.tr}: ${r['registrationBranchName'] ?? '—'}',
                     style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text(_money(r['remaining']), style: const TextStyle(fontWeight: FontWeight.w900)),
+                      Text(_money(monthDue != null ? monthDue['amount'] : r['remaining']),
+                          style: const TextStyle(fontWeight: FontWeight.w900)),
+                      if (monthDue != null) ...[
+                        const SizedBox(width: 8),
+                        Text('${'Toplam kalan'.tr} ${_money(r['remaining'])}',
+                            style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                      ],
                       if (overdue > 0) ...[
                         const SizedBox(width: 8),
                         Text('${_money(overdue)} ${'gecikmiş'.tr}', style: const TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w700)),

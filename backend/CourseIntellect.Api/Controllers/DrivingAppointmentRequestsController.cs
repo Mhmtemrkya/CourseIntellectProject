@@ -205,7 +205,28 @@ public sealed class DrivingAppointmentRequestsController(
             .GroupJoin(db.DrivingStudentGroups.AsNoTracking(), x => x.p.StudentGroupId, g => (Guid?)g.Id, (x, gs) => new { x.p, x.FullName, gs })
             .SelectMany(x => x.gs.DefaultIfEmpty(), (x, g) => new { x.p.Id, x.p.StudentId, x.FullName, x.p.LicenseClass, transmissionType = x.p.TransmissionType.ToString(), status = x.p.Status.ToString(), groupId = x.p.StudentGroupId, groupName = g != null ? g.Name : null })
             .OrderBy(x => x.FullName).ToListAsync(ct);
-        var instructors = await db.DrivingInstructorProfiles.AsNoTracking().Join(db.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (p, s) => new { p.Id, p.StaffId, s.FullName, p.LicenseClasses, p.CanTeachManual, p.CanTeachAutomatic, p.IsActive, p.WorkingPermitNo, p.WorkingPermitExpiresAtUtc, complianceReady = p.WorkingPermitNo != "" && p.WorkingPermitExpiresAtUtc > DateTime.UtcNow, p.AutomaticStatusEnabled, p.ComplianceOverrideActive, p.ComplianceOverrideReason, p.StatusChangeSource, p.StatusChangeReason }).OrderBy(x => x.FullName).ToListAsync(ct);
+        var instructorRows = await db.DrivingInstructorProfiles.AsNoTracking()
+            .Join(db.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (p, s) => new
+            {
+                p.Id, p.StaffId, s.FullName, p.LicenseClasses, p.CanTeachManual,
+                p.CanTeachAutomatic, p.IsActive, p.WorkingPermitNo,
+                p.WorkingPermitExpiresAtUtc, p.AutomaticStatusEnabled,
+                p.ComplianceOverrideActive, p.ComplianceOverrideReason,
+                p.StatusChangeSource, p.StatusChangeReason,
+            })
+            .OrderBy(x => x.FullName)
+            .ToListAsync(ct);
+        var permitCheckAtUtc = DateTime.UtcNow;
+        var instructors = instructorRows.Select(p => new
+        {
+            p.Id, p.StaffId, p.FullName, p.LicenseClasses, p.CanTeachManual,
+            p.CanTeachAutomatic, p.IsActive, p.WorkingPermitNo,
+            p.WorkingPermitExpiresAtUtc,
+            complianceReady = DrivingAvailability.IsWorkingPermitConfigurationReady(
+                p.WorkingPermitNo, p.WorkingPermitExpiresAtUtc, permitCheckAtUtc),
+            p.AutomaticStatusEnabled, p.ComplianceOverrideActive,
+            p.ComplianceOverrideReason, p.StatusChangeSource, p.StatusChangeReason,
+        }).ToList();
         var vehicles = await db.DrivingVehicles.AsNoTracking().Where(x => x.IsActive).Select(x => new { x.Id, x.PlateNumber, x.LicenseClass, transmissionType = x.TransmissionType.ToString(), x.IsInMaintenance }).OrderBy(x => x.PlateNumber).ToListAsync(ct);
         var packages = await db.DrivingPackages.AsNoTracking().Where(x => x.IsActive).Select(x => new { x.Id, x.Name, x.LicenseClass, transmissionType = x.TransmissionType.ToString() }).ToListAsync(ct);
         var baseStudents = await db.Students.AsNoTracking().Where(s => !db.StudentDrivingProfiles.Any(p => p.StudentId == s.Id)).Select(x => new { x.Id, x.FullName }).OrderBy(x => x.FullName).Take(500).ToListAsync(ct);

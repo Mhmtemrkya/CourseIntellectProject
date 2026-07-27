@@ -425,6 +425,7 @@ class _DrivingStudentRegistrationPageState
                           controller: _gross,
                           decoration: _dec('Brüt (₺)'.tr),
                           keyboardType: TextInputType.number,
+                          onChanged: (_) => setState(() {}),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -433,6 +434,7 @@ class _DrivingStudentRegistrationPageState
                           controller: _discount,
                           decoration: _dec('İndirim (₺)'.tr),
                           keyboardType: TextInputType.number,
+                          onChanged: (_) => setState(() {}),
                         ),
                       ),
                     ],
@@ -454,6 +456,7 @@ class _DrivingStudentRegistrationPageState
                           controller: _installmentCount,
                           decoration: _dec('Taksit sayısı'.tr),
                           keyboardType: TextInputType.number,
+                          onChanged: (_) => setState(() {}),
                         ),
                       ),
                     ],
@@ -514,6 +517,8 @@ class _DrivingStudentRegistrationPageState
                         ),
                       ),
                   ],
+                  const SizedBox(height: 12),
+                  _financeSummary(),
                   const SizedBox(height: 20),
                   _section('Onaylar'.tr),
                   CheckboxListTile(
@@ -547,6 +552,74 @@ class _DrivingStudentRegistrationPageState
             ),
     );
   }
+
+  /// Paranın nasıl bölündüğünü adım adım gösterir: kurs ücretinden peşinat
+  /// düşülür, kalan taksitlenir. Sınav ücretleri buraya girmez — ayrı tahsil
+  /// edilir ve "Sınav Hakları" ekranından yönetilir.
+  Widget _financeSummary() {
+    final gross = double.tryParse(_gross.text.trim()) ?? 0;
+    final discount = double.tryParse(_discount.text.trim()) ?? 0;
+    final net = (gross - discount) < 0 ? 0.0 : gross - discount;
+    final down = double.tryParse(_downPayment.text.trim()) ?? 0;
+    final toInstall = (net - down) < 0 ? 0.0 : net - down;
+    final count = int.tryParse(_installmentCount.text.trim()) ?? 0;
+    final perInstallment = count > 0 ? toInstall / count : 0.0;
+    String money(double value) => '₺${value.toStringAsFixed(0)}';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Kurs ücreti ve taksitlendirme'.tr,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          _summaryRow('Kurs ücreti (net)'.tr, money(net)),
+          _summaryRow('Peşinat'.tr, down > 0 ? '− ${money(down)}' : money(0),
+              highlight: down > 0),
+          _summaryRow('Taksitlendirilecek'.tr, money(toInstall)),
+          _summaryRow(
+            'Taksit tutarı'.tr,
+            count > 0 ? '$count × ${money(perInstallment)}' : '—',
+            bold: true,
+          ),
+          if (down > net) ...[
+            const SizedBox(height: 6),
+            Text('Peşinat, kurs ücretinden büyük olamaz.'.tr,
+                style: const TextStyle(
+                    fontSize: 11, color: Colors.red, fontWeight: FontWeight.w700)),
+          ],
+          const SizedBox(height: 6),
+          Text('Sınav ücretleri taksite dâhil değildir; ayrı tahsil edilir.'.tr,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryRow(String label, String value,
+          {bool bold = false, bool highlight = false}) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 13)),
+            Text(
+              value,
+              style: TextStyle(
+                fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
+                fontSize: bold ? 15 : 13,
+                color: highlight ? Colors.green.shade700 : null,
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _section(String title) => Padding(
         padding: const EdgeInsets.only(bottom: 8),

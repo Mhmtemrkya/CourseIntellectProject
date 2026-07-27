@@ -76,7 +76,9 @@ const DRIVING_SCHOOL_ALLOWED = new Set([
 
 // Kurum türünden bağımsız her zaman görünür (profil, ayarlar, ve anahtarı
 // olmayan/genel öğeler).
-const ALWAYS_VISIBLE = new Set(['profile', 'system', '']);
+// "data-backup": kurum kendi verisini her kurum türünde dışa aktarabilmelidir
+// (KVKK veri taşınabilirliği); modül listelerine bağlı değildir.
+const ALWAYS_VISIBLE = new Set(['profile', 'system', 'data-backup', '']);
 
 // Modül anahtarı izinli OLSA DA sürücü kursunda gizlenecek tekil yollar.
 // Gerekçe: "registrations" anahtarı hem personel/muhasebe kaydını (gerekli) hem

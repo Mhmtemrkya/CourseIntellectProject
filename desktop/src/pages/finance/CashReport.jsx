@@ -54,7 +54,7 @@ export default function CashReport() {
       const data = await fetchAccountingDashboard();
       setDashboard(data || {});
     } catch (err) {
-      setError(err.message || 'Rapor yuklenemedi.');
+      setError(err.message || 'Rapor yüklenemedi.');
     } finally {
       setLoading(false);
     }
@@ -62,12 +62,21 @@ export default function CashReport() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const collections = useMemo(() => {
+  const allEntries = useMemo(() => {
     const list = dashboard?.recentCollections || dashboard?.collections || [];
     const all = Array.isArray(list) ? list : [];
     // Seçili döneme (Günlük/Haftalık/Aylık/Yıllık) göre süz; tarih = kalemin time alanı.
     return filterByPeriod(all, (c) => c.time || c.date || c.createdAt, period, anchor);
   }, [dashboard, period, anchor]);
+
+  // İade belgeleri negatif tutarlı hareketlerdir; yöntem kırılımına ve "Toplam
+  // Tahsilat"a karışırsa kasa eksiye düşer ve yüzdeler negatif çıkar. Ayrı tutulur.
+  const isRefundEntry = (c) => c.entryType === 'Refund' || parseAmount(c.amount) < 0;
+  const collections = useMemo(() => allEntries.filter((c) => !isRefundEntry(c)), [allEntries]);
+  const refundTotal = useMemo(
+    () => allEntries.filter(isRefundEntry).reduce((s, c) => s + Math.abs(parseAmount(c.amount)), 0),
+    [allEntries],
+  );
 
   const cashTotal = useMemo(
     () => collections.filter((c) => normalizeFinanceText(c.method || c.paymentMethod || c.type).includes('nakit')).reduce((s, c) => s + parseAmount(c.amount), 0),
@@ -104,6 +113,7 @@ export default function CashReport() {
   );
 
   const grandTotal = cashTotal + cardTotal + bankTotal + otherTotal;
+  const netTotal = Math.max(0, grandTotal - refundTotal);
 
   if (loading) return <div className="flex justify-center py-20"><LoadingDots /></div>;
   if (error) return <ErrorBanner message={error} onRetry={loadData} />;
@@ -118,7 +128,7 @@ export default function CashReport() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">Kasa Raporu</h1>
-            <p className="text-sm text-muted-foreground">Nakit, kart ve havale akisi</p>
+            <p className="text-sm text-muted-foreground">Nakit, kart ve havale akışı</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -140,7 +150,7 @@ export default function CashReport() {
       </motion.div>
 
       {/* Summary Cards */}
-      <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+      <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         <Card>
           <CardContent className="flex items-center gap-3 py-4">
             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
@@ -170,7 +180,7 @@ export default function CashReport() {
             </div>
             <div>
               <p className="text-xl font-bold">{formatCurrency(cardTotal)}</p>
-              <p className="text-xs text-muted-foreground">Kredi Karti</p>
+              <p className="text-xs text-muted-foreground">Kredi Kartı</p>
             </div>
           </CardContent>
         </Card>
@@ -193,6 +203,18 @@ export default function CashReport() {
             <div>
               <p className="text-xl font-bold">{formatCurrency(otherTotal)}</p>
               <p className="text-xs text-muted-foreground">Diğer</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+              <Receipt className="h-6 w-6 text-red-600" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-red-600">{formatCurrency(refundTotal)}</p>
+              <p className="text-xs text-muted-foreground">İade</p>
+              <p className="text-[11px] text-muted-foreground">Net: {formatCurrency(netTotal)}</p>
             </div>
           </CardContent>
         </Card>

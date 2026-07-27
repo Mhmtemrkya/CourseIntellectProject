@@ -75,10 +75,17 @@ export default function Export() {
     const rows = [];
 
     if (selectedFields.summary) {
+      // Brüt tahsilat ile iadeler ayrı satırlarda verilir; tek toplamda birleşirse
+      // iade tutarı tahsilatı eksiye düşürüyordu.
+      const amounts = dashboard.collections.map((item) => parseMoney(item.amount));
+      const gross = amounts.filter((value) => value > 0).reduce((sum, value) => sum + value, 0);
+      const refunded = amounts.filter((value) => value < 0).reduce((sum, value) => sum - value, 0);
       rows.push(['Özet', 'Fatura Sayısı', dashboard.invoices.length]);
       rows.push(['Özet', 'Tahsilat Sayısı', dashboard.collections.length]);
       rows.push(['Özet', 'Taksit Sayısı', dashboard.installments.length]);
-      rows.push(['Özet', 'Tahsilat Tutarı', dashboard.collections.reduce((sum, item) => sum + parseMoney(item.amount), 0)]);
+      rows.push(['Özet', 'Brüt Tahsilat', gross]);
+      rows.push(['Özet', 'İade Tutarı', refunded]);
+      rows.push(['Özet', 'Net Tahsilat', Math.max(0, gross - refunded)]);
     }
     if (selectedFields.invoices) {
       dashboard.invoices.forEach((item) => rows.push(['Fatura', item.id, item.title, item.category, item.amount, item.status]));

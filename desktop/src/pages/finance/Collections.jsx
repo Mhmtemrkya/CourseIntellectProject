@@ -20,6 +20,10 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from '../../components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '../../components/ui/alert-dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
@@ -343,7 +347,11 @@ export default function Collections() {
     setEditingCollection(null);
   };
 
+  // Finansal kayıt silme geri alınamaz; tek tıkla silinmemesi için onay istenir.
+  const [pendingDelete, setPendingDelete] = useState(null);
+
   const handleDelete = async (collection) => {
+    setPendingDelete(null);
     try {
       await deleteCollection(collection.id);
       setDashboard((prev) => ({
@@ -586,7 +594,7 @@ export default function Collections() {
                             <Button variant="ghost" size="icon" onClick={() => { setEditingCollection(collection); setDialogOpen(true); }}>
                               <Pencil className="h-4 w-4 text-blue-600" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(collection)}>
+                            <Button variant="ghost" size="icon" onClick={() => setPendingDelete(collection)}>
                               <Trash2 className="h-4 w-4 text-red-600" />
                             </Button>
                           </>
@@ -654,6 +662,31 @@ export default function Collections() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={Boolean(pendingDelete)} onOpenChange={(open) => { if (!open) setPendingDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tahsilat kaydı silinsin mi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete
+                ? `${pendingDelete.name || 'Öğrenci'} • ${pendingDelete.amount} • ${pendingDelete.time || ''}`
+                : ''}
+              <br />
+              Bu işlem geri alınamaz; makbuz kaydı kalıcı olarak silinir ve taksit
+              mahsupları yeniden hesaplanır.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={() => handleDelete(pendingDelete)}
+            >
+              Evet, sil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }

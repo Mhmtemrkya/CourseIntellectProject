@@ -69,6 +69,7 @@ const REQUIRED_STUDENT_FIELDS = [
 // Sözleşmenin künye ve ücret satırlarının dolu olması için gereken kurum alanları.
 const REQUIRED_SETTINGS_FIELDS = [
   { key: 'institutionName', label: 'Kurum adı' },
+  { key: 'institutionCode', label: 'Kurum kodu' },
   { key: 'institutionCity', label: 'İl' },
   { key: 'institutionDistrict', label: 'İlçe' },
   { key: 'institutionAddress', label: 'Adres' },
@@ -131,6 +132,7 @@ function InstitutionSettingsModal({ initial, onClose, onSaved }) {
             <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Kurum künyesi</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Kurum adı" value={form.institutionName} onChange={set('institutionName')} placeholder="Özel ... M.T.S.K." />
+              <Field label="MEBBİS kurum kodu" value={form.institutionCode} onChange={set('institutionCode')} placeholder="Örn. 40052" />
               <Field label="Müdür / kurucu adı" value={form.directorName} onChange={set('directorName')} />
               <Field label="İl" value={form.institutionCity} onChange={set('institutionCity')} />
               <Field label="İlçe" value={form.institutionDistrict} onChange={set('institutionDistrict')} />

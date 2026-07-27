@@ -121,6 +121,17 @@ export function getUserHomePath(user) {
 // sürücü kursu modül bayrağını doğru gönderiyordu. Bu durumda hesabı normal
 // okul gibi yorumlamak yerine güvenli ve geriye uyumlu biçimde kurum türünü
 // bayraktan çıkarırız.
+// Backend e-posta döndürmüyorsa kullanıcı adından türetilir. Kullanıcı adı zaten
+// bir e-posta ise (ör. test@surucukursu.local) domain EKLENMEZ — aksi halde
+// Ayarlar ekranında "test@surucukursu.local@courseintellect.local" görünüyordu.
+export function resolveUserEmail(user) {
+  const explicit = (user?.email || "").trim();
+  if (explicit) return explicit;
+  const username = (user?.username || "").trim();
+  if (!username) return "";
+  return username.includes("@") ? username : `${username}@courseintellect.local`;
+}
+
 export function resolveUserInstitutionType(user) {
   if (user?.institutionType) return user.institutionType;
   return user?.drivingSchoolModuleEnabled === true ? "DrivingSchool" : null;
@@ -228,7 +239,9 @@ export function createDesktopUser(payload) {
   return {
     id: data?.user?.id || "",
     name: data?.user?.fullName || data?.user?.name || "",
-    email: data?.user?.email || `${data?.user?.username || "user"}@courseintellect.local`,
+    // Kullanıcı adı zaten e-posta biçimindeyse olduğu gibi kullanılır; aksi halde
+    // "test@kurs.local@courseintellect.local" gibi ikilenmiş adres oluşuyordu.
+    email: resolveUserEmail(data?.user),
     role,
     backendRole,
     isPlatformAdmin,

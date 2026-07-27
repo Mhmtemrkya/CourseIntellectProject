@@ -731,7 +731,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                 title: const Text('Çalışma izni bitiş tarihi'),
                 subtitle: Text(
                   permitExpires == null
-                      ? 'Girilmezse öğretmen pasif başlar'
+                      ? 'Takip edilecekse izin no ile birlikte girin'
                       : '${permitExpires!.day}.${permitExpires!.month}.${permitExpires!.year}',
                 ),
                 trailing: const Icon(Icons.event_rounded),
@@ -870,11 +870,19 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                     if (groups.isNotEmpty)
                       DropdownButtonFormField<String>(
                         initialValue: groupFilter,
-                        decoration: InputDecoration(labelText: 'Grup / Dönem'.tr),
+                        decoration: InputDecoration(
+                          labelText: 'Grup / Dönem'.tr,
+                        ),
                         items: [
-                          DropdownMenuItem(value: 'all', child: Text('Tüm gruplar'.tr)),
+                          DropdownMenuItem(
+                            value: 'all',
+                            child: Text('Tüm gruplar'.tr),
+                          ),
                           ...groups.entries.map(
-                            (e) => DropdownMenuItem(value: e.key, child: Text(e.value)),
+                            (e) => DropdownMenuItem(
+                              value: e.key,
+                              child: Text(e.value),
+                            ),
                           ),
                         ],
                         onChanged: (v) => setLocal(() {
@@ -882,8 +890,12 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                           // Grup dışına düşen seçili öğrenciyi bırak.
                           if (studentId != null &&
                               groupFilter != 'all' &&
-                              students.firstWhere((x) => '${x['id']}' == studentId,
-                                      orElse: () => const {})['groupId']?.toString() !=
+                              students
+                                      .firstWhere(
+                                        (x) => '${x['id']}' == studentId,
+                                        orElse: () => const {},
+                                      )['groupId']
+                                      ?.toString() !=
                                   groupFilter) {
                             studentId = null;
                           }
@@ -894,9 +906,11 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                       isExpanded: true,
                       decoration: const InputDecoration(labelText: 'Kursiyer'),
                       items: students
-                          .where((x) =>
-                              groupFilter == 'all' ||
-                              '${x['groupId'] ?? ''}' == groupFilter)
+                          .where(
+                            (x) =>
+                                groupFilter == 'all' ||
+                                '${x['groupId'] ?? ''}' == groupFilter,
+                          )
                           .map(
                             (x) => DropdownMenuItem(
                               value: '${x['id']}',

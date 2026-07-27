@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IActiveScope, ActiveScope>();
         services.AddScoped<IUserScopeService, UserScopeService>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
+        services.AddScoped<ITenantBackupService, TenantBackupService>();
         services.AddScoped<UsernameGenerator>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IEntitlementService, EntitlementService>();

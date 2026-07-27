@@ -2,6 +2,7 @@ using CourseIntellect.Infrastructure;
 using CourseIntellect.Infrastructure.Persistence;
 using CourseIntellect.Infrastructure.Services;
 using CourseIntellect.Api.Hubs;
+using CourseIntellect.Api.Middleware;
 using CourseIntellect.Api.Realtime;
 using CourseIntellect.Application.Interfaces;
 using Hangfire;
@@ -52,7 +53,12 @@ builder.Services.Configure<FormOptions>(options =>
     options.MultipartHeadersLengthLimit = int.MaxValue;
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // Z'siz gelen tarihler Kind=Unspecified olur ve timestamptz sorgularında
+    // Npgsql'i patlatır (uç nokta 500 döner). Bağlamada UTC'ye sabitlenir.
+    options.ModelBinderProviders.Insert(0, new UtcDateTimeModelBinderProvider());
+});
 // Kütüphane ISBN sorgusu (Open Library) sunucu tarafında yapılır.
 builder.Services.AddHttpClient();
 builder.Services.AddInfrastructure(builder.Configuration);

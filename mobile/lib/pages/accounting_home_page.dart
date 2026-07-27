@@ -257,7 +257,8 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
   // --- Seçili döneme göre türetilmiş veriler ---
   List<CollectionRecord> get _periodCollections {
     final range = _periodRange(_period, _anchor);
-    return _store.collections
+    // İade belgeleri gelir metriklerine karışmaz (bkz. collectionsOnly).
+    return _store.collectionsOnly
         .where((c) => range.contains(_parseTrDate(c.time)))
         .toList();
   }
@@ -334,7 +335,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
   int get _prevCollected {
     final range = _periodRange(_period, _shiftAnchor(_period, _anchor, -1));
     return _sumAmount(
-      _store.collections
+      _store.collectionsOnly
           .where((c) => range.contains(_parseTrDate(c.time)))
           .map((c) => c.amount),
     );
@@ -344,7 +345,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
     final ranges = _bucketRanges(_period, _anchor);
     return List.generate(ranges.length, (index) {
       final range = ranges[index];
-      final coll = _store.collections
+      final coll = _store.collectionsOnly
           .where((c) => range.contains(_parseTrDate(c.time)))
           .toList();
       final salary = _sumAmount(

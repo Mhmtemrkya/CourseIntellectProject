@@ -641,7 +641,9 @@ public sealed class DrivingReportsController(
         var builder = new StringBuilder();
         builder.Append("sep=;\n");
         builder.Append(Escape(document.Title)).Append(';')
-            .Append(Escape($"{Local(document.FromUtc):dd.MM.yyyy} - {Local(document.ToUtc):dd.MM.yyyy}")).Append('\n');
+            // ToUtc dışlayıcı üst sınırdır; başlıkta kapsanan SON gün yazılır.
+            // Aksi halde dosya adı ile içerikteki aralık bir gün kayıyordu.
+            .Append(Escape($"{Local(document.FromUtc):dd.MM.yyyy} - {Local(document.ToUtc.AddSeconds(-1)):dd.MM.yyyy}")).Append('\n');
 
         foreach (var (label, value) in document.Summary)
             builder.Append(Escape(label)).Append(';').Append(Escape(value)).Append('\n');

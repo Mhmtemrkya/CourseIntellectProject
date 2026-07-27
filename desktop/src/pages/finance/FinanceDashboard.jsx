@@ -326,9 +326,15 @@ export default function FinanceDashboard() {
     return st.includes('öden') || st.includes('oden') || st.includes('paid') || st.includes('tahsil');
   };
 
+  // İade belgeleri negatif tutarlıdır; tahsilat/gelir metriklerine karışırsa dönem
+  // tahsilatı ve net akış eksiye düşer. Ayrı metrik olarak gösterilir.
+  const isRefundEntry = (item) => item?.entryType === 'Refund' || parseMoney(item?.amount) < 0;
+
   // Seçili döneme göre tahsilat akış metrikleri + geciken taksitler.
   const periodStats = useMemo(() => {
-    const collections = dashboard?.collections || [];
+    const allCollections = dashboard?.collections || [];
+    const collections = allCollections.filter((c) => !isRefundEntry(c));
+    const refunds = allCollections.filter(isRefundEntry);
     const installments = dashboard?.installments || [];
     const salaries = dashboard?.salaries || [];
     const invoices = dashboard?.invoices || [];
@@ -352,7 +358,10 @@ export default function FinanceDashboard() {
       return st.includes('gec') || st.includes('late') || (due && due.getTime() < now && !isPaid(item.status));
     });
 
-    const collected = sum(periodCollections);
+    const periodRefunds = filterByPeriod(refunds, (c) => c.time || c.date, period, anchor);
+    const refundTotal = periodRefunds.reduce((s, c) => s + Math.abs(parseMoney(c.amount)), 0);
+    const grossCollected = sum(periodCollections);
+    const collected = Math.max(0, grossCollected - refundTotal);
     const expense = sum(periodSalaries) + sum(periodInvoices.filter(isExpenseInvoice));
     const unpaidDue = sum(periodInstallments.filter((i) => !isPaid(i.status)));
     const target = collected + unpaidDue; // bu dönemde beklenen toplam
@@ -360,6 +369,8 @@ export default function FinanceDashboard() {
 
     return {
       collected,
+      grossCollected,
+      refundTotal,
       count: periodCollections.length,
       cash: sum(byMethod(periodCollections, 'nakit')),
       cardBank: sum(byMethod(periodCollections, 'kart', 'card', 'pos', 'havale', 'eft', 'bank', 'banka', 'transfer')),
@@ -381,7 +392,7 @@ export default function FinanceDashboard() {
   const prevCollected = useMemo(() => {
     const collections = dashboard?.collections || [];
     const prevAnchor = shiftAnchor(period, anchor, -1);
-    return filterByPeriod(collections, (c) => c.time || c.date, period, prevAnchor)
+    return filterByPeriod(collections.filter((c) => !isRefundEntry(c)), (c) => c.time || c.date, period, prevAnchor)
       .reduce((s, c) => s + parseMoney(c.amount), 0);
   }, [dashboard, period, anchor]);
 
@@ -397,7 +408,9 @@ export default function FinanceDashboard() {
     return createPeriodBuckets(period, anchor).map(({ start, end }) => {
       const inBucket = (d) => d && d >= start && d < end;
       let count = 0;
+      // Gelir yalnız gerçek tahsilattır; iadeler grafikte negatif gelir üretmesin.
       const income = collections.reduce((s, c) => {
+        if (isRefundEntry(c)) return s;
         if (inBucket(parseTrDateTime(c.time || c.date))) { count += 1; return s + parseMoney(c.amount); }
         return s;
       }, 0);
@@ -458,7 +471,13 @@ export default function FinanceDashboard() {
       {/* Finansal özet kartları — tümü seçili döneme göre */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Dönem Tahsilatı" value={formatTry(periodStats.collected)} caption={`${periodStats.count} işlem · ${periodText}`} icon={CreditCard} tone="emerald" chart="bars" chartValues={flowBuckets.map((b) => b.income)} />
+          <PremiumMetricCard
+            title="Dönem Tahsilatı"
+            value={formatTry(periodStats.collected)}
+            caption={periodStats.refundTotal > 0
+              ? `${periodStats.count} işlem · brüt ${formatTry(periodStats.grossCollected)} − iade ${formatTry(periodStats.refundTotal)}`
+              : `${periodStats.count} işlem · ${periodText}`}
+            icon={CreditCard} tone="emerald" chart="bars" chartValues={flowBuckets.map((b) => b.income)} />
         </motion.div>
         <motion.div variants={itemVariants}>
           <PremiumMetricCard title="Dönem Gideri" value={formatTry(periodStats.expense)} caption="Maaş + fatura gideri" icon={Landmark} tone="rose" chart="bars" chartValues={flowBuckets.map((b) => b.expense)} />

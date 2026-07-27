@@ -35,7 +35,8 @@ public sealed class DrivingStudentsController(
     IDrivingContractFormPdfService contractForms,
     IIdentityVerificationService identityVerification,
     IAuditLogService auditLogService,
-    IFileStorageService files) : ControllerBase
+    IFileStorageService files,
+    ILogger<DrivingStudentsController> logger) : ControllerBase
 {
     private const string AuditCategory = "DrivingSchool";
     private const string AccountingBenefitSectionKey = "accounting-benefits";
@@ -104,13 +105,23 @@ public sealed class DrivingStudentsController(
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
         // Kursiyer numarası kurum içinde otomatik ve artan verilir (Serializable izolasyon
-        // yarış durumunu engeller).
+        // tek başına yeterli değildir: iki istek MAX değerini aynı anda okuyabilir.
+        // Kurum bazlı transaction kilidi, numara üretimini gerçekten sıraya koyar.
+        if (dbContext.Database.IsNpgsql() && dbContext.CurrentTenantId is Guid tenantId)
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtext({$"driving-student-number:{tenantId}"}))",
+                ct);
+        }
         var nextStudentNumber = (await dbContext.StudentDrivingProfiles.MaxAsync(x => (int?)x.StudentNumber, ct) ?? 0) + 1;
 
         // Öğrenci hesabı, veli hesabı ve kullanıcı adı üretimi mevcut kayıt akışından geçer;
         // aday mobil uygulamaya bu kimlikle girip evraklarını yükleyecek.
-        var credentials = await academicQueryService.CreateStudentAsync(
-            new CreateStudentRequest(
+        StudentCredentialsDto credentials;
+        try
+        {
+            credentials = await academicQueryService.CreateStudentAsync(
+                new CreateStudentRequest(
                 FullName: request.FullName.Trim(),
                 // TC dışı kimlikler StudentProfile.TcNo'ya yazılamaz (11 hane sınırı);
                 // asıl numara sürücü dosyasındaki IdentityNumber'da durur.
@@ -124,8 +135,32 @@ public sealed class DrivingStudentsController(
                 ParentPhone: request.EmergencyContactPhone?.Trim() ?? string.Empty,
                 ParentEmail: request.Email?.Trim() ?? string.Empty,
                 Address: request.Address?.Trim() ?? string.Empty,
-                Note: request.Note?.Trim() ?? string.Empty),
-            ct);
+                    Note: request.Note?.Trim() ?? string.Empty),
+                ct);
+        }
+        catch (InvalidOperationException exception)
+        {
+            // Akademik kayıt servisi beklenen çakışmaları/alan hatalarını bu türle
+            // bildirir. Bunları 500'e çevirmek kullanıcıya hiçbir düzeltme yolu
+            // bırakıyordu; transaction dispose edilirken güvenle geri alınır.
+            logger.LogWarning(
+                exception,
+                "Sürücü kursiyeri akademik hesabı oluşturulamadı. TenantId={TenantId} TraceId={TraceId}",
+                dbContext.CurrentTenantId,
+                HttpContext.TraceIdentifier);
+            return Conflict(new
+            {
+                message = exception.Message,
+                problems = new[]
+                {
+                    new DrivingWizardProblem(
+                        1,
+                        "Kimlik",
+                        "Kursiyer kaydı",
+                        exception.Message),
+                },
+            });
+        }
 
         var student = await dbContext.Students.SingleAsync(x => x.UserId == credentials.UserId, ct);
 
@@ -283,12 +318,26 @@ public sealed class DrivingStudentsController(
 
         await transaction.CommitAsync(ct);
 
-        await auditLogService.LogChangeAsync("Sürücü adayı kaydı tamamlandı", AuditCategory, "StudentDrivingProfile", profile.Id.ToString(),
-            $"{student.FullName} — paket \"{package.Name}\" ({profile.LicenseClass}/{profile.TransmissionType}), "
-                + $"{(request.Documents?.Count ?? 0)} evrak yüklendi, sözleşme: {(contract is null ? "yok" : $"{contract.NetAmount:N2} ₺")}.",
-            null,
-            new { student.FullName, profile.IdentityKind, profile.LicenseClass, profile.TransmissionType, profile.Status, contractId = contract?.Id },
-            ct);
+        // Ana transaction commit edildikten sonra audit altyapısındaki geçici bir
+        // hata kullanıcıya "kayıt olmadı" dedirtmemeli. Kayıt artık kesindir; audit
+        // hatasını izleme loguna düşürüp başarılı cevabı koruruz.
+        try
+        {
+            await auditLogService.LogChangeAsync("Sürücü adayı kaydı tamamlandı", AuditCategory, "StudentDrivingProfile", profile.Id.ToString(),
+                $"{student.FullName} — paket \"{package.Name}\" ({profile.LicenseClass}/{profile.TransmissionType}), "
+                    + $"{(request.Documents?.Count ?? 0)} evrak yüklendi, sözleşme: {(contract is null ? "yok" : $"{contract.NetAmount:N2} ₺")}.",
+                null,
+                new { student.FullName, profile.IdentityKind, profile.LicenseClass, profile.TransmissionType, profile.Status, contractId = contract?.Id },
+                ct);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "Kursiyer kaydı tamamlandı ancak audit yazılamadı. ProfileId={ProfileId} TraceId={TraceId}",
+                profile.Id,
+                HttpContext.TraceIdentifier);
+        }
 
         return Ok(new
         {
@@ -468,8 +517,8 @@ public sealed class DrivingStudentsController(
             parsedType = value;
         }
 
-        var relevantTypes = new[] { StudentDocumentType.HealthReport, StudentDocumentType.Diploma, StudentDocumentType.CriminalRecord,
-            StudentDocumentType.BiometricPhoto, StudentDocumentType.Identity, StudentDocumentType.ExistingLicense, StudentDocumentType.ForeignStudentDocument };
+        // Küme MEBBİS İş Merkezi sayacıyla ortaktır (bkz. DrivingStudentRules).
+        var relevantTypes = DrivingStudentRules.ReviewableDocumentTypes.ToArray();
         var query = dbContext.StudentDrivingDocuments.AsNoTracking()
             .Where(x => x.IsCurrent && relevantTypes.Contains(x.DocumentType))
             .Join(dbContext.StudentDrivingProfiles.AsNoTracking(), d => d.StudentDrivingProfileId, p => p.Id, (d, p) => new { d, p })
@@ -771,8 +820,8 @@ public sealed class DrivingStudentsController(
                 contract?.DiscountAmount,
                 contract?.NetAmount,
                 contract?.DownPayment,
-                paidTotal = payments.Sum(x => x.Amount),
-                remaining = (contract?.NetAmount ?? 0) - payments.Sum(x => x.Amount),
+                paidTotal = FinanceTotals.NetCollected(payments.Select(x => x.Amount)),
+                remaining = FinanceTotals.Outstanding(contract?.NetAmount ?? 0, FinanceTotals.NetCollected(payments.Select(x => x.Amount))),
                 overdueCount = installments.Count(x => x.PaidAmount < x.Amount && x.DueDateUtc < now),
                 installments,
                 payments,
@@ -806,7 +855,7 @@ public sealed class DrivingStudentsController(
                     DiscountAmount = 0m,
                     NetAmount = 0m,
                     DownPayment = 0m,
-                    paidTotal = payments.Sum(x => x.Amount),
+                    paidTotal = FinanceTotals.NetCollected(payments.Select(x => x.Amount)),
                     remaining = 0m,
                     overdueCount = 0,
                     installments = Array.Empty<object>(),
@@ -1237,6 +1286,7 @@ public sealed class DrivingStudentsController(
         if (settings is null) { settings = new DrivingSchoolSettings(); dbContext.DrivingSchoolSettings.Add(settings); }
 
         settings.FormInstitutionName = Trim(request.InstitutionName, 200);
+        settings.FormInstitutionCode = Trim(request.InstitutionCode, 40);
         settings.FormInstitutionCity = Trim(request.InstitutionCity, 60);
         settings.FormInstitutionDistrict = Trim(request.InstitutionDistrict, 60);
         settings.FormInstitutionAddress = Trim(request.InstitutionAddress, 400);
@@ -1265,6 +1315,7 @@ public sealed class DrivingStudentsController(
     {
         // Kurum adı hiç girilmemişse çalışma alanı adı önerilir.
         institutionName = Pick(s?.FormInstitutionName, tenantName),
+        institutionCode = s?.FormInstitutionCode ?? string.Empty,
         institutionCity = s?.FormInstitutionCity ?? string.Empty,
         institutionDistrict = s?.FormInstitutionDistrict ?? string.Empty,
         institutionAddress = s?.FormInstitutionAddress ?? string.Empty,
@@ -1283,7 +1334,7 @@ public sealed class DrivingStudentsController(
 
     private static object ContractFormSettingsSnapshot(DrivingSchoolSettings s) => new
     {
-        s.FormInstitutionName, s.FormInstitutionCity, s.FormInstitutionDistrict, s.FormInstitutionAddress,
+        s.FormInstitutionName, s.FormInstitutionCode, s.FormInstitutionCity, s.FormInstitutionDistrict, s.FormInstitutionAddress,
         s.FormInstitutionPhone, s.FormDirectorName, s.FormBankName, s.FormBankAccountNo, s.FormJurisdictionCity,
         s.FormTheoryHourlyFee, s.FormDrivingHourlyFee, s.FormTheoryExamFee, s.FormDrivingExamFee,
         s.FormTheoryHours, s.FormDrivingHours,
@@ -2034,6 +2085,7 @@ public sealed record UpdateDrivingRegistrationIdentityRequest(
 /// <summary>Matbu evraklarda kullanılan kurum künyesi ve mevzuat ücretleri.</summary>
 public sealed record UpdateDrivingContractFormSettingsRequest(
     string? InstitutionName,
+    string? InstitutionCode,
     string? InstitutionCity,
     string? InstitutionDistrict,
     string? InstitutionAddress,

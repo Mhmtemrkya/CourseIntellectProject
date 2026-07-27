@@ -220,19 +220,29 @@ class _DrivingSchoolDashboardPageState
                     color: const Color(0xFF06B6D4),
                     onTap: () => _openDashboardMetric(context, 'vehicles'),
                   ),
+                  // "Eksik Evrak" kursiyer dosyasını, diğer ikisi ARAÇ evrakını ölçer.
+                  // Önce her ikisi de araç sayısını gösteriyordu ve kursiyer dosyası
+                  // eksik olsa bile 0 görünüyordu.
                   DrivingKpiCard(
                     label: 'Eksik Evrak',
-                    value: '${kpis['missingDocuments'] ?? 0}',
+                    value: '${kpis['studentsMissingDocuments'] ?? 0}',
                     icon: Icons.warning_amber_rounded,
                     color: const Color(0xFFF59E0B),
                     onTap: () => _openDashboardMetric(context, 'documents'),
                   ),
                   DrivingKpiCard(
-                    label: 'Yaklaşan Evrak',
+                    label: 'Araç Evrakı Eksik',
+                    value: '${kpis['missingDocuments'] ?? 0}',
+                    icon: Icons.no_crash_rounded,
+                    color: const Color(0xFFEF4444),
+                    onTap: () => _openDashboardMetric(context, 'vehicles'),
+                  ),
+                  DrivingKpiCard(
+                    label: 'Araç Evrakı Doluyor',
                     value: '${kpis['expiringDocuments'] ?? 0}',
                     icon: Icons.event_busy_rounded,
                     color: const Color(0xFFEAB308),
-                    onTap: () => _openDashboardMetric(context, 'documents'),
+                    onTap: () => _openDashboardMetric(context, 'vehicles'),
                   ),
                   DrivingKpiCard(
                     label: 'Bugünkü Tahsilat',
@@ -240,6 +250,14 @@ class _DrivingSchoolDashboardPageState
                     icon: Icons.payments_rounded,
                     color: const Color(0xFF16A34A),
                     onTap: () => _openDashboardMetric(context, 'collections'),
+                  ),
+                  DrivingKpiCard(
+                    label:
+                        'Bekleyen Taksitler · ${kpis['pendingInstallments'] ?? 0}',
+                    value: '₺${kpis['pendingInstallmentAmount'] ?? 0}',
+                    icon: Icons.pending_actions_rounded,
+                    color: const Color(0xFFF59E0B),
+                    onTap: () => _openDashboardMetric(context, 'finance'),
                   ),
                   DrivingKpiCard(
                     label: 'Bugünkü Gider',
@@ -548,28 +566,82 @@ class _DrivingSchoolDashboardPageState
   // yalnız 4 günlük işlemi taşır; gerisi bu hızlı geçiş kartlarındadır.
   static Widget _quickActions(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final cols = width > 700 ? 5 : width > 480 ? 4 : 3;
+    final cols = width > 700
+        ? 5
+        : width > 480
+        ? 4
+        : 3;
     final actions = <Widget>[
-      _quickAction(context, Icons.inventory_2_rounded, 'Paketler',
-          const Color(0xFF14B8A6), const DrivingSchoolOperationsPage()),
-      _quickAction(context, Icons.directions_car_filled_rounded, 'Araçlar',
-          const Color(0xFFEA580C), const DrivingSchoolVehiclesPage()),
-      _quickAction(context, Icons.school_rounded, 'Eğitim & Sınav',
-          const Color(0xFF7C3AED), const DrivingEducationPage()),
-      _quickAction(context, Icons.workspace_premium_rounded, 'Mezuniyet',
-          const Color(0xFF16A34A), const DrivingGraduationPage()),
-      _quickAction(context, Icons.fact_check_rounded, 'MEBBİS',
-          const Color(0xFF0284C7), const DrivingMebbisWorkCenterPage()),
-      _quickAction(context, Icons.receipt_long_rounded, 'Giderler',
-          const Color(0xFFE11D48), const DrivingExpensesPage()),
-      _quickAction(context, Icons.account_balance_wallet_rounded, 'Finans',
-          const Color(0xFF10B981), const AdminFinancePage()),
-      _quickAction(context, Icons.menu_book_rounded, 'Konu Anlatımı',
-          const Color(0xFF8B5CF6), const TeacherContentPage()),
-      _quickAction(context, Icons.quiz_rounded, 'Soru Bankası',
-          const Color(0xFF2563EB), const TeacherQuestionBankPage()),
-      _quickAction(context, Icons.person_outline_rounded, 'Profil',
-          const Color(0xFF64748B), const AdminProfilePage()),
+      _quickAction(
+        context,
+        Icons.inventory_2_rounded,
+        'Paketler',
+        const Color(0xFF14B8A6),
+        const DrivingSchoolOperationsPage(),
+      ),
+      _quickAction(
+        context,
+        Icons.directions_car_filled_rounded,
+        'Araçlar',
+        const Color(0xFFEA580C),
+        const DrivingSchoolVehiclesPage(),
+      ),
+      _quickAction(
+        context,
+        Icons.school_rounded,
+        'Eğitim & Sınav',
+        const Color(0xFF7C3AED),
+        const DrivingEducationPage(),
+      ),
+      _quickAction(
+        context,
+        Icons.workspace_premium_rounded,
+        'Mezuniyet',
+        const Color(0xFF16A34A),
+        const DrivingGraduationPage(),
+      ),
+      _quickAction(
+        context,
+        Icons.fact_check_rounded,
+        'MEBBİS',
+        const Color(0xFF0284C7),
+        const DrivingMebbisWorkCenterPage(),
+      ),
+      _quickAction(
+        context,
+        Icons.receipt_long_rounded,
+        'Giderler',
+        const Color(0xFFE11D48),
+        const DrivingExpensesPage(),
+      ),
+      _quickAction(
+        context,
+        Icons.account_balance_wallet_rounded,
+        'Finans',
+        const Color(0xFF10B981),
+        const AdminFinancePage(),
+      ),
+      _quickAction(
+        context,
+        Icons.menu_book_rounded,
+        'Konu Anlatımı',
+        const Color(0xFF8B5CF6),
+        const TeacherContentPage(),
+      ),
+      _quickAction(
+        context,
+        Icons.quiz_rounded,
+        'Soru Bankası',
+        const Color(0xFF2563EB),
+        const TeacherQuestionBankPage(),
+      ),
+      _quickAction(
+        context,
+        Icons.person_outline_rounded,
+        'Profil',
+        const Color(0xFF64748B),
+        const AdminProfilePage(),
+      ),
     ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
@@ -677,6 +749,7 @@ class _DrivingSchoolDashboardPageState
       'vehicles' => const DrivingSchoolVehiclesPage(),
       'documents' => const DrivingDocumentReviewQueuePage(),
       'collections' => const DrivingCollectionPage(),
+      'finance' => const AdminFinancePage(),
       'expenses' => const DrivingExpensesPage(),
       'terms' => const DrivingTermOpeningWizardPage(),
       'education' => const DrivingEducationPage(),

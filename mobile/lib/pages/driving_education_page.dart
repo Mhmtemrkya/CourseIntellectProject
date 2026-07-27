@@ -5,6 +5,7 @@ import 'package:student/i18n/app_locale.dart';
 import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
+import 'driving_exam_rights_page.dart';
 
 class DrivingEducationPage extends StatefulWidget {
   const DrivingEducationPage({super.key});
@@ -60,15 +61,17 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
           final instructors = _list(reference, 'instructors'),
               students = _list(reference, 'students');
           return DefaultTabController(
-            length: 3,
+            length: 4,
             child: DrivingScaffold(
               appBar: AppBar(
                 title: Text('Teorik Eğitim ve Sınav'.tr),
                 bottom: const TabBar(
+                  isScrollable: true,
                   tabs: [
                     Tab(text: 'Sınıflar'),
                     Tab(text: 'Ders & Yoklama'),
                     Tab(text: 'Sınavlar'),
+                    Tab(text: 'Sınav Hakları'),
                   ],
                 ),
               ),
@@ -77,6 +80,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                   _classes(classes, instructors, students, permissions),
                   _sessions(sessions, classes, instructors, permissions),
                   _exams(exams, candidates, students, permissions),
+                  const DrivingExamRightsPage(embedded: true),
                 ],
               ),
             ),
@@ -723,76 +727,89 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
       builder: (dialog) => StatefulBuilder(
         builder: (_, setState) {
           final visible = students
-              .where((x) =>
-                  groupFilter == 'all' || '${x['groupId'] ?? ''}' == groupFilter)
+              .where(
+                (x) =>
+                    groupFilter == 'all' ||
+                    '${x['groupId'] ?? ''}' == groupFilter,
+              )
               .toList();
           return AlertDialog(
-          title: Text(theory ? 'Sınıfa öğrenci ata' : 'Sınava aday ekle'),
-          content: SizedBox(
-            width: 420,
-            height: 420,
-            child: Column(
-              children: [
-                if (!theory)
-                  TextField(
-                    controller: fee,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Kişi başı sınav ücreti',
+            title: Text(theory ? 'Sınıfa öğrenci ata' : 'Sınava aday ekle'),
+            content: SizedBox(
+              width: 420,
+              height: 420,
+              child: Column(
+                children: [
+                  if (!theory)
+                    TextField(
+                      controller: fee,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Kişi başı sınav ücreti',
+                      ),
+                    ),
+                  if (groups.isNotEmpty)
+                    DropdownButtonFormField<String>(
+                      initialValue: groupFilter,
+                      isExpanded: true,
+                      decoration: InputDecoration(labelText: 'Grup / Dönem'.tr),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'all',
+                          child: Text('Tüm gruplar'.tr),
+                        ),
+                        ...groups.entries.map(
+                          (e) => DropdownMenuItem(
+                            value: e.key,
+                            child: Text(e.value),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) =>
+                          setState(() => groupFilter = v ?? 'all'),
+                    ),
+                  Expanded(
+                    child: ListView(
+                      children: visible
+                          .map(
+                            (x) => CheckboxListTile(
+                              value: selected.contains('${x['id']}'),
+                              title: Text('${x['fullName']}'),
+                              subtitle: Text(
+                                [
+                                  '${x['licenseClass'] ?? ''}',
+                                  if (x['groupName'] != null)
+                                    'Grup: ${x['groupName']}',
+                                ].where((t) => t.isNotEmpty).join(' • '),
+                              ),
+                              onChanged: (v) => setState(() {
+                                if (v == true) {
+                                  selected.add('${x['id']}');
+                                } else {
+                                  selected.remove('${x['id']}');
+                                }
+                              }),
+                            ),
+                          )
+                          .toList(),
                     ),
                   ),
-                if (groups.isNotEmpty)
-                  DropdownButtonFormField<String>(
-                    initialValue: groupFilter,
-                    isExpanded: true,
-                    decoration: InputDecoration(labelText: 'Grup / Dönem'.tr),
-                    items: [
-                      DropdownMenuItem(value: 'all', child: Text('Tüm gruplar'.tr)),
-                      ...groups.entries.map(
-                        (e) => DropdownMenuItem(value: e.key, child: Text(e.value)),
-                      ),
-                    ],
-                    onChanged: (v) => setState(() => groupFilter = v ?? 'all'),
-                  ),
-                Expanded(
-                  child: ListView(
-                    children: visible
-                        .map(
-                          (x) => CheckboxListTile(
-                            value: selected.contains('${x['id']}'),
-                            title: Text('${x['fullName']}'),
-                            subtitle: Text([
-                              '${x['licenseClass'] ?? ''}',
-                              if (x['groupName'] != null) 'Grup: ${x['groupName']}',
-                            ].where((t) => t.isNotEmpty).join(' • ')),
-                            onChanged: (v) => setState(() {
-                              if (v == true) {
-                                selected.add('${x['id']}');
-                              } else {
-                                selected.remove('${x['id']}');
-                              }
-                            }),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialog, false),
-              child: Text('Vazgeç'.tr),
-            ),
-            FilledButton(
-              onPressed: selected.isEmpty
-                  ? null
-                  : () => Navigator.pop(dialog, true),
-              child: Text('Ekle'.tr),
-            ),
-          ],
-        );
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialog, false),
+                child: Text('Vazgeç'.tr),
+              ),
+              FilledButton(
+                onPressed: selected.isEmpty
+                    ? null
+                    : () => Navigator.pop(dialog, true),
+                child: Text('Ekle'.tr),
+              ),
+            ],
+          );
         },
       ),
     );

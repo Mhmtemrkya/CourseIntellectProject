@@ -470,6 +470,17 @@ class DrivingSchoolApiService {
     return _put('/api/driving-school/vehicles/$id/status', body);
   }
 
+  Future<Map<String, dynamic>> renewVehicleCompliance(
+    String id, {
+    DateTime? inspectionExpiresAtUtc,
+    DateTime? insuranceExpiresAtUtc,
+    bool activateWhenCompliant = true,
+  }) => _put('/api/driving-school/vehicles/$id/compliance', {
+    'inspectionExpiresAtUtc': inspectionExpiresAtUtc?.toUtc().toIso8601String(),
+    'insuranceExpiresAtUtc': insuranceExpiresAtUtc?.toUtc().toIso8601String(),
+    'activateWhenCompliant': activateWhenCompliant,
+  });
+
   Future<List<Map<String, dynamic>>> instructorAppointments() async =>
       (await _getList(
         '/api/driving-school/instructor/my-appointments',
@@ -521,6 +532,10 @@ class DrivingSchoolApiService {
     String id,
     Map<String, dynamic> body,
   ) => _post('/api/driving-school/exams/candidates/$id/result', body);
+  Future<Map<String, dynamic>> examRights() =>
+      _get('/api/driving-school/exams/rights');
+  Future<Map<String, dynamic>> saveExamRight(Map<String, dynamic> body) =>
+      _put('/api/driving-school/exams/rights', body);
   Future<Map<String, dynamic>> scheduleExamRetry(
     String id,
     String examSessionId,

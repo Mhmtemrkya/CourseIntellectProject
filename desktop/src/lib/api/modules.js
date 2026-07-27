@@ -97,6 +97,7 @@ export const deleteDrivingPackage = (id) => api.delete(`/api/driving-school/pack
 export const fetchDrivingVehicles = () => api.get('/api/driving-school/vehicles');
 export const createDrivingVehicle = (payload) => api.post('/api/driving-school/vehicles', payload);
 export const updateDrivingVehicleStatus = (id, status, reason) => api.put(`/api/driving-school/vehicles/${id}/status`, { status, reason });
+export const renewDrivingVehicleCompliance = (id, payload) => api.put(`/api/driving-school/vehicles/${id}/compliance`, payload);
 export const fetchDrivingInstructors = () => api.get('/api/driving-school/instructors');
 export const createDrivingInstructor = (payload) => api.post('/api/driving-school/instructors', payload);
 export const fetchDrivingStudents = (params = {}) => api.get('/api/driving-school/students', { params });
@@ -304,6 +305,17 @@ export const updateDrivingStudentStatus = (profileId, payload) => api.post(`/api
 export const fetchDrivingStudentDocuments = (profileId) => api.get(`/api/driving-school/students/${profileId}/documents`);
 export const uploadDrivingStudentDocument = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/documents`, payload);
 export const reviewDrivingStudentDocument = (documentId, payload) => api.post(`/api/driving-school/student-documents/${documentId}/review`, payload);
+// ── Kurum yedeği ──────────────────────────────────────────────────────────────
+export const fetchTenantBackupSummary = () => api.get('/api/tenant-backup/summary');
+// Arşiv sunucuda tutulmaz, doğrudan akıtılır; büyük olabileceği için zaman aşımı yok.
+export const downloadTenantBackup = (includeFiles = true, onProgress) =>
+  api.get('/api/tenant-backup/download', {
+    params: { includeFiles },
+    responseType: 'blob',
+    timeout: 0,
+    onDownloadProgress: onProgress,
+  });
+
 export const fetchDrivingDocumentReviewQueue = (params = {}) => api.get('/api/driving-school/student-documents/review-queue', { params });
 export const downloadDrivingStudentDocument = (documentId) => api.get(`/api/driving-school/student-documents/${documentId}/file`, { responseType: 'blob' });
 export const fetchDrivingRegistrationDrafts = () => api.get('/api/driving-school/registration-drafts');

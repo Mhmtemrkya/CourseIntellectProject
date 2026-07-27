@@ -61,6 +61,9 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(180)
                         .HasColumnType("character varying(180)");
 
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("TenantId");
@@ -3749,6 +3752,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
+
+                    b.Property<string>("FormInstitutionCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
 
                     b.Property<string>("FormInstitutionDistrict")
                         .IsRequired()

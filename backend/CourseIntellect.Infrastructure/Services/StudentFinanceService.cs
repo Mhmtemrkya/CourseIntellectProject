@@ -4,6 +4,7 @@ using CourseIntellect.Application.DTOs.Notifications;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
+using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -193,10 +194,10 @@ public sealed class StudentFinanceService(
 
         var paidByContract = (await dbContext.FinancePayments.AsNoTracking()
             .Where(item => item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
-            .GroupBy(item => item.EnrollmentContractId!.Value)
-            .Select(group => new { Id = group.Key, Paid = group.Sum(x => x.Amount) })
+            .Select(item => new { ContractId = item.EnrollmentContractId!.Value, item.Amount })
             .ToListAsync(cancellationToken))
-            .ToDictionary(item => item.Id, item => item.Paid);
+            .GroupBy(item => item.ContractId)
+            .ToDictionary(group => group.Key, group => FinanceTotals.NetCollected(group.Select(x => x.Amount)));
 
         var due = FirstDayOfNextMonth(DateTime.UtcNow).Date;
         var toAdd = new List<FinanceInstallment>();
@@ -260,9 +261,10 @@ public sealed class StudentFinanceService(
 
         var now = DateTime.UtcNow;
         var net = contracts.Sum(item => item.NetAmount);
-        var paid = payments.Sum(item => item.Amount);
-        var grossCollected = payments.Where(item => item.Amount > 0).Sum(item => item.Amount);
-        var refundedTotal = payments.Where(item => item.Amount < 0).Sum(item => -item.Amount);
+        var amounts = payments.Select(item => item.Amount).ToList();
+        var paid = FinanceTotals.NetCollected(amounts);
+        var grossCollected = FinanceTotals.Gross(amounts);
+        var refundedTotal = FinanceTotals.Refunded(amounts);
         var refundedByPayment = payments
             .Where(item => item.OriginalPaymentId != null && item.Amount < 0 && item.RefundStatus != "Failed")
             .GroupBy(item => item.OriginalPaymentId!.Value)
@@ -294,7 +296,7 @@ public sealed class StudentFinanceService(
             currency,
             net,
             paid,
-            net - paid,
+            FinanceTotals.Outstanding(net, paid),
             overdue,
             nextDue,
             contracts.Select(item => MapContract(item, installmentsByContract.GetValueOrDefault(item.Id) ?? [])).ToList(),
@@ -582,6 +584,7 @@ public sealed class StudentFinanceService(
                     .Select(item => (DateTime?)item.DueDateUtc)
                     .FirstOrDefault();
                 var first = group.First();
+                var balance = FinanceTotals.Outstanding(net, paid);
                 return new StudentFinanceSummaryDto(
                     first.StudentUserId,
                     first.StudentName,
@@ -589,10 +592,10 @@ public sealed class StudentFinanceService(
                     first.Currency,
                     net,
                     paid,
-                    net - paid,
+                    balance,
                     overdue,
                     nextDue,
-                    ResolveStatus(net - paid, overdue, net));
+                    ResolveStatus(balance, overdue, net));
             })
             .ToList();
     }
@@ -798,9 +801,9 @@ public sealed class StudentFinanceService(
 
         var now = DateTime.UtcNow;
         var net = contracts.Sum(item => item.NetAmount);
-        var collected = payments.Sum(item => item.Amount);
+        var collected = FinanceTotals.NetCollected(payments.Select(item => item.Amount));
         // Fazla/avans tahsilatta net'ten büyük olabilir; "Bekleyen" negatif gösterilmesin.
-        var outstanding = Math.Max(0, net - collected);
+        var outstanding = FinanceTotals.Outstanding(net, collected);
 
         decimal BucketAmount(int minDays, int maxDays) => installments
             .Where(item =>
@@ -863,9 +866,10 @@ public sealed class StudentFinanceService(
                 var first = group.First();
                 var groupNet = group.Sum(item => item.NetAmount);
                 var groupPaid = paidByStudent.GetValueOrDefault(group.Key);
+                var groupBalance = FinanceTotals.Outstanding(groupNet, groupPaid);
                 return new StudentFinanceSummaryDto(first.StudentUserId, first.StudentName, first.ClassName, first.Currency,
-                    groupNet, groupPaid, groupNet - groupPaid, 0, null,
-                    ResolveStatus(groupNet - groupPaid, 0, groupNet));
+                    groupNet, groupPaid, groupBalance, 0, null,
+                    ResolveStatus(groupBalance, 0, groupNet));
             })
             .Where(item => item.Balance > 0)
             .OrderByDescending(item => item.Balance)
@@ -1043,7 +1047,7 @@ public sealed class StudentFinanceService(
             })
             .Where(item => item.Key != null)
             .GroupBy(item => item.Key!)
-            .ToDictionary(group => group.Key, group => group.Sum(item => item.Amount));
+            .ToDictionary(group => group.Key, group => FinanceTotals.NetCollected(group.Select(item => item.Amount)));
     }
 
     private static string ResolveStatus(decimal balance, int overdueCount, decimal net)

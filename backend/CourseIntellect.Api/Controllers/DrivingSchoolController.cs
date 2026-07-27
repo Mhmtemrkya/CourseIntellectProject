@@ -141,6 +141,9 @@ public sealed class DrivingSchoolController(
             .CountAsync(x => x.StartsAtUtc >= today && x.StartsAtUtc < tomorrow && x.Status != DrivingTheorySessionStatus.Cancelled, cancellationToken);
         var upcomingExams = await dbContext.DrivingExamSessions.AsNoTracking()
             .CountAsync(x => x.StartsAtUtc >= DateTime.UtcNow && x.StartsAtUtc < DateTime.UtcNow.AddDays(30) && x.Status == DrivingExamSessionStatus.Planned, cancellationToken);
+        // NOT: Bu iki sayaç ARAÇ evrakını ölçer (muayene/sigorta). Panoda kursiyer
+        // dosyası sanılmasın diye etiketleri "Araç evrakı" olarak ayrıştırıldı;
+        // kursiyer dosyası için ayrıca studentsMissingDocuments üretilir.
         var missingDocuments = await dbContext.DrivingVehicles.AsNoTracking()
             .CountAsync(x => !x.InspectionExpiresAtUtc.HasValue || !x.InsuranceExpiresAtUtc.HasValue || x.InspectionExpiresAtUtc <= DateTime.UtcNow || x.InsuranceExpiresAtUtc <= DateTime.UtcNow, cancellationToken);
         var expiringDocuments = await dbContext.DrivingVehicles.AsNoTracking()
@@ -150,6 +153,29 @@ public sealed class DrivingSchoolController(
             .OrderBy(x => x.PlateNumber).Take(20)
             .Select(x => new { type = x.IsInMaintenance ? "Maintenance" : "VehicleDocument", severity = x.IsInMaintenance || x.InspectionExpiresAtUtc <= DateTime.UtcNow || x.InsuranceExpiresAtUtc <= DateTime.UtcNow ? "Critical" : "Warning", title = x.PlateNumber, message = x.IsInMaintenance ? "Araç bakım veya arıza nedeniyle kullanım dışı." : "Zorunlu araç evrakı eksik, süresi dolmuş veya 30 gün içinde dolacak." })
             .ToListAsync(cancellationToken);
+        // Dosyası tamamlanmamış kursiyer sayısı: kurstan ayrılmamış adaylardan
+        // zorunlu belgelerinden en az biri ONAYLI olmayanlar. Panodaki "Eksik Evrak"
+        // kartı bu değeri gösterir (önce araç evrakı sayılıyordu ve hep 0 çıkıyordu).
+        var openProfiles = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => DrivingStudentStatuses.OpenList.Contains(x.Status))
+            .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (p, s) => new { p.Id, s.BirthDate })
+            .ToListAsync(cancellationToken);
+        var openProfileIds = openProfiles.Select(x => x.Id).ToList();
+        var approvedDocRows = await dbContext.StudentDrivingDocuments.AsNoTracking()
+            .Where(x => openProfileIds.Contains(x.StudentDrivingProfileId) && x.IsCurrent
+                && x.Status == StudentDocumentStatus.Approved)
+            .Select(x => new { x.StudentDrivingProfileId, x.DocumentType })
+            .ToListAsync(cancellationToken);
+        var approvedByProfile = approvedDocRows
+            .GroupBy(x => x.StudentDrivingProfileId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.DocumentType).ToHashSet());
+        var studentsMissingDocuments = openProfiles.Count(profile =>
+        {
+            var approved = approvedByProfile.GetValueOrDefault(profile.Id) ?? [];
+            return DrivingStudentRules.RequiredDocumentsFor(profile.BirthDate, DateTime.UtcNow)
+                .Any(type => !approved.Contains(type));
+        });
+
         var termAlerts = canSeeMebbis ? await termAlertService.GetAsync(cancellationToken) : null;
         var operationAlerts = vehicleAlerts.Select(x => new DrivingTermAlertItem(
                 x.type, x.severity, x.title, x.message, 1, null, "/driving/fleet-compliance"))
@@ -171,6 +197,14 @@ public sealed class DrivingSchoolController(
                 .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0
             : null;
         decimal? todayNet = canSeeFinance ? (todayCollections ?? 0) - (todayExpenses ?? 0) : null;
+        var pendingInstallmentRows = canSeeFinance
+            ? await dbContext.FinanceInstallments.AsNoTracking()
+                .Where(x => x.Amount > x.PaidAmount)
+                .Select(x => x.Amount - x.PaidAmount)
+                .ToListAsync(cancellationToken)
+            : new List<decimal>();
+        int? pendingInstallments = canSeeFinance ? pendingInstallmentRows.Count : null;
+        decimal? pendingInstallmentAmount = canSeeFinance ? pendingInstallmentRows.Sum() : null;
 
         var monthlyRegistrations = await dbContext.Students.AsNoTracking()
             .Where(x => x.CreatedAtUtc >= today.AddMonths(-5))
@@ -265,12 +299,15 @@ public sealed class DrivingSchoolController(
                 vehiclesInMaintenance,
                 missingDocuments,
                 expiringDocuments,
+                studentsMissingDocuments,
                 upcomingExams,
                 termCriticalAlerts = termAlerts?.CriticalCount,
                 mebbisReadyNotEntered = termAlerts?.ReadyNotEnteredCount,
                 todayCollections,
                 todayExpenses,
                 todayNet,
+                pendingInstallments,
+                pendingInstallmentAmount,
             },
             charts = new { monthlyRegistrations = registrationSeries },
             alerts = operationAlerts,
@@ -388,7 +425,27 @@ public sealed class DrivingSchoolController(
     public async Task<IActionResult> GetVehicles(CancellationToken ct)
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
-        return Ok(await dbContext.DrivingVehicles.AsNoTracking().OrderBy(x => x.PlateNumber).ToListAsync(ct));
+        var now = DateTime.UtcNow;
+        var vehicles = await dbContext.DrivingVehicles.AsNoTracking()
+            .OrderBy(x => x.PlateNumber)
+            .Select(x => new
+            {
+                x.Id, x.TenantId, x.PlateNumber, x.Brand, x.Model, x.ModelYear, x.LicenseClass,
+                x.TransmissionType, x.CurrentKilometer, x.InspectionExpiresAtUtc, x.InsuranceExpiresAtUtc,
+                configuredIsActive = x.IsActive,
+                isActive = x.IsActive
+                    && x.InspectionExpiresAtUtc.HasValue && x.InspectionExpiresAtUtc > now
+                    && x.InsuranceExpiresAtUtc.HasValue && x.InsuranceExpiresAtUtc > now,
+                x.IsInMaintenance,
+                requiresInspectionRenewal = !x.InspectionExpiresAtUtc.HasValue || x.InspectionExpiresAtUtc <= now,
+                requiresInsuranceRenewal = !x.InsuranceExpiresAtUtc.HasValue || x.InsuranceExpiresAtUtc <= now,
+                automaticComplianceHold = x.IsActive
+                    && (!x.InspectionExpiresAtUtc.HasValue || x.InspectionExpiresAtUtc <= now
+                        || !x.InsuranceExpiresAtUtc.HasValue || x.InsuranceExpiresAtUtc <= now),
+                x.CreatedAtUtc,
+            })
+            .ToListAsync(ct);
+        return Ok(vehicles);
     }
 
     [HttpPost("vehicles")]
@@ -430,7 +487,20 @@ public sealed class DrivingSchoolController(
         var before = VehicleSnapshot(vehicle);
         switch (status)
         {
-            case "active": vehicle.IsActive = true; vehicle.IsInMaintenance = false; break;
+            case "active":
+                var now = DateTime.UtcNow;
+                var missing = new List<string>();
+                if (!vehicle.InspectionExpiresAtUtc.HasValue || vehicle.InspectionExpiresAtUtc <= now) missing.Add("muayene");
+                if (!vehicle.InsuranceExpiresAtUtc.HasValue || vehicle.InsuranceExpiresAtUtc <= now) missing.Add("trafik sigortası");
+                if (missing.Count > 0)
+                    return Conflict(new
+                    {
+                        message = $"Araç uygun duruma alınamaz. Önce {string.Join(" ve ", missing)} geçerlilik tarihini yenileyin.",
+                        requiresComplianceRenewal = true,
+                        requiresInspectionRenewal = missing.Contains("muayene"),
+                        requiresInsuranceRenewal = missing.Contains("trafik sigortası"),
+                    });
+                vehicle.IsActive = true; vehicle.IsInMaintenance = false; break;
             case "maintenance": vehicle.IsActive = true; vehicle.IsInMaintenance = true; break;
             case "passive": vehicle.IsActive = false; vehicle.IsInMaintenance = false; break;
             default: return BadRequest(new { message = "Durum geçersiz. Geçerli değerler: Active, Maintenance, Passive." });
@@ -442,6 +512,53 @@ public sealed class DrivingSchoolController(
         await auditLogService.LogChangeAsync("Araç durumu değiştirildi", AuditCategory, "DrivingVehicle", vehicle.Id.ToString(),
             $"{vehicle.PlateNumber} → {label}.{reason}", before, VehicleSnapshot(vehicle), ct);
         return Ok(vehicle);
+    }
+
+    [HttpPut("vehicles/{id:guid}/compliance")]
+    [RequireDrivingPermission(DrivingPermissions.VehicleUpdate)]
+    public async Task<IActionResult> RenewVehicleCompliance(Guid id, [FromBody] RenewVehicleComplianceRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var vehicle = await dbContext.DrivingVehicles.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (vehicle is null) return NotFound(new { message = "Araç bulunamadı." });
+
+        var now = DateTime.UtcNow;
+        var inspectionNeedsRenewal = !vehicle.InspectionExpiresAtUtc.HasValue || vehicle.InspectionExpiresAtUtc <= now;
+        var insuranceNeedsRenewal = !vehicle.InsuranceExpiresAtUtc.HasValue || vehicle.InsuranceExpiresAtUtc <= now;
+        if (inspectionNeedsRenewal && (!request.InspectionExpiresAtUtc.HasValue || request.InspectionExpiresAtUtc <= now))
+            return BadRequest(new { message = "Muayene için bugünden ileri yeni bir geçerlilik tarihi girilmelidir." });
+        if (insuranceNeedsRenewal && (!request.InsuranceExpiresAtUtc.HasValue || request.InsuranceExpiresAtUtc <= now))
+            return BadRequest(new { message = "Trafik sigortası için bugünden ileri yeni bir geçerlilik tarihi girilmelidir." });
+        if (request.InspectionExpiresAtUtc > now.AddYears(10) || request.InsuranceExpiresAtUtc > now.AddYears(10))
+            return BadRequest(new { message = "Belge geçerlilik tarihi en fazla 10 yıl ileri olabilir." });
+
+        var before = VehicleSnapshot(vehicle);
+        if (inspectionNeedsRenewal && request.InspectionExpiresAtUtc.HasValue)
+            vehicle.InspectionExpiresAtUtc = request.InspectionExpiresAtUtc;
+        if (insuranceNeedsRenewal && request.InsuranceExpiresAtUtc.HasValue)
+            vehicle.InsuranceExpiresAtUtc = request.InsuranceExpiresAtUtc;
+
+        var compliant = vehicle.InspectionExpiresAtUtc > now && vehicle.InsuranceExpiresAtUtc > now;
+        if (compliant && request.ActivateWhenCompliant)
+        {
+            vehicle.IsActive = true;
+            vehicle.IsInMaintenance = false;
+        }
+
+        await dbContext.SaveChangesAsync(ct);
+        await auditLogService.LogChangeAsync("Araç uygunluk bilgileri yenilendi", AuditCategory, "DrivingVehicle", vehicle.Id.ToString(),
+            $"{vehicle.PlateNumber} — muayene {vehicle.InspectionExpiresAtUtc:dd.MM.yyyy}, sigorta {vehicle.InsuranceExpiresAtUtc:dd.MM.yyyy}"
+                + (compliant && request.ActivateWhenCompliant ? ", araç uygun duruma alındı." : "."),
+            before, VehicleSnapshot(vehicle), ct);
+        return Ok(new
+        {
+            vehicle.Id,
+            vehicle.InspectionExpiresAtUtc,
+            vehicle.InsuranceExpiresAtUtc,
+            vehicle.IsActive,
+            vehicle.IsInMaintenance,
+            compliant,
+        });
     }
 
     [HttpGet("instructors")]
@@ -458,7 +575,8 @@ public sealed class DrivingSchoolController(
             x.Id, x.StaffId, x.FullName, x.LicenseClasses, x.CanTeachManual, x.CanTeachAutomatic,
             x.WorkingPermitNo, x.WorkingPermitExpiresAtUtc, x.IsActive,
             workingPermitExpired = x.WorkingPermitExpiresAtUtc is DateTime expires && expires <= now,
-            complianceReady = !string.IsNullOrWhiteSpace(x.WorkingPermitNo) && x.WorkingPermitExpiresAtUtc > now,
+            complianceReady = DrivingAvailability.IsWorkingPermitConfigurationReady(
+                x.WorkingPermitNo, x.WorkingPermitExpiresAtUtc, now),
             x.AutomaticStatusEnabled, x.ComplianceOverrideActive, x.ComplianceOverrideReason,
             x.ComplianceOverrideAtUtc, x.StatusChangeSource, x.StatusChangeReason, x.StatusChangedAtUtc,
         }));
@@ -475,6 +593,8 @@ public sealed class DrivingSchoolController(
         var staff = await dbContext.Staff.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.StaffId, ct);
         if (staff is null) return BadRequest(new { message = "Personel bulunamadı." });
         if ((request.WorkingPermitNo?.Length ?? 0) > 60) return BadRequest(new { message = "Çalışma izni numarası en fazla 60 karakter olabilir." });
+        if (!string.IsNullOrWhiteSpace(request.WorkingPermitNo) != request.WorkingPermitExpiresAtUtc.HasValue)
+            return BadRequest(new { message = "Çalışma izni takibi yapılacaksa izin numarası ve bitiş tarihi birlikte girilmelidir." });
         var entity = new CourseIntellect.Domain.Entities.DrivingInstructorProfile
         {
             StaffId = request.StaffId,
@@ -487,7 +607,7 @@ public sealed class DrivingSchoolController(
         };
         entity.IsActive = IsInstructorComplianceReady(entity, DateTime.UtcNow);
         entity.StatusChangeSource = "Automatic";
-        entity.StatusChangeReason = entity.IsActive ? "Çalışma izni geçerli." : "Çalışma izni eksik veya geçersiz.";
+        entity.StatusChangeReason = InstructorComplianceReason(entity, DateTime.UtcNow);
         entity.StatusChangedAtUtc = DateTime.UtcNow;
         dbContext.DrivingInstructorProfiles.Add(entity);
         await dbContext.SaveChangesAsync(ct);
@@ -507,6 +627,8 @@ public sealed class DrivingSchoolController(
         var profile = await dbContext.DrivingInstructorProfiles.SingleOrDefaultAsync(x => x.Id == id, ct);
         if (profile is null) return NotFound(new { message = "Öğretmen bulunamadı." });
         if ((request.WorkingPermitNo?.Length ?? 0) > 60) return BadRequest(new { message = "Çalışma izni numarası en fazla 60 karakter olabilir." });
+        if (!string.IsNullOrWhiteSpace(request.WorkingPermitNo) != request.WorkingPermitExpiresAtUtc.HasValue)
+            return BadRequest(new { message = "Çalışma izni numarası ve bitiş tarihi birlikte girilmeli veya ikisi de boş bırakılmalıdır." });
 
         var before = new { profile.WorkingPermitNo, profile.WorkingPermitExpiresAtUtc };
         profile.WorkingPermitNo = request.WorkingPermitNo?.Trim() ?? string.Empty;
@@ -524,7 +646,7 @@ public sealed class DrivingSchoolController(
             profile.ComplianceOverrideActive = false;
             profile.ComplianceOverrideReason = string.Empty;
             profile.StatusChangeSource = "Automatic";
-            profile.StatusChangeReason = profile.IsActive ? "Çalışma izni geçerli." : "Çalışma izni eksik veya geçersiz.";
+            profile.StatusChangeReason = InstructorComplianceReason(profile, DateTime.UtcNow);
             profile.StatusChangedByUserId = null;
             profile.StatusChangedAtUtc = DateTime.UtcNow;
         }
@@ -553,7 +675,7 @@ public sealed class DrivingSchoolController(
             profile.ComplianceOverrideReason = string.Empty;
             profile.IsActive = IsInstructorComplianceReady(profile, DateTime.UtcNow);
             profile.StatusChangeSource = "Automatic";
-            profile.StatusChangeReason = profile.IsActive ? "Çalışma izni geçerli." : "Çalışma izni eksik veya geçersiz.";
+            profile.StatusChangeReason = InstructorComplianceReason(profile, DateTime.UtcNow);
             profile.StatusChangedByUserId = null;
         }
         else
@@ -1878,7 +2000,17 @@ public sealed class DrivingSchoolController(
         => new { vehicle.PlateNumber, vehicle.Brand, vehicle.Model, vehicle.ModelYear, vehicle.LicenseClass, transmissionType = vehicle.TransmissionType.ToString(), vehicle.CurrentKilometer, vehicle.InspectionExpiresAtUtc, vehicle.InsuranceExpiresAtUtc, vehicle.IsActive, vehicle.IsInMaintenance };
 
     private static bool IsInstructorComplianceReady(CourseIntellect.Domain.Entities.DrivingInstructorProfile profile, DateTime atUtc)
-        => !string.IsNullOrWhiteSpace(profile.WorkingPermitNo) && profile.WorkingPermitExpiresAtUtc > atUtc;
+        => DrivingAvailability.IsWorkingPermitConfigurationReady(
+            profile.WorkingPermitNo, profile.WorkingPermitExpiresAtUtc, atUtc);
+
+    private static string InstructorComplianceReason(
+        CourseIntellect.Domain.Entities.DrivingInstructorProfile profile,
+        DateTime atUtc)
+        => string.IsNullOrWhiteSpace(profile.WorkingPermitNo) && !profile.WorkingPermitExpiresAtUtc.HasValue
+            ? "Çalışma izni takibi henüz başlatılmamış."
+            : IsInstructorComplianceReady(profile, atUtc)
+                ? "Çalışma izni geçerli."
+                : "Çalışma izni bilgisi eksik veya süresi geçmiş.";
 
     private static object InstructorLifecycleResponse(CourseIntellect.Domain.Entities.DrivingInstructorProfile profile)
         => new
@@ -1976,6 +2108,7 @@ public sealed class DrivingSchoolController(
 public sealed record SaveDrivingPackageRequest(string Name, string LicenseClass, TransmissionType TransmissionType, int DrivingLessonMinutes, int TheoryLessonMinutes, decimal Price);
 public sealed record SaveDrivingVehicleRequest(string PlateNumber, string Brand, string Model, int ModelYear, string LicenseClass, TransmissionType TransmissionType, int CurrentKilometer, DateTime? InspectionExpiresAtUtc, DateTime? InsuranceExpiresAtUtc);
 public sealed record UpdateVehicleStatusRequest(string Status, string? Reason);
+public sealed record RenewVehicleComplianceRequest(DateTime? InspectionExpiresAtUtc, DateTime? InsuranceExpiresAtUtc, bool ActivateWhenCompliant = true);
 public sealed record SaveDrivingInstructorRequest(Guid StaffId, IReadOnlyList<string> LicenseClasses, bool CanTeachManual, bool CanTeachAutomatic, string? WorkingPermitNo = null, DateTime? WorkingPermitExpiresAtUtc = null);
 public sealed record UpdateWorkingPermitRequest(string? WorkingPermitNo, DateTime? WorkingPermitExpiresAtUtc);
 public sealed record UpdateInstructorLifecycleRequest(

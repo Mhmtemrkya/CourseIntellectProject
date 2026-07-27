@@ -530,6 +530,13 @@ public sealed class DrivingEducationController(
                 profile.LicenseClass,
                 photoUrl = profile.LivePhotoUrl != "" ? profile.LivePhotoUrl : profile.PhotoUrl,
                 status = profile.Status.ToString(),
+                // Sınav ücretleri bu ekrandan da görülüp güncellenebilsin (paket dışı,
+                // taksite dâhil değil; ödendi/ödenmedi ayrı takip edilir).
+                profile.TheoryExamFee,
+                profile.TheoryExamFeePaid,
+                profile.DrivingExamFee,
+                profile.DrivingExamFeePaid,
+                profile.DrivingExamDate,
             })
             .OrderBy(x => x.FullName)
             .ToListAsync(ct);
@@ -568,6 +575,7 @@ public sealed class DrivingEducationController(
                 used,
                 max = DrivingExamRules.MaxAttempts,
                 remaining = DrivingExamRules.RemainingAttempts(used),
+                passed = own.Any(x => x.status == DrivingExamCandidateStatus.Passed.ToString()),
                 lastScore = own.FirstOrDefault()?.Score,
                 lastExamDateUtc = own.FirstOrDefault()?.examDateUtc,
             };
@@ -611,6 +619,22 @@ public sealed class DrivingEducationController(
         if (student is null) return NotFound(new { message = "Kursiyer bulunamadı." });
 
         var type = request.ParsedType.Value;
+        var passedCandidateId = await db.DrivingExamCandidates.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == student.Id
+                && x.Status == DrivingExamCandidateStatus.Passed)
+            .Join(db.DrivingExamSessions.AsNoTracking().Where(x => x.ExamType == type),
+                candidate => candidate.ExamSessionId, session => session.Id, (candidate, _) => candidate.Id)
+            .FirstOrDefaultAsync(ct);
+        if (passedCandidateId != Guid.Empty
+            && (!request.CandidateId.HasValue || request.CandidateId.Value != passedCandidateId))
+        {
+            return Conflict(new
+            {
+                message = $"{DrivingExamRules.ExamTypeLabel(type)} daha önce geçildi. Geçilen sınav türüne yeni sonuç girilemez.",
+                examPassed = true,
+            });
+        }
+
         DrivingExamCandidate candidate;
         DrivingExamSession session;
         if (request.CandidateId is Guid candidateId)
@@ -708,6 +732,15 @@ public sealed class DrivingEducationController(
         if (request.FeeAmount > 0 && students.Any(x => x.EnrollmentContractId == null)) return BadRequest(new { message = "Sınav ücreti için tüm adayların aktif sözleşmesi olmalıdır." });
         foreach (var student in students)
         {
+            if (await HasPassedAsync(student.Id, exam.ExamType, ct))
+            {
+                var studentName = await StudentNameAsync(student.StudentId, ct);
+                return Conflict(new
+                {
+                    message = $"{studentName}: {DrivingExamRules.ExamTypeLabel(exam.ExamType)} daha önce geçildi; yeniden sınava eklenemez.",
+                    examPassed = true,
+                });
+            }
             if (exam.ExamType == DrivingExamType.TheoryEExam && !await db.DrivingTheoryEnrollments.AnyAsync(x => x.StudentDrivingProfileId == student.Id, ct))
                 return BadRequest(new { message = "E-sınava yalnızca teorik sınıfa atanmış öğrenciler eklenebilir." });
             if (exam.ExamType == DrivingExamType.DrivingPractice)
@@ -752,6 +785,12 @@ public sealed class DrivingEducationController(
         if (!request.Passed && (request.FailureReason?.Trim().Length ?? 0) < 3) return BadRequest(new { message = "Başarısızlık nedeni zorunludur." });
         var exam = await db.DrivingExamSessions.SingleAsync(x => x.Id == candidate.ExamSessionId, ct);
         var student = await db.StudentDrivingProfiles.SingleAsync(x => x.Id == candidate.StudentDrivingProfileId, ct);
+        if (await HasPassedAsync(student.Id, exam.ExamType, ct, candidate.Id))
+            return Conflict(new
+            {
+                message = $"{DrivingExamRules.ExamTypeLabel(exam.ExamType)} daha önce geçildi. Açık kalmış başka bir aday kaydına sonuç girilemez.",
+                examPassed = true,
+            });
 
         var outcome = await ApplyExamResultAsync(candidate, exam, student, request.Passed, request.Score, request.FailureReason, request.Note, ct);
         await CompleteExamIfDoneAsync(exam, ct);
@@ -814,6 +853,11 @@ public sealed class DrivingEducationController(
             if (match.Candidate.Status != DrivingExamCandidateStatus.Planned)
             {
                 errors.Add(new { row.IdentityNumber, name = match.FullName, reason = $"Sonuç zaten girilmiş ({match.Candidate.Status})." });
+                continue;
+            }
+            if (await HasPassedAsync(match.Profile.Id, exam.ExamType, ct, match.Candidate.Id))
+            {
+                errors.Add(new { row.IdentityNumber, name = match.FullName, reason = "Bu sınav türü daha önce geçildi; açık kalmış kayda sonuç girilemez." });
                 continue;
             }
             if (row.Score is < 0 or > 100) { errors.Add(new { row.IdentityNumber, name = match.FullName, reason = "Puan 0-100 arasında olmalıdır." }); continue; }
@@ -944,6 +988,19 @@ public sealed class DrivingEducationController(
         return Math.Max(attempts.Count, manualAttempt);
     }
 
+    private async Task<bool> HasPassedAsync(
+        Guid profileId,
+        DrivingExamType examType,
+        CancellationToken ct,
+        Guid? excludingCandidateId = null)
+        => await db.DrivingExamCandidates.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profileId
+                && x.Status == DrivingExamCandidateStatus.Passed
+                && (!excludingCandidateId.HasValue || x.Id != excludingCandidateId.Value))
+            .Join(db.DrivingExamSessions.AsNoTracking().Where(x => x.ExamType == examType),
+                candidate => candidate.ExamSessionId, session => session.Id, (_, _) => true)
+            .AnyAsync(ct);
+
     private async Task<string> StudentNameAsync(Guid studentId, CancellationToken ct)
         => await db.Students.AsNoTracking().Where(x => x.Id == studentId).Select(x => x.FullName).SingleOrDefaultAsync(ct) ?? "Kursiyer";
 
@@ -1000,6 +1057,12 @@ public sealed class DrivingEducationController(
         if (previous is null || !DrivingExamRules.CanScheduleRetry(previous.Status)) return Conflict(new { message = "Yalnızca başarısız sınav için tekrar planlanabilir." });
         if (request.FeeAmount is < 0 or > 1_000_000) return BadRequest(new { message = "Tekrar sınavı ücreti geçersiz." });
         var previousExam = await db.DrivingExamSessions.AsNoTracking().SingleAsync(x => x.Id == previous.ExamSessionId, ct);
+        if (await HasPassedAsync(previous.StudentDrivingProfileId, previousExam.ExamType, ct))
+            return Conflict(new
+            {
+                message = $"{DrivingExamRules.ExamTypeLabel(previousExam.ExamType)} daha önce geçildi; tekrar sınavı planlanamaz.",
+                examPassed = true,
+            });
 
         // Mevzuat: 4 hak dolduysa tekrar planlanamaz — aday dönemi düşmüştür.
         var usedAttempts = await UsedAttemptsAsync(previous.StudentDrivingProfileId, previousExam.ExamType, ct);

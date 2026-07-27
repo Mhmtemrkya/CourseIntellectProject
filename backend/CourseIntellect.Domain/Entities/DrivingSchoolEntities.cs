@@ -400,6 +400,8 @@ public sealed class DrivingSchoolSettings : ITenantScopedEntity
     // bu yüzden MEB formlarının ihtiyaç duyduğu alanlar burada toplanır.
     /// <summary>Formların başlığında geçen resmî kurum adı — ör. "ÖZEL TEMA M.T.S.K.".</summary>
     public string FormInstitutionName { get; set; } = string.Empty;
+    /// <summary>MEBBİS/ruhsatta yer alan resmî kurum kodu; EK-6 sertifikasına basılır.</summary>
+    public string FormInstitutionCode { get; set; } = string.Empty;
     public string FormInstitutionCity { get; set; } = string.Empty;
     public string FormInstitutionDistrict { get; set; } = string.Empty;
     public string FormInstitutionAddress { get; set; } = string.Empty;

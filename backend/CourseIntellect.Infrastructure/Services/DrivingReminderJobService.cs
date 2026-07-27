@@ -612,7 +612,7 @@ public sealed class DrivingReminderJobService(
         if (atRisk.Count == 0) return 0;
 
         var students = await dbContext.StudentDrivingProfiles.AsNoTracking()
-            .Where(x => atRisk.Contains(x.Id) && DrivingStudentStatuses.Open.Contains(x.Status))
+            .Where(x => atRisk.Contains(x.Id) && DrivingStudentStatuses.OpenList.Contains(x.Status))
             .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (p, s) => new { p.Id, p.StudentNumber, s.FullName })
             .ToListAsync(cancellationToken);
 

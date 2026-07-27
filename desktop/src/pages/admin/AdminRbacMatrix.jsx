@@ -8,6 +8,36 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchUserRoles, updateRolePolicy } from '../../lib/api/modules';
 
+// Modül anahtarları backend'den ASCII gelir ("kayit", "odeme", "icerik"...).
+// Ham hâlde basılıp CSS ile büyütülünce Türkçe bozuluyordu ("KAYİT", "ODEME",
+// hem "ICERİK" hem "ICERİKLER"). Görünen adlar burada tanımlıdır.
+const MODULE_LABELS = {
+  akademik: 'Akademik',
+  ayarlar: 'Ayarlar',
+  duyurular: 'Duyurular',
+  evrak: 'Evrak',
+  finans: 'Finans',
+  icerik: 'İçerik',
+  icerikler: 'İçerikler',
+  kayit: 'Kayıt',
+  kurumlar: 'Kurumlar',
+  odeme: 'Ödeme',
+  odevler: 'Ödevler',
+  ogrenci: 'Öğrenci',
+  onaylar: 'Onaylar',
+  operasyon: 'Operasyon',
+  platform: 'Platform',
+  raporlar: 'Raporlar',
+  sinavlar: 'Sınavlar',
+  tahsilatlar: 'Tahsilatlar',
+  taksitler: 'Taksitler',
+  yemekhane: 'Yemekhane',
+};
+
+// DİKKAT: anahtar normalizasyonunda Türkçe küçültme kullanılmaz. "Icerik" değeri
+// tr-TR'de "ıcerik" (noktasız ı) olur ve haritayla eşleşmez.
+const moduleLabel = (key) => MODULE_LABELS[String(key).toLowerCase()] || key;
+
 export default function AdminRbacMatrix() {
   const { toast } = useToast();
   const [roles, setRoles] = useState([]);
@@ -84,7 +114,7 @@ export default function AdminRbacMatrix() {
                   <th className="sticky left-0 bg-card p-2 text-left">Rol</th>
                   {modules.map((m) => (
                     <th key={m} className="p-2 text-center align-bottom">
-                      <span className="inline-block whitespace-nowrap text-xs font-semibold">{m}</span>
+                      <span className="inline-block whitespace-nowrap text-xs font-semibold normal-case">{moduleLabel(m)}</span>
                     </th>
                   ))}
                 </tr>
@@ -109,7 +139,7 @@ export default function AdminRbacMatrix() {
                             disabled={savingCell === cellKey}
                             onClick={() => toggle(role, m)}
                             className={`inline-flex h-7 w-7 items-center justify-center rounded-md border transition ${has ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-border bg-muted/40 text-transparent hover:border-brand-primary/50'}`}
-                            aria-label={`${role.roleName} - ${m}`}
+                            aria-label={`${role.roleName} - ${moduleLabel(m)}`}
                           >
                             <Check className="h-4 w-4" />
                           </button>

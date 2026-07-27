@@ -10,7 +10,10 @@ import { getInstitutionType, isModuleAllowedForInstitution, resetInstitutionType
 import { Button } from './ui/button';
 
 // Bu modüller pakete bakılmaksızın her zaman erişilebilir (ayarlar, profil).
-const ALWAYS_ALLOWED = new Set(['', 'profile', 'system']);
+// "data-backup" (Verilerimi İndir) bilinçli olarak burada: kurumun kendi verisini
+// dışa aktarabilmesi satılan bir özellik değil, KVKK veri taşınabilirliği hakkıdır;
+// paket kapsamı yüzünden kilitlenmemelidir.
+const ALWAYS_ALLOWED = new Set(['', 'profile', 'system', 'data-backup']);
 
 // URL'den modül anahtarını çözer; alt yollar için (/students/123 gibi)
 // üst segmentlere geri düşerek dener.

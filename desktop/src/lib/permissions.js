@@ -86,6 +86,8 @@ export const ADMIN_ONLY_PATHS = new Set([
   '/admin/role-management',
   '/admin/audit-log',
   '/admin/rbac',
+  // Tüm kurum verisinin tek dosyada indirilmesi — yalnız kurum yöneticisi.
+  '/admin/data-backup',
 ]);
 
 /**

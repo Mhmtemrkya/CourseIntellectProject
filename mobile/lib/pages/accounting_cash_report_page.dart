@@ -36,7 +36,13 @@ class _AccountingCashReportPageState extends State<AccountingCashReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    final collections = _store.collections;
+    // İade belgeleri yöntem kırılımına ve toplama karışırsa kasa eksiye düşer;
+    // ayrı satırda gösterilir.
+    final allEntries = _store.collections;
+    final collections = allEntries.where((item) => !item.isRefund).toList();
+    final refundTotal = allEntries
+        .where((item) => item.isRefund)
+        .fold<int>(0, (sum, item) => sum + _store.parseAmount(item.amount).abs());
     bool isCash(String m) => m.contains('nakit');
     bool isCard(String m) =>
         m.contains('kart') || m.contains('card') || m.contains('pos');
@@ -86,6 +92,12 @@ class _AccountingCashReportPageState extends State<AccountingCashReportPage> {
                 value: _store.formatAmount(grandTotal),
               ),
               AccountingHeroMetric(
+                label: 'Net',
+                value: _store.formatAmount(
+                  (grandTotal - refundTotal) < 0 ? 0 : grandTotal - refundTotal,
+                ),
+              ),
+              AccountingHeroMetric(
                 label: 'İşlem'.tr,
                 value: '${collections.length}',
               ),
@@ -122,6 +134,15 @@ class _AccountingCashReportPageState extends State<AccountingCashReportPage> {
                     otherTotal,
                     grandTotal,
                     const Color(0xFF64748B),
+                  ),
+                ],
+                if (refundTotal > 0) ...[
+                  const SizedBox(height: 12),
+                  _metricRow(
+                    'İade',
+                    refundTotal,
+                    grandTotal,
+                    const Color(0xFFDC2626),
                   ),
                 ],
               ],

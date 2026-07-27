@@ -174,7 +174,8 @@ public sealed class DrivingTermOpeningController(
 
     private async Task<List<CandidateRow>> CandidateRowsAsync(IReadOnlyList<Guid>? selected, CancellationToken ct)
     {
-        var query = db.StudentDrivingProfiles.AsNoTracking().Where(x => DrivingStudentStatuses.Open.Contains(x.Status));
+        // Dizi karşılığı kullanılır: IReadOnlySet.Contains SQL'e çevrilemiyor (bkz. DrivingStudentStatuses).
+        var query = db.StudentDrivingProfiles.AsNoTracking().Where(x => DrivingStudentStatuses.OpenList.Contains(x.Status));
         if (selected is not null) query = query.Where(x => selected.Contains(x.Id));
         var rows = await query.Join(db.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (p, s) => new { Profile = p, s.FullName, s.TcNo, s.BirthDate }).OrderBy(x => x.FullName).ToListAsync(ct);
         var ids = rows.Select(x => x.Profile.Id).ToList();
