@@ -28,6 +28,7 @@ import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
 import { createTypedDocumentUrl } from '../../lib/fileMime';
 import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
+import ConsentCompletionGate, { useConsentGate } from '../../components/consent/ConsentCompletionGate';
 
 const STATUS_LABELS = {
   PreRegistered: 'Ön kayıt', DocumentsPending: 'Evrak bekliyor', Active: 'Aktif', TheoryOngoing: 'Teorik eğitim',
@@ -121,6 +122,8 @@ export default function DrivingGraduation() {
   const [checklists, setChecklists] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Mezuniyet/belge teslim tutanağı imzasızsa uyarı ver; kapı yumuşak.
+  const gate = useConsentGate();
   const [forceTarget, setForceTarget] = useState(null);
   const [forceReason, setForceReason] = useState('');
   const [documentPreview, setDocumentPreview] = useState(null);
@@ -322,10 +325,14 @@ export default function DrivingGraduation() {
                     ))}
                     <div className="flex flex-wrap gap-2 border-t pt-3">
                       {can(DRIVING.graduationManage) && checklist.eligible && (
-                        <Button disabled={saving} onClick={() => run(
+                        <Button disabled={saving} onClick={() => gate.run(() => run(
                           () => graduateDrivingStudent(student.id, 'Mezuniyet kontrol listesi tamamlandı.'),
                           'Kursiyer mezun edildi',
-                        )}>
+                        ), {
+                          studentProfileId: student.studentProfileId,
+                          contextKind: 'DrivingGraduation',
+                          contextRefId: student.id,
+                        })}>
                           <Award className="mr-2 h-4 w-4" /> Mezun Et
                         </Button>
                       )}
@@ -627,6 +634,8 @@ export default function DrivingGraduation() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConsentCompletionGate {...gate.props} />
     </DrivingPage>
   );
 }

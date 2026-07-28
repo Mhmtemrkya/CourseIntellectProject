@@ -11,7 +11,7 @@ import { useToast } from '../../hooks/use-toast';
 import {
   assignDrivingStudentGroup, createDrivingStudentGroup, downloadDrivingMebbisRoster, downloadDrivingTermReport,
   downloadDrivingStudentDocument, fetchDrivingMebbisRoster, fetchDrivingStudentDetail, fetchDrivingStudentGroups, fetchDrivingStudents,
-  fetchPendingDownPayments, setDrivingMebbisEntered, updateDrivingStudentStatus, uploadDrivingStudentDocument, uploadFile,
+  fetchPendingDownPayments, repairSingleBranchRecords, setDrivingMebbisEntered, updateDrivingStudentStatus, uploadDrivingStudentDocument, uploadFile,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
@@ -360,11 +360,23 @@ export default function DrivingStudents() {
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     try {
-      const [studentList, groupData, pending] = await Promise.all([
+      let [studentList, groupData, pending] = await Promise.all([
         fetchDrivingStudents(),
         fetchDrivingStudentGroups().catch(() => null),
         fetchPendingDownPayments().catch(() => []),
       ]);
+
+      // İlk şube sonradan açılmışsa eski kursiyerlerin BranchId'si boş olabilir.
+      // Yalnız tek aktif şubeli kurumda backend güvenle onarır; çok şubede hiçbir
+      // kayıt varsayımla taşınmaz. Onarım olduysa listeyi aynı ekranda yeniden çek.
+      if (!Array.isArray(studentList) || studentList.length === 0) {
+        const repair = await repairSingleBranchRecords().catch(() => null);
+        if (Number(repair?.updated || 0) > 0) {
+          studentList = await fetchDrivingStudents();
+          groupData = await fetchDrivingStudentGroups().catch(() => groupData);
+          pending = await fetchPendingDownPayments().catch(() => pending);
+        }
+      }
       setStudents(studentList || []);
       setGroups(groupData?.groups || []);
       setUngroupedCount(groupData?.ungroupedCount ?? 0);

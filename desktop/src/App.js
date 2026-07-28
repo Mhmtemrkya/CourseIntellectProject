@@ -28,6 +28,9 @@ import Exams from "./pages/Exams";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import InstitutionProfile from "./pages/settings/InstitutionProfile";
+const ConsentTemplates = lazyWithReload(() => import("./pages/settings/ConsentTemplates"));
+// Tablet imza istasyonu: uygulama kabuğunun DIŞINDA, tam ekran çalışır (kiosk).
+const ConsentStation = lazyWithReload(() => import("./pages/ConsentStation"));
 
 // Chat
 import Chat from "./pages/chat/Chat";
@@ -297,6 +300,8 @@ function App() {
             <Route path="/driver" element={<DriverPanel />} />
             <Route path="/change-password-required" element={<ForcePasswordChange />} />
             <Route path="/select-branch" element={<SelectBranch />} />
+            {/* İmza istasyonu tam ekrandır: tablet bu ekranda kalır (kiosk / rehberli erişim). */}
+            <Route path="/imza-istasyonu" element={<ConsentStation />} />
             
             {/* Main Dashboard Layout */}
             <Route element={<BranchGate />}>
@@ -320,6 +325,8 @@ function App() {
               <Route path="/settings" element={<Settings />} />
               {/* Belge künyesi (ekstre/makbuz başlığı) — Ayarlar içinden açılır. */}
               <Route path="/settings/institution" element={<InstitutionProfile />} />
+              {/* Onam/izin formu şablonları — tablette imzalanacak metinler. */}
+              <Route path="/settings/consent-forms" element={<ConsentTemplates />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/admin/academics" element={<AdminAcademics />} />
               <Route path="/admin/exam-papers" element={<TeacherReports />} />

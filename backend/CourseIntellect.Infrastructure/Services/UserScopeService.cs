@@ -123,6 +123,7 @@ public sealed class UserScopeService(CourseIntellectDbContext dbContext) : IUser
         // Tam erişimli kurumların tüm şube-tipli birimleri.
         var fullBranchRows = await dbContext.OrgUnits.IgnoreQueryFilters().AsNoTracking()
             .Where(o => o.TenantId != null && fullTenantIds.Contains(o.TenantId.Value)
+                && o.IsActive
                 && BranchUnitTypes.Contains(o.UnitType.ToLower()))
             .Select(o => new { o.Id, o.Name, o.TenantId })
             .ToListAsync(cancellationToken);
@@ -130,7 +131,8 @@ public sealed class UserScopeService(CourseIntellectDbContext dbContext) : IUser
         // Kilitli şubelerin adları.
         var lockedBranchIds = lockedBranchesByTenant.SelectMany(kv => kv.Value).ToHashSet();
         var lockedBranchRows = await dbContext.OrgUnits.IgnoreQueryFilters().AsNoTracking()
-            .Where(o => lockedBranchIds.Contains(o.Id))
+            .Where(o => lockedBranchIds.Contains(o.Id) && o.IsActive
+                && BranchUnitTypes.Contains(o.UnitType.ToLower()))
             .Select(o => new { o.Id, o.Name, o.TenantId })
             .ToListAsync(cancellationToken);
 

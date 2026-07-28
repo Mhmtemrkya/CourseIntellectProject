@@ -995,6 +995,10 @@ public sealed class DrivingStudentsController(
             overview = new
             {
                 profile.Id,
+                // Onam formları okul ve sürücü kursunda ORTAK öğrenci kimliğiyle (StudentProfile.Id)
+                // çalışır; ekran bu alanı doğrudan /api/consent uçlarına verir.
+                studentProfileId = row.student.Id,
+                profile.PackageId,
                 profile.StudentNumber,
                 status = profile.Status.ToString(),
                 profile.AutomaticStatusEnabled,

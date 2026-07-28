@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
+import '../widgets/consent_alert_banner.dart';
 import 'admin_student_edit_page.dart';
+import 'consent_center_page.dart';
 
 class AdminStudentDetailPage extends StatefulWidget {
   final StudentRegistryRecord student;
@@ -185,6 +187,31 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
               AdminHeroMetric(label: 'Durum', value: student.status),
               AdminHeroMetric(label: 'Program', value: student.programType),
             ],
+          ),
+          const SizedBox(height: 16),
+          // Eksik onam formu şeridi — kurum form tanımlamadıysa hiçbir şey çizilmez.
+          ConsentAlertBanner(
+            studentProfileId: student.id,
+            studentName: student.fullName,
+            contextKind: 'SchoolEnrollment',
+            contextLabel: student.className,
+          ),
+          OutlinedButton.icon(
+            onPressed: student.id.isEmpty
+                ? null
+                : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ConsentCenterPage(
+                          studentProfileId: student.id,
+                          studentName: student.fullName,
+                          contextKind: 'SchoolEnrollment',
+                          contextLabel: student.className,
+                        ),
+                      ),
+                    ),
+            icon: const Icon(Icons.draw_outlined),
+            label: Text('Onam Formları'.tr),
           ),
           const SizedBox(height: 16),
           AdminPanel(

@@ -950,6 +950,10 @@ export async function backfillBranch(branchId) {
   return response;
 }
 
+export async function repairSingleBranchRecords() {
+  return api.post('/api/org-units/repair-single-branch', {});
+}
+
 export async function deleteOrgUnit(id) {
   await api.delete(`/api/org-units/${id}`);
 }
@@ -2325,4 +2329,88 @@ export async function fetchLibrarySettings() {
 
 export async function saveLibrarySettings(payload) {
   return api.put('/api/library/settings', payload);
+}
+
+// ─── Onam / izin formları ────────────────────────────────────────────────────
+// Sunucu tarafı: /api/consent. Okuma uçlarında paket kapısı yoktur — paket düşse
+// bile daha önce imzalanmış belgeler görüntülenip indirilebilir.
+
+export async function fetchConsentCatalog() {
+  return api.get('/api/consent/catalog');
+}
+
+export async function fetchConsentTemplates(includeInactive = true) {
+  const response = await api.get('/api/consent/templates', { params: { includeInactive } });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function createConsentTemplate(payload) {
+  return api.post('/api/consent/templates', payload);
+}
+
+export async function updateConsentTemplate(id, payload) {
+  return api.put(`/api/consent/templates/${id}`, payload);
+}
+
+export async function deleteConsentTemplate(id) {
+  return api.delete(`/api/consent/templates/${id}`);
+}
+
+export async function downloadConsentTemplatePreview(id) {
+  return api.get(`/api/consent/templates/${id}/preview`, { responseType: 'blob' });
+}
+
+export async function fetchStudentConsentForms(studentProfileId) {
+  const response = await api.get(`/api/consent/students/${studentProfileId}`);
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchConsentStatus(studentProfileId, params = {}) {
+  return api.get(`/api/consent/students/${studentProfileId}/status`, { params });
+}
+
+export async function fetchAppointmentConsentStatus(appointmentId) {
+  return api.get(`/api/consent/appointments/${appointmentId}/status`);
+}
+
+export async function fetchConsentForm(id) {
+  return api.get(`/api/consent/forms/${id}`);
+}
+
+export async function createConsentForm(payload) {
+  return api.post('/api/consent/forms', payload);
+}
+
+export async function updateConsentForm(id, payload) {
+  return api.put(`/api/consent/forms/${id}`, payload);
+}
+
+export async function cancelConsentForm(id) {
+  return api.delete(`/api/consent/forms/${id}`);
+}
+
+export async function downloadConsentFormPdf(id) {
+  return api.get(`/api/consent/forms/${id}/pdf`, { responseType: 'blob' });
+}
+
+export async function dispatchConsentFormToStation(id, stationName, expiresInMinutes) {
+  return api.post(`/api/consent/forms/${id}/session`, { stationName, expiresInMinutes });
+}
+
+export async function revokeConsentFormSession(id) {
+  return api.delete(`/api/consent/forms/${id}/session`);
+}
+
+export async function fetchConsentStations() {
+  const response = await api.get('/api/consent/stations');
+  return Array.isArray(response) ? response : [];
+}
+
+/// Tablet yoklaması: bekleyen form yoksa sunucu 204 döner ve istemci null görür.
+export async function pollConsentStation(station) {
+  return api.get('/api/consent/station/pending', { params: { station } });
+}
+
+export async function signConsentForm(token, payload) {
+  return api.post(`/api/consent/session/${token}/sign`, payload);
 }

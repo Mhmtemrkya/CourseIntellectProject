@@ -14,7 +14,8 @@ import {
   Save,
   RefreshCw,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  FileSignature
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
@@ -146,6 +147,34 @@ export default function Settings() {
               <Button variant="outline" onClick={() => navigate('/settings/institution')}>
                 <Building2 className="h-4 w-4 mr-2" />
                 Kurum Künyesini Düzenle
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Onam formları — tablette imzalanan izin/rıza metinleri. */}
+      <motion.div variants={itemVariants}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileSignature className="h-5 w-5" />
+              Onam Formları
+            </CardTitle>
+            <CardDescription>Tablette imzalanan izin ve rıza metinleri</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <p className="font-medium">Muvafakatname, KVKK ve izin belgeleri</p>
+                <p className="text-sm text-muted-foreground">
+                  Metni siz yazarsınız; personel tek dokunuşla tablete gönderir, öğrenci veya veli
+                  parmağıyla imzalar, belge logolu PDF olarak dosyaya eklenir.
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => navigate('/settings/consent-forms')}>
+                <FileSignature className="h-4 w-4 mr-2" />
+                Onam Formlarını Yönet
               </Button>
             </div>
           </CardContent>

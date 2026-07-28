@@ -25,6 +25,8 @@ import { assetUrl } from '../../lib/assetUrl';
 import { maskTrPhone } from '../../lib/inputMasks';
 import { createTypedDocumentUrl } from '../../lib/fileMime';
 import { FileButton } from '../../components/ui/file-button';
+import ConsentAlertBanner from '../../components/consent/ConsentAlertBanner';
+import ConsentCenter from '../../components/consent/ConsentCenter';
 import {
   DRIVING_EVALUATION_CATEGORIES, DRIVING_EVALUATION_CRITERIA, downloadDrivingEvaluationCsv,
   evaluationScores, lessonAverage,
@@ -233,6 +235,7 @@ export default function DrivingStudentDetail() {
   // Sekme durumu bileşen dışında tutulur; yeniden yüklemede sıfırlanmasın.
   const [activeTab, setActiveTab] = useState('overview');
   const [busy, setBusy] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
   const [rejectReasons, setRejectReasons] = useState({});
   const [paymentForm, setPaymentForm] = useState({ amount: '', method: 'Nakit', financeInstallmentId: '', branchId: '' });
   const [branches, setBranches] = useState([]);
@@ -503,8 +506,28 @@ export default function DrivingStudentDetail() {
           }}><UserRoundCheck className="mr-2 h-4 w-4" />Durum ve uygunluk</Button>}
           <Button variant="outline" onClick={() => load({ silent: true })}><RefreshCw className="mr-2 h-4 w-4" />Yenile</Button>
           <Button variant="outline" disabled={!lessons.length} onClick={exportEvaluations}><Download className="mr-2 h-4 w-4" />Gelişim Raporu</Button>
+          <Button variant="outline" onClick={() => setConsentOpen(true)}><FileSignature className="mr-2 h-4 w-4" />Onam Formları</Button>
         </div>
       </div>
+
+      {/* Eksik onam formu şeridi — kurum form tanımlamadıysa hiçbir şey çizmez. */}
+      <ConsentAlertBanner
+        studentProfileId={overview.studentProfileId}
+        studentName={overview.fullName}
+        contextKind="DrivingEnrollment"
+        contextKey={overview.packageId}
+        contextLabel={`${overview.packageName || ''} • ${overview.licenseClass || ''} sınıfı`.trim()}
+      />
+
+      <ConsentCenter
+        open={consentOpen}
+        onOpenChange={setConsentOpen}
+        studentProfileId={overview.studentProfileId}
+        studentName={overview.fullName}
+        contextKind="DrivingEnrollment"
+        contextKey={overview.packageId}
+        contextLabel={`${overview.packageName || ''} • ${overview.licenseClass || ''} sınıfı`.trim()}
+      />
 
       <Dialog open={lifecycleOpen} onOpenChange={setLifecycleOpen}>
         <DialogContent>

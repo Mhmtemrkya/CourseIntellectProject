@@ -4,6 +4,7 @@ import 'package:student/i18n/app_locale.dart';
 
 import '../services/driving_school_api_service.dart';
 import '../services/driving_permissions_store.dart';
+import '../widgets/consent_completion_gate.dart';
 import '../widgets/driving_ui.dart';
 
 /// "Bugün" sekmesi: seçili günün direksiyon randevuları. Randevu saati geçince
@@ -270,7 +271,15 @@ class _DrivingTodayAttendanceTabState extends State<DrivingTodayAttendanceTab> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _saving ? null : () => _mark(item, true),
+                    // "Geldi" = ders fiilen verildi. Onam kapısı burada devreye
+                    // girer; yumuşaktır, imzasız devam edilebilir.
+                    onPressed: _saving
+                        ? null
+                        : () => ConsentGate.run(
+                            context,
+                            appointmentId: '${item['id']}',
+                            proceed: () => _mark(item, true),
+                          ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF10B981),
                     ),

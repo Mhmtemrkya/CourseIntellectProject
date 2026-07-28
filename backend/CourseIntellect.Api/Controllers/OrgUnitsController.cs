@@ -67,27 +67,56 @@ public sealed class OrgUnitsController(
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> BackfillBranch([FromQuery] Guid branchId, CancellationToken cancellationToken)
     {
+        // BranchManager JWT'de uyumluluk için Admin alias'ı da taşır. Tenant genelindeki
+        // şubesiz kayıtları başka bir şubeye taşıma yetkisi yalnız kurum yöneticisindedir.
+        if (User.IsInRole("BranchManager")) return Forbid();
         if (branchId == Guid.Empty) return BadRequest(new { message = "Şube (branchId) zorunludur." });
         var tenantId = dbContext.CurrentTenantId;
         // Güvenlik: aktif kurum bağlamı yoksa toplu yazma TÜM kurumlara sızardı; reddet.
         if (tenantId is null) return BadRequest(new { message = "Aktif kurum bağlamı yok; toplu şube ataması reddedildi." });
+        var validBranch = await dbContext.OrgUnits.AsNoTracking()
+            .AnyAsync(x => x.Id == branchId && x.IsActive, cancellationToken);
+        if (!validBranch) return BadRequest(new { message = "Seçilen şube aktif kuruma ait değil veya pasif." });
 
-        async Task<int> Fill<T>(DbSet<T> set) where T : class, IBranchScopedEntity =>
-            await set.IgnoreQueryFilters()
-                .Where(x => x.BranchId == null && x.TenantId == tenantId)
-                .ExecuteUpdateAsync(s => s.SetProperty(e => e.BranchId, branchId), cancellationToken);
-
-        var updated = 0;
-        updated += await Fill(dbContext.Users);
-        updated += await Fill(dbContext.Students);
-        updated += await Fill(dbContext.Staff);
-        updated += await Fill(dbContext.EnrollmentContracts);
-        updated += await Fill(dbContext.FinanceInstallments);
-        updated += await Fill(dbContext.FinancePayments);
-        updated += await Fill(dbContext.ExamSessions);
-        updated += await Fill(dbContext.TeacherDuties);
-        updated += await Fill(dbContext.AttendanceEntries);
+        var updated = await BackfillUnassignedRecordsAsync(tenantId.Value, branchId, cancellationToken);
         return Ok(new { updated, message = $"{updated} kayıt şubeye atandı." });
+    }
+
+    /// <summary>
+    /// Sonradan şube özelliği açılan tek şubeli kurumlarda eski kursiyer/personel/finans
+    /// kayıtlarını güvenli biçimde o tek şubeye bağlar. Birden fazla aktif şube varsa
+    /// hangi kaydın nereye ait olduğu varsayılmaz ve hiçbir veri değiştirilmez.
+    /// </summary>
+    [HttpPost("repair-single-branch")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RepairSingleBranch(CancellationToken cancellationToken)
+    {
+        if (User.IsInRole("BranchManager")) return Forbid();
+        if (dbContext.CurrentTenantId is not Guid tenantId)
+            return BadRequest(new { message = "Aktif kurum bağlamı yok; şube onarımı reddedildi." });
+
+        var branchIds = await dbContext.OrgUnits.AsNoTracking()
+            .Where(x => x.IsActive
+                && new[] { "şube", "sube", "kampüs", "kampus" }.Contains(x.UnitType.ToLower()))
+            .Select(x => x.Id)
+            .Take(2)
+            .ToListAsync(cancellationToken);
+
+        if (branchIds.Count != 1)
+            return Ok(new { updated = 0, repaired = false, reason = "Onarım yalnız tek aktif şubeli kurumlarda uygulanır." });
+
+        var updated = await BackfillUnassignedRecordsAsync(tenantId, branchIds[0], cancellationToken);
+        if (updated > 0)
+        {
+            await auditLogService.LogAsync(
+                "Tek şube eski kayıt onarımı",
+                "OrgUnit",
+                nameof(OrgUnit),
+                branchIds[0].ToString(),
+                $"{updated} şubesiz kayıt kurumun tek aktif şubesine güvenli biçimde atandı.",
+                cancellationToken);
+        }
+        return Ok(new { updated, repaired = updated > 0, branchId = branchIds[0] });
     }
 
     [HttpPost]
@@ -107,7 +136,20 @@ public sealed class OrgUnitsController(
             return BadRequest(new { message = "Şube için sorumlu seçimi zorunludur." });
         }
 
-        return Ok(await orgUnitService.CreateAsync(request, CurrentUserId(), CurrentUserName(), cancellationToken));
+        var created = await orgUnitService.CreateAsync(request, CurrentUserId(), CurrentUserName(), cancellationToken);
+
+        // İlk şube oluşturulurken eski kursiyerlerin BranchId alanı boştur. Kurumda
+        // yalnız bu şube varsa belirsizlik yoktur; mevcut kayıtları otomatik bağla.
+        if (isBranchType && dbContext.CurrentTenantId is Guid tenantId && !User.IsInRole("BranchManager"))
+        {
+            var activeBranchCount = await dbContext.OrgUnits.AsNoTracking()
+                .CountAsync(x => x.IsActive
+                    && new[] { "şube", "sube", "kampüs", "kampus" }.Contains(x.UnitType.ToLower()), cancellationToken);
+            if (activeBranchCount == 1)
+                await BackfillUnassignedRecordsAsync(tenantId, created.Id, cancellationToken);
+        }
+
+        return Ok(created);
     }
 
     [HttpPut("{id:guid}")]
@@ -136,5 +178,39 @@ public sealed class OrgUnitsController(
             ?? User.FindFirstValue("unique_name")
             ?? User.Identity?.Name
             ?? string.Empty;
+    }
+
+    private async Task<int> BackfillUnassignedRecordsAsync(
+        Guid tenantId,
+        Guid branchId,
+        CancellationToken cancellationToken)
+    {
+        // Tüm ilişkili tablolar tek işlem olarak taşınır. Aradaki herhangi bir tablo
+        // güncellenemezse kısmi şube ataması bırakmadan tamamı geri alınır.
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        async Task<int> Fill<T>(DbSet<T> set) where T : class, IBranchScopedEntity =>
+            await set.IgnoreQueryFilters()
+                .Where(x => x.BranchId == null && x.TenantId == tenantId)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(entity => entity.BranchId, branchId),
+                    cancellationToken);
+
+        var updated = 0;
+        updated += await Fill(dbContext.Users);
+        updated += await Fill(dbContext.Students);
+        updated += await Fill(dbContext.Staff);
+        updated += await Fill(dbContext.EnrollmentContracts);
+        updated += await Fill(dbContext.FinanceInstallments);
+        updated += await Fill(dbContext.FinancePayments);
+        updated += await Fill(dbContext.FinancePaymentAllocations);
+        updated += await Fill(dbContext.ExamSessions);
+        updated += await Fill(dbContext.TeacherDuties);
+        updated += await Fill(dbContext.AttendanceEntries);
+        updated += await Fill(dbContext.AuditLogEntries);
+        updated += await Fill(dbContext.AssistantConversations);
+        updated += await Fill(dbContext.DrivingExpenses);
+        await transaction.CommitAsync(cancellationToken);
+        return updated;
     }
 }

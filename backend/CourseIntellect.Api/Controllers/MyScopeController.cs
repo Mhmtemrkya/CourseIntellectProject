@@ -35,6 +35,21 @@ public sealed class MyScopeController(
             ? options.Tenants.FirstOrDefault(t => t.Id == tid)
             : null;
 
+        // "Tüm şubeler" de ayrı ve geçerli bir bağlamdır. Bu nedenle tam kurum
+        // yetkili bir yönetici, kurumda yalnız bir şube olsa bile şube seçiciyi
+        // kullanabilmelidir. Şubeye kilitli kullanıcıda ise yalnız bir erişilebilir
+        // şube varsa seçici gizli kalır; birden fazla Branch grant'ı varsa açılır.
+        IReadOnlyCollection<Guid>? allowedBranches = Array.Empty<Guid>();
+        if (activeTenantId is Guid tenantId)
+        {
+            allowedBranches = await userScopeService.ResolveAllowedBranchesAsync(
+                userId,
+                tenantId,
+                cancellationToken);
+        }
+        var canSwitchBranch = activeTenant is { Branches.Count: > 0 }
+            && (allowedBranches is null || allowedBranches.Count > 1);
+
         // Kapsam Yönetimi konsolunu kim görsün: platform admin VEYA bir grup/platform
         // seviyesinde Manage yetkisi olan (delege yönetici).
         var isPlatformAdmin = string.Equals(User.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase)
@@ -46,7 +61,7 @@ public sealed class MyScopeController(
 
         var response = new MyScopeResponse(
             CanSwitchTenant: options.Tenants.Count > 1,
-            CanSwitchBranch: activeTenant is { Branches.Count: > 1 },
+            CanSwitchBranch: canSwitchBranch,
             ReadOnly: options.ReadOnly,
             CanManageScopes: canManageScopes,
             Active: new ScopeActiveDto(activeTenantId, activeBranchId),

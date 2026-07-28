@@ -206,6 +206,10 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<DrivingMebbisHistoryEvent> DrivingMebbisHistoryEvents => Set<DrivingMebbisHistoryEvent>();
     public DbSet<DrivingMebbisErrorDefinition> DrivingMebbisErrorDefinitions => Set<DrivingMebbisErrorDefinition>();
     public DbSet<DrivingMebbisErrorOccurrence> DrivingMebbisErrorOccurrences => Set<DrivingMebbisErrorOccurrence>();
+    public DbSet<ConsentFormTemplate> ConsentFormTemplates => Set<ConsentFormTemplate>();
+    public DbSet<ConsentFormRequirement> ConsentFormRequirements => Set<ConsentFormRequirement>();
+    public DbSet<ConsentFormRecord> ConsentFormRecords => Set<ConsentFormRecord>();
+    public DbSet<ConsentSignatureStation> ConsentSignatureStations => Set<ConsentSignatureStation>();
     public DbSet<AssistantConversation> AssistantConversations => Set<AssistantConversation>();
     public DbSet<AssistantMessage> AssistantMessages => Set<AssistantMessage>();
     public DbSet<AssistantAuditLog> AssistantAuditLogs => Set<AssistantAuditLog>();
@@ -2265,6 +2269,81 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.IpAddressMasked).HasMaxLength(64);
             entity.Property(x => x.UserAgent).HasMaxLength(250);
             entity.HasIndex(x => new { x.TenantId, x.UserId, x.CreatedAtUtc });
+        });
+
+        // ─── Onam / izin formları ─────────────────────────────────────────────
+        modelBuilder.Entity<ConsentFormTemplate>(entity =>
+        {
+            entity.ToTable("consent_form_templates");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            // Form metni ve onay maddeleri uzun serbest metindir; dar bir varchar
+            // üretimde "value too long" ile patlar.
+            entity.Property(x => x.Body).HasColumnType("text").IsRequired();
+            entity.Property(x => x.CheckItemsJson).HasColumnType("text").IsRequired();
+            entity.Property(x => x.SignerRole).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(x => new { x.TenantId, x.IsDeleted, x.IsActive, x.SortOrder });
+        });
+
+        modelBuilder.Entity<ConsentFormRequirement>(entity =>
+        {
+            entity.ToTable("consent_form_requirements");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.ContextKind).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(x => x.ContextKey).HasMaxLength(120).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.ContextKind, x.ContextKey });
+            entity.HasIndex(x => new { x.TenantId, x.TemplateId });
+            entity.HasOne<ConsentFormTemplate>().WithMany()
+                .HasForeignKey(x => x.TemplateId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ConsentFormRecord>(entity =>
+        {
+            entity.ToTable("consent_form_records");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.ContextKind).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(x => x.ContextKey).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.ContextLabel).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Body).HasColumnType("text").IsRequired();
+            entity.Property(x => x.CheckItemsJson).HasColumnType("text").IsRequired();
+            entity.Property(x => x.CheckedItemsJson).HasColumnType("text").IsRequired();
+            // base64 PNG imza — kesinlikle uzun metin kolonu.
+            entity.Property(x => x.SignatureImage).HasColumnType("text").IsRequired();
+            entity.Property(x => x.SignerRole).HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30).IsRequired();
+            entity.Property(x => x.StaffName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.StaffNotes).HasColumnType("text").IsRequired();
+            entity.Property(x => x.StationName).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.StationKey).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.SignerName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.SignerRelation).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.SignerDevice).HasMaxLength(250).IsRequired();
+            entity.Property(x => x.SignerIp).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.StudentProfileId });
+            // Tablet yoklamasının sorgusu: kurum + durum + istasyon.
+            entity.HasIndex(x => new { x.TenantId, x.Status, x.StationKey });
+            entity.HasIndex(x => x.SessionToken);
+            entity.HasIndex(x => new { x.TenantId, x.ContextKind, x.ContextRefId });
+            // Şablon silinse de imzalı belge yaşamalı → SET NULL.
+            entity.HasOne<ConsentFormTemplate>().WithMany()
+                .HasForeignKey(x => x.TemplateId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ConsentSignatureStation>(entity =>
+        {
+            entity.ToTable("consent_signature_stations");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.StationKey).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.DeviceInfo).HasMaxLength(250).IsRequired();
+            entity.Property(x => x.BranchId).HasColumnName("branch_id");
+            entity.HasIndex(x => new { x.TenantId, x.StationKey }).IsUnique();
         });
     }
 

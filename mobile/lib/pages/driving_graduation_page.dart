@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 
 import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
+import '../widgets/consent_completion_gate.dart';
 import '../widgets/driving_ui.dart';
 import '../services/uploads_api_service.dart';
 
@@ -376,15 +377,24 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton.icon(
+                                // Mezuniyet/belge teslim tutanağı imzasızsa
+                                // uyarı ver; kapı yumuşak.
                                 onPressed: _saving
                                     ? null
-                                    : () => _run(
-                                        () => DrivingSchoolApiService.instance
-                                            .graduateStudent(
-                                              id,
-                                              'Mobil kontrol listesi tamamlandı.',
-                                            ),
-                                        'Kursiyer mezun edildi.',
+                                    : () => ConsentGate.run(
+                                        context,
+                                        studentProfileId:
+                                            '${student['studentProfileId'] ?? ''}',
+                                        contextKind: 'DrivingGraduation',
+                                        contextRefId: id,
+                                        proceed: () => _run(
+                                          () => DrivingSchoolApiService.instance
+                                              .graduateStudent(
+                                                id,
+                                                'Mobil kontrol listesi tamamlandı.',
+                                              ),
+                                          'Kursiyer mezun edildi.',
+                                        ),
                                       ),
                                 icon: const Icon(Icons.school_rounded),
                                 label: Text('Kursiyeri Mezun Et'.tr),

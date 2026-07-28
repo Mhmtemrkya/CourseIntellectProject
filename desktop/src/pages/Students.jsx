@@ -13,6 +13,7 @@ import {
   ChevronUp,
   ChevronDown,
   XCircle,
+  FileSignature,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { FeatureGate } from '../components/FeatureGate';
@@ -54,6 +55,8 @@ import {
   DialogTitle,
 } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
+import ConsentAlertBanner from '../components/consent/ConsentAlertBanner';
+import ConsentCenter from '../components/consent/ConsentCenter';
 import { Progress } from '../components/ui/progress';
 import { SheetHeader, SheetTitle, SheetDescription } from '../components/ui/sheet';
 import { ErrorBanner } from '../components/ui/AlertBanner';
@@ -99,6 +102,7 @@ function StudentDetailDrawer({ student, onToggleStatus, onUpdated }) {
   const { toast } = useToast();
   const [photoUrl, setPhotoUrl] = useState(student?.photoUrl || '');
   const [savingPhoto, setSavingPhoto] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
 
   const savePhoto = async (url) => {
     setPhotoUrl(url);
@@ -123,6 +127,27 @@ function StudentDetailDrawer({ student, onToggleStatus, onUpdated }) {
         <SheetTitle>Öğrenci Detayı</SheetTitle>
         <SheetDescription>Öğrenci bilgileri ve istatistikleri</SheetDescription>
       </SheetHeader>
+
+      {/* Eksik onam formu şeridi — kurum form tanımlamadıysa hiçbir şey çizilmez. */}
+      <ConsentAlertBanner
+        studentProfileId={student.id}
+        studentName={student.fullName}
+        contextKind="SchoolEnrollment"
+        contextLabel={student.className || 'Okul kaydı'}
+      />
+
+      <Button variant="outline" className="w-full" onClick={() => setConsentOpen(true)}>
+        <FileSignature className="mr-2 h-4 w-4" /> Onam Formları
+      </Button>
+
+      <ConsentCenter
+        open={consentOpen}
+        onOpenChange={setConsentOpen}
+        studentProfileId={student.id}
+        studentName={student.fullName}
+        contextKind="SchoolEnrollment"
+        contextLabel={student.className || 'Okul kaydı'}
+      />
 
       <IdentityCard
         type="Öğrenci Kimlik Kartı"

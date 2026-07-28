@@ -23,6 +23,7 @@ import { resolveUserInstitutionType } from '../../lib/auth';
 import DrivingCollectModal from '../../components/finance/DrivingCollectModal';
 import { useToast } from '../../hooks/use-toast';
 import { SheetHeader, SheetTitle, SheetDescription } from '../../components/ui/sheet';
+import ConsentAlertBanner from '../../components/consent/ConsentAlertBanner';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import {
@@ -219,6 +220,15 @@ function StudentAccountDrawer({
         <SheetTitle>Öğrenci Cari Hesabı</SheetTitle>
         <SheetDescription>Taksit planı, ödenen ve gelecek taksitler</SheetDescription>
       </SheetHeader>
+
+      {/* İmzasız onam formu cari ekranda da GÖRÜNÜR kalır — kapı yumuşak olduğu
+          için "imzasız devam edildi" bilgisi kaybolmasın. */}
+      <ConsentAlertBanner
+        studentProfileId={account.id}
+        studentName={account.name}
+        contextKind={isDrivingSchool ? 'DrivingEnrollment' : 'SchoolEnrollment'}
+        contextLabel={account.className}
+      />
 
       <div className="flex items-center gap-4 p-4 bg-muted rounded-xl">
         <Avatar className="h-16 w-16">

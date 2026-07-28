@@ -719,6 +719,11 @@ class DrivingSchoolApiService {
     '/api/driving-school/students',
   )).cast<Map<String, dynamic>>();
 
+  /// İlk şube sonradan açılmış tek şubeli kurumlarda eski şubesiz kayıtları
+  /// güvenli biçimde bağlar. Backend çok şubeli kurumlarda hiçbir kayıt taşımaz.
+  Future<Map<String, dynamic>> repairSingleBranchRecords() =>
+      _post('/api/org-units/repair-single-branch', const {});
+
   Future<Map<String, dynamic>> updateStudentLifecycle(
     String profileId,
     Map<String, dynamic> body,

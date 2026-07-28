@@ -4,6 +4,7 @@ import 'package:student/i18n/app_locale.dart';
 import '../services/app_settings_api_service.dart';
 import '../services/institution_profile_api_service.dart';
 import '../widgets/admin_ui.dart';
+import 'consent_station_page.dart';
 
 class AdminSettingsPage extends StatefulWidget {
   const AdminSettingsPage({super.key});
@@ -295,6 +296,28 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                         ),
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // İmza istasyonu: tablet bu ekranda bırakılır (rehberli erişim /
+                // kiosk modu önerilir) ve personelin gönderdiği formları alır.
+                AdminPanel(
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.draw_outlined),
+                    title: Text('İmza İstasyonu'.tr),
+                    subtitle: Text(
+                      'Bu cihazı imza tableti yap: personelin gönderdiği onam '
+                      'formları burada imzalanır.'
+                          .tr,
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ConsentStationPage(),
+                      ),
+                    ),
                   ),
                 ),
               ],

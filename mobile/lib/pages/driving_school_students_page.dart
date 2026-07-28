@@ -5,7 +5,9 @@ import '../i18n/app_locale.dart';
 import '../services/api_config.dart';
 import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
+import '../widgets/consent_alert_banner.dart';
 import '../widgets/driving_ui.dart';
+import 'consent_center_page.dart';
 import 'driving_student_registration_page.dart';
 
 const _statusLabels = {
@@ -123,7 +125,19 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
       _error = null;
     });
     try {
-      final rows = await _service.students();
+      var rows = await _service.students();
+      if (rows.isEmpty) {
+        try {
+          final repair = await _service.repairSingleBranchRecords();
+          final updated = (repair['updated'] as num?)?.toInt() ?? 0;
+          if (updated > 0) {
+            rows = await _service.students();
+          }
+        } catch (_) {
+          // Şube müdürü veya çok şubeli kurumda onarım uygulanmaz; normal boş
+          // liste davranışı korunur.
+        }
+      }
       final permissions = await DrivingPermissionsStore.instance.load();
       Map<String, dynamic>? groupData;
       try {
@@ -1273,7 +1287,36 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                         icon: const Icon(Icons.manage_accounts_rounded),
                         label: Text('Durumu yönet'.tr),
                       ),
+                    if ('${overview['studentProfileId'] ?? ''}'.isNotEmpty)
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ConsentCenterPage(
+                              studentProfileId:
+                                  '${overview['studentProfileId']}',
+                              studentName: '${overview['fullName'] ?? ''}',
+                              contextKind: 'DrivingEnrollment',
+                              contextKey: '${overview['packageId'] ?? ''}',
+                              contextLabel:
+                                  '${overview['packageName'] ?? ''} • ${overview['licenseClass'] ?? ''}',
+                            ),
+                          ),
+                        ),
+                        icon: const Icon(Icons.draw_outlined),
+                        label: Text('Onam formları'.tr),
+                      ),
                   ],
+                ),
+                // Eksik onam formu şeridi — kurum form tanımlamadıysa çizilmez.
+                const SizedBox(height: 10),
+                ConsentAlertBanner(
+                  studentProfileId: '${overview['studentProfileId'] ?? ''}',
+                  studentName: '${overview['fullName'] ?? ''}',
+                  contextKind: 'DrivingEnrollment',
+                  contextKey: '${overview['packageId'] ?? ''}',
+                  contextLabel:
+                      '${overview['packageName'] ?? ''} • ${overview['licenseClass'] ?? ''}',
                 ),
                 if ('${overview['identitySerialNo'] ?? ''}'.isNotEmpty ||
                     '${overview['studentPhone'] ?? ''}'.isNotEmpty) ...[

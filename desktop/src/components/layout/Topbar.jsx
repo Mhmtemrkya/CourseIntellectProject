@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -104,14 +104,20 @@ export function Topbar() {
   const navigate = useNavigate();
   const isOwner = (user?.role || "").toLowerCase() === "admin";
   const [branches, setBranches] = useState([]);
+  const [branchOptionsLoaded, setBranchOptionsLoaded] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState(() => (typeof localStorage !== "undefined" ? localStorage.getItem("ci-branch-filter") || "" : ""));
   const [scope, setScope] = useState(null);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
 
-  useEffect(() => {
-    if (!isOwner) return;
-    fetchOrgUnits()
+  const loadBranchOptions = useCallback(() => {
+    if (!isOwner) {
+      setBranches([]);
+      setBranchOptionsLoaded(true);
+      return Promise.resolve();
+    }
+    setBranchOptionsLoaded(false);
+    return fetchOrgUnits()
       .then((list) => {
         const all = Array.isArray(list) ? list : [];
         // Şube filtresi yalnızca "Şube"/"Kampüs" türü birimleri kapsar (departman vb. hariç).
@@ -120,18 +126,38 @@ export function Topbar() {
         const branchUnits = active.filter((u) => ['şube', 'sube', 'kampüs', 'kampus'].includes(String(u.unitType || '').toLowerCase()));
         setBranches(branchUnits.length > 0 ? branchUnits : active);
       })
-      .catch(() => setBranches([]));
+      .catch(() => setBranches([]))
+      .finally(() => setBranchOptionsLoaded(true));
   }, [isOwner]);
 
   // Erişilebilir kurum/şube ağacı: sahip/MEB için kurum seçici bu veriyle beslenir.
-  useEffect(() => {
-    fetchMyScope()
+  const loadScope = useCallback(() => fetchMyScope()
       .then((data) => {
         setScope(data || null);
         setSelectedTenant(data?.active?.tenantId || "");
       })
-      .catch(() => setScope(null));
-  }, []);
+      .catch(() => setScope(null)), []);
+
+  useEffect(() => {
+    loadBranchOptions();
+    loadScope();
+
+    // Şube kayıt ekranında ilk şube eklendiğinde Topbar zaten mount edilmiş olur.
+    // Sayfayı kapatıp açmaya gerek kalmadan listeyi ve kapsam bayraklarını yenile.
+    const refresh = () => {
+      loadBranchOptions();
+      loadScope();
+    };
+    window.addEventListener("ci-org-units-changed", refresh);
+    return () => window.removeEventListener("ci-org-units-changed", refresh);
+  }, [loadBranchOptions, loadScope]);
+
+  // Silinen/pasife alınan bir şube eski localStorage seçiminde kalmasın.
+  useEffect(() => {
+    if (!branchOptionsLoaded || !selectedBranch || branches.some((branch) => branch.id === selectedBranch)) return;
+    setSelectedBranch("");
+    setActiveBranchFilter(null);
+  }, [branchOptionsLoaded, branches, selectedBranch]);
 
   const handleBranchChange = (value) => {
     setSelectedBranch(value);
@@ -286,7 +312,7 @@ export function Topbar() {
             value={selectedBranch}
             onChange={(e) => handleBranchChange(e.target.value)}
             title="Şube filtresi"
-            className="hidden h-8 rounded-lg border border-foreground/[0.10] bg-foreground/[0.04] px-2 text-xs font-semibold text-foreground md:block"
+            className="h-8 max-w-32 rounded-lg border border-foreground/[0.10] bg-foreground/[0.04] px-2 text-xs font-semibold text-foreground sm:max-w-44"
           >
             <option value="">Tüm Şubeler</option>
             {branches.map((b) => (

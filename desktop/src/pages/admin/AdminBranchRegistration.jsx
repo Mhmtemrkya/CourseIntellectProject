@@ -73,6 +73,7 @@ export default function AdminBranchRegistration() {
       toast({ title: 'Şube oluşturuldu', description: `${form.name.trim()} kaydedildi.` });
       setForm(emptyForm);
       await load();
+      window.dispatchEvent(new Event('ci-org-units-changed'));
     } catch (err) {
       toast({ title: 'Şube oluşturulamadı', description: err?.response?.data?.message || err.message, variant: 'destructive' });
     } finally {
@@ -87,6 +88,7 @@ export default function AdminBranchRegistration() {
       await deleteOrgUnit(unit.id);
       toast({ title: 'Şube silindi' });
       await load();
+      window.dispatchEvent(new Event('ci-org-units-changed'));
     } catch (err) {
       toast({ title: 'Silinemedi', description: err.message, variant: 'destructive' });
     }
@@ -163,6 +165,7 @@ export default function AdminBranchRegistration() {
                         await setOrgUnitActive(unit.id, unit.isActive === false);
                         toast({ title: unit.isActive === false ? 'Şube aktifleştirildi.' : 'Şube pasife alındı.' });
                         await load();
+                        window.dispatchEvent(new Event('ci-org-units-changed'));
                       } catch (err) { toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' }); }
                     }}
                   >

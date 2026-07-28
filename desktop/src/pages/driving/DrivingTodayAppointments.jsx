@@ -7,6 +7,7 @@ import { useToast } from '../../hooks/use-toast';
 import { fetchDrivingTodayAppointments, markDrivingAttendance } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingStatCard } from './_shared';
+import ConsentCompletionGate, { useConsentGate } from '../../components/consent/ConsentCompletionGate';
 
 const todayInput = () => {
   const d = new Date(Date.now() + 3 * 3600 * 1000); // UTC+3 yerel gün
@@ -37,6 +38,7 @@ export default function DrivingTodayAppointments() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
+  const gate = useConsentGate();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,6 +55,10 @@ export default function DrivingTodayAppointments() {
 
   const items = data?.items || [];
   const summary = data?.summary || { total: 0, completed: 0, awaitingAttendance: 0, noShow: 0 };
+
+  // "Geldi" = ders fiilen verildi. Onam kapısı burada devreye girer; YUMUŞAKTIR —
+  // eksik form uyarır ama "İmzasız devam et" ile geçilebilir, ofisin işi durmaz.
+  const markArrived = (item) => gate.run(() => mark(item, true), { appointmentId: item.id });
 
   const mark = async (item, attended) => {
     setBusyId(`${item.id}:${attended}`);
@@ -105,7 +111,7 @@ export default function DrivingTodayAppointments() {
       </div>
       {item.canMarkAttendance && canMark ? (
         <div className="flex shrink-0 gap-2">
-          <Button size="sm" variant="outline" disabled={!!busyId} onClick={() => mark(item, true)}
+          <Button size="sm" variant="outline" disabled={!!busyId} onClick={() => markArrived(item)}
             className="border-emerald-400/50 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-300">
             <UserCheck className="mr-1 h-4 w-4" />Geldi
           </Button>
@@ -162,6 +168,8 @@ export default function DrivingTodayAppointments() {
           )}
         </div>
       )}
+
+      <ConsentCompletionGate {...gate.props} />
     </div>
   );
 }
