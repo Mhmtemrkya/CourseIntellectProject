@@ -231,7 +231,11 @@ public sealed class DrivingAppointmentRequestsController(
         var packages = await db.DrivingPackages.AsNoTracking().Where(x => x.IsActive).Select(x => new { x.Id, x.Name, x.LicenseClass, transmissionType = x.TransmissionType.ToString() }).ToListAsync(ct);
         var baseStudents = await db.Students.AsNoTracking().Where(s => !db.StudentDrivingProfiles.Any(p => p.StudentId == s.Id)).Select(x => new { x.Id, x.FullName }).OrderBy(x => x.FullName).Take(500).ToListAsync(ct);
         var staff = await db.VisibleDrivingStaff().AsNoTracking().Where(s => !db.DrivingInstructorProfiles.Any(p => p.StaffId == s.Id)).Select(x => new { x.Id, x.FullName }).OrderBy(x => x.FullName).Take(500).ToListAsync(ct);
-        return Ok(new { students, instructors, vehicles, packages, baseStudents, staff });
+        // Şubeler: randevu "dersi veren şube" alanı için. Filo ortak olduğundan
+        // randevu şubeye kilitlenmez, yalnız damgalanır.
+        var branches = await db.OrgUnits.AsNoTracking().Where(x => x.IsActive)
+            .Select(x => new { x.Id, x.Name, x.UnitType }).OrderBy(x => x.Name).ToListAsync(ct);
+        return Ok(new { students, instructors, vehicles, packages, baseStudents, staff, branches });
     }
 
     private async Task<object> BuildRequestRowsAsync(IQueryable<DrivingAppointmentRequest> query, CancellationToken ct) =>

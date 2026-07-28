@@ -9,7 +9,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
   approveDrivingAppointment, cancelDrivingAppointment, createDrivingAppointment, createDrivingInstructor,
-  createDrivingStudent, fetchDrivingAppointments, fetchDrivingInstructors, fetchDrivingPackages,
+  createDrivingStudent, fetchDrivingAppointments, fetchDrivingBranches, fetchDrivingInstructors, fetchDrivingPackages,
   fetchDrivingStudents, fetchDrivingVehicles, fetchStaff, fetchStudents,
   markDrivingAppointmentNoShow, rescheduleDrivingAppointment,
   suggestDrivingInstructors, suggestDrivingVehicles,
@@ -20,9 +20,20 @@ import { DRIVING, OVERRIDE_LABELS, useDrivingPermissions } from '../../lib/drivi
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 
 const selectClass = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
-const emptyAppointment = { studentDrivingProfileId: '', instructorProfileId: '', vehicleId: '', startsAtUtc: '', endsAtUtc: '', notes: '', meetingPoint: '' };
+const emptyAppointment = { studentDrivingProfileId: '', instructorProfileId: '', vehicleId: '', branchId: '', startsAtUtc: '', endsAtUtc: '', notes: '', meetingPoint: '' };
+// Şube listesi yalnız "Şube"/"Kampüs" türü birimleri kapsar.
+const BRANCH_UNIT_TYPES = ['şube', 'sube', 'kampüs', 'kampus'];
 
-function Field({ label, children }) { return <label className="space-y-1.5 text-sm font-semibold"><span>{label}</span>{children}</label>; }
+// hint birkaç alanda zaten geçiliyordu ama basılmıyordu; ipucu satırı burada gösterilir.
+function Field({ label, hint, children }) {
+  return (
+    <label className="space-y-1.5 text-sm font-semibold">
+      <span>{label}</span>
+      {children}
+      {hint ? <span className="block text-[11px] font-normal text-muted-foreground">{hint}</span> : null}
+    </label>
+  );
+}
 function Transmission({ value, setValue }) { return <select className={selectClass} value={value} onChange={(e) => setValue(Number(e.target.value))}><option value={1}>Manuel</option><option value={2}>Otomatik</option></select>; }
 function ReadOnlyNotice({ message }) { return <div className="flex items-center gap-2 rounded-2xl border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground"><Lock className="h-4 w-4 shrink-0" />{message}</div>; }
 
@@ -61,7 +72,7 @@ export default function DrivingScheduling({ embedded = false }) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { can, loading: permissionsLoading } = useDrivingPermissions();
-  const [data, setData] = useState({ students: [], staff: [], profiles: [], instructors: [], packages: [], vehicles: [], appointments: [], requests: [] });
+  const [data, setData] = useState({ students: [], staff: [], profiles: [], instructors: [], packages: [], vehicles: [], appointments: [], requests: [], branches: [] });
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false);
   const [studentForm, setStudentForm] = useState({ studentId: '', packageId: '', licenseClass: 'B', transmissionType: 1 });
   const [instructorForm, setInstructorForm] = useState({ staffId: '', licenseClasses: 'B', canTeachManual: true, canTeachAutomatic: false, workingPermitNo: '', workingPermitExpiresAtUtc: '' });
@@ -108,7 +119,7 @@ export default function DrivingScheduling({ embedded = false }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [students, staff, profiles, instructors, packages, vehicles, appointments, requests] = await Promise.all([
+      const [students, staff, profiles, instructors, packages, vehicles, appointments, requests, branches] = await Promise.all([
         canCreateStudent ? fetchStudents() : Promise.resolve([]),
         canCreateInstructor ? fetchStaff('Teacher') : Promise.resolve([]),
         canViewStudents ? fetchDrivingStudents() : Promise.resolve([]),
@@ -117,8 +128,13 @@ export default function DrivingScheduling({ embedded = false }) {
         can(DRIVING.vehicleView) ? fetchDrivingVehicles() : Promise.resolve([]),
         canViewAppointments ? fetchDrivingAppointments() : Promise.resolve([]),
         canViewAppointments ? fetchDrivingAppointmentRequests() : Promise.resolve([]),
+        fetchDrivingBranches().catch(() => []),
       ]);
-      setData({ students: students || [], staff: staff || [], profiles: profiles || [], instructors: instructors || [], packages: packages || [], vehicles: vehicles || [], appointments: appointments || [], requests: requests || [] });
+      setData({
+        students: students || [], staff: staff || [], profiles: profiles || [], instructors: instructors || [],
+        packages: packages || [], vehicles: vehicles || [], appointments: appointments || [], requests: requests || [],
+        branches: (branches || []).filter((x) => BRANCH_UNIT_TYPES.includes(String(x.unitType || '').toLowerCase())),
+      });
     } catch (e) { toast({ title: 'Planlama verileri alınamadı', description: e.message, variant: 'destructive' }); }
     finally { setLoading(false); }
   }, [toast, can, canCreateStudent, canCreateInstructor, canViewStudents, canViewInstructors, canViewAppointments]);
@@ -230,6 +246,8 @@ export default function DrivingScheduling({ embedded = false }) {
   async function submitAppointment(overrides, reason) {
     const payload = {
       ...appointmentForm,
+      // Şube seçilmediyse backend kursiyerin kayıtlı olduğu şubeye düşürür.
+      branchId: appointmentForm.branchId || null,
       startsAtUtc: new Date(appointmentForm.startsAtUtc).toISOString(),
       endsAtUtc: new Date(appointmentForm.endsAtUtc).toISOString(),
       overrides: overrides.length ? overrides : null,
@@ -285,6 +303,16 @@ export default function DrivingScheduling({ embedded = false }) {
             <Field label="Öğrenci"><select required className={selectClass} value={appointmentForm.studentDrivingProfileId} onChange={(e) => setAppointmentForm({ ...appointmentForm, studentDrivingProfileId: e.target.value })}><option value="">Seçin</option>{data.profiles.map((p) => <option key={p.id} value={p.id}>{p.fullName} • {p.licenseClass}</option>)}</select></Field>
             <Field label="Başlangıç"><Input required type="datetime-local" value={appointmentForm.startsAtUtc} onChange={(e) => setAppointmentForm({ ...appointmentForm, startsAtUtc: e.target.value, instructorProfileId: '', vehicleId: '' })} /></Field>
             <Field label="Bitiş"><Input required type="datetime-local" value={appointmentForm.endsAtUtc} onChange={(e) => setAppointmentForm({ ...appointmentForm, endsAtUtc: e.target.value, instructorProfileId: '', vehicleId: '' })} /></Field>
+
+            {/* Filo tüm şubelerde ortaktır; şube yalnız dersin hangi şubeye yazılacağını belirler. */}
+            {data.branches.length > 0 && (
+              <Field label="Dersi veren şube" hint="Boş bırakılırsa kursiyerin şubesine yazılır">
+                <select className={selectClass} value={appointmentForm.branchId} onChange={(e) => setAppointmentForm({ ...appointmentForm, branchId: e.target.value })}>
+                  <option value="">Kursiyerin şubesi</option>
+                  {data.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </Field>
+            )}
 
             {/* Saat seçilince listeler daralır: burada görünen herkes o saatte gerçekten müsait. */}
             <Field

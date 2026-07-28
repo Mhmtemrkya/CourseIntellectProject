@@ -728,4 +728,12 @@ export const TR_EN_EXT = {
   'Web sitesi': 'Website', 'Künyeyi Kaydet': 'Save Details',
   'Kurum künyesi kaydedildi': 'Institution details saved', 'Henüz kaydedilmedi': 'Not saved yet',
   'Kaydedildi': 'Saved',
+
+  // ── Ortak filo / şube ──
+  'Tüm şubeler': 'All branches', 'Dersi veren şube': 'Teaching branch',
+  'Kursiyerin şubesi': "Student's branch",
+  'Araçlar tüm şubelerde ortaktır; şube yalnızca dersin hangi şubeye yazılacağını belirler.':
+    'Vehicles are shared across all branches; the branch only records which branch the lesson belongs to.',
+  'Boş bırakılırsa kursiyerin şubesine yazılır': "Defaults to the student's branch",
+  'Şube': 'Branch',
 };

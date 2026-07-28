@@ -1196,6 +1196,7 @@ public sealed class DrivingSchoolController(
         [FromQuery] Guid? instructorProfileId,
         [FromQuery] Guid? vehicleId,
         [FromQuery] Guid? studentDrivingProfileId,
+        [FromQuery] Guid? branchId,
         [FromQuery] string? licenseClass,
         [FromQuery] string? transmissionType,
         [FromQuery] string? status,
@@ -1205,12 +1206,16 @@ public sealed class DrivingSchoolController(
         if (to <= from || to - from > TimeSpan.FromDays(70))
             return BadRequest(new { message = "Takvim aralığı en fazla 70 gün olabilir." });
 
+        // Takvim kurum geneli tek parçadır: araçlar şubeler arasında ortak olduğu
+        // için varsayılan görünüm TÜM şubelerin randevularıdır. branchId yalnızca
+        // isteğe bağlı bir filtredir.
         var query = dbContext.DrivingAppointments.AsNoTracking()
             .Where(x => x.StartsAtUtc < to && x.EndsAtUtc > from);
 
         if (instructorProfileId is Guid instructor) query = query.Where(x => x.InstructorProfileId == instructor);
         if (vehicleId is Guid vehicle) query = query.Where(x => x.VehicleId == vehicle);
         if (studentDrivingProfileId is Guid student) query = query.Where(x => x.StudentDrivingProfileId == student);
+        if (branchId is Guid branch) query = query.Where(x => x.BranchId == branch);
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -1243,6 +1248,7 @@ public sealed class DrivingSchoolController(
                 x.InstructorName,
                 x.a.VehicleId,
                 VehiclePlate = v.PlateNumber,
+                x.a.BranchId,
                 x.a.StartsAtUtc,
                 x.a.EndsAtUtc,
                 status = x.a.Status.ToString(),
@@ -1266,6 +1272,11 @@ public sealed class DrivingSchoolController(
             .Select(x => new { ProfileId = x.Key, Count = x.Count() })
             .ToDictionaryAsync(x => x.ProfileId, x => x.Count, ct);
 
+        // Şube adı: takvimde "bu aracı şu an hangi şube kullanıyor" bilgisi için.
+        var branchNames = await dbContext.OrgUnits.AsNoTracking()
+            .Select(x => new { x.Id, x.Name })
+            .ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+
         return Ok(rows.Select(x => new
         {
             x.Id,
@@ -1278,6 +1289,8 @@ public sealed class DrivingSchoolController(
             x.InstructorName,
             x.VehicleId,
             x.VehiclePlate,
+            x.BranchId,
+            branchName = x.BranchId is Guid id ? branchNames.GetValueOrDefault(id, string.Empty) : string.Empty,
             x.StartsAtUtc,
             x.EndsAtUtc,
             x.status,
@@ -1385,9 +1398,17 @@ public sealed class DrivingSchoolController(
                 overridableWith = blockingViolations.Select(x => x.OverridableWith).FirstOrDefault(x => x is not null),
             });
 
+        // Şube: dersi hangi şubenin verdiği. Seçilmezse kursiyerin kayıtlı olduğu
+        // şubeye düşer; filo ortak olduğu için randevu şubeye kilitlenmez, yalnız
+        // damgalanır (takvimde gösterim + kullanım/gider dağıtımı).
+        var branchId = await ResolveAppointmentBranchAsync(request.BranchId, student.StudentId, ct);
+        if (request.BranchId is Guid requestedBranch && branchId != requestedBranch)
+            return BadRequest(new { message = "Seçilen şube bulunamadı veya pasif." });
+
         var entity = new CourseIntellect.Domain.Entities.DrivingAppointment
         {
             StudentDrivingProfileId = student.Id, VehicleId = vehicle.Id, InstructorProfileId = instructor.Id,
+            BranchId = branchId,
             StartsAtUtc = request.StartsAtUtc, EndsAtUtc = request.EndsAtUtc,
             Notes = request.Notes?.Trim() ?? string.Empty,
             MeetingPoint = request.MeetingPoint?.Trim() ?? string.Empty,
@@ -2100,6 +2121,27 @@ public sealed class DrivingSchoolController(
 
     private async Task<bool> CanUseModuleAsync(CancellationToken ct) => IsAvailable(await CurrentTenantAsync(ct) ?? new());
 
+    /// <summary>
+    /// Randevunun şubesini çözer: istekte geçerli (aktif) bir şube varsa o, yoksa
+    /// kursiyerin kayıtlı olduğu şube. Kursiyer kaydı şube filtresine takılmasın
+    /// diye kurum içinde filtresiz okunur.
+    /// </summary>
+    private async Task<Guid?> ResolveAppointmentBranchAsync(Guid? requestedBranchId, Guid studentId, CancellationToken ct)
+    {
+        if (requestedBranchId is Guid branchId)
+        {
+            var exists = await dbContext.OrgUnits.AsNoTracking()
+                .AnyAsync(x => x.Id == branchId && x.IsActive, ct);
+            return exists ? branchId : null;
+        }
+
+        var tenantId = dbContext.CurrentTenantId;
+        return await dbContext.Students.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.Id == studentId && x.TenantId == tenantId)
+            .Select(x => x.BranchId)
+            .FirstOrDefaultAsync(ct);
+    }
+
     private static string? ValidateGroupTerm(SaveDrivingStudentGroupRequest request)
     {
         if (request.TermYear is { } year && year is < 2000 or > 2100) return "Dönem yılı geçersiz.";
@@ -2143,7 +2185,18 @@ public sealed record SaveDrivingStudentGroupRequest(
     int Quota = 0,
     DateTime? RegistrationDeadlineUtc = null);
 public sealed record AssignStudentGroupRequest(IReadOnlyList<Guid> ProfileIds, Guid? GroupId);
-public sealed record SaveDrivingAppointmentRequest(Guid StudentDrivingProfileId, Guid InstructorProfileId, Guid VehicleId, DateTime StartsAtUtc, DateTime EndsAtUtc, string? Notes, string? MeetingPoint, IReadOnlyList<string>? Overrides, string? OverrideReason);
+public sealed record SaveDrivingAppointmentRequest(
+    Guid StudentDrivingProfileId,
+    Guid InstructorProfileId,
+    Guid VehicleId,
+    DateTime StartsAtUtc,
+    DateTime EndsAtUtc,
+    string? Notes,
+    string? MeetingPoint,
+    IReadOnlyList<string>? Overrides,
+    string? OverrideReason,
+    /// <summary>Dersi veren şube. Boşsa kursiyerin kayıtlı olduğu şubeye düşer.</summary>
+    Guid? BranchId = null);
 public sealed record StartDrivingLessonRequest(int StartKilometer, bool BrakesOk, bool TiresOk, bool LightsOk, bool FluidsOk, string? PreCheckNote);
 public sealed record CompleteDrivingLessonRequest(int EndKilometer, Dictionary<string, int>? Criteria, string? InstructorNote);
 public sealed record RecordManualDrivingLessonRequest(

@@ -1823,6 +1823,11 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasIndex(x => new { x.TenantId, x.StartsAtUtc, x.EndsAtUtc });
             entity.HasIndex(x => new { x.VehicleId, x.StartsAtUtc, x.EndsAtUtc });
             entity.HasIndex(x => new { x.InstructorProfileId, x.StartsAtUtc, x.EndsAtUtc });
+            // BranchId bilinçli olarak "branch_id" kolonuna yazılır ama query filter'a
+            // GİRMEZ: filo ortak, takvim tek parça (bkz. DrivingAppointment.BranchId).
+            entity.Property(x => x.BranchId).HasColumnName("branch_id");
+            entity.HasIndex(x => new { x.BranchId, x.StartsAtUtc });
+            entity.HasOne<OrgUnit>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.StudentDrivingProfileId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<DrivingInstructorProfile>().WithMany().HasForeignKey(x => x.InstructorProfileId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<DrivingVehicle>().WithMany().HasForeignKey(x => x.VehicleId).OnDelete(DeleteBehavior.Restrict);

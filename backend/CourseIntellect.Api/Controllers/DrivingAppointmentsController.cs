@@ -582,6 +582,8 @@ public sealed class DrivingAppointmentsController(
             StudentDrivingProfileId = appointment.StudentDrivingProfileId,
             InstructorProfileId = instructorProfileId,
             VehicleId = vehicleId,
+            // Ertelenen ders aynı şubenin dersidir; şube damgası taşınır.
+            BranchId = appointment.BranchId,
             StartsAtUtc = request.StartsAtUtc,
             EndsAtUtc = request.EndsAtUtc,
             Status = DrivingAppointmentStatus.Planned,

@@ -12,8 +12,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  createDrivingAppointment, fetchDrivingCalendar, fetchDrivingInstructors, fetchDrivingStudents, fetchDrivingVehicles,
-  rescheduleDrivingAppointment,
+  createDrivingAppointment, fetchDrivingBranches, fetchDrivingCalendar, fetchDrivingInstructors,
+  fetchDrivingStudents, fetchDrivingVehicles, rescheduleDrivingAppointment,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
@@ -49,6 +49,9 @@ const BLOCKING_STATUSES = ['Requested', 'WaitingApproval', 'Planned', 'Approved'
 // Ders planlanabilecek kursiyer durumları (mezun/askıda/iptal hariç).
 const BOOKABLE_STATUSES = ['PreRegistered', 'DocumentsPending', 'Active', 'TheoryOngoing', 'PracticeOngoing', 'ExamPending'];
 
+// Şube filtresi yalnız "Şube"/"Kampüs" türü birimleri kapsar (departman vb. hariç).
+const BRANCH_UNIT_TYPES = ['şube', 'sube', 'kampüs', 'kampus'];
+
 const startOfDay = (date) => { const d = new Date(date); d.setHours(0, 0, 0, 0); return d; };
 const startOfWeek = (date) => {
   const d = startOfDay(date);
@@ -68,10 +71,12 @@ export default function DrivingCalendar({ embedded = false }) {
   const [view, setView] = useState('week'); // day | week | month
   const [groupBy, setGroupBy] = useState('time'); // time | instructor | vehicle
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
-  const [filters, setFilters] = useState({ instructorProfileId: '', vehicleId: '', licenseClass: '', transmissionType: '', status: 'open' });
+  // Takvim kurum geneli TEK parçadır: araçlar şubeler arasında ortak olduğu için
+  // varsayılan görünüm tüm şubelerdir; şube burada yalnızca bir filtredir.
+  const [filters, setFilters] = useState({ instructorProfileId: '', vehicleId: '', branchId: '', licenseClass: '', transmissionType: '', status: 'open' });
 
   const [appointments, setAppointments] = useState([]);
-  const [reference, setReference] = useState({ instructors: [], vehicles: [], students: [] });
+  const [reference, setReference] = useState({ instructors: [], vehicles: [], students: [], branches: [] });
   const [loading, setLoading] = useState(true);
   const [moving, setMoving] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -100,12 +105,13 @@ export default function DrivingCalendar({ embedded = false }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [rows, instructors, vehicles, students] = await Promise.all([
+      const [rows, instructors, vehicles, students, branches] = await Promise.all([
         fetchDrivingCalendar({
           from: range.start.toISOString(),
           to: range.end.toISOString(),
           instructorProfileId: filters.instructorProfileId || undefined,
           vehicleId: filters.vehicleId || undefined,
+          branchId: filters.branchId || undefined,
           licenseClass: filters.licenseClass || undefined,
           transmissionType: filters.transmissionType || undefined,
           status: filters.status || undefined,
@@ -113,9 +119,15 @@ export default function DrivingCalendar({ embedded = false }) {
         (can(DRIVING.instructorView) || can(DRIVING.appointmentCreate)) ? fetchDrivingInstructors() : Promise.resolve([]),
         (can(DRIVING.vehicleView) || can(DRIVING.appointmentCreate)) ? fetchDrivingVehicles() : Promise.resolve([]),
         can(DRIVING.appointmentCreate) ? fetchDrivingStudents().catch(() => []) : Promise.resolve([]),
+        fetchDrivingBranches().catch(() => []),
       ]);
       setAppointments(rows || []);
-      setReference({ instructors: instructors || [], vehicles: vehicles || [], students: students || [] });
+      setReference({
+        instructors: instructors || [],
+        vehicles: vehicles || [],
+        students: students || [],
+        branches: (branches || []).filter((x) => BRANCH_UNIT_TYPES.includes(String(x.unitType || '').toLowerCase())),
+      });
     } catch (error) {
       toast({ title: 'Takvim yüklenemedi', description: error.message, variant: 'destructive' });
     } finally {
@@ -262,6 +274,12 @@ export default function DrivingCalendar({ embedded = false }) {
             <option value="">Tüm araçlar</option>
             {reference.vehicles.map((x) => <option key={x.id} value={x.id}>{x.plateNumber}</option>)}
           </select>
+          {reference.branches.length > 0 && (
+            <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={filters.branchId} onChange={(e) => setFilters({ ...filters, branchId: e.target.value })}>
+              <option value="">Tüm şubeler</option>
+              {reference.branches.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+            </select>
+          )}
           <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={filters.licenseClass} onChange={(e) => setFilters({ ...filters, licenseClass: e.target.value })}>
             <option value="">Tüm sınıflar</option>
             {['A', 'A1', 'A2', 'B', 'BE', 'C', 'D'].map((x) => <option key={x} value={x}>{x} sınıfı</option>)}
@@ -319,6 +337,7 @@ export default function DrivingCalendar({ embedded = false }) {
           students={reference.students}
           instructors={reference.instructors}
           vehicles={reference.vehicles}
+          branches={reference.branches}
           appointments={appointments}
           onClose={() => setCreateStart(null)}
           onCreated={() => { setCreateStart(null); load(); }}
@@ -353,13 +372,15 @@ function overlaps(appointment, start, end) {
  * o saatte DERSİ OLAN öğretmen listede seçilemez (çakışma önleyici). Backend kuralları
  * (çalışma saati, araç ataması, limit) ayrıca zorunlu uygular.
  */
-function CreateAppointmentDialog({ start, students, instructors, vehicles, appointments, onClose, onCreated }) {
+function CreateAppointmentDialog({ start, students, instructors, vehicles, branches, appointments, onClose, onCreated }) {
   const { toast } = useToast();
   const [duration, setDuration] = useState(60);
   const [studentDrivingProfileId, setStudent] = useState('');
   const [groupFilter, setGroupFilter] = useState('all'); // 'all' | 'ungrouped' | <groupId>
   const [instructorProfileId, setInstructor] = useState('');
   const [vehicleId, setVehicle] = useState('');
+  // Dersi veren şube; boş bırakılırsa backend kursiyerin şubesine düşürür.
+  const [branchId, setBranch] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -372,6 +393,16 @@ function CreateAppointmentDialog({ start, students, instructors, vehicles, appoi
       if (a.instructorProfileId && overlaps(a, start, end)) set.add(a.instructorProfileId);
     }
     return set;
+  }, [appointments, start, end]);
+
+  // Filo şubeler arasında ORTAK: o saatte başka bir şubenin kullandığı araç burada
+  // da dolu görünür. Hangi şubenin kullandığı yazılır ki kullanıcı nedenini bilsin.
+  const busyVehicles = useMemo(() => {
+    const map = new Map();
+    for (const a of appointments) {
+      if (a.vehicleId && overlaps(a, start, end)) map.set(a.vehicleId, a.branchName || '');
+    }
+    return map;
   }, [appointments, start, end]);
 
   // Mezun / askıya alınmış / iptal edilmiş kursiyere ders planlanmaz; listeyi
@@ -417,11 +448,19 @@ function CreateAppointmentDialog({ start, students, instructors, vehicles, appoi
 
   // Araçları seçili kursiyerin ehliyet sınıfı + vites türüne göre süz (uyumsuz
   // seçim backend'de 400 döndürürdü); ayrıca bakımdakiler gizlenir.
-  const availableVehicles = useMemo(
+  const matchingVehicles = useMemo(
     () => vehicles.filter((v) => !v.isInMaintenance && (!student
       || (String(v.licenseClass).toUpperCase() === String(student.licenseClass).toUpperCase()
         && transmissionKey(v.transmissionType) === transmissionKey(student.transmissionType)))),
     [vehicles, student],
+  );
+  const availableVehicles = useMemo(
+    () => matchingVehicles.filter((v) => !busyVehicles.has(v.id)),
+    [matchingVehicles, busyVehicles],
+  );
+  const occupiedVehicles = useMemo(
+    () => matchingVehicles.filter((v) => busyVehicles.has(v.id)),
+    [matchingVehicles, busyVehicles],
   );
 
   // Seçili öğretmen bu saatte doluysa (ör. süre değişince) seçimi düşür.
@@ -443,6 +482,7 @@ function CreateAppointmentDialog({ start, students, instructors, vehicles, appoi
         studentDrivingProfileId,
         instructorProfileId,
         vehicleId,
+        branchId: branchId || undefined,
         startsAtUtc: start.toISOString(),
         endsAtUtc: end.toISOString(),
         notes: notes.trim(),
@@ -515,7 +555,26 @@ function CreateAppointmentDialog({ start, students, instructors, vehicles, appoi
             {student && availableVehicles.length === 0 && (
               <p className="mt-1 text-[11px] text-red-500">Kursiyerin sınıf/vitesine uygun, müsait araç yok.</p>
             )}
+            {occupiedVehicles.length > 0 && (
+              <p className="mt-1 flex items-start gap-1 text-[11px] text-muted-foreground">
+                <XCircle className="mt-0.5 h-3 w-3 shrink-0 text-red-500" />
+                <span>
+                  Bu saatte dolu:{' '}
+                  {occupiedVehicles.map((v) => `${v.plateNumber}${busyVehicles.get(v.id) ? ` (${busyVehicles.get(v.id)})` : ''}`).join(', ')}
+                </span>
+              </p>
+            )}
           </div>
+          {branches.length > 0 && (
+            <div>
+              <label className="text-xs font-bold text-muted-foreground">Dersi veren şube</label>
+              <select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={branchId} onChange={(e) => setBranch(e.target.value)}>
+                <option value="">Kursiyerin şubesi</option>
+                {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+              <p className="mt-1 text-[11px] text-muted-foreground">Araçlar tüm şubelerde ortaktır; şube yalnızca dersin hangi şubeye yazılacağını belirler.</p>
+            </div>
+          )}
           <div>
             <label className="text-xs font-bold text-muted-foreground">Not</label>
             <Input maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Buluşma noktası vb." />
@@ -547,7 +606,7 @@ function AppointmentCard({ appointment, canReschedule, dragged, onSelect, compac
       className={`w-full overflow-hidden rounded-lg border-l-4 px-2.5 py-1.5 text-left text-xs transition hover:brightness-110 ${
         movable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
       } ${tone.replace('bg-', 'border-l-')} bg-card shadow-sm`}
-      title={`${appointment.studentName} • ${appointment.instructorName} • ${appointment.vehiclePlate}`}
+      title={`${appointment.studentName} • ${appointment.instructorName} • ${appointment.vehiclePlate}${appointment.branchName ? ` • ${appointment.branchName}` : ''}`}
     >
       <div className="flex items-center gap-1">
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone}`} />
@@ -557,6 +616,10 @@ function AppointmentCard({ appointment, canReschedule, dragged, onSelect, compac
         <p className="truncate text-[11px] text-muted-foreground">
           {appointment.vehiclePlate} • {appointment.instructorName} • {appointment.lessonNumber}. ders
         </p>
+      )}
+      {/* Filo ortak olduğu için "bu aracı hangi şube kullanıyor" kartta görünür. */}
+      {!compact && appointment.branchName && (
+        <p className="truncate text-[11px] font-semibold text-muted-foreground">{appointment.branchName}</p>
       )}
       {!compact && appointment.meetingPoint && (
         <p className="truncate text-[11px] text-muted-foreground">
@@ -794,6 +857,7 @@ function AppointmentDialog({ appointment, onClose, onOpenStudent }) {
             <p><b>Zaman:</b> {start.toLocaleDateString('tr-TR')} {hhmm(start)} – {hhmm(end)}</p>
             <p><b>Öğretmen:</b> {appointment.instructorName}</p>
             <p><b>Araç:</b> {appointment.vehiclePlate}</p>
+            {appointment.branchName && <p><b>Şube:</b> {appointment.branchName}</p>}
             <p><b>Sınıf/vites:</b> {appointment.licenseClass} • {appointment.transmissionType === 'Manual' ? 'Manuel' : 'Otomatik'}</p>
             {appointment.meetingPoint && <p><b>Buluşma:</b> {appointment.meetingPoint}</p>}
             {appointment.notes && <p><b>Not:</b> {appointment.notes}</p>}

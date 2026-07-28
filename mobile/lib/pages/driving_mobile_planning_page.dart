@@ -271,7 +271,10 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                                         ),
                                       ),
                                       subtitle: Text(
-                                        '${_date(x['startsAtUtc'])}\n${x['instructorName']} • ${x['vehiclePlate']}',
+                                        // Filo şubeler arasında ortak: aracı hangi
+                                        // şubenin kullandığı burada görünür.
+                                        '${_date(x['startsAtUtc'])}\n${x['instructorName']} • ${x['vehiclePlate']}'
+                                        '${'${x['branchName'] ?? ''}'.isEmpty ? '' : ' • ${x['branchName']}'}',
                                       ),
                                       isThreeLine: true,
                                       trailing: Chip(
@@ -819,8 +822,13 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
       final gid = '${s['groupId'] ?? ''}';
       if (gid.isNotEmpty) groups[gid] = '${s['groupName'] ?? 'Grup'}';
     }
-    String? studentId, instructorId, vehicleId;
+    String? studentId, instructorId, vehicleId, branchId;
     var groupFilter = 'all'; // 'all' | <groupId>
+    // Şube listesi yalnız "Şube"/"Kampüs" türü birimleri kapsar.
+    const branchUnitTypes = ['şube', 'sube', 'kampüs', 'kampus'];
+    final branches = _list('branches')
+        .where((x) => branchUnitTypes.contains('${x['unitType'] ?? ''}'.toLowerCase()))
+        .toList();
     var start = initialStart ?? DateTime.now().add(const Duration(days: 1));
     var end = start.add(const Duration(hours: 1));
     final meeting = TextEditingController(), note = TextEditingController();
@@ -960,6 +968,24 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                           .toList(),
                       onChanged: (v) => setLocal(() => vehicleId = v),
                     ),
+                    if (branches.isNotEmpty)
+                      DropdownButtonFormField<String>(
+                        initialValue: branchId,
+                        decoration: const InputDecoration(
+                          labelText: 'Dersi veren şube',
+                          helperText:
+                              'Araçlar tüm şubelerde ortaktır; boş bırakılırsa kursiyerin şubesine yazılır.',
+                        ),
+                        items: branches
+                            .map(
+                              (x) => DropdownMenuItem(
+                                value: '${x['id']}',
+                                child: Text('${x['name']}'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) => setLocal(() => branchId = v),
+                      ),
                     ListTile(
                       title: Text('Başlangıç'.tr),
                       subtitle: Text(_date(start)),
@@ -1020,6 +1046,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
           'studentDrivingProfileId': studentId,
           'instructorProfileId': instructorId,
           'vehicleId': vehicleId,
+          'branchId': branchId,
           'startsAtUtc': start.toUtc().toIso8601String(),
           'endsAtUtc': end.toUtc().toIso8601String(),
           'meetingPoint': meeting.text,

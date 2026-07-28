@@ -1497,6 +1497,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<bool>("AutoCompleted")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("BranchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("branch_id");
+
                     b.Property<string>("CancellationReason")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1560,6 +1564,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.HasIndex("StudentDrivingProfileId");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("BranchId", "StartsAtUtc");
 
                     b.HasIndex("InstructorProfileId", "StartsAtUtc", "EndsAtUtc");
 
@@ -8871,6 +8877,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CourseIntellect.Domain.Entities.DrivingAppointment", b =>
                 {
+                    b.HasOne("CourseIntellect.Domain.Entities.OrgUnit", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("CourseIntellect.Domain.Entities.DrivingInstructorProfile", null)
                         .WithMany()
                         .HasForeignKey("InstructorProfileId")

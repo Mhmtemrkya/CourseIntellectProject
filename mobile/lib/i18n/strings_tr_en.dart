@@ -2765,6 +2765,7 @@ const Map<String, String> kTrEn = {
   'Dönem düştü': 'Term forfeited',
   'hak kaldı': 'attempts left',
   'Ekstre (PDF)': 'Statement (PDF)',
+  'Dersi veren şube': 'Teaching branch',
   'Kurum Künyesi — belge başlığı': 'Institution details — document header',
   'Kurum künyesi kaydedildi; belgelerde bu bilgiler görünecek.':
       'Institution details saved; documents will use them.',

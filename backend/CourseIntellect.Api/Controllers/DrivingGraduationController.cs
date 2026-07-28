@@ -24,7 +24,8 @@ public sealed class DrivingGraduationController(
     IAuditLogService audit,
     IFileStorageService files,
     IDrivingCertificatePdfService pdf,
-    IConfiguration configuration) : ControllerBase
+    IConfiguration configuration,
+    IWebHostEnvironment environment) : ControllerBase
 {
     private const string AuditCategory = "DrivingSchool";
     private static readonly HashSet<string> OverridableChecklistKeys = new(StringComparer.OrdinalIgnoreCase)
@@ -106,7 +107,6 @@ public sealed class DrivingGraduationController(
         if (!await CanUseModuleAsync(ct)) return Forbid();
         var directorName = request.DirectorName?.Trim() ?? string.Empty;
         var directorTitle = request.DirectorTitle?.Trim() ?? string.Empty;
-        var logoUrl = request.LogoUrl?.Trim() ?? string.Empty;
         var signatureUrl = request.SignatureUrl?.Trim() ?? string.Empty;
         var primaryColor = request.PrimaryColor?.Trim().ToUpperInvariant() ?? string.Empty;
         if (directorName.Length is < 2 or > 150) return BadRequest(new { message = "Kurum müdürü adı 2-150 karakter olmalıdır." });
@@ -116,10 +116,8 @@ public sealed class DrivingGraduationController(
             return BadRequest(new { message = "Mazeretli devamsızlık politikası geçersiz." });
         if (!System.Text.RegularExpressions.Regex.IsMatch(primaryColor, "^#[0-9A-F]{6}$"))
             return BadRequest(new { message = "Sertifika rengi #RRGGBB biçiminde olmalıdır." });
-        if (!IsCertificateAssetPath(logoUrl) || !IsCertificateAssetPath(signatureUrl))
-            return BadRequest(new { message = "Logo ve imza güvenli sertifika yükleme alanından seçilmelidir." });
-        if (await ReadSafeCertificateImageAsync(logoUrl, ct) is null)
-            return BadRequest(new { message = "Kurum logosu bulunamadı veya desteklenmeyen bir görseldir." });
+        if (!IsCertificateAssetPath(signatureUrl))
+            return BadRequest(new { message = "İmza güvenli sertifika yükleme alanından seçilmelidir." });
         if (await ReadSafeCertificateImageAsync(signatureUrl, ct) is null)
             return BadRequest(new { message = "İmza görseli bulunamadı veya desteklenmeyen bir görseldir." });
 
@@ -138,7 +136,9 @@ public sealed class DrivingGraduationController(
             return BadRequest(new { message = "MEBBİS kurum kodu 2-40 karakter olmalıdır." });
         if (settings.FormInstitutionCity.Length is < 2 or > 60 || settings.FormInstitutionDistrict.Length is < 2 or > 60)
             return BadRequest(new { message = "Kurum il ve ilçe bilgileri zorunludur." });
-        settings.CertificateLogoUrl = logoUrl;
+        // Eğitim tamamlama belgesinde kurum logosu kullanılmaz. Resmî MEB logosu
+        // uygulama paketinden okunur ve tenant tarafından değiştirilemez. Daha
+        // önce yüklenmiş kurum görselini başka raporları etkilememek için silmeyiz.
         settings.CertificateSignatureUrl = signatureUrl;
         settings.CertificatePrimaryColor = primaryColor;
         settings.MinimumTheoryAttendancePercent = request.MinimumTheoryAttendancePercent;
@@ -185,7 +185,7 @@ public sealed class DrivingGraduationController(
         if (missing.Count > 0) return Conflict(new { message = "Önizleme için kurum bilgilerini tamamlayın.", missingFields = missing });
         var tenantId = db.CurrentTenantId!.Value;
         var tenant = await db.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking().SingleAsync(x => x.Id == tenantId, ct);
-        var logo = await ReadSafeCertificateImageAsync(settings.CertificateLogoUrl, ct);
+        var logo = await ReadMinistryLogoAsync(ct);
         var signature = await ReadSafeCertificateImageAsync(settings.CertificateSignatureUrl, ct);
         var today = DateTime.UtcNow;
         var bytes = pdf.Generate(new DrivingCertificatePdfModel(
@@ -412,11 +412,20 @@ public sealed class DrivingGraduationController(
         var graduation = await db.DrivingGraduationRecords.SingleOrDefaultAsync(x => x.StudentDrivingProfileId == profileId && x.Status == DrivingGraduationStatus.Graduated, ct);
         if (graduation is null) return Conflict(new { message = "Kursiyer mezun edilmeden belge oluşturulamaz." });
         CertificateDocumentData? documentData = null;
+        var systemDocumentData = await ResolveCertificateDocumentDataAsync(profileId, DateTime.UtcNow, ct);
+        if (systemDocumentData is null)
+            return NotFound(new { message = "Kursiyer kaydı bulunamadı." });
         if (request.Data is not null)
         {
-            try { documentData = NormalizeCertificateDocumentData(request.Data); }
+            try
+            {
+                documentData = MergeAutomaticStudentData(
+                    systemDocumentData,
+                    NormalizeCertificateDocumentData(request.Data));
+            }
             catch (ArgumentException error) { return BadRequest(new { message = error.Message }); }
         }
+        else documentData = systemDocumentData;
         var active = await db.DrivingCertificates.SingleOrDefaultAsync(x => x.StudentDrivingProfileId == profileId && x.CertificateType == type && x.Status == DrivingCertificateStatus.Active, ct);
         if (active is not null) return Ok(new { active.Id, active.DocumentNumber, type = active.CertificateType.ToString(), active.PdfFileUrl });
         var certificate = await CreateCertificateAsync(graduation, profileId, type, null, string.Empty, documentData, ct);
@@ -433,13 +442,13 @@ public sealed class DrivingGraduationController(
         if (data is null) return NotFound(new { message = "Kursiyer kaydı bulunamadı." });
         var settings = await ResolveSettingsAsync(ct);
         var missing = MissingCertificateDocumentFields(data);
-        if (await ReadSafeCertificateImageAsync(settings.CertificateLogoUrl, ct) is null) missing.Add("logo");
         if (await ReadSafeCertificateImageAsync(settings.CertificateSignatureUrl, ct) is null) missing.Add("signature");
         return Ok(new
         {
             data,
             missingFields = missing,
-            logoConfigured = !missing.Contains("logo"),
+            logoConfigured = true,
+            logoSource = "MinistryOfNationalEducation",
             signatureConfigured = !missing.Contains("signature"),
             canCreateWithEmptyFields = true,
         });
@@ -572,18 +581,27 @@ public sealed class DrivingGraduationController(
     {
         _ = db.CurrentTenantId ?? throw new InvalidOperationException("Tenant bağlamı bulunamadı.");
         var settings = await ResolveSettingsAsync(ct);
-        var logo = await ReadSafeCertificateImageAsync(settings.CertificateLogoUrl, ct);
+        var logo = await ReadMinistryLogoAsync(ct);
         var signature = await ReadSafeCertificateImageAsync(settings.CertificateSignatureUrl, ct);
         var verificationUrl = $"{PublicVerificationBaseUrl()}/api/public/driving-certificates/{Uri.EscapeDataString(certificate.DocumentNumber)}/verify?token={Uri.EscapeDataString(token)}";
         var primaryColor = System.Text.RegularExpressions.Regex.IsMatch(settings.CertificatePrimaryColor ?? string.Empty, "^#[0-9A-Fa-f]{6}$")
             ? settings.CertificatePrimaryColor!
             : "#173B57";
-        var documentData = requestedDocumentData
+        var storedOrRequestedDocumentData = requestedDocumentData
             ?? ExtractCertificateDocumentData(certificate.SnapshotJson)
-            ?? await ResolveCertificateDocumentDataAsync(certificate.StudentDrivingProfileId, certificate.IssuedAtUtc, ct)
-            ?? throw new InvalidOperationException("Belge verileri oluşturulamadı.");
+            ?? await ResolveCertificateDocumentDataAsync(certificate.StudentDrivingProfileId, certificate.IssuedAtUtc, ct);
+        var automaticDocumentData = await ResolveCertificateDocumentDataAsync(
+            certificate.StudentDrivingProfileId,
+            certificate.IssuedAtUtc,
+            ct);
+        var documentData = automaticDocumentData is null
+            ? storedOrRequestedDocumentData
+            : storedOrRequestedDocumentData is null
+                ? automaticDocumentData
+                : MergeAutomaticStudentData(automaticDocumentData, storedOrRequestedDocumentData);
+        if (documentData is null) throw new InvalidOperationException("Belge verileri oluşturulamadı.");
         var snapshot = new CertificateSnapshot(
-            3,
+            4,
             documentData.InstitutionName,
             documentData.StudentName,
             documentData.LicenseClass,
@@ -705,7 +723,9 @@ public sealed class DrivingGraduationController(
         try
         {
             using var json = JsonDocument.Parse(snapshotJson);
-            return json.RootElement.TryGetProperty("LayoutVersion", out var value) && value.GetInt32() >= 2;
+            // v4: kursiyer verileri sistem kaydından birleştirilir ve resmî MEB
+            // logosu kullanılır. Eski PDF'ler ilk indirmede güvenli biçimde yenilenir.
+            return json.RootElement.TryGetProperty("LayoutVersion", out var value) && value.GetInt32() >= 4;
         }
         catch (JsonException)
         {
@@ -824,6 +844,31 @@ public sealed class DrivingGraduationController(
             CleanCertificateText(data.DirectorName, 150, "Kurum müdürü"),
             CleanCertificateText(data.DirectorTitle, 100, "Müdür unvanı"));
 
+    /// <summary>
+    /// Kursiyerin sistemde bulunan kimlik/eğitim verileri belge formunda her zaman
+    /// önceliklidir. Eski kayıtlarda henüz bulunmayan alanlar ise kullanıcının
+    /// belge modalına yazdığı değerle tamamlanabilir.
+    /// </summary>
+    private static CertificateDocumentData MergeAutomaticStudentData(
+        CertificateDocumentData automatic,
+        CertificateDocumentData requested) =>
+        requested with
+        {
+            StudentName = FirstNonEmpty(automatic.StudentName, requested.StudentName),
+            IdentityNumber = FirstNonEmpty(automatic.IdentityNumber, requested.IdentityNumber),
+            FatherName = FirstNonEmpty(automatic.FatherName, requested.FatherName),
+            MotherName = FirstNonEmpty(automatic.MotherName, requested.MotherName),
+            BirthPlace = FirstNonEmpty(automatic.BirthPlace, requested.BirthPlace),
+            BirthYear = FirstNonEmpty(automatic.BirthYear, requested.BirthYear),
+            LicenseClass = FirstNonEmpty(automatic.LicenseClass, requested.LicenseClass),
+            ExistingLicenseCity = FirstNonEmpty(automatic.ExistingLicenseCity, requested.ExistingLicenseCity),
+            ExistingLicenseDate = FirstNonEmpty(automatic.ExistingLicenseDate, requested.ExistingLicenseDate),
+            ExistingLicenseNumber = FirstNonEmpty(automatic.ExistingLicenseNumber, requested.ExistingLicenseNumber),
+            ExistingLicenseClasses = FirstNonEmpty(automatic.ExistingLicenseClasses, requested.ExistingLicenseClasses),
+            CourseStartedAtUtc = automatic.CourseStartedAtUtc ?? requested.CourseStartedAtUtc,
+            ExamPassedAtUtc = automatic.ExamPassedAtUtc ?? requested.ExamPassedAtUtc,
+        };
+
     private static string CleanCertificateText(string? value, int maxLength, string label)
     {
         var source = value ?? string.Empty;
@@ -896,7 +941,6 @@ public sealed class DrivingGraduationController(
         if (settings.CertificateDirectorName.Trim().Length < 2) missing.Add("directorName");
         if (settings.CertificateDirectorTitle.Trim().Length < 2) missing.Add("directorTitle");
         if (!System.Text.RegularExpressions.Regex.IsMatch(settings.CertificatePrimaryColor, "^#[0-9A-Fa-f]{6}$")) missing.Add("primaryColor");
-        if (await ReadSafeCertificateImageAsync(settings.CertificateLogoUrl, ct) is null) missing.Add("logoUrl");
         if (await ReadSafeCertificateImageAsync(settings.CertificateSignatureUrl, ct) is null) missing.Add("signatureUrl");
         return missing;
     }
@@ -911,7 +955,8 @@ public sealed class DrivingGraduationController(
         institutionCode = settings.FormInstitutionCode,
         institutionCity = settings.FormInstitutionCity,
         institutionDistrict = settings.FormInstitutionDistrict,
-        logoUrl = settings.CertificateLogoUrl,
+        logoUrl = string.Empty,
+        logoSource = "MinistryOfNationalEducation",
         signatureUrl = settings.CertificateSignatureUrl,
         primaryColor = settings.CertificatePrimaryColor,
         settings.MinimumTheoryAttendancePercent,
@@ -939,6 +984,19 @@ public sealed class DrivingGraduationController(
         var jpeg = bytes.Length > 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF;
         var webp = bytes.Length > 12 && Encoding.ASCII.GetString(bytes, 0, 4) == "RIFF" && Encoding.ASCII.GetString(bytes, 8, 4) == "WEBP";
         return png || jpeg || webp ? bytes : null;
+    }
+
+    private async Task<byte[]> ReadMinistryLogoAsync(CancellationToken ct)
+    {
+        var path = Path.Combine(environment.ContentRootPath, "Assets", "meb-logo.png");
+        if (!System.IO.File.Exists(path))
+            throw new InvalidOperationException("Millî Eğitim Bakanlığı logo dosyası bulunamadı.");
+        var bytes = await System.IO.File.ReadAllBytesAsync(path, ct);
+        var isPng = bytes.Length > 8
+            && bytes.AsSpan(0, 8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
+        if (!isPng || bytes.Length > 5 * 1024 * 1024)
+            throw new InvalidOperationException("Millî Eğitim Bakanlığı logo dosyası geçersiz.");
+        return bytes;
     }
 }
 

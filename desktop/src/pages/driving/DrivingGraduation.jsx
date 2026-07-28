@@ -83,6 +83,21 @@ const CERTIFICATE_FIELD_SECTIONS = [
   },
 ];
 const CERTIFICATE_DATE_FIELDS = new Set(['courseStartedAtUtc', 'examPassedAtUtc', 'issuedAtUtc']);
+const AUTOMATIC_STUDENT_FIELDS = new Set([
+  'studentName',
+  'identityNumber',
+  'fatherName',
+  'motherName',
+  'birthPlace',
+  'birthYear',
+  'licenseClass',
+  'existingLicenseCity',
+  'existingLicenseDate',
+  'existingLicenseNumber',
+  'existingLicenseClasses',
+  'courseStartedAtUtc',
+  'examPassedAtUtc',
+]);
 
 function dateInputValue(value) {
   if (!value) return '';
@@ -480,8 +495,8 @@ export default function DrivingGraduation() {
             <>
               <div className="max-h-[68vh] space-y-5 overflow-y-auto pr-2">
                 <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.06] p-3 text-sm">
-                  <b>{certificateForm?.student?.fullName}</b> için sistemde bulunan bilgiler getirildi.
-                  Eksik alanları elle yazabilir, gerekli değilse boş bırakabilirsiniz. Boş alanlar belge üzerinde boş görünür.
+                  <b>{certificateForm?.student?.fullName}</b> için kayıtlı kursiyer, kimlik, eğitim ve sınav bilgileri otomatik getirildi.
+                  Sistemde bulunmayan alanları elle yazabilir, gerekli değilse boş bırakabilirsiniz.
                   {certificateEmptyFieldCount > 0 && (
                     <p className="mt-1 font-semibold text-amber-700">
                       {certificateEmptyFieldCount} metin veya tarih alanı boş bırakılmış.
@@ -496,17 +511,21 @@ export default function DrivingGraduation() {
                       {section.fields.map(([key, fieldLabel, type = 'text']) => {
                         const value = certificateForm?.data?.[key];
                         const empty = !String(value ?? '').trim();
+                        const automatic = AUTOMATIC_STUDENT_FIELDS.has(key) && !empty;
                         return (
                           <label key={key} className="text-sm font-semibold">
                             <span className="flex items-center justify-between gap-2">
                               {fieldLabel}
-                              {empty && <span className="text-[10px] font-medium text-amber-600">Boş bırakılabilir</span>}
+                              {automatic
+                                ? <span className="text-[10px] font-medium text-emerald-600">Sistemden otomatik</span>
+                                : empty && <span className="text-[10px] font-medium text-amber-600">Elle girilebilir</span>}
                             </span>
                             <Input
-                              className={`mt-1 ${empty ? 'border-amber-400/70' : ''}`}
+                              className={`mt-1 ${empty ? 'border-amber-400/70' : ''} ${automatic ? 'bg-emerald-500/[0.06]' : ''}`}
                               type={type}
                               value={type === 'date' ? dateInputValue(value) : (value ?? '')}
                               maxLength={type === 'date' ? undefined : 200}
+                              readOnly={automatic}
                               onChange={(event) => setCertificateForm((current) => ({
                                 ...current,
                                 data: { ...current.data, [key]: event.target.value },
@@ -519,10 +538,13 @@ export default function DrivingGraduation() {
                   </section>
                 ))}
 
-                {(!certificateForm?.logoConfigured || !certificateForm?.signatureConfigured) && (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.08] p-3 text-sm text-emerald-800">
+                  Belgenin sol üst bölümünde resmî Millî Eğitim Bakanlığı logosu otomatik kullanılır; kurum logosu kullanılmaz.
+                </div>
+
+                {!certificateForm?.signatureConfigured && (
                   <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-800">
-                    {!certificateForm?.logoConfigured && <p>Kurum logosu kayıtlı değil; belgede logo alanı boş/yer tutucu olarak oluşturulur.</p>}
-                    {!certificateForm?.signatureConfigured && <p>Müdür imzası kayıtlı değil; imza alanı boş bırakılarak belge oluşturulur.</p>}
+                    <p>Müdür imzası kayıtlı değil; imza alanı boş bırakılarak belge oluşturulur.</p>
                   </div>
                 )}
               </div>

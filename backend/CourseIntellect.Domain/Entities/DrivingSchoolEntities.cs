@@ -256,6 +256,15 @@ public sealed class DrivingAppointment : ITenantScopedEntity
     public Guid StudentDrivingProfileId { get; set; }
     public Guid InstructorProfileId { get; set; }
     public Guid VehicleId { get; set; }
+
+    /// <summary>
+    /// Dersi veren/tüketen şube. Araç filosu şubeler arasında ORTAK olduğu için
+    /// randevu ŞUBEYE KİLİTLENMEZ (IBranchScopedEntity değil): takvim tüm şubelerde
+    /// tek parça görünür ve araç çakışması şubeler arası da yakalanır. Bu alan
+    /// yalnızca "bu slotu hangi şube kullanıyor" bilgisini taşır.
+    /// </summary>
+    public Guid? BranchId { get; set; }
+
     public DateTime StartsAtUtc { get; set; }
     public DateTime EndsAtUtc { get; set; }
     public DrivingAppointmentStatus Status { get; set; } = DrivingAppointmentStatus.Planned;

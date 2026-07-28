@@ -246,9 +246,13 @@ public sealed class DrivingFinanceController(
         }
     }
 
-    /// <summary>Kurumun şubeleri (tahsilat şubesi seçmek için). Şube yoksa liste boştur.</summary>
+    /// <summary>
+    /// Kurumun şubeleri — tahsilat şubesi ve randevu şubesi seçmek için. Randevu
+    /// ekranı da bu listeyi kullandığından randevu görme yetkisi de yeterlidir.
+    /// Şube yoksa liste boştur.
+    /// </summary>
     [HttpGet("branches")]
-    [RequireDrivingPermission(DrivingPermissions.FinanceView)]
+    [RequireDrivingPermission(DrivingPermissions.FinanceView, DrivingPermissions.AppointmentView)]
     public async Task<IActionResult> GetBranches(CancellationToken ct)
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();

@@ -90,7 +90,6 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
       'institutionCode': 'MEBBİS kurum kodu',
       'institutionCity': 'Kurum ili',
       'institutionDistrict': 'Kurum ilçesi',
-      'logoUrl': 'Kurum logosu',
       'signatureUrl': 'İmza görseli',
       'primaryColor': 'Sertifika rengi',
     };
@@ -849,7 +848,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
       builder: (dialog) => AlertDialog(
         title: Text('Sertifika tasarımını onayla'.tr),
         content: const Text(
-          'PDF önizlemesini, kurum logosunu, müdür adı/unvanını ve imzayı kontrol ettiğinizi onaylıyor musunuz?',
+          'PDF önizlemesini, Millî Eğitim Bakanlığı logosunu, müdür adı/unvanını ve imzayı kontrol ettiğinizi onaylıyor musunuz?',
         ),
         actions: [
           TextButton(
@@ -898,7 +897,6 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
     );
     var policy =
         '${_settings['excusedAbsencePolicy'] ?? 'ExcludeFromCalculation'}';
-    var logoUrl = '${_settings['certificateLogoUrl'] ?? ''}';
     var signatureUrl = '${_settings['certificateSignatureUrl'] ?? ''}';
 
     Future<String?> pickAsset() async {
@@ -999,17 +997,13 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                   const SizedBox(height: 12),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.business_rounded),
-                    title: Text('Kurum logosu'.tr),
-                    subtitle: Text(logoUrl.isEmpty ? 'Seçilmedi' : 'Yüklendi'),
-                    trailing: OutlinedButton(
-                      onPressed: () async {
-                        final url = await pickAsset();
-                        if (url != null) {
-                          setDialogState(() => logoUrl = url);
-                        }
-                      },
-                      child: Text('Seç'.tr),
+                    leading: const Icon(
+                      Icons.account_balance_rounded,
+                      color: Color(0xFFE30A17),
+                    ),
+                    title: const Text('Millî Eğitim Bakanlığı logosu'),
+                    subtitle: const Text(
+                      'Belgeye sistem tarafından otomatik eklenir. Kurum logosu kullanılmaz.',
                     ),
                   ),
                   ListTile(
@@ -1061,9 +1055,11 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
         institutionCode.text.trim().length < 2 ||
         institutionCity.text.trim().length < 2 ||
         institutionDistrict.text.trim().length < 2 ||
-        logoUrl.isEmpty ||
         signatureUrl.isEmpty) {
-      _message('Müdür, unvan, kurum logosu ve imza zorunludur.', error: true);
+      _message(
+        'Müdür, unvan, kurum bilgileri ve imza zorunludur.',
+        error: true,
+      );
       return;
     }
     final payload = <String, dynamic>{
@@ -1076,7 +1072,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
       'institutionCity': institutionCity.text.trim(),
       'institutionDistrict': institutionDistrict.text.trim(),
       'primaryColor': color.text.trim().toUpperCase(),
-      'logoUrl': logoUrl,
+      'logoUrl': '',
       'signatureUrl': signatureUrl,
     };
     await _run(

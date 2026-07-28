@@ -35,7 +35,7 @@ public sealed class DrivingCertificatePdfServiceTests
             "Kurum Müdürü",
             "#173B57",
             "https://courseintellect.com/api/public/driving-certificates/SRK-2026-ABC123/verify?token=test-token",
-            null,
+            LoadPreviewLogo(),
             null));
 
         Assert.True(bytes.Length > 10_000);
@@ -79,5 +79,17 @@ public sealed class DrivingCertificatePdfServiceTests
 
         Assert.True(bytes.Length > 8_000);
         Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+    }
+
+    private static byte[]? LoadPreviewLogo()
+    {
+        var explicitPath = Environment.GetEnvironmentVariable("CERTIFICATE_LOGO_PATH");
+        if (!string.IsNullOrWhiteSpace(explicitPath) && File.Exists(explicitPath))
+            return File.ReadAllBytes(explicitPath);
+        var repositoryPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..", "..", "..", "..",
+            "CourseIntellect.Api", "Assets", "meb-logo.png"));
+        return File.Exists(repositoryPath) ? File.ReadAllBytes(repositoryPath) : null;
     }
 }

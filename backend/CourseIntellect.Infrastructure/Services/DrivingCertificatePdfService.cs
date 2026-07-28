@@ -58,7 +58,7 @@ public sealed class DrivingCertificatePdfService : IDrivingCertificatePdfService
                         {
                             if (model.LogoBytes is { Length: > 0 }) box.Image(model.LogoBytes).FitArea();
                             else box.Border(1).BorderColor("#C9B46B").AlignCenter().AlignMiddle()
-                                .Text("KURUM\nLOGOSU").FontSize(9).Bold().FontColor(Gold);
+                                .Text("MEB\nLOGOSU").FontSize(9).Bold().FontColor(Gold);
                         });
 
                         row.RelativeItem().AlignCenter().AlignMiddle().Column(header =>
@@ -141,7 +141,7 @@ public sealed class DrivingCertificatePdfService : IDrivingCertificatePdfService
                         row.ConstantItem(105).Height(70).AlignMiddle().Element(box =>
                         {
                             if (model.LogoBytes is { Length: > 0 }) box.Image(model.LogoBytes).FitArea();
-                            else box.AlignCenter().AlignMiddle().Text("KURUM\nLOGOSU").Bold().FontColor(accent);
+                            else box.AlignCenter().AlignMiddle().Text("MEB\nLOGOSU").Bold().FontColor(accent);
                         });
                         row.RelativeItem().AlignCenter().Column(header =>
                         {
