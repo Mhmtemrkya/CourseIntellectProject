@@ -4,7 +4,10 @@ namespace CourseIntellect.Application.Interfaces;
 
 public interface IAccountingService
 {
-    Task<AccountingDashboardDto> GetDashboardAsync(CancellationToken cancellationToken = default);
+    Task<AccountingDashboardDto> GetDashboardAsync(
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null,
+        CancellationToken cancellationToken = default);
     Task<AccountingInvoiceDto> CreateInvoiceAsync(CreateInvoiceRequest request, CancellationToken cancellationToken = default);
     Task<AccountingSalaryDto> CreateSalaryAsync(CreateSalaryRequest request, CancellationToken cancellationToken = default);
     Task<AccountingCollectionDto> CreateCollectionAsync(CreateCollectionRequest request, Guid? createdByUserId = null, CancellationToken cancellationToken = default);

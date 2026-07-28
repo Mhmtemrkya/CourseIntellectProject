@@ -371,6 +371,11 @@ public sealed class AcademicQueryService(
 
         var tcNo = SchoolRegistrationRules.NormalizeTcNo(request.TcNo);
         SchoolRegistrationRules.ValidateBirthDate(request.BirthDate);
+        var parentPhone = (request.ParentPhone ?? string.Empty).Trim();
+        if (parentPhone.Length > 0 && !SchoolRegistrationRules.IsValidTrMobile(parentPhone))
+        {
+            throw new InvalidOperationException("Veli telefonu +90 5XX XXX XX XX biçiminde olmalıdır.");
+        }
         await EnsureTcNoAvailableAsync(user.TenantId, tcNo, user.Id, cancellationToken);
 
         var fullName = PersonNameFormatter.FormatFullName(request.FullName);
@@ -382,7 +387,7 @@ public sealed class AcademicQueryService(
         student.BirthDate = request.BirthDate;
         student.ProgramType = request.ProgramType;
         student.ParentName = PersonNameFormatter.FormatFullName(request.ParentName);
-        student.ParentPhone = request.ParentPhone;
+        student.ParentPhone = parentPhone;
         student.ParentEmail = request.ParentEmail;
         student.Address = request.Address;
         student.Note = request.Note;

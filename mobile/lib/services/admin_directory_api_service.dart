@@ -89,6 +89,8 @@ class AdminStaffRecord {
   final String note;
   final String startDate;
   final String userId;
+  final String branchId;
+  final String customRoleId;
 
   const AdminStaffRecord({
     required this.id,
@@ -111,6 +113,8 @@ class AdminStaffRecord {
     this.note = '',
     this.startDate = '',
     this.userId = '',
+    this.branchId = '',
+    this.customRoleId = '',
   });
 
   factory AdminStaffRecord.fromMap(Map<String, dynamic> map) {
@@ -137,6 +141,8 @@ class AdminStaffRecord {
       note: map['note'] as String? ?? '',
       startDate: map['startDate'] as String? ?? '',
       userId: map['userId'] as String? ?? '',
+      branchId: map['branchId'] as String? ?? '',
+      customRoleId: map['customRoleId'] as String? ?? '',
     );
   }
 }

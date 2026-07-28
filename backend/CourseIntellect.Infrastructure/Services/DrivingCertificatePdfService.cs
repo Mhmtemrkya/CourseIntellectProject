@@ -8,8 +8,9 @@ namespace CourseIntellect.Infrastructure.Services;
 
 /// <summary>
 /// Motorlu Taşıt Sürücü Kursu eğitim tamamlama belgesini resmî EK-6 yerleşimine
-/// yakın, baskıya uygun A4 yatay PDF olarak üretir. Veriler yalnız sunucudaki
-/// kurum/kursiyer/sınav kayıtlarından gelir; istemci serbest metin basamaz.
+/// yakın, baskıya uygun A4 yatay PDF olarak üretir. Belge düzenleme ekranından
+/// gelen değerler sunucuda uzunluk ve tarih sınırlarından geçirilir; boş bırakılan
+/// alanlar PDF üzerinde de boş gösterilebilir.
 /// </summary>
 public sealed class DrivingCertificatePdfService : IDrivingCertificatePdfService
 {
@@ -84,8 +85,8 @@ public sealed class DrivingCertificatePdfService : IDrivingCertificatePdfService
                         row.RelativeItem().PaddingLeft(4).Element(right => CertificateTable(right, model));
                     });
 
-                    var courseStart = model.CourseStartedAtUtc.ToString("dd.MM.yyyy");
-                    var examDate = model.ExamPassedAtUtc.ToString("dd.MM.yyyy");
+                    var courseStart = CertificateDate(model.CourseStartedAtUtc);
+                    var examDate = CertificateDate(model.ExamPassedAtUtc);
                     column.Item().PaddingHorizontal(14).PaddingTop(12).Text(text =>
                     {
                         text.DefaultTextStyle(x => x.FontSize(11));
@@ -158,7 +159,7 @@ public sealed class DrivingCertificatePdfService : IDrivingCertificatePdfService
                         row.RelativeItem().Column(info =>
                         {
                             info.Item().Text($"Belge No: {model.DocumentNumber}").SemiBold();
-                            info.Item().PaddingTop(4).Text($"Düzenleme Tarihi: {model.IssuedAtUtc:dd.MM.yyyy}");
+                            info.Item().PaddingTop(4).Text($"Düzenleme Tarihi: {CertificateDate(model.IssuedAtUtc)}");
                         });
                         row.RelativeItem().AlignCenter().Column(signature =>
                         {
@@ -224,7 +225,7 @@ public sealed class DrivingCertificatePdfService : IDrivingCertificatePdfService
             table.Cell().ColumnSpan(2).Element(ValueCell).Text(model.LicenseClass.ToUpperInvariant()).FontSize(10).Bold();
 
             table.Cell().Element(LabelCell).Text("Tarihi").FontSize(9);
-            table.Cell().Element(ValueCell).Text(model.IssuedAtUtc.ToString("dd.MM.yyyy")).FontSize(9);
+            table.Cell().Element(ValueCell).Text(CertificateDate(model.IssuedAtUtc)).FontSize(9);
             table.Cell().Element(LabelCell).Text("Numarası").FontSize(9);
             table.Cell().Element(ValueCell)
                 .Text(string.IsNullOrWhiteSpace(model.MebbisCertificateNumber)
@@ -262,6 +263,9 @@ public sealed class DrivingCertificatePdfService : IDrivingCertificatePdfService
             .Where(x => !string.IsNullOrWhiteSpace(x));
         return string.Join(separator, values);
     }
+
+    private static string CertificateDate(DateTime? value) =>
+        value.HasValue ? value.Value.ToString("dd.MM.yyyy") : string.Empty;
 
     private static string NormalizeColor(string? value)
     {

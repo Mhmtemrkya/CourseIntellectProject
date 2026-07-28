@@ -25,6 +25,8 @@ class StaffRegistryRecord {
   final List<String> extraRoles;
   final List<Map<String, String>> roleHistory;
   final String userId;
+  final String branchId;
+  final String customRoleId;
 
   const StaffRegistryRecord({
     required this.id,
@@ -46,6 +48,8 @@ class StaffRegistryRecord {
     required this.password,
     required this.status,
     this.userId = '',
+    this.branchId = '',
+    this.customRoleId = '',
     this.extraRoles = const [],
     this.roleHistory = const [],
   });
@@ -118,6 +122,8 @@ class StaffRegistryStore extends ChangeNotifier {
       extraRoles: item.extraRoles,
       roleHistory: const [],
       userId: item.userId,
+      branchId: item.branchId,
+      customRoleId: item.customRoleId,
     );
   }
 

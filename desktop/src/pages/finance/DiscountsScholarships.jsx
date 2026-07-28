@@ -18,7 +18,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { createAccountingBenefit, fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
-import { parseFinanceMoney } from '../../lib/financeDocuments';
+import { formatCurrency, parseFinanceMoney } from '../../lib/financeDocuments';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -202,7 +202,7 @@ export default function DiscountsScholarships() {
           [stats.totalDiscounts, 'Aktif İndirim', Percent, 'text-brand-primary'],
           [stats.totalScholarships, 'Aktif Burs', Gift, 'text-brand-accent'],
           [stats.studentsWithDiscount, 'Yararlanan Öğrenci', Users, 'text-green-600'],
-          [`₺${stats.totalDiscountAmount.toLocaleString('tr-TR')}`, 'Toplam İndirim', Percent, 'text-blue-600'],
+          [formatCurrency(stats.totalDiscountAmount), 'Toplam İndirim', Percent, 'text-blue-600'],
         ].map(([value, label, Icon, color]) => (
           <motion.div variants={itemVariants} key={label}>
             <Card>
@@ -248,7 +248,7 @@ export default function DiscountsScholarships() {
                       <TableCell><Badge variant="outline">{discount.className || '-'}</Badge></TableCell>
                       <TableCell>%{discount.rate}</TableCell>
                       <TableCell>{discount.name}</TableCell>
-                      <TableCell>₺{discount.discountAmount.toLocaleString('tr-TR')}</TableCell>
+                      <TableCell>{formatCurrency(discount.discountAmount)}</TableCell>
                       <TableCell><Badge className={discount.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>{discount.status}</Badge></TableCell>
                     </TableRow>
                   ))}
@@ -320,7 +320,7 @@ export default function DiscountsScholarships() {
                         {student.type === 'İndirim' ? <Badge variant="outline">{student.title}</Badge> : <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell>
-                        {student.type === 'İndirim' ? <span className="text-green-600">₺{student.discountAmount.toLocaleString('tr-TR')}</span> : <span className="text-muted-foreground">-</span>}
+                        {student.type === 'İndirim' ? <span className="text-green-600">{formatCurrency(student.discountAmount)}</span> : <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell>
                         {student.type === 'Burs' ? <Badge className="bg-brand-accent/10 text-brand-accent">{student.title}</Badge> : <span className="text-muted-foreground">-</span>}

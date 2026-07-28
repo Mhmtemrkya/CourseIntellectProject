@@ -25,7 +25,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { createInstallment, fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
-import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
+import { formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -434,7 +434,7 @@ export default function Installments() {
                       </div>
                     </TableCell>
                     <TableCell>{meta.className ? <Badge variant="outline">{meta.className}</Badge> : <span className="text-xs text-muted-foreground">—</span>}</TableCell>
-                    <TableCell>₺{parseMoney(plan.amount).toLocaleString('tr-TR')}</TableCell>
+                    <TableCell>{formatCurrency(parseMoney(plan.amount))}</TableCell>
                     <TableCell>{plan.due || plan.dueDate}</TableCell>
                     <TableCell>{getStatusBadge(plan)}</TableCell>
                   </TableRow>

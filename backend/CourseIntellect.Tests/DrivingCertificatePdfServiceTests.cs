@@ -43,4 +43,41 @@ public sealed class DrivingCertificatePdfServiceTests
         var previewPath = Environment.GetEnvironmentVariable("CERTIFICATE_PREVIEW_PATH");
         if (!string.IsNullOrWhiteSpace(previewPath)) File.WriteAllBytes(previewPath, bytes);
     }
+
+    [Fact]
+    public void Generate_AllowsOptionalCertificateFieldsToRemainEmpty()
+    {
+        var service = new DrivingCertificatePdfService();
+        var bytes = service.Generate(new DrivingCertificatePdfModel(
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            "SRK-2026-EMPTY",
+            string.Empty,
+            "EĞİTİM TAMAMLAMA BELGESİ",
+            null,
+            null,
+            null,
+            string.Empty,
+            string.Empty,
+            "#173B57",
+            "https://courseintellect.com/api/public/driving-certificates/SRK-2026-EMPTY/verify?token=test-token",
+            null,
+            null));
+
+        Assert.True(bytes.Length > 8_000);
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+    }
 }

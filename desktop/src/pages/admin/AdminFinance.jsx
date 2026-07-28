@@ -18,12 +18,15 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import StudentFinanceAccountDialog from '../../components/finance/StudentFinanceAccountDialog';
-import { PayrollCalculatorDialog, ReconciliationDialog } from '../../components/finance/FinanceToolsDialogs';
 import { backfillDownPaymentMethod, backfillFinanceInstallments, fetchAccountingDashboard, fetchFinanceDashboard, sendFinanceReminders } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 function tl(value) {
-  return `${Number(value || 0).toLocaleString('tr-TR')} ₺`;
+  const amount = Number(value || 0);
+  return `${amount.toLocaleString('tr-TR', {
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })} TL`;
 }
 
 function parseMoney(value) {
@@ -31,7 +34,54 @@ function parseMoney(value) {
 }
 
 function money(value) {
-  return `TL ${parseMoney(value).toLocaleString('tr-TR')}`;
+  return tl(parseMoney(value));
+}
+
+function localDateInput(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function startOfLocalDay(value = new Date()) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function periodDateRange(period, customFrom, customTo) {
+  const now = new Date();
+  let from = startOfLocalDay(now);
+  let to = new Date(from);
+
+  if (period === 'day') {
+    to.setDate(to.getDate() + 1);
+  } else if (period === 'week') {
+    const mondayOffset = (from.getDay() + 6) % 7;
+    from.setDate(from.getDate() - mondayOffset);
+    to = new Date(from);
+    to.setDate(to.getDate() + 7);
+  } else if (period === 'month') {
+    from = new Date(now.getFullYear(), now.getMonth(), 1);
+    to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  } else if (period === 'year') {
+    from = new Date(now.getFullYear(), 0, 1);
+    to = new Date(now.getFullYear() + 1, 0, 1);
+  } else {
+    const parsedFrom = customFrom ? new Date(`${customFrom}T00:00:00`) : new Date(now.getFullYear(), now.getMonth(), 1);
+    const parsedTo = customTo ? new Date(`${customTo}T00:00:00`) : now;
+    from = startOfLocalDay(Number.isNaN(parsedFrom.getTime()) ? new Date(now.getFullYear(), now.getMonth(), 1) : parsedFrom);
+    to = startOfLocalDay(Number.isNaN(parsedTo.getTime()) ? now : parsedTo);
+    if (to < from) to = new Date(from);
+    to.setDate(to.getDate() + 1);
+  }
+
+  return {
+    fromUtc: from.toISOString(),
+    toUtc: to.toISOString(),
+    label: `${from.toLocaleDateString('tr-TR')} – ${new Date(to.getTime() - 1).toLocaleDateString('tr-TR')}`,
+  };
 }
 
 function normalizeStatus(value = '') {
@@ -51,19 +101,25 @@ export default function AdminFinance() {
   const [sendingReminders, setSendingReminders] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
   const [convertingDownPayments, setConvertingDownPayments] = useState(false);
-  const [activeTool, setActiveTool] = useState(null);
   const [accountStudent, setAccountStudent] = useState(null);
   const [studentSearch, setStudentSearch] = useState('');
+  const [period, setPeriod] = useState('month');
+  const [customFrom, setCustomFrom] = useState(() => localDateInput(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
+  const [customTo, setCustomTo] = useState(() => localDateInput(new Date()));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const selectedRange = useMemo(
+    () => periodDateRange(period, customFrom, customTo),
+    [period, customFrom, customTo],
+  );
 
   const loadDashboard = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
       const [accounting, finance] = await Promise.all([
-        fetchAccountingDashboard(),
-        fetchFinanceDashboard().catch(() => null),
+        fetchAccountingDashboard({ fromUtc: selectedRange.fromUtc, toUtc: selectedRange.toUtc }),
+        fetchFinanceDashboard(null, { fromUtc: selectedRange.fromUtc, toUtc: selectedRange.toUtc }).catch(() => null),
       ]);
       setDashboard(accounting);
       setEnrollmentFinance(finance);
@@ -72,7 +128,7 @@ export default function AdminFinance() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedRange.fromUtc, selectedRange.toUtc]);
 
   const handleSendReminders = useCallback(async () => {
     try {
@@ -206,6 +262,62 @@ export default function AdminFinance() {
       </section>
 
       {error ? <ErrorBanner title="Finans verisi yüklenemedi" message={error} onRetry={loadDashboard} /> : null}
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <p className="flex items-center gap-2 font-bold">
+                <Calendar className="h-4 w-4 text-brand-primary" /> Raporlama Dönemi
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{selectedRange.label}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                ['day', 'Günlük'],
+                ['week', 'Haftalık'],
+                ['month', 'Aylık'],
+                ['year', 'Yıllık'],
+                ['custom', 'Özel'],
+              ].map(([value, label]) => (
+                <Button
+                  key={value}
+                  size="sm"
+                  variant={period === value ? 'default' : 'outline'}
+                  onClick={() => setPeriod(value)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {period === 'custom' && (
+            <div className="mt-4 grid gap-3 border-t pt-4 sm:grid-cols-2">
+              <label className="text-sm font-semibold">
+                Başlangıç tarihi
+                <Input
+                  className="mt-1"
+                  type="date"
+                  value={customFrom}
+                  max={customTo}
+                  onChange={(event) => setCustomFrom(event.target.value)}
+                />
+              </label>
+              <label className="text-sm font-semibold">
+                Bitiş tarihi
+                <Input
+                  className="mt-1"
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  onChange={(event) => setCustomTo(event.target.value)}
+                />
+              </label>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
@@ -361,20 +473,6 @@ export default function AdminFinance() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Finans Araçları</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          <Button variant="outline" className="justify-start" onClick={() => setActiveTool('payroll')}>
-            <CreditCard className="mr-2 h-4 w-4" /> Bordro Hesapla
-          </Button>
-          <Button variant="outline" className="justify-start" onClick={() => setActiveTool('reconcile')}>
-            <Receipt className="mr-2 h-4 w-4" /> Banka/POS Mutabakatı
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Son Tahsilatlar</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -394,8 +492,6 @@ export default function AdminFinance() {
       {accountStudent ? (
         <StudentFinanceAccountDialog studentName={accountStudent} onClose={() => { setAccountStudent(null); loadDashboard(); }} />
       ) : null}
-      {activeTool === 'payroll' ? <PayrollCalculatorDialog onClose={() => setActiveTool(null)} /> : null}
-      {activeTool === 'reconcile' ? <ReconciliationDialog onClose={() => setActiveTool(null)} /> : null}
     </motion.div>
   );
 }

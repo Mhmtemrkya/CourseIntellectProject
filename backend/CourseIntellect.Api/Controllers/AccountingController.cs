@@ -20,9 +20,14 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpGet("dashboard")]
     [Authorize(Roles = "Accounting,Admin")]
-    public async Task<IActionResult> GetDashboard(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetDashboard(
+        [FromQuery] DateTime? fromUtc,
+        [FromQuery] DateTime? toUtc,
+        CancellationToken cancellationToken)
     {
-        var data = await accountingService.GetDashboardAsync(cancellationToken);
+        if (fromUtc.HasValue && toUtc.HasValue && toUtc <= fromUtc)
+            return BadRequest(new { message = "Bitiş tarihi başlangıç tarihinden sonra olmalıdır." });
+        var data = await accountingService.GetDashboardAsync(fromUtc, toUtc, cancellationToken);
         var benefits = await CompatibilitySnapshotStore.LoadListAsync<AccountingBenefitSnapshot>(dbContext, BenefitSectionKey, cancellationToken);
         return Ok(new
         {
@@ -53,7 +58,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
     {
         // Muhasebe ihracatı backend'de hazırlanır (mobil+desktop ortak kaynak).
         // Tek bir CSV: tahsilatlar, taksitler, faturalar, bordrolar.
-        var data = await accountingService.GetDashboardAsync(cancellationToken);
+        var data = await accountingService.GetDashboardAsync(cancellationToken: cancellationToken);
         var builder = new System.Text.StringBuilder();
         builder.AppendLine("Tip,Ad/Sistem,Kategori/Sinif,Tutar,Durum/Tarih");
 

@@ -7,7 +7,8 @@ import { useToast } from '../../hooks/use-toast';
 import { calculatePayroll, reconcileFinance } from '../../lib/api/modules';
 
 function tl(value) {
-  return `${Number(value || 0).toLocaleString('tr-TR')} ₺`;
+  const amount = Number(value || 0);
+  return `${amount.toLocaleString('tr-TR', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 2 })} TL`;
 }
 
 // ---- Bordro hesaplayıcı (SGK/işsizlik/gelir vergisi/damga) ----
@@ -38,7 +39,7 @@ export function PayrollCalculatorDialog({ onClose }) {
       <DialogContent className="w-[min(96vw,560px)] max-w-[560px]">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" /> Bordro Hesaplama</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <Input type="number" min="0" placeholder="Brüt maaş (₺)" value={gross} onChange={(e) => setGross(e.target.value)} />
+          <Input type="number" min="0" placeholder="Brüt maaş (TL)" value={gross} onChange={(e) => setGross(e.target.value)} />
           <Button onClick={calc} disabled={busy} className="w-full">
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calculator className="mr-2 h-4 w-4" />} Hesapla
           </Button>
@@ -138,4 +139,3 @@ export function ReconciliationDialog({ onClose }) {
     </Dialog>
   );
 }
-

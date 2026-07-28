@@ -18,7 +18,7 @@ import { useApp } from '../../context/AppContext';
  *
  * `row`: { profileId, fullName, studentNumber?, registrationBranchName? }
  */
-const money = (v) => `₺${Number(v || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`;
+const money = (v) => `${Number(v || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 })} TL`;
 
 const METHODS = ['Nakit', 'Kart', 'Havale'];
 
@@ -212,7 +212,7 @@ function CollectModal({ row, branches = [], onClose, onDone }) {
 
             {/* Ödeme formu */}
             <div className="rounded-2xl border border-foreground/10 p-3">
-              <label className="text-xs font-bold text-muted-foreground">Tahsil edilecek tutar (₺)</label>
+              <label className="text-xs font-bold text-muted-foreground">Tahsil edilecek tutar (TL)</label>
               <Input type="number" min="0" value={amount} onChange={(e) => { setAmount(e.target.value); }} autoFocus className="mt-1 text-lg font-bold" />
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>

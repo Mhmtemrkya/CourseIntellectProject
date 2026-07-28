@@ -28,6 +28,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import {
   createAccountingNotification,
   createCollection,
+  downloadStudentStatementPdf,
   fetchAccountingDashboard,
   fetchDrivingBranches,
   fetchDrivingCollectionList,
@@ -38,13 +39,16 @@ import {
 } from '../../lib/api/modules';
 import PendingDownPayments from '../../components/finance/PendingDownPayments';
 import {
-  buildFinanceDocumentHtml,
-  downloadFinanceHtml,
+  downloadFileBlob,
   formatCurrency,
   normalizeFinanceText,
   parseFinanceMoney,
-  printFinanceHtml,
 } from '../../lib/financeDocuments';
+import { createTypedDocumentUrl } from '../../lib/fileMime';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '../../components/ui/dialog';
+import { Label } from '../../components/ui/label';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -128,6 +132,20 @@ function StudentAccountDrawer({
   const [detailError, setDetailError] = useState('');
   const [examFeeDraft, setExamFeeDraft] = useState(null);
   const [savingExamFee, setSavingExamFee] = useState(false);
+  // Ekstre tarih aralığı: boş bırakılırsa ilk hareketten taksit planının sonuna
+  // kadar tüm geçmiş belgeye girer.
+  const [statementRange, setStatementRange] = useState({ from: '', to: '' });
+  // Çekmece içeriği açıldığı anda dondurulduğundan meşguliyet burada tutulur.
+  const [statementBusy, setStatementBusy] = useState('');
+
+  const runStatementAction = async (kind, handler) => {
+    setStatementBusy(kind);
+    try {
+      await handler?.(account, statementRange);
+    } finally {
+      setStatementBusy('');
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -221,7 +239,7 @@ function StudentAccountDrawer({
           [grossTotal, 'Kurs Ücreti', 'text-foreground'],
           [discountTotal, 'İndirim', 'text-blue-600'],
           [Math.max(0, grossTotal - discountTotal), 'Net Kurs Ücreti', 'text-foreground'],
-          [downPaymentPaidTotal, downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? `Peşinat • ₺${downPaymentTotal.toLocaleString('tr-TR')} bekleniyor` : 'Ödenen Peşinat', downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? 'text-amber-600' : 'text-green-600'],
+          [downPaymentPaidTotal, downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? `Peşinat • ${formatCurrency(downPaymentTotal)} bekleniyor` : 'Ödenen Peşinat', downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? 'text-amber-600' : 'text-green-600'],
           [paid, 'Toplam Tahsil Edilen', 'text-green-600'],
           [courseRemaining, 'Kurs Borcu', courseRemaining > 0 ? 'text-red-600' : 'text-green-600'],
           [additionalChargeRemaining, 'Ek Ücret Borcu', additionalChargeRemaining > 0 ? 'text-red-600' : 'text-green-600'],
@@ -229,7 +247,7 @@ function StudentAccountDrawer({
         ].map(([value, label, color, isCount]) => (
           <Card key={label}>
             <CardContent className="p-4 text-center">
-              <p className={`text-2xl font-bold ${color}`}>{isCount ? value : `₺${Number(value).toLocaleString('tr-TR')}`}</p>
+              <p className={`text-2xl font-bold ${color}`}>{isCount ? value : formatCurrency(value)}</p>
               <p className="text-xs text-muted-foreground">{label}</p>
             </CardContent>
           </Card>
@@ -261,7 +279,7 @@ function StudentAccountDrawer({
           </div>
           {examFeeDraft ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-              <Input type="number" min="0" value={examFeeDraft.amount} onChange={(event) => setExamFeeDraft({ ...examFeeDraft, amount: event.target.value })} placeholder="Ücret (₺)" />
+              <Input type="number" min="0" value={examFeeDraft.amount} onChange={(event) => setExamFeeDraft({ ...examFeeDraft, amount: event.target.value })} placeholder="Ücret (TL)" />
               <Input type="date" value={examFeeDraft.date} onChange={(event) => setExamFeeDraft({ ...examFeeDraft, date: event.target.value })} />
               <div className="flex gap-2">
                 <Button type="button" variant={examFeeDraft.paid ? 'default' : 'outline'} onClick={() => setExamFeeDraft({ ...examFeeDraft, paid: !examFeeDraft.paid })}>
@@ -272,14 +290,14 @@ function StudentAccountDrawer({
             </div>
           ) : (
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <b className="text-xl">₺{drivingExamFee.toLocaleString('tr-TR')}</b>
+              <b className="text-xl">{formatCurrency(drivingExamFee)}</b>
               <Badge className={drivingExamFee > 0 && drivingExamFeePaid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
                 {drivingExamFee > 0 && drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
               </Badge>
               <span className="text-sm text-muted-foreground">{formatDateUtc(detail?.drivingExamDate)}</span>
               {standaloneExamFeeRemaining > 0 ? (
                 <span className="text-sm font-semibold text-red-600">
-                  Toplam borca ₺{standaloneExamFeeRemaining.toLocaleString('tr-TR')} dâhil
+                  Toplam borca {formatCurrency(standaloneExamFeeRemaining)} dâhil
                 </span>
               ) : null}
             </div>
@@ -302,7 +320,7 @@ function StudentAccountDrawer({
                     <p className="text-sm font-medium">{item.label || 'Taksit'}</p>
                     <p className="text-xs text-muted-foreground">{formatDateUtc(item.dueDateUtc)}</p>
                   </div>
-                  <span className="font-bold text-green-600">₺{Number(item.amount).toLocaleString('tr-TR')}</span>
+                  <span className="font-bold text-green-600">{formatCurrency(item.amount)}</span>
                 </div>
               ))}
             </div>
@@ -324,7 +342,7 @@ function StudentAccountDrawer({
                       </p>
                       <p className="text-xs text-muted-foreground">{formatDateUtc(item.dueDateUtc)}</p>
                     </div>
-                    <span className={`font-bold ${overdue ? 'text-red-600' : 'text-foreground'}`}>₺{Number(item.remaining ?? item.amount).toLocaleString('tr-TR')}</span>
+                    <span className={`font-bold ${overdue ? 'text-red-600' : 'text-foreground'}`}>{formatCurrency(item.remaining ?? item.amount)}</span>
                   </div>
                 );
               })}
@@ -333,18 +351,62 @@ function StudentAccountDrawer({
         </>
       )}
 
+      <Card>
+        <CardContent className="space-y-3 p-4">
+          <div>
+            <p className="font-semibold">Cari hesap ekstresi</p>
+            <p className="text-sm text-muted-foreground">
+              Kurum künyeli, imzaya/veliye verilebilir PDF. Tarih aralığı boş bırakılırsa
+              ilk kayıttan bugüne tüm hareketler tarih sırasıyla yazdırılır.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="statement-from" className="text-xs text-muted-foreground">Başlangıç</Label>
+              <Input
+                id="statement-from"
+                type="date"
+                value={statementRange.from}
+                max={statementRange.to || undefined}
+                onChange={(event) => setStatementRange((prev) => ({ ...prev, from: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="statement-to" className="text-xs text-muted-foreground">Bitiş</Label>
+              <Input
+                id="statement-to"
+                type="date"
+                value={statementRange.to}
+                min={statementRange.from || undefined}
+                onChange={(event) => setStatementRange((prev) => ({ ...prev, to: event.target.value }))}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex gap-3 pt-4">
         <Button className="flex-1 bg-brand-primary hover:bg-brand-primary/90" onClick={() => onCreateCollection?.(account)} disabled={creatingCollection}>
           <CreditCard className="h-4 w-4 mr-2" />
           {creatingCollection ? 'İşleniyor...' : 'Tahsilat Gir'}
         </Button>
-        <Button variant="outline" className="flex-1" onClick={() => onExportStatement?.(account)}>
+        <Button
+          variant="outline"
+          className="flex-1"
+          disabled={statementBusy !== ''}
+          onClick={() => runStatementAction('export', onExportStatement)}
+        >
           <FileText className="h-4 w-4 mr-2" />
-          Ekstre İndir
+          {statementBusy === 'export' ? 'Hazırlanıyor…' : 'Ekstre İndir'}
         </Button>
-        <Button variant="outline" className="flex-1" onClick={() => onPrintStatement?.(account)}>
+        <Button
+          variant="outline"
+          className="flex-1"
+          disabled={statementBusy !== ''}
+          onClick={() => runStatementAction('preview', onPrintStatement)}
+        >
           <Eye className="h-4 w-4 mr-2" />
-          Yazdır
+          {statementBusy === 'preview' ? 'Açılıyor…' : 'Önizle & Yazdır'}
         </Button>
       </div>
     </div>
@@ -371,6 +433,8 @@ export default function StudentAccounts() {
   const [summaries, setSummaries] = useState([]);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [activeCollectionId, setActiveCollectionId] = useState(null);
+  const [statementBusyId, setStatementBusyId] = useState(null);
+  const [statementPreview, setStatementPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -411,59 +475,18 @@ export default function StudentAccounts() {
   ])], [accounts]);
   const branches = useMemo(() => [...new Set(accounts.map((item) => item.branchName).filter(Boolean))], [accounts]);
 
-  const buildStatementHtml = useCallback((account) => buildFinanceDocumentHtml({
-    title: 'Öğrenci Cari Hesap Ekstresi',
-    subtitle: `${account.name} için tahsilat, fatura ve bakiye özeti`,
-    code: `EXT-${account.id}`,
-    badge: isDrivingSchool
-      ? (account.className || 'Sınıf yok')
-      : `${account.className || 'Sınıf yok'} • ${account.parent || 'Veli bilgisi yok'}`,
-    summary: [
-      { label: 'Toplam Ücret', value: formatCurrency(account.totalFee) },
-      { label: 'Ödenen', value: formatCurrency(account.paid) },
-      { label: 'Toplam Ödenecek', value: formatCurrency(account.remaining) },
-      { label: 'Durum', value: account.status === 'overdue' ? 'Gecikmiş' : account.status === 'paid' ? 'Ödendi' : 'Güncel' },
-    ],
-    sections: [
-      {
-        title: isDrivingSchool ? 'Kursiyer Bilgileri' : 'Öğrenci Bilgileri',
-        rows: [
-          { label: isDrivingSchool ? 'Kursiyer' : 'Öğrenci', value: account.name },
-          { label: isDrivingSchool ? 'Ehliyet sınıfı' : 'Sınıf', value: account.className || 'Belirtilmedi' },
-          ...(isDrivingSchool ? [] : [{ label: 'Veli', value: account.parent || 'Belirtilmedi' }]),
-          { label: 'Hesap Durumu', value: account.status === 'overdue' ? 'Gecikmiş bakiye takibi' : account.status === 'paid' ? 'Hesap kapanmış' : 'Aktif hesap' },
-        ],
-      },
-      {
-        title: 'Hesap Hareketleri',
-        description: 'Fatura ve tahsilat kayıtları aynı ekstre üstünde listelenir.',
-        table: {
-          headers: ['Tarih', 'Tür', 'Açıklama', 'Tutar'],
-          rows: [
-            ...account.invoices.map((item) => [
-              item.subtitle || item.status || '-',
-              'Borç',
-              item.title,
-              `-${formatCurrency(item.amount)}`,
-            ]),
-            ...account.collections.map((item) => [
-              item.time || '-',
-              'Tahsilat',
-              item.note || item.method || 'Tahsilat',
-              `+${formatCurrency(item.amount)}`,
-            ]),
-          ],
-        },
-      },
-      {
-        title: 'Tahsilat Tavsiyesi',
-        rows: [
-          { label: 'Önerilen Sonraki Aksiyon', value: account.remaining > 0 ? 'Tahsilat girişi yapılmalı' : 'Ek işlem gerekmiyor' },
-          { label: 'Açık Tutar', value: formatCurrency(account.remaining) },
-        ],
-      },
-    ],
-  }), [isDrivingSchool]);
+  // Ekstre sunucuda üretilir: kurum künyesi, cari kodu, yürüyen bakiye ve tutarın
+  // yazıyla karşılığı tek kaynaktan gelir; masaüstü yalnız indirir/önizler.
+  const statementParams = useCallback((account, range) => ({
+    ...(account.userId ? { studentUserId: account.userId } : { studentName: account.name }),
+    fromUtc: range?.from || undefined,
+    toUtc: range?.to || undefined,
+  }), []);
+
+  const statementFileName = useCallback((account) => {
+    const slug = normalizeFinanceText(account.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return `cari-hesap-ekstresi-${slug || 'ogrenci'}.pdf`;
+  }, []);
 
   const applyCollectionToDashboard = useCallback((account, collection) => {
     setDashboard((prev) => {
@@ -529,14 +552,14 @@ export default function StudentAccounts() {
         name: account.name,
         studentUserId: account.userId,
         className: account.className,
-        amount: `₺${remaining.toLocaleString('tr-TR')}`,
+        amount: formatCurrency(remaining),
         method: 'Kart',
         note: `${account.className} cari hesap tahsilatı`,
       });
       applyCollectionToDashboard(account, payload);
       toast({
         title: 'Tahsilat işlendi',
-        description: `${account.name} için ₺${remaining.toLocaleString('tr-TR')} tahsil edildi.`,
+        description: `${account.name} için ${formatCurrency(remaining)} tahsil edildi.`,
       });
     } catch (err) {
       toast({
@@ -549,22 +572,58 @@ export default function StudentAccounts() {
     }
   }, [applyCollectionToDashboard, toast, isDrivingSchool, resolveDrivingRow]);
 
-  const handleExportStatement = useCallback((account) => {
-    const html = buildStatementHtml(account);
-    downloadFinanceHtml(`ekstre-${account.name.replace(/\s+/g, '-').toLowerCase()}.html`, html);
-    toast({
-      title: 'Ekstre indirildi',
-      description: `${account.name} için tasarımlı ekstre hazırlandı.`,
-    });
-  }, [buildStatementHtml, toast]);
+  const handleExportStatement = useCallback(async (account, range) => {
+    try {
+      setStatementBusyId(account.id);
+      const blob = await downloadStudentStatementPdf(statementParams(account, range));
+      downloadFileBlob(statementFileName(account), blob);
+      toast({
+        title: 'Ekstre indirildi',
+        description: `${account.name} için kurum künyeli PDF ekstre hazırlandı.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Ekstre hazırlanamadı',
+        description: err.message || 'Tekrar deneyin.',
+        variant: 'destructive',
+      });
+    } finally {
+      setStatementBusyId(null);
+    }
+  }, [statementFileName, statementParams, toast]);
 
-  const handlePrintStatement = useCallback((account) => {
-    printFinanceHtml(`ekstre-${account.id}`, buildStatementHtml(account));
-    toast({
-      title: 'Ekstre yazdırma görünümü açıldı',
-      description: `${account.name} için yazdırılabilir belge hazırlandı.`,
+  const handlePrintStatement = useCallback(async (account, range) => {
+    setStatementPreview({ account, url: '', loading: true });
+    try {
+      const blob = await downloadStudentStatementPdf(statementParams(account, range));
+      // Tauri webview'inde blob türsüz gelebiliyor; MIME uzantıdan zorlanmazsa
+      // iframe boş görünür (bkz. lib/fileMime.js).
+      const { url } = await createTypedDocumentUrl(blob, statementFileName(account));
+      setStatementPreview({ account, url, loading: false });
+    } catch (err) {
+      setStatementPreview(null);
+      toast({
+        title: 'Ekstre açılamadı',
+        description: err.message || 'Tekrar deneyin.',
+        variant: 'destructive',
+      });
+    }
+  }, [statementFileName, statementParams, toast]);
+
+  const closeStatementPreview = useCallback(() => {
+    setStatementPreview((prev) => {
+      if (prev?.url) URL.revokeObjectURL(prev.url);
+      return null;
     });
-  }, [buildStatementHtml, toast]);
+  }, []);
+
+  const downloadPreviewedStatement = useCallback(() => {
+    if (!statementPreview?.url) return;
+    const anchor = document.createElement('a');
+    anchor.href = statementPreview.url;
+    anchor.download = statementFileName(statementPreview.account);
+    anchor.click();
+  }, [statementFileName, statementPreview]);
 
   const handleBulkCollection = async () => {
     const debtors = filteredAccounts.filter((account) => account.remaining > 0);
@@ -584,14 +643,14 @@ export default function StudentAccounts() {
           name: account.name,
           studentUserId: account.userId,
           className: account.className,
-          amount: `₺${remaining.toLocaleString('tr-TR')}`,
+          amount: formatCurrency(remaining),
           method: 'Toplu Tahsilat',
           note: `${account.className} toplu tahsilat`,
         });
         applyCollectionToDashboard(account, created);
         await createAccountingNotification({
           title: 'Toplu tahsilat işlendi',
-          message: `${account.name} icin ₺${remaining.toLocaleString('tr-TR')} tutarli tahsilat kaydedildi.`,
+          message: `${account.name} icin ${formatCurrency(remaining)} tutarli tahsilat kaydedildi.`,
           severity: 'Info',
         }).catch(() => null);
       }
@@ -776,23 +835,23 @@ export default function StudentAccounts() {
                   <TableCell>
                     <Badge variant="outline">{account.className}</Badge>
                   </TableCell>
-                  <TableCell className="font-medium">₺{account.grossTotal.toLocaleString('tr-TR')}</TableCell>
-                  <TableCell className="text-blue-600">₺{account.discountTotal.toLocaleString('tr-TR')}</TableCell>
+                  <TableCell className="font-medium">{formatCurrency(account.grossTotal)}</TableCell>
+                  <TableCell className="text-blue-600">{formatCurrency(account.discountTotal)}</TableCell>
                   <TableCell>
                     {account.downPaymentTotal <= 0 ? (
                       <span className="text-sm text-muted-foreground">Peşinat yok</span>
                     ) : account.hasPendingDownPayment ? (
-                      <div><b className="text-amber-600">Ödenmedi</b><p className="text-xs text-muted-foreground">₺{account.downPaymentTotal.toLocaleString('tr-TR')}</p></div>
+                      <div><b className="text-amber-600">Ödenmedi</b><p className="text-xs text-muted-foreground">{formatCurrency(account.downPaymentTotal)}</p></div>
                     ) : (
-                      <div><b className="text-green-600">₺{account.downPaymentPaidTotal.toLocaleString('tr-TR')}</b><p className="text-xs text-muted-foreground">Ödendi</p></div>
+                      <div><b className="text-green-600">{formatCurrency(account.downPaymentPaidTotal)}</b><p className="text-xs text-muted-foreground">Ödendi</p></div>
                     )}
                   </TableCell>
                   <TableCell className={account.remaining > 0 ? 'text-red-600 font-bold' : 'text-green-600'}>
-                    ₺{account.remaining.toLocaleString('tr-TR')}
+                    {formatCurrency(account.remaining)}
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      <span className="text-sm font-medium">{account.drivingExamAttemptNo}. giriş • ₺{account.drivingExamFee.toLocaleString('tr-TR')}</span>
+                      <span className="text-sm font-medium">{account.drivingExamAttemptNo}. giriş • {formatCurrency(account.drivingExamFee)}</span>
                       <Badge className={account.drivingExamFee > 0 && account.drivingExamFeePaid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
                         {account.drivingExamFee > 0 && account.drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
                       </Badge>
@@ -825,11 +884,15 @@ export default function StudentAccounts() {
                         <DropdownMenuItem onClick={() => handleCreateCollection(account)}>
                           <CreditCard className="h-4 w-4 mr-2" /> Tahsilat Gir
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleExportStatement(account)}>
-                          <FileText className="h-4 w-4 mr-2" /> Ekstre
+                        <DropdownMenuItem
+                          disabled={statementBusyId === account.id}
+                          onClick={() => handleExportStatement(account)}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          {statementBusyId === account.id ? 'Ekstre hazırlanıyor…' : 'Ekstre (PDF)'}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handlePrintStatement(account)}>
-                          <Eye className="h-4 w-4 mr-2" /> Yazdır
+                          <Eye className="h-4 w-4 mr-2" /> Ekstreyi Önizle
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -840,6 +903,33 @@ export default function StudentAccounts() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Ekstre önizlemesi: PDF iframe içinde açılır, oradan yazdırılabilir. */}
+      <Dialog open={!!statementPreview} onOpenChange={(open) => { if (!open) closeStatementPreview(); }}>
+        <DialogContent className="h-[92vh] w-[96vw] max-w-5xl overflow-hidden p-0">
+          <DialogHeader className="border-b px-5 py-4">
+            <DialogTitle className="flex flex-wrap items-center justify-between gap-3 pr-8">
+              <span>{statementPreview?.account?.name} • Cari Hesap Ekstresi</span>
+              {statementPreview?.url ? (
+                <Button size="sm" onClick={downloadPreviewedStatement}>
+                  <FileText className="mr-2 h-4 w-4" /> PDF İndir
+                </Button>
+              ) : null}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 p-3">
+            {statementPreview?.loading ? (
+              <div className="grid h-full place-items-center"><LoadingDots /></div>
+            ) : statementPreview?.url ? (
+              <iframe
+                title="Cari hesap ekstresi"
+                src={statementPreview.url}
+                className="h-full min-h-[72vh] w-full rounded-xl border bg-white"
+              />
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Sürücü kursu tahsilatı: "Ödeme Al" ile aynı pencere — taksit planı,
           taksit seçimi, ödenmiş taksitlerin pasifliği ve makbuz burada. */}

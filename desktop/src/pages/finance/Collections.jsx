@@ -226,7 +226,7 @@ function NewCollectionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Tutar (₺)</Label>
+            <Label>Tutar (TL)</Label>
             <Input type="number" value={form.amount} onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))} placeholder="0.00" />
           </div>
 
@@ -449,7 +449,7 @@ export default function Collections() {
         <div>
           <h1 className="text-3xl font-bold font-heading">Tahsilatlar</h1>
           <p className="text-muted-foreground mt-1">
-            Bugün: ₺{totalToday.toLocaleString('tr-TR')} • {filteredCollections.length} kayıt gösteriliyor
+            Bugün: {formatCurrency(totalToday)} • {filteredCollections.length} kayıt gösteriliyor
           </p>
         </div>
         <FeatureGate module="collections" action="collect">
@@ -475,7 +475,7 @@ export default function Collections() {
                   <Icon className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">₺{type.total.toLocaleString('tr-TR')}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(type.total)}</p>
                   <p className="text-xs text-muted-foreground">{type.label}</p>
                 </div>
               </CardContent>
@@ -488,7 +488,7 @@ export default function Collections() {
               <Receipt className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold">₺{plannedTotal.toLocaleString('tr-TR')}</p>
+              <p className="text-2xl font-bold">{formatCurrency(plannedTotal)}</p>
               <p className="text-xs text-muted-foreground">Planlanan</p>
             </div>
           </CardContent>
@@ -579,7 +579,7 @@ export default function Collections() {
                     </div>
                   </TableCell>
                   <TableCell className={`font-bold ${collection.entryType === 'Refund' || parseMoney(collection.amount) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    ₺{(viewMode === 'planned' ? plannedCollectionAmount(collection) : parseMoney(collection.amount)).toLocaleString('tr-TR')}
+                    {formatCurrency(viewMode === 'planned' ? plannedCollectionAmount(collection) : parseMoney(collection.amount))}
                   </TableCell>
                   <TableCell>{viewMode === 'planned' ? <Badge variant="outline">{collection.status || 'Bekleyen'}</Badge> : getTypeBadge(collection.method)}</TableCell>
                   <TableCell>{viewMode === 'planned' ? (collection.due || 'Vade yok') : (collection.time || 'Zaman yok')}</TableCell>

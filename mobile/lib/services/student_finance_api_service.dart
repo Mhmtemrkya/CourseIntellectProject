@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -70,6 +71,67 @@ class StudentFinanceApiService {
     });
     return Map<String, dynamic>.from(result as Map);
   }
+
+  /// Cari hesap ekstresi (JSON): kurum künyesi, tarih sıralı borç/alacak
+  /// hareketleri ve yürüyen bakiye sunucuda hesaplanır.
+  Future<Map<String, dynamic>> getStatement({
+    String? studentName,
+    String? studentUserId,
+    DateTime? fromUtc,
+    DateTime? toUtc,
+  }) async {
+    final result = await _get(
+      '/api/student-finance/statement',
+      _statementQuery(
+        studentName: studentName,
+        studentUserId: studentUserId,
+        fromUtc: fromUtc,
+        toUtc: toUtc,
+      ),
+    );
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  /// Aynı ekstrenin kurum künyeli, baskıya/paylaşıma uygun PDF çıktısı.
+  Future<Uint8List> downloadStatementPdf({
+    String? studentName,
+    String? studentUserId,
+    DateTime? fromUtc,
+    DateTime? toUtc,
+  }) async {
+    final session = await _session();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/student-finance/statement')
+        .replace(queryParameters: {
+      ..._statementQuery(
+        studentName: studentName,
+        studentUserId: studentUserId,
+        fromUtc: fromUtc,
+        toUtc: toUtc,
+      ),
+      'format': 'pdf',
+    });
+    final response = await http.get(uri, headers: _headers(session));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StudentFinanceApiException(
+        'Ekstre indirilemedi (${response.statusCode}).',
+      );
+    }
+    return response.bodyBytes;
+  }
+
+  Map<String, String> _statementQuery({
+    String? studentName,
+    String? studentUserId,
+    DateTime? fromUtc,
+    DateTime? toUtc,
+  }) => {
+        if (studentName != null && studentName.isNotEmpty)
+          'studentName': studentName,
+        if (studentUserId != null && studentUserId.isNotEmpty)
+          'studentUserId': studentUserId,
+        if (fromUtc != null) 'fromUtc': fromUtc.toIso8601String(),
+        if (toUtc != null) 'toUtc': toUtc.toIso8601String(),
+      };
 
   // Veli: kendi çocuklarının finans hesapları + ödeme.
   Future<List<Map<String, dynamic>>> getParentChildrenFinance() async {

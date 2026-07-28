@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../services/app_settings_api_service.dart';
+import '../services/institution_profile_api_service.dart';
 import '../widgets/admin_ui.dart';
 
 class AdminSettingsPage extends StatefulWidget {
@@ -12,9 +13,18 @@ class AdminSettingsPage extends StatefulWidget {
 }
 
 class _AdminSettingsPageState extends State<AdminSettingsPage> {
+  // Kurum künyesi belgelerde kullanıldığı için kuruma özel uçta tutulur;
+  // kapasite ve otomasyon tercihleri genel ayarlarda kalır.
   final _schoolNameController = TextEditingController();
   final _mailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _districtController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _websiteController = TextEditingController();
+  final _taxOfficeController = TextEditingController();
+  final _taxNumberController = TextEditingController();
+  final _footerNoteController = TextEditingController();
   final _quotaController = TextEditingController();
 
   bool autoReports = true;
@@ -36,6 +46,13 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     _schoolNameController.dispose();
     _mailController.dispose();
     _phoneController.dispose();
+    _addressController.dispose();
+    _districtController.dispose();
+    _cityController.dispose();
+    _websiteController.dispose();
+    _taxOfficeController.dispose();
+    _taxNumberController.dispose();
+    _footerNoteController.dispose();
     _quotaController.dispose();
     super.dispose();
   }
@@ -49,11 +66,19 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       final items = await AppSettingsApiService.instance.fetchAll(
         category: 'institution',
       );
+      final profile = await InstitutionProfileApiService.instance.fetch();
       if (!mounted) return;
       final map = {for (final item in items) item.key: item.value};
-      _schoolNameController.text = map['institution_name'] ?? '';
-      _mailController.text = map['institution_email'] ?? '';
-      _phoneController.text = map['institution_phone'] ?? '';
+      _schoolNameController.text = '${profile['name'] ?? ''}';
+      _mailController.text = '${profile['email'] ?? ''}';
+      _phoneController.text = '${profile['phone'] ?? ''}';
+      _addressController.text = '${profile['address'] ?? ''}';
+      _districtController.text = '${profile['district'] ?? ''}';
+      _cityController.text = '${profile['city'] ?? ''}';
+      _websiteController.text = '${profile['website'] ?? ''}';
+      _taxOfficeController.text = '${profile['taxOffice'] ?? ''}';
+      _taxNumberController.text = '${profile['taxNumber'] ?? ''}';
+      _footerNoteController.text = '${profile['documentFooterNote'] ?? ''}';
       _quotaController.text = map['institution_quota'] ?? '';
       autoReports = map['auto_reports'] != 'false';
       parentNotifications = map['parent_notifications'] != 'false';
@@ -74,28 +99,19 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       _error = null;
     });
     try {
+      await InstitutionProfileApiService.instance.save({
+        'name': _schoolNameController.text.trim(),
+        'address': _addressController.text.trim(),
+        'district': _districtController.text.trim(),
+        'city': _cityController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'email': _mailController.text.trim(),
+        'website': _websiteController.text.trim(),
+        'taxOffice': _taxOfficeController.text.trim(),
+        'taxNumber': _taxNumberController.text.trim(),
+        'documentFooterNote': _footerNoteController.text.trim(),
+      });
       await AppSettingsApiService.instance.upsert([
-        {
-          'key': 'institution_name',
-          'value': _schoolNameController.text.trim(),
-          'type': 'string',
-          'category': 'institution',
-          'description': 'Kurum adı',
-        },
-        {
-          'key': 'institution_email',
-          'value': _mailController.text.trim(),
-          'type': 'string',
-          'category': 'institution',
-          'description': 'Kurumsal e-posta',
-        },
-        {
-          'key': 'institution_phone',
-          'value': _phoneController.text.trim(),
-          'type': 'string',
-          'category': 'institution',
-          'description': 'Telefon',
-        },
         {
           'key': 'institution_quota',
           'value': _quotaController.text.trim(),
@@ -129,7 +145,9 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Kurum ayarları kaydedildi.'.tr),
+          content: Text(
+            'Kurum künyesi kaydedildi; belgelerde bu bilgiler görünecek.'.tr,
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -203,11 +221,34 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                 AdminPanel(
                   child: Column(
                     children: [
+                      // Belgelerin (ekstre/makbuz) başlığında görünen künye.
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Kurum Künyesi — belge başlığı'.tr,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       _field('Kurum Adi', _schoolNameController),
+                      const SizedBox(height: 12),
+                      _field('Adres', _addressController),
+                      const SizedBox(height: 12),
+                      _field('İlçe', _districtController),
+                      const SizedBox(height: 12),
+                      _field('İl', _cityController),
+                      const SizedBox(height: 12),
+                      _field('Telefon', _phoneController),
                       const SizedBox(height: 12),
                       _field('Kurumsal E-posta', _mailController),
                       const SizedBox(height: 12),
-                      _field('Telefon', _phoneController),
+                      _field('Web sitesi', _websiteController),
+                      const SizedBox(height: 12),
+                      _field('Vergi dairesi', _taxOfficeController),
+                      const SizedBox(height: 12),
+                      _field('Vergi / TC kimlik no', _taxNumberController),
+                      const SizedBox(height: 12),
+                      _field('Belge alt notu', _footerNoteController),
                       const SizedBox(height: 12),
                       _field('Öğrenci Kapasitesi', _quotaController),
                       const SizedBox(height: 16),

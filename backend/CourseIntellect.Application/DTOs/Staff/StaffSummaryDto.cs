@@ -22,5 +22,7 @@ public sealed record StaffSummaryDto(
     string StartDate,
     // Kullanıcı hesabının kimliği (şube sorumlusu seçimi vb. kullanıcı-bazlı atamalar için).
     Guid UserId = default,
-    string PhotoUrl = ""
+    string PhotoUrl = "",
+    Guid? BranchId = null,
+    Guid? CustomRoleId = null
 );

@@ -710,4 +710,22 @@ export const TR_EN_EXT = {
   'Ücret kalemleri': 'Fee items', 'Ücret kalemi ekle': 'Add fee item', 'Tahsilat ve ücret kalemi': 'Collection and fee item',
   'Taksit planı': 'Installment plan', 'Taksit tutarı': 'Installment amount', 'Ödemelerim': 'My Payments',
   'gecikmiş taksit': 'overdue installment', 'Gecikmiş taksit': 'Overdue installment', 'Ücretsiz': 'Free',
+
+  // ── Cari hesap ekstresi ──
+  'Cari hesap ekstresi': 'Account statement', 'Ekstre İndir': 'Download Statement',
+  'Ekstre (PDF)': 'Statement (PDF)', 'Ekstreyi Önizle': 'Preview Statement',
+  'Önizle & Yazdır': 'Preview & Print', 'Ekstre hazırlanıyor…': 'Preparing statement…',
+  'Ekstre indirildi': 'Statement downloaded', 'Ekstre hazırlanamadı': 'Statement could not be prepared',
+  'Ekstre açılamadı': 'Statement could not be opened', 'Cari Hesap Ekstresi': 'Account Statement',
+
+  // ── Kurum künyesi (belge başlığı) ──
+  'Kurum Künyesi': 'Institution Details', 'Kurum Künyesini Düzenle': 'Edit Institution Details',
+  'Belgelerde görünen kurum bilgileri': 'Institution details shown on documents',
+  'Ekstre ve makbuz başlığı': 'Statement and receipt header',
+  'Kurum Bilgileri': 'Institution Information', 'Belge Başlığı Önizleme': 'Document Header Preview',
+  'Kurum adı': 'Institution name', 'Belge alt notu': 'Document footer note',
+  'Vergi dairesi': 'Tax office', 'Vergi / TC kimlik no': 'Tax / national ID number',
+  'Web sitesi': 'Website', 'Künyeyi Kaydet': 'Save Details',
+  'Kurum künyesi kaydedildi': 'Institution details saved', 'Henüz kaydedilmedi': 'Not saved yet',
+  'Kaydedildi': 'Saved',
 };

@@ -31,4 +31,6 @@ public sealed record UpdateStaffAssignmentRequest(
     Guid? BranchId,
     Guid? CustomRoleId,
     // true gönderilirse özel rol ataması kaldırılır (CustomRoleId=null ile karışmasın diye ayrı bayrak).
-    bool ClearCustomRole = false);
+    bool ClearCustomRole = false,
+    // true gönderilirse mevcut şube kapsamı kaldırılır.
+    bool ClearBranch = false);

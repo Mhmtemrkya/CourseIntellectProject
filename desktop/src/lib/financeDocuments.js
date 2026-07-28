@@ -10,7 +10,11 @@ export function parseFinanceMoney(value) {
 }
 
 export function formatCurrency(value) {
-  return `₺${parseFinanceMoney(value).toLocaleString('tr-TR')}`;
+  const amount = parseFinanceMoney(value);
+  return `${amount.toLocaleString('tr-TR', {
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })} TL`;
 }
 
 export function normalizeFinanceText(value) {
@@ -35,6 +39,19 @@ export function downloadBlob(filename, content, type = 'text/plain;charset=utf-8
   const needsBom = /charset=utf-8/i.test(type) || /csv/i.test(type);
   const payload = needsBom ? ['\uFEFF', content] : [content];
   const blob = new Blob(payload, { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Sunucudan hazır gelen dosyayı (PDF, xlsx…) olduğu gibi indirir. downloadBlob
+ * metin içeriği için BOM eklediğinden ikili dosyalarda bu yardımcı kullanılır.
+ */
+export function downloadFileBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;

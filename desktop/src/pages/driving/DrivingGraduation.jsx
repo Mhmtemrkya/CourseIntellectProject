@@ -6,10 +6,12 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
 import { useToast } from '../../hooks/use-toast';
 import {
   approveDrivingGraduationAction,
   downloadDrivingCertificate,
+  fetchDrivingCertificateDraft,
   fetchDrivingGraduationChecklist,
   fetchDrivingGraduationOverview,
   forceGraduateDrivingStudent,
@@ -38,6 +40,64 @@ const DELIVERY_LABELS = { NotDelivered: 'Teslim edilmedi', Ready: 'Teslime hazı
 const ACTION_STATUS_LABELS = { Pending: 'Onay bekliyor', FirstApproved: 'İlk onay verildi', Approved: 'Onaylandı', Rejected: 'Reddedildi', Applied: 'Uygulandı', Cancelled: 'İptal edildi' };
 const CERTIFICATE_TYPES = ['Completion', 'Achievement'];
 const label = (map, value) => map[value] || value || '—';
+const CERTIFICATE_FIELD_SECTIONS = [
+  {
+    title: 'Kurum bilgileri',
+    fields: [
+      ['institutionName', 'Resmî kurum adı'],
+      ['institutionCode', 'MEBBİS kurum kodu'],
+      ['institutionCity', 'Kurum ili'],
+      ['institutionDistrict', 'Kurum ilçesi'],
+    ],
+  },
+  {
+    title: 'Kursiyer bilgileri',
+    fields: [
+      ['studentName', 'Adı soyadı'],
+      ['identityNumber', 'T.C. kimlik numarası'],
+      ['fatherName', 'Baba adı'],
+      ['motherName', 'Ana adı'],
+      ['birthPlace', 'Doğum yeri'],
+      ['birthYear', 'Doğum yılı'],
+      ['licenseClass', 'İstenen sertifika sınıfı'],
+    ],
+  },
+  {
+    title: 'Varsa daha önce aldığı sürücü belgesi',
+    fields: [
+      ['existingLicenseCity', 'Verildiği il'],
+      ['existingLicenseDate', 'Belge tarihi'],
+      ['existingLicenseNumber', 'Belge numarası'],
+      ['existingLicenseClasses', 'Belge sınıfları'],
+    ],
+  },
+  {
+    title: 'Eğitim, sınav ve onay',
+    fields: [
+      ['courseStartedAtUtc', 'Kurs başlangıç tarihi', 'date'],
+      ['examPassedAtUtc', 'Sınavı geçtiği tarih', 'date'],
+      ['issuedAtUtc', 'Belge düzenleme tarihi', 'date'],
+      ['directorName', 'Kurum müdürü adı'],
+      ['directorTitle', 'Belgedeki unvan'],
+    ],
+  },
+];
+const CERTIFICATE_DATE_FIELDS = new Set(['courseStartedAtUtc', 'examPassedAtUtc', 'issuedAtUtc']);
+
+function dateInputValue(value) {
+  if (!value) return '';
+  const match = String(value).match(/^\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : '';
+}
+
+function certificateRequestData(data) {
+  return Object.fromEntries(Object.entries(data || {}).map(([key, value]) => [
+    key,
+    CERTIFICATE_DATE_FIELDS.has(key)
+      ? (dateInputValue(value) ? `${dateInputValue(value)}T00:00:00.000Z` : null)
+      : String(value ?? ''),
+  ]));
+}
 
 export default function DrivingGraduation() {
   const { toast } = useToast();
@@ -49,6 +109,7 @@ export default function DrivingGraduation() {
   const [forceTarget, setForceTarget] = useState(null);
   const [forceReason, setForceReason] = useState('');
   const [documentPreview, setDocumentPreview] = useState(null);
+  const [certificateForm, setCertificateForm] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,10 +164,29 @@ export default function DrivingGraduation() {
     }
   }
 
-  async function createAndOpenDocument(student, type) {
+  async function openCertificateForm(student, type) {
+    setCertificateForm({ student, type, loading: true, data: {}, missingFields: [] });
+    try {
+      const draft = await fetchDrivingCertificateDraft(student.id);
+      setCertificateForm({
+        student,
+        type,
+        loading: false,
+        data: draft?.data || {},
+        missingFields: draft?.missingFields || [],
+        logoConfigured: Boolean(draft?.logoConfigured),
+        signatureConfigured: Boolean(draft?.signatureConfigured),
+      });
+    } catch (error) {
+      setCertificateForm(null);
+      toast({ title: 'Belge bilgileri alınamadı', description: error.message, variant: 'destructive' });
+    }
+  }
+
+  async function createAndOpenDocument(student, type, documentData) {
     setSaving(true);
     try {
-      const created = await issueDrivingCertificate(student.id, type);
+      const created = await issueDrivingCertificate(student.id, type, certificateRequestData(documentData));
       const certificate = {
         ...created,
         id: created.id,
@@ -117,6 +197,7 @@ export default function DrivingGraduation() {
         deliveryStatus: 'Ready',
         issuedAtUtc: new Date().toISOString(),
       };
+      setCertificateForm(null);
       await openDocument(certificate);
       toast({ title: `${CERT_TYPE_LABELS[type]} oluşturuldu` });
       await load();
@@ -152,6 +233,12 @@ export default function DrivingGraduation() {
   if (loading) return <DrivingLoading />;
 
   const graduatedCount = (data.graduations || []).filter((item) => item.status === 'Graduated').length;
+  const certificateEmptyFieldCount = certificateForm?.loading
+    ? 0
+    : CERTIFICATE_FIELD_SECTIONS
+      .flatMap((section) => section.fields)
+      .filter(([key]) => !String(certificateForm?.data?.[key] ?? '').trim())
+      .length;
   const pendingRevocations = (data.actionRequests || []).filter((item) =>
     item.actionType === 'GraduationRevocation' && ['Pending', 'FirstApproved'].includes(item.status)).length;
   const canPrintCertificate = data.canPrintCertificate === true;
@@ -267,7 +354,7 @@ export default function DrivingGraduation() {
                                   <Eye className="mr-2 h-4 w-4" /> Görüntüle
                                 </Button>
                               ) : !certificate && canPrintCertificate && can(DRIVING.certificateIssue) ? (
-                                <Button size="sm" variant="outline" className="w-full" disabled={saving} onClick={() => createAndOpenDocument(student, type)}>
+                                <Button size="sm" variant="outline" className="w-full" disabled={saving} onClick={() => openCertificateForm(student, type)}>
                                   <FileBadge2 className="mr-2 h-4 w-4" /> Oluştur ve Görüntüle
                                 </Button>
                               ) : (
@@ -369,6 +456,97 @@ export default function DrivingGraduation() {
           );
         })}
       </div>
+
+      <Dialog
+        open={!!certificateForm}
+        onOpenChange={(open) => { if (!open && !saving) setCertificateForm(null); }}
+      >
+        <DialogContent className="max-h-[94vh] w-[96vw] max-w-4xl overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileBadge2 className="h-5 w-5 text-violet-600" />
+              {label(CERT_TYPE_LABELS, certificateForm?.type)} Bilgileri
+            </DialogTitle>
+          </DialogHeader>
+
+          {certificateForm?.loading ? (
+            <div className="grid min-h-64 place-items-center">
+              <div className="text-center">
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-brand-primary" />
+                <p className="mt-3 text-sm text-muted-foreground">Kayıtlı belge bilgileri hazırlanıyor…</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="max-h-[68vh] space-y-5 overflow-y-auto pr-2">
+                <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.06] p-3 text-sm">
+                  <b>{certificateForm?.student?.fullName}</b> için sistemde bulunan bilgiler getirildi.
+                  Eksik alanları elle yazabilir, gerekli değilse boş bırakabilirsiniz. Boş alanlar belge üzerinde boş görünür.
+                  {certificateEmptyFieldCount > 0 && (
+                    <p className="mt-1 font-semibold text-amber-700">
+                      {certificateEmptyFieldCount} metin veya tarih alanı boş bırakılmış.
+                    </p>
+                  )}
+                </div>
+
+                {CERTIFICATE_FIELD_SECTIONS.map((section) => (
+                  <section key={section.title} className="space-y-3 rounded-xl border p-4">
+                    <h3 className="font-black">{section.title}</h3>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {section.fields.map(([key, fieldLabel, type = 'text']) => {
+                        const value = certificateForm?.data?.[key];
+                        const empty = !String(value ?? '').trim();
+                        return (
+                          <label key={key} className="text-sm font-semibold">
+                            <span className="flex items-center justify-between gap-2">
+                              {fieldLabel}
+                              {empty && <span className="text-[10px] font-medium text-amber-600">Boş bırakılabilir</span>}
+                            </span>
+                            <Input
+                              className={`mt-1 ${empty ? 'border-amber-400/70' : ''}`}
+                              type={type}
+                              value={type === 'date' ? dateInputValue(value) : (value ?? '')}
+                              maxLength={type === 'date' ? undefined : 200}
+                              onChange={(event) => setCertificateForm((current) => ({
+                                ...current,
+                                data: { ...current.data, [key]: event.target.value },
+                              }))}
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+
+                {(!certificateForm?.logoConfigured || !certificateForm?.signatureConfigured) && (
+                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-800">
+                    {!certificateForm?.logoConfigured && <p>Kurum logosu kayıtlı değil; belgede logo alanı boş/yer tutucu olarak oluşturulur.</p>}
+                    {!certificateForm?.signatureConfigured && <p>Müdür imzası kayıtlı değil; imza alanı boş bırakılarak belge oluşturulur.</p>}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="border-t pt-4">
+                <Button variant="outline" disabled={saving} onClick={() => setCertificateForm(null)}>Vazgeç</Button>
+                <Button
+                  disabled={saving}
+                  onClick={() => createAndOpenDocument(
+                    certificateForm.student,
+                    certificateForm.type,
+                    certificateForm.data,
+                  )}
+                >
+                  {saving
+                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    : <FileBadge2 className="mr-2 h-4 w-4" />}
+                  {certificateEmptyFieldCount > 0 ? 'Bu Bilgilerle Oluştur' : 'Belgeyi Oluştur'}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!forceTarget} onOpenChange={(open) => { if (!open && !saving) setForceTarget(null); }}>
         <DialogContent className="max-w-lg">

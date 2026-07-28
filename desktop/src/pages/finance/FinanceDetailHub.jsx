@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
+import { formatCurrency } from '../../lib/financeDocuments';
 
 export default function FinanceDetailHub() {
   const navigate = useNavigate();
@@ -63,7 +64,7 @@ export default function FinanceDetailHub() {
                     <p className="font-medium">{item.name}</p>
                     <p className="text-sm text-muted-foreground">{item.status}</p>
                   </div>
-                  <Badge variant="outline">₺{Number(item.value || 0).toLocaleString('tr-TR')}</Badge>
+                  <Badge variant="outline">{formatCurrency(item.value)}</Badge>
                 </button>
               ))}
             </CardContent>

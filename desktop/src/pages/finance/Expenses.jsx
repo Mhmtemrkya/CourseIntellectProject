@@ -23,7 +23,7 @@ const CATEGORIES = [
   { value: 'Other', label: 'Diğer' },
 ];
 const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map((x) => [x.value, x.label]));
-const money = (v) => `₺${Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (v) => `${Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`;
 const dateTime = (v) => (v ? new Date(v).toLocaleString('tr-TR') : '—');
 const dateOnly = (v) => (v ? new Date(v).toLocaleDateString('tr-TR') : '—');
 const todayInput = () => new Date().toISOString().slice(0, 10);
@@ -88,7 +88,7 @@ function ExpenseModal({ initial, vehicles, onClose, onSaved }) {
             <Input className="mt-1" maxLength={200} value={form.title} onChange={(e) => set({ title: e.target.value })} placeholder="Örn: Kira / elektrik / mazot" />
           </label>
           <div className="grid grid-cols-2 gap-3">
-            <label className="text-xs font-bold text-muted-foreground">Tutar (₺)
+            <label className="text-xs font-bold text-muted-foreground">Tutar (TL)
               <Input type="number" min="0" step="0.01" className="mt-1 text-lg font-bold" value={form.amount} onChange={(e) => set({ amount: e.target.value })} />
             </label>
             {hasVehicles ? (

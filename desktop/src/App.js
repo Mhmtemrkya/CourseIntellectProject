@@ -27,6 +27,7 @@ import Questions from "./pages/Questions";
 import Exams from "./pages/Exams";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import InstitutionProfile from "./pages/settings/InstitutionProfile";
 
 // Chat
 import Chat from "./pages/chat/Chat";
@@ -317,6 +318,8 @@ function App() {
               <Route path="/exams" element={<Exams />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
+              {/* Belge künyesi (ekstre/makbuz başlığı) — Ayarlar içinden açılır. */}
+              <Route path="/settings/institution" element={<InstitutionProfile />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/admin/academics" element={<AdminAcademics />} />
               <Route path="/admin/exam-papers" element={<TeacherReports />} />

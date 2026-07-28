@@ -5,7 +5,7 @@ import { useToast } from '../../hooks/use-toast';
 import { collectDownPayment, fetchPendingDownPayments } from '../../lib/api/modules';
 
 const money = (value, currency = 'TRY') =>
-  `${Number(value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency === 'TRY' ? '₺' : currency}`;
+  `${Number(value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency === 'TRY' ? 'TL' : currency}`;
 
 /**
  * Peşinatı beklenen (henüz tahsil edilmemiş) sözleşmeleri listeler ve tek tıkla

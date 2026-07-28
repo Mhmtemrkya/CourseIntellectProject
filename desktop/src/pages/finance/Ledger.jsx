@@ -43,7 +43,8 @@ const itemVariants = {
 };
 
 function formatCurrency(val) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Number(val) || 0);
+  const amount = Number(val) || 0;
+  return `${amount.toLocaleString('tr-TR', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 2 })} TL`;
 }
 
 function normalizeLedgerKey(value) {
@@ -446,11 +447,11 @@ export default function Ledger() {
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Toplam Ücret (₺) *</Label>
+                <Label>Toplam Ücret (TL) *</Label>
                 <Input type="number" min="0" value={enrollForm.grossAmount} onChange={(e) => setEnrollForm((p) => ({ ...p, grossAmount: e.target.value }))} placeholder="Örn: 60000" />
               </div>
               <div>
-                <Label>İndirim (₺)</Label>
+                <Label>İndirim (TL)</Label>
                 <Input type="number" min="0" value={enrollForm.discountAmount} onChange={(e) => setEnrollForm((p) => ({ ...p, discountAmount: e.target.value }))} placeholder="Örn: 5000" />
               </div>
               <div className="col-span-2">
@@ -458,7 +459,7 @@ export default function Ledger() {
                 <Input value={enrollForm.discountReason} onChange={(e) => setEnrollForm((p) => ({ ...p, discountReason: e.target.value }))} placeholder="Kardeş / erken kayıt vb." maxLength={200} />
               </div>
               <div>
-                <Label>Peşinat (₺)</Label>
+                <Label>Peşinat (TL)</Label>
                 <Input type="number" min="0" value={enrollForm.downPayment} onChange={(e) => setEnrollForm((p) => ({ ...p, downPayment: e.target.value }))} placeholder="Örn: 10000" />
               </div>
               <div>

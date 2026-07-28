@@ -16,11 +16,29 @@ public sealed class AccountingService(
     CourseIntellectDbContext dbContext,
     IStudentFinanceService studentFinanceService) : IAccountingService
 {
-    public async Task<AccountingDashboardDto> GetDashboardAsync(CancellationToken cancellationToken = default)
+    public async Task<AccountingDashboardDto> GetDashboardAsync(
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null,
+        CancellationToken cancellationToken = default)
     {
-        var invoices = await dbContext.AccountingInvoices.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
-        var salaries = await dbContext.AccountingSalaries.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
-        var approvals = await dbContext.AccountingApprovals.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
+        var invoiceQuery = dbContext.AccountingInvoices.AsNoTracking().AsQueryable();
+        var salaryQuery = dbContext.AccountingSalaries.AsNoTracking().AsQueryable();
+        var approvalQuery = dbContext.AccountingApprovals.AsNoTracking().AsQueryable();
+        if (fromUtc.HasValue)
+        {
+            invoiceQuery = invoiceQuery.Where(x => x.IssueDateUtc >= fromUtc.Value);
+            salaryQuery = salaryQuery.Where(x => x.CreatedAtUtc >= fromUtc.Value);
+            approvalQuery = approvalQuery.Where(x => x.UpdatedAtUtc >= fromUtc.Value);
+        }
+        if (toUtc.HasValue)
+        {
+            invoiceQuery = invoiceQuery.Where(x => x.IssueDateUtc < toUtc.Value);
+            salaryQuery = salaryQuery.Where(x => x.CreatedAtUtc < toUtc.Value);
+            approvalQuery = approvalQuery.Where(x => x.UpdatedAtUtc < toUtc.Value);
+        }
+        var invoices = await invoiceQuery.OrderByDescending(x => x.IssueDateUtc).Select(x => ToDto(x)).ToListAsync(cancellationToken);
+        var salaries = await salaryQuery.OrderByDescending(x => x.CreatedAtUtc).Select(x => ToDto(x)).ToListAsync(cancellationToken);
+        var approvals = await approvalQuery.OrderByDescending(x => x.UpdatedAtUtc).Select(x => ToDto(x)).ToListAsync(cancellationToken);
         var notifications = await dbContext.AccountingNotifications.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
         var auditLogs = await dbContext.AccountingAuditLogs.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
 
@@ -35,9 +53,10 @@ public sealed class AccountingService(
 
         // Tahsilat listesi/dönem analizleri için tüm ödemeler döner (sabit 500 cap'i
         // kaldırıldı; aksi halde eski dönemler eksik/sıfır görünüyordu).
-        var payments = await dbContext.FinancePayments.AsNoTracking()
-            .OrderByDescending(x => x.PaidAtUtc)
-            .ToListAsync(cancellationToken);
+        var paymentQuery = dbContext.FinancePayments.AsNoTracking().AsQueryable();
+        if (fromUtc.HasValue) paymentQuery = paymentQuery.Where(x => x.PaidAtUtc >= fromUtc.Value);
+        if (toUtc.HasValue) paymentQuery = paymentQuery.Where(x => x.PaidAtUtc < toUtc.Value);
+        var payments = await paymentQuery.OrderByDescending(x => x.PaidAtUtc).ToListAsync(cancellationToken);
 
         // "Kim, hangi şubeden tahsil etti" — şube ve tahsil eden personel adlarını çöz.
         var collectionBranchIds = payments.Where(x => x.BranchId != null).Select(x => x.BranchId!.Value).Distinct().ToList();
@@ -66,9 +85,10 @@ public sealed class AccountingService(
             payment.ExternalReference)).ToList();
 
         var now = DateTime.UtcNow;
-        var financeInstallments = await dbContext.FinanceInstallments.AsNoTracking()
-            .OrderBy(x => x.DueDateUtc)
-            .ToListAsync(cancellationToken);
+        var installmentQuery = dbContext.FinanceInstallments.AsNoTracking().AsQueryable();
+        if (fromUtc.HasValue) installmentQuery = installmentQuery.Where(x => x.DueDateUtc >= fromUtc.Value);
+        if (toUtc.HasValue) installmentQuery = installmentQuery.Where(x => x.DueDateUtc < toUtc.Value);
+        var financeInstallments = await installmentQuery.OrderBy(x => x.DueDateUtc).ToListAsync(cancellationToken);
         var installments = financeInstallments.Select(item => new AccountingInstallmentDto(
             item.Id.ToString(),
             item.StudentName,

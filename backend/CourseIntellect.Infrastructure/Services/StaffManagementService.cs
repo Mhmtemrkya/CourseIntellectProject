@@ -71,7 +71,9 @@ public sealed class StaffManagementService(
                 staff.Note,
                 staff.StartDate,
                 staff.UserId,
-                staff.PhotoUrl))
+                staff.PhotoUrl,
+                users[staff.UserId].BranchId,
+                users[staff.UserId].CustomRoleId))
             .ToList();
     }
 
@@ -341,16 +343,30 @@ public sealed class StaffManagementService(
 
     public async Task<StaffSummaryDto> UpdateStaffAsync(Guid staffId, UpdateStaffRequest request, CancellationToken cancellationToken = default)
     {
-        var staff = await dbContext.Staff.FirstOrDefaultAsync(x => x.Id == staffId, cancellationToken)
+        var tenantId = ResolveCurrentTenantId()
+            ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+        var staff = await dbContext.Staff
+            .FirstOrDefaultAsync(x => x.Id == staffId && x.TenantId == tenantId, cancellationToken)
             ?? throw new InvalidOperationException("Personel bulunamadı.");
 
-        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == staff.UserId, cancellationToken)
+        var user = await dbContext.Users
+            .FirstOrDefaultAsync(x => x.Id == staff.UserId && x.TenantId == tenantId, cancellationToken)
             ?? throw new InvalidOperationException("Kullanıcı bulunamadı.");
+
+        var phone = (request.Phone ?? string.Empty).Trim();
+        if (phone.Length > 0 && !SchoolRegistrationRules.IsValidTrMobile(phone))
+        {
+            throw new InvalidOperationException("Telefon +90 5XX XXX XX XX biçiminde olmalıdır.");
+        }
+        if (request.ChildCount is < 0 or > 20)
+        {
+            throw new InvalidOperationException("Çocuk sayısı 0 ile 20 arasında olmalıdır.");
+        }
 
         var fullName = PersonNameFormatter.FormatFullName(request.FullName);
         staff.FullName = fullName;
         staff.DepartmentOrBranch = request.DepartmentOrBranch;
-        staff.Phone = request.Phone;
+        staff.Phone = phone;
         staff.Email = request.Email;
         staff.Education = request.Education;
         staff.Campus = request.Campus;
@@ -367,6 +383,13 @@ public sealed class StaffManagementService(
         if (request.PhotoUrl is not null) user.PhotoUrl = request.PhotoUrl.Trim();
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Personel bilgileri güncellendi",
+            "Staff",
+            "StaffProfile",
+            staff.Id.ToString(),
+            $"{staff.FullName} ({user.Username}) personel kaydı güncellendi.",
+            cancellationToken);
 
         return new StaffSummaryDto(
             staff.Id,
@@ -389,7 +412,9 @@ public sealed class StaffManagementService(
             staff.Note,
             staff.StartDate,
             staff.UserId,
-            staff.PhotoUrl);
+            staff.PhotoUrl,
+            user.BranchId,
+            user.CustomRoleId);
     }
 
     private async Task EnsureTcNoAvailableAsync(Guid tenantId, string tcNo, Guid? excludedUserId, CancellationToken cancellationToken)
@@ -469,7 +494,11 @@ public sealed class StaffManagementService(
         }
 
         // Şube değişimi (opsiyonel) — kuruma ait olmalı. Şube müdürü şubesiz kalamaz.
-        if (request.BranchId is Guid branchId)
+        if (request.ClearBranch)
+        {
+            user.BranchId = null;
+        }
+        else if (request.BranchId is Guid branchId)
         {
             if (!await dbContext.OrgUnits.AnyAsync(x => x.Id == branchId, cancellationToken))
             {

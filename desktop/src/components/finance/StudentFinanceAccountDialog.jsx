@@ -15,7 +15,8 @@ import {
 } from '../../lib/api/modules';
 
 function tl(value, currency = 'TRY') {
-  return `${Number(value || 0).toLocaleString('tr-TR')} ${currency === 'TRY' ? '₺' : currency}`;
+  const amount = Number(value || 0);
+  return `${amount.toLocaleString('tr-TR', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 2 })} ${currency === 'TRY' ? 'TL' : currency}`;
 }
 
 const STATUS_META = {

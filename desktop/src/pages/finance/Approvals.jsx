@@ -24,7 +24,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { fetchAccountingDashboard, updateApprovalStatus } from '../../lib/api/modules';
-import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
+import { formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -215,7 +215,7 @@ export default function Approvals() {
           [stats.pending, 'Bekleyen', Clock, 'text-yellow-600'],
           [stats.approved, 'Onaylanan', CheckCircle, 'text-green-600'],
           [stats.rejected, 'Reddedilen', XCircle, 'text-red-600'],
-          [`₺${stats.totalAmount.toLocaleString('tr-TR')}`, 'Bekleyen Tutar', AlertTriangle, 'text-brand-primary'],
+          [formatCurrency(stats.totalAmount), 'Bekleyen Tutar', AlertTriangle, 'text-brand-primary'],
         ].map(([value, label, Icon, color]) => (
           <Card key={label}>
             <CardContent className="p-4 flex items-center gap-4">

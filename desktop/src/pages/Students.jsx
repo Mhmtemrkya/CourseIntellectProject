@@ -6,6 +6,8 @@ import {
   Plus,
   MoreHorizontal,
   Eye,
+  Pencil,
+  Save,
   Mail,
   Phone,
   ChevronUp,
@@ -484,6 +486,152 @@ function AddStudentDialog({
   );
 }
 
+function EditStudentDialog({
+  student, open, onOpenChange, classes, onUpdated,
+}) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(() => buildStudentUpdatePayload(student || {}));
+
+  useEffect(() => {
+    if (!student || !open) return;
+    setForm({
+      ...buildStudentUpdatePayload(student),
+      birthDate: String(student.birthDate || '').slice(0, 10),
+    });
+  }, [open, student]);
+
+  const handleSave = async () => {
+    if (!student) return;
+    if (!form.fullName.trim() || !form.parentName.trim()) {
+      toast({ title: 'Eksik bilgi', description: 'Ad soyad ve veli adı zorunludur.', variant: 'destructive' });
+      return;
+    }
+    if (!isValidTcKimlik(form.tcNo)) {
+      toast({ title: 'Geçersiz TC kimlik no', description: 'Geçerli bir TC kimlik numarası girin (11 haneli).', variant: 'destructive' });
+      return;
+    }
+    if (form.parentPhone && !isValidTrPhone(form.parentPhone)) {
+      toast({ title: 'Geçersiz telefon', description: 'Veli telefonu +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' });
+      return;
+    }
+    if (form.parentEmail && !isValidEmail(form.parentEmail)) {
+      toast({ title: 'Geçersiz e-posta', description: 'Geçerli bir veli e-posta adresi girin.', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await updateStudent(student.id, {
+        ...form,
+        fullName: form.fullName.trim(),
+        tcNo: form.tcNo.trim(),
+        parentName: form.parentName.trim(),
+        parentPhone: form.parentPhone.trim(),
+        parentEmail: form.parentEmail.trim(),
+        address: form.address.trim(),
+        note: form.note.trim(),
+      });
+      toast({ title: 'Öğrenci bilgileri güncellendi.' });
+      onOpenChange(false);
+      await onUpdated();
+    } catch (err) {
+      toast({ title: 'Öğrenci güncellenemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const classOptions = [...new Set([form.className, ...classes].filter(Boolean))];
+
+  return (
+    <Dialog open={open} onOpenChange={(value) => !saving && onOpenChange(value)}>
+      <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-3xl overflow-y-auto sm:w-full">
+        <DialogHeader>
+          <DialogTitle>Öğrenci Düzenle — {student?.fullName}</DialogTitle>
+          <DialogDescription>Öğrenci, eğitim ve veli bilgilerini güncelleyin.</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-1 gap-4 py-2 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Öğrenci Fotoğrafı</Label>
+            <PhotoCapture value={form.photoUrl} onChange={(photoUrl) => setForm((value) => ({ ...value, photoUrl }))} folder="student-photos" size={112} />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Ad Soyad *</Label>
+            <Input value={form.fullName} onChange={(e) => setForm((value) => ({ ...value, fullName: e.target.value }))} autoComplete="name" maxLength={100} />
+          </div>
+          <div className="space-y-2">
+            <Label>TC No *</Label>
+            <Input value={form.tcNo} onChange={(e) => setForm((value) => ({ ...value, tcNo: maskTcKimlik(e.target.value) }))} inputMode="numeric" maxLength={11} />
+          </div>
+          <div className="space-y-2">
+            <Label>Sınıf</Label>
+            <Select value={form.className || '__none__'} onValueChange={(value) => setForm((current) => ({ ...current, className: value === '__none__' ? '' : value }))}>
+              <SelectTrigger><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Sınıf atanmamış</SelectItem>
+                {classOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Mevcut Okul</Label>
+            <Input value={form.currentSchool} onChange={(e) => setForm((value) => ({ ...value, currentSchool: e.target.value }))} maxLength={150} />
+          </div>
+          <div className="space-y-2">
+            <Label>Okul No</Label>
+            <Input value={form.schoolNumber} readOnly className="bg-muted" />
+          </div>
+          <div className="space-y-2">
+            <Label>Doğum Tarihi</Label>
+            <Input type="date" value={form.birthDate} onChange={(e) => setForm((value) => ({ ...value, birthDate: e.target.value }))} />
+          </div>
+          <div className="space-y-2">
+            <Label>Eğitim Seviyesi</Label>
+            <Select value={form.programType || 'Lise'} onValueChange={(value) => setForm((current) => ({ ...current, programType: value }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Ilkokul">İlkokul</SelectItem>
+                <SelectItem value="Ortaokul">Ortaokul</SelectItem>
+                <SelectItem value="Lise">Lise</SelectItem>
+                <SelectItem value="Universite">Üniversite</SelectItem>
+                <SelectItem value="Mezun">Mezun</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Veli Adı *</Label>
+            <Input value={form.parentName} onChange={(e) => setForm((value) => ({ ...value, parentName: e.target.value }))} autoComplete="name" maxLength={100} />
+          </div>
+          <div className="space-y-2">
+            <Label>Veli Telefon</Label>
+            <Input value={form.parentPhone} onChange={(e) => setForm((value) => ({ ...value, parentPhone: maskTrPhone(e.target.value) }))} placeholder="+90 5XX XXX XX XX" inputMode="tel" maxLength={17} />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Veli E-posta</Label>
+            <Input type="email" value={form.parentEmail} onChange={(e) => setForm((value) => ({ ...value, parentEmail: maskEmail(e.target.value) }))} maxLength={254} />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Adres</Label>
+            <Input value={form.address} onChange={(e) => setForm((value) => ({ ...value, address: e.target.value }))} maxLength={300} />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Not</Label>
+            <Input value={form.note} onChange={(e) => setForm((value) => ({ ...value, note: e.target.value }))} maxLength={500} />
+          </div>
+        </div>
+        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Vazgeç</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            <Save className="mr-2 h-4 w-4" />
+            {saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Students() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -494,6 +642,7 @@ export default function Students() {
   const [sortField, setSortField] = useState('fullName');
   const [sortDirection, setSortDirection] = useState('asc');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [examResults, setExamResults] = useState([]);
@@ -766,9 +915,20 @@ export default function Students() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openDrawer(<StudentDetailDrawer student={student} onToggleStatus={handleToggleStudentStatus} onUpdated={loadStudents} />)}>
+                          <DropdownMenuItem onClick={(event) => {
+                            event.stopPropagation();
+                            openDrawer(<StudentDetailDrawer student={student} onToggleStatus={handleToggleStudentStatus} onUpdated={loadStudents} />);
+                          }}>
                             <Eye className="h-4 w-4 mr-2" /> Detay
                           </DropdownMenuItem>
+                          <FeatureGate module="students" action="edit">
+                            <DropdownMenuItem onClick={(event) => {
+                              event.stopPropagation();
+                              setEditingStudent(student);
+                            }}>
+                              <Pencil className="mr-2 h-4 w-4" /> Düzenle
+                            </DropdownMenuItem>
+                          </FeatureGate>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -781,6 +941,13 @@ export default function Students() {
       </Card>
 
       <AddStudentDialog open={dialogOpen} onOpenChange={setDialogOpen} classes={classes} onCreated={handleCreated} />
+      <EditStudentDialog
+        student={editingStudent}
+        open={Boolean(editingStudent)}
+        onOpenChange={(open) => !open && setEditingStudent(null)}
+        classes={classes}
+        onUpdated={loadStudents}
+      />
 
       <Dialog
         open={Boolean(activationStudent)}

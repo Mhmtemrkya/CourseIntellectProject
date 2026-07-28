@@ -192,7 +192,7 @@ function InvoiceCreateDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Toplam tutar (₺) *</Label>
+              <Label>Toplam tutar (TL) *</Label>
               <Input type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))} />
             </div>
             <div className="space-y-2">
@@ -672,7 +672,7 @@ export default function InvoicesReceipts() {
         {[
           [stats.totalInvoices, 'Toplam Fatura', FileText, 'text-brand-primary'],
           [stats.paidInvoices, 'Ödenen', CheckCircle, 'text-green-600'],
-          [`₺${stats.pendingAmount.toLocaleString('tr-TR')}`, 'Bekleyen', XCircle, 'text-yellow-600'],
+          [formatCurrency(stats.pendingAmount), 'Bekleyen', XCircle, 'text-yellow-600'],
           [stats.totalReceipts, 'Makbuz', FileText, 'text-brand-accent'],
         ].map(([value, label, Icon, color]) => (
           <motion.div variants={itemVariants} key={label}>
@@ -795,7 +795,7 @@ export default function InvoicesReceipts() {
                         </div>
                       </TableCell>
                       <TableCell>{invoice.category}</TableCell>
-                      <TableCell>₺{parseFinanceMoney(invoice.amount).toLocaleString('tr-TR')}</TableCell>
+                      <TableCell>{formatCurrency(invoice.amount)}</TableCell>
                       <TableCell>{getStatusBadge(statusFromInvoice(invoice))}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -844,7 +844,7 @@ export default function InvoicesReceipts() {
                       <TableCell className="font-mono text-sm">{receipt.id}</TableCell>
                       <TableCell className="font-medium">{receipt.name}</TableCell>
                       <TableCell>{receipt.className}</TableCell>
-                      <TableCell className="text-green-600">₺{parseFinanceMoney(receipt.amount).toLocaleString('tr-TR')}</TableCell>
+                      <TableCell className="text-green-600">{formatCurrency(receipt.amount)}</TableCell>
                       <TableCell><Badge variant="outline">{receipt.method}</Badge></TableCell>
                       <TableCell>{receipt.time}</TableCell>
                       <TableCell>

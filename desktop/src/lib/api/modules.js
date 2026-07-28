@@ -229,7 +229,8 @@ export const fetchDrivingGraduationOverview = () => api.get('/api/driving-school
 export const fetchDrivingGraduationChecklist = (profileId) => api.get(`/api/driving-school/graduation/students/${profileId}/checklist`);
 export const graduateDrivingStudent = (profileId, note = '') => api.post(`/api/driving-school/graduation/students/${profileId}/graduate`, { note });
 export const forceGraduateDrivingStudent = (profileId, reason) => api.post(`/api/driving-school/graduation/students/${profileId}/graduate-anyway`, { reason });
-export const issueDrivingCertificate = (profileId, type) => api.post(`/api/driving-school/graduation/students/${profileId}/certificates`, { type });
+export const fetchDrivingCertificateDraft = (profileId) => api.get(`/api/driving-school/graduation/students/${profileId}/certificate-draft`);
+export const issueDrivingCertificate = (profileId, type, data = null) => api.post(`/api/driving-school/graduation/students/${profileId}/certificates`, { type, data });
 export const updateDrivingCertificateDelivery = (id, payload) => api.put(`/api/driving-school/graduation/certificates/${id}/delivery`, payload);
 export const downloadDrivingCertificate = (id) => api.get(`/api/driving-school/graduation/certificates/${id}/download`, { responseType: 'blob' });
 export const fetchDrivingCertificateSettings = () => api.get('/api/driving-school/graduation/certificate-settings');
@@ -599,6 +600,37 @@ export async function fetchStudentFinanceAccount(params) {
   return response;
 }
 
+/**
+ * Kurum künyesi — ekstre/makbuz gibi belgelerin başlığında kullanılır. Kayıt
+ * yoksa mevcut kurum verisinden türetilmiş öneri döner (isConfigured=false).
+ */
+export async function fetchInstitutionProfile() {
+  const response = await api.get('/api/institution-profile');
+  return response;
+}
+
+export async function saveInstitutionProfile(payload) {
+  const response = await api.put('/api/institution-profile', payload);
+  return response;
+}
+
+/**
+ * Cari hesap ekstresi (JSON). Tarihler verilmezse ilk hareketten taksit planının
+ * sonuna kadar tüm geçmiş döner.
+ */
+export async function fetchStudentStatement(params) {
+  const response = await api.get('/api/student-finance/statement', { params });
+  return response;
+}
+
+/** Aynı ekstrenin kurum künyeli, baskıya uygun PDF çıktısı. */
+export function downloadStudentStatementPdf(params) {
+  return api.get('/api/student-finance/statement', {
+    params: { ...params, format: 'pdf' },
+    responseType: 'blob',
+  });
+}
+
 export async function recordFinancePayment(payload) {
   const response = await api.post('/api/student-finance/payments', payload);
   return response;
@@ -611,9 +643,11 @@ export async function fetchFinanceSummaries(className) {
   return Array.isArray(response) ? response : [];
 }
 
-export async function fetchFinanceDashboard(className) {
+export async function fetchFinanceDashboard(className, range = {}) {
+  const params = { ...range };
+  if (className) params.className = className;
   const response = await api.get('/api/student-finance/dashboard', {
-    params: className ? { className } : undefined,
+    params: Object.keys(params).length ? params : undefined,
   });
   return response;
 }
@@ -1281,8 +1315,10 @@ export async function fetchAdminAnalytics({ period = 'week', from, to } = {}) {
   return response;
 }
 
-export async function fetchAccountingDashboard() {
-  const response = await api.get('/api/accounting/dashboard');
+export async function fetchAccountingDashboard(range = {}) {
+  const response = await api.get('/api/accounting/dashboard', {
+    params: Object.keys(range).length ? range : undefined,
+  });
   return response;
 }
 

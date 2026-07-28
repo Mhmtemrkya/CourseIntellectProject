@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Data;
+using System.Security.Cryptography;
+using System.Text;
 using CourseIntellect.Application.DTOs.Notifications;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
@@ -14,7 +16,8 @@ namespace CourseIntellect.Infrastructure.Services;
 public sealed class StudentFinanceService(
     CourseIntellectDbContext dbContext,
     IParentNotifier parentNotifier,
-    IAuditLogService auditLogService) : IStudentFinanceService
+    IAuditLogService auditLogService,
+    IInstitutionProfileService institutionProfileService) : IStudentFinanceService
 {
     public async Task<EnrollmentContractDto> CreateEnrollmentAsync(
         CreateEnrollmentRequest request,
@@ -392,6 +395,238 @@ public sealed class StudentFinanceService(
             additionalChargeRemaining,
             standaloneExamFeeRemaining,
             totalPayable);
+    }
+
+    public async Task<StudentStatementDto> GetStatementAsync(
+        Guid? studentUserId,
+        string? studentName,
+        DateTime? fromUtc,
+        DateTime? toUtc,
+        CancellationToken cancellationToken = default)
+    {
+        var account = await GetAccountAsync(studentUserId, studentName, cancellationToken);
+        var contractIds = account.Contracts.Select(item => item.Id).ToList();
+        var classNameByContract = account.Contracts.ToDictionary(item => item.Id, item => item.ClassName);
+        var now = DateTime.UtcNow;
+
+        // Taksite bağlanmamış ek ücret kalemleri (ek ders, dosya masrafı…) ekstrede
+        // ayrı borç satırı olarak görünür; aksi halde bakiye ile satır toplamı tutmaz.
+        var standaloneCharges = contractIds.Count == 0
+            ? []
+            : await dbContext.DrivingCharges.AsNoTracking()
+                .Where(item => item.EnrollmentContractId != null
+                    && contractIds.Contains(item.EnrollmentContractId.Value)
+                    && item.FinanceInstallmentId == null)
+                .Select(item => new
+                {
+                    item.ChargeType,
+                    item.Description,
+                    item.NetAmount,
+                    item.RefundedAmount,
+                    item.CreatedAtUtc,
+                })
+                .ToListAsync(cancellationToken);
+
+        var movements = new List<StatementMovement>();
+
+        foreach (var contract in account.Contracts)
+        {
+            if (contract.DownPayment <= 0) continue;
+            movements.Add(new StatementMovement(
+                contract.CreatedAtUtc,
+                "Peşinat",
+                Describe("Kayıt peşinatı", contract.ClassName),
+                string.Empty,
+                contract.DownPayment,
+                0));
+        }
+
+        foreach (var installment in account.Installments)
+        {
+            if (installment.Amount <= 0) continue;
+            var className = classNameByContract.GetValueOrDefault(installment.EnrollmentContractId) ?? string.Empty;
+            movements.Add(new StatementMovement(
+                installment.DueDateUtc,
+                // Vadesi gelmemiş taksit borç olarak tahakkuk etmez; ayrı etiketlenir.
+                installment.DueDateUtc > now ? "Taksit (Vade)" : "Fatura",
+                Describe(string.IsNullOrWhiteSpace(installment.Label) ? "Taksit" : installment.Label, className),
+                string.Empty,
+                installment.Amount,
+                0));
+        }
+
+        foreach (var charge in standaloneCharges)
+        {
+            var amount = Math.Max(0, charge.NetAmount - charge.RefundedAmount);
+            if (amount <= 0) continue;
+            movements.Add(new StatementMovement(
+                charge.CreatedAtUtc,
+                "Ek Ücret",
+                string.IsNullOrWhiteSpace(charge.Description) ? ChargeTypeLabel(charge.ChargeType) : charge.Description,
+                string.Empty,
+                amount,
+                0));
+        }
+
+        // Kurs ücretinden ayrı takip edilen direksiyon sınavı ücreti — yalnız
+        // ödenmemişse ve ayrı bir ücret kalemi olarak açılmamışsa borçtur.
+        if (account.StandaloneExamFeeRemaining > 0)
+        {
+            movements.Add(new StatementMovement(
+                account.DrivingExamDate ?? now,
+                "Sınav Ücreti",
+                $"{account.DrivingExamAttemptNo}. direksiyon sınavı ücreti",
+                string.Empty,
+                account.StandaloneExamFeeRemaining,
+                0));
+        }
+
+        foreach (var payment in account.Payments)
+        {
+            if (payment.Amount > 0)
+            {
+                var label = string.IsNullOrWhiteSpace(payment.Note)
+                    ? (string.IsNullOrWhiteSpace(payment.Method) ? "Tahsilat" : payment.Method)
+                    : payment.Note;
+                movements.Add(new StatementMovement(
+                    payment.PaidAtUtc,
+                    payment.IsDownPayment ? "Peşinat Tahsilatı" : "Tahsilat",
+                    Describe(label, string.IsNullOrWhiteSpace(payment.Method) ? string.Empty : payment.Method),
+                    payment.ReceiptNo,
+                    0,
+                    payment.Amount));
+            }
+            else if (payment.Amount < 0)
+            {
+                // İade parayı geri verir → cari borcu yeniden doğurur (borç tarafı).
+                var reason = string.IsNullOrWhiteSpace(payment.RefundReason) ? payment.Note : payment.RefundReason;
+                movements.Add(new StatementMovement(
+                    payment.PaidAtUtc,
+                    "İade",
+                    Describe("İade", reason),
+                    payment.ReceiptNo,
+                    -payment.Amount,
+                    0));
+            }
+        }
+
+        // Aralık verilmediyse ilk hareketten son harekete kadar tüm geçmiş kapsanır;
+        // vadesi gelmemiş taksitler de görünsün diye üst sınır bugünden ileri olabilir.
+        var firstMovement = movements.Count == 0 ? now : movements.Min(item => item.DateUtc);
+        var lastMovement = movements.Count == 0 ? now : movements.Max(item => item.DateUtc);
+        var from = (fromUtc?.Date ?? firstMovement.Date);
+        var toInclusive = toUtc?.Date ?? (lastMovement > now ? lastMovement.Date : now.Date);
+        if (toInclusive < from) toInclusive = from;
+        var fromKind = DateTime.SpecifyKind(from, DateTimeKind.Utc);
+        var toExclusive = DateTime.SpecifyKind(toInclusive.AddDays(1), DateTimeKind.Utc);
+
+        var ledger = StatementLedger.Build(movements, fromKind, toExclusive);
+
+        var profile = await ResolveStudentProfileAsync(studentUserId, account.StudentName, cancellationToken);
+        var studentPhone = studentUserId is Guid userId
+            ? await dbContext.Users.AsNoTracking()
+                .Where(item => item.Id == userId)
+                .Select(item => item.Phone ?? string.Empty)
+                .FirstOrDefaultAsync(cancellationToken) ?? string.Empty
+            : string.Empty;
+        if (string.IsNullOrWhiteSpace(studentPhone)) studentPhone = profile?.ParentPhone ?? string.Empty;
+
+        // Belge künyesi Ayarlar > Kurum Künyesi ekranından yönetilir; boş alanlar
+        // kurumun mevcut kayıtlarından tamamlanır (bkz. IInstitutionProfileService).
+        var institution = await institutionProfileService.GetEffectiveAsync(cancellationToken);
+        var taxInfo = string.Join(" • ", new[]
+        {
+            string.IsNullOrWhiteSpace(institution.TaxOffice) ? null : $"Vergi D.: {institution.TaxOffice}",
+            string.IsNullOrWhiteSpace(institution.TaxNumber) ? null : $"VKN: {institution.TaxNumber}",
+        }.Where(part => part is not null));
+        var currencyLabel = string.Equals(account.Currency, "TRY", StringComparison.OrdinalIgnoreCase)
+            ? "TL"
+            : account.Currency;
+
+        return new StudentStatementDto(
+            string.IsNullOrWhiteSpace(institution.Name) ? "Kurum" : institution.Name,
+            institution.Address,
+            institution.Location,
+            institution.Phone,
+            institution.Email,
+            institution.Website,
+            taxInfo,
+            BuildAccountCode(profile, studentUserId, account.StudentName),
+            account.StudentName,
+            studentPhone,
+            profile?.Address ?? string.Empty,
+            profile?.ParentName ?? string.Empty,
+            profile?.ClassName ?? account.Contracts.FirstOrDefault()?.ClassName ?? string.Empty,
+            currencyLabel,
+            fromKind,
+            DateTime.SpecifyKind(toInclusive, DateTimeKind.Utc),
+            now,
+            ledger.OpeningBalance,
+            ledger.DebitTotal,
+            ledger.CreditTotal,
+            ledger.ClosingBalance,
+            TurkishMoneyWords.Format(ledger.ClosingBalance, currencyLabel),
+            ledger.Lines
+                .Select(line => new StudentStatementLineDto(
+                    line.DateUtc,
+                    line.EntryType,
+                    line.Description,
+                    line.DocumentNo,
+                    line.Debit,
+                    line.Credit,
+                    line.Balance))
+                .ToList(),
+            string.IsNullOrWhiteSpace(institution.DocumentFooterNote)
+                ? "Bu belge bilgilendirme amaçlıdır."
+                : institution.DocumentFooterNote);
+    }
+
+    private static string Describe(string primary, string? secondary) =>
+        string.IsNullOrWhiteSpace(secondary) || string.Equals(primary.Trim(), secondary.Trim(), StringComparison.OrdinalIgnoreCase)
+            ? primary.Trim()
+            : $"{primary.Trim()} • {secondary.Trim()}";
+
+    private static string ChargeTypeLabel(DrivingChargeType type) => type switch
+    {
+        DrivingChargeType.ExtraLesson => "Ek direksiyon dersi",
+        DrivingChargeType.ExamFee => "Sınav ücreti",
+        DrivingChargeType.FileFee => "Dosya/evrak masrafı",
+        DrivingChargeType.ExtraService => "Ek hizmet",
+        _ => "Ek ücret",
+    };
+
+    private async Task<StudentProfile?> ResolveStudentProfileAsync(
+        Guid? studentUserId,
+        string studentName,
+        CancellationToken cancellationToken)
+    {
+        if (studentUserId is Guid userId)
+        {
+            var byUser = await dbContext.Students.AsNoTracking()
+                .FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
+            if (byUser is not null) return byUser;
+        }
+
+        if (string.IsNullOrWhiteSpace(studentName)) return null;
+        var nameLower = NormalizeStudentName(studentName);
+        return await dbContext.Students.AsNoTracking()
+            .FirstOrDefaultAsync(item => item.FullName.Trim().ToLower() == nameLower, cancellationToken);
+    }
+
+    /// <summary>
+    /// Cari kodu: okul numarası varsa ondan, yoksa öğrenci kimliğinden türetilir.
+    /// Aynı öğrenci için her belgede aynı kod çıkar (kurum içi takip kolaylığı).
+    /// </summary>
+    private static string BuildAccountCode(StudentProfile? profile, Guid? studentUserId, string studentName)
+    {
+        var digits = new string((profile?.SchoolNumber ?? string.Empty).Where(char.IsDigit).ToArray());
+        if (digits.Length is > 0 and <= 9) return $"CR-{int.Parse(digits, CultureInfo.InvariantCulture):D6}";
+
+        var seed = studentUserId?.ToString("N")
+            ?? (profile?.Id.ToString("N") ?? NormalizeStudentName(studentName));
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(seed));
+        var number = BitConverter.ToUInt32(hash, 0) % 900_000 + 100_000;
+        return $"CR-{number:D6}";
     }
 
     public async Task<FinancePaymentDto> RecordPaymentAsync(
@@ -998,6 +1233,8 @@ public sealed class StudentFinanceService(
 
     public async Task<FinanceDashboardDto> GetDashboardAsync(
         string? className,
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null,
         CancellationToken cancellationToken = default)
     {
         var contractQuery = dbContext.EnrollmentContracts.AsNoTracking().AsQueryable();
@@ -1008,6 +1245,12 @@ public sealed class StudentFinanceService(
         }
 
         var contracts = await contractQuery.ToListAsync(cancellationToken);
+        var hasDateRange = fromUtc.HasValue || toUtc.HasValue;
+        var dashboardContracts = contracts
+            .Where(item =>
+                (!fromUtc.HasValue || item.CreatedAtUtc >= fromUtc.Value)
+                && (!toUtc.HasValue || item.CreatedAtUtc < toUtc.Value))
+            .ToList();
         var contractIds = contracts.Select(item => item.Id).ToHashSet();
         var studentUserIds = contracts
             .Where(item => item.StudentUserId != null)
@@ -1021,22 +1264,31 @@ public sealed class StudentFinanceService(
         var installments = await dbContext.FinanceInstallments.AsNoTracking()
             .Where(item => contractIds.Contains(item.EnrollmentContractId))
             .ToListAsync(cancellationToken);
+        var dashboardInstallments = installments
+            .Where(item =>
+                (!fromUtc.HasValue || item.DueDateUtc >= fromUtc.Value)
+                && (!toUtc.HasValue || item.DueDateUtc < toUtc.Value))
+            .ToList();
         // Tahsilatlar sözleşmeye bağlanmamış (peşin/manuel/iade) olabilir; hesap görünümüyle
         // tutarlı kalmak için contract / öğrenci kullanıcı / öğrenci adı (harf duyarsız) üzerinden toplanır.
-        var payments = await dbContext.FinancePayments.AsNoTracking()
+        var paymentQuery = dbContext.FinancePayments.AsNoTracking()
             .Where(item =>
                 (item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
                 || (item.StudentUserId != null && studentUserIds.Contains(item.StudentUserId.Value))
-                || (item.StudentName != string.Empty && studentNamesLower.Contains(item.StudentName.Trim().ToLower())))
-            .ToListAsync(cancellationToken);
+                || (item.StudentName != string.Empty && studentNamesLower.Contains(item.StudentName.Trim().ToLower())));
+        if (fromUtc.HasValue) paymentQuery = paymentQuery.Where(item => item.PaidAtUtc >= fromUtc.Value);
+        if (toUtc.HasValue) paymentQuery = paymentQuery.Where(item => item.PaidAtUtc < toUtc.Value);
+        var payments = await paymentQuery.ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
-        var net = contracts.Sum(item => item.NetAmount);
+        var net = dashboardContracts.Sum(item => item.NetAmount);
         var collected = FinanceTotals.NetCollected(payments.Select(item => item.Amount));
         // Fazla/avans tahsilatta net'ten büyük olabilir; "Bekleyen" negatif gösterilmesin.
-        var outstanding = FinanceTotals.Outstanding(net, collected);
+        var outstanding = hasDateRange
+            ? dashboardInstallments.Sum(item => Math.Max(0, item.Amount - item.PaidAmount))
+            : FinanceTotals.Outstanding(net, collected);
 
-        decimal BucketAmount(int minDays, int maxDays) => installments
+        decimal BucketAmount(int minDays, int maxDays) => dashboardInstallments
             .Where(item =>
             {
                 var remaining = item.Amount - item.PaidAmount;
@@ -1046,7 +1298,7 @@ public sealed class StudentFinanceService(
             })
             .Sum(item => item.Amount - item.PaidAmount);
 
-        int BucketCount(int minDays, int maxDays) => installments
+        int BucketCount(int minDays, int maxDays) => dashboardInstallments
             .Count(item =>
             {
                 var remaining = item.Amount - item.PaidAmount;
@@ -1063,7 +1315,7 @@ public sealed class StudentFinanceService(
             new("90+ gün", BucketCount(90, -1), BucketAmount(90, -1)),
         };
 
-        var overdueInstallments = installments.Where(item => item.Amount - item.PaidAmount > 0 && item.DueDateUtc < now).ToList();
+        var overdueInstallments = dashboardInstallments.Where(item => item.Amount - item.PaidAmount > 0 && item.DueDateUtc < now).ToList();
         var overdueTotal = overdueInstallments.Sum(item => item.Amount - item.PaidAmount);
         var overdueStudents = overdueInstallments
             .Select(item => item.StudentName)
@@ -1071,7 +1323,10 @@ public sealed class StudentFinanceService(
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Count();
 
-        var collectionRate = net > 0 ? (int)Math.Round(Math.Clamp(collected / net, 0, 1) * 100) : 0;
+        var rateBase = hasDateRange ? collected + outstanding : net;
+        var collectionRate = rateBase > 0
+            ? (int)Math.Round(Math.Clamp(collected / rateBase, 0, 1) * 100)
+            : 0;
 
         // Ortalama tahsil süresi (DSO yaklaşık): ödeme tarihi - ilgili sözleşme tarihi.
         var contractDateById = contracts.ToDictionary(item => item.Id, item => item.CreatedAtUtc);
@@ -1089,26 +1344,59 @@ public sealed class StudentFinanceService(
             .Select(group => new MonthlyIncomeDto($"{group.Key.Year}-{group.Key.Month:D2}", group.Sum(payment => payment.Amount)))
             .ToList();
 
-        var paidByStudent = AttributePaymentsToStudents(contracts, payments);
-        var topDebtors = contracts
-            .GroupBy(ResolveStudentKey)
-            .Select(group =>
-            {
-                var first = group.First();
-                var groupNet = group.Sum(item => item.NetAmount);
-                var groupPaid = paidByStudent.GetValueOrDefault(group.Key);
-                var groupBalance = FinanceTotals.Outstanding(groupNet, groupPaid);
-                return new StudentFinanceSummaryDto(first.StudentUserId, first.StudentName, first.ClassName, first.Currency,
-                    groupNet, groupPaid, groupBalance, 0, null,
-                    ResolveStatus(groupBalance, 0, groupNet));
-            })
-            .Where(item => item.Balance > 0)
-            .OrderByDescending(item => item.Balance)
-            .Take(10)
-            .ToList();
+        IReadOnlyList<StudentFinanceSummaryDto> topDebtors;
+        if (hasDateRange)
+        {
+            var contractById = contracts.ToDictionary(item => item.Id);
+            topDebtors = dashboardInstallments
+                .GroupBy(item => NormalizeStudentName(item.StudentName))
+                .Select(group =>
+                {
+                    var firstInstallment = group.First();
+                    var contract = contractById.GetValueOrDefault(firstInstallment.EnrollmentContractId);
+                    var due = group.Sum(item => item.Amount);
+                    var paid = group.Sum(item => item.PaidAmount);
+                    var balance = group.Sum(item => Math.Max(0, item.Amount - item.PaidAmount));
+                    return new StudentFinanceSummaryDto(
+                        contract?.StudentUserId,
+                        firstInstallment.StudentName,
+                        contract?.ClassName ?? string.Empty,
+                        contract?.Currency ?? "TRY",
+                        due,
+                        paid,
+                        balance,
+                        group.Count(item => item.DueDateUtc < now && item.Amount > item.PaidAmount),
+                        group.Where(item => item.Amount > item.PaidAmount).MinBy(item => item.DueDateUtc)?.DueDateUtc,
+                        ResolveStatus(balance, 0, due));
+                })
+                .Where(item => item.Balance > 0)
+                .OrderByDescending(item => item.Balance)
+                .Take(10)
+                .ToList();
+        }
+        else
+        {
+            var paidByStudent = AttributePaymentsToStudents(contracts, payments);
+            topDebtors = contracts
+                .GroupBy(ResolveStudentKey)
+                .Select(group =>
+                {
+                    var first = group.First();
+                    var groupNet = group.Sum(item => item.NetAmount);
+                    var groupPaid = paidByStudent.GetValueOrDefault(group.Key);
+                    var groupBalance = FinanceTotals.Outstanding(groupNet, groupPaid);
+                    return new StudentFinanceSummaryDto(first.StudentUserId, first.StudentName, first.ClassName, first.Currency,
+                        groupNet, groupPaid, groupBalance, 0, null,
+                        ResolveStatus(groupBalance, 0, groupNet));
+                })
+                .Where(item => item.Balance > 0)
+                .OrderByDescending(item => item.Balance)
+                .Take(10)
+                .ToList();
+        }
 
         // Peşinatı beklenen (tahsil edilmemiş) aktif sözleşmeler — dashboard kartı için.
-        var pendingDownPayments = contracts
+        var pendingDownPayments = dashboardContracts
             .Where(item => item.DownPayment > item.DownPaymentPaidAmount && item.Status == "Active")
             .ToList();
         var pendingDownPaymentTotal = pendingDownPayments.Sum(item => item.DownPayment - item.DownPaymentPaidAmount);

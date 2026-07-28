@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../services/student_finance_api_service.dart';
@@ -78,6 +82,30 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
       _snack('İade işlendi: ${_tl(amount)}');
     } catch (e) {
       _snack('İade yapılamadı: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Kurum künyeli cari hesap ekstresini sunucudan PDF olarak alıp açar.
+  /// Tarih aralığı verilmez; ilk hareketten taksit planının sonuna kadar tüm
+  /// geçmiş belgeye girer (masaüstü ile aynı uç).
+  Future<void> _downloadStatement() async {
+    setState(() => _busy = true);
+    try {
+      final bytes = await StudentFinanceApiService.instance
+          .downloadStatementPdf(studentName: widget.studentName);
+      final slug = widget.studentName
+          .replaceAll(RegExp(r'[^a-zA-Z0-9]+'), '-')
+          .toLowerCase();
+      final file = File(
+        '${(await getTemporaryDirectory()).path}/cari-hesap-ekstresi-$slug.pdf',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      final result = await OpenFilex.open(file.path);
+      if (result.type != ResultType.done) throw StateError(result.message);
+    } catch (e) {
+      _snack('Ekstre açılamadı: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -177,6 +205,15 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
                                 ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _busy ? null : _downloadStatement,
+                              icon: const Icon(Icons.description_outlined),
+                              label: Text('Ekstre (PDF)'.tr),
+                            ),
                           ),
                           const SizedBox(height: 16),
                           const Text('Taksitler', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),

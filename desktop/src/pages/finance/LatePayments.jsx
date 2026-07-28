@@ -19,7 +19,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { createAccountingNotification, fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
-import { downloadCsvRows, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
+import { downloadCsvRows, formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -180,7 +180,7 @@ export default function LatePayments() {
         <div>
           <h1 className="text-3xl font-bold font-heading">Geciken Ödemeler</h1>
           <p className="text-muted-foreground mt-1">
-            {latePayments.length} kayıt • Toplam: ₺{totalLate.toLocaleString('tr-TR')}
+            {latePayments.length} kayıt • Toplam: {formatCurrency(totalLate)}
           </p>
         </div>
         <div className="flex gap-2">
@@ -296,7 +296,7 @@ export default function LatePayments() {
                     </div>
                   </TableCell>
                   <TableCell className="font-bold text-red-600">
-                    ₺{payment.amount.toLocaleString('tr-TR')}
+                    {formatCurrency(payment.amount)}
                   </TableCell>
                   <TableCell>{getSeverityBadge(payment.daysLate)}</TableCell>
                   <TableCell>

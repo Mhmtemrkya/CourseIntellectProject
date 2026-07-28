@@ -11,7 +11,11 @@ namespace CourseIntellect.Tests;
 public sealed class StudentFinanceRefundTests : IDisposable
 {
     private readonly TestDb db = new();
-    private StudentFinanceService Service => new(db.Context, new NoopParentNotifier(), new NoopAuditLog());
+    private StudentFinanceService Service => new(
+        db.Context,
+        new NoopParentNotifier(),
+        new NoopAuditLog(),
+        new InstitutionProfileService(db.Context, new EmptyTenantContext(), new NoopAuditLog()));
 
     [Fact]
     public async Task PaymentReversal_IsBoundToReceipt_AndReversesExactLastAllocation()
@@ -197,6 +201,12 @@ public sealed class StudentFinanceRefundTests : IDisposable
     {
         public Task NotifyStudentParentAsync(string studentName, string title, string message, string category, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
+    }
+
+    private sealed class EmptyTenantContext : ITenantContext
+    {
+        public Guid? CurrentTenantId => null;
+        public bool HasTenant => false;
     }
 
     private sealed class NoopAuditLog : IAuditLogService

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Briefcase, Copy, BusFront, Route } from 'lucide-react';
+import { Save, Briefcase, Copy, BusFront, Route, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { FeatureGate } from '../../components/FeatureGate';
 import { UserStatusButton } from '../../components/UserStatusButton';
@@ -31,6 +31,7 @@ import {
   fetchStaff,
   fetchOrgUnits,
   fetchPlatformConfigurations,
+  updateStaff,
   updateStaffAssignment,
   updateUserStatus,
   upsertPlatformConfiguration,
@@ -136,6 +137,24 @@ const emptyForm = {
   routeEndTime: '09:00',
 };
 
+const buildStaffEditForm = (staff = {}) => ({
+  fullName: staff.fullName || '',
+  phone: staff.phone || '',
+  email: staff.email || '',
+  departmentOrBranch: staff.departmentOrBranch || '',
+  education: staff.education || '',
+  campus: staff.campus || '',
+  homeroomClass: staff.homeroomClass || '',
+  assignedClasses: Array.isArray(staff.assignedClasses) ? staff.assignedClasses.join(', ') : '',
+  maritalStatus: staff.maritalStatus || 'Bekar',
+  childCount: Number(staff.childCount || 0),
+  note: staff.note || '',
+  photoUrl: staff.photoUrl || '',
+  role: staff.role || '',
+  branchId: staff.branchId || '',
+  customRoleId: staff.customRoleId || '',
+});
+
 export default function AdminStaffRegistration() {
   const { toast } = useToast();
   const { user } = useApp();
@@ -149,7 +168,8 @@ export default function AdminStaffRegistration() {
   const [customRoles, setCustomRoles] = useState([]);
   const [savedBranches, setSavedBranches] = useState([]);
   const [editStaff, setEditStaff] = useState(null);
-  const [editForm, setEditForm] = useState({ role: '', branchId: '', customRoleId: '' });
+  const [editForm, setEditForm] = useState(() => buildStaffEditForm());
+  const [editSaving, setEditSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [credentials, setCredentials] = useState(null);
   const [isDrivingSchool, setIsDrivingSchool] = useState(false);
@@ -403,6 +423,63 @@ export default function AdminStaffRegistration() {
       if (staffUserId) await deleteStaffUser(staffUserId);
     } catch (error) {
       console.warn('Personel rollback başarısız', error);
+    }
+  };
+
+  const canManageAssignments = String(user?.role || user?.primaryRole || '').toLowerCase() === 'admin';
+  const selectedEditCustomRole = customRoles.find((role) => role.id === editForm.customRoleId);
+
+  const handleEditStaff = async () => {
+    if (!editStaff) return;
+    if (!editForm.fullName.trim()) {
+      toast({ title: 'Ad soyad zorunludur.', variant: 'destructive' });
+      return;
+    }
+    if (editForm.phone && !isValidTrPhone(editForm.phone)) {
+      toast({ title: 'Telefon +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' });
+      return;
+    }
+    if (editForm.email && !isValidEmail(editForm.email)) {
+      toast({ title: 'Geçerli bir e-posta adresi girin.', variant: 'destructive' });
+      return;
+    }
+    if (canManageAssignments && editForm.role === 'BranchManager' && !editForm.branchId) {
+      toast({ title: 'Şube müdürü için şube seçimi zorunludur.', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      setEditSaving(true);
+      await updateStaff(editStaff.id, {
+        fullName: editForm.fullName.trim(),
+        departmentOrBranch: editForm.departmentOrBranch.trim(),
+        phone: editForm.phone.trim(),
+        email: editForm.email.trim(),
+        education: editForm.education.trim(),
+        campus: editForm.campus.trim(),
+        homeroomClass: editForm.homeroomClass.trim(),
+        assignedClasses: editForm.assignedClasses.split(',').map((item) => item.trim()).filter(Boolean),
+        maritalStatus: editForm.maritalStatus,
+        childCount: Number(editForm.childCount || 0),
+        note: editForm.note.trim(),
+        photoUrl: editForm.photoUrl || '',
+      });
+      if (canManageAssignments) {
+        await updateStaffAssignment(editStaff.userId, {
+          role: editForm.role || null,
+          branchId: editForm.branchId || null,
+          customRoleId: editForm.customRoleId || null,
+          clearCustomRole: !editForm.customRoleId,
+          clearBranch: !editForm.branchId,
+        });
+      }
+      toast({ title: 'Personel bilgileri güncellendi.' });
+      setEditStaff(null);
+      await loadRecent();
+    } catch (err) {
+      toast({ title: err.message || 'Personel güncellenemedi.', variant: 'destructive' });
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -692,13 +769,13 @@ export default function AdminStaffRegistration() {
                               <button
                                 type="button"
                                 className="text-xs font-semibold text-muted-foreground hover:text-foreground"
-                                title="Rol / şube / özel rol atamasını düzenle"
+                                title="Personel bilgilerini ve yetkilerini düzenle"
                                 onClick={() => {
                                   setEditStaff(s);
-                                  setEditForm({ role: s.role || '', branchId: '', customRoleId: '' });
+                                  setEditForm(buildStaffEditForm(s));
                                 }}
                               >
-                                Atama
+                                Düzenle
                               </button>
                               <FeatureGate module="staff-hr" action="status">
                                 <UserStatusButton
@@ -773,74 +850,176 @@ export default function AdminStaffRegistration() {
         </DialogContent>
       </Dialog>
 
-      {/* Var olan personelin rol / şube / özel rol atamasını düzenleme */}
+      {/* Personel bilgileri ve yöneticiye özel yetki ataması */}
       <Dialog open={!!editStaff} onOpenChange={(open) => !open && setEditStaff(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-4xl overflow-y-auto sm:w-full">
           <DialogHeader>
-            <DialogTitle>Atama Düzenle — {editStaff?.fullName}</DialogTitle>
-            <DialogDescription>Rol, şube ve özel rol ataması; kaydedince görünürlük kapsamı da güncellenir.</DialogDescription>
+            <DialogTitle>Personel Düzenle — {editStaff?.fullName}</DialogTitle>
+            <DialogDescription>
+              İletişim, görev ve özlük bilgilerini güncelleyin. Yetki ve şube ataması yalnızca kurum yöneticisi tarafından değiştirilebilir.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Rol</Label>
-              <select
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                value={editForm.role}
-                onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value, customRoleId: '' }))}
-              >
-                <option value="">— Değiştirme —</option>
-                <option value="Teacher">Öğretmen</option>
-                <option value="BranchManager">Şube Müdürü</option>
-                <option value="Administrative">İdari Personel</option>
-                <option value="Accounting">Muhasebe</option>
-                <option value="Cafeteria">Yemekhaneci</option>
-              </select>
-            </div>
-            <div>
-              <Label>Şube {editForm.role === 'BranchManager' ? '(zorunlu)' : '(opsiyonel)'}</Label>
-              <select
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                value={editForm.branchId}
-                onChange={(e) => setEditForm((f) => ({ ...f, branchId: e.target.value }))}
-              >
-                <option value="">— Değiştirme —</option>
-                {branches.filter((b) => b.isActive !== false).map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Özel rol</Label>
-              <select
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                value={editForm.customRoleId}
-                onChange={(e) => setEditForm((f) => ({ ...f, customRoleId: e.target.value }))}
-              >
-                <option value="">— Değiştirme —</option>
-                <option value="__clear__">(özel rolü kaldır)</option>
-                {customRoles
-                  .filter((r) => !editForm.role || r.baseRole === editForm.role)
-                  .map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditStaff(null)}>Vazgeç</Button>
-              <Button
-                onClick={async () => {
-                  try {
-                    await updateStaffAssignment(editStaff.userId, {
-                      role: editForm.role || null,
-                      branchId: editForm.branchId || null,
-                      customRoleId: editForm.customRoleId && editForm.customRoleId !== '__clear__' ? editForm.customRoleId : null,
-                      clearCustomRole: editForm.customRoleId === '__clear__',
-                    });
-                    toast({ title: 'Atama güncellendi.' });
-                    setEditStaff(null);
-                    await loadRecent();
-                  } catch (err) { toast({ title: err.message || 'Atama güncellenemedi.', variant: 'destructive' }); }
-                }}
-              >
-                Kaydet
+          <div className="space-y-5 py-1">
+            <section className="rounded-xl border p-4">
+              <h3 className="mb-4 text-sm font-semibold">Personel bilgileri</h3>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <Label>Personel fotoğrafı</Label>
+                  <div className="mt-2">
+                    <PhotoCapture value={editForm.photoUrl} onChange={(photoUrl) => setEditForm((f) => ({ ...f, photoUrl }))} folder="staff-photos" size={96} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Ad Soyad *</Label>
+                  <Input value={editForm.fullName} onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))} maxLength={150} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Kullanıcı Adı</Label>
+                  <Input value={editStaff?.username || ''} readOnly className="bg-muted" />
+                </div>
+                <div className="space-y-2">
+                  <Label>TC Kimlik No</Label>
+                  <Input value={editStaff?.tcNo || ''} readOnly className="bg-muted" />
+                </div>
+                <div className="space-y-2">
+                  <Label>İşe Başlama Tarihi</Label>
+                  <Input value={editStaff?.startDate || ''} readOnly className="bg-muted" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefon</Label>
+                  <Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: maskTrPhone(e.target.value) }))} placeholder="+90 5XX XXX XX XX" inputMode="tel" maxLength={17} />
+                </div>
+                <div className="space-y-2">
+                  <Label>E-posta</Label>
+                  <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: maskEmail(e.target.value) }))} maxLength={254} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Birim / Branş</Label>
+                  <Input value={editForm.departmentOrBranch} onChange={(e) => setEditForm((f) => ({ ...f, departmentOrBranch: e.target.value }))} maxLength={120} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Eğitim</Label>
+                  <Input value={editForm.education} onChange={(e) => setEditForm((f) => ({ ...f, education: e.target.value }))} maxLength={120} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Kampüs</Label>
+                  <Input value={editForm.campus} onChange={(e) => setEditForm((f) => ({ ...f, campus: e.target.value }))} maxLength={120} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Rehberlik Sınıfı</Label>
+                  <Input value={editForm.homeroomClass} onChange={(e) => setEditForm((f) => ({ ...f, homeroomClass: e.target.value }))} maxLength={40} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Atanan Sınıflar</Label>
+                  <Input value={editForm.assignedClasses} onChange={(e) => setEditForm((f) => ({ ...f, assignedClasses: e.target.value }))} placeholder="9-A, 10-B (virgülle ayırın)" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Medeni Durum</Label>
+                  <Select value={editForm.maritalStatus} onValueChange={(value) => setEditForm((f) => ({ ...f, maritalStatus: value }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bekar">Bekar</SelectItem>
+                      <SelectItem value="Evli">Evli</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Çocuk Sayısı</Label>
+                  <Input type="number" min="0" max="20" value={editForm.childCount} onChange={(e) => setEditForm((f) => ({ ...f, childCount: maskPositiveInteger(e.target.value, 20) }))} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Not</Label>
+                  <Textarea value={editForm.note} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))} rows={3} maxLength={1000} />
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+              <div className="mb-4 flex items-start gap-3">
+                <ShieldCheck className="mt-0.5 h-5 w-5 text-blue-600" />
+                <div>
+                  <h3 className="text-sm font-semibold">Rol, şube ve yetki profili</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {canManageAssignments
+                      ? 'Seçilen yetki profili personelin erişebileceği modül ve işlemleri belirler.'
+                      : 'Bu alanı yalnızca kurum yöneticisi değiştirebilir.'}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Temel Rol</Label>
+                  <Select
+                    disabled={!canManageAssignments}
+                    value={editForm.role}
+                    onValueChange={(value) => setEditForm((f) => ({ ...f, role: value, customRoleId: '' }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Rol seçin" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Teacher">Öğretmen</SelectItem>
+                      <SelectItem value="BranchManager">Şube Müdürü</SelectItem>
+                      <SelectItem value="Administrative">İdari Personel</SelectItem>
+                      <SelectItem value="Accounting">Muhasebe</SelectItem>
+                      <SelectItem value="Cafeteria">Yemekhaneci</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Şube {editForm.role === 'BranchManager' ? '*' : ''}</Label>
+                  <Select disabled={!canManageAssignments} value={editForm.branchId || '__none__'} onValueChange={(value) => setEditForm((f) => ({ ...f, branchId: value === '__none__' ? '' : value }))}>
+                    <SelectTrigger><SelectValue placeholder="Şube seçin" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Kurum geneli</SelectItem>
+                      {branches.filter((branch) => branch.isActive !== false).map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Yetki Profili</Label>
+                  <Select
+                    disabled={!canManageAssignments}
+                    value={editForm.customRoleId || '__base__'}
+                    onValueChange={(value) => {
+                      const role = customRoles.find((item) => item.id === value);
+                      setEditForm((formValue) => ({
+                        ...formValue,
+                        customRoleId: value === '__base__' ? '' : value,
+                        role: role?.baseRole || formValue.role,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Yetki profili seçin" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__base__">Temel rol yetkileri</SelectItem>
+                      {customRoles
+                        .filter((role) => !editForm.role || role.baseRole === editForm.role)
+                        .map((role) => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {selectedEditCustomRole ? (
+                <div className="mt-4 rounded-lg border bg-background p-3">
+                  <p className="text-xs font-semibold">Verilecek erişimler</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(selectedEditCustomRole.modules || []).map((module) => (
+                      <span key={`module-${module}`} className="rounded-full bg-blue-100 px-2.5 py-1 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">{module}</span>
+                    ))}
+                    {(selectedEditCustomRole.permissions || []).map((permission) => (
+                      <span key={`permission-${permission}`} className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">{permission}</span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => setEditStaff(null)} disabled={editSaving}>Vazgeç</Button>
+              <Button onClick={handleEditStaff} disabled={editSaving}>
+                <Save className="mr-2 h-4 w-4" />
+                {editSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
               </Button>
             </div>
           </div>

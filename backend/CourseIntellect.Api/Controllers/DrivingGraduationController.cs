@@ -411,17 +411,38 @@ public sealed class DrivingGraduationController(
         if (!Enum.TryParse<DrivingCertificateType>(request.Type, true, out var type) || !Enum.IsDefined(type)) return BadRequest(new { message = "Belge türü geçersiz." });
         var graduation = await db.DrivingGraduationRecords.SingleOrDefaultAsync(x => x.StudentDrivingProfileId == profileId && x.Status == DrivingGraduationStatus.Graduated, ct);
         if (graduation is null) return Conflict(new { message = "Kursiyer mezun edilmeden belge oluşturulamaz." });
-        var missing = await CertificateIssueMissingAsync(profileId, ct);
-        if (missing.Count > 0)
-            return Conflict(new
-            {
-                message = $"EK-6 oluşturulamadı. Eksik bilgiler: {string.Join(", ", missing)}.",
-                missingFields = missing,
-            });
+        CertificateDocumentData? documentData = null;
+        if (request.Data is not null)
+        {
+            try { documentData = NormalizeCertificateDocumentData(request.Data); }
+            catch (ArgumentException error) { return BadRequest(new { message = error.Message }); }
+        }
         var active = await db.DrivingCertificates.SingleOrDefaultAsync(x => x.StudentDrivingProfileId == profileId && x.CertificateType == type && x.Status == DrivingCertificateStatus.Active, ct);
         if (active is not null) return Ok(new { active.Id, active.DocumentNumber, type = active.CertificateType.ToString(), active.PdfFileUrl });
-        var certificate = await CreateCertificateAsync(graduation, profileId, type, null, string.Empty, ct);
+        var certificate = await CreateCertificateAsync(graduation, profileId, type, null, string.Empty, documentData, ct);
         return Ok(new { certificate.Id, certificate.DocumentNumber, type = certificate.CertificateType.ToString(), certificate.PdfFileUrl });
+    }
+
+    [HttpGet("students/{profileId:guid}/certificate-draft")]
+    [RequireDrivingPermission(DrivingPermissions.CertificateIssue)]
+    public async Task<IActionResult> CertificateDraft(Guid profileId, CancellationToken ct)
+    {
+        if (!CanPrintCertificate()) return Forbid();
+        if (!await CanAccessProfileAsync(profileId, ct)) return Forbid();
+        var data = await ResolveCertificateDocumentDataAsync(profileId, DateTime.UtcNow, ct);
+        if (data is null) return NotFound(new { message = "Kursiyer kaydı bulunamadı." });
+        var settings = await ResolveSettingsAsync(ct);
+        var missing = MissingCertificateDocumentFields(data);
+        if (await ReadSafeCertificateImageAsync(settings.CertificateLogoUrl, ct) is null) missing.Add("logo");
+        if (await ReadSafeCertificateImageAsync(settings.CertificateSignatureUrl, ct) is null) missing.Add("signature");
+        return Ok(new
+        {
+            data,
+            missingFields = missing,
+            logoConfigured = !missing.Contains("logo"),
+            signatureConfigured = !missing.Contains("signature"),
+            canCreateWithEmptyFields = true,
+        });
     }
 
     [HttpPost("certificates/{id:guid}/reissue")]
@@ -435,11 +456,15 @@ public sealed class DrivingGraduationController(
         if (old is null) return NotFound();
         var graduation = await db.DrivingGraduationRecords.SingleOrDefaultAsync(x => x.Id == old.GraduationRecordId && x.Status == DrivingGraduationStatus.Graduated, ct);
         if (graduation is null) return Conflict(new { message = "Aktif mezuniyet olmadan belge yeniden basılamaz." });
-        var missing = await CertificateIssueMissingAsync(old.StudentDrivingProfileId, ct);
-        if (missing.Count > 0)
-            return Conflict(new { message = $"EK-6 yeniden basılamadı. Eksik bilgiler: {string.Join(", ", missing)}.", missingFields = missing });
         if (old.Status == DrivingCertificateStatus.Active) old.Status = DrivingCertificateStatus.Superseded;
-        var certificate = await CreateCertificateAsync(graduation, old.StudentDrivingProfileId, old.CertificateType, old, reason, ct);
+        var certificate = await CreateCertificateAsync(
+            graduation,
+            old.StudentDrivingProfileId,
+            old.CertificateType,
+            old,
+            reason,
+            ExtractCertificateDocumentData(old.SnapshotJson),
+            ct);
         await audit.LogChangeAsync("Sertifika yeniden basıldı", AuditCategory, nameof(DrivingCertificate), certificate.Id.ToString(), reason, new { old.Id, old.DocumentNumber }, new { certificate.Id, certificate.DocumentNumber }, ct);
         return Ok(new { certificate.Id, certificate.DocumentNumber, certificate.Version, certificate.PdfFileUrl });
     }
@@ -520,100 +545,79 @@ public sealed class DrivingGraduationController(
         return bytes is null ? NotFound(new { message = "Belge dosyası bulunamadı." }) : File(bytes, "application/pdf", $"{certificate.DocumentNumber}.pdf");
     }
 
-    private async Task<DrivingCertificate> CreateCertificateAsync(DrivingGraduationRecord graduation, Guid profileId, DrivingCertificateType type, DrivingCertificate? old, string reason, CancellationToken ct)
+    private async Task<DrivingCertificate> CreateCertificateAsync(
+        DrivingGraduationRecord graduation,
+        Guid profileId,
+        DrivingCertificateType type,
+        DrivingCertificate? old,
+        string reason,
+        CertificateDocumentData? documentData,
+        CancellationToken ct)
     {
         var token = NewVerificationToken();
         var certificate = new DrivingCertificate { GraduationRecordId = graduation.Id, StudentDrivingProfileId = profileId, CertificateType = type,
             DocumentNumber = $"SRK-{DateTime.UtcNow:yyyy}-{Convert.ToHexString(RandomNumberGenerator.GetBytes(5))}", IssuedByUserId = CurrentUserId(),
             Version = (old?.Version ?? 0) + 1, ReissuedFromCertificateId = old?.Id, ReissueReason = reason, VerificationTokenHash = HashToken(token) };
         db.DrivingCertificates.Add(certificate); await db.SaveChangesAsync(ct);
-        await BuildAndStorePdfAsync(certificate, token, ct);
+        await BuildAndStorePdfAsync(certificate, token, ct, documentData);
         await audit.LogChangeAsync("Sertifika oluşturuldu", AuditCategory, nameof(DrivingCertificate), certificate.Id.ToString(), reason, null, new { certificate.DocumentNumber, certificate.Version }, ct);
         return certificate;
     }
 
-    private async Task BuildAndStorePdfAsync(DrivingCertificate certificate, string token, CancellationToken ct)
+    private async Task BuildAndStorePdfAsync(
+        DrivingCertificate certificate,
+        string token,
+        CancellationToken ct,
+        CertificateDocumentData? requestedDocumentData = null)
     {
-        var row = await db.StudentDrivingProfiles.AsNoTracking().Where(x => x.Id == certificate.StudentDrivingProfileId)
-            .Join(db.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (profile, student) => new { profile, student })
-            .SingleAsync(ct);
-        var tenantId = db.CurrentTenantId ?? throw new InvalidOperationException("Tenant bağlamı bulunamadı.");
-        var tenant = await db.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking().SingleAsync(x => x.Id == tenantId, ct);
+        _ = db.CurrentTenantId ?? throw new InvalidOperationException("Tenant bağlamı bulunamadı.");
         var settings = await ResolveSettingsAsync(ct);
-        // Şube müdürü uygulamadaki rol adıdır; resmî EK-6 üzerinde "Kurum Müdürü"
-        // olarak yer alır. Belgenin ait olduğu kursiyerin şubesindeki müdürü buluruz.
-        var branchManager = await db.Staff.IgnoreQueryFilters().AsNoTracking()
-            .Where(x => x.TenantId == tenantId
-                && x.BranchId == row.student.BranchId
-                && x.Role == UserRole.BranchManager)
-            .OrderBy(x => x.FullName)
-            .Select(x => x.FullName)
-            .FirstOrDefaultAsync(ct);
-        var orgManager = row.student.BranchId is Guid branchId
-            ? await db.OrgUnits.IgnoreQueryFilters().AsNoTracking()
-                .Where(x => x.TenantId == tenantId && x.Id == branchId)
-                .Select(x => x.ManagerName)
-                .FirstOrDefaultAsync(ct)
-            : null;
-        var director = FirstNonEmpty(
-            branchManager,
-            orgManager,
-            settings.FormDirectorName,
-            settings.CertificateDirectorName,
-            tenant.ContactName);
         var logo = await ReadSafeCertificateImageAsync(settings.CertificateLogoUrl, ct);
         var signature = await ReadSafeCertificateImageAsync(settings.CertificateSignatureUrl, ct);
         var verificationUrl = $"{PublicVerificationBaseUrl()}/api/public/driving-certificates/{Uri.EscapeDataString(certificate.DocumentNumber)}/verify?token={Uri.EscapeDataString(token)}";
-        const string directorTitle = "Kurum Müdürü";
         var primaryColor = System.Text.RegularExpressions.Regex.IsMatch(settings.CertificatePrimaryColor ?? string.Empty, "^#[0-9A-Fa-f]{6}$")
             ? settings.CertificatePrimaryColor!
             : "#173B57";
-        var graduation = await db.DrivingGraduationRecords.AsNoTracking()
-            .Where(x => x.Id == certificate.GraduationRecordId)
-            .Select(x => x.GraduatedAtUtc)
-            .SingleOrDefaultAsync(ct);
-        var passedDrivingExam = await db.DrivingExamCandidates.AsNoTracking()
-            .Where(x => x.StudentDrivingProfileId == certificate.StudentDrivingProfileId
-                && x.Status == DrivingExamCandidateStatus.Passed)
-            .Join(db.DrivingExamSessions.AsNoTracking().Where(x => x.ExamType == DrivingExamType.DrivingPractice),
-                candidate => candidate.ExamSessionId, session => session.Id, (_, session) => session.StartsAtUtc)
-            .OrderByDescending(x => x)
-            .FirstOrDefaultAsync(ct);
-        var courseStartedAtUtc = row.profile.CourseStartsAtUtc ?? row.profile.RegisteredAtUtc;
-        var examPassedAtUtc = passedDrivingExam != default
-            ? passedDrivingExam
-            : row.profile.DrivingExamDate ?? graduation ?? certificate.IssuedAtUtc;
-        var institutionName = FirstNonEmpty(settings.FormInstitutionName, tenant.Name, "Sürücü Kursu");
+        var documentData = requestedDocumentData
+            ?? ExtractCertificateDocumentData(certificate.SnapshotJson)
+            ?? await ResolveCertificateDocumentDataAsync(certificate.StudentDrivingProfileId, certificate.IssuedAtUtc, ct)
+            ?? throw new InvalidOperationException("Belge verileri oluşturulamadı.");
         var snapshot = new CertificateSnapshot(
-            2, institutionName, row.student.FullName, row.profile.LicenseClass, director, directorTitle);
+            3,
+            documentData.InstitutionName,
+            documentData.StudentName,
+            documentData.LicenseClass,
+            documentData.DirectorName,
+            documentData.DirectorTitle,
+            documentData);
         certificate.SnapshotJson = JsonSerializer.Serialize(snapshot);
         certificate.VerificationTokenHash = HashToken(token);
         var bytes = pdf.Generate(new DrivingCertificatePdfModel(
-            institutionName,
-            settings.FormInstitutionCode,
-            settings.FormInstitutionCity,
-            settings.FormInstitutionDistrict,
-            row.student.FullName,
-            FirstNonEmpty(row.profile.IdentityNumber, row.student.TcNo),
-            row.profile.FatherName,
-            row.profile.MotherName,
-            row.profile.BirthPlace,
-            BirthYear(row.student.BirthDate),
-            row.profile.LicenseClass,
-            row.profile.HasExistingLicense ? row.profile.LicenseIssuePlace : string.Empty,
-            row.profile.HasExistingLicense ? LocalDate(row.profile.LicenseIssueDate) : string.Empty,
-            row.profile.HasExistingLicense ? row.profile.ExistingLicenseNumber : string.Empty,
-            row.profile.HasExistingLicense ? row.profile.ExistingLicenseClasses : string.Empty,
+            documentData.InstitutionName,
+            documentData.InstitutionCode,
+            documentData.InstitutionCity,
+            documentData.InstitutionDistrict,
+            documentData.StudentName,
+            documentData.IdentityNumber,
+            documentData.FatherName,
+            documentData.MotherName,
+            documentData.BirthPlace,
+            documentData.BirthYear,
+            documentData.LicenseClass,
+            documentData.ExistingLicenseCity,
+            documentData.ExistingLicenseDate,
+            documentData.ExistingLicenseNumber,
+            documentData.ExistingLicenseClasses,
             certificate.DocumentNumber,
             certificate.MebbisCertificateNo,
             certificate.CertificateType == DrivingCertificateType.Completion
                 ? "EĞİTİM TAMAMLAMA BELGESİ"
                 : "BAŞARI BELGESİ",
-            courseStartedAtUtc,
-            examPassedAtUtc,
-            certificate.IssuedAtUtc,
-            director,
-            directorTitle,
+            documentData.CourseStartedAtUtc,
+            documentData.ExamPassedAtUtc,
+            documentData.IssuedAtUtc,
+            documentData.DirectorName,
+            documentData.DirectorTitle,
             primaryColor,
             verificationUrl,
             logo,
@@ -721,6 +725,160 @@ public sealed class DrivingGraduationController(
         var match = System.Text.RegularExpressions.Regex.Match(value, @"\b(19|20)\d{2}\b");
         return match.Success ? match.Value : string.Empty;
     }
+
+    private async Task<CertificateDocumentData?> ResolveCertificateDocumentDataAsync(
+        Guid profileId,
+        DateTime issuedAtUtc,
+        CancellationToken ct)
+    {
+        var row = await db.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.Id == profileId)
+            .Join(db.Students.AsNoTracking(), profile => profile.StudentId, student => student.Id,
+                (profile, student) => new { profile, student })
+            .SingleOrDefaultAsync(ct);
+        if (row is null || db.CurrentTenantId is not Guid tenantId) return null;
+
+        var tenant = await db.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(x => x.Id == tenantId, ct);
+        var settings = await ResolveSettingsAsync(ct);
+        // Uygulamadaki Şube Müdürü, resmî belgede Kurum Müdürü olarak gösterilir.
+        var branchManager = await db.Staff.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.TenantId == tenantId
+                && x.BranchId == row.student.BranchId
+                && x.Role == UserRole.BranchManager)
+            .OrderBy(x => x.FullName)
+            .Select(x => x.FullName)
+            .FirstOrDefaultAsync(ct);
+        var orgManager = row.student.BranchId is Guid branchId
+            ? await db.OrgUnits.IgnoreQueryFilters().AsNoTracking()
+                .Where(x => x.TenantId == tenantId && x.Id == branchId)
+                .Select(x => x.ManagerName)
+                .FirstOrDefaultAsync(ct)
+            : null;
+        var graduation = await db.DrivingGraduationRecords.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profileId
+                && x.Status == DrivingGraduationStatus.Graduated)
+            .OrderByDescending(x => x.GraduatedAtUtc)
+            .Select(x => (DateTime?)x.GraduatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+        var passedDrivingExam = await db.DrivingExamCandidates.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profileId
+                && x.Status == DrivingExamCandidateStatus.Passed)
+            .Join(
+                db.DrivingExamSessions.AsNoTracking()
+                    .Where(x => x.ExamType == DrivingExamType.DrivingPractice),
+                candidate => candidate.ExamSessionId,
+                session => session.Id,
+                (_, session) => (DateTime?)session.StartsAtUtc)
+            .OrderByDescending(x => x)
+            .FirstOrDefaultAsync(ct);
+
+        return new CertificateDocumentData(
+            FirstNonEmpty(settings.FormInstitutionName, tenant.Name, "Sürücü Kursu"),
+            settings.FormInstitutionCode,
+            settings.FormInstitutionCity,
+            settings.FormInstitutionDistrict,
+            row.student.FullName,
+            FirstNonEmpty(row.profile.IdentityNumber, row.student.TcNo),
+            row.profile.FatherName,
+            row.profile.MotherName,
+            row.profile.BirthPlace,
+            BirthYear(row.student.BirthDate),
+            row.profile.LicenseClass,
+            row.profile.HasExistingLicense ? row.profile.LicenseIssuePlace : string.Empty,
+            row.profile.HasExistingLicense ? LocalDate(row.profile.LicenseIssueDate) : string.Empty,
+            row.profile.HasExistingLicense ? row.profile.ExistingLicenseNumber : string.Empty,
+            row.profile.HasExistingLicense ? row.profile.ExistingLicenseClasses : string.Empty,
+            row.profile.CourseStartsAtUtc ?? row.profile.RegisteredAtUtc,
+            passedDrivingExam ?? row.profile.DrivingExamDate ?? graduation,
+            issuedAtUtc,
+            FirstNonEmpty(
+                branchManager,
+                orgManager,
+                settings.FormDirectorName,
+                settings.CertificateDirectorName,
+                tenant.ContactName),
+            "Kurum Müdürü");
+    }
+
+    private static CertificateDocumentData NormalizeCertificateDocumentData(CertificateDocumentData data) =>
+        new(
+            CleanCertificateText(data.InstitutionName, 200, "Kurum adı"),
+            CleanCertificateText(data.InstitutionCode, 40, "Kurum kodu"),
+            CleanCertificateText(data.InstitutionCity, 60, "Kurum ili"),
+            CleanCertificateText(data.InstitutionDistrict, 60, "Kurum ilçesi"),
+            CleanCertificateText(data.StudentName, 150, "Kursiyer adı"),
+            CleanCertificateText(data.IdentityNumber, 30, "Kimlik numarası"),
+            CleanCertificateText(data.FatherName, 100, "Baba adı"),
+            CleanCertificateText(data.MotherName, 100, "Ana adı"),
+            CleanCertificateText(data.BirthPlace, 100, "Doğum yeri"),
+            CleanCertificateText(data.BirthYear, 4, "Doğum yılı"),
+            CleanCertificateText(data.LicenseClass, 20, "Sertifika sınıfı"),
+            CleanCertificateText(data.ExistingLicenseCity, 100, "Mevcut belge ili"),
+            CleanCertificateText(data.ExistingLicenseDate, 20, "Mevcut belge tarihi"),
+            CleanCertificateText(data.ExistingLicenseNumber, 50, "Mevcut belge numarası"),
+            CleanCertificateText(data.ExistingLicenseClasses, 50, "Mevcut belge sınıfları"),
+            NormalizeCertificateDate(data.CourseStartedAtUtc, "Kurs başlangıç tarihi"),
+            NormalizeCertificateDate(data.ExamPassedAtUtc, "Sınav tarihi"),
+            NormalizeCertificateDate(data.IssuedAtUtc, "Düzenleme tarihi"),
+            CleanCertificateText(data.DirectorName, 150, "Kurum müdürü"),
+            CleanCertificateText(data.DirectorTitle, 100, "Müdür unvanı"));
+
+    private static string CleanCertificateText(string? value, int maxLength, string label)
+    {
+        var source = value ?? string.Empty;
+        if (source.Length > maxLength * 2)
+            throw new ArgumentException($"{label} en fazla {maxLength} karakter olabilir.");
+        var cleaned = new string(source.Where(character => !char.IsControl(character)).ToArray()).Trim();
+        if (cleaned.Length > maxLength)
+            throw new ArgumentException($"{label} en fazla {maxLength} karakter olabilir.");
+        return cleaned;
+    }
+
+    private static DateTime? NormalizeCertificateDate(DateTime? value, string label)
+    {
+        if (!value.HasValue) return null;
+        if (value.Value.Year is < 1900 or > 2100)
+            throw new ArgumentException($"{label} 1900-2100 aralığında olmalıdır.");
+        return DateTime.SpecifyKind(value.Value.Date, DateTimeKind.Utc);
+    }
+
+    private static CertificateDocumentData? ExtractCertificateDocumentData(string? snapshotJson)
+    {
+        if (string.IsNullOrWhiteSpace(snapshotJson)) return null;
+        try
+        {
+            var snapshot = JsonSerializer.Deserialize<CertificateSnapshot>(snapshotJson);
+            return snapshot?.DocumentData is null
+                ? null
+                : NormalizeCertificateDocumentData(snapshot.DocumentData);
+        }
+        catch (JsonException) { return null; }
+        catch (ArgumentException) { return null; }
+    }
+
+    private static List<string> MissingCertificateDocumentFields(CertificateDocumentData data)
+    {
+        var missing = new List<string>();
+        if (string.IsNullOrWhiteSpace(data.InstitutionName)) missing.Add("institutionName");
+        if (string.IsNullOrWhiteSpace(data.InstitutionCode)) missing.Add("institutionCode");
+        if (string.IsNullOrWhiteSpace(data.InstitutionCity)) missing.Add("institutionCity");
+        if (string.IsNullOrWhiteSpace(data.InstitutionDistrict)) missing.Add("institutionDistrict");
+        if (string.IsNullOrWhiteSpace(data.StudentName)) missing.Add("studentName");
+        if (string.IsNullOrWhiteSpace(data.IdentityNumber)) missing.Add("identityNumber");
+        if (string.IsNullOrWhiteSpace(data.FatherName)) missing.Add("fatherName");
+        if (string.IsNullOrWhiteSpace(data.MotherName)) missing.Add("motherName");
+        if (string.IsNullOrWhiteSpace(data.BirthPlace)) missing.Add("birthPlace");
+        if (string.IsNullOrWhiteSpace(data.BirthYear)) missing.Add("birthYear");
+        if (string.IsNullOrWhiteSpace(data.LicenseClass)) missing.Add("licenseClass");
+        if (!data.CourseStartedAtUtc.HasValue) missing.Add("courseStartedAtUtc");
+        if (!data.ExamPassedAtUtc.HasValue) missing.Add("examPassedAtUtc");
+        if (!data.IssuedAtUtc.HasValue) missing.Add("issuedAtUtc");
+        if (string.IsNullOrWhiteSpace(data.DirectorName)) missing.Add("directorName");
+        if (string.IsNullOrWhiteSpace(data.DirectorTitle)) missing.Add("directorTitle");
+        return missing;
+    }
+
     private string PublicVerificationBaseUrl()
     {
         var configured = configuration["CertificateVerification:PublicBaseUrl"]?.Trim().TrimEnd('/');
@@ -740,41 +898,6 @@ public sealed class DrivingGraduationController(
         if (!System.Text.RegularExpressions.Regex.IsMatch(settings.CertificatePrimaryColor, "^#[0-9A-Fa-f]{6}$")) missing.Add("primaryColor");
         if (await ReadSafeCertificateImageAsync(settings.CertificateLogoUrl, ct) is null) missing.Add("logoUrl");
         if (await ReadSafeCertificateImageAsync(settings.CertificateSignatureUrl, ct) is null) missing.Add("signatureUrl");
-        return missing;
-    }
-    private async Task<List<string>> CertificateIssueMissingAsync(Guid profileId, CancellationToken ct)
-    {
-        var row = await db.StudentDrivingProfiles.AsNoTracking()
-            .Where(x => x.Id == profileId)
-            .Join(db.Students.AsNoTracking(), profile => profile.StudentId, student => student.Id,
-                (profile, student) => new { profile, student })
-            .SingleOrDefaultAsync(ct);
-        if (row is null) return ["kursiyer kaydı"];
-
-        var settings = await ResolveSettingsAsync(ct);
-        var missing = new List<string>();
-        if (settings.FormInstitutionName.Trim().Length < 2) missing.Add("resmî kurum adı");
-        if (settings.FormInstitutionCode.Trim().Length < 2) missing.Add("MEBBİS kurum kodu");
-        if (settings.FormInstitutionCity.Trim().Length < 2) missing.Add("kurum ili");
-        if (settings.FormInstitutionDistrict.Trim().Length < 2) missing.Add("kurum ilçesi");
-        if (await ReadSafeCertificateImageAsync(settings.CertificateLogoUrl, ct) is null) missing.Add("kurum logosu");
-        if (await ReadSafeCertificateImageAsync(settings.CertificateSignatureUrl, ct) is null) missing.Add("müdür imzası");
-        if (!IsCertificateSettingsApproved(settings)) missing.Add("sertifika tasarım onayı");
-        if (FirstNonEmpty(row.profile.IdentityNumber, row.student.TcNo).Length < 5) missing.Add("kimlik numarası");
-        if (row.profile.FatherName.Trim().Length < 2) missing.Add("baba adı");
-        if (row.profile.MotherName.Trim().Length < 2) missing.Add("ana adı");
-        if (row.profile.BirthPlace.Trim().Length < 2) missing.Add("doğum yeri");
-        if (BirthYear(row.student.BirthDate).Length != 4) missing.Add("doğum yılı");
-        if (!row.profile.CourseStartsAtUtc.HasValue) missing.Add("kurs başlangıç tarihi");
-
-        var tenantId = db.CurrentTenantId;
-        var managerExists = tenantId.HasValue && await db.Staff.IgnoreQueryFilters().AsNoTracking()
-            .AnyAsync(x => x.TenantId == tenantId && x.BranchId == row.student.BranchId
-                && x.Role == UserRole.BranchManager && x.FullName != string.Empty, ct);
-        if (!managerExists
-            && settings.FormDirectorName.Trim().Length < 2
-            && settings.CertificateDirectorName.Trim().Length < 2)
-            missing.Add("şube müdürü / kurum müdürü");
         return missing;
     }
     private static bool IsCertificateSettingsApproved(DrivingSchoolSettings settings) =>
@@ -825,7 +948,7 @@ public sealed record GraduateStudentRequest(string? Note);
 public sealed record ForceGraduateStudentRequest(string? Reason);
 public sealed record GraduationActionRequest(string? Reason, string[]? ChecklistKeys);
 public sealed record GraduationDecisionRequest(string? Note);
-public sealed record IssueCertificateRequest(string Type);
+public sealed record IssueCertificateRequest(string Type, CertificateDocumentData? Data = null);
 public sealed record CertificateReissueRequest(string? Reason);
 public sealed record CertificateDeliveryRequest(string Status, string? DeliveredTo, string? Note);
 public sealed record CertificateMebbisNoRequest(string? MebbisCertificateNo);
@@ -842,4 +965,32 @@ public sealed record UpdateDrivingCertificateSettingsRequest(
     string? InstitutionCity = null,
     string? InstitutionDistrict = null);
 public sealed record ApproveDrivingCertificateSettingsRequest(bool Confirmed, string? Note);
-public sealed record CertificateSnapshot(int LayoutVersion, string InstitutionName, string StudentName, string LicenseClass, string DirectorName, string DirectorTitle);
+public sealed record CertificateDocumentData(
+    string InstitutionName,
+    string InstitutionCode,
+    string InstitutionCity,
+    string InstitutionDistrict,
+    string StudentName,
+    string IdentityNumber,
+    string FatherName,
+    string MotherName,
+    string BirthPlace,
+    string BirthYear,
+    string LicenseClass,
+    string ExistingLicenseCity,
+    string ExistingLicenseDate,
+    string ExistingLicenseNumber,
+    string ExistingLicenseClasses,
+    DateTime? CourseStartedAtUtc,
+    DateTime? ExamPassedAtUtc,
+    DateTime? IssuedAtUtc,
+    string DirectorName,
+    string DirectorTitle);
+public sealed record CertificateSnapshot(
+    int LayoutVersion,
+    string InstitutionName,
+    string StudentName,
+    string LicenseClass,
+    string DirectorName,
+    string DirectorTitle,
+    CertificateDocumentData? DocumentData = null);

@@ -46,8 +46,15 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
         [FromBody] UpdateStaffRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await staffManagementService.UpdateStaffAsync(id, request, cancellationToken);
-        return Ok(result);
+        try
+        {
+            var result = await staffManagementService.UpdateStaffAsync(id, request, cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>Var olan kullanıcının rol/şube/özel rol atamasını günceller (ev grant'ı yenilenir).

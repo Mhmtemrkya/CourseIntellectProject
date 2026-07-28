@@ -181,6 +181,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<DrivingInstructorLeave> DrivingInstructorLeaves => Set<DrivingInstructorLeave>();
     public DbSet<DrivingCharge> DrivingCharges => Set<DrivingCharge>();
     public DbSet<DrivingSchoolSettings> DrivingSchoolSettings => Set<DrivingSchoolSettings>();
+    public DbSet<InstitutionProfile> InstitutionProfiles => Set<InstitutionProfile>();
     public DbSet<DrivingVehicleDocument> DrivingVehicleDocuments => Set<DrivingVehicleDocument>();
     public DbSet<DrivingVehicleServiceRecord> DrivingVehicleServiceRecords => Set<DrivingVehicleServiceRecord>();
     public DbSet<DrivingTheoryClass> DrivingTheoryClasses => Set<DrivingTheoryClass>();
@@ -1892,6 +1893,22 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.FormDrivingHourlyFee).HasPrecision(18, 2);
             entity.Property(x => x.FormTheoryExamFee).HasPrecision(18, 2);
             entity.Property(x => x.FormDrivingExamFee).HasPrecision(18, 2);
+            entity.HasIndex(x => x.TenantId).IsUnique();
+        });
+        modelBuilder.Entity<InstitutionProfile>(entity =>
+        {
+            entity.ToTable("institution_profiles"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.Name).HasMaxLength(200);
+            entity.Property(x => x.Address).HasMaxLength(400);
+            entity.Property(x => x.District).HasMaxLength(60);
+            entity.Property(x => x.City).HasMaxLength(60);
+            entity.Property(x => x.Phone).HasMaxLength(30);
+            entity.Property(x => x.Email).HasMaxLength(150);
+            entity.Property(x => x.Website).HasMaxLength(150);
+            entity.Property(x => x.TaxOffice).HasMaxLength(120);
+            entity.Property(x => x.TaxNumber).HasMaxLength(30);
+            entity.Property(x => x.DocumentFooterNote).HasMaxLength(300);
+            // Kurum başına tek künye satırı.
             entity.HasIndex(x => x.TenantId).IsUnique();
         });
         modelBuilder.Entity<DrivingInstructorVehicleAssignment>(entity =>

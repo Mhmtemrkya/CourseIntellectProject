@@ -14,6 +14,18 @@ public interface IStudentFinanceService
         string? studentName,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Cari hesap ekstresi: kurum künyesi + cari kartı + tarih sıralı borç/alacak
+    /// hareketleri ve yürüyen bakiye. Tarih verilmezse ilk hareketten bugüne kadar
+    /// tüm geçmiş kapsanır; <paramref name="toUtc"/> dâhil edilen son gündür.
+    /// </summary>
+    Task<StudentStatementDto> GetStatementAsync(
+        Guid? studentUserId,
+        string? studentName,
+        DateTime? fromUtc,
+        DateTime? toUtc,
+        CancellationToken cancellationToken = default);
+
     Task<FinancePaymentDto> RecordPaymentAsync(
         RecordPaymentRequest request,
         Guid? createdByUserId,
@@ -35,6 +47,8 @@ public interface IStudentFinanceService
 
     Task<FinanceDashboardDto> GetDashboardAsync(
         string? className,
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null,
         CancellationToken cancellationToken = default);
 
     // Peşinatı beklenen (henüz tahsil edilmemiş) aktif sözleşmeleri döner.

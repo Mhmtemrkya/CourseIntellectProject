@@ -67,15 +67,15 @@ function parseTrDate(value) {
 }
 
 function formatTry(amount) {
-  return `₺${Math.round(amount).toLocaleString('tr-TR')}`;
+  return `${Math.round(amount).toLocaleString('tr-TR')} TL`;
 }
 
-// Eksen etiketleri için kısaltılmış para biçimi (₺12B / ₺1,2M).
+// Eksen etiketleri için kısaltılmış para biçimi (12 B TL / 1,2 Mn TL).
 function formatTryShort(amount) {
   const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `₺${(amount / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1).replace('.', ',')}M`;
-  if (abs >= 1_000) return `₺${(amount / 1_000).toFixed(abs >= 10_000 ? 0 : 1).replace('.', ',')}B`;
-  return `₺${Math.round(amount)}`;
+  if (abs >= 1_000_000) return `${(amount / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1).replace('.', ',')} Mn TL`;
+  if (abs >= 1_000) return `${(amount / 1_000).toFixed(abs >= 10_000 ? 0 : 1).replace('.', ',')} B TL`;
+  return `${Math.round(amount)} TL`;
 }
 
 function createPeriodBuckets(period, anchor) {
@@ -608,7 +608,7 @@ export default function FinanceDashboard() {
               {periodStats.recent.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-foreground/10 p-6 text-center text-sm text-muted-foreground">Bu dönemde tahsilat yok.</p>
               ) : periodStats.recent.slice(0, 6).map((collection) => (
-                <PremiumListRow key={collection.id} icon={CreditCard} title={collection.name} subtitle={`${collection.method} • ${collection.time || collection.note || 'Tahsilat'}`} meta={`+₺${parseMoney(collection.amount).toLocaleString('tr-TR')}`} accent onClick={() => setSelectedCollection(collection)} />
+                <PremiumListRow key={collection.id} icon={CreditCard} title={collection.name} subtitle={`${collection.method} • ${collection.time || collection.note || 'Tahsilat'}`} meta={`+${formatTry(parseMoney(collection.amount))}`} accent onClick={() => setSelectedCollection(collection)} />
               ))}
             </div>
           </PremiumPanel>
@@ -630,7 +630,7 @@ export default function FinanceDashboard() {
               <CardContent className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">Beklenen toplam peşinat</p>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-amber-600">₺{parseMoney(finance.pendingDownPaymentTotal).toLocaleString('tr-TR')}</p>
+                  <p className="text-xl font-bold text-amber-600">{formatTry(parseMoney(finance.pendingDownPaymentTotal))}</p>
                   <Button asChild variant="outline" size="sm" className="mt-1 h-7 text-xs">
                     <Link to="/finance/student-accounts">Peşinatları Tahsil Et</Link>
                   </Button>
@@ -668,7 +668,7 @@ export default function FinanceDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-red-600">₺{parseMoney(student.amount).toLocaleString('tr-TR')}</p>
+                      <p className="font-bold text-red-600">{formatTry(parseMoney(student.amount))}</p>
                       <Button asChild variant="outline" size="sm" className="mt-1 text-xs h-7">
                         <Link to="/finance/collections">Tahsilat Al</Link>
                       </Button>
@@ -698,7 +698,7 @@ export default function FinanceDashboard() {
                   </div>
                   <div className="rounded-2xl bg-foreground/12 px-5 py-4 backdrop-blur">
                     <div className="text-xs text-foreground/70">Tahsilat Tutarı</div>
-                    <div className="mt-2 text-3xl font-bold">₺{parseMoney(selectedCollection.amount).toLocaleString('tr-TR')}</div>
+                    <div className="mt-2 text-3xl font-bold">{formatTry(parseMoney(selectedCollection.amount))}</div>
                   </div>
                 </div>
               </div>

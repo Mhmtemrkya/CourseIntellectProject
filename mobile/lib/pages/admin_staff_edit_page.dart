@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
+import '../services/admin_workflow_api_service.dart';
+import '../services/auth_session_store.dart';
 import '../services/staff_registry_store.dart';
 
 class AdminStaffEditPage extends StatefulWidget {
@@ -29,6 +31,13 @@ class _AdminStaffEditPageState extends State<AdminStaffEditPage> {
 
   String _maritalStatus = 'Belirtilmedi';
   bool _isSaving = false;
+  bool _isLoadingPermissions = false;
+  bool _canManagePermissions = false;
+  String _role = '';
+  String _branchId = '';
+  String _customRoleId = '';
+  List<Map<String, dynamic>> _branches = const [];
+  List<Map<String, dynamic>> _customRoles = const [];
 
   static const _maritalOptions = ['Belirtilmedi', 'Bekar', 'Evli'];
 
@@ -60,6 +69,53 @@ class _AdminStaffEditPageState extends State<AdminStaffEditPage> {
     _maritalStatus = _maritalOptions.contains(initialMarital)
         ? initialMarital
         : 'Belirtilmedi';
+    _role = _apiRole(record?.roleType ?? '');
+    _branchId = record?.branchId ?? '';
+    _customRoleId = record?.customRoleId ?? '';
+    _loadPermissionOptions();
+  }
+
+  String _apiRole(String role) => switch (role) {
+    'Öğretmen' => 'Teacher',
+    'Personel' || 'İdari Birimler' => 'Administrative',
+    'Muhasebeci' => 'Accounting',
+    'Yemekhaneci' => 'Cafeteria',
+    _ => role,
+  };
+
+  Future<void> _loadPermissionOptions() async {
+    final session = await AuthSessionStore.instance.load();
+    final isAdmin = session?.primaryRole.toLowerCase() == 'admin';
+    if (!mounted) return;
+    setState(() => _canManagePermissions = isAdmin);
+    if (!isAdmin) return;
+
+    setState(() => _isLoadingPermissions = true);
+    try {
+      final api = AdminWorkflowApiService.instance;
+      final results = await Future.wait([
+        api.getOrgUnits(),
+        api.getCustomRoles(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _branches = results[0]
+            .where(
+              (unit) =>
+                  unit['isActive'] != false &&
+                  [
+                    'şube',
+                    'sube',
+                    'kampüs',
+                    'kampus',
+                  ].contains((unit['unitType'] ?? '').toString().toLowerCase()),
+            )
+            .toList();
+        _customRoles = results[1];
+      });
+    } finally {
+      if (mounted) setState(() => _isLoadingPermissions = false);
+    }
   }
 
   StaffRegistryRecord? _findRecord() {
@@ -86,6 +142,14 @@ class _AdminStaffEditPageState extends State<AdminStaffEditPage> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_canManagePermissions &&
+        _role == 'BranchManager' &&
+        _branchId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Şube müdürü için şube seçimi zorunludur.'.tr)),
+      );
+      return;
+    }
     setState(() => _isSaving = true);
 
     final assignedClasses = _assignedClasses.text
@@ -110,6 +174,18 @@ class _AdminStaffEditPageState extends State<AdminStaffEditPage> {
         childCount: childCount,
         note: _note.text.trim(),
       );
+      final record = _findRecord();
+      if (_canManagePermissions && record != null && record.userId.isNotEmpty) {
+        await AdminWorkflowApiService.instance.updateStaffAssignment(
+          record.userId,
+          role: _role,
+          branchId: _branchId.isEmpty ? null : _branchId,
+          customRoleId: _customRoleId.isEmpty ? null : _customRoleId,
+          clearCustomRole: _customRoleId.isEmpty,
+          clearBranch: _branchId.isEmpty,
+        );
+        await _store.refresh();
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Personel bilgileri güncellendi.'.tr)),
@@ -208,6 +284,154 @@ class _AdminStaffEditPageState extends State<AdminStaffEditPage> {
                 _textField(controller: _note, label: 'Not', maxLines: 3),
               ],
             ),
+            if (_canManagePermissions)
+              _Section(
+                title: 'Rol, Şube ve Yetkiler'.tr,
+                children: [
+                  if (_isLoadingPermissions)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: LinearProgressIndicator(),
+                    ),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('role-$_role'),
+                    initialValue: _role.isEmpty ? null : _role,
+                    isExpanded: true,
+                    decoration: _fieldDecoration('Temel Rol'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Teacher',
+                        child: Text('Öğretmen'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'BranchManager',
+                        child: Text('Şube Müdürü'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Administrative',
+                        child: Text('İdari Personel'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Accounting',
+                        child: Text('Muhasebe'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Cafeteria',
+                        child: Text('Yemekhaneci'),
+                      ),
+                    ],
+                    onChanged: _isLoadingPermissions
+                        ? null
+                        : (value) => setState(() {
+                            _role = value ?? _role;
+                            _customRoleId = '';
+                          }),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('branch-$_branchId'),
+                    initialValue: _branchId.isEmpty ? '__none__' : _branchId,
+                    isExpanded: true,
+                    decoration: _fieldDecoration(
+                      _role == 'BranchManager' ? 'Şube *' : 'Şube',
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: '__none__',
+                        child: Text('Kurum geneli'),
+                      ),
+                      if (_branchId.isNotEmpty &&
+                          !_branches.any(
+                            (branch) => branch['id']?.toString() == _branchId,
+                          ))
+                        DropdownMenuItem(
+                          value: _branchId,
+                          child: const Text('Mevcut şube'),
+                        ),
+                      ..._branches.map(
+                        (branch) => DropdownMenuItem(
+                          value: branch['id']?.toString(),
+                          child: Text(
+                            '${branch['name']}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
+                    onChanged: _isLoadingPermissions
+                        ? null
+                        : (value) => setState(
+                            () => _branchId = value == '__none__'
+                                ? ''
+                                : (value ?? ''),
+                          ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('custom-$_customRoleId-$_role'),
+                    initialValue: _customRoleId.isEmpty
+                        ? '__base__'
+                        : _customRoleId,
+                    isExpanded: true,
+                    decoration: _fieldDecoration('Yetki Profili'),
+                    items: [
+                      const DropdownMenuItem(
+                        value: '__base__',
+                        child: Text('Temel rol yetkileri'),
+                      ),
+                      if (_customRoleId.isNotEmpty &&
+                          !_customRoles.any(
+                            (role) => role['id']?.toString() == _customRoleId,
+                          ))
+                        DropdownMenuItem(
+                          value: _customRoleId,
+                          child: const Text('Mevcut yetki profili'),
+                        ),
+                      ..._customRoles
+                          .where(
+                            (role) =>
+                                _role.isEmpty || role['baseRole'] == _role,
+                          )
+                          .map(
+                            (role) => DropdownMenuItem(
+                              value: role['id']?.toString(),
+                              child: Text(
+                                '${role['name']}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                    ],
+                    onChanged: _isLoadingPermissions
+                        ? null
+                        : (value) {
+                            final selected = _customRoles
+                                .where(
+                                  (role) => role['id']?.toString() == value,
+                                )
+                                .cast<Map<String, dynamic>?>()
+                                .firstWhere((_) => true, orElse: () => null);
+                            setState(() {
+                              _customRoleId = value == '__base__'
+                                  ? ''
+                                  : (value ?? '');
+                              if (selected?['baseRole'] != null) {
+                                _role = selected!['baseRole'].toString();
+                              }
+                            });
+                          },
+                  ),
+                  if (_customRoleId.isNotEmpty)
+                    _PermissionSummary(
+                      role: _customRoles
+                          .where(
+                            (role) => role['id']?.toString() == _customRoleId,
+                          )
+                          .cast<Map<String, dynamic>?>()
+                          .firstWhere((_) => true, orElse: () => null),
+                    ),
+                ],
+              ),
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: _isSaving ? null : _save,
@@ -299,6 +523,53 @@ class _Section extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _PermissionSummary extends StatelessWidget {
+  final Map<String, dynamic>? role;
+
+  const _PermissionSummary({required this.role});
+
+  @override
+  Widget build(BuildContext context) {
+    if (role == null) return const SizedBox.shrink();
+    final modules = (role!['modules'] as List<dynamic>? ?? const [])
+        .map((item) => item.toString())
+        .toList();
+    final permissions = (role!['permissions'] as List<dynamic>? ?? const [])
+        .map((item) => item.toString())
+        .toList();
+    final entries = [...modules, ...permissions];
+    if (entries.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Verilecek erişimler',
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: entries.map((entry) => Chip(label: Text(entry))).toList(),
+          ),
         ],
       ),
     );

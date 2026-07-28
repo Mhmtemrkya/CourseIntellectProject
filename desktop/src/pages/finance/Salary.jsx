@@ -40,7 +40,8 @@ const months = [
 ];
 
 function formatCurrency(val) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val || 0);
+  const amount = Number(val) || 0;
+  return `${amount.toLocaleString('tr-TR', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 2 })} TL`;
 }
 
 function parseMoney(value) {

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   User, 
+  Building2,
   Moon, 
   Sun, 
   Monitor,
@@ -42,6 +44,7 @@ const itemVariants = {
 
 export default function Settings() {
   const { user } = useApp();
+  const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [baseUrl, setBaseUrl] = useState('https://maydanozasist.schoolasist.com');
@@ -116,6 +119,34 @@ export default function Settings() {
                 </div>
               </div>
               <Button variant="outline">Profili Düzenle</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Kurum künyesi — ekstre/makbuz başlığındaki bilgiler ayrı sayfada yönetilir. */}
+      <motion.div variants={itemVariants}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Kurum Künyesi
+            </CardTitle>
+            <CardDescription>Belgelerde görünen kurum bilgileri</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <p className="font-medium">Ekstre ve makbuz başlığı</p>
+                <p className="text-sm text-muted-foreground">
+                  Kurum adı, adres, telefon, e-posta ve vergi bilgisi — belgelerin sağ üst köşesinde
+                  otomatik görünür.
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => navigate('/settings/institution')}>
+                <Building2 className="h-4 w-4 mr-2" />
+                Kurum Künyesini Düzenle
+              </Button>
             </div>
           </CardContent>
         </Card>
