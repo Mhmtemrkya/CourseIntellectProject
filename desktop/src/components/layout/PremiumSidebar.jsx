@@ -124,6 +124,50 @@ function SidebarLink({ item, compact, mobile, onNavigate, activePath }) {
   );
 }
 
+/**
+ * Kullanıcı kartındaki yuvarlak rozet: kurum logosu varsa logo, yoksa adın baş harfi.
+ *
+ * Kurum logoları çoğunlukla YATAY ve şeffaf zeminlidir; yuvarlak bir alana
+ * kırpılmadan oturması için beyaz zemin + iç boşluk + `object-contain` kullanılır.
+ * Logo yüklenemezse (adres bozuk, dosya silinmiş) baş harfe düşülür — kart asla
+ * kırık görsel göstermez.
+ */
+function InstitutionBadge({ logo, name, fallbackInitial }) {
+  const [failed, setFailed] = useState(false);
+  // ThemeContext logoyu zaten mutlak adrese çevirir; burada tekrar dönüştürülmez.
+  const source = logo || "";
+
+  useEffect(() => setFailed(false), [source]);
+
+  if (source && !failed) {
+    return (
+      <span
+        className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200/80 bg-white p-[5px] shadow-lg"
+        title={name || "Kurum logosu"}
+      >
+        <img
+          src={source}
+          alt={name || "Kurum logosu"}
+          onError={() => setFailed(true)}
+          className="h-full w-full object-contain"
+        />
+      </span>
+    );
+  }
+
+  return (
+    <div
+      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-foreground/10 text-sm font-bold text-white shadow-lg"
+      style={{
+        background: "linear-gradient(145deg, hsl(var(--brand-accent)), hsl(var(--brand-primary)))",
+      }}
+      title={name || undefined}
+    >
+      {fallbackInitial}
+    </div>
+  );
+}
+
 export function PremiumSidebar() {
   const {
     logout,
@@ -413,27 +457,17 @@ export function PremiumSidebar() {
             compact ? "justify-center px-2" : "justify-between px-4",
           )}
         >
+          {/*
+            Başlıkta HER ZAMAN ürünün kendi markası durur; kurumun yüklediği logo
+            aşağıdaki kullanıcı kartında gösterilir. Böylece iki marka birbirinin
+            yerini almaz: üstte "hangi ürünü kullanıyorum", altta "hangi kurumdayım".
+          */}
           <div className="flex min-w-0 items-center gap-3">
-            {tenantLogo ? (
-              <span
-                className={cn(
-                  "flex flex-shrink-0 items-center justify-center overflow-hidden border border-slate-200/80 bg-white shadow-lg",
-                  compact ? "h-10 w-10 rounded-xl p-1" : "h-11 w-[72px] rounded-xl p-1.5",
-                )}
-              >
-                <img
-                  src={tenantLogo}
-                  alt={tenantName || "Kurum logosu"}
-                  className="h-full w-full object-contain"
-                />
-              </span>
-            ) : (
-              <img
-                src={brandLogo}
-                alt="SchoolAsist"
-                className="h-10 w-10 flex-shrink-0 rounded-xl object-contain shadow-lg"
-              />
-            )}
+            <img
+              src={brandLogo}
+              alt="SchoolAsist"
+              className="h-10 w-10 flex-shrink-0 rounded-xl object-contain shadow-lg"
+            />
             {!compact && (
               <div className="min-w-0">
                 <p className={cn("truncate text-[16px] font-bold", light ? "text-slate-950" : "text-white")}>
@@ -461,32 +495,37 @@ export function PremiumSidebar() {
         </header>
 
         {compact ? (
-          <button
-            type="button"
-            onClick={() => setSidebarCollapsed(false)}
-            className={cn(
-              "relative mx-auto mt-2.5 flex h-9 w-9 items-center justify-center rounded-[10px] border transition",
-              light
-                ? "border-slate-200 bg-white/70 text-slate-600 hover:bg-white"
-                : "border-foreground/10 bg-foreground/[0.05] text-foreground/65 hover:bg-foreground/10 hover:text-white",
-            )}
-            aria-label="Menüyü genişlet"
-          >
-            <Menu className="h-[18px] w-[18px]" />
-          </button>
+          // Daraltılmış rayda kullanıcı kartı çizilmez; kurum rozeti buraya taşınır
+          // ki hangi kurumda olunduğu her hâlde görünsün.
+          <div className="relative mt-2.5 flex flex-col items-center gap-2">
+            <InstitutionBadge
+              logo={tenantLogo}
+              name={tenantName}
+              fallbackInitial={user?.name?.charAt(0)?.toUpperCase() || "K"}
+            />
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(false)}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-[10px] border transition",
+                light
+                  ? "border-slate-200 bg-white/70 text-slate-600 hover:bg-white"
+                  : "border-foreground/10 bg-foreground/[0.05] text-foreground/65 hover:bg-foreground/10 hover:text-white",
+              )}
+              aria-label="Menüyü genişlet"
+            >
+              <Menu className="h-[18px] w-[18px]" />
+            </button>
+          </div>
         ) : (
           <>
             <div className={cn("relative mx-3 mt-3 rounded-[10px] border p-2.5 backdrop-blur-xl", light ? "border-foreground/[0.08] bg-foreground/[0.035]" : "border-foreground/[0.08] bg-foreground/[0.035]")}>
               <div className="flex items-center gap-2.5">
-                <div
-                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-foreground/10 text-sm font-bold text-white shadow-lg"
-                  style={{
-                    background:
-                      "linear-gradient(145deg, hsl(var(--brand-accent)), hsl(var(--brand-primary)))",
-                  }}
-                >
-                  {user?.name?.charAt(0)?.toUpperCase() || "K"}
-                </div>
+                <InstitutionBadge
+                  logo={tenantLogo}
+                  name={tenantName}
+                  fallbackInitial={user?.name?.charAt(0)?.toUpperCase() || "K"}
+                />
                 <div className="min-w-0 flex-1">
                   <p className={cn("truncate text-[13px] font-semibold", light ? "text-slate-950" : "text-white")}>
                     {user?.name || "Kullanıcı"}

@@ -73,6 +73,8 @@ class AppSidebar extends StatelessWidget {
               name: userName!,
               role: userRole ?? '',
               brandAccent: tp.brandAccent,
+              tenantLogo: tp.tenantLogo,
+              tenantName: tp.tenantName,
             ),
 
           // ---- FOOTER LOGO ----
@@ -115,21 +117,18 @@ class _LogoSection extends StatelessWidget {
           bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
       ),
+      // Başlıkta HER ZAMAN ürünün kendi markası durur; kurumun yüklediği logo
+      // alttaki kullanıcı kartındaki rozette gösterilir (masaüstüyle aynı düzen).
       child: Row(
         children: [
-          // Tenant logo veya varsayılan ikon
           Container(
-            width: tenantLogo != null ? 76 : 44,
+            width: 44,
             height: 44,
-            padding: EdgeInsets.all(tenantLogo != null ? 5 : 0),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              color: tenantLogo != null ? Colors.white : null,
-              gradient: tenantLogo == null
-                  ? const LinearGradient(
-                      colors: [Color(0xFFFF7A1A), Color(0xFFFF9D2E)],
-                    )
-                  : null,
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFF7A1A), Color(0xFFFF9D2E)],
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.12),
@@ -137,35 +136,37 @@ class _LogoSection extends StatelessWidget {
                 ),
               ],
             ),
-            child: tenantLogo != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(7),
-                    child: Image.network(
-                      tenantLogo!,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => const Icon(
-                        Icons.school_rounded,
-                        color: Color(0xFF0B2841),
-                        size: 20,
-                      ),
-                    ),
-                  )
-                : const Icon(
-                    Icons.school_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
+            child: const Icon(
+              Icons.school_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              tenantName.isNotEmpty ? tenantName : 'SchoolAsist',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'SchoolAsist',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (tenantName.isNotEmpty)
+                  Text(
+                    tenantName,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 10,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
             ),
           ),
         ],
@@ -273,11 +274,15 @@ class _UserSection extends StatelessWidget {
   final String name;
   final String role;
   final Color brandAccent;
+  final String? tenantLogo;
+  final String tenantName;
 
   const _UserSection({
     required this.name,
     required this.role,
     required this.brandAccent,
+    this.tenantLogo,
+    this.tenantName = '',
   });
 
   @override
@@ -291,25 +296,47 @@ class _UserSection extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Kurum logosu varsa rozet olarak o gösterilir; yoksa adın baş harfi.
+          // Yatay/şeffaf logolar kırpılmasın diye beyaz zemin + BoxFit.contain.
           Container(
             width: 36,
             height: 36,
+            padding: EdgeInsets.all(tenantLogo != null ? 4 : 0),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              gradient: LinearGradient(
-                colors: [brandAccent, brandAccent.withValues(alpha: 0.7)],
-              ),
+              color: tenantLogo != null ? Colors.white : null,
+              gradient: tenantLogo == null
+                  ? LinearGradient(
+                      colors: [brandAccent, brandAccent.withValues(alpha: 0.7)],
+                    )
+                  : null,
             ),
-            child: Center(
-              child: Text(
-                name.isNotEmpty ? name[0].toUpperCase() : '?',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
+            child: tenantLogo != null
+                ? Image.network(
+                    tenantLogo!,
+                    fit: BoxFit.contain,
+                    // Logo indirilemezse kırık görsel yerine baş harfe düşülür.
+                    errorBuilder: (_, _, _) => Center(
+                      child: Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : '?',
+                        style: TextStyle(
+                          color: brandAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  )
+                : Center(
+                    child: Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
