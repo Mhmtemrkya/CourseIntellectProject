@@ -132,17 +132,26 @@ function SidebarLink({ item, compact, mobile, onNavigate, activePath }) {
  * Logo yüklenemezse (adres bozuk, dosya silinmiş) baş harfe düşülür — kart asla
  * kırık görsel göstermez.
  */
-function InstitutionBadge({ logo, name, fallbackInitial }) {
+function InstitutionBadge({ logo, name, fallbackInitial, compact = false }) {
   const [failed, setFailed] = useState(false);
   // ThemeContext logoyu zaten mutlak adrese çevirir; burada tekrar dönüştürülmez.
   const source = logo || "";
 
   useEffect(() => setFailed(false), [source]);
 
+  // Kullanıcı kartında logo OKUNUR olmalı; daraltılmış rayda ise 64px'lik
+  // şeride sığması gerektiği için küçük ölçü kullanılır.
+  const box = compact ? "h-11 w-11" : "h-[58px] w-[58px]";
+
   if (source && !failed) {
     return (
       <span
-        className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200/80 bg-white p-[5px] shadow-lg"
+        className={cn(
+          "flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200/80 bg-white shadow-lg",
+          box,
+          // İç boşluk bilerek dar: logo daire içinde mümkün olduğunca büyük dursun.
+          compact ? "p-[3px]" : "p-1",
+        )}
         title={name || "Kurum logosu"}
       >
         <img
@@ -157,7 +166,11 @@ function InstitutionBadge({ logo, name, fallbackInitial }) {
 
   return (
     <div
-      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-foreground/10 text-sm font-bold text-white shadow-lg"
+      className={cn(
+        "flex flex-shrink-0 items-center justify-center rounded-full border-[3px] border-foreground/10 font-bold text-white shadow-lg",
+        box,
+        compact ? "text-sm" : "text-lg",
+      )}
       style={{
         background: "linear-gradient(145deg, hsl(var(--brand-accent)), hsl(var(--brand-primary)))",
       }}
@@ -499,6 +512,7 @@ export function PremiumSidebar() {
           // ki hangi kurumda olunduğu her hâlde görünsün.
           <div className="relative mt-2.5 flex flex-col items-center gap-2">
             <InstitutionBadge
+              compact
               logo={tenantLogo}
               name={tenantName}
               fallbackInitial={user?.name?.charAt(0)?.toUpperCase() || "K"}
@@ -520,7 +534,7 @@ export function PremiumSidebar() {
         ) : (
           <>
             <div className={cn("relative mx-3 mt-3 rounded-[10px] border p-2.5 backdrop-blur-xl", light ? "border-foreground/[0.08] bg-foreground/[0.035]" : "border-foreground/[0.08] bg-foreground/[0.035]")}>
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3.5">
                 <InstitutionBadge
                   logo={tenantLogo}
                   name={tenantName}

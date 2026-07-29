@@ -299,8 +299,9 @@ class _UserSection extends StatelessWidget {
           // Kurum logosu varsa rozet olarak o gösterilir; yoksa adın baş harfi.
           // Yatay/şeffaf logolar kırpılmasın diye beyaz zemin + BoxFit.contain.
           Container(
-            width: 36,
-            height: 36,
+            // Logo okunur dursun diye rozet bilerek büyük; iç boşluk dar.
+            width: 52,
+            height: 52,
             padding: EdgeInsets.all(tenantLogo != null ? 4 : 0),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
@@ -322,7 +323,7 @@ class _UserSection extends StatelessWidget {
                         style: TextStyle(
                           color: brandAccent,
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 20,
                         ),
                       ),
                     ),
@@ -333,12 +334,12 @@ class _UserSection extends StatelessWidget {
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 20,
                       ),
                     ),
                   ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
