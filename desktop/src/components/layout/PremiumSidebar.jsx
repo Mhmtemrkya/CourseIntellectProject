@@ -379,6 +379,14 @@ export function PremiumSidebar() {
     null,
   );
   const compact = sidebarCollapsed && !mobile;
+  // Kurum adı: önce markalamada verilen özel ad, yoksa oturumdaki kurum kaydı.
+  // Markalama adı çoğu kurumda boştur; tek başına kullanılırsa satır boş kalır.
+  // Oturumdaki ad çözülemediğinde yer tutucuya ("SchoolAsist Desktop") düşer —
+  // bu bir kurum adı değildir, kartta gösterilmez.
+  const sessionTenant = user?.tenant;
+  const institutionName =
+    tenantName
+    || (sessionTenant && !["SchoolAsist Desktop", "Platform"].includes(sessionTenant) ? sessionTenant : "");
   const displayEmail =
     user?.username?.includes("@") &&
     user?.email?.toLowerCase().startsWith(`${user.username.toLowerCase()}@`)
@@ -486,8 +494,12 @@ export function PremiumSidebar() {
                 <p className={cn("truncate text-[16px] font-bold", light ? "text-slate-950" : "text-white")}>
                   School<span className="text-[hsl(var(--brand-accent))]">Asist</span>
                 </p>
+                {/*
+                  Kurum adı artık kullanıcı kartında yazıyor; burada tekrar
+                  edilmez. Bu satır ürünün ne olduğunu söyler, kurumu değil.
+                */}
                 <p className={cn("max-w-[154px] truncate text-[9px]", light ? "text-slate-500" : "text-foreground/38")}>
-                  {tenantName || ROLE_LABELS[primaryRole]}
+                  {institutionType === "DrivingSchool" ? "Sürücü Kursu Yönetimi" : "Okul Yönetim Sistemi"}
                 </p>
               </div>
             )}
@@ -514,7 +526,7 @@ export function PremiumSidebar() {
             <InstitutionBadge
               compact
               logo={tenantLogo}
-              name={tenantName}
+              name={institutionName}
               fallbackInitial={user?.name?.charAt(0)?.toUpperCase() || "K"}
             />
             <button
@@ -537,15 +549,23 @@ export function PremiumSidebar() {
               <div className="flex items-center gap-3.5">
                 <InstitutionBadge
                   logo={tenantLogo}
-                  name={tenantName}
+                  name={institutionName}
                   fallbackInitial={user?.name?.charAt(0)?.toUpperCase() || "K"}
                 />
                 <div className="min-w-0 flex-1">
                   <p className={cn("truncate text-[13px] font-semibold", light ? "text-slate-950" : "text-white")}>
                     {user?.name || "Kullanıcı"}
                   </p>
-                  <p className={cn("truncate text-[10px]", light ? "text-slate-500" : "text-foreground/42")}>
-                    {displayEmail}
+                  {/*
+                    Kartın ikinci satırı KURUM ADIDIR, e-posta değil: kart
+                    "hangi kurumda, hangi rolle çalışıyorum" sorusunu yanıtlar.
+                    E-posta ihtiyaç hâlinde en altta, sidebar alt bilgisinde durur.
+                  */}
+                  <p
+                    className={cn("truncate text-[10px]", light ? "text-slate-500" : "text-foreground/42")}
+                    title={institutionName || undefined}
+                  >
+                    {institutionName || displayEmail}
                   </p>
                   <span className="mt-1 inline-flex rounded-full bg-[hsl(var(--brand-accent)/0.12)] px-2 py-0.5 text-[9px] font-semibold text-[hsl(var(--brand-accent))]">
                     {ROLE_LABELS[primaryRole] || primaryRole}

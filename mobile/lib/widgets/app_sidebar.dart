@@ -157,15 +157,15 @@ class _LogoSection extends StatelessWidget {
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (tenantName.isNotEmpty)
-                  Text(
-                    tenantName,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 10,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                // Kurum adı kullanıcı kartında yazıyor; burada tekrar edilmez.
+                Text(
+                  'Okul Yönetim Sistemi',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: 10,
                   ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
@@ -353,12 +353,23 @@ class _UserSection extends StatelessWidget {
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
+                // Kart "hangi kurumda, hangi rolle" sorusunu yanıtlar.
+                if (tenantName.isNotEmpty)
+                  Text(
+                    tenantName,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 11,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 if (role.isNotEmpty)
                   Text(
                     role,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 11,
+                      color: brandAccent,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
