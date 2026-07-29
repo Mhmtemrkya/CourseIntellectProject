@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/driving_school_api_service.dart';
 import '../theme_provider.dart';
 import 'course_intellect_logo.dart';
 
@@ -101,14 +102,45 @@ class SidebarDestination {
 
 // ─── Logo Section ───────────────────────────────────────────────────────────
 
-class _LogoSection extends StatelessWidget {
+/// Kurum türü oturum boyunca bir kez çözülür: her yeniden çizimde ağ isteği
+/// yapılmasın. Çözülemezse okul varsayılanı kullanılır (masaüstüyle aynı davranış).
+String? _cachedInstitutionType;
+
+class _LogoSection extends StatefulWidget {
   final String? tenantLogo;
   final String tenantName;
 
   const _LogoSection({this.tenantLogo, required this.tenantName});
 
   @override
+  State<_LogoSection> createState() => _LogoSectionState();
+}
+
+class _LogoSectionState extends State<_LogoSection> {
+  String? _institutionType = _cachedInstitutionType;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_institutionType == null) _resolveInstitutionType();
+  }
+
+  Future<void> _resolveInstitutionType() async {
+    try {
+      final type = await DrivingSchoolApiService.instance.institutionType();
+      _cachedInstitutionType = type;
+      if (mounted) setState(() => _institutionType = type);
+    } catch (_) {
+      // Çözülemezse alt satır okul varsayılanında kalır.
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final descriptor = _institutionType == 'DrivingSchool'
+        ? 'Sürücü Kursu Yönetimi'
+        : 'Okul Yönetim Sistemi';
+
     return Container(
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -126,9 +158,6 @@ class _LogoSection extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFF7A1A), Color(0xFFFF9D2E)],
-              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.12),
@@ -136,10 +165,12 @@ class _LogoSection extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.school_rounded,
-              color: Colors.white,
-              size: 20,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset(
+                'assets/logo/school_asist_emblem.png',
+                fit: BoxFit.contain,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -159,7 +190,7 @@ class _LogoSection extends StatelessWidget {
                 ),
                 // Kurum adı kullanıcı kartında yazıyor; burada tekrar edilmez.
                 Text(
-                  'Okul Yönetim Sistemi',
+                  descriptor,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.55),
                     fontSize: 10,
@@ -304,26 +335,41 @@ class _UserSection extends StatelessWidget {
             height: 52,
             padding: EdgeInsets.all(tenantLogo != null ? 4 : 0),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
+              // Masaüstündeki rozetle aynı: tam daire, beyaz zemin, ince kenarlık.
+              shape: BoxShape.circle,
               color: tenantLogo != null ? Colors.white : null,
+              border: tenantLogo != null
+                  ? Border.all(color: Colors.white.withValues(alpha: 0.85))
+                  : Border.all(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      width: 3,
+                    ),
               gradient: tenantLogo == null
                   ? LinearGradient(
                       colors: [brandAccent, brandAccent.withValues(alpha: 0.7)],
                     )
                   : null,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 10,
+                ),
+              ],
             ),
             child: tenantLogo != null
-                ? Image.network(
-                    tenantLogo!,
-                    fit: BoxFit.contain,
-                    // Logo indirilemezse kırık görsel yerine baş harfe düşülür.
-                    errorBuilder: (_, _, _) => Center(
-                      child: Text(
-                        name.isNotEmpty ? name[0].toUpperCase() : '?',
-                        style: TextStyle(
-                          color: brandAccent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
+                ? ClipOval(
+                    child: Image.network(
+                      tenantLogo!,
+                      fit: BoxFit.contain,
+                      // Logo indirilemezse kırık görsel yerine baş harfe düşülür.
+                      errorBuilder: (_, _, _) => Center(
+                        child: Text(
+                          name.isNotEmpty ? name[0].toUpperCase() : '?',
+                          style: TextStyle(
+                            color: brandAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -363,16 +409,28 @@ class _UserSection extends StatelessWidget {
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                if (role.isNotEmpty)
-                  Text(
-                    role,
-                    style: TextStyle(
-                      color: brandAccent,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                if (role.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    decoration: BoxDecoration(
+                      color: brandAccent.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      role,
+                      style: TextStyle(
+                        color: brandAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
+                ],
               ],
             ),
           ),
