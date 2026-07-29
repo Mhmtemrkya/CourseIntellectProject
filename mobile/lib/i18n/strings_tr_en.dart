@@ -821,6 +821,14 @@ const Map<String, String> kTrEn = {
   'Dosya okunamadı': 'File could not be read',
   'Özelleştirmeler Kaydedildi': 'Customizations Saved',
   'Logoyu kaldır': 'Remove logo',
+  'Kurum Logosu': 'Institution Logo',
+  'Logo Yükle': 'Upload Logo',
+  'Logoyu Değiştir': 'Change Logo',
+  'Henüz logo yüklenmedi': 'No logo uploaded yet',
+  'Okul ve sürücü kursu ekranlarında tüm öğrenci ve personelin göreceği logo.':
+      'The logo shown to all students and staff in school and driving school screens.',
+  'Kare, yatay, dikey ve yuvarlak logolar kırpılmadan gösterilir. PNG, JPEG veya WebP; en fazla 2 MB.':
+      'Square, horizontal, vertical and circular logos are shown without cropping. PNG, JPEG or WebP; maximum 2 MB.',
   'Kurum adı veya özel isim': 'Institution name or custom name',
   'Tasarım sıfırlandı': 'Design reset',
   'Kurum abonelikleri ve öğrenci faturaları':

@@ -3,10 +3,11 @@ namespace CourseIntellect.Domain.Entities;
 public enum DrivingMebbisReconciliationStatus { Completed = 1, Superseded = 2 }
 public enum DrivingMebbisReconciliationRowClass { Matched = 1, CourseOnly = 2, MebbisOnly = 3, Different = 4 }
 
-public sealed class DrivingMebbisReconciliation : ITenantScopedEntity
+public sealed class DrivingMebbisReconciliation : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StudentGroupId { get; set; }
     public DrivingMebbisReconciliationStatus Status { get; set; } = DrivingMebbisReconciliationStatus.Completed;
     public string SourceSessionsJson { get; set; } = "[]";
@@ -25,10 +26,11 @@ public sealed class DrivingMebbisReconciliation : ITenantScopedEntity
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingMebbisReconciliationRow : ITenantScopedEntity
+public sealed class DrivingMebbisReconciliationRow : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid ReconciliationId { get; set; }
     public DrivingMebbisReconciliationRowClass Classification { get; set; }
     public string MaskedIdentity { get; set; } = string.Empty;

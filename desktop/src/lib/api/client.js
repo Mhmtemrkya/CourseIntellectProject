@@ -35,6 +35,11 @@ export function setActiveTenantContext(tenantId) {
   } catch { /* yoksa yoksay */ }
   // Kurum değişti → şube seçimi artık geçersiz, temizle.
   setActiveBranchFilter(null);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ci:tenant-context-changed', {
+      detail: { tenantId: activeTenantContext },
+    }));
+  }
 }
 
 // Lazy singleton: Tauri HTTP plugin import'unu ilk kullanımda await eder

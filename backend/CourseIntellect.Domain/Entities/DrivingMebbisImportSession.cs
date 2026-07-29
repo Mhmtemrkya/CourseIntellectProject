@@ -4,10 +4,11 @@ public enum DrivingMebbisImportType { CandidateList = 1, ExamResults = 2, Certif
 public enum DrivingMebbisImportStatus { PreviewReady = 1, Applied = 2, Rejected = 3, Failed = 4 }
 public enum DrivingMebbisImportRowClass { Matched = 1, NotFound = 2, Conflict = 3, Change = 4, New = 5, Unchanged = 6, Invalid = 7 }
 
-public sealed class DrivingMebbisImportSession : ITenantScopedEntity
+public sealed class DrivingMebbisImportSession : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public DrivingMebbisImportType ImportType { get; set; }
     public DrivingMebbisImportStatus Status { get; set; } = DrivingMebbisImportStatus.PreviewReady;
     public Guid? StudentGroupId { get; set; }
@@ -32,10 +33,11 @@ public sealed class DrivingMebbisImportSession : ITenantScopedEntity
     public string ApplySummaryJson { get; set; } = "{}";
 }
 
-public sealed class DrivingMebbisImportRow : ITenantScopedEntity
+public sealed class DrivingMebbisImportRow : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid ImportSessionId { get; set; }
     public int RowNumber { get; set; }
     public DrivingMebbisImportRowClass Classification { get; set; }

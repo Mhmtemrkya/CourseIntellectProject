@@ -8,10 +8,8 @@ using Microsoft.EntityFrameworkCore;
 namespace CourseIntellect.Tests;
 
 /// <summary>
-/// Ortak filo sözleşmesi: direksiyon randevuları ŞUBEYE KİLİTLENMEZ. Şube filtresi
-/// aktifken bile bir şube diğer şubenin randevusunu görebilmelidir — takvim tek
-/// parçadır ve araç çakışması ancak böyle şubeler arası yakalanır. Randevu
-/// şube-kapsamlı bir entity'ye çevrilirse bu test kırılır (kasıtlı bariyer).
+/// Şube görünümü sözleşmesi: seçili şubede yalnız o şubenin operasyon kayıtları,
+/// tüm-şubeler bağlamında ise kurumun tamamı görünür.
 /// </summary>
 public sealed class DrivingSharedFleetScopeTests : IDisposable
 {
@@ -36,7 +34,7 @@ public sealed class DrivingSharedFleetScopeTests : IDisposable
     }
 
     [Fact]
-    public async Task Appointments_OfOtherBranches_StayVisibleWhileBranchFilterIsActive()
+    public async Task Appointments_OfOtherBranches_AreHiddenWhileBranchFilterIsActive()
     {
         Guid vehicleId;
         await using (var seed = CreateContext(activeBranchId: null))
@@ -65,8 +63,14 @@ public sealed class DrivingSharedFleetScopeTests : IDisposable
             .Where(x => x.VehicleId == vehicleId)
             .ToListAsync();
 
-        Assert.Equal(2, visible.Count);
-        Assert.Contains(visible, x => x.BranchId == branchB);
+        Assert.Single(visible);
+        Assert.Equal(branchA, visible[0].BranchId);
+
+        await using var allBranches = CreateContext(activeBranchId: null);
+        var allVisible = await allBranches.DrivingAppointments.AsNoTracking()
+            .Where(x => x.VehicleId == vehicleId)
+            .ToListAsync();
+        Assert.Equal(2, allVisible.Count);
     }
 
     [Fact]

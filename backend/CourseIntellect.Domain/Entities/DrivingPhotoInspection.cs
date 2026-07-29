@@ -4,10 +4,11 @@ namespace CourseIntellect.Domain.Entities;
 /// Biyometrik fotoğrafın değiştirilemez kaynak belgeye bağlı kalite denetimi.
 /// Orijinal dosya StudentDrivingDocument üzerinde korunur; MEBBİS kopyası ayrı tutulur.
 /// </summary>
-public sealed class DrivingPhotoInspection : ITenantScopedEntity
+public sealed class DrivingPhotoInspection : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public Guid StudentDrivingDocumentId { get; set; }
     public string SourceSha256 { get; set; } = string.Empty;

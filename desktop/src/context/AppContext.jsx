@@ -10,7 +10,7 @@ import {
   resolveUserInstitutionType,
 } from '../lib/auth';
 import { startPkceLogin, exchangePkceCode } from '../lib/auth/pkce';
-import { setActiveTenantContext } from '../lib/api/client';
+import { setActiveBranchFilter, setActiveTenantContext } from '../lib/api/client';
 import { fetchDrivingSchoolStatus } from '../lib/api/modules';
 import { resetDrivingPermissionCache } from '../lib/drivingPermissions';
 import { resetEntitlementCache } from '../lib/entitlements';
@@ -134,6 +134,8 @@ export function AppProvider({ children }) {
     // Taze giriş ana kuruma başlar; önceki oturumdan kalan kurum bağlamı
     // (X-Tenant-Context) temizlenir ki yanlış kuruma çözülmesin.
     setActiveTenantContext(null);
+    setActiveBranchFilter(null);
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('ci-branch-selected');
     resetTenantAccessCaches();
     const desktopUser = createDesktopUser(payload);
     let nextSession = {
@@ -157,6 +159,8 @@ export function AppProvider({ children }) {
     const payload = await exchangePkceCode(desktopApiBaseUrl, pkceResult);
     enforceActiveSubscription(payload);
     setActiveTenantContext(null);
+    setActiveBranchFilter(null);
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('ci-branch-selected');
     resetTenantAccessCaches();
     const desktopUser = createDesktopUser(payload);
     let nextSession = {
@@ -183,6 +187,7 @@ export function AppProvider({ children }) {
     // kalıp sonraki girişte de API'lere gidiyor ve yanlış kuruma çözülüyordu —
     // sürücü kursu sahibi girse bile okul kurumu çözülüp okul menüleri sızıyordu.
     setActiveTenantContext(null);
+    setActiveBranchFilter(null);
     resetTenantAccessCaches();
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('ci-branch-selected');

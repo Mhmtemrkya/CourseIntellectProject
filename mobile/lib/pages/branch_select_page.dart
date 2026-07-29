@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../navigation/admin_bottom_nav.dart';
 import '../navigation/driving_school_bottom_nav.dart';
 import '../services/driving_school_api_service.dart';
 import '../services/admin_workflow_api_service.dart';
+import '../services/branding_service.dart';
 import '../services/branch_scope_store.dart';
+import '../theme_provider.dart';
 
 const _branchTypes = ['şube', 'sube', 'kampüs', 'kampus'];
 
-/// Kurum yöneticisi ilk girişte yönetmek istediği şubeyi seçer. Tek/sıfır şubeli
-/// kurumlarda otomatik devam edilir.
+/// Kurum yöneticisi ilk girişte yönetmek istediği şubeyi seçer. En az bir şube
+/// varsa "Tüm Şubeler" dahil seçim açıkça gösterilir.
 class BranchSelectPage extends StatefulWidget {
   const BranchSelectPage({super.key});
 
@@ -20,6 +23,7 @@ class BranchSelectPage extends StatefulWidget {
 
 class _BranchSelectPageState extends State<BranchSelectPage> {
   bool _loading = true;
+  bool _canViewAllBranches = false;
   List<Map<String, dynamic>> _branches = const [];
 
   @override
@@ -29,30 +33,48 @@ class _BranchSelectPageState extends State<BranchSelectPage> {
   }
 
   Future<void> _load() async {
-    await BranchScopeStore.instance.ensureLoaded();
-    if (BranchScopeStore.instance.isSelected) {
-      _enter();
-      return;
-    }
     List<Map<String, dynamic>> units = const [];
+    Map<String, dynamic>? scope;
     try {
       units = await AdminWorkflowApiService.instance.getOrgUnits();
     } catch (_) {}
-    final branches = units
-        .where((u) =>
-            u['isActive'] != false &&
-            _branchTypes.contains((u['unitType'] ?? '').toString().toLowerCase()))
+    try {
+      scope = await AdminWorkflowApiService.instance.getMyScope();
+    } catch (_) {}
+    final tenants = ((scope?['tenants'] as List<dynamic>?) ?? const [])
+        .map((item) => Map<String, dynamic>.from(item as Map))
         .toList();
-    if (branches.length <= 1) {
-      await BranchScopeStore.instance.select(
-        branches.isEmpty ? null : branches.first['id']?.toString(),
-      );
+    final activeTenantId = (scope?['active'] as Map?)?['tenantId']?.toString();
+    final activeTenant = tenants
+        .where((tenant) => tenant['id']?.toString() == activeTenantId)
+        .firstOrNull;
+    final effectiveTenant =
+        activeTenant ?? (tenants.isNotEmpty ? tenants.first : null);
+    final allowedIds =
+        (((effectiveTenant?['branches'] as List<dynamic>?) ?? const [])
+                .map((item) => (item as Map)['id']?.toString())
+                .whereType<String>())
+            .toSet();
+    final branches = units
+        .where(
+          (u) =>
+              u['isActive'] != false &&
+              _branchTypes.contains(
+                (u['unitType'] ?? '').toString().toLowerCase(),
+              ) &&
+              (effectiveTenant == null ||
+                  allowedIds.contains(u['id']?.toString())),
+        )
+        .toList();
+    if (branches.isEmpty) {
+      await BranchScopeStore.instance.select(null);
       _enter();
       return;
     }
     if (!mounted) return;
     setState(() {
       _branches = branches;
+      _canViewAllBranches = scope?['canViewAllBranches'] == true;
       _loading = false;
     });
   }
@@ -62,13 +84,26 @@ class _BranchSelectPageState extends State<BranchSelectPage> {
     _enter();
   }
 
+  Future<void> _chooseAll() async {
+    await BranchScopeStore.instance.select(null);
+    _enter();
+  }
+
   Future<void> _enter() async {
     if (!mounted) return;
+    await BrandingService.instance.applyBranding(context.read<ThemeProvider>());
+    if (!mounted) return;
     var drivingSchool = false;
-    try { drivingSchool = await DrivingSchoolApiService.instance.isAvailable(); } catch (_) {}
+    try {
+      drivingSchool = await DrivingSchoolApiService.instance.isAvailable();
+    } catch (_) {}
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => drivingSchool ? const DrivingSchoolBottomNav() : const AdminBottomNav()),
+      MaterialPageRoute(
+        builder: (_) => drivingSchool
+            ? const DrivingSchoolBottomNav()
+            : const AdminBottomNav(),
+      ),
     );
   }
 
@@ -85,7 +120,9 @@ class _BranchSelectPageState extends State<BranchSelectPage> {
         children: [
           Text(
             'Yönetmek istediğiniz şubeyi seçin'.tr,
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -93,16 +130,39 @@ class _BranchSelectPageState extends State<BranchSelectPage> {
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
+          if (_canViewAllBranches)
+            Card(
+              color: theme.colorScheme.primaryContainer,
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: const CircleAvatar(
+                  child: Icon(Icons.account_tree_outlined),
+                ),
+                title: Text(
+                  'Tüm Şubeler'.tr,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  'Bütün şubelerin birleşik verilerini gösterir.'.tr,
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: _chooseAll,
+              ),
+            ),
           ..._branches.map(
             (branch) => Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.apartment_outlined)),
+                leading: const CircleAvatar(
+                  child: Icon(Icons.apartment_outlined),
+                ),
                 title: Text(
                   '${branch['name'] ?? 'Şube'}',
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
-                subtitle: Text('${branch['unitType'] ?? ''}${(branch['managerName'] ?? '').toString().isNotEmpty ? ' • ${branch['managerName']}' : ''}'),
+                subtitle: Text(
+                  '${branch['unitType'] ?? ''}${(branch['managerName'] ?? '').toString().isNotEmpty ? ' • ${branch['managerName']}' : ''}',
+                ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => _choose(branch),
               ),

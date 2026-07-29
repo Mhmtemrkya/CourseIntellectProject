@@ -9,6 +9,8 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import 'auth_api_service.dart';
 import 'auth_session_store.dart';
+import 'branch_scope_store.dart';
+import 'tenant_scope_store.dart';
 
 class PkceLoginService {
   PkceLoginService._();
@@ -93,6 +95,8 @@ class PkceLoginService {
 
     final session = AuthApiService.instance.parseLoginResponse(response.body);
     await AuthSessionStore.instance.save(session);
+    await TenantScopeStore.instance.clear();
+    await BranchScopeStore.instance.clear();
     return session;
   }
 

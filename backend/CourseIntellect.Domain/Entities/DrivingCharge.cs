@@ -10,10 +10,11 @@ namespace CourseIntellect.Domain.Entities;
 /// mevcut finans altyapısında yürür — her kalem sözleşmeye bir <see cref="FinanceInstallment"/>
 /// olarak düşer, böylece kasa, gecikmiş ödeme ve makbuz ekranları kendiliğinden çalışır.</para>
 /// </summary>
-public sealed class DrivingCharge : ITenantScopedEntity
+public sealed class DrivingCharge : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
 
     public DrivingChargeType ChargeType { get; set; }

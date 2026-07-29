@@ -7,6 +7,8 @@ import {
   DEFAULT_ACCENT,
 } from '../lib/colorPalette';
 import { initDesktopSessionStore, loadDesktopSession } from '../lib/auth';
+import { getActiveTenantContext } from '../lib/api/client';
+import { assetUrl } from '../lib/assetUrl';
 
 const ThemeContext = createContext({
   // Dark / Light mode
@@ -82,14 +84,16 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
       const { fetchTenantBranding } = await import('../lib/api/modules');
       // Oturum deposu async açıldığından tenantId okumadan önce init beklenir.
       await initDesktopSessionStore();
-      const tenantId = loadDesktopSession()?.user?.tenantId || undefined;
+      const tenantId = getActiveTenantContext()
+        || loadDesktopSession()?.user?.tenantId
+        || undefined;
       const config = await fetchTenantBranding(tenantId);
       if (config) {
         setBranding({
           primaryColor: config.primaryColor || DEFAULT_PRIMARY,
           accentColor: config.accentColor || DEFAULT_ACCENT,
-          tenantLogo: config.logoUrl || null,
-          tenantFavicon: config.faviconUrl || null,
+          tenantLogo: config.logoUrl ? assetUrl(config.logoUrl) : null,
+          tenantFavicon: config.faviconUrl ? assetUrl(config.faviconUrl) : null,
           tenantName: config.appName || config.tenantName || '',
         });
       }
@@ -102,6 +106,12 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
 
   useEffect(() => {
     fetchBranding();
+  }, [fetchBranding]);
+
+  useEffect(() => {
+    const handleTenantChange = () => fetchBranding();
+    window.addEventListener('ci:tenant-context-changed', handleTenantChange);
+    return () => window.removeEventListener('ci:tenant-context-changed', handleTenantChange);
   }, [fetchBranding]);
 
   // Renk veya tema değiştiğinde CSS variable'ları uygula — inline root

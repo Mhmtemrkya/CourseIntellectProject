@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../services/app_settings_api_service.dart';
+import '../services/auth_session_store.dart';
+import '../services/branding_service.dart';
 import '../services/institution_profile_api_service.dart';
+import '../theme_provider.dart';
 import '../widgets/admin_ui.dart';
 import 'consent_station_page.dart';
+import 'school_contract_forms_page.dart';
 
 class AdminSettingsPage extends StatefulWidget {
   const AdminSettingsPage({super.key});
@@ -34,6 +40,8 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
 
   bool _loading = true;
   bool _saving = false;
+  bool _logoBusy = false;
+  bool _canManageLogo = false;
   String? _error;
 
   @override
@@ -68,6 +76,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
         category: 'institution',
       );
       final profile = await InstitutionProfileApiService.instance.fetch();
+      final session = await AuthSessionStore.instance.load();
       if (!mounted) return;
       final map = {for (final item in items) item.key: item.value};
       _schoolNameController.text = '${profile['name'] ?? ''}';
@@ -84,6 +93,11 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       autoReports = map['auto_reports'] != 'false';
       parentNotifications = map['parent_notifications'] != 'false';
       financeApprovals = map['finance_approvals'] != 'false';
+      final role = session?.primaryRole.trim().toLowerCase() ?? '';
+      _canManageLogo =
+          role == 'admin' ||
+          role == 'institutionadmin' ||
+          role == 'institutionadministrator';
       setState(() => _loading = false);
     } catch (error) {
       if (!mounted) return;
@@ -161,6 +175,84 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     }
   }
 
+  Future<void> _pickLogo() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp'],
+      withData: true,
+      allowMultiple: false,
+    );
+    final file = result?.files.singleOrNull;
+    if (file == null) return;
+    if (file.bytes == null) {
+      _showMessage('Logo dosyası okunamadı.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      _showMessage('Logo dosyası en fazla 2 MB olabilir.');
+      return;
+    }
+
+    setState(() => _logoBusy = true);
+    try {
+      await BrandingService.instance.uploadLogo(file);
+      if (!mounted) return;
+      await BrandingService.instance.applyBranding(
+        context.read<ThemeProvider>(),
+      );
+      if (!mounted) return;
+      _showMessage('Kurum logosu öğrenci ve personel ekranlarına uygulandı.');
+    } catch (error) {
+      if (mounted) _showMessage(error.toString());
+    } finally {
+      if (mounted) setState(() => _logoBusy = false);
+    }
+  }
+
+  Future<void> _removeLogo() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Kurum logosunu kaldır'),
+        content: const Text(
+          'Logo kurumunuzdaki öğrenci ve personel ekranlarından kaldırılacak.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Kaldır'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _logoBusy = true);
+    try {
+      await BrandingService.instance.removeLogo();
+      if (!mounted) return;
+      await BrandingService.instance.applyBranding(
+        context.read<ThemeProvider>(),
+      );
+      if (mounted) _showMessage('Kurum logosu kaldırıldı.');
+    } catch (error) {
+      if (mounted) _showMessage(error.toString());
+    } finally {
+      if (mounted) setState(() => _logoBusy = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AdminScaffold(
@@ -191,7 +283,8 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                 AdminHeroCard(
                   eyebrow: 'Kurumsal yapı',
                   title:
-                      'Kurum bilgileri, otomasyon tercihleri ve genel yönetim ayarları tek sayfada.'.tr,
+                      'Kurum bilgileri, otomasyon tercihleri ve genel yönetim ayarları tek sayfada.'
+                          .tr,
                   description:
                       'Yönetici tarafında rapor, iletişim ve kapasite ayarları merkezi olarak güncellenir.',
                   metrics: [
@@ -219,6 +312,107 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                   ),
                 ],
                 const SizedBox(height: 16),
+                if (_canManageLogo)
+                  Consumer<ThemeProvider>(
+                    builder: (context, themeProvider, _) => AdminPanel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Kurum Logosu'.tr,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Okul ve sürücü kursu ekranlarında tüm öğrenci ve personelin göreceği logo.'
+                                .tr,
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            width: double.infinity,
+                            height: 150,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: Colors.blueGrey.withValues(alpha: 0.24),
+                              ),
+                            ),
+                            child: themeProvider.tenantLogo != null
+                                ? Image.network(
+                                    themeProvider.tenantLogo!,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, _, _) => const Icon(
+                                      Icons.broken_image_outlined,
+                                      color: Colors.blueGrey,
+                                      size: 44,
+                                    ),
+                                  )
+                                : const Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.apartment_rounded,
+                                        color: Colors.blueGrey,
+                                        size: 42,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Henüz logo yüklenmedi',
+                                        style: TextStyle(
+                                          color: Colors.blueGrey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Kare, yatay, dikey ve yuvarlak logolar kırpılmadan gösterilir. PNG, JPEG veya WebP; en fazla 2 MB.'
+                                .tr,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: [
+                              FilledButton.icon(
+                                onPressed: _logoBusy ? null : _pickLogo,
+                                icon: _logoBusy
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(Icons.upload_rounded),
+                                label: Text(
+                                  themeProvider.tenantLogo == null
+                                      ? 'Logo Yükle'.tr
+                                      : 'Logoyu Değiştir'.tr,
+                                ),
+                              ),
+                              if (themeProvider.tenantLogo != null)
+                                OutlinedButton.icon(
+                                  onPressed: _logoBusy ? null : _removeLogo,
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                  ),
+                                  label: Text('Logoyu kaldır'.tr),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (_canManageLogo) const SizedBox(height: 16),
                 AdminPanel(
                   child: Column(
                     children: [
@@ -291,11 +485,31 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                         value: financeApprovals,
                         onChanged: (value) =>
                             setState(() => financeApprovals = value),
-                        title: Text(
-                          'Finans onaylari için ikinci kontrol'.tr,
-                        ),
+                        title: Text('Finans onaylari için ikinci kontrol'.tr),
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Sözleşme & Formlar: kurumun PDF belgeleri yüklenir ve
+                // öğrenci seçilip imza tabletine gönderilir.
+                AdminPanel(
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.assignment_outlined),
+                    title: Text('Sözleşme & Formlar'.tr),
+                    subtitle: Text(
+                      'Sözleşme/izin PDF\'i yükleyin, öğrenci seçip tablette '
+                              'imzalatın.'
+                          .tr,
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SchoolContractFormsPage(),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -308,7 +522,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                     title: Text('İmza İstasyonu'.tr),
                     subtitle: Text(
                       'Bu cihazı imza tableti yap: personelin gönderdiği onam '
-                      'formları burada imzalanır.'
+                              'formları burada imzalanır.'
                           .tr,
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded),

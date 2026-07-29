@@ -4,12 +4,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/consent_api_service.dart';
+import '../widgets/consent_dispatch_sheet.dart';
 
 const _pollInterval = Duration(milliseconds: 2500);
-const _lastStationKey = 'consent-last-station';
 
 const _statusLabels = {
   'Draft': 'Hazırlanıyor',
@@ -166,7 +165,7 @@ class _ConsentCenterPageState extends State<ConsentCenterPage> {
       final dispatched = await showModalBottomSheet<bool>(
         context: context,
         isScrollControlled: true,
-        builder: (context) => _ComposerSheet(form: form, stations: _stations),
+        builder: (context) => ConsentDispatchSheet(form: form, stations: _stations),
       );
 
       // Gönderilmediyse ve taslağı BU açılışta ürettiysek geri al; çöp kalmasın.
@@ -318,6 +317,12 @@ class _ConsentCenterPageState extends State<ConsentCenterPage> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _StatusChip(status: status),
+                // Yüklenmiş belgeye dayanan formlar ayırt edilebilsin.
+                if (row['sourceKind']?.toString() == 'Pdf')
+                  const Chip(
+                    label: Text('PDF belge'),
+                    visualDensity: VisualDensity.compact,
+                  ),
                 if (status == 'AwaitingSignature' &&
                     (row['stationName']?.toString() ?? '').isNotEmpty)
                   Text(row['stationName'].toString(),
@@ -423,164 +428,3 @@ class _Banner extends StatelessWidget {
 }
 
 /// "Formu doldur" bölmesi: metin önizlemesi, uygulama notu, hedef tablet.
-class _ComposerSheet extends StatefulWidget {
-  final Map<String, dynamic> form;
-  final List<Map<String, dynamic>> stations;
-
-  const _ComposerSheet({required this.form, required this.stations});
-
-  @override
-  State<_ComposerSheet> createState() => _ComposerSheetState();
-}
-
-class _ComposerSheetState extends State<_ComposerSheet> {
-  final _notesController = TextEditingController();
-  final _stationController = TextEditingController();
-  bool _sending = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _notesController.text = widget.form['staffNotes']?.toString() ?? '';
-    _restoreLastStation();
-  }
-
-  Future<void> _restoreLastStation() async {
-    final prefs = await SharedPreferences.getInstance();
-    final last = prefs.getString(_lastStationKey) ?? '';
-    if (mounted && last.isNotEmpty) _stationController.text = last;
-  }
-
-  @override
-  void dispose() {
-    _notesController.dispose();
-    _stationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _dispatch() async {
-    final station = _stationController.text.trim();
-    if (station.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Formun gideceği tabletin adını yazın veya seçin.')),
-      );
-      return;
-    }
-    setState(() => _sending = true);
-    try {
-      final id = widget.form['id'].toString();
-      await ConsentApiService.instance.updateForm(id, _notesController.text.trim());
-      await ConsentApiService.instance.dispatchToStation(id, station);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_lastStationKey, station);
-      if (mounted) Navigator.pop(context, true);
-    } catch (error) {
-      if (mounted) {
-        setState(() => _sending = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString().replaceFirst('Bad state: ', ''))),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final checkItems = (widget.form['checkItems'] as List?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        const <String>[];
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.form['title']?.toString() ?? '',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              constraints: const BoxConstraints(maxHeight: 200),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border.all(color: theme.dividerColor),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: SingleChildScrollView(
-                child: Text(widget.form['body']?.toString() ?? ''),
-              ),
-            ),
-            if (checkItems.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text('TABLETTE İŞARETLENECEK MADDELER', style: theme.textTheme.labelSmall),
-              const SizedBox(height: 4),
-              ...checkItems.map((item) => Text('☐  $item')),
-            ],
-            const SizedBox(height: 16),
-            TextField(
-              controller: _notesController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Uygulama notu (isteğe bağlı)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _stationController,
-              decoration: const InputDecoration(
-                labelText: 'Tablet adı',
-                hintText: 'Örn. Ofis 1',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (widget.stations.isEmpty)
-              Text(
-                'Henüz kayıtlı tablet yok. Tablette İmza İstasyonu ekranını açıp bir ad verin.',
-                style: theme.textTheme.bodySmall,
-              )
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: widget.stations.map((station) {
-                  final online = station['online'] == true;
-                  return ActionChip(
-                    avatar: Icon(
-                      Icons.circle,
-                      size: 10,
-                      color: online ? Colors.green : Colors.grey,
-                    ),
-                    label: Text(
-                      '${station['name']} ${online ? '· çevrimiçi' : '· çevrimdışı'}',
-                    ),
-                    onPressed: () =>
-                        _stationController.text = station['name'].toString(),
-                  );
-                }).toList(),
-              ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 48,
-              child: FilledButton(
-                onPressed: _sending ? null : _dispatch,
-                child: Text(_sending ? 'Gönderiliyor...' : 'Tablete Aktar'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

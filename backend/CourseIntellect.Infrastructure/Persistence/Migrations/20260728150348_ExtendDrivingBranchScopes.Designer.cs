@@ -3,6 +3,7 @@ using System;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CourseIntellect.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CourseIntellectDbContext))]
-    partial class CourseIntellectDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260728150348_ExtendDrivingBranchScopes")]
+    partial class ExtendDrivingBranchScopes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1217,52 +1220,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.ToTable("canvas_strokes", (string)null);
                 });
 
-            modelBuilder.Entity("CourseIntellect.Domain.Entities.ConsentDocument", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("ByteSize")
-                        .HasColumnType("integer");
-
-                    b.Property<byte[]>("Content")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("CreatedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(260)
-                        .HasColumnType("character varying(260)");
-
-                    b.Property<int>("PageCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Sha256")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("TenantId", "Sha256")
-                        .IsUnique();
-
-                    b.ToTable("consent_documents", (string)null);
-                });
-
             modelBuilder.Entity("CourseIntellect.Domain.Entities.ConsentFormRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1309,9 +1266,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("DocumentId")
-                        .HasColumnType("uuid");
-
                     b.Property<bool>("RequiresSignature")
                         .HasColumnType("boolean");
 
@@ -1349,11 +1303,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(60)");
 
                     b.Property<string>("SignerRole")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("SourceKind")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -1414,8 +1363,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BranchId");
-
-                    b.HasIndex("DocumentId");
 
                     b.HasIndex("SessionToken");
 
@@ -1491,9 +1438,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("DeletedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("DocumentId")
-                        .HasColumnType("uuid");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1511,11 +1455,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
-                    b.Property<string>("SourceKind")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
@@ -1529,8 +1468,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DocumentId");
 
                     b.HasIndex("TenantId");
 
@@ -9456,21 +9393,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
-            modelBuilder.Entity("CourseIntellect.Domain.Entities.ConsentDocument", b =>
-                {
-                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
             modelBuilder.Entity("CourseIntellect.Domain.Entities.ConsentFormRecord", b =>
                 {
-                    b.HasOne("CourseIntellect.Domain.Entities.ConsentDocument", null)
-                        .WithMany()
-                        .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("CourseIntellect.Domain.Entities.ConsentFormTemplate", null)
                         .WithMany()
                         .HasForeignKey("TemplateId")
@@ -9498,11 +9422,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CourseIntellect.Domain.Entities.ConsentFormTemplate", b =>
                 {
-                    b.HasOne("CourseIntellect.Domain.Entities.ConsentDocument", null)
-                        .WithMany()
-                        .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
                         .WithMany()
                         .HasForeignKey("TenantId")

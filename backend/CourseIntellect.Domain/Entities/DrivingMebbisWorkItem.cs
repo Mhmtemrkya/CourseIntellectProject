@@ -6,10 +6,11 @@ namespace CourseIntellect.Domain.Entities;
 /// MEBBİS'e ilişkin bir işin kurum içindeki doğrulanabilir durumudur. MEBBİS
 /// parolası veya hassas oturum verisi burada kesinlikle tutulmaz.
 /// </summary>
-public sealed class DrivingMebbisWorkItem : ITenantScopedEntity
+public sealed class DrivingMebbisWorkItem : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public DrivingMebbisWorkType WorkType { get; set; }
     public Guid SubjectId { get; set; }
     public Guid? StudentDrivingProfileId { get; set; }

@@ -15,6 +15,20 @@ public sealed record ConsentResult<T>(int StatusCode, string Message, T? Value)
     public static ConsentResult<T> Fail(int statusCode, string message) => new(statusCode, message, default);
 }
 
+// ─── Yüklenen belge ───────────────────────────────────────────────────────────
+
+/// <summary>Yüklenmiş PDF'in künyesi. İçerik bu DTO ile TAŞINMAZ.</summary>
+public sealed record ConsentDocumentDto(
+    Guid Id,
+    string FileName,
+    int PageCount,
+    int ByteSize,
+    string Sha256,
+    DateTime CreatedAtUtc);
+
+/// <summary>İndirme yolunun okuduğu ham içerik.</summary>
+public sealed record ConsentDocumentContent(string FileName, string Sha256, int PageCount, byte[] Content);
+
 // ─── Şablon ───────────────────────────────────────────────────────────────────
 
 public sealed record ConsentTemplateBindingDto(ConsentContextKind ContextKind, string ContextKey);
@@ -29,7 +43,11 @@ public sealed record ConsentTemplateDto(
     bool IsActive,
     int SortOrder,
     IReadOnlyList<ConsentTemplateBindingDto> Bindings,
-    DateTime UpdatedAtUtc);
+    DateTime UpdatedAtUtc,
+    ConsentDocumentSource SourceKind = ConsentDocumentSource.Text,
+    Guid? DocumentId = null,
+    string DocumentFileName = "",
+    int DocumentPageCount = 0);
 
 public sealed record SaveConsentTemplateRequest(
     string? Title,
@@ -39,7 +57,9 @@ public sealed record SaveConsentTemplateRequest(
     ConsentSignerRole SignerRole,
     bool IsActive,
     int SortOrder,
-    IReadOnlyList<ConsentTemplateBindingDto>? Bindings);
+    IReadOnlyList<ConsentTemplateBindingDto>? Bindings,
+    ConsentDocumentSource SourceKind = ConsentDocumentSource.Text,
+    Guid? DocumentId = null);
 
 // ─── Kayıt ────────────────────────────────────────────────────────────────────
 
@@ -67,7 +87,11 @@ public sealed record ConsentFormDto(
     DateTime? SignedAtUtc,
     string SignerName,
     string SignerRelation,
-    DateTime CreatedAtUtc);
+    DateTime CreatedAtUtc,
+    ConsentDocumentSource SourceKind = ConsentDocumentSource.Text,
+    Guid? DocumentId = null,
+    string DocumentFileName = "",
+    int DocumentPageCount = 0);
 
 /// <summary>Tabletin gördüğü form — imza görselini ve oturum anahtarını taşır.</summary>
 public sealed record ConsentStationFormDto(
@@ -82,7 +106,10 @@ public sealed record ConsentStationFormDto(
     string ContextLabel,
     string StaffName,
     string StaffNotes,
-    DateTime? SessionExpiresAtUtc);
+    DateTime? SessionExpiresAtUtc,
+    ConsentDocumentSource SourceKind = ConsentDocumentSource.Text,
+    string DocumentFileName = "",
+    int DocumentPageCount = 0);
 
 public sealed record CreateConsentFormRequest(
     Guid TemplateId,
@@ -114,7 +141,8 @@ public sealed record ConsentRequirementDto(
     ConsentFormStatus? Status,
     DateTime? SignedAtUtc,
     string StationName,
-    string ContextLabel);
+    string ContextLabel,
+    ConsentDocumentSource SourceKind = ConsentDocumentSource.Text);
 
 public sealed record ConsentStatusDto(
     bool Complete,
@@ -146,6 +174,19 @@ public sealed record ConsentContextKindDto(
 
 public interface IConsentFormService
 {
+    // Yüklenen PDF belgeleri
+    /// <summary>
+    /// PDF'i doğrulayıp saklar. Aynı içerik daha önce yüklendiyse yeni satır
+    /// açılmaz, var olan kaydın künyesi döner.
+    /// </summary>
+    Task<ConsentResult<ConsentDocumentDto>> SaveDocumentAsync(
+        byte[] content, string? fileName, Guid? actorUserId, CancellationToken cancellationToken = default);
+
+    Task<ConsentResult<ConsentDocumentContent>> GetDocumentAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Kaydın imzalandığı (veya imzalanacağı) özgün PDF. Metin kaynaklı kayıtta 404.</summary>
+    Task<ConsentResult<ConsentDocumentContent>> GetFormDocumentAsync(Guid formId, CancellationToken cancellationToken = default);
+
     // Şablon yönetimi
     Task<IReadOnlyList<ConsentTemplateDto>> ListTemplatesAsync(bool includeInactive, CancellationToken cancellationToken = default);
     Task<ConsentResult<ConsentTemplateDto>> CreateTemplateAsync(SaveConsentTemplateRequest request, Guid? actorUserId, CancellationToken cancellationToken = default);

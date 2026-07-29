@@ -2,10 +2,11 @@ using CourseIntellect.Domain.Enums;
 
 namespace CourseIntellect.Domain.Entities;
 
-public sealed class DrivingGraduationRecord : ITenantScopedEntity
+public sealed class DrivingGraduationRecord : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public DrivingGraduationStatus Status { get; set; } = DrivingGraduationStatus.Pending;
     public string ChecklistJson { get; set; } = "[]";
@@ -18,10 +19,11 @@ public sealed class DrivingGraduationRecord : ITenantScopedEntity
     public string RevocationReason { get; set; } = string.Empty;
 }
 
-public sealed class DrivingCertificate : ITenantScopedEntity
+public sealed class DrivingCertificate : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid GraduationRecordId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public DrivingCertificateType CertificateType { get; set; } = DrivingCertificateType.Completion;
@@ -46,10 +48,11 @@ public sealed class DrivingCertificate : ITenantScopedEntity
     public string RevocationReason { get; set; } = string.Empty;
 }
 
-public sealed class DrivingGraduationActionRequest : ITenantScopedEntity
+public sealed class DrivingGraduationActionRequest : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public Guid? GraduationRecordId { get; set; }
     public DrivingGraduationActionType ActionType { get; set; }
@@ -68,10 +71,11 @@ public sealed class DrivingGraduationActionRequest : ITenantScopedEntity
     public DateTime? AppliedAtUtc { get; set; }
 }
 
-public sealed class DrivingAppointmentRequest : ITenantScopedEntity
+public sealed class DrivingAppointmentRequest : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public DrivingAppointmentRequestType RequestType { get; set; }
     public DrivingAppointmentRequestStatus Status { get; set; } = DrivingAppointmentRequestStatus.Pending;

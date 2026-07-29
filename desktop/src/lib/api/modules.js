@@ -1986,12 +1986,19 @@ export async function saveTenantBranding(tenantId, brandingPayload) {
     throw new Error('Tenant branding kaydi icin tenantId zorunludur.');
   }
 
-  return upsertPlatformConfiguration({
-    configurationType: 'tenant-customization',
-    scopeKey: tenantId,
-    displayName: `SA_TENANT_CUSTOMIZATION::${tenantId}`,
-    payloadJson: JSON.stringify(brandingPayload),
+  return api.put('/api/platformconfigurations/branding', {
+    logoUrl: brandingPayload?.logoUrl || '',
   });
+}
+
+export async function uploadTenantLogo(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/api/platformconfigurations/branding/logo', formData);
+}
+
+export async function removeTenantLogo() {
+  return api.delete('/api/platformconfigurations/branding/logo');
 }
 
 // --- Exam / Question Solving ---
@@ -2358,6 +2365,23 @@ export async function deleteConsentTemplate(id) {
 
 export async function downloadConsentTemplatePreview(id) {
   return api.get(`/api/consent/templates/${id}/preview`, { responseType: 'blob' });
+}
+
+/// Hazır PDF yükler ve künyesini döner (id, dosya adı, sayfa sayısı).
+/// Dosya statik /uploads altına DEĞİL veritabanına yazılır; okuması da yetkilidir.
+export async function uploadConsentDocument(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/api/consent/documents', formData);
+}
+
+export async function downloadConsentDocument(documentId) {
+  return api.get(`/api/consent/documents/${documentId}`, { responseType: 'blob' });
+}
+
+/// Kaydın dayandığı özgün belge — tablet imzadan önce bunu gösterir.
+export async function downloadConsentFormDocument(formId) {
+  return api.get(`/api/consent/forms/${formId}/document`, { responseType: 'blob' });
 }
 
 export async function fetchStudentConsentForms(studentProfileId) {

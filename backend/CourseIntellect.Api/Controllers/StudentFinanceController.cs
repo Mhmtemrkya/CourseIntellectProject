@@ -21,6 +21,7 @@ public sealed class StudentFinanceController(
     IReconciliationService reconciliationService,
     IStudentStatementPdfService statementPdfService,
     IPlatformConfigurationService platformConfigurationService,
+    IFileStorageService fileStorageService,
     ITenantContext tenantContext,
     IAuditLogService auditLogService,
     IWebHostEnvironment environment) : ControllerBase
@@ -258,8 +259,8 @@ public sealed class StudentFinanceController(
 
     /// <summary>
     /// Ekstrenin sol üst köşesi: kurumun kendi logosu varsa o, yoksa ürün amblemi
-    /// kullanılır. Logo yalnızca gömülü (data:) görselden okunur — dış adres
-    /// verilirse sunucu istek yapmaz (SSRF yüzeyi açılmasın).
+    /// kullanılır. Logo yalnız gömülü görselden veya kurumun güvenli yerel yükleme
+    /// alanından okunur; dış adrese istek yapılmaz (SSRF yüzeyi açılmaz).
     /// </summary>
     private async Task<(string Name, byte[]? LogoBytes, string AccentColor)> ResolveStatementBrandingAsync(
         CancellationToken cancellationToken)
@@ -283,7 +284,11 @@ public sealed class StudentFinanceController(
                     var root = payload.RootElement;
                     if (ReadString(root, "appName") is { Length: > 0 } appName) name = appName;
                     if (ReadString(root, "primaryColor") is { Length: > 0 } primaryColor) accent = primaryColor;
-                    if (ReadString(root, "logoUrl") is { Length: > 0 } logoUrl) logo = DecodeInlineImage(logoUrl);
+                    if (ReadString(root, "logoUrl") is { Length: > 0 } logoUrl)
+                    {
+                        logo = DecodeInlineImage(logoUrl)
+                            ?? await fileStorageService.ReadBytesAsync(logoUrl, cancellationToken);
+                    }
                 }
                 catch (JsonException)
                 {

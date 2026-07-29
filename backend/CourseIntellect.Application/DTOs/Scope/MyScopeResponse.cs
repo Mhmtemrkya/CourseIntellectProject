@@ -5,6 +5,7 @@ namespace CourseIntellect.Application.DTOs.Scope;
 public sealed record MyScopeResponse(
     bool CanSwitchTenant,
     bool CanSwitchBranch,
+    bool CanViewAllBranches,
     bool ReadOnly,
     bool CanManageScopes,
     ScopeActiveDto Active,

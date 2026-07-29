@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/consent_api_service.dart';
@@ -48,6 +51,8 @@ class _ConsentStationPageState extends State<ConsentStationPage> {
   bool _submitting = false;
   bool _thanks = false;
   bool _hasInk = false;
+  bool _documentOpened = false;
+  bool _documentBusy = false;
   String _error = '';
 
   Map<String, dynamic>? _form;
@@ -121,6 +126,8 @@ class _ConsentStationPageState extends State<ConsentStationPage> {
     _checked.clear();
     _hasInk = false;
     _error = '';
+    _documentOpened = false;
+    _documentBusy = false;
     _signerNameController.clear();
     _signerRelationController.clear();
     _padKey.currentState?.clear();
@@ -130,10 +137,45 @@ class _ConsentStationPageState extends State<ConsentStationPage> {
       (_form?['checkItems'] as List?)?.map((e) => e.toString()).toList() ?? const [];
 
   bool get _requiresSignature => _form?['requiresSignature'] == true;
+  bool get _isPdfForm => _form?['sourceKind']?.toString() == 'Pdf';
   bool get _allChecked =>
       _checkItems.isEmpty || _checked.length == _checkItems.length;
   bool get _signatureReady => !_requiresSignature || _hasInk;
-  bool get _canSubmit => _form != null && _allChecked && _signatureReady && !_submitting;
+
+  /// Yüklenmiş PDF'te belge en az bir kez AÇILMADAN imza alınmaz: kimse
+  /// görmediği sözleşmeyi imzalamamalı.
+  bool get _documentReady => !_isPdfForm || _documentOpened;
+  bool get _canSubmit =>
+      _form != null && _allChecked && _signatureReady && _documentReady && !_submitting;
+
+  /// Belge indirilip cihazın PDF görüntüleyicisinde açılır.
+  Future<void> _openDocument() async {
+    if (_formId == null) return;
+    setState(() {
+      _documentBusy = true;
+      _error = '';
+    });
+    try {
+      final bytes = await ConsentApiService.instance.formDocument(_formId!);
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/onam-belgesi-$_formId.pdf');
+      await file.writeAsBytes(bytes);
+      final result = await OpenFilex.open(file.path);
+      if (!mounted) return;
+      setState(() {
+        _documentBusy = false;
+        // Görüntüleyici açılamadıysa "okundu" saymayız; imza kapalı kalır.
+        _documentOpened = result.type == ResultType.done;
+        if (!_documentOpened) _error = 'Belge açılamadı: ${result.message}';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _documentBusy = false;
+        _error = error is StateError ? error.message : '$error';
+      });
+    }
+  }
 
   Future<void> _submit() async {
     if (!_canSubmit) return;
@@ -407,17 +449,93 @@ class _ConsentStationPageState extends State<ConsentStationPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              Container(
-                constraints: const BoxConstraints(maxHeight: 300),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  border: Border.all(color: theme.dividerColor),
-                  borderRadius: BorderRadius.circular(14),
+              if (_isPdfForm) ...[
+                if ((form['body']?.toString() ?? '').isNotEmpty) ...[
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: theme.dividerColor),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: SingleChildScrollView(
+                      child: Text(form['body'].toString(), style: const TextStyle(height: 1.5)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: _documentOpened
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.error,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            _documentOpened
+                                ? Icons.check_circle_outline
+                                : Icons.picture_as_pdf_outlined,
+                            color: _documentOpened
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.error,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  form['documentFileName']?.toString() ?? 'İmzalanacak belge',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  '${form['documentPageCount'] ?? 0} sayfa'
+                                  '${_documentOpened ? ' · görüntülendi' : ' · imzadan önce açın'}',
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.tonalIcon(
+                          onPressed: _documentBusy ? null : _openDocument,
+                          icon: const Icon(Icons.open_in_new),
+                          label: Text(
+                            _documentBusy
+                                ? 'Açılıyor…'
+                                : _documentOpened
+                                    ? 'Belgeyi yeniden aç'
+                                    : 'Belgeyi aç ve oku',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: SingleChildScrollView(
-                  child: Text(form['body']?.toString() ?? '', style: const TextStyle(height: 1.5)),
+              ] else
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 300),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: theme.dividerColor),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Text(form['body']?.toString() ?? '', style: const TextStyle(height: 1.5)),
+                  ),
                 ),
-              ),
               if ((form['staffNotes']?.toString() ?? '').isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -549,9 +667,11 @@ class _ConsentStationPageState extends State<ConsentStationPage> {
                 if (!_canSubmit && !_submitting) ...[
                   const SizedBox(height: 8),
                   Text(
-                    !_allChecked
-                        ? 'Devam etmek için tüm onay maddelerini işaretleyin.'
-                        : 'Devam etmek için imza alanına imzanızı atın.',
+                    !_documentReady
+                        ? 'Devam etmek için önce belgeyi açıp okuyun.'
+                        : !_allChecked
+                            ? 'Devam etmek için tüm onay maddelerini işaretleyin.'
+                            : 'Devam etmek için imza alanına imzanızı atın.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall,
                   ),

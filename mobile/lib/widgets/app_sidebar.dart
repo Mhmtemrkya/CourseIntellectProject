@@ -119,25 +119,33 @@ class _LogoSection extends StatelessWidget {
         children: [
           // Tenant logo veya varsayılan ikon
           Container(
-            width: 36,
-            height: 36,
+            width: tenantLogo != null ? 76 : 44,
+            height: 44,
+            padding: EdgeInsets.all(tenantLogo != null ? 5 : 0),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFF7A1A), Color(0xFFFF9D2E)],
-              ),
+              color: tenantLogo != null ? Colors.white : null,
+              gradient: tenantLogo == null
+                  ? const LinearGradient(
+                      colors: [Color(0xFFFF7A1A), Color(0xFFFF9D2E)],
+                    )
+                  : null,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 10,
+                ),
+              ],
             ),
             child: tenantLogo != null
                 ? ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(7),
                     child: Image.network(
                       tenantLogo!,
-                      width: 36,
-                      height: 36,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       errorBuilder: (_, _, _) => const Icon(
                         Icons.school_rounded,
-                        color: Colors.white,
+                        color: Color(0xFF0B2841),
                         size: 20,
                       ),
                     ),

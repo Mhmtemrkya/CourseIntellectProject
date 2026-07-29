@@ -6,9 +6,11 @@ import 'package:student/pages/change_password_page.dart';
 import 'package:student/services/auth_api_service.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/branding_service.dart';
+import 'package:student/services/branch_scope_store.dart';
 import 'package:student/services/live_notification_bridge.dart';
 import 'package:student/services/remote_push_service.dart';
 import 'package:student/services/role_router.dart';
+import 'package:student/services/tenant_scope_store.dart';
 import 'package:student/theme_provider.dart';
 import 'package:student/widgets/course_intellect_logo.dart';
 import 'package:student/widgets/notification_primer_sheet.dart';
@@ -40,6 +42,10 @@ class _LoginPageState extends State<LoginPage> {
         username: username,
         password: password,
       );
+      // Her yeni girişte eski kurum/şube seçimi taşınmaz; yönetici seçim
+      // ekranından bağlamını açıkça yeniden belirler.
+      await TenantScopeStore.instance.clear();
+      await BranchScopeStore.instance.clear();
       await _handleSuccessfulSession(session);
     } on AuthApiException catch (error) {
       if (!mounted) return;
@@ -156,7 +162,9 @@ class _LoginPageState extends State<LoginPage> {
     Widget? suffix,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? const Color(0xFF2A3B5C) : const Color(0xFFE2E8F0);
+    final borderColor = isDark
+        ? const Color(0xFF2A3B5C)
+        : const Color(0xFFE2E8F0);
     return InputDecoration(
       hintText: hint,
       prefixIcon: Icon(
@@ -183,11 +191,15 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final subtleText = isDark ? const Color(0xFF9DACC4) : const Color(0xFF5B6B84);
+    final subtleText = isDark
+        ? const Color(0xFF9DACC4)
+        : const Color(0xFF5B6B84);
     final headingColor = isDark ? Colors.white : _navy;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0B1428) : const Color(0xFFF4F6FA),
+      backgroundColor: isDark
+          ? const Color(0xFF0B1428)
+          : const Color(0xFFF4F6FA),
       body: Stack(
         children: [
           // Alt lacivert dalga + turuncu kontur (mockup dekoru)
@@ -218,8 +230,10 @@ class _LoginPageState extends State<LoginPage> {
                 builder: (context, lang, _) => TextButton.icon(
                   onPressed: AppLocale.toggle,
                   icon: const Icon(Icons.translate_rounded, size: 18),
-                  label: Text(lang == 'tr' ? 'EN' : 'TR',
-                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  label: Text(
+                    lang == 'tr' ? 'EN' : 'TR',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
                   style: TextButton.styleFrom(foregroundColor: _navy),
                 ),
               ),
@@ -253,9 +267,12 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'SchoolAsist hesabınıza giriş yaparak\neğitim süreçlerinizi kolayca yönetin.'.tr,
+                    'SchoolAsist hesabınıza giriş yaparak\neğitim süreçlerinizi kolayca yönetin.'
+                        .tr,
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge?.copyWith(color: subtleText),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: subtleText,
+                    ),
                   ),
                   const SizedBox(height: 30),
                   TextField(
@@ -401,7 +418,9 @@ class _LoginPageState extends State<LoginPage> {
                   Text(
                     'Hesabınız yok mu?'.tr,
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge?.copyWith(color: subtleText),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: subtleText,
+                    ),
                   ),
                   Center(
                     child: TextButton(
@@ -611,7 +630,8 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Kayıtlı e-postanızı girin. Talep kurum yöneticisi ve idari yetkili ekranına düşer.'.tr,
+              'Kayıtlı e-postanızı girin. Talep kurum yöneticisi ve idari yetkili ekranına düşer.'
+                  .tr,
               style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
             ),
             const SizedBox(height: 18),

@@ -405,10 +405,9 @@ public sealed class DrivingFinanceController(
     }
 
     /// <summary>
-    /// "Ödeme Al" listesi: kurumun TÜM kursiyerleri finans özetiyle. Öncelik aktif
-    /// (taksidi en önde olan başta) → mezun → pasif. Şube/grup filtrelenebilir.
-    /// Şubeler-arası tahsilat için şube izolasyonu okumada uygulanmaz; kayıt şubesi
-    /// ve kaydeden bilgisi de döner (finansta "kim, nereden" görünsün diye).
+    /// "Ödeme Al" listesi: seçili şubenin kursiyerleri finans özetiyle. "Tüm
+    /// Şubeler" seçildiğinde kurumun birleşik listesi döner. Öncelik aktif
+    /// (taksidi en önde olan başta) → mezun → pasiftir.
     /// </summary>
     [HttpGet("collection-list")]
     [RequireDrivingPermission(DrivingPermissions.FinanceView)]
@@ -422,8 +421,8 @@ public sealed class DrivingFinanceController(
         else if (groupId is Guid gid) profileQuery = profileQuery.Where(x => x.StudentGroupId == gid);
 
         var rows = await profileQuery
-            // Öğrenci kaydı (StudentProfile) şube-scoped; şubeler-arası liste için filtreyi
-            // yok say, tenant'ı elle uygula — yoksa yalnız aktörün şubesi görünürdü.
+            // Profil sorgusundaki aktif şube filtresi kapsamı belirler. Öğrenci
+            // join'inde filtre yalnız ilişkiyi tamamlamak için kaldırılır.
             .Join(dbContext.Students.IgnoreQueryFilters().Where(s => s.TenantId == tenantId),
                 p => p.StudentId, s => s.Id,
                 (p, s) => new { p.Id, p.StudentNumber, s.FullName, s.UserId, p.Status, p.StudentGroupId, p.EnrollmentContractId, RegBranchId = s.BranchId, p.RegisteredByUserId })
@@ -764,4 +763,3 @@ public sealed record DrivingPaymentRequest(decimal Amount, string? Method, Guid?
 public sealed record CollectDownPaymentBody(string? Method = null);
 
 public sealed record RefundChargeRequest(decimal? Amount, string? Reason);
-

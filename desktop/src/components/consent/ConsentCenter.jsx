@@ -3,6 +3,7 @@ import {
   cancelConsentForm,
   createConsentForm,
   dispatchConsentFormToStation,
+  downloadConsentFormDocument,
   downloadConsentFormPdf,
   fetchConsentForm,
   fetchConsentStations,
@@ -344,13 +345,30 @@ function ConsentComposer({ form, stations, busy, onCancel, onDispatch }) {
     onDispatch({ ...form, staffNotes: notes }, station);
   };
 
+  const openDocument = async () => {
+    const blob = await downloadConsentFormDocument(form.id);
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  };
+
   return (
     <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
       <div>
         <p className="font-semibold">{form.title}</p>
-        <div className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border/50 bg-background p-3 text-sm leading-relaxed">
-          {form.body}
-        </div>
+        {form.sourceKind === 'Pdf' ? (
+          // Yüklenmiş belgede metin kutusu yerine belgenin kendisi açılır.
+          <div className="mt-2 flex items-center justify-between rounded-lg border border-border/50 bg-background p-3 text-sm">
+            <span className="truncate">
+              {form.documentFileName || 'Yüklenen belge'} · {form.documentPageCount} sayfa
+            </span>
+            <Button size="sm" variant="outline" onClick={openDocument}>Belgeyi aç</Button>
+          </div>
+        ) : (
+          <div className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border/50 bg-background p-3 text-sm leading-relaxed">
+            {form.body}
+          </div>
+        )}
       </div>
 
       {(form.checkItems || []).length > 0 ? (

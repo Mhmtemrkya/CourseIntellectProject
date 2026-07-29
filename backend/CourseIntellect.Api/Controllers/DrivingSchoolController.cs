@@ -1206,9 +1206,8 @@ public sealed class DrivingSchoolController(
         if (to <= from || to - from > TimeSpan.FromDays(70))
             return BadRequest(new { message = "Takvim aralığı en fazla 70 gün olabilir." });
 
-        // Takvim kurum geneli tek parçadır: araçlar şubeler arasında ortak olduğu
-        // için varsayılan görünüm TÜM şubelerin randevularıdır. branchId yalnızca
-        // isteğe bağlı bir filtredir.
+        // Global şube query filter'ı X-Branch-Filter başlığını uygular. "Tüm
+        // Şubeler" bağlamında filtre kalkar; branchId ek daraltma için kullanılabilir.
         var query = dbContext.DrivingAppointments.AsNoTracking()
             .Where(x => x.StartsAtUtc < to && x.EndsAtUtc > from);
 

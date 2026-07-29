@@ -3,6 +3,37 @@ using CourseIntellect.Domain.Enums;
 namespace CourseIntellect.Domain.Entities;
 
 /// <summary>
+/// Kurumun yüklediği hazır PDF belgesi (matbu sözleşme, taahhütname, veli
+/// bilgilendirme formu…). İçerik VERİTABANINDA tutulur: /uploads klasörü
+/// statik ve kimliksiz servis edilir; onam belgeleri kişisel veri taşıdığı için
+/// yalnız kimlik doğrulanmış ve kurum süzgecinden geçen uç üzerinden okunmalıdır.
+///
+/// Kayıtlar içerik adresidir (<see cref="Sha256"/>): aynı PDF ikinci kez
+/// yüklenirse yeni satır açılmaz, var olan paylaşılır. Şablon silinse bile
+/// imzalı kayıtların belgesi burada durmaya devam eder.
+/// </summary>
+public sealed class ConsentDocument : ITenantScopedEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
+
+    /// <summary>Kullanıcının yüklediği özgün dosya adı — indirmede geri verilir.</summary>
+    public string FileName { get; set; } = string.Empty;
+
+    /// <summary>İçeriğin SHA-256 özeti; tekilleştirme ve imza sayfasındaki künye için.</summary>
+    public string Sha256 { get; set; } = string.Empty;
+
+    public int ByteSize { get; set; }
+    public int PageCount { get; set; }
+
+    /// <summary>Ham PDF baytları.</summary>
+    public byte[] Content { get; set; } = [];
+
+    public Guid? CreatedByUserId { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
 /// Kurumun yazdığı onam/izin formu şablonu (KVKK açık rıza, veli muvafakatnamesi,
 /// gezi izni, sürücü kursu taahhütnamesi…).
 ///
@@ -17,10 +48,19 @@ public sealed class ConsentFormTemplate : ITenantScopedEntity
 
     public string Title { get; set; } = string.Empty;
 
+    /// <summary>Gövde sistemde yazılan metin mi, yüklenmiş PDF mi?</summary>
+    public ConsentDocumentSource SourceKind { get; set; } = ConsentDocumentSource.Text;
+
+    /// <summary>PDF kaynaklı şablonun belgesi. Metin şablonunda null.</summary>
+    public Guid? DocumentId { get; set; }
+
     /// <summary>
     /// Form metni. İçinde yer tutucu bulunabilir: {{ogrenci}}, {{veli}}, {{kurum}},
     /// {{personel}}, {{tarih}}, {{tc}}, {{sinif}}, {{konu}}. Yer tutucular kayıt
     /// oluşturulurken SUNUCUDA doldurulur.
+    ///
+    /// PDF kaynaklı şablonda bu alan belgenin yerine geçmez; tablette belgenin
+    /// üstünde gösterilen kısa açıklamadır (boş bırakılabilir).
     /// </summary>
     public string Body { get; set; } = string.Empty;
 
@@ -100,6 +140,16 @@ public sealed class ConsentFormRecord : IBranchScopedEntity
 
     // ─── Şablondan kopyalanan belge gövdesi ───────────────────────────────────
     public string Title { get; set; } = string.Empty;
+
+    /// <summary>Şablondan kopyalanır; kayıt açıldıktan sonra değişmez.</summary>
+    public ConsentDocumentSource SourceKind { get; set; } = ConsentDocumentSource.Text;
+
+    /// <summary>
+    /// PDF kaynaklı kaydın belgesi. Şablonun belgesi sonradan değiştirilse bile
+    /// kayıt İMZALANDIĞI belgeye bağlı kalır — imzalı belge geriye dönük değişmez.
+    /// </summary>
+    public Guid? DocumentId { get; set; }
+
     public string Body { get; set; } = string.Empty;
     public string CheckItemsJson { get; set; } = "[]";
     public bool RequiresSignature { get; set; } = true;

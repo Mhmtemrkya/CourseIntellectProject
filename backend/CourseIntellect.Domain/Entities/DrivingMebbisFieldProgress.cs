@@ -4,10 +4,11 @@ namespace CourseIntellect.Domain.Entities;
 /// MEBBİS giriş asistanındaki alan bazlı ilerlemeyi tutar. Alanın gerçek değeri,
 /// MEBBİS parolası veya oturum bilgisi bu tabloda kesinlikle saklanmaz.
 /// </summary>
-public sealed class DrivingMebbisFieldProgress : ITenantScopedEntity
+public sealed class DrivingMebbisFieldProgress : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public string FieldKey { get; set; } = string.Empty;
     public bool IsCompleted { get; set; }

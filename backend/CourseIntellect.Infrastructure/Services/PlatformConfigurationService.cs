@@ -56,6 +56,17 @@ public sealed class PlatformConfigurationService(
             throw new InvalidOperationException("ScopeKey zorunludur.");
         }
 
+        if (string.Equals(type, "tenant-customization", StringComparison.OrdinalIgnoreCase)
+            && explicitTenantId is Guid requestedTenantId
+            && !CanManageOtherTenants())
+        {
+            var currentTenantId = await ResolveTenantIdAsync(cancellationToken);
+            if (currentTenantId != requestedTenantId)
+            {
+                throw new UnauthorizedAccessException("Başka bir kuruma ait marka ayarları değiştirilemez.");
+            }
+        }
+
         var entity = await dbContext.Set<PlatformConfiguration>()
             .FirstOrDefaultAsync(x => x.ConfigurationType == type && x.ScopeKey == scopeKey, cancellationToken);
 
@@ -123,6 +134,13 @@ public sealed class PlatformConfigurationService(
                || string.Equals(configurationType, ClassRegistryConfigurationType, StringComparison.OrdinalIgnoreCase)
                || string.Equals(configurationType, "staff-branches", StringComparison.OrdinalIgnoreCase)
                || string.Equals(configurationType, "role-management", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool CanManageOtherTenants()
+    {
+        var user = httpContextAccessor.HttpContext?.User;
+        return user?.IsInRole("Developer") == true
+            || string.Equals(user?.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase);
     }
 
     private static PlatformConfigurationDto ToDto(PlatformConfiguration entity) => new(

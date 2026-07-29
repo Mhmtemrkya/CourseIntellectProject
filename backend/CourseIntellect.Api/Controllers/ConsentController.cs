@@ -30,11 +30,15 @@ public sealed class ConsentController(
     IConsentFormPdfService consentFormPdfService,
     IInstitutionProfileService institutionProfileService,
     IPlatformConfigurationService platformConfigurationService,
+    IFileStorageService fileStorageService,
     ITenantContext tenantContext,
     IWebHostEnvironment environment) : ControllerBase
 {
     /// <summary>Şablon yazma yetkisi yönetimdedir; öğretmen yalnız imza akışını kullanır.</summary>
     private const string TemplateManagerRoles = "Admin,Administrative";
+
+    /// <summary>Yüklenen PDF için istek gövdesi üst sınırı (servis 12 MB'da keser).</summary>
+    private const long MaxDocumentRequestBytes = 16L * 1024 * 1024;
 
     // ══════════════════════════════════════════════════════════════════════════
     // Şablon yönetimi
@@ -42,6 +46,69 @@ public sealed class ConsentController(
 
     [HttpGet("catalog")]
     public IActionResult GetCatalog() => Ok(new { contextKinds = consentFormService.ContextKinds });
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Yüklenen PDF belgeleri
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Hazır PDF yükler (matbu sözleşme, taahhütname…). Dosya, statik /uploads
+    /// klasörüne DEĞİL veritabanına yazılır: onam belgeleri kişisel veri taşır ve
+    /// yalnız kimlik doğrulanmış, kurum süzgecinden geçen uçtan okunmalıdır.
+    /// </summary>
+    [HttpPost("documents")]
+    [Authorize(Roles = TemplateManagerRoles)]
+    [RequireEntitlement("settings", "consent-manage")]
+    [RequestSizeLimit(MaxDocumentRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxDocumentRequestBytes)]
+    public async Task<IActionResult> UploadDocument([FromForm] IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new { message = "Yüklenecek PDF seçilmedi." });
+        }
+        if (file.Length > MaxDocumentRequestBytes)
+        {
+            return StatusCode(StatusCodes.Status413PayloadTooLarge, new { message = "Dosya çok büyük." });
+        }
+
+        using var buffer = new MemoryStream();
+        await using (var stream = file.OpenReadStream())
+        {
+            await stream.CopyToAsync(buffer, cancellationToken);
+        }
+
+        return Result(await consentFormService.SaveDocumentAsync(
+            buffer.ToArray(), file.FileName, CurrentUserId(), cancellationToken));
+    }
+
+    /// <summary>Yüklenmiş belgenin kendisi — şablon düzenleme ekranındaki önizleme.</summary>
+    [HttpGet("documents/{id:guid}")]
+    public async Task<IActionResult> GetDocument(Guid id, CancellationToken cancellationToken)
+    {
+        var document = await consentFormService.GetDocumentAsync(id, cancellationToken);
+        return DocumentFile(document);
+    }
+
+    /// <summary>
+    /// Kaydın dayandığı özgün PDF — tabletin imzadan önce gösterdiği belge.
+    /// İmza görselini içermez; imzalı çıktı için forms/{id}/pdf kullanılır.
+    /// </summary>
+    [HttpGet("forms/{id:guid}/document")]
+    public async Task<IActionResult> GetFormDocument(Guid id, CancellationToken cancellationToken)
+    {
+        var document = await consentFormService.GetFormDocumentAsync(id, cancellationToken);
+        return DocumentFile(document);
+    }
+
+    private IActionResult DocumentFile(ConsentResult<ConsentDocumentContent> document)
+    {
+        if (!document.Ok || document.Value is null) return Result(document);
+
+        // Dosya adı Türkçe karakterden arındırılır (Content-Disposition güvenli).
+        var name = Slug(Path.GetFileNameWithoutExtension(document.Value.FileName));
+        return File(document.Value.Content, "application/pdf", $"{name}.pdf");
+    }
 
     [HttpGet("templates")]
     public async Task<IActionResult> ListTemplates([FromQuery] bool includeInactive, CancellationToken cancellationToken)
@@ -77,6 +144,13 @@ public sealed class ConsentController(
     {
         var template = await consentFormService.GetTemplateAsync(id, cancellationToken);
         if (!template.Ok || template.Value is null) return Result(template);
+
+        // PDF kaynaklı şablonda önizleme, yüklenen belgenin ta kendisidir:
+        // yeniden üretmek matbu evrakın düzenini bozar.
+        if (template.Value.SourceKind == ConsentDocumentSource.Pdf && template.Value.DocumentId is Guid documentId)
+        {
+            return DocumentFile(await consentFormService.GetDocumentAsync(documentId, cancellationToken));
+        }
 
         var branding = await ResolveBrandingAsync(cancellationToken);
         var pdf = consentFormPdfService.Generate(new ConsentPdfModel(
@@ -153,7 +227,7 @@ public sealed class ConsentController(
 
         var signature = await consentFormService.GetSignatureImageAsync(id, cancellationToken);
         var branding = await ResolveBrandingAsync(cancellationToken);
-        var pdf = consentFormPdfService.Generate(new ConsentPdfModel(
+        var model = new ConsentPdfModel(
             InstitutionName: branding.InstitutionName,
             Title: form.Value.Title,
             Body: form.Value.Body,
@@ -170,7 +244,25 @@ public sealed class ConsentController(
             SignatureImage: DecodeInlineImage(signature),
             LogoBytes: branding.LogoBytes,
             AccentColor: branding.AccentColor,
-            FooterNote: branding.FooterNote));
+            FooterNote: branding.FooterNote);
+
+        byte[] pdf;
+        if (form.Value.SourceKind == ConsentDocumentSource.Pdf)
+        {
+            // Matbu belge yeniden üretilmez: özgün sayfalar korunur, imza bilgisi
+            // sona eklenen tutanak sayfasına basılır.
+            var document = await consentFormService.GetFormDocumentAsync(id, cancellationToken);
+            if (!document.Ok || document.Value is null) return Result(document);
+
+            pdf = consentFormPdfService.AppendSignaturePage(
+                document.Value.Content,
+                model,
+                new ConsentDocumentStamp(document.Value.FileName, document.Value.Sha256, document.Value.PageCount));
+        }
+        else
+        {
+            pdf = consentFormPdfService.Generate(model);
+        }
 
         var date = (form.Value.SignedAtUtc?.ToLocalTime() ?? form.Value.CreatedAtUtc.ToLocalTime()).ToString("yyyy-MM-dd");
         return File(pdf, "application/pdf", $"{Slug(form.Value.StudentName)}-{Slug(form.Value.Title)}-{date}.pdf");
@@ -253,8 +345,9 @@ public sealed class ConsentController(
 
     /// <summary>
     /// Belge künyesi: kurum adı ve alt not Ayarlar &gt; Kurum Künyesi'nden,
-    /// logo/renk kurum özelleştirmesinden gelir. Logo yalnız gömülü (data:)
-    /// görselden okunur — dış adres verilirse sunucu istek yapmaz (SSRF).
+    /// logo/renk kurum özelleştirmesinden gelir. Logo yalnız gömülü görselden
+    /// veya kurumun güvenli yerel yükleme alanından okunur; dış adrese istek
+    /// yapılmaz (SSRF yüzeyi açılmaz).
     /// </summary>
     private async Task<ConsentBranding> ResolveBrandingAsync(CancellationToken cancellationToken)
     {
@@ -277,7 +370,11 @@ public sealed class ConsentController(
                     using var payload = JsonDocument.Parse(configuration.PayloadJson);
                     var root = payload.RootElement;
                     if (ReadString(root, "primaryColor") is { Length: > 0 } primaryColor) accent = primaryColor;
-                    if (ReadString(root, "logoUrl") is { Length: > 0 } logoUrl) logo = DecodeInlineImage(logoUrl);
+                    if (ReadString(root, "logoUrl") is { Length: > 0 } logoUrl)
+                    {
+                        logo = DecodeInlineImage(logoUrl)
+                            ?? await fileStorageService.ReadBytesAsync(logoUrl, cancellationToken);
+                    }
                 }
                 catch (JsonException)
                 {

@@ -19,10 +19,11 @@ public enum DrivingMebbisHistorySeverity { Info = 1, Success = 2, Warning = 3, E
 /// Kursiyerin MEBBİS sürecindeki değiştirilemez olay kaydı. Kimlik numarası,
 /// belge içeriği, MEBBİS parolası veya oturum verisi kesinlikle tutulmaz.
 /// </summary>
-public sealed class DrivingMebbisHistoryEvent : ITenantScopedEntity
+public sealed class DrivingMebbisHistoryEvent : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public DrivingMebbisHistoryEventType EventType { get; set; }
     public DrivingMebbisHistorySeverity Severity { get; set; } = DrivingMebbisHistorySeverity.Info;

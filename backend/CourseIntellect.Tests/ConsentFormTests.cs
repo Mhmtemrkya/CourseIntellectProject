@@ -34,11 +34,13 @@ public sealed class ConsentFormTests
     {
         public TestDb Db { get; } = new();
         public ConsentFormService Service { get; }
+        public ConsentFormPdfService Pdf { get; } = new();
         public StudentProfile Student { get; }
 
         public Harness()
         {
-            Service = new ConsentFormService(Db.Context, new StubInstitutionProfileService(), new StubAuditLogService());
+            Service = new ConsentFormService(
+                Db.Context, new StubInstitutionProfileService(), Pdf, new StubAuditLogService());
 
             Student = new StudentProfile
             {
@@ -610,8 +612,179 @@ public sealed class ConsentFormTests
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    // 13-19 — Yüklenmiş PDF kaynaklı formlar
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact] // 13
+    public async Task Document_RejectsNonPdfContent()
+    {
+        using var harness = new Harness();
+
+        // Uzantı .pdf ama içerik değil: uzantıya güvenilmediği burada kilitlenir.
+        var saved = await harness.Service.SaveDocumentAsync(
+            "<?php system($_GET['c']); ?>"u8.ToArray(), "sozlesme.pdf", null);
+
+        Assert.False(saved.Ok);
+        Assert.Equal(400, saved.StatusCode);
+    }
+
+    [Fact] // 14
+    public async Task Document_SameContentUploadedTwice_IsStoredOnce()
+    {
+        using var harness = new Harness();
+        var pdf = SamplePdf(2);
+
+        var first = await harness.Service.SaveDocumentAsync(pdf, "sozlesme.pdf", null);
+        var second = await harness.Service.SaveDocumentAsync(pdf, "kopya.pdf", null);
+
+        Assert.True(first.Ok);
+        Assert.True(second.Ok);
+        Assert.Equal(first.Value!.Id, second.Value!.Id);
+        Assert.Equal(2, first.Value.PageCount);
+        Assert.Single(harness.Db.Context.ConsentDocuments);
+    }
+
+    [Fact] // 15
+    public async Task PdfTemplate_WithoutDocument_IsRejected()
+    {
+        using var harness = new Harness();
+
+        var created = await harness.Service.CreateTemplateAsync(
+            TemplateRequest() with { SourceKind = ConsentDocumentSource.Pdf, DocumentId = null }, null);
+
+        Assert.False(created.Ok);
+        Assert.Equal(400, created.StatusCode);
+    }
+
+    [Fact] // 16
+    public async Task PdfTemplate_WithUnknownDocument_IsRejected()
+    {
+        using var harness = new Harness();
+
+        var created = await harness.Service.CreateTemplateAsync(
+            TemplateRequest() with { SourceKind = ConsentDocumentSource.Pdf, DocumentId = Guid.NewGuid() }, null);
+
+        Assert.False(created.Ok);
+        Assert.Equal(404, created.StatusCode);
+    }
+
+    [Fact] // 17
+    public async Task PdfForm_StaysBoundToDocumentItWasCreatedWith()
+    {
+        using var harness = new Harness();
+        var first = await harness.Service.SaveDocumentAsync(SamplePdf(1), "eski.pdf", null);
+        var templateId = await SeedPdfTemplateAsync(harness, first.Value!.Id);
+        var form = await SeedFormAsync(harness, templateId, ConsentContextKind.SchoolEnrollment);
+
+        // Şablona yeni sürüm yüklenir; imzalanacak kayıt ESKİ belgeye bağlı kalmalı.
+        var second = await harness.Service.SaveDocumentAsync(SamplePdf(3), "yeni.pdf", null);
+        await harness.Service.UpdateTemplateAsync(templateId,
+            TemplateRequest() with { SourceKind = ConsentDocumentSource.Pdf, DocumentId = second.Value!.Id }, null);
+
+        var stored = await harness.Service.GetFormAsync(form.Id);
+
+        Assert.Equal(ConsentDocumentSource.Pdf, stored.Value!.SourceKind);
+        Assert.Equal(first.Value.Id, stored.Value.DocumentId);
+        Assert.Equal("eski.pdf", stored.Value.DocumentFileName);
+    }
+
+    [Fact] // 18
+    public async Task TextForm_HasNoUploadedDocument()
+    {
+        using var harness = new Harness();
+        var templateId = await SeedTemplateAsync(harness);
+        var form = await SeedFormAsync(harness, templateId);
+
+        var document = await harness.Service.GetFormDocumentAsync(form.Id);
+
+        Assert.False(document.Ok);
+        Assert.Equal(404, document.StatusCode);
+    }
+
+    [Fact] // 19 — özgün sayfalar korunur, imza AYRI bir tutanak sayfasına basılır
+    public void SignedPdf_KeepsOriginalPages_AndAppendsSignaturePage()
+    {
+        var harness = new ConsentFormPdfService();
+        var source = SamplePdf(3);
+
+        var merged = harness.AppendSignaturePage(
+            source,
+            new ConsentPdfModel(
+                InstitutionName: "DEMO KOLEJİ",
+                Title: "Kayıt Sözleşmesi",
+                Body: string.Empty,
+                CheckItems: ["Okudum."],
+                CheckedItems: [0],
+                StudentName: "Elif YILMAZ",
+                ContextLabel: "Okul kaydı",
+                StaffName: "Ayşe DEMİR",
+                StaffNotes: string.Empty,
+                SignerLabel: "Veli imzası",
+                SignerName: "Murat YILMAZ",
+                SignerRelation: "Baba",
+                SignedAtUtc: DateTime.UtcNow),
+            new ConsentDocumentStamp("sozlesme.pdf", new string('a', 64), 3));
+
+        Assert.Equal(4, harness.Inspect(merged).PageCount);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     // Yardımcılar
     // ══════════════════════════════════════════════════════════════════════════
+
+    private static async Task<Guid> SeedPdfTemplateAsync(Harness harness, Guid documentId)
+    {
+        var created = await harness.Service.CreateTemplateAsync(
+            TemplateRequest() with { SourceKind = ConsentDocumentSource.Pdf, DocumentId = documentId },
+            null);
+        Assert.True(created.Ok);
+        return created.Value!.Id;
+    }
+
+    /// <summary>Elle kurulmuş en yalın geçerli PDF — dış dosyaya bağımlılık olmasın.</summary>
+    private static byte[] SamplePdf(int pageCount)
+    {
+        var objects = new List<byte[]>();
+        var kids = string.Join(' ', Enumerable.Range(0, pageCount).Select(i => $"{3 + i * 2} 0 R"));
+        objects.Add("<< /Type /Catalog /Pages 2 0 R >>"u8.ToArray());
+        objects.Add(System.Text.Encoding.ASCII.GetBytes($"<< /Type /Pages /Kids [{kids}] /Count {pageCount} >>"));
+
+        for (var index = 0; index < pageCount; index++)
+        {
+            objects.Add(System.Text.Encoding.ASCII.GetBytes(
+                $"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 {3 + pageCount * 2} 0 R >> >> /Contents {4 + index * 2} 0 R >>"));
+            var content = System.Text.Encoding.ASCII.GetBytes($"BT /F1 14 Tf 60 760 Td (Sayfa {index + 1}) Tj ET");
+            objects.Add([
+                .. System.Text.Encoding.ASCII.GetBytes($"<< /Length {content.Length} >>\nstream\n"),
+                .. content,
+                .. "\nendstream"u8.ToArray(),
+            ]);
+        }
+
+        objects.Add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"u8.ToArray());
+
+        using var buffer = new MemoryStream();
+        buffer.Write("%PDF-1.4\n"u8);
+        var offsets = new List<long>();
+        for (var index = 0; index < objects.Count; index++)
+        {
+            offsets.Add(buffer.Length);
+            buffer.Write(System.Text.Encoding.ASCII.GetBytes($"{index + 1} 0 obj\n"));
+            buffer.Write(objects[index]);
+            buffer.Write("\nendobj\n"u8);
+        }
+
+        var xref = buffer.Length;
+        buffer.Write(System.Text.Encoding.ASCII.GetBytes($"xref\n0 {objects.Count + 1}\n0000000000 65535 f \n"));
+        foreach (var offset in offsets)
+        {
+            buffer.Write(System.Text.Encoding.ASCII.GetBytes($"{offset:D10} 00000 n \n"));
+        }
+        buffer.Write(System.Text.Encoding.ASCII.GetBytes(
+            $"trailer\n<< /Size {objects.Count + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n"));
+
+        return buffer.ToArray();
+    }
 
     private static async Task<Guid> DispatchAsync(Harness harness, Guid? templateId = null)
     {

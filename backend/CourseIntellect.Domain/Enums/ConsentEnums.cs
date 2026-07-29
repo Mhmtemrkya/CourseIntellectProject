@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace CourseIntellect.Domain.Enums;
 
 /// <summary>
@@ -5,7 +7,12 @@ namespace CourseIntellect.Domain.Enums;
 ///
 /// Draft → AwaitingSignature → Signed tek yönlüdür; imzalanmış kayıt bir daha
 /// değişmez (hukuki kayıttır). Cancelled yalnız imzalanmamış kayıtlar için.
+///
+/// Tel üzerinde AD ile taşınır ("Signed"). Masaüstü ve mobil ekranlar durum
+/// karşılaştırmasını metinle yapar; sayısal sözleşmeye dönülürse imza akışı
+/// sessizce kırılır.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ConsentFormStatus
 {
     /// <summary>Personel hazırladı, henüz tablete gönderilmedi.</summary>
@@ -29,6 +36,7 @@ public enum ConsentFormStatus
 /// (ör. DrivingEnrollment + paket kimliği, SchoolEnrollment + program adı).
 /// ContextKey boşsa şablon o türdeki TÜM kayıtlar için zorunludur.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ConsentContextKind
 {
     /// <summary>Kuruma kayıtlı her öğrenciden bir kez istenen form (ör. KVKK açık rıza).</summary>
@@ -64,8 +72,28 @@ public enum ConsentContextKind
 
 /// <summary>
 /// Belgeyi kimin imzalaması beklenir. Yalnızca ekrandaki yönlendirmeyi ve PDF'teki
+/// Belgenin gövdesi nereden gelir.
+///
+/// <see cref="Text"/> kurumun sistemde yazdığı metindir; yer tutucuları sunucu
+/// doldurur ve PDF baştan üretilir. <see cref="Pdf"/> ise kurumun hazır matbu
+/// belgesidir: içeriğine DOKUNULMAZ, imza bilgileri belgenin sonuna eklenen
+/// ayrı bir imza sayfasına basılır.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ConsentDocumentSource
+{
+    /// <summary>Sistemde yazılan metin; PDF sunucuda üretilir.</summary>
+    Text = 0,
+
+    /// <summary>Yüklenmiş hazır PDF; sayfaları olduğu gibi korunur.</summary>
+    Pdf = 1,
+}
+
+/// <summary>
+/// Belgeyi kimin imzalaması beklenir. Yalnızca ekrandaki yönlendirmeyi ve PDF'teki
 /// imza etiketini belirler — imzalayanın adı her hâlükârda kayda yazılır.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ConsentSignerRole
 {
     /// <summary>Öğrenci / kursiyerin kendisi.</summary>

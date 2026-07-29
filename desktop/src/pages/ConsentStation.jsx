@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { pollConsentStation, signConsentForm } from '../lib/api/modules';
+import { downloadConsentFormDocument, pollConsentStation, signConsentForm } from '../lib/api/modules';
 import SignaturePad from '../components/consent/SignaturePad';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -41,9 +41,21 @@ export default function ConsentStation() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [thanks, setThanks] = useState(false);
+  const [documentUrl, setDocumentUrl] = useState('');
+  const [documentError, setDocumentError] = useState('');
 
   const padRef = useRef(null);
   const formIdRef = useRef(null);
+  const documentUrlRef = useRef('');
+
+  /// Blob adresi ekrandan düşer düşmez serbest bırakılır: tablet günlerce açık
+  /// kaldığında birikmiş PDF'ler belleği şişirmemeli.
+  const releaseDocument = useCallback(() => {
+    if (documentUrlRef.current) URL.revokeObjectURL(documentUrlRef.current);
+    documentUrlRef.current = '';
+    setDocumentUrl('');
+    setDocumentError('');
+  }, []);
 
   const resetForm = useCallback(() => {
     setChecked([]);
@@ -53,6 +65,23 @@ export default function ConsentStation() {
     setError('');
     padRef.current?.clear();
   }, []);
+
+  /// Yüklenmiş PDF'li formda belge ekranda GÖSTERİLİR; indirilemezse imza
+  /// düğmesi açılmaz — kimse görmediği belgeyi imzalamamalı.
+  const loadDocument = useCallback(async (form) => {
+    releaseDocument();
+    if (form?.sourceKind !== 'Pdf') return;
+    try {
+      const blob = await downloadConsentFormDocument(form.id);
+      const url = URL.createObjectURL(blob);
+      documentUrlRef.current = url;
+      setDocumentUrl(url);
+    } catch (loadError) {
+      setDocumentError(loadError.message || 'Belge alınamadı.');
+    }
+  }, [releaseDocument]);
+
+  useEffect(() => () => releaseDocument(), [releaseDocument]);
 
   const poll = useCallback(async () => {
     if (!stationName.trim()) return;
@@ -66,6 +95,7 @@ export default function ConsentStation() {
           formIdRef.current = null;
           setForm(null);
           resetForm();
+          releaseDocument();
         }
         return;
       }
@@ -78,10 +108,11 @@ export default function ConsentStation() {
       setForm(next);
       resetForm();
       setSignerName(next.studentName || '');
+      await loadDocument(next);
     } catch {
       setConnected(false);
     }
-  }, [stationName, resetForm]);
+  }, [stationName, resetForm, loadDocument, releaseDocument]);
 
   useEffect(() => {
     if (!stationName.trim() || renaming) return undefined;
@@ -101,7 +132,9 @@ export default function ConsentStation() {
     [form, checked],
   );
   const signatureReady = !form?.requiresSignature || hasInk;
-  const canSubmit = Boolean(form) && allChecked && signatureReady && !submitting;
+  // PDF'li formda belge ekrana gelmeden imza alınmaz.
+  const documentReady = form?.sourceKind !== 'Pdf' || Boolean(documentUrl);
+  const canSubmit = Boolean(form) && allChecked && signatureReady && documentReady && !submitting;
 
   const toggle = (index) => {
     setChecked((current) =>
@@ -123,6 +156,7 @@ export default function ConsentStation() {
       formIdRef.current = null;
       setForm(null);
       resetForm();
+      releaseDocument();
       setThanks(true);
     } catch (submitError) {
       setError(submitError.message);
@@ -140,6 +174,7 @@ export default function ConsentStation() {
     formIdRef.current = null;
     setForm(null);
     resetForm();
+    releaseDocument();
   };
 
   const startRename = () => {
@@ -247,9 +282,37 @@ export default function ConsentStation() {
             </div>
           </div>
 
-          <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-2xl border border-border/60 bg-card p-4 text-sm leading-relaxed">
-            {form.body}
-          </div>
+          {form.sourceKind === 'Pdf' ? (
+            <div className="space-y-2">
+              {form.body ? (
+                <div className="whitespace-pre-wrap rounded-2xl border border-border/60 bg-card p-4 text-sm leading-relaxed">
+                  {form.body}
+                </div>
+              ) : null}
+
+              {documentUrl ? (
+                <>
+                  <iframe
+                    title={form.documentFileName || 'Sözleşme'}
+                    src={documentUrl}
+                    className="h-[60vh] w-full rounded-2xl border border-border/60 bg-card"
+                  />
+                  <p className="text-center text-xs text-muted-foreground">
+                    {form.documentFileName} · {form.documentPageCount} sayfa —
+                    imzalamadan önce belgenin tamamını okuyun.
+                  </p>
+                </>
+              ) : (
+                <div className="grid h-40 place-items-center rounded-2xl border border-border/60 bg-card text-sm text-muted-foreground">
+                  {documentError ? `Belge alınamadı: ${documentError}` : 'Belge yükleniyor…'}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-2xl border border-border/60 bg-card p-4 text-sm leading-relaxed">
+              {form.body}
+            </div>
+          )}
 
           {form.staffNotes ? (
             <div className="rounded-xl border border-border/60 bg-muted/40 p-3 text-sm">
@@ -321,9 +384,11 @@ export default function ConsentStation() {
             </Button>
             {!canSubmit && !submitting ? (
               <p className="text-center text-sm text-muted-foreground">
-                {!allChecked
-                  ? 'Devam etmek için tüm onay maddelerini işaretleyin.'
-                  : 'Devam etmek için imza alanına imzanızı atın.'}
+                {!documentReady
+                  ? 'Belge ekrana gelmeden imza alınamaz.'
+                  : !allChecked
+                    ? 'Devam etmek için tüm onay maddelerini işaretleyin.'
+                    : 'Devam etmek için imza alanına imzanızı atın.'}
               </p>
             ) : null}
           </div>

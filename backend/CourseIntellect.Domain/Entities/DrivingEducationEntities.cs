@@ -2,10 +2,11 @@ using CourseIntellect.Domain.Enums;
 
 namespace CourseIntellect.Domain.Entities;
 
-public sealed class DrivingTheoryClass : ITenantScopedEntity
+public sealed class DrivingTheoryClass : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string LicenseClass { get; set; } = "B";
     public Guid InstructorStaffId { get; set; }
@@ -17,19 +18,21 @@ public sealed class DrivingTheoryClass : ITenantScopedEntity
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingTheoryEnrollment : ITenantScopedEntity
+public sealed class DrivingTheoryEnrollment : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid TheoryClassId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public DateTime EnrolledAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingTheorySession : ITenantScopedEntity
+public sealed class DrivingTheorySession : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid TheoryClassId { get; set; }
     public Guid InstructorStaffId { get; set; }
     public string Subject { get; set; } = string.Empty;
@@ -41,10 +44,11 @@ public sealed class DrivingTheorySession : ITenantScopedEntity
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingTheoryAttendance : ITenantScopedEntity
+public sealed class DrivingTheoryAttendance : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid TheorySessionId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public DrivingTheoryAttendanceStatus Status { get; set; }
@@ -53,10 +57,11 @@ public sealed class DrivingTheoryAttendance : ITenantScopedEntity
     public DateTime MarkedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingExamSession : ITenantScopedEntity
+public sealed class DrivingExamSession : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public DrivingExamType ExamType { get; set; }
     public string Title { get; set; } = string.Empty;
     public DateTime StartsAtUtc { get; set; }
@@ -67,20 +72,22 @@ public sealed class DrivingExamSession : ITenantScopedEntity
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingExamCommissionMember : ITenantScopedEntity
+public sealed class DrivingExamCommissionMember : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid ExamSessionId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public string Organization { get; set; } = string.Empty;
 }
 
-public sealed class DrivingExamCandidate : ITenantScopedEntity
+public sealed class DrivingExamCandidate : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid ExamSessionId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public int AttemptNo { get; set; } = 1;

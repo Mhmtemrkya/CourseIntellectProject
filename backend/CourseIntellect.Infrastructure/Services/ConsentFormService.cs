@@ -19,10 +19,14 @@ namespace CourseIntellect.Infrastructure.Services;
 public sealed class ConsentFormService(
     CourseIntellectDbContext dbContext,
     IInstitutionProfileService institutionProfileService,
+    IConsentFormPdfService consentFormPdfService,
     IAuditLogService auditLogService) : IConsentFormService
 {
     private static readonly CultureInfo Tr = CultureInfo.GetCultureInfo("tr-TR");
     private const string AuditCategory = "Consent";
+
+    /// <summary>Yüklenen PDF için üst sınır. Tablette açılabilir kalması için bilerek dar.</summary>
+    private const int MaxDocumentBytes = 12 * 1024 * 1024;
 
     /// <summary>Karşılığı bulunamayan yer tutucunun yerine basılan elle doldurulabilir boşluk.</summary>
     private const string BlankFill = "............................";
@@ -52,6 +56,84 @@ public sealed class ConsentFormService(
     ];
 
     // ══════════════════════════════════════════════════════════════════════════
+    // Yüklenen PDF belgeleri
+    // ══════════════════════════════════════════════════════════════════════════
+
+    public async Task<ConsentResult<ConsentDocumentDto>> SaveDocumentAsync(
+        byte[] content, string? fileName, Guid? actorUserId, CancellationToken cancellationToken = default)
+    {
+        if (content is not { Length: > 0 })
+        {
+            return ConsentResult<ConsentDocumentDto>.Fail(400, "Boş dosya yüklenemez.");
+        }
+        if (content.Length > MaxDocumentBytes)
+        {
+            return ConsentResult<ConsentDocumentDto>.Fail(413,
+                $"PDF en fazla {MaxDocumentBytes / (1024 * 1024)} MB olabilir.");
+        }
+
+        // Uzantıya değil İÇERİĞE bakılır: .pdf adıyla gelen betik burada elenir.
+        var inspection = consentFormPdfService.Inspect(content);
+        if (!inspection.Valid)
+        {
+            return ConsentResult<ConsentDocumentDto>.Fail(400, inspection.Message);
+        }
+
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(content)).ToLowerInvariant();
+        var existing = await dbContext.ConsentDocuments.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Sha256 == hash, cancellationToken);
+        if (existing is not null)
+        {
+            return ConsentResult<ConsentDocumentDto>.Success(ToDocumentDto(existing));
+        }
+
+        var document = new ConsentDocument
+        {
+            // Dosya adı yalnız künye/indirme içindir; yol bileşenleri atılır.
+            FileName = SafeFileName(fileName),
+            Sha256 = hash,
+            ByteSize = content.Length,
+            PageCount = inspection.PageCount,
+            Content = content,
+            CreatedByUserId = actorUserId,
+        };
+        dbContext.ConsentDocuments.Add(document);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        await auditLogService.LogAsync("consent.document.upload", AuditCategory, nameof(ConsentDocument),
+            document.Id.ToString(),
+            $"Onam belgesi yüklendi: {document.FileName} ({document.PageCount} sayfa, {document.ByteSize} bayt)",
+            cancellationToken);
+
+        return ConsentResult<ConsentDocumentDto>.Success(ToDocumentDto(document));
+    }
+
+    public async Task<ConsentResult<ConsentDocumentContent>> GetDocumentAsync(
+        Guid id, CancellationToken cancellationToken = default)
+    {
+        var document = await dbContext.ConsentDocuments.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        return document is null
+            ? ConsentResult<ConsentDocumentContent>.Fail(404, "Belge bulunamadı.")
+            : ConsentResult<ConsentDocumentContent>.Success(
+                new ConsentDocumentContent(document.FileName, document.Sha256, document.PageCount, document.Content));
+    }
+
+    public async Task<ConsentResult<ConsentDocumentContent>> GetFormDocumentAsync(
+        Guid formId, CancellationToken cancellationToken = default)
+    {
+        var record = await dbContext.ConsentFormRecords.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == formId, cancellationToken);
+        if (record is null) return ConsentResult<ConsentDocumentContent>.Fail(404, "Onam formu bulunamadı.");
+        if (record.SourceKind != ConsentDocumentSource.Pdf || record.DocumentId is not Guid documentId)
+        {
+            return ConsentResult<ConsentDocumentContent>.Fail(404, "Bu form yüklenmiş bir belgeye dayanmıyor.");
+        }
+
+        return await GetDocumentAsync(documentId, cancellationToken);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     // Şablon yönetimi
     // ══════════════════════════════════════════════════════════════════════════
 
@@ -69,8 +151,9 @@ public sealed class ConsentFormService(
         var bindings = await dbContext.ConsentFormRequirements.AsNoTracking()
             .Where(x => ids.Contains(x.TemplateId))
             .ToListAsync(cancellationToken);
+        var documents = await LoadDocumentMetaAsync(templates.Select(x => x.DocumentId), cancellationToken);
 
-        return templates.Select(t => ToTemplateDto(t, bindings)).ToList();
+        return templates.Select(t => ToTemplateDto(t, bindings, documents)).ToList();
     }
 
     public async Task<ConsentResult<ConsentTemplateDto>> GetTemplateAsync(
@@ -82,7 +165,46 @@ public sealed class ConsentFormService(
 
         var bindings = await dbContext.ConsentFormRequirements.AsNoTracking()
             .Where(x => x.TemplateId == id).ToListAsync(cancellationToken);
-        return ConsentResult<ConsentTemplateDto>.Success(ToTemplateDto(template, bindings));
+        var documents = await LoadDocumentMetaAsync([template.DocumentId], cancellationToken);
+        return ConsentResult<ConsentTemplateDto>.Success(ToTemplateDto(template, bindings, documents));
+    }
+
+    /// <summary>
+    /// Belge künyeleri (ad + sayfa sayısı). İçerik BİLEREK okunmaz: liste
+    /// yanıtları megabaytlık PDF yükü taşımamalı.
+    /// </summary>
+    private async Task<Dictionary<Guid, (string FileName, int PageCount)>> LoadDocumentMetaAsync(
+        IEnumerable<Guid?> documentIds, CancellationToken cancellationToken)
+    {
+        var ids = documentIds.Where(x => x.HasValue).Select(x => x!.Value).Distinct().ToList();
+        if (ids.Count == 0) return [];
+
+        var rows = await dbContext.ConsentDocuments.AsNoTracking()
+            .Where(x => ids.Contains(x.Id))
+            .Select(x => new { x.Id, x.FileName, x.PageCount })
+            .ToListAsync(cancellationToken);
+        return rows.ToDictionary(x => x.Id, x => (x.FileName, x.PageCount));
+    }
+
+    /// <summary>
+    /// PDF kaynaklı şablonun belgesi kurumun kendi yüklemesi olmalı. Kurum
+    /// süzgeci sorguya zaten uygulanır; bulunamayan kimlik reddedilir.
+    /// </summary>
+    private async Task<ConsentResult<Guid?>> ResolveTemplateDocumentAsync(
+        SaveConsentTemplateRequest request, CancellationToken cancellationToken)
+    {
+        if (request.SourceKind != ConsentDocumentSource.Pdf) return ConsentResult<Guid?>.Success(null);
+
+        if (request.DocumentId is not Guid documentId)
+        {
+            return ConsentResult<Guid?>.Fail(400, "PDF kaynaklı form için bir belge yüklenmelidir.");
+        }
+
+        var exists = await dbContext.ConsentDocuments.AsNoTracking()
+            .AnyAsync(x => x.Id == documentId, cancellationToken);
+        return exists
+            ? ConsentResult<Guid?>.Success(documentId)
+            : ConsentResult<Guid?>.Fail(404, "Yüklenen belge bulunamadı. Dosyayı yeniden yükleyin.");
     }
 
     public async Task<ConsentResult<ConsentTemplateDto>> CreateTemplateAsync(
@@ -91,9 +213,14 @@ public sealed class ConsentFormService(
         var title = Trim(request.Title, 200);
         if (title.Length == 0) return ConsentResult<ConsentTemplateDto>.Fail(400, "Form başlığı zorunludur.");
 
+        var document = await ResolveTemplateDocumentAsync(request, cancellationToken);
+        if (!document.Ok) return ConsentResult<ConsentTemplateDto>.Fail(document.StatusCode, document.Message);
+
         var template = new ConsentFormTemplate
         {
             Title = title,
+            SourceKind = request.SourceKind,
+            DocumentId = document.Value,
             Body = (request.Body ?? string.Empty).Trim(),
             CheckItemsJson = SerializeCheckItems(request.CheckItems),
             RequiresSignature = request.RequiresSignature,
@@ -122,7 +249,12 @@ public sealed class ConsentFormService(
         var title = Trim(request.Title, 200);
         if (title.Length == 0) return ConsentResult<ConsentTemplateDto>.Fail(400, "Form başlığı zorunludur.");
 
+        var document = await ResolveTemplateDocumentAsync(request, cancellationToken);
+        if (!document.Ok) return ConsentResult<ConsentTemplateDto>.Fail(document.StatusCode, document.Message);
+
         template.Title = title;
+        template.SourceKind = request.SourceKind;
+        template.DocumentId = document.Value;
         template.Body = (request.Body ?? string.Empty).Trim();
         template.CheckItemsJson = SerializeCheckItems(request.CheckItems);
         template.RequiresSignature = request.RequiresSignature;
@@ -191,7 +323,8 @@ public sealed class ConsentFormService(
             .Where(x => x.StudentProfileId == studentProfileId && x.Status != ConsentFormStatus.Cancelled)
             .OrderByDescending(x => x.CreatedAtUtc)
             .ToListAsync(cancellationToken);
-        return records.Select(ToFormDto).ToList();
+        var documents = await LoadDocumentMetaAsync(records.Select(x => x.DocumentId), cancellationToken);
+        return records.Select(record => ToFormDto(record, documents)).ToList();
     }
 
     public async Task<ConsentResult<ConsentFormDto>> GetFormAsync(
@@ -199,9 +332,10 @@ public sealed class ConsentFormService(
     {
         var record = await dbContext.ConsentFormRecords.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        return record is null
-            ? ConsentResult<ConsentFormDto>.Fail(404, "Onam formu bulunamadı.")
-            : ConsentResult<ConsentFormDto>.Success(ToFormDto(record));
+        if (record is null) return ConsentResult<ConsentFormDto>.Fail(404, "Onam formu bulunamadı.");
+
+        var documents = await LoadDocumentMetaAsync([record.DocumentId], cancellationToken);
+        return ConsentResult<ConsentFormDto>.Success(ToFormDto(record, documents));
     }
 
     public async Task<string> GetSignatureImageAsync(Guid id, CancellationToken cancellationToken = default)
@@ -247,15 +381,17 @@ public sealed class ConsentFormService(
                 match?.Status,
                 match?.SignedAtUtc,
                 match?.StationName ?? string.Empty,
-                match?.ContextLabel ?? string.Empty));
+                match?.ContextLabel ?? string.Empty,
+                template.SourceKind));
         }
 
         var signed = rows.Count(x => x.Status == ConsentFormStatus.Signed);
-        var others = records
+        var otherRecords = records
             .Where(x => !matchedIds.Contains(x.Id) && x.Status == ConsentFormStatus.Signed)
             .OrderByDescending(x => x.SignedAtUtc)
-            .Select(ToFormDto)
             .ToList();
+        var otherDocuments = await LoadDocumentMetaAsync(otherRecords.Select(x => x.DocumentId), cancellationToken);
+        var others = otherRecords.Select(record => ToFormDto(record, otherDocuments)).ToList();
 
         return ConsentResult<ConsentStatusDto>.Success(new ConsentStatusDto(
             Complete: signed == rows.Count,
@@ -320,6 +456,10 @@ public sealed class ConsentFormService(
             // Belge gövdesi şablondan KOPYALANIR ve yer tutucular BURADA doldurulur:
             // metni gösteren her yüzey (tablet, PDF, önizleme) aynı hazır metni görsün.
             Title = template.Title,
+            // PDF kaynağında kayıt, şablonun O ANKİ belgesine sabitlenir; şablona
+            // sonradan başka dosya yüklenmesi imzalanmış kaydı etkilemez.
+            SourceKind = template.SourceKind,
+            DocumentId = template.DocumentId,
             Body = FillPlaceholders(template.Body, tokens),
             CheckItemsJson = SerializeCheckItems(
                 DeserializeCheckItems(template.CheckItemsJson).Select(item => FillPlaceholders(item, tokens)).ToList()),
@@ -338,7 +478,7 @@ public sealed class ConsentFormService(
         await auditLogService.LogAsync("consent.form.create", AuditCategory, nameof(ConsentFormRecord),
             record.Id.ToString(), $"{student.FullName} için onam formu açıldı: {record.Title}", cancellationToken);
 
-        return ConsentResult<ConsentFormDto>.Success(ToFormDto(record));
+        return ConsentResult<ConsentFormDto>.Success(await ToFormDtoAsync(record, cancellationToken));
     }
 
     public async Task<ConsentResult<ConsentFormDto>> UpdateFormAsync(
@@ -358,7 +498,7 @@ public sealed class ConsentFormService(
         record.StaffNotes = Trim(request.StaffNotes, 2000);
         record.UpdatedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
-        return ConsentResult<ConsentFormDto>.Success(ToFormDto(record));
+        return ConsentResult<ConsentFormDto>.Success(await ToFormDtoAsync(record, cancellationToken));
     }
 
     public async Task<ConsentResult<bool>> CancelFormAsync(
@@ -435,7 +575,7 @@ public sealed class ConsentFormService(
         await auditLogService.LogAsync("consent.form.dispatch", AuditCategory, nameof(ConsentFormRecord),
             id.ToString(), $"Onam formu \"{stationName}\" tabletine aktarıldı: {record.Title}", cancellationToken);
 
-        return ConsentResult<ConsentFormDto>.Success(ToFormDto(record));
+        return ConsentResult<ConsentFormDto>.Success(await ToFormDtoAsync(record, cancellationToken));
     }
 
     public async Task<ConsentResult<ConsentFormDto>> RevokeSessionAsync(
@@ -453,7 +593,7 @@ public sealed class ConsentFormService(
         record.SessionExpiresAtUtc = null;
         record.UpdatedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
-        return ConsentResult<ConsentFormDto>.Success(ToFormDto(record));
+        return ConsentResult<ConsentFormDto>.Success(await ToFormDtoAsync(record, cancellationToken));
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -496,6 +636,9 @@ public sealed class ConsentFormService(
             return ConsentResult<ConsentStationFormDto?>.Success(null);
         }
 
+        var documents = await LoadDocumentMetaAsync([record.DocumentId], cancellationToken);
+        var document = Document(record.DocumentId, documents);
+
         return ConsentResult<ConsentStationFormDto?>.Success(new ConsentStationFormDto(
             record.Id,
             token,
@@ -508,7 +651,10 @@ public sealed class ConsentFormService(
             record.ContextLabel,
             record.StaffName,
             record.StaffNotes,
-            record.SessionExpiresAtUtc));
+            record.SessionExpiresAtUtc,
+            record.SourceKind,
+            document.FileName,
+            document.PageCount));
     }
 
     public async Task<IReadOnlyList<ConsentStationDto>> ListStationsAsync(CancellationToken cancellationToken = default)
@@ -599,7 +745,7 @@ public sealed class ConsentFormService(
             $"{record.StudentName} — \"{record.Title}\" formu {signerName} tarafından imzalandı ({record.StationName}).",
             cancellationToken);
 
-        return ConsentResult<ConsentFormDto>.Success(ToFormDto(record));
+        return ConsentResult<ConsentFormDto>.Success(await ToFormDtoAsync(record, cancellationToken));
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -791,8 +937,13 @@ public sealed class ConsentFormService(
         }
     }
 
-    private static ConsentTemplateDto ToTemplateDto(ConsentFormTemplate template, List<ConsentFormRequirement> bindings) =>
-        new(template.Id,
+    private static ConsentTemplateDto ToTemplateDto(
+        ConsentFormTemplate template,
+        List<ConsentFormRequirement> bindings,
+        Dictionary<Guid, (string FileName, int PageCount)> documents)
+    {
+        var document = Document(template.DocumentId, documents);
+        return new ConsentTemplateDto(template.Id,
             template.Title,
             template.Body,
             DeserializeCheckItems(template.CheckItemsJson),
@@ -802,12 +953,20 @@ public sealed class ConsentFormService(
             template.SortOrder,
             bindings.Where(x => x.TemplateId == template.Id)
                 .Select(x => new ConsentTemplateBindingDto(x.ContextKind, x.ContextKey)).ToList(),
-            template.UpdatedAtUtc);
+            template.UpdatedAtUtc,
+            template.SourceKind,
+            template.DocumentId,
+            document.FileName,
+            document.PageCount);
+    }
 
-    /// <summary>DTO imza görselini TAŞIMAZ: liste yanıtları base64 yüküyle şişmesin.
-    /// Görsel yalnız PDF üretiminde okunur.</summary>
-    private static ConsentFormDto ToFormDto(ConsentFormRecord record) =>
-        new(record.Id,
+    /// <summary>DTO imza görselini ve PDF içeriğini TAŞIMAZ: liste yanıtları
+    /// base64/bayt yüküyle şişmesin. İkisi de yalnız kendi uçlarında okunur.</summary>
+    private static ConsentFormDto ToFormDto(
+        ConsentFormRecord record, Dictionary<Guid, (string FileName, int PageCount)>? documents = null)
+    {
+        var document = Document(record.DocumentId, documents ?? []);
+        return new ConsentFormDto(record.Id,
             record.TemplateId,
             record.StudentProfileId,
             record.StudentName,
@@ -830,7 +989,35 @@ public sealed class ConsentFormService(
             record.SignedAtUtc,
             record.SignerName,
             record.SignerRelation,
-            record.CreatedAtUtc);
+            record.CreatedAtUtc,
+            record.SourceKind,
+            record.DocumentId,
+            document.FileName,
+            document.PageCount);
+    }
+
+    /// <summary>Tek kayıt dönerken belge künyesi de doldurulur; ekran PDF rozetini
+    /// ilk yanıtta gösterebilsin.</summary>
+    private async Task<ConsentFormDto> ToFormDtoAsync(ConsentFormRecord record, CancellationToken cancellationToken)
+    {
+        if (record.DocumentId is null) return ToFormDto(record);
+        return ToFormDto(record, await LoadDocumentMetaAsync([record.DocumentId], cancellationToken));
+    }
+
+    private static (string FileName, int PageCount) Document(
+        Guid? documentId, Dictionary<Guid, (string FileName, int PageCount)> documents) =>
+        documentId is Guid id && documents.TryGetValue(id, out var meta) ? meta : (string.Empty, 0);
+
+    private static ConsentDocumentDto ToDocumentDto(ConsentDocument document) =>
+        new(document.Id, document.FileName, document.PageCount, document.ByteSize, document.Sha256, document.CreatedAtUtc);
+
+    /// <summary>Yol bileşenlerini atar; künyeye yalnız dosya adı yazılır.</summary>
+    private static string SafeFileName(string? fileName)
+    {
+        var name = Path.GetFileName((fileName ?? string.Empty).Replace('\\', '/').Trim());
+        if (name.Length == 0) return "belge.pdf";
+        return name.Length <= 260 ? name : name[..260];
+    }
 
     internal static List<string> DeserializeCheckItems(string json)
     {

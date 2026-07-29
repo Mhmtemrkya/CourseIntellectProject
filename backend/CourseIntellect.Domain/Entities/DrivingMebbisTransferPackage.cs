@@ -10,10 +10,11 @@ public enum DrivingMebbisTransferPackageType
 public enum DrivingMebbisTransferStatus { Generated = 1, Transferred = 2, Failed = 3, Cancelled = 4 }
 
 /// <summary>Üretilmiş aktarım dosyasının değiştirilemeyen, sürümlü arşiv kaydı.</summary>
-public sealed class DrivingMebbisTransferPackage : ITenantScopedEntity
+public sealed class DrivingMebbisTransferPackage : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public DrivingMebbisTransferPackageType PackageType { get; set; }
     public Guid? StudentGroupId { get; set; }
     public int? TermYear { get; set; }

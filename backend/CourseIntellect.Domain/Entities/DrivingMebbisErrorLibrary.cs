@@ -23,10 +23,11 @@ public sealed class DrivingMebbisErrorDefinition : ITenantScopedEntity
 }
 
 /// <summary>Bir hata kartının kursiyer veya işlemle ilişkili, denetlenebilir görülme kaydı.</summary>
-public sealed class DrivingMebbisErrorOccurrence : ITenantScopedEntity
+public sealed class DrivingMebbisErrorOccurrence : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid ErrorDefinitionId { get; set; }
     public Guid? StudentDrivingProfileId { get; set; }
     public string SourceType { get; set; } = "Manual";

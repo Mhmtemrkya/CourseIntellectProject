@@ -2,10 +2,11 @@ using CourseIntellect.Domain.Enums;
 
 namespace CourseIntellect.Domain.Entities;
 
-public sealed class DrivingPackage : ITenantScopedEntity
+public sealed class DrivingPackage : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string LicenseClass { get; set; } = "B";
     public TransmissionType TransmissionType { get; set; }
@@ -16,10 +17,11 @@ public sealed class DrivingPackage : ITenantScopedEntity
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingVehicle : ITenantScopedEntity
+public sealed class DrivingVehicle : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public string PlateNumber { get; set; } = string.Empty;
     public string Brand { get; set; } = string.Empty;
     public string Model { get; set; } = string.Empty;
@@ -60,10 +62,11 @@ public sealed class DrivingExpense : IBranchScopedEntity
     public DateTime? UpdatedAtUtc { get; set; }
 }
 
-public sealed class DrivingInstructorProfile : ITenantScopedEntity
+public sealed class DrivingInstructorProfile : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StaffId { get; set; }
     public string LicenseClasses { get; set; } = "B";
     public bool CanTeachManual { get; set; }
@@ -94,10 +97,11 @@ public sealed class DrivingInstructorProfile : ITenantScopedEntity
 /// <see cref="StudentProfile"/>'da durur; burada yalnızca sürücü kursuna özgü
 /// alanlar tutulur (paket, ders hakkı, uygunluk tercihleri, rıza kayıtları).
 /// </summary>
-public sealed class StudentDrivingProfile : ITenantScopedEntity
+public sealed class StudentDrivingProfile : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StudentId { get; set; }
     public Guid PackageId { get; set; }
     /// <summary>Kurum içinde otomatik verilen sıra numarası (kursiyer no). Kayıtta üretilir.</summary>
@@ -229,10 +233,11 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
 /// Aday adayı (lead): arayan/soran ama henüz kayıt olmamış kişi. Kayda
 /// dönüşünce sihirbaz açılır; dönüşen lead kursiyer dosyasına bağlanır.
 /// </summary>
-public sealed class DrivingLead : ITenantScopedEntity
+public sealed class DrivingLead : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public string FullName { get; set; } = string.Empty;
     /// <summary>Yalnız rakam saklanır (mükerrer kontrolü için normalize).</summary>
     public string Phone { get; set; } = string.Empty;
@@ -249,7 +254,7 @@ public sealed class DrivingLead : ITenantScopedEntity
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingAppointment : ITenantScopedEntity
+public sealed class DrivingAppointment : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
@@ -258,10 +263,8 @@ public sealed class DrivingAppointment : ITenantScopedEntity
     public Guid VehicleId { get; set; }
 
     /// <summary>
-    /// Dersi veren/tüketen şube. Araç filosu şubeler arasında ORTAK olduğu için
-    /// randevu ŞUBEYE KİLİTLENMEZ (IBranchScopedEntity değil): takvim tüm şubelerde
-    /// tek parça görünür ve araç çakışması şubeler arası da yakalanır. Bu alan
-    /// yalnızca "bu slotu hangi şube kullanıyor" bilgisini taşır.
+    /// Dersi veren/tüketen şube. Seçili şube görünümünde yalnız bu şubenin
+    /// randevuları, "Tüm Şubeler" görünümünde kurumun bütün randevuları gösterilir.
     /// </summary>
     public Guid? BranchId { get; set; }
 
@@ -306,10 +309,11 @@ public sealed class DrivingAppointment : ITenantScopedEntity
 /// Randevunun her durum değişikliği ayrı satır olarak saklanır: kim, ne zaman,
 /// hangi durumdan hangisine, neden. "Bu ders neden iptal oldu" sorusunun tek cevabı.
 /// </summary>
-public sealed class DrivingAppointmentStatusHistory : ITenantScopedEntity
+public sealed class DrivingAppointmentStatusHistory : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid AppointmentId { get; set; }
     public DrivingAppointmentStatus? FromStatus { get; set; }
     public DrivingAppointmentStatus ToStatus { get; set; }
@@ -442,10 +446,11 @@ public sealed class DrivingSchoolSettings : ITenantScopedEntity
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingLesson : ITenantScopedEntity
+public sealed class DrivingLesson : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid AppointmentId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public Guid InstructorProfileId { get; set; }
@@ -470,10 +475,11 @@ public sealed class DrivingLesson : ITenantScopedEntity
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingLessonLedgerEntry : ITenantScopedEntity
+public sealed class DrivingLessonLedgerEntry : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
 
     /// <summary>Gerçekleşen derse bağlı hareketlerde dolu; rezervasyon/düzeltmede boş.</summary>
@@ -495,10 +501,11 @@ public sealed class DrivingLessonLedgerEntry : ITenantScopedEntity
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingVehicleDocument : ITenantScopedEntity
+public sealed class DrivingVehicleDocument : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid VehicleId { get; set; }
     public string DocumentType { get; set; } = string.Empty;
     public string DocumentNumber { get; set; } = string.Empty;
@@ -512,10 +519,11 @@ public sealed class DrivingVehicleDocument : ITenantScopedEntity
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public sealed class DrivingVehicleServiceRecord : ITenantScopedEntity
+public sealed class DrivingVehicleServiceRecord : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid VehicleId { get; set; }
     public string RecordType { get; set; } = "Maintenance";
     public string Title { get; set; } = string.Empty;

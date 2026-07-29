@@ -415,11 +415,18 @@ export function PremiumSidebar() {
         >
           <div className="flex min-w-0 items-center gap-3">
             {tenantLogo ? (
-              <img
-                src={tenantLogo}
-                alt={tenantName || "Kurum logosu"}
-                className="h-10 w-10 flex-shrink-0 rounded-xl object-contain shadow-lg"
-              />
+              <span
+                className={cn(
+                  "flex flex-shrink-0 items-center justify-center overflow-hidden border border-slate-200/80 bg-white shadow-lg",
+                  compact ? "h-10 w-10 rounded-xl p-1" : "h-11 w-[72px] rounded-xl p-1.5",
+                )}
+              >
+                <img
+                  src={tenantLogo}
+                  alt={tenantName || "Kurum logosu"}
+                  className="h-full w-full object-contain"
+                />
+              </span>
             ) : (
               <img
                 src={brandLogo}

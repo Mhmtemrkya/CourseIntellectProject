@@ -3,6 +3,7 @@ using System;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CourseIntellect.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CourseIntellectDbContext))]
-    partial class CourseIntellectDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260728143629_AddDrivingBranchScopes")]
+    partial class AddDrivingBranchScopes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1217,52 +1220,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.ToTable("canvas_strokes", (string)null);
                 });
 
-            modelBuilder.Entity("CourseIntellect.Domain.Entities.ConsentDocument", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("ByteSize")
-                        .HasColumnType("integer");
-
-                    b.Property<byte[]>("Content")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("CreatedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(260)
-                        .HasColumnType("character varying(260)");
-
-                    b.Property<int>("PageCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Sha256")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("TenantId", "Sha256")
-                        .IsUnique();
-
-                    b.ToTable("consent_documents", (string)null);
-                });
-
             modelBuilder.Entity("CourseIntellect.Domain.Entities.ConsentFormRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1309,9 +1266,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("DocumentId")
-                        .HasColumnType("uuid");
-
                     b.Property<bool>("RequiresSignature")
                         .HasColumnType("boolean");
 
@@ -1349,11 +1303,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(60)");
 
                     b.Property<string>("SignerRole")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("SourceKind")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -1414,8 +1363,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BranchId");
-
-                    b.HasIndex("DocumentId");
 
                     b.HasIndex("SessionToken");
 
@@ -1491,9 +1438,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("DeletedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("DocumentId")
-                        .HasColumnType("uuid");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1511,11 +1455,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
-                    b.Property<string>("SourceKind")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
@@ -1529,8 +1468,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DocumentId");
 
                     b.HasIndex("TenantId");
 
@@ -2042,10 +1979,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("AppointmentId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
-
                     b.Property<string>("ChangedByName")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -2081,8 +2014,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(30)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
 
                     b.HasIndex("TenantId");
 
@@ -2712,10 +2643,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
-
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -2746,8 +2673,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
 
                     b.HasIndex("TenantId");
 
@@ -2856,10 +2781,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
-
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -2898,8 +2819,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("TenantId");
 
                     b.HasIndex("InstructorProfileId", "IsActive");
@@ -2914,10 +2833,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
 
                     b.Property<string>("DayOfWeek")
                         .IsRequired()
@@ -2938,8 +2853,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnName("tenant_id");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
 
                     b.HasIndex("TenantId");
 
@@ -3029,10 +2942,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<bool>("BrakesOk")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
-
                     b.Property<int>("ChargedMinutes")
                         .HasColumnType("integer");
 
@@ -3112,8 +3021,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AppointmentId");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("InstructorProfileId");
 
                     b.HasIndex("TenantId");
@@ -3136,10 +3043,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("AppointmentId")
                         .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -3178,8 +3081,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AppointmentId");
-
-                    b.HasIndex("BranchId");
 
                     b.HasIndex("DrivingLessonId");
 
@@ -3271,10 +3172,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
-
                     b.Property<Guid>("ErrorDefinitionId")
                         .HasColumnType("uuid");
 
@@ -3325,8 +3222,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("ErrorDefinitionId");
 
                     b.HasIndex("StudentDrivingProfileId");
@@ -3347,10 +3242,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
 
                     b.Property<DateTime?>("CompletedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -3384,8 +3275,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("StudentDrivingProfileId");
 
                     b.HasIndex("TenantId");
@@ -3412,10 +3301,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("ActorUserId")
                         .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -3465,8 +3350,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("StudentDrivingProfileId");
 
                     b.HasIndex("TenantId");
@@ -3483,10 +3366,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
 
                     b.Property<string>("ChangesJson")
                         .IsRequired()
@@ -3531,8 +3410,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("MatchedStudentProfileId");
 
                     b.HasIndex("TenantId");
@@ -3558,10 +3435,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<string>("ApplySummaryJson")
                         .IsRequired()
                         .HasColumnType("jsonb");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
 
                     b.Property<int>("ChangeRows")
                         .HasColumnType("integer");
@@ -3640,8 +3513,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("StudentGroupId");
 
                     b.HasIndex("TenantId");
@@ -3656,10 +3527,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
 
                     b.Property<int>("CertificateDifferenceRows")
                         .HasColumnType("integer");
@@ -3720,8 +3587,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("StudentGroupId");
 
                     b.HasIndex("TenantId");
@@ -3736,10 +3601,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
 
                     b.Property<string>("Classification")
                         .IsRequired()
@@ -3786,8 +3647,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("SourceImportRowId");
 
                     b.HasIndex("StudentDrivingProfileId");
@@ -3804,10 +3663,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
 
                     b.Property<string>("ContentType")
                         .IsRequired()
@@ -3899,8 +3754,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("StudentGroupId");
 
                     b.HasIndex("TenantId");
@@ -3921,10 +3774,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("AssignedToUserId")
                         .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -3981,8 +3830,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(40)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
 
                     b.HasIndex("StudentDrivingProfileId");
 
@@ -4071,10 +3918,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<double>("BackgroundUniformity")
                         .HasColumnType("double precision");
 
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
-
                     b.Property<string>("ChecksJson")
                         .IsRequired()
                         .HasColumnType("jsonb");
@@ -4135,8 +3978,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
 
                     b.HasIndex("StudentDrivingDocumentId");
 
@@ -4747,10 +4588,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ApprovedByUserId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
-
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -4792,8 +4629,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BranchId");
-
                     b.HasIndex("TenantId");
 
                     b.HasIndex("VehicleId");
@@ -4808,10 +4643,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
 
                     b.Property<DateTime?>("CompletedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -4886,8 +4717,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
 
                     b.HasIndex("TenantId");
 
@@ -7978,10 +7807,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -8062,8 +7887,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
 
                     b.HasIndex("TenantId");
 
@@ -9456,21 +9279,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
-            modelBuilder.Entity("CourseIntellect.Domain.Entities.ConsentDocument", b =>
-                {
-                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
             modelBuilder.Entity("CourseIntellect.Domain.Entities.ConsentFormRecord", b =>
                 {
-                    b.HasOne("CourseIntellect.Domain.Entities.ConsentDocument", null)
-                        .WithMany()
-                        .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("CourseIntellect.Domain.Entities.ConsentFormTemplate", null)
                         .WithMany()
                         .HasForeignKey("TemplateId")
@@ -9498,11 +9308,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CourseIntellect.Domain.Entities.ConsentFormTemplate", b =>
                 {
-                    b.HasOne("CourseIntellect.Domain.Entities.ConsentDocument", null)
-                        .WithMany()
-                        .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
                         .WithMany()
                         .HasForeignKey("TenantId")

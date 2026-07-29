@@ -111,6 +111,42 @@ class ConsentApiService {
     }
   }
 
+  // ─── Şablonlar ve yüklenen belgeler ────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> templates({bool includeInactive = false}) =>
+      _getList('/api/consent/templates?includeInactive=$includeInactive');
+
+  /// Hazır PDF yükler; sunucu içeriği doğrulayıp künyesini döner.
+  Future<Map<String, dynamic>> uploadDocument(
+    List<int> bytes,
+    String fileName,
+  ) async {
+    final request = http.MultipartRequest('POST', _uri('/api/consent/documents'))
+      ..headers.addAll(await _headers())
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
+
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError(_errorMessage(response, 'Belge yüklenirken'));
+    }
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+  }
+
+  Future<Map<String, dynamic>> createTemplate(Map<String, dynamic> payload) =>
+      _post('/api/consent/templates', payload);
+
+  /// Yüklenmiş belgenin kendisi — şablon önizlemesi.
+  Future<Uint8List> document(String documentId) async {
+    final response = await http.get(
+      _uri('/api/consent/documents/$documentId'),
+      headers: await _headers(),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError(_errorMessage(response, 'Belge açılırken'));
+    }
+    return response.bodyBytes;
+  }
+
   // ─── Öğrenci kayıtları ─────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> studentForms(String studentProfileId) =>
@@ -164,6 +200,19 @@ class ConsentApiService {
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError(_errorMessage(response, 'Belge indirilirken'));
+    }
+    return response.bodyBytes;
+  }
+
+  /// Kaydın dayandığı ÖZGÜN PDF (imza sayfası eklenmemiş hâli). Tablet, imza
+  /// almadan önce bunu gösterir; metin kaynaklı kayıtta sunucu 404 döner.
+  Future<Uint8List> formDocument(String id) async {
+    final response = await http.get(
+      _uri('/api/consent/forms/$id/document'),
+      headers: await _headers(),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError(_errorMessage(response, 'Belge açılırken'));
     }
     return response.bodyBytes;
   }

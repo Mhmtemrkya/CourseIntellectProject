@@ -314,7 +314,7 @@ export function Topbar() {
             title="Şube filtresi"
             className="h-8 max-w-32 rounded-lg border border-foreground/[0.10] bg-foreground/[0.04] px-2 text-xs font-semibold text-foreground sm:max-w-44"
           >
-            <option value="">Tüm Şubeler</option>
+            {scope?.canViewAllBranches !== false ? <option value="">Tüm Şubeler</option> : null}
             {branches.map((b) => (
               <option key={b.id} value={b.id}>{b.name}</option>
             ))}

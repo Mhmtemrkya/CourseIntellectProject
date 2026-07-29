@@ -1,5 +1,7 @@
 using System.Globalization;
 using CourseIntellect.Application.Interfaces;
+using PdfSharp.Pdf;
+using PdfSharp.Pdf.IO;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -13,6 +15,11 @@ namespace CourseIntellect.Infrastructure.Services;
 /// "1. BAŞLIK" satırı başlık, "•"/"-" ile başlayan satır madde imi, kalanı paragraf.
 /// QuestPDF'in varsayılan yazı tipi Türkçe karakterleri (ğ ş ı İ) basar; ayrıca
 /// font gömmek gerekmez.
+///
+/// Yüklenmiş PDF'lerde belge YENİDEN ÜRETİLMEZ: matbu evrakın sayfaları olduğu
+/// gibi kopyalanır ve imza bilgisi sona eklenen ayrı bir tutanak sayfasına basılır.
+/// Böylece kurumun ıslak düzeni bozulmaz, imzanın hangi dosyaya ait olduğu da
+/// tutanaktaki SHA-256 künyesinden doğrulanabilir.
 /// </summary>
 public sealed class ConsentFormPdfService : IConsentFormPdfService
 {
@@ -22,6 +29,9 @@ public sealed class ConsentFormPdfService : IConsentFormPdfService
     private const string Ink = "#1A2433";
     private const string Muted = "#6B7A8D";
     private const string Line = "#D7DEE7";
+
+    /// <summary>Tek belgede kabul edilen azami sayfa — birleştirme belleğini sınırlar.</summary>
+    private const int MaxDocumentPages = 200;
 
     public byte[] Generate(ConsentPdfModel model)
     {
@@ -37,6 +47,121 @@ public sealed class ConsentFormPdfService : IConsentFormPdfService
             page.Content().Element(content => ComposeContent(content, model, accent));
             page.Footer().Element(footer => ComposeFooter(footer, model));
         })).GeneratePdf();
+    }
+
+    public ConsentPdfInspection Inspect(byte[] pdf)
+    {
+        if (pdf is not { Length: > 4 } || pdf[0] != '%' || pdf[1] != 'P' || pdf[2] != 'D' || pdf[3] != 'F')
+        {
+            return new ConsentPdfInspection(false, "Dosya bir PDF değil.", 0);
+        }
+
+        try
+        {
+            using var stream = new MemoryStream(pdf, writable: false);
+            using var document = PdfReader.Open(stream, PdfDocumentOpenMode.Import);
+
+            if (document.PageCount == 0)
+            {
+                return new ConsentPdfInspection(false, "PDF hiç sayfa içermiyor.", 0);
+            }
+            if (document.PageCount > MaxDocumentPages)
+            {
+                return new ConsentPdfInspection(false,
+                    $"PDF en fazla {MaxDocumentPages} sayfa olabilir (yüklenen: {document.PageCount}).", document.PageCount);
+            }
+
+            return new ConsentPdfInspection(true, string.Empty, document.PageCount);
+        }
+        catch (PdfReaderException)
+        {
+            // Parola korumalı ve bozuk dosyalar aynı yoldan gelir; imza masasında
+            // değil burada durdurulur.
+            return new ConsentPdfInspection(false, "PDF açılamadı. Şifre korumalı veya bozuk olabilir.", 0);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException or ArgumentException)
+        {
+            return new ConsentPdfInspection(false, "PDF okunamadı; dosya desteklenmeyen bir biçimde.", 0);
+        }
+    }
+
+    public byte[] AppendSignaturePage(byte[] sourcePdf, ConsentPdfModel model, ConsentDocumentStamp stamp)
+    {
+        var appendix = BuildSignaturePage(model, stamp);
+
+        try
+        {
+            using var sourceStream = new MemoryStream(sourcePdf, writable: false);
+            using var appendixStream = new MemoryStream(appendix, writable: false);
+            using var source = PdfReader.Open(sourceStream, PdfDocumentOpenMode.Import);
+            using var extra = PdfReader.Open(appendixStream, PdfDocumentOpenMode.Import);
+            using var output = new PdfDocument();
+
+            foreach (var page in source.Pages) output.AddPage(page);
+            foreach (var page in extra.Pages) output.AddPage(page);
+
+            using var result = new MemoryStream();
+            output.Save(result, closeStream: false);
+            return result.ToArray();
+        }
+        catch (PdfReaderException)
+        {
+            // Belge sonradan bozulmuşsa indirme büsbütün çökmesin: imza tutanağı
+            // tek başına da hukuki kayıttır ve özgün dosyanın özetini taşır.
+            return appendix;
+        }
+    }
+
+    /// <summary>
+    /// Yüklenmiş belgenin sonuna eklenen imza tutanağı: belge künyesi (dosya adı,
+    /// sayfa sayısı, SHA-256), onay maddeleri, imza görseli ve imza zamanı.
+    /// </summary>
+    private byte[] BuildSignaturePage(ConsentPdfModel model, ConsentDocumentStamp stamp)
+    {
+        var accent = NormalizeColor(model.AccentColor);
+
+        return Document.Create(document => document.Page(page =>
+        {
+            page.Size(PageSizes.A4);
+            page.Margin(32);
+            page.DefaultTextStyle(x => x.FontSize(9.5f).FontColor(Ink));
+
+            page.Header().Element(header => ComposeHeader(header, model, accent));
+            page.Content().PaddingTop(12).Column(content =>
+            {
+                ComposeContextBox(content, model, accent);
+                ComposeDocumentStamp(content, stamp, accent);
+
+                if (!string.IsNullOrWhiteSpace(model.Body))
+                {
+                    content.Item().PaddingTop(12).Column(body =>
+                    {
+                        foreach (var line in SplitLines(model.Body)) ComposeBodyLine(body, line, accent);
+                    });
+                }
+
+                ComposeCheckItems(content, model, accent);
+                ComposeStaffNotes(content, model, accent);
+                content.Item().PaddingTop(20).Element(signature => ComposeSignature(signature, model, accent));
+            });
+            page.Footer().Element(footer => ComposeFooter(footer, model));
+        })).GeneratePdf();
+    }
+
+    private static void ComposeDocumentStamp(ColumnDescriptor column, ConsentDocumentStamp stamp, string accent)
+    {
+        column.Item().PaddingTop(12).Text("İMZALANAN BELGE").FontSize(10).Bold().FontColor(accent);
+        column.Item().PaddingTop(4).Border(0.8f).BorderColor(Line).Padding(9).Column(box =>
+        {
+            Field(box, "Dosya", stamp.FileName, accent, 90);
+            Field(box, "Sayfa sayısı", stamp.PageCount.ToString(CultureInfo.InvariantCulture), accent, 90);
+            // Özet, belgenin sonradan değiştirilmediğini doğrulamak için basılır.
+            Field(box, "SHA-256", stamp.Sha256, accent, 90);
+        });
+        column.Item().PaddingTop(4).Text(
+                "Bu sayfa, yukarıda künyesi verilen belgenin imza tutanağıdır. Belgenin özgün sayfaları " +
+                "değiştirilmeden bu tutanağın önüne eklenmiştir.")
+            .FontSize(8).FontColor(Muted);
     }
 
     private static void ComposeHeader(IContainer container, ConsentPdfModel model, string accent) =>
@@ -73,34 +198,40 @@ public sealed class ConsentFormPdfService : IConsentFormPdfService
                 }
             });
 
-            if (model.CheckItems.Count > 0)
-            {
-                content.Item().PaddingTop(14).Text("ONAY MADDELERİ").FontSize(10).Bold().FontColor(accent);
-                content.Item().PaddingTop(4).Column(items =>
-                {
-                    for (var index = 0; index < model.CheckItems.Count; index++)
-                    {
-                        var isChecked = model.CheckedItems.Contains(index);
-                        items.Item().PaddingBottom(3).Row(row =>
-                        {
-                            row.ConstantItem(18).Text(isChecked ? "[X]" : "[ ]")
-                                .FontSize(9.5f).Bold().FontColor(isChecked ? accent : Muted);
-                            row.RelativeItem().Text(model.CheckItems[index])
-                                .FontSize(9.5f).FontColor(isChecked ? Ink : Muted);
-                        });
-                    }
-                });
-            }
-
-            if (!string.IsNullOrWhiteSpace(model.StaffNotes))
-            {
-                content.Item().PaddingTop(14).Text("UYGULAMA NOTLARI").FontSize(10).Bold().FontColor(accent);
-                content.Item().PaddingTop(4).Border(0.8f).BorderColor(Line).Padding(8)
-                    .Text(model.StaffNotes).FontSize(9);
-            }
-
+            ComposeCheckItems(content, model, accent);
+            ComposeStaffNotes(content, model, accent);
             content.Item().PaddingTop(20).Element(signature => ComposeSignature(signature, model, accent));
         });
+
+    private static void ComposeCheckItems(ColumnDescriptor content, ConsentPdfModel model, string accent)
+    {
+        if (model.CheckItems.Count == 0) return;
+
+        content.Item().PaddingTop(14).Text("ONAY MADDELERİ").FontSize(10).Bold().FontColor(accent);
+        content.Item().PaddingTop(4).Column(items =>
+        {
+            for (var index = 0; index < model.CheckItems.Count; index++)
+            {
+                var isChecked = model.CheckedItems.Contains(index);
+                items.Item().PaddingBottom(3).Row(row =>
+                {
+                    row.ConstantItem(18).Text(isChecked ? "[X]" : "[ ]")
+                        .FontSize(9.5f).Bold().FontColor(isChecked ? accent : Muted);
+                    row.RelativeItem().Text(model.CheckItems[index])
+                        .FontSize(9.5f).FontColor(isChecked ? Ink : Muted);
+                });
+            }
+        });
+    }
+
+    private static void ComposeStaffNotes(ColumnDescriptor content, ConsentPdfModel model, string accent)
+    {
+        if (string.IsNullOrWhiteSpace(model.StaffNotes)) return;
+
+        content.Item().PaddingTop(14).Text("UYGULAMA NOTLARI").FontSize(10).Bold().FontColor(accent);
+        content.Item().PaddingTop(4).Border(0.8f).BorderColor(Line).Padding(8)
+            .Text(model.StaffNotes).FontSize(9);
+    }
 
     private static void ComposeContextBox(ColumnDescriptor column, ConsentPdfModel model, string accent) =>
         column.Item().Border(0.8f).BorderColor(Line).Padding(9).Row(row =>

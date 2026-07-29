@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -15,7 +15,10 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertCircle,
-  FileSignature
+  FileSignature,
+  Image,
+  Trash2,
+  Upload
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
@@ -29,6 +32,7 @@ import { Progress } from '../components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Separator } from '../components/ui/separator';
 import { useToast } from '../hooks/use-toast';
+import { removeTenantLogo, uploadTenantLogo } from '../lib/api/modules';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -46,13 +50,75 @@ const itemVariants = {
 export default function Settings() {
   const { user } = useApp();
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, tenantLogo, tenantName, refreshBranding } = useTheme();
   const { toast } = useToast();
+  const logoInputRef = useRef(null);
   const [baseUrl, setBaseUrl] = useState('https://maydanozasist.schoolasist.com');
   const [testing, setTesting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const canManageInstitutionLogo = user?.role === 'admin'
+    && String(user?.backendRole || '').toLowerCase() !== 'branchmanager';
+
+  const handleLogoPicked = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      toast({
+        title: 'Geçersiz logo dosyası',
+        description: 'PNG, JPEG veya WebP formatında bir görsel seçin.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: 'Logo çok büyük',
+        description: 'Logo dosyası en fazla 2 MB olabilir.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLogoBusy(true);
+    try {
+      await uploadTenantLogo(file);
+      await refreshBranding();
+      toast({
+        title: 'Kurum logosu güncellendi',
+        description: 'Logo kurumunuzdaki öğrenci ve personel ekranlarına uygulandı.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Logo yüklenemedi',
+        description: error?.message || 'Lütfen dosyayı kontrol edip tekrar deneyin.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!window.confirm('Kurum logosunu kaldırmak istediğinize emin misiniz?')) return;
+    setLogoBusy(true);
+    try {
+      await removeTenantLogo();
+      await refreshBranding();
+      toast({ title: 'Kurum logosu kaldırıldı' });
+    } catch (error) {
+      toast({
+        title: 'Logo kaldırılamadı',
+        description: error?.message || 'Lütfen tekrar deneyin.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLogoBusy(false);
+    }
+  };
 
   const testConnection = async () => {
     setTesting(true);
@@ -124,6 +190,78 @@ export default function Settings() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {canManageInstitutionLogo && (
+        <motion.div variants={itemVariants}>
+          <Card className="overflow-hidden border-brand-primary/15">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Image className="h-5 w-5" />
+                Kurum Logosu
+              </CardTitle>
+              <CardDescription>
+                Okul ve sürücü kursu ekranlarında tüm öğrenci ve personelin göreceği kurumsal logo
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid items-center gap-6 md:grid-cols-[220px_1fr]">
+                <div className="flex min-h-[140px] items-center justify-center rounded-2xl border border-dashed border-foreground/20 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-5 shadow-inner">
+                  {tenantLogo ? (
+                    <img
+                      src={tenantLogo}
+                      alt={`${tenantName || user?.tenant || 'Kurum'} logosu`}
+                      className="max-h-[105px] max-w-full object-contain"
+                    />
+                  ) : (
+                    <div className="text-center text-muted-foreground">
+                      <Building2 className="mx-auto h-10 w-10" />
+                      <p className="mt-2 text-sm font-medium">Henüz logo yüklenmedi</p>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <p className="font-semibold">{tenantName || user?.tenant || 'Kurumunuz'}</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      Kare, yatay, dikey veya yuvarlak logolar kırpılmadan ve oranı bozulmadan gösterilir.
+                      PNG, JPEG veya WebP; en fazla 2 MB ve 4096×4096 piksel.
+                    </p>
+                  </div>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={handleLogoPicked}
+                  />
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={logoBusy}
+                    >
+                      {logoBusy ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                      {tenantLogo ? 'Logoyu Değiştir' : 'Logo Yükle'}
+                    </Button>
+                    {tenantLogo && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleRemoveLogo}
+                        disabled={logoBusy}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Logoyu Kaldır
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Kurum künyesi — ekstre/makbuz başlığındaki bilgiler ayrı sayfada yönetilir. */}
       <motion.div variants={itemVariants}>

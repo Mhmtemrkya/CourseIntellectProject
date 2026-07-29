@@ -62,6 +62,7 @@ public sealed class MyScopeController(
         var response = new MyScopeResponse(
             CanSwitchTenant: options.Tenants.Count > 1,
             CanSwitchBranch: canSwitchBranch,
+            CanViewAllBranches: activeTenant is not null && allowedBranches is null,
             ReadOnly: options.ReadOnly,
             CanManageScopes: canManageScopes,
             Active: new ScopeActiveDto(activeTenantId, activeBranchId),

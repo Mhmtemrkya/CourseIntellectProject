@@ -206,6 +206,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<DrivingMebbisHistoryEvent> DrivingMebbisHistoryEvents => Set<DrivingMebbisHistoryEvent>();
     public DbSet<DrivingMebbisErrorDefinition> DrivingMebbisErrorDefinitions => Set<DrivingMebbisErrorDefinition>();
     public DbSet<DrivingMebbisErrorOccurrence> DrivingMebbisErrorOccurrences => Set<DrivingMebbisErrorOccurrence>();
+    public DbSet<ConsentDocument> ConsentDocuments => Set<ConsentDocument>();
     public DbSet<ConsentFormTemplate> ConsentFormTemplates => Set<ConsentFormTemplate>();
     public DbSet<ConsentFormRequirement> ConsentFormRequirements => Set<ConsentFormRequirement>();
     public DbSet<ConsentFormRecord> ConsentFormRecords => Set<ConsentFormRecord>();
@@ -1678,7 +1679,7 @@ public sealed class CourseIntellectDbContext : DbContext
 
         modelBuilder.Entity<DrivingPackage>(entity =>
         {
-            entity.ToTable("driving_packages"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_packages"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.Name).HasMaxLength(140).IsRequired();
             entity.Property(x => x.LicenseClass).HasMaxLength(20).IsRequired();
             entity.Property(x => x.TransmissionType).HasConversion<string>().HasMaxLength(20);
@@ -1687,7 +1688,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingVehicle>(entity =>
         {
-            entity.ToTable("driving_vehicles"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_vehicles"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.PlateNumber).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Brand).HasMaxLength(80).IsRequired(); entity.Property(x => x.Model).HasMaxLength(80).IsRequired();
             entity.Property(x => x.LicenseClass).HasMaxLength(20).IsRequired();
@@ -1696,7 +1697,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingInstructorProfile>(entity =>
         {
-            entity.ToTable("driving_instructor_profiles"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_instructor_profiles"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.LicenseClasses).HasMaxLength(200).IsRequired();
             entity.Property(x => x.WorkingPermitNo).HasMaxLength(60);
             entity.Property(x => x.ComplianceOverrideReason).HasMaxLength(500);
@@ -1707,7 +1708,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingLead>(entity =>
         {
-            entity.ToTable("driving_leads"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_leads"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Phone).HasMaxLength(30);
             entity.Property(x => x.LicenseClass).HasMaxLength(20);
@@ -1719,7 +1720,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingStudentGroup>(entity =>
         {
-            entity.ToTable("driving_student_groups"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_student_groups"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Description).HasMaxLength(500);
             entity.Property(x => x.MebbisTermCode).HasMaxLength(40);
@@ -1728,7 +1729,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<StudentDrivingProfile>(entity =>
         {
-            entity.ToTable("student_driving_profiles"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("student_driving_profiles"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.LicenseClass).HasMaxLength(20).IsRequired();
             entity.Property(x => x.TransmissionType).HasConversion<string>().HasMaxLength(20);
             // Durum string olarak saklanır: mevcut "Active" satırları enum'a sorunsuz eşlenir.
@@ -1785,7 +1786,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<StudentDrivingDocument>(entity =>
         {
-            entity.ToTable("student_driving_documents"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("student_driving_documents"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.DocumentType).HasConversion<string>().HasMaxLength(40).IsRequired();
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30).IsRequired();
             entity.Property(x => x.FileUrl).HasMaxLength(400).IsRequired();
@@ -1801,7 +1802,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingPhotoInspection>(entity =>
         {
-            entity.ToTable("driving_photo_inspections"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_photo_inspections"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.SourceSha256).HasMaxLength(64).IsRequired();
             entity.Property(x => x.Overall).HasMaxLength(10).IsRequired();
             entity.Property(x => x.ChecksJson).HasColumnType("jsonb").IsRequired();
@@ -1814,21 +1815,19 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingRegistrationDraft>(entity =>
         {
-            entity.ToTable("driving_registration_drafts"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_registration_drafts"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.DisplayName).HasMaxLength(150);
             entity.Property(x => x.PayloadJson).HasMaxLength(20000).IsRequired();
             entity.HasIndex(x => new { x.TenantId, x.CreatedByUserId, x.UpdatedAtUtc });
         });
         modelBuilder.Entity<DrivingAppointment>(entity =>
         {
-            entity.ToTable("driving_appointments"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_appointments"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
             entity.Property(x => x.Notes).HasMaxLength(1000);
             entity.HasIndex(x => new { x.TenantId, x.StartsAtUtc, x.EndsAtUtc });
             entity.HasIndex(x => new { x.VehicleId, x.StartsAtUtc, x.EndsAtUtc });
             entity.HasIndex(x => new { x.InstructorProfileId, x.StartsAtUtc, x.EndsAtUtc });
-            // BranchId bilinçli olarak "branch_id" kolonuna yazılır ama query filter'a
-            // GİRMEZ: filo ortak, takvim tek parça (bkz. DrivingAppointment.BranchId).
             entity.Property(x => x.BranchId).HasColumnName("branch_id");
             entity.HasIndex(x => new { x.BranchId, x.StartsAtUtc });
             entity.HasOne<OrgUnit>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.SetNull);
@@ -1838,7 +1837,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingLesson>(entity =>
         {
-            entity.ToTable("driving_lessons"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_lessons"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.PreCheckNote).HasMaxLength(1000);
             entity.Property(x => x.InstructorNote).HasMaxLength(2000);
             entity.Property(x => x.EvaluationScoresJson).HasColumnName("evaluation_scores_json").HasColumnType("jsonb").HasDefaultValue("{}").IsRequired();
@@ -1852,7 +1851,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingLessonLedgerEntry>(entity =>
         {
-            entity.ToTable("driving_lesson_ledger_entries"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_lesson_ledger_entries"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.EntryType).HasConversion<string>().HasMaxLength(40).IsRequired();
             entity.Property(x => x.Description).HasMaxLength(500).IsRequired();
             entity.Property(x => x.Reason).HasMaxLength(500);
@@ -1867,7 +1866,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingAppointmentStatusHistory>(entity =>
         {
-            entity.ToTable("driving_appointment_status_history"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_appointment_status_history"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.FromStatus).HasConversion<string>().HasMaxLength(30);
             entity.Property(x => x.ToStatus).HasConversion<string>().HasMaxLength(30).IsRequired();
             entity.Property(x => x.ChangedByName).HasMaxLength(150);
@@ -1922,7 +1921,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingInstructorVehicleAssignment>(entity =>
         {
-            entity.ToTable("driving_instructor_vehicle_assignments"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_instructor_vehicle_assignments"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.AssignmentType).HasConversion<string>().HasMaxLength(30).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(500);
             entity.HasIndex(x => new { x.InstructorProfileId, x.IsActive });
@@ -1932,14 +1931,14 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingInstructorWorkingHour>(entity =>
         {
-            entity.ToTable("driving_instructor_working_hours"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_instructor_working_hours"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.DayOfWeek).HasConversion<string>().HasMaxLength(20).IsRequired();
             entity.HasIndex(x => new { x.InstructorProfileId, x.DayOfWeek });
             entity.HasOne<DrivingInstructorProfile>().WithMany().HasForeignKey(x => x.InstructorProfileId).OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<DrivingCharge>(entity =>
         {
-            entity.ToTable("driving_charges"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_charges"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.ChargeType).HasConversion<string>().HasMaxLength(40).IsRequired();
             entity.Property(x => x.Description).HasMaxLength(500);
             entity.Property(x => x.DiscountReason).HasMaxLength(300);
@@ -1953,7 +1952,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingInstructorLeave>(entity =>
         {
-            entity.ToTable("driving_instructor_leaves"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_instructor_leaves"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.LeaveType).HasMaxLength(40).IsRequired();
             entity.Property(x => x.Reason).HasMaxLength(500);
             entity.HasIndex(x => new { x.InstructorProfileId, x.StartsAtUtc, x.EndsAtUtc });
@@ -1961,7 +1960,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingVehicleDocument>(entity =>
         {
-            entity.ToTable("driving_vehicle_documents"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_vehicle_documents"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.DocumentType).HasMaxLength(50).IsRequired();
             entity.Property(x => x.DocumentNumber).HasMaxLength(100).IsRequired();
             entity.Property(x => x.FileUrl).HasMaxLength(700).IsRequired();
@@ -1971,7 +1970,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingVehicleServiceRecord>(entity =>
         {
-            entity.ToTable("driving_vehicle_service_records"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_vehicle_service_records"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.RecordType).HasMaxLength(30).IsRequired();
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
             entity.Property(x => x.ServiceProvider).HasMaxLength(180);
@@ -1987,7 +1986,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingTheoryClass>(entity =>
         {
-            entity.ToTable("driving_theory_classes"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_theory_classes"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.Name).HasMaxLength(150).IsRequired(); entity.Property(x => x.LicenseClass).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Room).HasMaxLength(100); entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
             entity.HasIndex(x => new { x.InstructorStaffId, x.StartsAtUtc });
@@ -1995,7 +1994,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingMebbisTransferPackage>(entity =>
         {
-            entity.ToTable("driving_mebbis_transfer_packages"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_mebbis_transfer_packages"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.PackageType).HasConversion<string>().HasMaxLength(40).IsRequired();
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
             entity.Property(x => x.MebbisTermCode).HasMaxLength(40);
@@ -2011,7 +2010,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingMebbisImportSession>(entity =>
         {
-            entity.ToTable("driving_mebbis_import_sessions"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_mebbis_import_sessions"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.ImportType).HasConversion<string>().HasMaxLength(30).IsRequired();
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
             entity.Property(x => x.FileName).HasMaxLength(200).IsRequired(); entity.Property(x => x.FileUrl).HasMaxLength(700).IsRequired();
@@ -2022,7 +2021,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingMebbisImportRow>(entity =>
         {
-            entity.ToTable("driving_mebbis_import_rows"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_mebbis_import_rows"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.Classification).HasConversion<string>().HasMaxLength(20).IsRequired();
             entity.Property(x => x.MatchKey).HasMaxLength(100); entity.Property(x => x.SourceJson).HasColumnType("jsonb");
             entity.Property(x => x.ChangesJson).HasColumnType("jsonb"); entity.Property(x => x.MessagesJson).HasColumnType("jsonb");
@@ -2032,7 +2031,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingMebbisReconciliation>(entity =>
         {
-            entity.ToTable("driving_mebbis_reconciliations"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_mebbis_reconciliations"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
             entity.Property(x => x.SourceSessionsJson).HasColumnType("jsonb"); entity.Property(x => x.CreatedByName).HasMaxLength(150).IsRequired();
             entity.HasIndex(x => new { x.TenantId, x.StudentGroupId, x.CreatedAtUtc });
@@ -2040,7 +2039,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingMebbisReconciliationRow>(entity =>
         {
-            entity.ToTable("driving_mebbis_reconciliation_rows"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_mebbis_reconciliation_rows"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.Classification).HasConversion<string>().HasMaxLength(20).IsRequired();
             entity.Property(x => x.MaskedIdentity).HasMaxLength(30); entity.Property(x => x.DisplayName).HasMaxLength(180);
             entity.Property(x => x.DifferenceCodesJson).HasColumnType("jsonb"); entity.Property(x => x.CourseSnapshotJson).HasColumnType("jsonb"); entity.Property(x => x.MebbisSnapshotJson).HasColumnType("jsonb");
@@ -2051,7 +2050,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingMebbisHistoryEvent>(entity =>
         {
-            entity.ToTable("driving_mebbis_history_events"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_mebbis_history_events"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.EventType).HasConversion<string>().HasMaxLength(40);
             entity.Property(x => x.Severity).HasConversion<string>().HasMaxLength(20);
             entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
@@ -2077,7 +2076,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingMebbisErrorOccurrence>(entity =>
         {
-            entity.ToTable("driving_mebbis_error_occurrences"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_mebbis_error_occurrences"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.SourceType).HasMaxLength(80).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(1000);
             entity.Property(x => x.ReportedByName).HasMaxLength(150).IsRequired();
@@ -2090,14 +2089,14 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingTheoryEnrollment>(entity =>
         {
-            entity.ToTable("driving_theory_enrollments"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_theory_enrollments"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.HasIndex(x => new { x.TheoryClassId, x.StudentDrivingProfileId }).IsUnique();
             entity.HasOne<DrivingTheoryClass>().WithMany().HasForeignKey(x => x.TheoryClassId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.StudentDrivingProfileId).OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<DrivingTheorySession>(entity =>
         {
-            entity.ToTable("driving_theory_sessions"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_theory_sessions"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.Subject).HasMaxLength(120).IsRequired(); entity.Property(x => x.Topic).HasMaxLength(250).IsRequired();
             entity.Property(x => x.Room).HasMaxLength(100); entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
             entity.HasIndex(x => new { x.TheoryClassId, x.StartsAtUtc }); entity.HasIndex(x => new { x.InstructorStaffId, x.StartsAtUtc });
@@ -2106,7 +2105,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingTheoryAttendance>(entity =>
         {
-            entity.ToTable("driving_theory_attendances"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_theory_attendances"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30); entity.Property(x => x.Note).HasMaxLength(500);
             entity.HasIndex(x => new { x.TheorySessionId, x.StudentDrivingProfileId }).IsUnique();
             entity.HasOne<DrivingTheorySession>().WithMany().HasForeignKey(x => x.TheorySessionId).OnDelete(DeleteBehavior.Cascade);
@@ -2114,21 +2113,21 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingExamSession>(entity =>
         {
-            entity.ToTable("driving_exam_sessions"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_exam_sessions"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.ExamType).HasConversion<string>().HasMaxLength(30); entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired(); entity.Property(x => x.Location).HasMaxLength(250).IsRequired();
             entity.HasIndex(x => new { x.ExamType, x.StartsAtUtc });
         });
         modelBuilder.Entity<DrivingExamCommissionMember>(entity =>
         {
-            entity.ToTable("driving_exam_commission_members"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_exam_commission_members"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.FullName).HasMaxLength(150).IsRequired(); entity.Property(x => x.Role).HasMaxLength(100).IsRequired(); entity.Property(x => x.Organization).HasMaxLength(150);
             entity.HasIndex(x => x.ExamSessionId);
             entity.HasOne<DrivingExamSession>().WithMany().HasForeignKey(x => x.ExamSessionId).OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<DrivingExamCandidate>(entity =>
         {
-            entity.ToTable("driving_exam_candidates"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_exam_candidates"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30); entity.Property(x => x.Score).HasPrecision(6, 2);
             entity.Property(x => x.FailureReason).HasMaxLength(500); entity.Property(x => x.ResultNote).HasMaxLength(1000);
             entity.HasIndex(x => new { x.ExamSessionId, x.StudentDrivingProfileId }).IsUnique(); entity.HasIndex(x => new { x.StudentDrivingProfileId, x.AttemptNo });
@@ -2142,7 +2141,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingGraduationRecord>(entity =>
         {
-            entity.ToTable("driving_graduation_records"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_graduation_records"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
             entity.Property(x => x.ChecklistJson).HasColumnType("jsonb"); entity.Property(x => x.Note).HasMaxLength(1000);
             entity.Property(x => x.RevocationReason).HasMaxLength(1000);
@@ -2151,7 +2150,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingCertificate>(entity =>
         {
-            entity.ToTable("driving_certificates"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_certificates"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.CertificateType).HasConversion<string>().HasMaxLength(30);
             entity.Property(x => x.DeliveryStatus).HasConversion<string>().HasMaxLength(30);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
@@ -2174,7 +2173,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingGraduationActionRequest>(entity =>
         {
-            entity.ToTable("driving_graduation_action_requests"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_graduation_action_requests"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.ActionType).HasConversion<string>().HasMaxLength(40);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
             entity.Property(x => x.RequestedChecklistKeysJson).HasColumnType("jsonb");
@@ -2186,7 +2185,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingAppointmentRequest>(entity =>
         {
-            entity.ToTable("driving_appointment_requests"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_appointment_requests"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.RequestType).HasConversion<string>().HasMaxLength(30);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
             entity.Property(x => x.MeetingPoint).HasMaxLength(300); entity.Property(x => x.StudentNote).HasMaxLength(500); entity.Property(x => x.DecisionNote).HasMaxLength(500);
@@ -2199,7 +2198,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingMebbisWorkItem>(entity =>
         {
-            entity.ToTable("driving_mebbis_work_items"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_mebbis_work_items"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.WorkType).HasConversion<string>().HasMaxLength(40).IsRequired();
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(1000);
@@ -2213,7 +2212,7 @@ public sealed class CourseIntellectDbContext : DbContext
         });
         modelBuilder.Entity<DrivingMebbisFieldProgress>(entity =>
         {
-            entity.ToTable("driving_mebbis_field_progresses"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.ToTable("driving_mebbis_field_progresses"); entity.HasKey(x => x.Id); ConfigureBranchScope(entity);
             entity.Property(x => x.FieldKey).HasMaxLength(60).IsRequired();
             entity.HasIndex(x => new { x.TenantId, x.StudentDrivingProfileId, x.FieldKey }).IsUnique();
             entity.HasIndex(x => new { x.TenantId, x.StudentDrivingProfileId, x.IsCompleted });
@@ -2272,6 +2271,18 @@ public sealed class CourseIntellectDbContext : DbContext
         });
 
         // ─── Onam / izin formları ─────────────────────────────────────────────
+        modelBuilder.Entity<ConsentDocument>(entity =>
+        {
+            entity.ToTable("consent_documents");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.FileName).HasMaxLength(260).IsRequired();
+            entity.Property(x => x.Sha256).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Content).HasColumnType("bytea").IsRequired();
+            // Aynı PDF ikinci kez yüklenince yeni satır açılmasın.
+            entity.HasIndex(x => new { x.TenantId, x.Sha256 }).IsUnique();
+        });
+
         modelBuilder.Entity<ConsentFormTemplate>(entity =>
         {
             entity.ToTable("consent_form_templates");
@@ -2283,7 +2294,12 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Body).HasColumnType("text").IsRequired();
             entity.Property(x => x.CheckItemsJson).HasColumnType("text").IsRequired();
             entity.Property(x => x.SignerRole).HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.SourceKind).HasConversion<string>().HasMaxLength(20).IsRequired();
             entity.HasIndex(x => new { x.TenantId, x.IsDeleted, x.IsActive, x.SortOrder });
+            // Belgeye bağlı şablon varken belge silinemez (Restrict): imzalı
+            // kayıtların dayandığı PDF hiçbir akışta kaybolmamalı.
+            entity.HasOne<ConsentDocument>().WithMany()
+                .HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ConsentFormRequirement>(entity =>
@@ -2315,6 +2331,7 @@ public sealed class CourseIntellectDbContext : DbContext
             // base64 PNG imza — kesinlikle uzun metin kolonu.
             entity.Property(x => x.SignatureImage).HasColumnType("text").IsRequired();
             entity.Property(x => x.SignerRole).HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.SourceKind).HasConversion<string>().HasMaxLength(20).IsRequired();
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30).IsRequired();
             entity.Property(x => x.StaffName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.StaffNotes).HasColumnType("text").IsRequired();
@@ -2332,6 +2349,9 @@ public sealed class CourseIntellectDbContext : DbContext
             // Şablon silinse de imzalı belge yaşamalı → SET NULL.
             entity.HasOne<ConsentFormTemplate>().WithMany()
                 .HasForeignKey(x => x.TemplateId).OnDelete(DeleteBehavior.SetNull);
+            // Yüklenmiş PDF'e bağlı imzalı kayıt varken belge silinemez.
+            entity.HasOne<ConsentDocument>().WithMany()
+                .HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ConsentSignatureStation>(entity =>

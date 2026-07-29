@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Building2, ChevronRight, LogOut } from 'lucide-react';
+import { Building2, ChevronRight, Layers3, LogOut } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from '../components/ui/button';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
-import { fetchOrgUnits } from '../lib/api/modules';
+import { fetchMyScope, fetchOrgUnits } from '../lib/api/modules';
 import { setActiveBranchFilter } from '../lib/api/client';
 import { getUserHomePath } from '../lib/auth';
 
@@ -15,6 +15,7 @@ export default function SelectBranch() {
   const navigate = useNavigate();
   const { user, logout } = useApp();
   const [branches, setBranches] = useState([]);
+  const [canViewAllBranches, setCanViewAllBranches] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const proceed = useCallback((branchId) => {
@@ -26,19 +27,32 @@ export default function SelectBranch() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const units = await fetchOrgUnits().catch(() => []);
+      const [units, scope] = await Promise.all([
+        fetchOrgUnits().catch(() => []),
+        fetchMyScope().catch(() => null),
+      ]);
       const all = Array.isArray(units) ? units : [];
-      const branchUnits = all.filter((u) => u.isActive !== false && BRANCH_TYPES.includes(String(u.unitType || '').toLowerCase()));
-      // Tek şube (veya hiç şube yoksa) seçim ekranına gerek yok: doğrudan devam.
-      if (branchUnits.length <= 1) {
-        proceed(branchUnits[0]?.id || null);
+      const activeTenant = scope?.tenants?.find((tenant) => tenant.id === scope?.active?.tenantId)
+        || scope?.tenants?.[0];
+      setCanViewAllBranches(scope?.canViewAllBranches === true
+        || (!scope && String(user?.backendRole || '').toLowerCase() !== 'branchmanager'));
+      const allowedIds = activeTenant
+        ? new Set((activeTenant.branches || []).map((branch) => branch.id))
+        : null;
+      const branchUnits = all.filter((u) => u.isActive !== false
+        && BRANCH_TYPES.includes(String(u.unitType || '').toLowerCase())
+        && (!allowedIds || allowedIds.has(u.id)));
+      // Şube kaydı yoksa filtrelenecek bir bağlam bulunmaz. En az bir şube varsa
+      // tek şube dahi olsa kullanıcı "Tüm Şubeler" veya ilgili şubeyi açıkça seçer.
+      if (branchUnits.length === 0) {
+        proceed(null);
         return;
       }
       setBranches(branchUnits);
     } finally {
       setLoading(false);
     }
-  }, [proceed]);
+  }, [proceed, user?.backendRole]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -60,6 +74,24 @@ export default function SelectBranch() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
+          {canViewAllBranches && (
+            <button
+              type="button"
+              onClick={() => proceed(null)}
+              className="flex items-center justify-between gap-3 rounded-2xl border border-brand-primary/30 bg-brand-primary/[0.05] p-5 text-left shadow-sm transition-all hover:border-brand-primary/60 hover:bg-brand-primary/10"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-primary/15 text-brand-primary">
+                  <Layers3 className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold">Tüm Şubeler</p>
+                  <p className="text-xs text-muted-foreground">Bütün şubelerin birleşik verilerini gösterir</p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </button>
+          )}
           {branches.map((branch) => (
             <button
               key={branch.id}

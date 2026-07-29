@@ -8,10 +8,11 @@ namespace CourseIntellect.Domain.Entities;
 /// kursiyer aynı anda tek gruptadır (<see cref="StudentDrivingProfile.StudentGroupId"/>);
 /// çoklu üyelik gerekirse ara tabloya çevrilir.
 /// </summary>
-public sealed class DrivingStudentGroup : ITenantScopedEntity
+public sealed class DrivingStudentGroup : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     /// <summary>Pasif grup yeni atamalarda seçilemez ama geçmiş atamalar korunur.</summary>
@@ -41,10 +42,11 @@ public sealed class DrivingStudentGroup : ITenantScopedEntity
 /// Yeni sürüm yüklendiğinde eskisi geçmişe alınır — silinmez, çünkü hangi belgenin
 /// hangi tarihte onaylandığı denetimde sorulur.
 /// </summary>
-public sealed class StudentDrivingDocument : ITenantScopedEntity
+public sealed class StudentDrivingDocument : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid StudentDrivingProfileId { get; set; }
     public StudentDocumentType DocumentType { get; set; }
     public StudentDocumentStatus Status { get; set; } = StudentDocumentStatus.PendingApproval;
@@ -81,10 +83,11 @@ public sealed class StudentDrivingDocument : ITenantScopedEntity
 /// döndüğünde veya sekme kapandığında veri kaybolmasın diye adım adım saklanır.
 /// Kayıt tamamlanınca taslak silinir.
 /// </summary>
-public sealed class DrivingRegistrationDraft : ITenantScopedEntity
+public sealed class DrivingRegistrationDraft : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     /// <summary>Taslağı oluşturan personel — herkes yalnız kendi taslağını görür.</summary>
     public Guid CreatedByUserId { get; set; }
     /// <summary>Listede tanınsın diye: aday adı (henüz öğrenci kaydı yok).</summary>

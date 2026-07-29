@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, FileSignature, Plus, Trash2, Eye, Save } from 'lucide-react';
+import { ArrowLeft, FileSignature, FileText, Plus, Trash2, Eye, Save, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -19,6 +19,7 @@ import {
   fetchConsentCatalog,
   fetchConsentTemplates,
   updateConsentTemplate,
+  uploadConsentDocument,
 } from '../../lib/api/modules';
 import { cn } from '@/lib/utils';
 
@@ -67,17 +68,23 @@ const SIGNER_ROLES = [
 
 const MODULE_LABEL = { all: 'Ortak', school: 'Okul', driving: 'Sürücü kursu' };
 
-function emptyDraft() {
+function emptyDraft(sourceKind = 'Text') {
   return {
     id: null,
     title: '',
-    body: STARTER_BODY,
+    // PDF kaynaklı formda gövde belgenin yerine geçmez; tablette belgenin
+    // üstünde görünen kısa açıklamadır, bu yüzden boş başlar.
+    body: sourceKind === 'Pdf' ? '' : STARTER_BODY,
     checkItems: [...STARTER_ITEMS],
     requiresSignature: true,
     signerRole: 'StudentOrParent',
     isActive: true,
     sortOrder: 0,
     bindings: [],
+    sourceKind,
+    documentId: null,
+    documentFileName: '',
+    documentPageCount: 0,
   };
 }
 
@@ -89,6 +96,7 @@ export default function ConsentTemplates() {
   const [draft, setDraft] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -120,9 +128,35 @@ export default function ConsentTemplates() {
     return [...groups.entries()];
   }, [contextKinds]);
 
+  const uploadDocument = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const document = await uploadConsentDocument(file);
+      setDraft((current) => ({
+        ...current,
+        sourceKind: 'Pdf',
+        documentId: document.id,
+        documentFileName: document.fileName,
+        documentPageCount: document.pageCount,
+        title: current.title.trim() || document.fileName.replace(/\.pdf$/i, ''),
+      }));
+      toast({ title: 'Belge yüklendi', description: `${document.fileName} · ${document.pageCount} sayfa` });
+    } catch (uploadError) {
+      toast({ title: 'Belge yüklenemedi', description: uploadError.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const save = async () => {
     if (!draft.title.trim()) {
       toast({ title: 'Başlık zorunlu', description: 'Forma bir başlık verin.', variant: 'destructive' });
+      return;
+    }
+    if (draft.sourceKind === 'Pdf' && !draft.documentId) {
+      toast({ title: 'PDF seçilmedi', description: 'PDF kaynaklı form için bir belge yükleyin.', variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -136,6 +170,8 @@ export default function ConsentTemplates() {
         isActive: draft.isActive,
         sortOrder: Number(draft.sortOrder) || 0,
         bindings: draft.bindings,
+        sourceKind: draft.sourceKind || 'Text',
+        documentId: draft.sourceKind === 'Pdf' ? draft.documentId : null,
       };
       if (draft.id) await updateConsentTemplate(draft.id, payload);
       else await createConsentTemplate(payload);
@@ -208,9 +244,14 @@ export default function ConsentTemplates() {
           </div>
         </div>
         {!draft ? (
-          <Button onClick={() => setDraft(emptyDraft())}>
-            <Plus className="mr-1.5 h-4 w-4" /> Yeni form
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setDraft(emptyDraft('Pdf'))}>
+              <Upload className="mr-1.5 h-4 w-4" /> PDF yükle
+            </Button>
+            <Button onClick={() => setDraft(emptyDraft())}>
+              <Plus className="mr-1.5 h-4 w-4" /> Yeni form
+            </Button>
+          </div>
         ) : null}
       </div>
 
@@ -257,10 +298,28 @@ export default function ConsentTemplates() {
               </div>
             </div>
 
+            {draft.sourceKind === 'Pdf' ? (
+              <div className="space-y-1.5">
+                <Label>Belge (PDF)</Label>
+                <Input type="file" accept="application/pdf,.pdf" disabled={uploading} onChange={uploadDocument} />
+                {draft.documentId ? (
+                  <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="truncate">{draft.documentFileName}</span>
+                    <Badge variant="secondary">{draft.documentPageCount} sayfa</Badge>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {uploading ? 'Yükleniyor…' : 'Yüklenen belge olduğu gibi korunur; imza bilgisi sona eklenen tutanak sayfasına basılır.'}
+                  </p>
+                )}
+              </div>
+            ) : null}
+
             <div className="space-y-1.5">
-              <Label>Form metni</Label>
+              <Label>{draft.sourceKind === 'Pdf' ? 'Tablette belgenin üstünde görünecek açıklama (isteğe bağlı)' : 'Form metni'}</Label>
               <Textarea
-                rows={14}
+                rows={draft.sourceKind === 'Pdf' ? 4 : 14}
                 className="font-mono text-xs leading-relaxed"
                 value={draft.body}
                 onChange={(event) => setDraft({ ...draft, body: event.target.value })}
@@ -395,6 +454,9 @@ export default function ConsentTemplates() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium">{template.title}</p>
+                    {template.sourceKind === 'Pdf' ? (
+                      <Badge variant="secondary">PDF · {template.documentPageCount} sayfa</Badge>
+                    ) : null}
                     {!template.isActive ? <Badge variant="secondary">Pasif</Badge> : null}
                     {!template.requiresSignature ? <Badge variant="outline">İmzasız</Badge> : null}
                   </div>

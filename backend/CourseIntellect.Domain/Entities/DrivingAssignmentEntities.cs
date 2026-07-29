@@ -7,10 +7,11 @@ namespace CourseIntellect.Domain.Entities;
 /// hangi günlerinde kullanabilir? Randevu kurulurken bu atama aranır — rastgele
 /// öğretmen-araç eşleşmesi kurulamaz.
 /// </summary>
-public sealed class DrivingInstructorVehicleAssignment : ITenantScopedEntity
+public sealed class DrivingInstructorVehicleAssignment : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid InstructorProfileId { get; set; }
     public Guid VehicleId { get; set; }
 
@@ -41,10 +42,11 @@ public sealed class DrivingInstructorVehicleAssignment : ITenantScopedEntity
 /// Öğretmenin haftalık çalışma penceresi (yerel saat). Randevu bu pencerenin
 /// dışına taşamaz.
 /// </summary>
-public sealed class DrivingInstructorWorkingHour : ITenantScopedEntity
+public sealed class DrivingInstructorWorkingHour : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid InstructorProfileId { get; set; }
 
     public DayOfWeek DayOfWeek { get; set; }
@@ -55,10 +57,11 @@ public sealed class DrivingInstructorWorkingHour : ITenantScopedEntity
 }
 
 /// <summary>Öğretmen izni — izinli öğretmene randevu verilemez.</summary>
-public sealed class DrivingInstructorLeave : ITenantScopedEntity
+public sealed class DrivingInstructorLeave : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid InstructorProfileId { get; set; }
     public DateTime StartsAtUtc { get; set; }
     public DateTime EndsAtUtc { get; set; }

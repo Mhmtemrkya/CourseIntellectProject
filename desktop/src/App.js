@@ -29,6 +29,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import InstitutionProfile from "./pages/settings/InstitutionProfile";
 const ConsentTemplates = lazyWithReload(() => import("./pages/settings/ConsentTemplates"));
+const SchoolContractForms = lazyWithReload(() => import("./pages/SchoolContractForms"));
 // Tablet imza istasyonu: uygulama kabuğunun DIŞINDA, tam ekran çalışır (kiosk).
 const ConsentStation = lazyWithReload(() => import("./pages/ConsentStation"));
 
@@ -249,8 +250,8 @@ function RootRedirect() {
   return <Navigate to={getUserHomePath(user)} replace />;
 }
 
-// Kurum yöneticisi ilk girişte şube seçmeden ana ekranlara giremez. Tek/sıfır
-// şubeli kurumlarda SelectBranch otomatik devam eder. Seçim bayrağı
+// Kurum yöneticisi ilk girişte şube seçmeden ana ekranlara giremez. Şube varsa
+// tek şube dahi olsa seçim gösterilir; yalnız şubesiz kurum otomatik devam eder. Seçim bayrağı
 // 'ci-branch-selected' ile bir kez işaretlenir (çıkışta temizlenir).
 function BranchGate() {
   const { user } = useApp();
@@ -308,6 +309,8 @@ function App() {
               {/* Admin Dashboard */}
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/students" element={<Students />} />
+              {/* Okul tarafı sözleşme/form imzalama — sürücü kursundaki /driving/forms'un eşi. */}
+              <Route path="/forms" element={<SchoolContractForms />} />
               <Route path="/parents" element={<Parents />} />
               <Route path="/teachers" element={<Teachers />} />
               <Route path="/classes" element={<Classes />} />

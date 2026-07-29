@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../onboarding/onboarding_store.dart';
 import '../onboarding/onboarding_ui.dart';
+import '../theme_provider.dart';
 import '../utils/session_navigation.dart';
 import 'app_sidebar.dart';
 import 'responsive_layout.dart';
@@ -163,19 +165,19 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
           GestureDetector(
             onLongPress: _replayCurrentTabIntro,
             child: AppSidebar(
-            destinations: widget.destinations
-                .map(
-                  (d) => SidebarDestination(
-                    icon: d.icon,
-                    label: d.label,
-                    color: d.sidebarColor ?? Colors.white,
-                  ),
-                )
-                .toList(),
-            selectedIndex: _currentIndex,
-            onDestinationSelected: _changePage,
-            userName: widget.userName,
-            userRole: widget.userRole,
+              destinations: widget.destinations
+                  .map(
+                    (d) => SidebarDestination(
+                      icon: d.icon,
+                      label: d.label,
+                      color: d.sidebarColor ?? Colors.white,
+                    ),
+                  )
+                  .toList(),
+              selectedIndex: _currentIndex,
+              onDestinationSelected: _changePage,
+              userName: widget.userName,
+              userRole: widget.userRole,
             ),
           ),
           // Desktop app'teki gibi ince ayırıcı çizgi
@@ -202,42 +204,104 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       bottomNavigationBar: GestureDetector(
         onLongPress: _replayCurrentTabIntro,
         child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: navTheme.backgroundColor,
-          border: Border(
-            top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.72)),
+          decoration: BoxDecoration(
+            color: navTheme.backgroundColor,
+            border: Border(
+              top: BorderSide(
+                color: theme.dividerColor.withValues(alpha: 0.72),
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.08),
+                blurRadius: 24,
+                offset: const Offset(0, -10),
+              ),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.08),
-              blurRadius: 24,
-              offset: const Offset(0, -10),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const _MobileInstitutionBrand(),
+                BottomNavigationBar(
+                  currentIndex: _currentIndex,
+                  onTap: _changePage,
+                  type: BottomNavigationBarType.fixed,
+                  backgroundColor: navTheme.backgroundColor,
+                  selectedItemColor: navTheme.selectedItemColor,
+                  unselectedItemColor: navTheme.unselectedItemColor,
+                  selectedLabelStyle: navTheme.selectedLabelStyle,
+                  unselectedLabelStyle: navTheme.unselectedLabelStyle,
+                  elevation: 0,
+                  items: widget.destinations
+                      .map(
+                        (d) => BottomNavigationBarItem(
+                          icon: Icon(d.icon),
+                          label: d.label,
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileInstitutionBrand extends StatelessWidget {
+  const _MobileInstitutionBrand();
+
+  @override
+  Widget build(BuildContext context) {
+    final branding = context.watch<ThemeProvider>();
+    if (branding.tenantLogo == null) return const SizedBox.shrink();
+
+    return Container(
+      height: 38,
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 5, 14, 3),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.55),
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            constraints: const BoxConstraints(maxWidth: 64),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Image.network(
+              branding.tenantLogo!,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          ),
+          if (branding.tenantName.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                branding.tenantName,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: _changePage,
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: navTheme.backgroundColor,
-            selectedItemColor: navTheme.selectedItemColor,
-            unselectedItemColor: navTheme.unselectedItemColor,
-            selectedLabelStyle: navTheme.selectedLabelStyle,
-            unselectedLabelStyle: navTheme.unselectedLabelStyle,
-            elevation: 0,
-            items: widget.destinations
-                .map(
-                  (d) => BottomNavigationBarItem(
-                    icon: Icon(d.icon),
-                    label: d.label,
-                  ),
-                )
-                .toList(),
-          ),
-        ),
-        ),
+        ],
       ),
     );
   }

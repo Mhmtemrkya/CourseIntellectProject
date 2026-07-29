@@ -202,6 +202,7 @@ export const menuConfigs = {
       color: "#f59e0b",
     },
     { path: "/students", icon: Users, label: "Öğrenciler", color: "#8b5cf6" },
+    { path: "/forms", icon: FileSignature, label: "Sözleşme & Formlar", color: "#9333ea" },
     { path: "/parents", icon: UserCheck, label: "Veliler", color: "#ec4899" },
     {
       path: "/teachers",
@@ -435,6 +436,12 @@ export const menuConfigs = {
       icon: Library,
       label: "Kütüphane",
       color: "#0ea5e9",
+    },
+    {
+      path: "/forms",
+      icon: FileSignature,
+      label: "Sözleşme & Formlar",
+      color: "#9333ea",
     },
     {
       path: "/admin/records",
@@ -1194,6 +1201,7 @@ const MODULE_MENU_REGISTRY = {
   kpi: { default: { path: "/admin/kpi", icon: BarChart3, label: "Kurum Özeti", color: "#22c55e" } },
   academics: { default: { path: "/admin/academics", icon: GraduationCap, label: "Akademik Yönetim", color: "#2563eb" } },
   students: { default: { path: "/students", icon: Users, label: "Öğrenciler", color: "#8b5cf6" } },
+  "school-forms": { default: { path: "/forms", icon: FileSignature, label: "Sözleşme & Formlar", color: "#9333ea" } },
   parents: { default: { path: "/parents", icon: UserCheck, label: "Veliler", color: "#ec4899" }, parent: { path: "/p/children", icon: Users, label: "Çocuklarım", color: "#8b5cf6" } },
   teachers: { default: { path: "/teachers", icon: GraduationCap, label: "Öğretmenler", color: "#10b981" } },
   // Sınıf oluşturma yalnızca yönetici akışıdır; öğrenci menüsüne verilmez.
@@ -1365,6 +1373,7 @@ export function inferModuleKey(item) {
     "/admin/academics": "academics",
     "/admin/courses": "courses",
     "/students": "students",
+    "/forms": "school-forms",
     "/parents": "parents",
     "/teachers": "teachers",
     "/classes": "classes",
@@ -1894,16 +1903,20 @@ export function ModernSidebar() {
             initial={false}
           >
             {tenantLogo ? (
-              <motion.img
-                src={tenantLogo}
-                alt={tenantName || "Logo"}
-                className="h-10 w-10 rounded-xl object-contain flex-shrink-0"
+              <motion.span
+                className="flex h-11 w-[72px] flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-lg"
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 whileTap={{ scale: 0.95 }}
-                onError={(e) => {
-                  e.target.style.display = "none";
-                }}
-              />
+              >
+                <img
+                  src={tenantLogo}
+                  alt={tenantName || "Logo"}
+                  className="h-full w-full object-contain"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+              </motion.span>
             ) : (
               <motion.div
                 className="h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg"
