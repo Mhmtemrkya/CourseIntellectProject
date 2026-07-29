@@ -5,13 +5,19 @@ import { chromium } from '@playwright/test';
 const baseUrl = process.env.SMOKE_BASE_URL || 'http://127.0.0.1:3000';
 const reportDir = path.resolve('smoke-results');
 const screenshotDir = path.join(reportDir, 'screenshots');
+const platformAdminUsername = process.env.PLATFORM_ADMIN_USERNAME;
+const platformAdminPassword = process.env.PLATFORM_ADMIN_PASSWORD;
+
+if (!platformAdminUsername || !platformAdminPassword) {
+  throw new Error('Platform smoke testi için PLATFORM_ADMIN_USERNAME ve PLATFORM_ADMIN_PASSWORD ayarlanmalıdır.');
+}
 
 const destructivePattern = /sil|delete|remove|logout|cikis|çıkış|reddet|iptal|undo|geri al/i;
 const roles = [
   {
     key: 'admin',
-    username: 'admin@courseintlecct.com',
-    password: 'Admin2026!',
+    username: platformAdminUsername,
+    password: platformAdminPassword,
     home: '/dashboard',
     routes: [
       '/dashboard',

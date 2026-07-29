@@ -232,17 +232,23 @@ public sealed class AuthService(
         if (user is null) return null;
 
         var newPassword = (request.NewPassword ?? string.Empty).Trim();
-        if (newPassword.Length < 8)
+        var isPlatformAdmin = user.PrimaryRole == UserRole.Developer && user.TenantId is null;
+        var minimumLength = isPlatformAdmin ? 16 : 8;
+        if (newPassword.Length < minimumLength)
         {
-            throw new InvalidOperationException("Yeni şifre en az 8 karakter olmalıdır.");
+            throw new InvalidOperationException($"Yeni şifre en az {minimumLength} karakter olmalıdır.");
         }
 
         var hasUpper = newPassword.Any(char.IsUpper);
         var hasLower = newPassword.Any(char.IsLower);
         var hasDigit = newPassword.Any(char.IsDigit);
-        if (!(hasUpper && hasLower && hasDigit))
+        var hasSymbol = newPassword.Any(character => !char.IsLetterOrDigit(character));
+        if (!(hasUpper && hasLower && hasDigit) || (isPlatformAdmin && !hasSymbol))
         {
-            throw new InvalidOperationException("Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermelidir.");
+            throw new InvalidOperationException(
+                isPlatformAdmin
+                    ? "Platform admin şifresi en az bir büyük harf, bir küçük harf, bir rakam ve bir özel karakter içermelidir."
+                    : "Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermelidir.");
         }
 
         // İlk-giriş zorunlu değişimde mevcut şifre alanı boş gelebilir; bu durumda atla.
@@ -258,6 +264,14 @@ public sealed class AuthService(
 
         user.PasswordHash = passwordHasher.Hash(newPassword);
         user.MustChangePassword = false;
+
+        var activeSessions = await dbContext.RefreshTokenSessions
+            .Where(x => x.UserId == user.Id && x.RevokedAtUtc == null)
+            .ToListAsync(cancellationToken);
+        foreach (var session in activeSessions)
+        {
+            session.RevokedAtUtc = DateTime.UtcNow;
+        }
 
         var approvedReset = await dbContext.PasswordResetRequests
             .IgnoreQueryFilters()

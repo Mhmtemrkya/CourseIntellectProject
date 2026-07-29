@@ -2,15 +2,48 @@ using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 
 namespace CourseIntellect.Infrastructure.Persistence;
 
-public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPasswordHasher passwordHasher)
+public sealed class DatabaseSeeder(
+    CourseIntellectDbContext dbContext,
+    IPasswordHasher passwordHasher,
+    IConfiguration configuration)
 {
-    private const string DeveloperAdminUsername = "admin@courseintlecct.com";
-    private const string DeveloperAdminPassword = "Admin2026!";
+    private const string DefaultDeveloperAdminUsername = "admin@courseintlecct.com";
     private const string LegacyPlatformAdminUsername = "admin.ece";
+
+    private string DeveloperAdminUsername =>
+        Environment.GetEnvironmentVariable("COURSE_INTELLECT_PLATFORM_ADMIN_USERNAME")
+        ?? configuration["Bootstrap:PlatformAdmin:Username"]
+        ?? DefaultDeveloperAdminUsername;
+
+    private string? DeveloperAdminPassword =>
+        Environment.GetEnvironmentVariable("COURSE_INTELLECT_PLATFORM_ADMIN_PASSWORD")
+        ?? configuration["Bootstrap:PlatformAdmin:Password"];
+
+    private string RequireDeveloperAdminPassword()
+    {
+        var password = DeveloperAdminPassword;
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 16)
+        {
+            throw new InvalidOperationException(
+                "İlk platform admin hesabı için COURSE_INTELLECT_PLATFORM_ADMIN_PASSWORD en az 16 karakter olarak ayarlanmalıdır.");
+        }
+
+        if (!password.Any(char.IsUpper)
+            || !password.Any(char.IsLower)
+            || !password.Any(char.IsDigit)
+            || password.All(char.IsLetterOrDigit))
+        {
+            throw new InvalidOperationException(
+                "Platform admin parolası büyük harf, küçük harf, rakam ve özel karakter içermelidir.");
+        }
+
+        return password;
+    }
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
@@ -182,7 +215,7 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
         {
             FullName = "CourseIntellect Developer Admin",
             Username = DeveloperAdminUsername,
-            PasswordHash = passwordHasher.Hash(DeveloperAdminPassword),
+            PasswordHash = passwordHasher.Hash(RequireDeveloperAdminPassword()),
             PrimaryRole = UserRole.Developer,
             Campus = "Platform",
             DepartmentOrBranch = "Development"
@@ -765,14 +798,21 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
             }
             else
             {
-                developerAdmin = new AppUser { Username = DeveloperAdminUsername };
+                developerAdmin = new AppUser
+                {
+                    Username = DeveloperAdminUsername,
+                    PasswordHash = passwordHasher.Hash(RequireDeveloperAdminPassword())
+                };
                 await dbContext.Users.AddAsync(developerAdmin, cancellationToken);
             }
         }
 
         developerAdmin.TenantId = null;
         developerAdmin.FullName = "CourseIntellect Developer Admin";
-        developerAdmin.PasswordHash = passwordHasher.Hash(DeveloperAdminPassword);
+        if (!string.IsNullOrWhiteSpace(DeveloperAdminPassword))
+        {
+            developerAdmin.PasswordHash = passwordHasher.Hash(RequireDeveloperAdminPassword());
+        }
         developerAdmin.PrimaryRole = UserRole.Developer;
         developerAdmin.Status = UserStatus.Active;
         developerAdmin.Campus = "Platform";

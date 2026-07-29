@@ -287,7 +287,7 @@ export default function TenantCustomization() {
       toast({
         title: is403 ? "Yetki Hatası (403)" : "Özelleştirmeler kaydedilemedi",
         description: is403
-          ? 'Bu işlem için geliştirici yetkisi gerekli. Lütfen admin@courseintlecct.com hesabıyla giriş yapın.'
+          ? 'Bu işlem için platform yöneticisi yetkisine sahip bir hesapla giriş yapmanız gerekir.'
           : msg || 'Lütfen tekrar deneyin.',
         variant: 'destructive',
       });

@@ -54,13 +54,38 @@ interface AuthContextValue {
   extraRoles: string[]
   activeRole: string | null
   switchRole: (role: string) => void
-  login: (email: string, password: string) => Promise<LoginResult>
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<LoginResult>
   logout: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 const STORAGE_KEY = "courseintellect_auth"
+
+function clearStoredAuth() {
+  window.sessionStorage.removeItem(STORAGE_KEY)
+  window.localStorage.removeItem(STORAGE_KEY)
+}
+
+function readStoredAuth(): { auth: StoredAuth; storage: Storage } | null {
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    const stored = storage.getItem(STORAGE_KEY)
+    if (!stored) continue
+
+    try {
+      return { auth: JSON.parse(stored) as StoredAuth, storage }
+    } catch {
+      storage.removeItem(STORAGE_KEY)
+    }
+  }
+
+  return null
+}
+
+function saveStoredAuth(auth: StoredAuth, storage: Storage) {
+  clearStoredAuth()
+  storage.setItem(STORAGE_KEY, JSON.stringify(auth))
+}
 
 function isDeveloperPanelUser(apiUser: AuthApiUser) {
   const role = apiUser.primaryRole?.toLowerCase()
@@ -78,19 +103,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initialize = async () => {
       try {
-        const stored = localStorage.getItem(STORAGE_KEY)
-        if (!stored) {
+        const storedAuth = readStoredAuth()
+        if (!storedAuth) {
           return
         }
 
-        const parsed = JSON.parse(stored) as StoredAuth
+        const { auth: parsed, storage } = storedAuth
         if (!parsed?.accessToken) {
+          storage.removeItem(STORAGE_KEY)
           return
         }
 
         // Eski demo oturumları platform admin panelinde geçerli sayılmaz.
         if (parsed.accessToken === "demo-token") {
-          localStorage.removeItem(STORAGE_KEY)
+          clearStoredAuth()
           return
         }
 
@@ -113,12 +139,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAccessToken(parsed.accessToken)
           setExtraRoles(apiUser.extraRoles ?? [])
           setActiveRole(role)
-          localStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify({
+          saveStoredAuth(
+            {
               ...parsed,
               user: mappedUser,
-            }),
+            },
+            storage,
           )
           return
         } catch (error) {
@@ -151,17 +177,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAccessToken(refreshed.accessToken)
         setExtraRoles(refreshed.user.extraRoles ?? [])
         setActiveRole(refreshRole)
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({
+        saveStoredAuth(
+          {
             user: refreshedUser,
             accessToken: refreshed.accessToken,
             refreshToken: refreshed.refreshToken,
             expiresAt: refreshed.expiresAtUtc,
-          }),
+          },
+          storage,
         )
       } catch (error) {
-        localStorage.removeItem(STORAGE_KEY)
+        clearStoredAuth()
         setUser(null)
         setAccessToken(null)
         setExtraRoles([])
@@ -174,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void initialize()
   }, [])
 
-  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
+  const login = useCallback(async (email: string, password: string, rememberMe = false): Promise<LoginResult> => {
     try {
       const response = await apiRequest<AuthResponse>("/api/auth/login", {
         method: "POST",
@@ -212,14 +238,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccessToken(response.accessToken)
       setExtraRoles(response.user.extraRoles ?? [])
       setActiveRole(role)
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
+      saveStoredAuth(
+        {
           user: mappedUser,
           accessToken: response.accessToken,
           refreshToken: response.refreshToken,
           expiresAt: response.expiresAtUtc,
-        }),
+        },
+        rememberMe ? window.localStorage : window.sessionStorage,
       )
 
       return { success: true }
@@ -229,10 +255,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const logout = useCallback(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
+    const storedAuth = readStoredAuth()
+    if (storedAuth) {
       try {
-        const parsed = JSON.parse(stored) as StoredAuth
+        const parsed = storedAuth.auth
         if (parsed?.refreshToken) {
           void apiRequest("/api/auth/logout", {
             method: "POST",
@@ -251,7 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccessToken(null)
     setExtraRoles([])
     setActiveRole(null)
-    localStorage.removeItem(STORAGE_KEY)
+    clearStoredAuth()
     router.push("/admin/login")
   }, [router])
 

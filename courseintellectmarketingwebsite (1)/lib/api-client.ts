@@ -80,17 +80,19 @@ function readStoredAccessToken(): string | null {
     return null
   }
 
-  for (const key of AUTH_STORAGE_KEYS) {
-    try {
-      const raw = window.localStorage.getItem(key)
-      if (!raw) continue
-      const parsed = JSON.parse(raw) as { accessToken?: string | null }
-      const storedToken = parsed?.accessToken
-      if (storedToken && storedToken !== "demo-token") {
-        return storedToken
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    for (const key of AUTH_STORAGE_KEYS) {
+      try {
+        const raw = storage.getItem(key)
+        if (!raw) continue
+        const parsed = JSON.parse(raw) as { accessToken?: string | null }
+        const storedToken = parsed?.accessToken
+        if (storedToken && storedToken !== "demo-token") {
+          return storedToken
+        }
+      } catch {
+        // try next key
       }
-    } catch {
-      // try next key
     }
   }
   return null

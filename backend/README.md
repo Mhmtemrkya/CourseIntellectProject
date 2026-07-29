@@ -90,6 +90,20 @@ Design-time migration komutlari icin:
 export COURSE_INTELLECT_DB="Host=localhost;Port=5432;Database=course_intellect;Username=postgres;Password=<GUCLU_SIFRE>"
 ```
 
+### Platform admin ilk kurulumu
+
+Platform admin parolasi kaynak kodda tutulmaz. Hesap ilk kez olusturulacaksa asagidaki
+ortam degiskenleri deployment secret yonetiminden verilmelidir:
+
+```bash
+export COURSE_INTELLECT_PLATFORM_ADMIN_USERNAME="<PLATFORM_ADMIN_KULLANICI_ADI>"
+export COURSE_INTELLECT_PLATFORM_ADMIN_PASSWORD="<EN_AZ_16_KARAKTER_KARMASIK_PAROLA>"
+```
+
+Mevcut platform admin hesabinin parolasi seed islemi sirasinda otomatik olarak
+degistirilmez. Parolayi bilerek yenilemek icin yeni deger deployment secret'i olarak
+verilir; islemden sonra parola degiskeni kaldirilabilir.
+
 ### 2. Paketleri geri yukle
 
 ```bash

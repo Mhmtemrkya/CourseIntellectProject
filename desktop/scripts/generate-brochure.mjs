@@ -11,10 +11,19 @@ const shotsDir = path.join(outputDir, 'screenshots');
 const baseUrl = process.env.BROCHURE_APP_URL || 'http://127.0.0.1:3000';
 const apiUrl = process.env.BROCHURE_API_URL || 'http://127.0.0.1:5206';
 const legalConsentVersion = '2026-05-02.kvkk.v1';
+const platformAdminUsername = process.env.PLATFORM_ADMIN_USERNAME;
+const platformAdminPassword = process.env.PLATFORM_ADMIN_PASSWORD;
+
+if (!platformAdminUsername || !platformAdminPassword) {
+  throw new Error('Platform görselleri için PLATFORM_ADMIN_USERNAME ve PLATFORM_ADMIN_PASSWORD ayarlanmalıdır.');
+}
 
 const users = {
   admin: { username: 'kurum.admin', password: 'KRM2026A' },
-  platform: { username: 'admin@courseintlecct.com', password: 'Admin2026!' },
+  platform: {
+    username: platformAdminUsername,
+    password: platformAdminPassword,
+  },
   finance: { username: 'muhasebe.selim', password: 'MHS2026A' },
   teacher: { username: 'ogrt.hasan', password: 'HYN2026A' },
   student: { username: 'ali10a241', password: 'ALI2026A' },

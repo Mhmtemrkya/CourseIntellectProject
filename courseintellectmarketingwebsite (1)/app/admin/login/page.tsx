@@ -14,9 +14,6 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useAuth } from "@/context/auth-context"
 
-const DEVELOPER_ADMIN_USERNAME = process.env.NEXT_PUBLIC_DEVELOPER_ADMIN_USERNAME || "admin@courseintlecct.com"
-const DEVELOPER_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_DEVELOPER_ADMIN_PASSWORD || "Admin2026!"
-
 export default function AdminLoginPage() {
   const router = useRouter()
   const { login, isAuthenticated, isLoading: authLoading } = useAuth()
@@ -39,27 +36,12 @@ export default function AdminLoginPage() {
     setError("")
     setIsLoading(true)
 
-    const result = await login(email, password)
+    const result = await login(email, password, rememberMe)
 
     if (result.success) {
       router.push("/admin")
     } else {
       setError(result.error || "Kullanıcı adı veya şifre hatalı")
-    }
-
-    setIsLoading(false)
-  }
-
-  const handleDeveloperDirectLogin = async () => {
-    setError("")
-    setIsLoading(true)
-
-    const result = await login(DEVELOPER_ADMIN_USERNAME, DEVELOPER_ADMIN_PASSWORD)
-
-    if (result.success) {
-      router.push("/admin")
-    } else {
-      setError(result.error || "Geliştirici paneline giriş yapılamadı")
     }
 
     setIsLoading(false)
@@ -162,24 +144,6 @@ export default function AdminLoginPage() {
             </motion.div>
           )}
 
-          <Button
-            type="button"
-            onClick={handleDeveloperDirectLogin}
-            disabled={isLoading}
-            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-          >
-            Geliştirici Paneline Direkt Gir
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-background px-2 text-muted-foreground">veya yetkili hesapla gir</span>
-            </div>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Kullanıcı adı</Label>
@@ -191,6 +155,9 @@ export default function AdminLoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Geliştirici kullanıcı adı"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
                   className="pl-10"
                   required
                 />
@@ -207,6 +174,7 @@ export default function AdminLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  autoComplete="current-password"
                   className="pl-10 pr-10"
                   required
                 />
@@ -220,7 +188,7 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="remember"
@@ -231,9 +199,6 @@ export default function AdminLoginPage() {
                   Beni hatırla
                 </Label>
               </div>
-              <button type="button" className="text-sm text-accent hover:underline">
-                Şifremi unuttum
-              </button>
             </div>
 
             <Button
