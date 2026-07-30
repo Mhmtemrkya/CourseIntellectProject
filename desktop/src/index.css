@@ -795,26 +795,42 @@ code {
     color: hsl(var(--foreground)) !important;
 }
 
-.light .ci-page [class*="bg-[#0"],
-.light .ci-page [class*="bg-[#1"] {
+.light .ci-page :is(
+    [class^="bg-[#0"],
+    [class*=" bg-[#0"],
+    [class^="bg-[#1"],
+    [class*=" bg-[#1"]) {
     background-color: hsl(var(--card)) !important;
     color: hsl(var(--foreground)) !important;
 }
 
-.light .ci-page [class*="border-white/"],
-.light .ci-page [class*="border-slate-7"],
-.light .ci-page [class*="border-slate-8"] {
+.light .ci-page :is(
+    [class^="border-white/"],
+    [class*=" border-white/"],
+    [class^="border-slate-7"],
+    [class*=" border-slate-7"],
+    [class^="border-slate-8"],
+    [class*=" border-slate-8"]) {
     border-color: hsl(var(--border)) !important;
 }
 
-.dark .ci-page [class*="bg-gray-100"],
-.dark .ci-page [class*="bg-slate-50"],
-.dark .ci-page [class*="bg-white"] {
+/* Öneksiz sınıf eşleşmesi: `hover:bg-white/10` gibi varyantlar koyu modda
+   kalıcı zemin almasın (yukarıdaki metin kuralıyla aynı tuzak). */
+.dark .ci-page :is(
+    [class^="bg-gray-100"],
+    [class*=" bg-gray-100"],
+    [class^="bg-slate-50"],
+    [class*=" bg-slate-50"],
+    [class^="bg-white"],
+    [class*=" bg-white"]) {
     background-color: hsl(var(--card) / 0.8) !important;
 }
 
-.dark .ci-page [class*="text-slate-900"],
-.dark .ci-page [class*="text-gray-900"] {
+.dark .ci-page :is(
+    [class^="text-slate-900"],
+    [class*=" text-slate-900"],
+    [class^="text-gray-900"],
+    [class*=" text-gray-900"]) {
     color: hsl(var(--foreground)) !important;
 }
 
@@ -1031,39 +1047,39 @@ code {
     border-color: hsl(var(--border)) !important;
 }
 
-/* Açık temada koyu zemine göre seçilmiş açık ton (-300/-400) renkli metinleri
+/* Açık temada koyu zemine göre seçilmiş açık ton (-200/-300/-400) renkli metinleri
    beyaz zeminde okunur koyu (600) tonlara indirger. Sidebar hariç yalnızca
    sayfa/dialog kapsamında uygulanır; renk kimliği (yeşil=pozitif vb.) korunur. */
-.light .ci-page .text-emerald-300, .light .ci-page .text-emerald-400,
-.light .ci-dialog .text-emerald-300, .light .ci-dialog .text-emerald-400 { color: #059669 !important; }
-.light .ci-page .text-green-300, .light .ci-page .text-green-400,
-.light .ci-dialog .text-green-300, .light .ci-dialog .text-green-400 { color: #16a34a !important; }
-.light .ci-page .text-teal-300, .light .ci-page .text-teal-400,
-.light .ci-dialog .text-teal-300, .light .ci-dialog .text-teal-400 { color: #0d9488 !important; }
-.light .ci-page .text-rose-300, .light .ci-page .text-rose-400,
-.light .ci-dialog .text-rose-300, .light .ci-dialog .text-rose-400 { color: #e11d48 !important; }
-.light .ci-page .text-red-300, .light .ci-page .text-red-400,
-.light .ci-dialog .text-red-300, .light .ci-dialog .text-red-400 { color: #dc2626 !important; }
-.light .ci-page .text-sky-300, .light .ci-page .text-sky-400,
-.light .ci-dialog .text-sky-300, .light .ci-dialog .text-sky-400 { color: #0284c7 !important; }
-.light .ci-page .text-blue-300, .light .ci-page .text-blue-400,
-.light .ci-dialog .text-blue-300, .light .ci-dialog .text-blue-400 { color: #2563eb !important; }
-.light .ci-page .text-cyan-300, .light .ci-page .text-cyan-400,
-.light .ci-dialog .text-cyan-300, .light .ci-dialog .text-cyan-400 { color: #0891b2 !important; }
-.light .ci-page .text-indigo-300, .light .ci-page .text-indigo-400,
-.light .ci-dialog .text-indigo-300, .light .ci-dialog .text-indigo-400 { color: #4f46e5 !important; }
-.light .ci-page .text-violet-300, .light .ci-page .text-violet-400,
-.light .ci-dialog .text-violet-300, .light .ci-dialog .text-violet-400 { color: #7c3aed !important; }
-.light .ci-page .text-purple-300, .light .ci-page .text-purple-400,
-.light .ci-dialog .text-purple-300, .light .ci-dialog .text-purple-400 { color: #9333ea !important; }
-.light .ci-page .text-fuchsia-300, .light .ci-page .text-fuchsia-400,
-.light .ci-dialog .text-fuchsia-300, .light .ci-dialog .text-fuchsia-400 { color: #c026d3 !important; }
-.light .ci-page .text-amber-300, .light .ci-page .text-amber-400,
-.light .ci-dialog .text-amber-300, .light .ci-dialog .text-amber-400 { color: #d97706 !important; }
-.light .ci-page .text-yellow-300, .light .ci-page .text-yellow-400,
-.light .ci-dialog .text-yellow-300, .light .ci-dialog .text-yellow-400 { color: #ca8a04 !important; }
-.light .ci-page .text-orange-300, .light .ci-page .text-orange-400,
-.light .ci-dialog .text-orange-300, .light .ci-dialog .text-orange-400 { color: #ea580c !important; }
+.light .ci-page .text-emerald-200, .light .ci-page .text-emerald-300, .light .ci-page .text-emerald-400,
+.light .ci-dialog .text-emerald-200, .light .ci-dialog .text-emerald-300, .light .ci-dialog .text-emerald-400 { color: #059669 !important; }
+.light .ci-page .text-green-200, .light .ci-page .text-green-300, .light .ci-page .text-green-400,
+.light .ci-dialog .text-green-200, .light .ci-dialog .text-green-300, .light .ci-dialog .text-green-400 { color: #16a34a !important; }
+.light .ci-page .text-teal-200, .light .ci-page .text-teal-300, .light .ci-page .text-teal-400,
+.light .ci-dialog .text-teal-200, .light .ci-dialog .text-teal-300, .light .ci-dialog .text-teal-400 { color: #0d9488 !important; }
+.light .ci-page .text-rose-200, .light .ci-page .text-rose-300, .light .ci-page .text-rose-400,
+.light .ci-dialog .text-rose-200, .light .ci-dialog .text-rose-300, .light .ci-dialog .text-rose-400 { color: #e11d48 !important; }
+.light .ci-page .text-red-200, .light .ci-page .text-red-300, .light .ci-page .text-red-400,
+.light .ci-dialog .text-red-200, .light .ci-dialog .text-red-300, .light .ci-dialog .text-red-400 { color: #dc2626 !important; }
+.light .ci-page .text-sky-200, .light .ci-page .text-sky-300, .light .ci-page .text-sky-400,
+.light .ci-dialog .text-sky-200, .light .ci-dialog .text-sky-300, .light .ci-dialog .text-sky-400 { color: #0284c7 !important; }
+.light .ci-page .text-blue-200, .light .ci-page .text-blue-300, .light .ci-page .text-blue-400,
+.light .ci-dialog .text-blue-200, .light .ci-dialog .text-blue-300, .light .ci-dialog .text-blue-400 { color: #2563eb !important; }
+.light .ci-page .text-cyan-200, .light .ci-page .text-cyan-300, .light .ci-page .text-cyan-400,
+.light .ci-dialog .text-cyan-200, .light .ci-dialog .text-cyan-300, .light .ci-dialog .text-cyan-400 { color: #0891b2 !important; }
+.light .ci-page .text-indigo-200, .light .ci-page .text-indigo-300, .light .ci-page .text-indigo-400,
+.light .ci-dialog .text-indigo-200, .light .ci-dialog .text-indigo-300, .light .ci-dialog .text-indigo-400 { color: #4f46e5 !important; }
+.light .ci-page .text-violet-200, .light .ci-page .text-violet-300, .light .ci-page .text-violet-400,
+.light .ci-dialog .text-violet-200, .light .ci-dialog .text-violet-300, .light .ci-dialog .text-violet-400 { color: #7c3aed !important; }
+.light .ci-page .text-purple-200, .light .ci-page .text-purple-300, .light .ci-page .text-purple-400,
+.light .ci-dialog .text-purple-200, .light .ci-dialog .text-purple-300, .light .ci-dialog .text-purple-400 { color: #9333ea !important; }
+.light .ci-page .text-fuchsia-200, .light .ci-page .text-fuchsia-300, .light .ci-page .text-fuchsia-400,
+.light .ci-dialog .text-fuchsia-200, .light .ci-dialog .text-fuchsia-300, .light .ci-dialog .text-fuchsia-400 { color: #c026d3 !important; }
+.light .ci-page .text-amber-200, .light .ci-page .text-amber-300, .light .ci-page .text-amber-400,
+.light .ci-dialog .text-amber-200, .light .ci-dialog .text-amber-300, .light .ci-dialog .text-amber-400 { color: #d97706 !important; }
+.light .ci-page .text-yellow-200, .light .ci-page .text-yellow-300, .light .ci-page .text-yellow-400,
+.light .ci-dialog .text-yellow-200, .light .ci-dialog .text-yellow-300, .light .ci-dialog .text-yellow-400 { color: #ca8a04 !important; }
+.light .ci-page .text-orange-200, .light .ci-page .text-orange-300, .light .ci-page .text-orange-400,
+.light .ci-dialog .text-orange-200, .light .ci-dialog .text-orange-300, .light .ci-dialog .text-orange-400 { color: #ea580c !important; }
 .light .ci-page .text-slate-300, .light .ci-page .text-slate-400,
 .light .ci-page .text-slate-200,
 .light .ci-dialog .text-slate-300, .light .ci-dialog .text-slate-400 { color: hsl(215 16% 42%) !important; }
@@ -1073,9 +1089,86 @@ code {
 }
 
 /* Beyaz metin, doygun renkli/koyu zeminli öğelerde beyaz kalmalı —
-   hem öğenin kendisi hem de üst öğe renkli zemin taşıyorsa. */
-.light :is(.ci-page, .ci-dialog, .ci-drawer) .text-white:is([class*="bg-emerald-"], [class*="bg-green-"], [class*="bg-teal-"], [class*="bg-rose-"], [class*="bg-red-"], [class*="bg-sky-"], [class*="bg-blue-"], [class*="bg-cyan-"], [class*="bg-indigo-"], [class*="bg-violet-"], [class*="bg-purple-"], [class*="bg-fuchsia-"], [class*="bg-amber-"], [class*="bg-orange-"], [class*="bg-yellow-"], [class*="bg-brand-"], [class*="bg-[hsl(var(--brand-"], [class*="bg-gradient-to"]),
-.light :is(.ci-page, .ci-dialog, .ci-drawer) :is([class*="bg-emerald-"], [class*="bg-green-"], [class*="bg-teal-"], [class*="bg-rose-"], [class*="bg-red-"], [class*="bg-sky-"], [class*="bg-blue-"], [class*="bg-cyan-"], [class*="bg-indigo-"], [class*="bg-violet-"], [class*="bg-purple-"], [class*="bg-fuchsia-"], [class*="bg-amber-"], [class*="bg-orange-"], [class*="bg-yellow-"], [class*="bg-brand-"], [class*="bg-[hsl(var(--brand-"], [class*="bg-gradient-to"]) .text-white {
+   hem öğenin kendisi hem de üst öğe renkli zemin taşıyorsa.
+
+   DİKKAT: sınıf adı ya listenin başında ya da bir BOŞLUKTAN sonra aranır.
+   Düz `[class*="bg-orange-"]` yazılırsa `hover:bg-orange-400/10` gibi VARYANT
+   önekleri de eşleşiyor; duruşta zemini açık olan satır "koyu zemin" sanılıp
+   içindeki metin beyaz bırakılıyor ve açık temada okunmaz oluyordu. */
+.light :is(.ci-page, .ci-dialog, .ci-drawer) .text-white:is(
+    [class^="bg-emerald-"],
+    [class*=" bg-emerald-"],
+    [class^="bg-green-"],
+    [class*=" bg-green-"],
+    [class^="bg-teal-"],
+    [class*=" bg-teal-"],
+    [class^="bg-rose-"],
+    [class*=" bg-rose-"],
+    [class^="bg-red-"],
+    [class*=" bg-red-"],
+    [class^="bg-sky-"],
+    [class*=" bg-sky-"],
+    [class^="bg-blue-"],
+    [class*=" bg-blue-"],
+    [class^="bg-cyan-"],
+    [class*=" bg-cyan-"],
+    [class^="bg-indigo-"],
+    [class*=" bg-indigo-"],
+    [class^="bg-violet-"],
+    [class*=" bg-violet-"],
+    [class^="bg-purple-"],
+    [class*=" bg-purple-"],
+    [class^="bg-fuchsia-"],
+    [class*=" bg-fuchsia-"],
+    [class^="bg-amber-"],
+    [class*=" bg-amber-"],
+    [class^="bg-orange-"],
+    [class*=" bg-orange-"],
+    [class^="bg-yellow-"],
+    [class*=" bg-yellow-"],
+    [class^="bg-brand-"],
+    [class*=" bg-brand-"],
+    [class^="bg-[hsl(var(--brand-"],
+    [class*=" bg-[hsl(var(--brand-"],
+    [class^="bg-gradient-to"],
+    [class*=" bg-gradient-to"]),
+.light :is(.ci-page, .ci-dialog, .ci-drawer) :is(
+    [class^="bg-emerald-"],
+    [class*=" bg-emerald-"],
+    [class^="bg-green-"],
+    [class*=" bg-green-"],
+    [class^="bg-teal-"],
+    [class*=" bg-teal-"],
+    [class^="bg-rose-"],
+    [class*=" bg-rose-"],
+    [class^="bg-red-"],
+    [class*=" bg-red-"],
+    [class^="bg-sky-"],
+    [class*=" bg-sky-"],
+    [class^="bg-blue-"],
+    [class*=" bg-blue-"],
+    [class^="bg-cyan-"],
+    [class*=" bg-cyan-"],
+    [class^="bg-indigo-"],
+    [class*=" bg-indigo-"],
+    [class^="bg-violet-"],
+    [class*=" bg-violet-"],
+    [class^="bg-purple-"],
+    [class*=" bg-purple-"],
+    [class^="bg-fuchsia-"],
+    [class*=" bg-fuchsia-"],
+    [class^="bg-amber-"],
+    [class*=" bg-amber-"],
+    [class^="bg-orange-"],
+    [class*=" bg-orange-"],
+    [class^="bg-yellow-"],
+    [class*=" bg-yellow-"],
+    [class^="bg-brand-"],
+    [class*=" bg-brand-"],
+    [class^="bg-[hsl(var(--brand-"],
+    [class*=" bg-[hsl(var(--brand-"],
+    [class^="bg-gradient-to"],
+    [class*=" bg-gradient-to"]) .text-white {
     color: #fff !important;
 }
 
