@@ -10,6 +10,51 @@ const _navyDeep = Color(0xFF0A2535);
 const _orange = Color(0xFFFF7A1A);
 const _orangeWarm = Color(0xFFFBB971);
 
+/// Destek ekranının yüzey paleti.
+///
+/// Koyu lacivert tonlar bu ekranın kimliği, AMA açık temada koyu kalmaz:
+/// her değer temanın parlaklığına göre çözülür. Yeni renk eklerken açık
+/// karşılığını da yaz — sabit koyu değer yazılırsa ekran açık temada tek
+/// başına koyu kalır.
+class _SupportPalette {
+  const _SupportPalette({
+    required this.dark,
+    required this.page,
+    required this.surface,
+    required this.text,
+  });
+
+  factory _SupportPalette.of(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    return _SupportPalette(
+      dark: dark,
+      page: dark ? _navy : theme.scaffoldBackgroundColor,
+      surface: dark ? _navyDeep : Colors.white,
+      text: dark ? Colors.white : const Color(0xFF0F172A),
+    );
+  }
+
+  final bool dark;
+  final Color page;
+  final Color surface;
+  final Color text;
+
+  /// Yüzey üstü dolgu/kenarlık tonlaması.
+  Color tint(double opacity) => dark
+      ? Colors.white.withValues(alpha: opacity)
+      : Colors.black.withValues(alpha: opacity * 0.8);
+
+  /// İkincil metin. Açık temada okunurluk tabanı korunur; koyu temada verilen
+  /// saydamlık aynen uygulanır.
+  Color subtle(double opacity) => dark
+      ? Colors.white.withValues(alpha: opacity)
+      : const Color(0xFF0F172A).withValues(
+          alpha: (opacity + 0.35).clamp(0.55, 1.0),
+        );
+}
+
+
 class SupportPage extends StatefulWidget {
   const SupportPage({super.key});
 
@@ -84,6 +129,7 @@ class _SupportPageState extends State<SupportPage> {
   }
 
   Future<void> _submit() async {
+    final supportPalette = _SupportPalette.of(context);
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
     try {
@@ -102,10 +148,10 @@ class _SupportPageState extends State<SupportPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: _navyDeep,
+            backgroundColor: supportPalette.surface,
             content: Text(
               'Talebiniz oluşturuldu · ${created.ticketNumber}',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: supportPalette.text),
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -119,7 +165,7 @@ class _SupportPageState extends State<SupportPage> {
             backgroundColor: Colors.red.shade900,
             content: Text(
               e.message,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: supportPalette.text),
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -139,11 +185,12 @@ class _SupportPageState extends State<SupportPage> {
 
   @override
   Widget build(BuildContext context) {
+    final supportPalette = _SupportPalette.of(context);
     return Scaffold(
-      backgroundColor: _navy,
+      backgroundColor: supportPalette.page,
       appBar: AppBar(
-        backgroundColor: _navy,
-        foregroundColor: Colors.white,
+        backgroundColor: supportPalette.page,
+        foregroundColor: supportPalette.text,
         elevation: 0,
         title: const Text(
           'Destek',
@@ -158,7 +205,7 @@ class _SupportPageState extends State<SupportPage> {
             : RefreshIndicator(
                 onRefresh: _loadTickets,
                 color: _orange,
-                backgroundColor: _navyDeep,
+                backgroundColor: supportPalette.surface,
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                   children: [
@@ -194,6 +241,7 @@ class _SupportPageState extends State<SupportPage> {
   }
 
   Widget _buildHeader() {
+    final supportPalette = _SupportPalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -216,7 +264,7 @@ class _SupportPageState extends State<SupportPage> {
         Text(
           'Bize ulaşın'.tr,
           style: TextStyle(
-            color: Colors.white,
+            color: supportPalette.text,
             fontSize: 26,
             fontWeight: FontWeight.w600,
             letterSpacing: -0.5,
@@ -226,7 +274,7 @@ class _SupportPageState extends State<SupportPage> {
         Text(
           'Bir sorun ya da öneriniz mi var? Talebinizi açın, ekibimiz dönsün.'.tr,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.65),
+            color: supportPalette.subtle(0.65),
             fontSize: 14,
             height: 1.4,
           ),
@@ -262,22 +310,23 @@ class _SupportPageState extends State<SupportPage> {
   }
 
   Widget _buildForm() {
+    final supportPalette = _SupportPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: _navyDeep.withOpacity(0.6),
+        color: supportPalette.surface.withOpacity(0.6),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: supportPalette.tint(0.06)),
       ),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Yeni talep',
               style: TextStyle(
-                color: Colors.white,
+                color: supportPalette.text,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -374,13 +423,14 @@ class _SupportPageState extends State<SupportPage> {
   }
 
   Widget _buildTicketsHeader() {
+    final supportPalette = _SupportPalette.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           'Açtığım talepler'.tr,
           style: TextStyle(
-            color: Colors.white,
+            color: supportPalette.text,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -388,7 +438,7 @@ class _SupportPageState extends State<SupportPage> {
         Text(
           '${_tickets.length} talep',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.5),
+            color: supportPalette.subtle(0.5),
             fontSize: 12,
             fontFamily: 'monospace',
           ),
@@ -402,7 +452,7 @@ class _SupportPageState extends State<SupportPage> {
     child: Text(
       text,
       style: TextStyle(
-        color: Colors.white.withOpacity(0.7),
+        color: _SupportPalette.of(context).subtle(0.7),
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
@@ -416,20 +466,21 @@ class _SupportPageState extends State<SupportPage> {
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
+    final supportPalette = _SupportPalette.of(context);
     return TextFormField(
       controller: controller,
       maxLength: maxLength,
       maxLines: maxLines,
       validator: validator,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: supportPalette.text, fontSize: 14),
       cursorColor: _orange,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+        hintStyle: TextStyle(color: supportPalette.subtle(0.3)),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.04),
+        fillColor: supportPalette.tint(0.04),
         counterStyle: TextStyle(
-          color: Colors.white.withOpacity(0.4),
+          color: supportPalette.subtle(0.4),
           fontSize: 11,
         ),
         contentPadding: const EdgeInsets.symmetric(
@@ -438,11 +489,11 @@ class _SupportPageState extends State<SupportPage> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderSide: BorderSide(color: supportPalette.tint(0.1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderSide: BorderSide(color: supportPalette.tint(0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -461,19 +512,20 @@ class _SupportPageState extends State<SupportPage> {
     required List<MapEntry<String, String>> items,
     required ValueChanged<String> onChanged,
   }) {
+    final supportPalette = _SupportPalette.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: supportPalette.tint(0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: supportPalette.tint(0.1)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: DropdownButton<String>(
         value: value,
         isExpanded: true,
         underline: const SizedBox.shrink(),
-        dropdownColor: _navyDeep,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
+        dropdownColor: supportPalette.surface,
+        style: TextStyle(color: supportPalette.text, fontSize: 14),
         iconEnabledColor: _orangeWarm,
         items: items
             .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
@@ -493,12 +545,13 @@ class _TicketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final supportPalette = _SupportPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _navyDeep.withOpacity(0.6),
+        color: supportPalette.surface.withOpacity(0.6),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: supportPalette.tint(0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,7 +567,7 @@ class _TicketCard extends StatelessWidget {
                         Text(
                           ticket.ticketNumber,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
+                            color: supportPalette.subtle(0.5),
                             fontSize: 10,
                             letterSpacing: 1.5,
                             fontFamily: 'monospace',
@@ -523,13 +576,13 @@ class _TicketCard extends StatelessWidget {
                         Text(
                           '  ·  ',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.3),
+                            color: supportPalette.subtle(0.3),
                           ),
                         ),
                         Text(
                           ticket.category,
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
+                            color: supportPalette.subtle(0.5),
                             fontSize: 10,
                             letterSpacing: 1.5,
                             fontFamily: 'monospace',
@@ -542,8 +595,8 @@ class _TicketCard extends StatelessWidget {
                       ticket.subject,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: supportPalette.text,
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
@@ -560,7 +613,7 @@ class _TicketCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.65),
+              color: supportPalette.subtle(0.65),
               fontSize: 13,
               height: 1.4,
             ),
@@ -603,7 +656,7 @@ class _TicketCard extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.85),
+                      color: supportPalette.subtle(0.85),
                       fontSize: 13,
                       height: 1.4,
                     ),
@@ -619,7 +672,7 @@ class _TicketCard extends StatelessWidget {
               Text(
                 _formatDate(ticket.createdAtUtc),
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.4),
+                  color: supportPalette.subtle(0.4),
                   fontSize: 11,
                 ),
               ),
@@ -630,14 +683,14 @@ class _TicketCard extends StatelessWidget {
                     Text(
                       '${ticket.messages} mesaj',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.4),
+                        color: supportPalette.subtle(0.4),
                         fontSize: 11,
                         fontFamily: 'monospace',
                       ),
                     ),
                     const SizedBox(width: 12),
                   ],
-                  _priorityChip(ticket.priority),
+                  _priorityChip(ticket.priority, supportPalette),
                 ],
               ),
             ],
@@ -687,7 +740,7 @@ class _TicketCard extends StatelessWidget {
     );
   }
 
-  Widget _priorityChip(String priority) {
+  Widget _priorityChip(String priority, _SupportPalette supportPalette) {
     final p = priority.toLowerCase();
     late final String label;
     late final Color color;
@@ -702,11 +755,11 @@ class _TicketCard extends StatelessWidget {
         break;
       case 'low':
         label = 'Düşük';
-        color = Colors.white.withOpacity(0.4);
+        color = supportPalette.subtle(0.4);
         break;
       default:
         label = 'Normal';
-        color = Colors.white.withOpacity(0.5);
+        color = supportPalette.subtle(0.5);
     }
     return Text(
       label.toUpperCase(),
@@ -723,6 +776,7 @@ class _TicketCard extends StatelessWidget {
 class _NotAdminMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final supportPalette = _SupportPalette.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -748,7 +802,7 @@ class _NotAdminMessage extends StatelessWidget {
               'Sadece kurum yöneticisi'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white,
+                color: supportPalette.text,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -758,7 +812,7 @@ class _NotAdminMessage extends StatelessWidget {
               'Destek talebi yalnızca kurum yöneticisi tarafından oluşturulabilir.\nLütfen kurumunuzun yöneticisine ulaşın.'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.65),
+                color: supportPalette.subtle(0.65),
                 fontSize: 14,
                 height: 1.5,
               ),
@@ -773,25 +827,26 @@ class _NotAdminMessage extends StatelessWidget {
 class _EmptyTickets extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final supportPalette = _SupportPalette.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
       decoration: BoxDecoration(
-        color: _navyDeep.withOpacity(0.4),
+        color: supportPalette.surface.withOpacity(0.4),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: supportPalette.tint(0.06)),
       ),
       child: Column(
         children: [
           Icon(
             Icons.support_agent,
             size: 32,
-            color: Colors.white.withOpacity(0.3),
+            color: supportPalette.subtle(0.3),
           ),
           const SizedBox(height: 10),
           Text(
             'Henüz talep oluşturmadınız.'.tr,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.55),
+              color: supportPalette.subtle(0.55),
               fontSize: 13,
             ),
           ),

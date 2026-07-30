@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:student/theme_provider.dart';
 import 'package:student/widgets/consent_dispatch_sheet.dart';
 import 'package:student/widgets/lesson_tile.dart';
+import 'package:student/pages/support_page.dart';
+import 'package:student/pages/teacher_reports_page.dart';
 import 'package:student/widgets/premium_resource_card.dart';
 
 /// Açık temada "beyaz üstüne beyaz" metin avı.
@@ -44,6 +46,25 @@ void main() {
     );
   });
 
+  // Bu iki ekran kendi koyu paletini taşıyordu; açık temada koyu kalmamalı.
+  testWidgets('öğretmen raporları açık temada koyu kalmaz', (tester) async {
+    await _expectReadable(
+      tester,
+      const TeacherReportsPage(),
+      scrollable: false,
+      minMeasured: 10,
+    );
+  });
+
+  testWidgets('destek ekranı açık temada koyu kalmaz', (tester) async {
+    await _expectReadable(
+      tester,
+      const SupportPage(),
+      scrollable: false,
+      minMeasured: 1,
+    );
+  });
+
   testWidgets('premium kaynak kartı açık temada okunur', (tester) async {
     await _expectReadable(
       tester,
@@ -59,20 +80,28 @@ void main() {
 }
 
 /// Widget'ı AÇIK temada çizer ve düşük kontrastlı metin kalmadığını doğrular.
-Future<void> _expectReadable(WidgetTester tester, Widget child) async {
+Future<void> _expectReadable(
+  WidgetTester tester,
+  Widget child, {
+  bool scrollable = true,
+  int minMeasured = 1,
+}) async {
   final theme = ThemeProvider();
   await tester.pumpWidget(
     ChangeNotifierProvider<ThemeProvider>.value(
       value: theme,
       child: MaterialApp(
         theme: theme.lightTheme,
-        home: Scaffold(body: SingleChildScrollView(child: child)),
+        // Sayfalar kendi Scaffold'unu kurar; parçalar sarmalayıcıya konur.
+        home: scrollable ? Scaffold(body: SingleChildScrollView(child: child)) : child,
       ),
     ),
   );
   await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
 
   final failures = <String>[];
+  var measured = 0;
   for (final element in _textElements(tester)) {
     final widget = element.widget as Text;
     final text = widget.data ?? '';
@@ -83,6 +112,7 @@ Future<void> _expectReadable(WidgetTester tester, Widget child) async {
     final background = _resolveBackground(element);
     if (background == null) continue;
 
+    measured += 1;
     final ratio = _contrast(color, background);
     if (ratio < 2.2) {
       failures.add('"$text" — metin $color, zemin $background, oran '
@@ -91,6 +121,13 @@ Future<void> _expectReadable(WidgetTester tester, Widget child) async {
   }
 
   expect(failures, isEmpty, reason: 'Açık temada okunmayan metin:\n${failures.join('\n')}');
+
+  // Ekran hiç çizilmediyse test boşa geçmiş olur; en az bir metin ölçülmeli.
+  expect(
+    measured,
+    greaterThanOrEqualTo(minMeasured),
+    reason: 'Yalnızca $measured metin ölçüldü; ekran beklendiği gibi çizilmemiş.',
+  );
 }
 
 Iterable<Element> _textElements(WidgetTester tester) {
@@ -123,10 +160,19 @@ Color? _resolveBackground(Element element) {
       candidate = widget.color;
     } else if (widget is DecoratedBox) {
       final decoration = widget.decoration;
-      // Gradyan/görsel zeminler ölçüme uygun değil; atlanır.
-      if (decoration is BoxDecoration && decoration.gradient == null) {
+      if (decoration is BoxDecoration) {
+        // Gradyan/görsel zeminin rengi tek bir değerle ölçülemez. Yukarı
+        // yürümeye DEVAM ETMEK yanlış olur: gradyanın üstündeki metin, sayfa
+        // zeminiyle karşılaştırılıp hatalı biçimde "okunmaz" sayılırdı.
+        if (decoration.gradient != null || decoration.image != null) {
+          result = null;
+          return false;
+        }
         candidate = decoration.color;
       }
+    } else if (widget is DecoratedBox && widget.decoration is ShapeDecoration) {
+      // Chip/Card gibi öğeler dolgusunu ShapeDecoration ile çizer.
+      candidate = (widget.decoration as ShapeDecoration).color;
     }
     if (candidate != null && candidate.a > 0.6) {
       result = candidate;

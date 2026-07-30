@@ -1109,6 +1109,10 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final sheetTheme = _ReportTheme(
+              Theme.of(context),
+              Theme.of(context).brightness == Brightness.dark,
+            );
             final students = scopedStudents();
             if (selectedStudentKey.isEmpty && students.isNotEmpty) {
               selectedStudentKey = students.first.username.isNotEmpty
@@ -1400,22 +1404,20 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0E1B31),
+                            color: sheetTheme.cardColor,
                             borderRadius: BorderRadius.circular(22),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.10),
-                            ),
+                            border: Border.all(color: sheetTheme.borderColor),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  const Expanded(
+                                  Expanded(
                                     child: Text(
                                       "Ek Dosyalar",
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: sheetTheme.textColor,
                                         fontWeight: FontWeight.w800,
                                       ),
                                     ),
@@ -1437,7 +1439,9 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                               if (attachments.isEmpty)
                                 Text(
                                   "Görsel, PDF veya dosya ekleyebilirsin.".tr,
-                                  style: TextStyle(color: Colors.white70),
+                                  style: TextStyle(
+                                    color: sheetTheme.subtleTextColor,
+                                  ),
                                 )
                               else
                                 ...attachments.asMap().entries.map(
@@ -1448,13 +1452,9 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                       vertical: 12,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.06,
-                                      ),
+                                      color: sheetTheme.tint(0.06),
                                       border: Border.all(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.08,
-                                        ),
+                                        color: sheetTheme.tint(0.08),
                                       ),
                                       borderRadius: BorderRadius.circular(18),
                                     ),
@@ -1483,16 +1483,17 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                                 _attachmentComposerLabel(
                                                   entry.value.fileType,
                                                 ),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
+                                                style: TextStyle(
+                                                  color: sheetTheme.textColor,
                                                   fontWeight: FontWeight.w700,
                                                 ),
                                               ),
                                               Text(
                                                 entry.value.fileType
                                                     .toUpperCase(),
-                                                style: const TextStyle(
-                                                  color: Colors.white70,
+                                                style: TextStyle(
+                                                  color: sheetTheme
+                                                      .subtleTextColor,
                                                 ),
                                               ),
                                             ],
@@ -1929,7 +1930,9 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
             });
           },
           labelStyle: TextStyle(
-            color: selected ? Colors.white : reportTheme.textColor,
+            // Seçili rozetin zemini AÇIK turuncu; üstünde beyaz yazı iki temada
+            // da zor okunuyordu (kontrast ~2.1). Koyu lacivert mürekkep kullanılır.
+            color: selected ? const Color(0xFF0F172A) : reportTheme.textColor,
             fontWeight: FontWeight.w700,
           ),
           selectedColor: const Color(0xFFFF9D2E),
@@ -2453,7 +2456,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                 vertical: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.06),
+                                color: reportTheme.tint(0.06),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
@@ -2924,12 +2927,18 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
     required IconData icon,
     required Color color,
   }) {
+    // Kart kendi opak zeminini çizer; bu yüzden hangi yüzeyin üstünde olursa
+    // olsun metin rengini de kendisi temadan almalı.
+    final reportTheme = _ReportTheme(
+      Theme.of(context),
+      Theme.of(context).brightness == Brightness.dark,
+    );
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF0E1B31),
+        color: reportTheme.cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        border: Border.all(color: reportTheme.borderColor),
       ),
       child: Row(
         children: [
@@ -2949,13 +2958,16 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  style: TextStyle(
+                    color: reportTheme.subtleTextColor,
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: reportTheme.textColor,
                     fontWeight: FontWeight.w900,
                     fontSize: 18,
                   ),
@@ -2999,21 +3011,25 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
   }
 
   Widget _reportPanel({required String title, required Widget child}) {
+    final reportTheme = _ReportTheme(
+      Theme.of(context),
+      Theme.of(context).brightness == Brightness.dark,
+    );
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0E1B31),
+        color: reportTheme.cardColor,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        border: Border.all(color: reportTheme.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: reportTheme.textColor,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -3205,11 +3221,15 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
       ('Gelişim', Icons.trending_up_rounded),
     ];
 
+    final reportTheme = _ReportTheme(
+      Theme.of(context),
+      Theme.of(context).brightness == Brightness.dark,
+    );
     return Scaffold(
-      backgroundColor: const Color(0xFF08111F),
+      backgroundColor: reportTheme.pageBackground,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF08111F),
-        foregroundColor: Colors.white,
+        backgroundColor: reportTheme.pageBackground,
+        foregroundColor: reportTheme.textColor,
         elevation: 0,
         title: const Text(
           'PDF Modu',
@@ -3280,7 +3300,7 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
                         child: Text(
                           'Öğrenci Başarı Raporu'.tr,
                           style: TextStyle(
-                            color: Colors.white,
+                            color: reportTheme.textColor,
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
                           ),
@@ -3300,7 +3320,7 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
                   Text(
                     'Akademik performans raporu mobil önizleme modu.'.tr,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.72),
+                      color: reportTheme.subtleTextColor,
                       height: 1.45,
                     ),
                   ),
@@ -3364,12 +3384,16 @@ class _MobilePdfStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reportTheme = _ReportTheme(
+      Theme.of(context),
+      Theme.of(context).brightness == Brightness.dark,
+    );
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: reportTheme.tint(0.06),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: reportTheme.tint(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3377,7 +3401,7 @@ class _MobilePdfStat extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.62),
+              color: reportTheme.subtleTextColor,
               fontSize: 11,
             ),
           ),
@@ -3419,13 +3443,17 @@ class _MobilePdfPageCard extends StatelessWidget {
         ? report['supportTopic'].toString()
         : '-';
 
+    final reportTheme = _ReportTheme(
+      Theme.of(context),
+      Theme.of(context).brightness == Brightness.dark,
+    );
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0E1B31),
+        color: reportTheme.cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        border: Border.all(color: reportTheme.borderColor),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3447,7 +3475,7 @@ class _MobilePdfPageCard extends StatelessWidget {
                 Text(
                   'Sayfa $page / 6',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.52),
+                    color: reportTheme.subtleTextColor,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -3455,8 +3483,8 @@ class _MobilePdfPageCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: reportTheme.textColor,
                     fontSize: 17,
                     fontWeight: FontWeight.w900,
                   ),
@@ -3467,7 +3495,7 @@ class _MobilePdfPageCard extends StatelessWidget {
                       ? 'Güçlü alan: $topTopic • Destek alanı: $supportTopic'
                       : 'Bu bölüm PDF çıktısında seçili rapor verileriyle oluşturulur.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.68),
+                    color: reportTheme.subtleTextColor,
                     height: 1.45,
                   ),
                 ),
@@ -3480,22 +3508,43 @@ class _MobilePdfPageCard extends StatelessWidget {
   }
 }
 
+/// Rapor ekranının yüzey ve metin paleti.
+///
+/// Koyu tonlar bu ekrana özeldir (rapor kartları bilerek koyu lacivert),
+/// AMA açık temada koyu kalmaz: her getter [isDark] değerine göre
+/// karşılığını döner. Sabit koyu değer döndüren bir getter eklenirse ekran
+/// açık temada tek başına koyu kalır — eklemeden önce açık karşılığını yaz.
 class _ReportTheme {
   final ThemeData theme;
   final bool isDark;
 
   _ReportTheme(this.theme, this.isDark);
 
-  Color get pageBackground => const Color(0xFF08111F);
-  Color get cardColor => const Color(0xFF0E1B31);
-  Color get surfaceColor => const Color(0xFF132238);
-  Color get borderColor => Colors.white.withValues(alpha: 0.10);
-  Color get textColor => Colors.white;
-  Color get subtleTextColor => Colors.white.withValues(alpha: 0.68);
+  Color get pageBackground =>
+      isDark ? const Color(0xFF08111F) : theme.scaffoldBackgroundColor;
+  Color get cardColor => isDark ? const Color(0xFF0E1B31) : Colors.white;
+  Color get surfaceColor =>
+      isDark ? const Color(0xFF132238) : const Color(0xFFF1F5F9);
+  Color get borderColor => isDark
+      ? Colors.white.withValues(alpha: 0.10)
+      : Colors.black.withValues(alpha: 0.09);
+  Color get textColor => isDark ? Colors.white : const Color(0xFF0F172A);
+  Color get subtleTextColor => isDark
+      ? Colors.white.withValues(alpha: 0.68)
+      : const Color(0xFF475569);
+
+  /// Renkli/koyu zeminlerin (gradyan başlık, dolu rozet) üstündeki metin —
+  /// iki temada da beyaz kalır.
+  Color get onAccent => Colors.white;
+
+  /// Yüzeyin üstündeki hafif tonlama (ayraç, pasif dolgu).
+  Color tint(double opacity) => isDark
+      ? Colors.white.withValues(alpha: opacity)
+      : Colors.black.withValues(alpha: opacity * 0.75);
 
   List<BoxShadow> get shadow => [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.28),
+      color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
       blurRadius: 22,
       offset: const Offset(0, 12),
     ),
