@@ -331,6 +331,13 @@ export default function Login() {
               </p>
             </div>
 
+            {new URLSearchParams(window.location.search).has("calendar-preview") ? (
+              <div className="mt-8">
+                <Label htmlFor="calendar-preview">Takvim önizleme</Label>
+                <Input id="calendar-preview" type="date" className="mt-2" />
+              </div>
+            ) : null}
+
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
               <AnimatePresence>
                 {error && (

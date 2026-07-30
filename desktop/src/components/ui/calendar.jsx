@@ -14,40 +14,41 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("rounded-2xl border border-border/65 bg-card/55 p-3 backdrop-blur-xl", className)}
+      className={cn("w-full rounded-2xl border border-border/65 bg-card/55 p-4 backdrop-blur-xl", className)}
       classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "flex h-9 items-center gap-1 px-3 text-sm font-semibold",
-        caption_dropdowns: "flex items-center justify-center gap-2",
+        vhidden: "sr-only",
+        months: "flex w-full flex-col gap-4 sm:flex-row",
+        month: "w-full space-y-4",
+        caption: "relative flex min-h-11 items-center justify-center px-12",
+        caption_label: "flex h-10 items-center gap-1 px-3 text-sm font-semibold",
+        caption_dropdowns: "flex min-w-0 flex-1 items-center justify-center gap-2",
         dropdown_month:
-          "relative inline-flex h-9 items-center rounded-xl border border-foreground/10 bg-[hsl(var(--ci-field)/0.78)] transition hover:border-[hsl(var(--brand-accent)/0.35)] focus-within:border-[hsl(var(--brand-accent)/0.6)] focus-within:ring-2 focus-within:ring-[hsl(var(--brand-accent)/0.14)]",
+          "relative inline-flex h-10 min-w-0 flex-[1.25] items-center justify-center rounded-xl border border-foreground/10 bg-[hsl(var(--ci-field)/0.78)] px-2 transition hover:border-[hsl(var(--brand-accent)/0.35)] focus-within:border-[hsl(var(--brand-accent)/0.6)] focus-within:ring-2 focus-within:ring-[hsl(var(--brand-accent)/0.14)]",
         dropdown_year:
-          "relative inline-flex h-9 items-center rounded-xl border border-foreground/10 bg-[hsl(var(--ci-field)/0.78)] transition hover:border-[hsl(var(--brand-accent)/0.35)] focus-within:border-[hsl(var(--brand-accent)/0.6)] focus-within:ring-2 focus-within:ring-[hsl(var(--brand-accent)/0.14)]",
+          "relative inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-xl border border-foreground/10 bg-[hsl(var(--ci-field)/0.78)] px-2 transition hover:border-[hsl(var(--brand-accent)/0.35)] focus-within:border-[hsl(var(--brand-accent)/0.6)] focus-within:ring-2 focus-within:ring-[hsl(var(--brand-accent)/0.14)]",
         dropdown:
           "absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0",
-        nav: "space-x-1 flex items-center",
+        nav: "pointer-events-none absolute inset-x-0 top-0 flex h-11 items-center justify-between",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+          "pointer-events-auto h-10 w-10 rounded-xl bg-background/70 p-0 opacity-80 shadow-sm hover:opacity-100"
         ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
+        nav_button_previous: "absolute left-0",
+        nav_button_next: "absolute right-0",
         table: "w-full border-collapse space-y-1",
-        head_row: "flex",
+        head_row: "flex w-full",
         head_cell:
-          "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
+          "flex-1 rounded-md text-center text-muted-foreground font-medium text-[0.8rem]",
+        row: "mt-1.5 flex w-full",
         cell: cn(
-          "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected].day-range-end)]:rounded-r-md",
+          "relative flex-1 p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected].day-range-end)]:rounded-r-md",
           props.mode === "range"
             ? "[&:has(>.day-range-end)]:rounded-r-md [&:has(>.day-range-start)]:rounded-l-md first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md"
             : "[&:has([aria-selected])]:rounded-md"
         ),
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "h-8 w-8 p-0 font-normal aria-selected:opacity-100"
+          "mx-auto h-10 w-10 max-w-full rounded-xl p-0 font-normal aria-selected:opacity-100 sm:h-11 sm:w-11"
         ),
         day_range_start: "day-range-start",
         day_range_end: "day-range-end",

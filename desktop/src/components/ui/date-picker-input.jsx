@@ -109,7 +109,8 @@ const DatePickerInput = React.forwardRef(({
       <PopoverContent
         align="start"
         sideOffset={8}
-        className="w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-3xl border-foreground/10 bg-popover/98 p-0 shadow-[0_24px_70px_hsl(220_60%_2%/0.38)]"
+        collisionPadding={12}
+        className="max-h-[calc(100vh-1.5rem)] w-[min(27rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-3xl border-foreground/10 bg-popover/98 p-0 shadow-[0_24px_70px_hsl(220_60%_2%/0.38)]"
       >
         <div className="border-b border-foreground/10 bg-gradient-to-br from-[hsl(var(--brand-accent)/0.16)] via-transparent to-[hsl(var(--brand-primary)/0.08)] px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">
@@ -141,7 +142,7 @@ const DatePickerInput = React.forwardRef(({
           captionLayout="dropdown-buttons"
           locale={tr}
           initialFocus
-          className="border-0 bg-transparent p-4"
+          className="border-0 bg-transparent p-4 sm:p-5"
         />
 
         <div className="flex items-center justify-between gap-2 border-t border-foreground/10 bg-foreground/[0.025] px-4 py-3">
