@@ -2,7 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import 'admin_branch_comparison_page.dart';
+import 'admin_class_management_page.dart';
+import 'admin_exam_results_page.dart';
+import 'admin_finance_page.dart';
+import 'admin_personnel_approvals_page.dart';
+import 'admin_schedule_list_page.dart';
+import 'admin_staff_list_page.dart';
 import 'admin_workflow_hub_page.dart';
+import 'administrative_documents_page.dart';
+import 'counselor_appointments_page.dart';
 import 'duties_board_page.dart';
 import 'duty_create_page.dart';
 import 'admin_global_search_page.dart';
@@ -13,19 +21,20 @@ import 'admin_meeting_overview_page.dart';
 import 'admin_role_management_page.dart';
 import 'admin_students_page.dart';
 import 'admin_task_center_page.dart';
+import 'library_manage_page.dart';
+import 'password_reset_requests_page.dart';
 import 'service_routes_page.dart';
 import 'admin_passive_records_page.dart';
 import 'support_page.dart';
 import 'attendance_overview_page.dart';
 import 'teacher_exam_results_page.dart';
+import 'teacher_question_box_page.dart';
 import 'teacher_reports_page.dart';
 import '../pages/accounting_home_page.dart';
+import '../pages/accounting_installments_page.dart';
 import '../pages/accounting_overdue_page.dart';
 import '../services/accounting_finance_store.dart';
 import '../services/admin_workflow_api_service.dart';
-import '../services/attendance_service.dart';
-import '../services/staff_registry_store.dart';
-import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/responsive_layout.dart';
 
@@ -37,8 +46,6 @@ class AdminHomePage extends StatefulWidget {
 }
 
 class _AdminHomePageState extends State<AdminHomePage> {
-  final _students = StudentRegistryStore.instance;
-  final _staff = StaffRegistryStore.instance;
   final _finance = AccountingFinanceStore.instance;
 
   static const _periods = [
@@ -52,17 +59,57 @@ class _AdminHomePageState extends State<AdminHomePage> {
   Map<String, dynamic> _totals = const {};
   int? _selectedBucket;
 
+  // Kurum sahibi KPI'ları: masaüstü paneliyle AYNI uçtan gelir; kurumun
+  // paketinde/rolde olmayan sayaç null döner ve kartı hiç çizilmez.
+  Map<String, dynamic> _kpis = const {};
+  List<Map<String, dynamic>> _dashboardAlerts = const [];
+
   @override
   void initState() {
     super.initState();
-    _students.addListener(_refresh);
-    _staff.addListener(_refresh);
+    // Öğrenci/personel/yoklama listeleri artık burada ÇEKİLMEZ: sayaçlar tek
+    // uçtan (getDashboard) sunucuda hesaplanır, listeler açılan sayfada yüklenir.
     _finance.addListener(_refresh);
-    _students.ensureLoaded();
-    _staff.ensureLoaded();
     _finance.loadDashboard();
-    AttendanceService.instance.refresh();
     _loadAnalytics();
+    _loadDashboard();
+  }
+
+  /// Seçili dönemi [from, to) aralığına çevirir (bitiş HARİÇ — backend böyle bekler).
+  (String, String) _range() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final start = switch (_period) {
+      'week' => today.subtract(const Duration(days: 6)),
+      'month' => DateTime(today.year, today.month - 1, today.day),
+      'year' => DateTime(today.year - 1, today.month, today.day),
+      _ => today,
+    };
+    final end = today.add(const Duration(days: 1));
+    return (start.toUtc().toIso8601String(), end.toUtc().toIso8601String());
+  }
+
+  Future<void> _loadDashboard() async {
+    try {
+      final (from, to) = _range();
+      final result = await AdminWorkflowApiService.instance.getDashboard(
+        from: from,
+        to: to,
+      );
+      if (!mounted) return;
+      setState(() {
+        _kpis = Map<String, dynamic>.from(result['kpis'] as Map? ?? const {});
+        _dashboardAlerts = (result['alerts'] as List<dynamic>? ?? const [])
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _kpis = const {};
+        _dashboardAlerts = const [];
+      });
+    }
   }
 
   Future<void> _loadAnalytics() async {
@@ -87,8 +134,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   @override
   void dispose() {
-    _students.removeListener(_refresh);
-    _staff.removeListener(_refresh);
     _finance.removeListener(_refresh);
     super.dispose();
   }
@@ -97,55 +142,123 @@ class _AdminHomePageState extends State<AdminHomePage> {
     if (mounted) setState(() {});
   }
 
+  String _periodCaption() => switch (_period) {
+    'week' => 'Son 7 gün',
+    'month' => 'Son 1 ay',
+    'year' => 'Son 1 yıl',
+    _ => 'Bugün',
+  };
+
+  String _money(num value) => '₺${value.round()}';
+
+  /// Kurum sahibinin görmesi gereken tüm sayaçlar — masaüstü panosuyla aynı sıra.
+  /// Değeri null gelen (modül kapalı / yetki yok) kart listeye hiç girmez.
+  List<_Kpi> _buildKpis(BuildContext context) {
+    final period = _periodCaption();
+    final items = <_Kpi>[];
+
+    void add(
+      String key,
+      String label,
+      IconData icon,
+      Color color,
+      String caption,
+      Widget Function() page, {
+      bool money = false,
+      bool percent = false,
+    }) {
+      final raw = _kpis[key];
+      if (raw == null) return;
+      final value = money
+          ? _money(raw as num)
+          : percent
+          ? '%${(raw as num).round()}'
+          : '$raw';
+      items.add(
+        _Kpi(label, value, caption, icon, color, () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => page()));
+        }),
+      );
+    }
+
+    const brand = Color(0xFF2563EB);
+    const green = Color(0xFF059669);
+    const teal = Color(0xFF0F766E);
+    const violet = Color(0xFF7C3AED);
+    const amber = Color(0xFFB45309);
+    const red = Color(0xFFB42318);
+
+    add('activeStudents', 'Aktif Öğrenci', Icons.school_outlined, brand,
+        'Kayıtlı ve aktif öğrenci', () => const AdminStudentsPage());
+    add('activeTeachers', 'Öğretmen', Icons.person_search_outlined, green,
+        'Derse giren öğretmen', () => const AdminStaffListPage());
+    add('activeStaff', 'Toplam Personel', Icons.badge_outlined, teal,
+        'Aktif kadro', () => const AdminStaffListPage());
+    add('activeClasses', 'Aktif Sınıf', Icons.meeting_room_outlined, violet,
+        'Öğrencisi olan sınıf', () => const AdminClassManagementPage());
+    add('todayLessons', 'Bugünkü Ders', Icons.calendar_today_outlined, brand,
+        'Programdaki ders saati', () => const AdminScheduleListPage());
+    add('newRegistrations', 'Yeni Kayıt', Icons.person_add_alt_1_outlined, green,
+        period, () => const AdminStudentsPage());
+    add('todayAbsent', 'Bugün Devamsız', Icons.warning_amber_rounded, red,
+        'Derse gelmeyen öğrenci', () => const AttendanceOverviewPage());
+    add('attendanceRate', 'Devam Oranı', Icons.fact_check_outlined, green,
+        period, () => const AttendanceOverviewPage(), percent: true);
+    add('upcomingExams', 'Yaklaşan Sınav', Icons.event_available_outlined, brand,
+        '30 gün içinde planlı', () => const AdminExamResultsPage());
+    add('pendingQuestions', 'Cevap Bekleyen Soru', Icons.help_outline_rounded,
+        amber, 'Öğretmen yanıtı bekliyor', () => const QuestionBoxPage());
+    add('unreadMessages', 'Okunmamış Mesaj', Icons.chat_bubble_outline_rounded,
+        violet, 'Size gelen yanıtsız mesaj', () => const AdminMessagesPage());
+    add('pendingMeetings', 'Görüşme Talebi', Icons.calendar_month_outlined,
+        amber, 'Veli görüşmesi bekliyor', () => const AdminMeetingOverviewPage());
+    add('pendingApprovals', 'Bekleyen Onay', Icons.verified_user_outlined, amber,
+        'Yönetici kararı bekliyor', () => const AdminPersonnelApprovalsPage());
+    add('pendingLeaves', 'Bekleyen İzin', Icons.event_busy_outlined, amber,
+        'Personel izin talebi', () => const AdminWorkflowHubPage());
+    add('todayOnLeave', 'Bugün İzinli', Icons.person_off_outlined, teal,
+        'İzindeki personel', () => const AdminWorkflowHubPage());
+    add('overdueTasks', 'Geciken Görev', Icons.assignment_late_outlined, red,
+        'Teslim tarihi geçti', () => const AdminTaskCenterPage());
+    add('openTasks', 'Açık Görev', Icons.playlist_add_check_circle_outlined,
+        brand, 'Devam eden görev', () => const AdminTaskCenterPage());
+    add('expiringDocuments', 'Süresi Dolan Belge', Icons.description_outlined,
+        amber, '30 gün içinde geçersiz', () => const AdministrativeDocumentsPage());
+    add('passwordResetRequests', 'Şifre Talebi', Icons.key_outlined, amber,
+        'Sıfırlama onayı bekliyor', () => const PasswordResetRequestsPage());
+    add('collections', 'Tahsilat', Icons.payments_outlined, green, period,
+        () => const AccountingHomePage(), money: true);
+    add('expenses', 'Gider', Icons.trending_down_rounded, red, period,
+        () => const AdminFinancePage(), money: true);
+    add('net', 'Net (Tahsilat − Gider)', Icons.account_balance_wallet_outlined,
+        brand, period, () => const AccountingHomePage(), money: true);
+    add('overdueInstallmentAmount', 'Geciken Ödeme', Icons.report_gmailerrorred_outlined,
+        red, '${_kpis['overdueInstallments'] ?? 0} vadesi geçmiş taksit',
+        () => const AccountingOverduePage(), money: true);
+    add('pendingInstallmentAmount', 'Bekleyen Taksit', Icons.pending_actions_rounded,
+        amber, '${_kpis['pendingInstallments'] ?? 0} ödenmemiş taksit',
+        () => const AccountingInstallmentsPage(), money: true);
+    add('overdueLoans', 'Gecikmiş Kitap', Icons.menu_book_outlined, amber,
+        'İade tarihi geçti', () => const LibraryManagePage());
+    add('pendingGuidance', 'Rehberlik Talebi', Icons.psychology_outlined, violet,
+        'Randevu onayı bekliyor', () => const CounselorAppointmentsPage());
+    add('activeServiceRoutes', 'Aktif Servis Rotası',
+        Icons.directions_bus_filled_outlined, teal, 'Kullanımdaki rota',
+        () => const ServiceRoutesPage());
+    add('activeAnnouncements', 'Duyuru', Icons.campaign_outlined, brand,
+        'Yayındaki duyuru', () => const AdminAnnouncementsPage());
+    add('passiveAccounts', 'Pasif Kayıt', Icons.inventory_2_outlined, red,
+        'Arşivdeki hesap', () => const AdminPassiveRecordsPage());
+
+    return items;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final teacherCount = _staff.teachers
-        .where((item) => item.status == 'Active' || item.status == 'Aktif')
-        .length;
     final pendingApprovals = _finance.approvals
         .where((item) => item.status == 'Bekliyor')
         .length;
-    final criticalAlerts =
-        _finance.installments.where((item) => item.status == 'Geciken').length +
-        AttendanceService.instance
-            .all()
-            .where((item) => item.status == 'Devamsiz')
-            .length;
-
-    final metrics = [
-      _Metric(
-        'Toplam Öğrenci',
-        '${_students.students.length}',
-        const Color(0xFF2563EB),
-        Icons.school_outlined,
-      ),
-      _Metric(
-        'Aktif Öğretmen',
-        '$teacherCount',
-        const Color(0xFF14532D),
-        Icons.person_search_outlined,
-      ),
-      _Metric(
-        'Açık Tahsilat',
-        _finance.formatAmount(_finance.pendingTotal + _finance.overdueTotal),
-        const Color(0xFFB45309),
-        Icons.payments_outlined,
-      ),
-      _Metric(
-        'Kritik Uyarı',
-        '$criticalAlerts',
-        const Color(0xFFB42318),
-        Icons.warning_amber_rounded,
-      ),
-    ];
-
-    final alerts = [
-      (
-        '$pendingApprovals finans onayi bekliyor',
-        'Finans akışı',
-        const Color(0xFF2563EB),
-      ),
-    ];
+    final kpis = _buildKpis(context);
 
     return AdminScaffold(
       appBar: AppBar(
@@ -187,13 +300,19 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 ],
               ),
               const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: metrics
-                    .map((metric) => _metricCard(context, metric))
-                    .toList(),
-              ),
+              if (kpis.isEmpty)
+                AdminPanel(
+                  child: Text(
+                    'Kurum özeti yüklenemedi.'.tr,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: kpis.map((kpi) => _kpiCard(context, kpi)).toList(),
+                ),
               const SizedBox(height: 18),
               AdminSectionTitle(title: 'Kazanç & Gider Eğrisi'.tr),
               const SizedBox(height: 12),
@@ -548,8 +667,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
               const SizedBox(height: 18),
               AdminSectionTitle(title: 'Öncelikli Uyarılar'.tr),
               const SizedBox(height: 12),
-              ...alerts.map(
-                (item) => AdminPanel(
+              if (_dashboardAlerts.isEmpty)
+                AdminPanel(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: Row(
                     children: [
@@ -557,36 +676,69 @@ class _AdminHomePageState extends State<AdminHomePage> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: item.$3.withValues(alpha: 0.12),
+                          color: const Color(0xFF059669).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Icon(
-                          Icons.priority_high_rounded,
-                          color: item.$3,
+                        child: const Icon(
+                          Icons.verified_rounded,
+                          color: Color(0xFF059669),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.$1,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              item.$2,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
+                        child: Text(
+                          'Müdahale gerektiren bir durum yok'.tr,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
+                )
+              else
+                ..._dashboardAlerts.map((item) {
+                  final critical = item['severity'] == 'Critical';
+                  final color = critical
+                      ? const Color(0xFFB42318)
+                      : const Color(0xFFB45309);
+                  return AdminPanel(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            Icons.priority_high_rounded,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${item['title'] ?? ''}',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${item['message'] ?? ''}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
             ],
           ),
         ),
@@ -594,67 +746,65 @@ class _AdminHomePageState extends State<AdminHomePage> {
     );
   }
 
-  Widget _metricCard(BuildContext context, _Metric metric) {
+  // Masaüstü panosundaki KPI kartının mobil karşılığı: her kart tıklanabilir ve
+  // ilgili yönetim sayfasını açar.
+  Widget _kpiCard(BuildContext context, _Kpi kpi) {
     final width = ResponsiveLayout.itemWidth(
       context,
       spacing: 12,
-      phone: 1,
-      tablet: 2,
-      largeTablet: 4,
+      phone: 2,
+      tablet: 3,
+      largeTablet: 5,
     );
     return SizedBox(
       width: width,
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
-        onTap: () {
-          if (metric.title == 'Toplam Öğrenci') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminStudentsPage()),
-            );
-            return;
-          }
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${metric.title} detay görünümü hazırlanıyor.'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
+        onTap: kpi.onTap,
         child: AdminPanel(
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: metric.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(metric.icon, color: metric.color),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      metric.title,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      kpi.label.tr,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: metric.color,
-                        fontWeight: FontWeight.w700,
+                        color: kpi.color,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      metric.value,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: kpi.color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ],
+                    child: Icon(kpi.icon, color: kpi.color, size: 18),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                kpi.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
                 ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                kpi.caption.tr,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),
@@ -688,6 +838,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 onSelected: (_) {
                   setState(() => _period = p.$1);
                   _loadAnalytics();
+                  // Dönemsel KPI'lar (yeni kayıt, devam oranı, tahsilat, gider)
+                  // aynı seçime bağlıdır; grafikle birlikte tazelenir.
+                  _loadDashboard();
                 },
               );
             }).toList(),
@@ -867,11 +1020,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 }
 
-class _Metric {
-  final String title;
+class _Kpi {
+  final String label;
   final String value;
-  final Color color;
+  final String caption;
   final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
 
-  _Metric(this.title, this.value, this.color, this.icon);
+  _Kpi(this.label, this.value, this.caption, this.icon, this.color, this.onTap);
 }

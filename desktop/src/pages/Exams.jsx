@@ -1,15 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Plus,
-  ClipboardList,
-  BarChart3,
-  Calendar,
-  Users,
-  BookOpen,
-  Download,
-  Search,
-} from 'lucide-react';
 import { FeatureGate } from '../components/FeatureGate';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -41,6 +31,7 @@ import {
   fetchExamResults,
   fetchStudents,
 } from '../lib/api/modules';
+import ExamManagementSheet from '../components/exams/ExamManagementSheet';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -155,6 +146,7 @@ function AddExamResultDialog({ open, onOpenChange, students, onCreated }) {
 export default function Exams() {
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const [selectedExam, setSelectedExam] = useState(null);
+  const [managedExam, setManagedExam] = useState(null);
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [students, setStudents] = useState([]);
@@ -240,6 +232,24 @@ export default function Exams() {
     window.URL.revokeObjectURL(url);
   };
 
+  const copyExamSummary = async (item) => {
+    await navigator.clipboard.writeText([
+      item.title,
+      item.subject,
+      item.className,
+      `${item.count} sonuç`,
+      `Ortalama ${item.average}`,
+    ].filter(Boolean).join(' • '));
+  };
+
+  const managementActions = [
+    { label: 'Görüntüle', onClick: () => setSelectedExam(managedExam) },
+    { label: 'Sonuç Gir', onClick: () => setResultDialogOpen(true) },
+    { label: 'Sonuçları İncele', onClick: () => setSelectedExam(managedExam) },
+    { label: 'PDF', onClick: () => window.print() },
+    { label: 'Kopyala', onClick: () => copyExamSummary(managedExam || {}) },
+  ];
+
   if (loading) {
     return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
   }
@@ -291,43 +301,34 @@ export default function Exams() {
 
       <Tabs defaultValue="exams" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="exams" className="flex items-center gap-2"><ClipboardList className="h-4 w-4" />Sınavlar</TabsTrigger>
-          <TabsTrigger value="results" className="flex items-center gap-2"><BarChart3 className="h-4 w-4" />Sonuçlar</TabsTrigger>
+          <TabsTrigger value="exams">Sınavlar</TabsTrigger>
+          <TabsTrigger value="results">Sonuçlar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="exams" className="space-y-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative max-w-md flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" placeholder="Sınav, ders veya sınıf ara..." />
+            <div className="max-w-md flex-1">
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sınav, ders veya sınıf ara..." />
             </div>
             <FeatureGate module="exams" action="create">
               <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setResultDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
                 Yeni Sonuç
               </Button>
             </FeatureGate>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-3">
             {filteredSummaries.map((exam) => (
-              <Card key={exam.title} className="hover:shadow-card-hover transition-all">
-                <CardHeader>
-                  <Badge className="w-fit bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Tamamlandı</Badge>
-                  <CardTitle className="mt-2">{exam.title}</CardTitle>
-                  <CardDescription>{exam.subject}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm"><Calendar className="h-4 w-4 text-muted-foreground" /><span>{exam.className}</span></div>
-                    <div className="flex items-center gap-2 text-sm"><Users className="h-4 w-4 text-muted-foreground" /><span>{exam.count} sonuç</span></div>
-                    <div className="flex items-center gap-2 text-sm"><BookOpen className="h-4 w-4 text-muted-foreground" /><span>Ortalama {exam.average}</span></div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <Button variant="outline" className="flex-1" onClick={() => setSelectedExam(exam)}>Detay</Button>
-                    <Button className="flex-1 bg-brand-primary hover:bg-brand-primary/90" onClick={() => downloadExamSummary(exam)}>
-                      <Download className="mr-2 h-4 w-4" />
-                      İndir
+              <Card key={exam.title} className="rounded-2xl transition hover:border-foreground/20">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{exam.subject} • Tamamlandı</p>
+                      <h3 className="mt-1 truncate text-lg font-black sm:text-xl">{exam.title}</h3>
+                      <p className="mt-2 text-sm text-muted-foreground">{exam.className} • {exam.count} sonuç • Ortalama {exam.average}</p>
+                    </div>
+                    <Button className="w-full shrink-0 sm:w-28" onClick={() => setManagedExam(exam)}>
+                      Yönet
                     </Button>
                   </div>
                 </CardContent>
@@ -432,7 +433,6 @@ export default function Exams() {
           <DialogFooter>
             {selectedExam ? (
               <Button variant="outline" onClick={() => downloadExamSummary(selectedExam)}>
-                <Download className="mr-2 h-4 w-4" />
                 Özeti İndir
               </Button>
             ) : null}
@@ -440,6 +440,13 @@ export default function Exams() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ExamManagementSheet
+        exam={managedExam}
+        open={Boolean(managedExam)}
+        onOpenChange={(open) => !open && setManagedExam(null)}
+        actions={managementActions}
+      />
     </motion.div>
   );
 }

@@ -1,24 +1,16 @@
 import { motion } from 'framer-motion';
 import { Button } from '../../components/ui/button';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { AnimatedValue } from '../../components/ui/premium-dashboard';
+import { KPI_TONES, KpiCard } from '../../components/ui/kpi-card';
 import { cn } from '@/lib/utils';
 
 export const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 export const itemVariants = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } };
 
-// Okul tarafındaki gradyan tonlarının aynısı. Sürücü kursu ekranları da bu
-// kümeden seçer ki iki kurum türü yan yana aynı ürün gibi görünsün. İlk ton
-// marka vurgusunu takip eder (tenant paleti değişince grafikler de değişir).
-export const TONES = {
-  brand: 'from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-primary-text))]',
-  blue: 'from-sky-400 to-blue-600',
-  emerald: 'from-emerald-400 to-teal-600',
-  violet: 'from-violet-400 to-fuchsia-600',
-  amber: 'from-amber-400 to-orange-600',
-  rose: 'from-rose-400 to-red-600',
-  cyan: 'from-cyan-400 to-sky-600',
-};
+// Ton kümesi ve KPI kartı okul ana paneliyle ORTAKTIR (components/ui/kpi-card).
+// İki kurum türü yan yana aynı ürün gibi görünsün diye tek uygulama vardır;
+// buradaki adlar (TONES / DrivingStatCard) geriye dönük uyumluluk içindir.
+export const TONES = KPI_TONES;
 
 export function DrivingPage({ children, testId, className }) {
   return (
@@ -78,36 +70,9 @@ function RefreshIcon({ spinning }) {
   );
 }
 
-// Okul panellerindeki ci-metric-card kalıbının sürücü kursu karşılığı: küçük
-// başlık, animasyonlu büyük değer, gradyanlı ikon rozeti.
-export function DrivingStatCard({ label, value, caption, icon: Icon, tone = 'brand', onClick }) {
-  const Wrapper = onClick ? 'button' : 'div';
-  return (
-    <motion.div variants={itemVariants}>
-      <Wrapper
-        type={onClick ? 'button' : undefined}
-        onClick={onClick}
-        className={cn(
-          'ci-metric-card flex h-full w-full flex-col gap-3 rounded-2xl border border-foreground/10 p-4 text-left transition-all',
-          onClick && 'cursor-pointer hover:-translate-y-0.5 hover:border-[hsl(var(--brand-accent)/0.35)]',
-        )}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
-          {Icon ? (
-            <div className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-white', TONES[tone] || TONES.brand)}>
-              <Icon className="h-4 w-4" />
-            </div>
-          ) : null}
-        </div>
-        <div>
-          <p className="text-3xl font-black tracking-tight"><AnimatedValue value={value} /></p>
-          {caption ? <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{caption}</p> : null}
-        </div>
-      </Wrapper>
-    </motion.div>
-  );
-}
+// Küçük başlık, animasyonlu büyük değer, gradyanlı ikon rozeti — okul ana
+// paneliyle ortak kart.
+export const DrivingStatCard = KpiCard;
 
 export function DrivingLoading() {
   return <div className="flex min-h-[60vh] items-center justify-center"><LoadingDots /></div>;

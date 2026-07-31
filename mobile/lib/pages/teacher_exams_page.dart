@@ -1,6 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 import 'package:student/i18n/app_locale.dart';
-import '../widgets/premium_resource_card.dart';
 import 'package:student/pages/teacher_exam_edit_page.dart';
 import 'package:student/pages/teacher_exam_live_camera_page.dart';
 import 'package:student/pages/teacher_exam_results_page.dart';
@@ -11,7 +16,6 @@ import 'package:student/services/planned_exam_api_service.dart';
 import 'package:student/services/school_feed_api_service.dart';
 import 'package:student/widgets/responsive_layout.dart';
 import 'package:student/widgets/responsive_overlays.dart';
-import 'package:student/widgets/teacher_empty_state_panel.dart';
 import 'package:student/widgets/teacher_header.dart';
 
 class TeacherExamsPage extends StatefulWidget {
@@ -165,9 +169,9 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
       });
       await _loadExams();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Planlı sınav oluşturuldu.".tr)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Planlı sınav oluşturuldu.".tr)));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -234,19 +238,9 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                         color: theme.scaffoldBackgroundColor,
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            item["type"] == "Deneme"
-                                ? Icons.fact_check_rounded
-                                : Icons.quiz_rounded,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(_decodeText(item["title"] as String?)),
-                          ),
-                        ],
+                      child: Text(
+                        _decodeText(item["title"] as String?),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -324,6 +318,209 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
     }();
   }
 
+  Future<void> _showExamActions(
+    Map<String, dynamic> exam,
+    int index,
+    List<Map<String, dynamic>> sourceList,
+  ) async {
+    final isPlanned = selectedTab == 0;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Sınav İşlemleri'.tr,
+                style: Theme.of(sheetContext).textTheme.labelLarge?.copyWith(
+                  color: Theme.of(
+                    sheetContext,
+                  ).textTheme.bodySmall?.color?.withValues(alpha: 0.68),
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _decodeText(exam['title'] as String?),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 16),
+              ...[
+                'Görüntüle',
+                if (isPlanned) 'Düzenle',
+                'Sonuç Gir',
+                'Sonuçları İncele',
+                if (isPlanned) 'Kamera',
+                if (isPlanned) 'Yoklama',
+                'PDF',
+                'Kopyala',
+                if (isPlanned) 'Sil',
+              ].map(
+                (label) => SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(sheetContext, label),
+                    style: TextButton.styleFrom(
+                      alignment: Alignment.centerLeft,
+                      foregroundColor: label == 'Sil' ? Colors.redAccent : null,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 15,
+                      ),
+                    ),
+                    child: Text(
+                      label.tr,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+    switch (action) {
+      case 'Görüntüle':
+        _showExamDetail(exam);
+        return;
+      case 'Düzenle':
+        final updatedExam = await Navigator.push<Map<String, dynamic>>(
+          context,
+          MaterialPageRoute(builder: (_) => TeacherExamEditPage(exam: exam)),
+        );
+        if (updatedExam != null && mounted) {
+          setState(() => sourceList[index] = updatedExam);
+        }
+        return;
+      case 'Sonuç Gir':
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TeacherExamScoreEntryPage()),
+        );
+        return;
+      case 'Sonuçları İncele':
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => TeacherExamResultsPage(exam: exam)),
+        );
+        return;
+      case 'Kamera':
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TeacherExamLiveCameraPage(
+              examId: (exam['id'] as String?) ?? '',
+              examTitle: _decodeText(exam['title'] as String?),
+            ),
+          ),
+        );
+        return;
+      case 'Yoklama':
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sınav yoklaması kamera ekranından takip edilir.'.tr),
+          ),
+        );
+        return;
+      case 'PDF':
+        await _shareExamPdf(exam);
+        return;
+      case 'Kopyala':
+        await Clipboard.setData(
+          ClipboardData(
+            text: [
+              exam['title'],
+              exam['subject'],
+              exam['className'],
+              exam['date'],
+              exam['duration'],
+            ].whereType<Object>().join(' • '),
+          ),
+        );
+        return;
+      case 'Sil':
+        _deleteExam(sourceList, index);
+        return;
+    }
+  }
+
+  Future<void> _shareExamPdf(Map<String, dynamic> exam) async {
+    final document = pw.Document();
+    document.addPage(
+      pw.Page(
+        build: (_) => pw.Padding(
+          padding: const pw.EdgeInsets.all(28),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                'Sinav Ozeti',
+                style: pw.TextStyle(
+                  fontSize: 22,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 20),
+              ...[
+                ['Sinav', _decodeText(exam['title'] as String?)],
+                ['Ders', _decodeText(exam['subject'] as String?)],
+                ['Sinif', exam['className']?.toString() ?? '-'],
+                ['Tur', _decodeText(exam['type'] as String?)],
+                ['Tarih', exam['date']?.toString() ?? '-'],
+                ['Sure', exam['duration']?.toString() ?? '-'],
+                ['Soru', exam['questionCount']?.toString() ?? '-'],
+                ['Durum', exam['status']?.toString() ?? '-'],
+              ].map(
+                (row) => pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 10),
+                  child: pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.SizedBox(
+                        width: 90,
+                        child: pw.Text(
+                          row[0],
+                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                        ),
+                      ),
+                      pw.Expanded(child: pw.Text(row[1])),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final directory = await getTemporaryDirectory();
+    final file = File(
+      '${directory.path}/sinav_${DateTime.now().millisecondsSinceEpoch}.pdf',
+    );
+    await file.writeAsBytes(await document.save());
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        text: _decodeText(exam['title'] as String?),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -338,10 +535,11 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
         subtitle: '${completedExams.length} tamamlanan sınav',
         showBackButton: true,
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _createExam,
         backgroundColor: theme.colorScheme.primary,
-        child: const Icon(Icons.add, color: Colors.white),
+        foregroundColor: Colors.white,
+        label: Text('Sınav Oluştur'.tr),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -359,46 +557,54 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
               SizedBox(
                 width: double.infinity,
                 height: 48,
-                child: OutlinedButton.icon(
+                child: OutlinedButton(
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => const TeacherExamScoreEntryPage(),
                     ),
                   ),
-                  icon: const Icon(Icons.edit_note_rounded),
-                  label: Text('Sınav Notu / Deneme Puanı Gir'.tr),
+                  child: Text('Sınav Notu / Deneme Puanı Gir'.tr),
                 ),
               ),
               const SizedBox(height: 18),
               _tabBar(theme),
               const SizedBox(height: 18),
               if (currentList.isEmpty)
-                TeacherEmptyStatePanel(
-                  title: selectedTab == 0
-                      ? 'Henüz sınav oluşturulmamış'
-                      : 'Henüz tamamlanmış sınav yok',
-                  description: selectedTab == 0
-                      ? 'Öğrencilerin başarısını ölçmek için ilk sınavını oluştur ve değerlendirme sürecini başlat.'
-                      : 'Sınavlar tamamlandığında sonuçlar ve değerlendirme özetleri burada görünecek.',
-                  accentColor: const Color(0xFF22C55E),
-                  mainIcon: Icons.fact_check_rounded,
-                  primaryLabel: 'Sınav Oluştur',
-                  onPrimary: _createExam,
-                  secondaryLabel: 'Not Gir',
-                  onSecondary: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const TeacherExamScoreEntryPage(),
-                    ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(22),
                   ),
-                  tipDescription:
-                      'Hazır şablonlarla hızlıca sınav oluşturabilir veya kendi sınav akışını tasarlayabilirsin.',
-                  floatingIcons: const [
-                    Icons.timer_outlined,
-                    Icons.bar_chart_rounded,
-                    Icons.check_circle_outline_rounded,
-                  ],
+                  child: Column(
+                    children: [
+                      Text(
+                        selectedTab == 0
+                            ? 'Henüz sınav oluşturulmamış'
+                            : 'Henüz tamamlanmış sınav yok',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        selectedTab == 0
+                            ? 'Öğrencilerin başarısını ölçmek için ilk sınavını oluştur.'
+                            : 'Sınavlar tamamlandığında sonuçlar burada görünecek.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: selectedTab == 0 ? _createExam : _loadExams,
+                        child: Text(
+                          selectedTab == 0 ? 'Sınav Oluştur' : 'Yenile',
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ...currentList.asMap().entries.map((entry) {
                 final index = entry.key;
@@ -443,23 +649,18 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.fact_check_rounded, color: Colors.white, size: 28),
-              SizedBox(width: 10),
-              Text(
-                "Sınav Yönetimi".tr,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
+          Text(
+            "Sınav Yönetimi".tr,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
-            "Yaklaşan sınavlarını planla, tamamlanan sınavları analiz et ve tüm süreci tek ekrandan yönet.".tr,
+            "Yaklaşan sınavlarını planla, tamamlanan sınavları analiz et ve tüm süreci tek ekrandan yönet."
+                .tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -559,440 +760,58 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
     int index,
     List<Map<String, dynamic>> sourceList,
   ) {
-    final subjectTheme = _themeForSubject(item["subject"]?.toString() ?? '');
-    final premium = resourceTheme(item["subject"]?.toString() ?? '');
-    final hue = premium.hue;
-    final accent = hue;
-    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color mutedColor = isDark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF64748B);
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0B1728) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.10)
               : const Color(0xFFE2E8F0),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.30)
-                : Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
+          Text(
+            '${_decodeText(item["subject"] as String?)} • ${_decodeText(item["type"] as String?)}',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.68),
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.9,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            _decodeText(item["title"] as String?),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            [
+              item["className"],
+              item["date"],
+              item["duration"],
+              '${item["questionCount"]} soru',
+              item["status"],
+            ].whereType<Object>().join(' • '),
+            style: theme.textTheme.bodySmall?.copyWith(height: 1.45),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: const Alignment(0.95, -1.3),
-                radius: 1.7,
-                colors: [
-                  hue.withValues(alpha: isDark ? 0.30 : 0.16),
-                  hue.withValues(alpha: 0.03),
-                ],
-              ),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  right: -10,
-                  top: -8,
-                  child: Text(
-                    premium.mark,
-                    style: TextStyle(
-                      fontSize: 72,
-                      fontWeight: FontWeight.w900,
-                      color: hue.withValues(alpha: 0.11),
-                    ),
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: hue.withValues(alpha: 0.13),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: hue.withValues(alpha: 0.30),
-                            ),
-                          ),
-                          child: Icon(subjectTheme.icon, color: hue),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: hue.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: hue.withValues(alpha: 0.30),
-                            ),
-                          ),
-                          child: Text(
-                            '${item["questionCount"]} soru',
-                            style: TextStyle(
-                              color: hue,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _decodeText(item["subject"] as String?).toUpperCase(),
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: hue,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.6,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _decodeText(item["title"] as String?),
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: titleColor,
-                        fontWeight: FontWeight.w900,
-                        height: 1.05,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      premium.tagline,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: mutedColor,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.1,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-            child: Column(
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _metaPill(
-                      theme,
-                      item["className"] as String,
-                      subjectTheme.ink,
-                    ),
-                    _metaPill(
-                      theme,
-                      _decodeText(item["type"] as String?),
-                      const Color(0xFF334155),
-                    ),
-                    _metaPill(
-                      theme,
-                      item["status"] as String,
-                      item["statusColor"] as Color,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _metaChip(
-                        theme,
-                        icon: Icons.schedule_rounded,
-                        text: item["date"] as String,
-                        color: accent,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _metaChip(
-                        theme,
-                        icon: Icons.timer_outlined,
-                        text: item["duration"] as String,
-                        color: accent,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _metaChip(
-                        theme,
-                        icon: Icons.layers_outlined,
-                        text: _decodeText(item["sourceType"] as String?) == ''
-                            ? "Kaynak yok"
-                            : _decodeText(item["sourceType"] as String?),
-                        color: accent,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showExamDetail(item),
-                        icon: const Icon(Icons.visibility_outlined),
-                        label: const Text("Detay"),
-                        style: OutlinedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          if (selectedTab == 0) {
-                            final updatedExam =
-                                await Navigator.push<Map<String, dynamic>>(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        TeacherExamEditPage(exam: item),
-                                  ),
-                                );
-
-                            if (updatedExam != null) {
-                              setState(() {
-                                sourceList[index] = updatedExam;
-                              });
-                            }
-                          } else {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    TeacherExamResultsPage(exam: item),
-                              ),
-                            );
-                          }
-                        },
-                        icon: Icon(
-                          selectedTab == 0
-                              ? Icons.edit_note_rounded
-                              : Icons.bar_chart_rounded,
-                        ),
-                        label: Text(selectedTab == 0 ? "Düzenle" : "Sonuçlar"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: accent,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (selectedTab == 0) ...[
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => TeacherExamResultsPage(exam: item),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.bar_chart_rounded),
-                      label: Text("Öğrenci Sonuçları".tr),
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => TeacherExamLiveCameraPage(
-                              examId: (item["id"] as String?) ?? '',
-                              examTitle: _decodeText(item["title"] as String?),
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.videocam_rounded),
-                      label: Text("Canlı Kamera".tr),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF2563EB),
-                        side: const BorderSide(color: Color(0x552563EB)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: () => _deleteExam(sourceList, index),
-                    icon: const Icon(
-                      Icons.delete_outline_rounded,
-                      color: Colors.redAccent,
-                    ),
-                    label: const Text(
-                      'Sil',
-                      style: TextStyle(color: Colors.redAccent),
-                    ),
-                  ),
-                ),
-              ],
+            height: 48,
+            child: FilledButton(
+              onPressed: () => _showExamActions(item, index, sourceList),
+              child: Text('Yönet'.tr),
             ),
           ),
         ],
       ),
     );
-  }
-
-  Widget _metaPill(ThemeData theme, String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-
-  Widget _metaChip(
-    ThemeData theme, {
-    required IconData icon,
-    required String text,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TeacherExamSubjectTheme {
-  final List<Color> gradient;
-  final Color ink;
-  final String monogram;
-  final String tagline;
-  final IconData icon;
-
-  const _TeacherExamSubjectTheme({
-    required this.gradient,
-    required this.ink,
-    required this.monogram,
-    required this.tagline,
-    required this.icon,
-  });
-}
-
-_TeacherExamSubjectTheme _themeForSubject(String subject) {
-  switch (subject.trim().toLowerCase()) {
-    case 'matematik':
-      return const _TeacherExamSubjectTheme(
-        gradient: [Color(0xFF1D4ED8), Color(0xFF38BDF8)],
-        ink: Color(0xFF1D4ED8),
-        monogram: 'M',
-        tagline: 'Soru akışı, süre ve zorluk dengesi.',
-        icon: Icons.functions_rounded,
-      );
-    case 'türkçe':
-    case 'turkce':
-      return const _TeacherExamSubjectTheme(
-        gradient: [Color(0xFF0F766E), Color(0xFF14B8A6)],
-        ink: Color(0xFF115E59),
-        monogram: 'TR',
-        tagline: 'Dil, yorum ve paragraf performansı.',
-        icon: Icons.menu_book_rounded,
-      );
-    case 'fizik':
-      return const _TeacherExamSubjectTheme(
-        gradient: [Color(0xFF7C3AED), Color(0xFFA855F7)],
-        ink: Color(0xFF6D28D9),
-        monogram: 'F',
-        tagline: 'Kuvvet, hareket ve problem çözümü.',
-        icon: Icons.bolt_rounded,
-      );
-    case 'kimya':
-      return const _TeacherExamSubjectTheme(
-        gradient: [Color(0xFF059669), Color(0xFF34D399)],
-        ink: Color(0xFF047857),
-        monogram: 'K',
-        tagline: 'Tepkime ve kavram kontrolü.',
-        icon: Icons.science_rounded,
-      );
-    default:
-      return const _TeacherExamSubjectTheme(
-        gradient: [Color(0xFF334155), Color(0xFF64748B)],
-        ink: Color(0xFF334155),
-        monogram: 'SN',
-        tagline: 'Planlanan oturumlar ve sonuç akışı.',
-        icon: Icons.fact_check_rounded,
-      );
   }
 }

@@ -36,6 +36,14 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
             .Select(s => s.CreatedAtUtc)
             .ToListAsync(cancellationToken);
 
+        // Gider: işletme gider defteri (ortak /finance/expenses — iç tablo adı
+        // DrivingExpense'tir ama okul da aynı ekranı kullanır) + maaş/bordro +
+        // fatura. Ana paneldeki "Gider" sayacı da aynı üç kaynağı toplar.
+        var operationalExpenses = await dbContext.DrivingExpenses.AsNoTracking()
+            .Where(e => e.ExpenseDateUtc >= rangeStart && e.ExpenseDateUtc < rangeEnd)
+            .Select(e => new { e.ExpenseDateUtc, e.Amount })
+            .ToListAsync(cancellationToken);
+
         // Gider: maaş/bordro + fatura kayıtları (string tutar, in-memory parse).
         var salaries = await dbContext.AccountingSalaries.AsNoTracking()
             .Where(s => s.CreatedAtUtc >= rangeStart && s.CreatedAtUtc < rangeEnd)
@@ -59,6 +67,11 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
         {
             var index = IndexOf(working, createdAt);
             if (index >= 0) working[index].Registrations += 1;
+        }
+        foreach (var expense in operationalExpenses)
+        {
+            var index = IndexOf(working, expense.ExpenseDateUtc);
+            if (index >= 0) working[index].Expense += expense.Amount;
         }
         foreach (var salary in salaries)
         {

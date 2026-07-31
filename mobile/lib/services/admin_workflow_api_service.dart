@@ -392,6 +392,14 @@ class AdminWorkflowApiService {
   Future<Map<String, dynamic>> getOverview() async =>
       Map<String, dynamic>.from(await _get('/api/admin/overview') as Map);
 
+  // ---- Kurum sahibi ana paneli (tüm KPI'lar tek uçtan) ----
+  // from/to ISO tarih-saat; verilmezse backend "bugün" davranışına düşer.
+  // Kurumun paketinde/kullanıcının rolünde olmayan modülün sayacı null gelir.
+  Future<Map<String, dynamic>> getDashboard({String? from, String? to}) async =>
+      Map<String, dynamic>.from(
+        await _get('/api/admin/dashboard', {'from': ?from, 'to': ?to}) as Map,
+      );
+
   // ---- Dönemsel analitik (kazanç / kayıt / gider) ----
   // period: day | week | month | year. İsteğe bağlı özel aralık: from/to (yyyy-MM-dd).
   Future<Map<String, dynamic>> getAnalytics({

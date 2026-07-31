@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
-import 'package:student/pages/exam_detail_page.dart';
 import 'package:student/pages/exam_solve_page.dart';
 import 'package:student/pages/student_exam_history_page.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/planned_exam_api_service.dart';
 import 'package:student/services/school_feed_api_service.dart';
 import 'package:student/widgets/exam_camera_preview.dart';
-import 'package:student/widgets/student_empty_state_panel.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../widgets/premium_resource_card.dart';
 import '../widgets/responsive_layout.dart';
 
 class ExamsPage extends StatefulWidget {
@@ -288,17 +285,12 @@ class _ExamsPageState extends State<ExamsPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.verified_user_rounded,
-                          color: Color(0xFFFF7A00)),
-                      SizedBox(width: 8),
-                      Text(
-                        "Sınav Giriş Kontrolü".tr,
-                        style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w800),
-                      ),
-                    ],
+                  Text(
+                    "Sınav Giriş Kontrolü".tr,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -309,27 +301,24 @@ class _ExamsPageState extends State<ExamsPage> {
                   if (liveLink.isNotEmpty) ...[
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        joinedLive
-                            ? Icons.check_circle_rounded
-                            : Icons.videocam_rounded,
-                        color: joinedLive ? Colors.green : Colors.blue,
-                      ),
                       title: Text("Canlı yayına katıl".tr),
                       subtitle: Text(
-                          "Öğretmenin canlı bağlantısına gir, kameranı aç.".tr),
+                        "Öğretmenin canlı bağlantısına gir, kameranı aç.".tr,
+                      ),
                     ),
                     SizedBox(
                       width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.open_in_new_rounded),
-                        label: Text(
-                            joinedLive ? "Tekrar Aç" : "Canlı Yayına Katıl"),
+                      child: OutlinedButton(
+                        child: Text(
+                          joinedLive ? "Tekrar Aç" : "Canlı Yayına Katıl",
+                        ),
                         onPressed: () async {
                           final uri = Uri.tryParse(liveLink);
                           if (uri != null) {
-                            await launchUrl(uri,
-                                mode: LaunchMode.externalApplication);
+                            await launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
+                            );
                           }
                           setSheetState(() => joinedLive = true);
                         },
@@ -340,17 +329,10 @@ class _ExamsPageState extends State<ExamsPage> {
                   if (requireCamera) ...[
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        cameraReady
-                            ? Icons.check_circle_rounded
-                            : Icons.photo_camera_rounded,
-                        color: cameraReady ? Colors.green : Colors.deepPurple,
+                      title: Text(
+                        liveLink.isNotEmpty ? "2. Kameranı aç" : "Kameranı aç",
                       ),
-                      title: Text(liveLink.isNotEmpty
-                          ? "2. Kameranı aç"
-                          : "Kameranı aç"),
-                      subtitle:
-                          Text("Sınav boyunca kameran açık kalmalı.".tr),
+                      subtitle: Text("Sınav boyunca kameran açık kalmalı.".tr),
                     ),
                     const SizedBox(height: 8),
                     ExamCameraPreview(
@@ -360,17 +342,16 @@ class _ExamsPageState extends State<ExamsPage> {
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
+                    child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF22A06B),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      icon: const Icon(Icons.login_rounded),
-                      label: Text("Sınava Gir".tr),
                       onPressed: canEnter
                           ? () => Navigator.pop(sheetContext, true)
                           : null,
+                      child: Text("Sınava Gir".tr),
                     ),
                   ),
                 ],
@@ -424,36 +405,9 @@ class _ExamsPageState extends State<ExamsPage> {
                     ),
                   )
                 else if (_error != null)
-                  _messageCard(
-                    theme,
-                    icon: Icons.wifi_off_rounded,
-                    message: _error!,
-                  )
+                  _messageCard(theme, message: _error!)
                 else if (currentList.isEmpty)
-                  StudentEmptyStatePanel(
-                    title: selectedTab == 0
-                        ? (widget.mockOnly
-                              ? 'Henüz deneme sınavı yok'
-                              : 'Henüz sınav yok')
-                        : 'Henüz sınav sonucunuz bulunmuyor',
-                    description: selectedTab == 0
-                        ? (widget.mockOnly
-                              ? 'Sana uygun deneme sınavları yakında burada olacak. Kendini test etmeye hazır ol.'
-                              : 'Öğretmenin sınav oluşturduğunda burada görünecek. Listeyi yenileyerek yeni sınavları kontrol edebilirsin.')
-                        : 'Girdiğiniz sınavların sonuçları ve analizleri burada görüntülenecek.',
-                    accentColor: const Color(0xFF8B5CF6),
-                    icon: selectedTab == 0
-                        ? Icons.fact_check_rounded
-                        : Icons.bar_chart_rounded,
-                    primaryLabel: selectedTab == 0
-                        ? (widget.mockOnly
-                              ? 'Denemeleri Yenile'
-                              : 'Sınavları Yenile')
-                        : (widget.mockOnly
-                              ? 'Deneme Sınavlarına Git'
-                              : 'Sınavlarıma Git'),
-                    onPrimary: _loadExams,
-                  )
+                  _emptyPanel(theme)
                 else
                   ...currentList.map((item) => _examCard(theme, isDark, item)),
               ],
@@ -486,23 +440,13 @@ class _ExamsPageState extends State<ExamsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.fact_check_rounded,
-                color: Colors.white,
-                size: 28,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                widget.mockOnly ? "Deneme Sınavları" : "Sınavlarım",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
+          Text(
+            widget.mockOnly ? "Deneme Sınavları" : "Sınavlarım",
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -599,11 +543,7 @@ class _ExamsPageState extends State<ExamsPage> {
     );
   }
 
-  Widget _messageCard(
-    ThemeData theme, {
-    required IconData icon,
-    required String message,
-  }) {
+  Widget _messageCard(ThemeData theme, {required String message}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -613,8 +553,6 @@ class _ExamsPageState extends State<ExamsPage> {
       ),
       child: Column(
         children: [
-          Icon(icon, size: 34, color: theme.colorScheme.primary),
-          const SizedBox(height: 12),
           Text(
             message,
             textAlign: TextAlign.center,
@@ -625,374 +563,116 @@ class _ExamsPageState extends State<ExamsPage> {
     );
   }
 
+  Widget _emptyPanel(ThemeData theme) {
+    final title = selectedTab == 0
+        ? (widget.mockOnly ? 'Henüz deneme sınavı yok' : 'Henüz sınav yok')
+        : 'Henüz sınav sonucunuz bulunmuyor';
+    final description = selectedTab == 0
+        ? 'Öğretmenin sınav oluşturduğunda burada görünecek.'
+        : 'Girdiğiniz sınavların sonuçları burada görüntülenecek.';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(description, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: _loadExams, child: Text('Yenile'.tr)),
+        ],
+      ),
+    );
+  }
+
   Widget _examCard(ThemeData theme, bool isDark, Map<String, dynamic> item) {
     final isCompleted = selectedTab == 1;
-    final subjectTheme = _themeForSubject(item["subject"]?.toString() ?? '');
-    final premium = resourceTheme(item["subject"]?.toString() ?? '');
-    final hue = premium.hue;
     final canStart = isCompleted || _canStartExam(item);
-    final Color cardBg = isDark ? const Color(0xFF0B1728) : Colors.white;
-    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final Color mutedColor = isDark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF64748B);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(26),
+        color: isDark ? const Color(0xFF0B1728) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.10)
               : const Color(0xFFE2E8F0),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.30)
-                : Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: const Alignment(0.95, -1.3),
-                radius: 1.7,
-                colors: [
-                  hue.withValues(alpha: isDark ? 0.30 : 0.16),
-                  hue.withValues(alpha: 0.03),
-                ],
-              ),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(26),
-              ),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  right: -12,
-                  top: -10,
-                  child: Text(
-                    premium.mark,
-                    style: TextStyle(
-                      fontSize: 78,
-                      fontWeight: FontWeight.w900,
-                      color: hue.withValues(alpha: 0.11),
-                      height: 1,
-                    ),
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 54,
-                          height: 54,
-                          decoration: BoxDecoration(
-                            color: hue.withValues(alpha: 0.13),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: hue.withValues(alpha: 0.30),
-                            ),
-                          ),
-                          child: Icon(subjectTheme.icon, color: hue),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: hue.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: hue.withValues(alpha: 0.30),
-                            ),
-                          ),
-                          child: Text(
-                            isCompleted
-                                ? 'Sonuç'
-                                : '${item["questionCount"]} soru',
-                            style: TextStyle(
-                              color: hue,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      (item["subject"] as String).toUpperCase(),
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: hue,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.6,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item["title"] as String,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: titleColor,
-                        fontWeight: FontWeight.w900,
-                        height: 1.05,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      premium.tagline,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: mutedColor,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.1,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _pill(theme, item["type"] as String, subjectTheme.ink),
-                    _pill(
-                      theme,
-                      item["className"] as String,
-                      const Color(0xFF475569),
-                    ),
-                    _pill(
-                      theme,
-                      item["status"] as String,
-                      item["statusColor"] as Color,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: theme.scaffoldBackgroundColor,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _detailMetric(
-                          theme,
-                          icon: Icons.calendar_today_outlined,
-                          label: isCompleted
-                              ? 'Sınav Tarihi'
-                              : 'Planlanan Tarih',
-                          value: item["date"] as String,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _detailMetric(
-                          theme,
-                          icon: Icons.timelapse_outlined,
-                          label: isCompleted ? 'Kayıt Tipi' : 'Süre',
-                          value: item["duration"] as String,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _numberMetric(
-                        theme,
-                        label: 'Soru',
-                        value: '${item["questionCount"]}',
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _numberMetric(
-                        theme,
-                        label: isCompleted ? 'Net' : 'Durum',
-                        value: isCompleted ? '${item["net"]}' : 'Planlı',
-                      ),
-                    ),
-                    if (isCompleted) ...[
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _numberMetric(
-                          theme,
-                          label: 'Puan',
-                          value: '${item["score"]}',
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ExamDetailPage(exam: item),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.visibility_outlined),
-                        label: const Text("Detay"),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: canStart
-                            ? () {
-                                if (isCompleted) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => StudentExamHistoryPage(
-                                        studentName: _studentName,
-                                        title: 'Sınav Sonuçlarım'.tr,
-                                      ),
-                                    ),
-                                  );
-                                } else {
-                                  _startExamWithGate(item);
-                                }
-                              }
-                            : null,
-                        icon: Icon(
-                          isCompleted
-                              ? Icons.bar_chart_rounded
-                              : Icons.play_arrow_rounded,
-                        ),
-                        label: Text(
-                          isCompleted
-                              ? "Sonucu Gör"
-                              : canStart
-                              ? "Sınava Gir"
-                              : "Saatini Bekle",
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF7A1A),
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _pill(ThemeData theme, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        value,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-
-  Widget _detailMetric(
-    ThemeData theme, {
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: theme.colorScheme.primary),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.textTheme.bodySmall?.color?.withValues(
-                    alpha: 0.72,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _numberMetric(
-    ThemeData theme, {
-    required String label,
-    required String value,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
           Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
+            '${item["subject"]} • ${item["type"]}',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.68),
               fontWeight: FontWeight.w800,
+              letterSpacing: 0.9,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
           Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+            item["title"] as String,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            [
+              item["className"],
+              item["date"],
+              item["duration"],
+              '${item["questionCount"]} soru',
+              if (isCompleted) '${item["score"]} puan',
+            ].whereType<Object>().join(' • '),
+            style: theme.textTheme.bodySmall?.copyWith(height: 1.45),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: canStart
+                  ? () {
+                      if (isCompleted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => StudentExamHistoryPage(
+                              studentName: _studentName,
+                              title: 'Sınav Sonuçlarım'.tr,
+                            ),
+                          ),
+                        );
+                      } else {
+                        _startExamWithGate(item);
+                      }
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7A1A),
+                foregroundColor: Colors.white,
+              ),
+              child: Text(
+                isCompleted
+                    ? "Sonucu Gör"
+                    : canStart
+                    ? "Sınava Gir"
+                    : "Saatini Bekle",
+              ),
             ),
           ),
         ],

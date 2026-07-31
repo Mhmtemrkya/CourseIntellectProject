@@ -1319,6 +1319,13 @@ export async function fetchAdminAnalytics({ period = 'week', from, to } = {}) {
   return response;
 }
 
+// Okul kurum sahibi ana paneli — tüm KPI'lar tek uçtan, sunucuda hesaplanır.
+// params: { from, to } (ISO). Verilmezse backend "bugün" davranışına düşer.
+// Kurumun paketinde/kullanıcının rolünde olmayan modülün sayacı null gelir.
+export async function fetchSchoolDashboard(params = {}) {
+  return api.get('/api/admin/dashboard', { params });
+}
+
 export async function fetchAccountingDashboard(range = {}) {
   const response = await api.get('/api/accounting/dashboard', {
     params: Object.keys(range).length ? range : undefined,

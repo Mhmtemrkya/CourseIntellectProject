@@ -7,13 +7,29 @@ import {
   School,
   HelpCircle,
   Calendar,
+  CalendarCheck,
+  CalendarClock,
   Megaphone,
   MessageCircle,
   UserMinus,
+  UserCog,
   Wallet,
   Receipt,
   UserPlus,
   TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  ShieldCheck,
+  ClipboardCheck,
+  ClipboardList,
+  FileWarning,
+  BookOpen,
+  Bus,
+  Banknote,
+  Brain,
+  Archive,
+  Percent,
+  KeyRound,
 } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -24,10 +40,18 @@ import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import {
   PremiumListRow,
-  PremiumMetricCard,
   PremiumPanel,
+  PremiumStatusPill,
 } from '../components/ui/premium-dashboard';
-import { fetchScheduleEntries, fetchAdminAnalytics, fetchDrivingSchoolStatus } from '../lib/api/modules';
+import { KpiCard } from '../components/ui/kpi-card';
+import { useApp } from '../context/AppContext';
+import { getUserRoles } from '../lib/permissions';
+import {
+  fetchScheduleEntries,
+  fetchAdminAnalytics,
+  fetchDrivingSchoolStatus,
+  fetchSchoolDashboard,
+} from '../lib/api/modules';
 import { fetchAdminDashboardData } from '../lib/api/dashboardData';
 
 const containerVariants = {
@@ -63,12 +87,86 @@ function formatMoney(value) {
   return moneyFormatter.format(Number(value) || 0);
 }
 
-function StatCard({ title, value, icon: Icon, trend, tone, onClick }) {
-  return (
-    <motion.div variants={itemVariants}>
-      <PremiumMetricCard title={title} value={value} icon={Icon} trend={trend} tone={tone} onClick={onClick} />
-    </motion.div>
-  );
+const PERIOD_CAPTION = {
+  day: 'Bugün',
+  week: 'Son 7 gün',
+  month: 'Son 1 ay',
+  year: 'Son 1 yıl',
+  custom: 'Seçili aralık',
+};
+
+/**
+ * Kurum sahibinin panosu — sürücü kursu operasyon merkezinin okul karşılığı.
+ *
+ * Her satır: [kpi anahtarı, etiket, ikon, ton, alt bilgi, gideceği sayfa, seçenekler]
+ *  • Değer backend'den `null` gelirse kart HİÇ çizilmez: o modül kurumun
+ *    paketinde veya kullanıcının rolünde yok demektir (sunucu zaten
+ *    hesaplamamıştır — panoda yetkisiz veri görünmez).
+ *  • `range: true` olan sayaçlar seçili döneme aittir; alt bilgiye dönem yazılır.
+ *  • `money`/`percent` yalnızca biçimlendirmedir.
+ *  • `adminOnly: true` kartlar yalnız kurum sahibine görünür; hedef sayfa idari
+ *    personele kapalı olduğu için (AdminOnlyRoute) tıklayınca yönlendirilirdi.
+ */
+const KPI_META = [
+  ['activeStudents', 'Aktif Öğrenci', Users, 'brand', 'Kayıtlı ve aktif öğrenci', '/students'],
+  ['activeTeachers', 'Öğretmen', GraduationCap, 'emerald', 'Derse giren öğretmen', '/teachers'],
+  ['activeStaff', 'Toplam Personel', UserCog, 'cyan', 'Aktif kadro', '/admin/staff-hr'],
+  ['activeClasses', 'Aktif Sınıf', School, 'violet', 'Öğrencisi olan sınıf', '/classes'],
+  ['todayLessons', 'Bugünkü Ders', Calendar, 'blue', 'Programdaki ders saati', '/schedule'],
+  ['newRegistrations', 'Yeni Kayıt', UserPlus, 'emerald', null, '/students', { range: true }],
+  ['todayAbsent', 'Bugün Devamsız', AlertTriangle, 'rose', 'Derse gelmeyen öğrenci', '/attendance'],
+  ['attendanceRate', 'Devam Oranı', Percent, 'emerald', null, '/attendance', { range: true, percent: true }],
+  ['upcomingExams', 'Yaklaşan Sınav', CalendarCheck, 'blue', '30 gün içinde planlı', '/exams'],
+  ['pendingQuestions', 'Cevap Bekleyen Soru', HelpCircle, 'amber', 'Öğretmen yanıtı bekliyor', '/questions'],
+  ['unreadMessages', 'Okunmamış Mesaj', MessageCircle, 'violet', 'Size gelen yanıtsız mesaj', '/chat'],
+  ['pendingMeetings', 'Görüşme Talebi', Users, 'amber', 'Veli görüşmesi bekliyor', '/admin/meetings'],
+  ['pendingApprovals', 'Bekleyen Onay', ClipboardCheck, 'amber', 'Yönetici kararı bekliyor', '/admin/personnel-approvals', { adminOnly: true }],
+  ['pendingLeaves', 'Bekleyen İzin', CalendarClock, 'amber', 'Personel izin talebi', '/admin/staff-hr'],
+  ['todayOnLeave', 'Bugün İzinli', UserMinus, 'cyan', 'İzindeki personel', '/admin/staff-hr'],
+  ['overdueTasks', 'Geciken Görev', AlertTriangle, 'rose', 'Teslim tarihi geçti', '/admin/task-center'],
+  ['openTasks', 'Açık Görev', ClipboardList, 'blue', 'Devam eden görev', '/admin/task-center'],
+  ['expiringDocuments', 'Süresi Dolan Belge', FileWarning, 'amber', '30 gün içinde geçersiz', '/admin/documents'],
+  ['passwordResetRequests', 'Şifre Talebi', KeyRound, 'amber', 'Sıfırlama onayı bekliyor', '/admin/password-reset-requests'],
+  ['collections', 'Tahsilat', Banknote, 'emerald', null, '/finance/collections', { range: true, money: true }],
+  ['expenses', 'Gider', TrendingDown, 'rose', null, '/finance/expenses', { range: true, money: true }],
+  ['net', 'Net (Tahsilat − Gider)', Wallet, 'brand', null, '/finance/dashboard', { range: true, money: true }],
+  ['overdueInstallmentAmount', 'Geciken Ödeme', ShieldCheck, 'rose', null, '/finance/late-payments', { money: true }],
+  ['pendingInstallmentAmount', 'Bekleyen Taksit', CalendarClock, 'amber', null, '/finance/installments', { money: true }],
+  ['overdueLoans', 'Gecikmiş Kitap', BookOpen, 'amber', 'İade tarihi geçti', '/library'],
+  ['pendingGuidance', 'Rehberlik Talebi', Brain, 'violet', 'Randevu onayı bekliyor', '/g/appointments'],
+  ['activeServiceRoutes', 'Aktif Servis Rotası', Bus, 'cyan', 'Kullanımdaki rota', '/admin/service-tracking'],
+  ['activeAnnouncements', 'Duyuru', Megaphone, 'blue', 'Yayındaki duyuru', '/admin/announcements'],
+  ['passiveAccounts', 'Pasif Kayıt', Archive, 'rose', 'Arşivdeki hesap', '/admin/passive-records'],
+];
+
+const isoDay = (date) => date.toISOString().slice(0, 10);
+
+// Seçilen dönemi [from, to) aralığına çevirir. Bitiş HARİÇTİR (backend böyle bekler).
+function rangeFor(period, customFrom, customTo) {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(start);
+
+  if (period === 'day') {
+    end.setDate(end.getDate() + 1);
+  } else if (period === 'week') {
+    start.setDate(start.getDate() - 6);
+    end.setDate(end.getDate() + 1);
+  } else if (period === 'month') {
+    start.setMonth(start.getMonth() - 1);
+    end.setDate(end.getDate() + 1);
+  } else if (period === 'year') {
+    start.setFullYear(start.getFullYear() - 1);
+    end.setDate(end.getDate() + 1);
+  } else {
+    const from = new Date(`${customFrom}T00:00:00`);
+    const to = new Date(`${customTo}T00:00:00`);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
+    to.setDate(to.getDate() + 1);
+    return { from: from.toISOString(), to: to.toISOString() };
+  }
+
+  return { from: start.toISOString(), to: end.toISOString() };
 }
 
 function LessonCard({ lesson }) {
@@ -193,6 +291,11 @@ function FinancialChart({ buckets = [], loading = false }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useApp();
+  const isOwner = useMemo(() => {
+    const roles = getUserRoles(user);
+    return roles.includes('admin') || roles.includes('superadmin');
+  }, [user]);
   const [data, setData] = useState(null);
   const [todayLessons, setTodayLessons] = useState([]);
   const [selectedInteraction, setSelectedInteraction] = useState(null);
@@ -205,6 +308,8 @@ export default function Dashboard() {
   const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [overview, setOverview] = useState(null);
+  const [overviewError, setOverviewError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -214,11 +319,20 @@ export default function Dashboard() {
     return () => { active = false; };
   }, [navigate]);
 
-  const statRoutes = useMemo(() => ({
-    'Toplam Öğrenci': '/students',
-    'Toplam Öğretmen': '/teachers',
-    'Aktif Sınıf': '/classes',
-  }), []);
+  const range = useMemo(() => rangeFor(period, customFrom, customTo), [period, customFrom, customTo]);
+
+  const loadOverview = useCallback(async () => {
+    if (!range) return;
+    try {
+      setOverviewError('');
+      setOverview(await fetchSchoolDashboard(range));
+    } catch (err) {
+      setOverviewError(err.message || 'Kurum özeti alınamadı.');
+      setOverview(null);
+    }
+  }, [range]);
+
+  useEffect(() => { loadOverview(); }, [loadOverview]);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -282,11 +396,9 @@ export default function Dashboard() {
     );
   }
 
-  const stats = data?.stats || {};
   const lessons = todayLessons;
   const pendingItems = data?.pendingItems || [];
   const announcements = data?.announcements || [];
-  const quickStats = data?.quickStats || {};
   const classOptions = data?.classOptions || [];
   const selectedLessons = selectedClass === 'all'
     ? lessons
@@ -295,6 +407,39 @@ export default function Dashboard() {
   const buckets = analytics?.buckets || [];
   const totals = analytics?.totals || { revenue: 0, registrations: 0, expense: 0, net: 0 };
   const periodLabel = PERIOD_OPTIONS.find(([value]) => value === period)?.[1] || '';
+
+  // Grafik her zaman ÇOK KOVALI bir eğridir (ör. haftalık kırılım = son 12 hafta);
+  // üstteki KPI kartları ise yalnız seçili dönemi gösterir. İki blok farklı
+  // aralıkları ölçtüğü için grafiğin kendi aralığı açıkça yazılır.
+  const chartRangeLabel = (() => {
+    if (!analytics?.rangeStart || !analytics?.rangeEnd) return periodLabel.toLocaleLowerCase('tr-TR');
+    const fmt = (value) => {
+      const date = new Date(`${value}T00:00:00`);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: '2-digit' });
+    };
+    const last = new Date(`${analytics.rangeEnd}T00:00:00`);
+    last.setDate(last.getDate() - 1);
+    return `${fmt(analytics.rangeStart)} – ${fmt(isoDay(last))}`;
+  })();
+
+  const kpis = overview?.kpis || {};
+  const overviewAlerts = overview?.alerts || [];
+  // Karta yazılacak değeri ve alt bilgisini üretir. Sunucu null döndürdüyse
+  // (modül kapalı / yetki yok) kart hiç render edilmez.
+  const kpiCards = KPI_META
+    .filter(([key, , , , , , options]) => kpis[key] != null && !(options?.adminOnly && !isOwner))
+    .map(([key, label, Icon, tone, caption, path, options = {}]) => {
+      const raw = kpis[key];
+      const value = options.money
+        ? formatMoney(raw)
+        : options.percent
+          ? `%${Number(raw) || 0}`
+          : raw;
+      let cardCaption = options.range ? PERIOD_CAPTION[period] : caption;
+      if (key === 'pendingInstallmentAmount') cardCaption = `${kpis.pendingInstallments || 0} ödenmemiş taksit`;
+      if (key === 'overdueInstallmentAmount') cardCaption = `${kpis.overdueInstallments || 0} vadesi geçmiş taksit`;
+      return { key, label, Icon, tone, caption: cardCaption, path, value };
+    });
 
   return (
     <motion.div
@@ -306,8 +451,8 @@ export default function Dashboard() {
     >
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-heading">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Kurum operasyon özeti — {periodLabel.toLowerCase()} kazanç, kayıt ve gider canlı backend verisiyle.</p>
+          <h1 className="text-3xl font-bold font-heading">Kurum Operasyon Merkezi</h1>
+          <p className="text-muted-foreground mt-1">Öğrenci, personel, akademik ve finans göstergelerinin canlı özeti — her kart ilgili sayfaya gider.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex flex-wrap gap-1 rounded-2xl border border-foreground/10 bg-foreground/[0.03] p-1">
@@ -340,24 +485,44 @@ export default function Dashboard() {
         />
       ) : null}
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-        <StatCard title="Toplam Öğrenci" value={stats.totalStudents || 0} icon={Users} trend="Backend" tone="blue" onClick={() => navigate(statRoutes['Toplam Öğrenci'])} />
-        <StatCard title="Toplam Öğretmen" value={stats.totalTeachers || 0} icon={GraduationCap} trend="Aktif" tone="amber" onClick={() => navigate(statRoutes['Toplam Öğretmen'])} />
-        <StatCard title="Aktif Sınıf" value={stats.totalClasses || 0} icon={School} trend="Sınıf" tone="emerald" onClick={() => navigate(statRoutes['Aktif Sınıf'])} />
+      {overviewError ? (
+        <ErrorBanner
+          title="Kurum özeti alınamadı"
+          message={overviewError}
+          onRetry={loadOverview}
+        />
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5" data-testid="dashboard-kpi-grid">
+        {kpiCards.map((card) => (
+          <KpiCard
+            key={card.key}
+            testId={`dashboard-kpi-${card.key}`}
+            label={card.label}
+            value={card.value}
+            caption={card.caption}
+            icon={card.Icon}
+            tone={card.tone}
+            onClick={() => navigate(card.path)}
+          />
+        ))}
       </div>
 
       <motion.div variants={itemVariants}>
-        <PremiumPanel title="Kazanç & Gider Grafiği" description={`${periodLabel} kırılım — bir sütunun üstüne gelince o dönemin kazanç, gider ve kayıt detayı görünür`}>
+        <PremiumPanel title="Kazanç & Gider Grafiği" description={`${periodLabel} kırılım · ${chartRangeLabel} — bir sütunun üstüne gelince o dönemin kazanç, gider ve kayıt detayı görünür`}>
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,0.8fr)]">
             <div className="rounded-3xl border border-foreground/10 bg-[hsl(var(--ci-surface-1)/0.5)] p-6">
               <FinancialChart buckets={buckets} loading={analyticsLoading} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               {[
-                ['Toplam Kazanç', formatMoney(totals.revenue), Wallet, 'emerald', 'Dönem tahsilat toplamı'],
-                ['Toplam Gider', formatMoney(totals.expense), Receipt, 'rose', 'Maaş + fatura gideri'],
-                ['Kayıt Olan Öğrenci', totals.registrations || 0, UserPlus, 'sky', 'Dönemde kaydedilen'],
-                ['Net', formatMoney(totals.net), TrendingUp, totals.net >= 0 ? 'emerald' : 'rose', 'Kazanç − gider'],
+                // NOT: Bu dört toplam GRAFİĞİN TAMAMINI kapsar (ör. haftalık kırılımda
+                // son 12 hafta); üstteki kartlar ise yalnız seçili dönemi gösterir.
+                // Alt bilgilere aralık yazılmazsa iki blok çelişiyor sanılıyor.
+                ['Toplam Kazanç', formatMoney(totals.revenue), Wallet, 'emerald', `Tahsilat · ${chartRangeLabel}`],
+                ['Toplam Gider', formatMoney(totals.expense), Receipt, 'rose', `Gider defteri + bordro + fatura · ${chartRangeLabel}`],
+                ['Kayıt Olan Öğrenci', totals.registrations || 0, UserPlus, 'sky', `Kaydedilen · ${chartRangeLabel}`],
+                ['Net', formatMoney(totals.net), TrendingUp, totals.net >= 0 ? 'emerald' : 'rose', `Kazanç − gider · ${chartRangeLabel}`],
               ].map(([label, value, Icon, tone, detail]) => (
                 <div key={label} className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
                   <div className={`grid h-10 w-10 place-items-center rounded-2xl ${tone === 'emerald' ? 'bg-emerald-500/15 text-emerald-400' : tone === 'rose' ? 'bg-rose-500/15 text-rose-400' : 'bg-sky-500/15 text-sky-400'}`}>
@@ -442,25 +607,37 @@ export default function Dashboard() {
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <PremiumPanel title="Hızlı İstatistikler" description="Yönetim kararı için canlı ve anlamlı göstergeler" contentClassName="grid gap-3 sm:grid-cols-2">
-              {[
-                ['Bugün İzinli Personel', quickStats.todayLeaveCount || 0, UserMinus, data?.todayLeaves?.length ? data.todayLeaves.map((item) => item.staffName).join(', ') : 'Bugün izinli personel yok', null],
-                ['Yanıt Bekleyen Mesaj', quickStats.unansweredMessages || 0, MessageCircle, 'Geri dönüş bekleyen mesajlar', '/chat'],
-              ].map(([label, value, Icon, detail, action]) => (
+          <PremiumPanel
+            title="Operasyon Uyarıları"
+            description={overviewAlerts.length > 0
+              ? `${overviewAlerts.filter((item) => item.severity === 'Critical').length} kritik · ${overviewAlerts.filter((item) => item.severity !== 'Critical').length} uyarı`
+              : 'Müdahale gerektiren bir durum yok'}
+            contentClassName="space-y-2.5"
+          >
+              {overviewAlerts.length === 0 ? (
+                <div className="flex min-h-[180px] flex-col items-center justify-center text-center">
+                  <ShieldCheck className="h-10 w-10 text-emerald-500" />
+                  <p className="mt-3 font-bold">Kritik uyarı yok</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {data?.todayLeaves?.length
+                      ? `Bugün izinli personel: ${data.todayLeaves.map((item) => item.staffName).join(', ')}`
+                      : 'Tüm kontroller güncel.'}
+                  </p>
+                </div>
+              ) : overviewAlerts.map((alert, index) => (
                 <button
+                  key={`${alert.type}-${alert.title}-${index}`}
                   type="button"
-                  key={label}
-                  onClick={() => (action ? navigate(action) : undefined)}
-                  className={`rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 text-left transition-all ${action ? 'hover:border-[hsl(var(--brand-accent)/0.35)] hover:bg-[hsl(var(--brand-accent)/0.07)]' : 'cursor-default'}`}
+                  onClick={() => alert.actionPath && navigate(alert.actionPath)}
+                  className="flex w-full items-start justify-between gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left transition hover:border-[hsl(var(--brand-accent)/0.4)] hover:bg-[hsl(var(--brand-accent)/0.05)]"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <span className="text-2xl font-black tabular-nums">{value}</span>
-                  </div>
-                  <p className="mt-3 text-sm font-bold">{label}</p>
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{detail}</p>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{alert.title}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">{alert.message}</span>
+                  </span>
+                  <PremiumStatusPill tone={alert.severity === 'Critical' ? 'danger' : 'warn'}>
+                    {alert.severity === 'Critical' ? 'Kritik' : 'Uyarı'}
+                  </PremiumStatusPill>
                 </button>
               ))}
           </PremiumPanel>

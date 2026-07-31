@@ -1,19 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import {
-  Calendar, CheckCircle2, ChevronRight, Clock3, FileQuestion, Layers3, Send, Target,
-} from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
-import { getResourceTheme } from '../../components/ui/PremiumResourceCard';
 import { AnimatedValue } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import ExamEntryGate from '../../components/student/ExamEntryGate';
 import { useApp } from '../../context/AppContext';
 import {
@@ -266,86 +261,45 @@ export default function StudentExams({ mockOnly = false }) {
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
-          [overallStats.totalExams, pageCopy.totalLabel, FileQuestion, 'from-sky-400 to-blue-600'],
-          [examsThisWeek, 'Bu Hafta', Calendar, 'from-emerald-400 to-teal-600'],
-          [examsToday, 'Bugün', Clock3, 'from-amber-400 to-orange-600'],
-          [readySessions, 'Hazır Oturum', Layers3, 'from-violet-400 to-fuchsia-600'],
-        ].map(([value, label, Icon, gradient]) => (
-          <div key={label} className="ci-metric-card flex items-center gap-4 rounded-2xl border border-foreground/10 p-4">
-            <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-[0_12px_28px_hsl(var(--brand-accent)/0.22)] ${gradient}`}>
-              <Icon className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-2xl font-black tracking-tight"><AnimatedValue value={value} /></p>
-              <p className="text-sm text-muted-foreground">{label}</p>
-            </div>
+          [overallStats.totalExams, pageCopy.totalLabel],
+          [examsThisWeek, 'Bu Hafta'],
+          [examsToday, 'Bugün'],
+          [readySessions, 'Hazır Oturum'],
+        ].map(([value, label]) => (
+          <div key={label} className="ci-metric-card rounded-2xl border border-foreground/10 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+            <p className="mt-2 truncate text-3xl font-black tracking-tight"><AnimatedValue value={value} /></p>
           </div>
         ))}
       </div>
 
       <div className="space-y-4">
         {upcomingExams.length === 0 ? (
-          <StudentEmptyState
-            variant="exam"
-            accent="purple"
-            title={pageCopy.emptyTitle}
-            description={pageCopy.emptyDescription}
-            primaryLabel={pageCopy.emptyAction}
-            onPrimary={loadExams}
-          />
-        ) : upcomingExams.map((exam) => {
-          const theme = getResourceTheme(exam.subject);
-          return (
-            <Card key={exam.id} className="overflow-hidden rounded-[24px] border border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-foreground/20">
-              <CardContent className="p-0">
-                <div className="relative overflow-hidden p-6" style={{ background: `radial-gradient(circle at 88% -20%, ${theme.hue}2e, transparent 50%), radial-gradient(circle at 0% 120%, rgba(255,157,46,0.08), transparent 40%)` }}>
-                  <div className="absolute -right-3 -top-5 text-[88px] font-black leading-none" style={{ color: `${theme.hue}16` }}>{theme.mark}</div>
-                  <div className="relative flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="mb-3 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.18em]" style={{ borderColor: `${theme.hue}38`, backgroundColor: `${theme.hue}1a`, color: theme.hue }}>
-                        {exam.subject}
-                      </div>
-                      <h3 className="text-2xl font-black leading-tight">{exam.name}</h3>
-                      <p className="mt-2 text-sm text-slate-400">{theme.tagline}</p>
-                    </div>
-                    <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.05] px-4 py-3 text-right">
-                      <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Planlanan</div>
-                      <div className="mt-1 text-base font-black text-white">{exam.date.toLocaleDateString('tr-TR')}</div>
-                    </div>
+          <Card className="rounded-2xl">
+            <CardContent className="p-8 text-center">
+              <h3 className="text-xl font-black">{pageCopy.emptyTitle}</h3>
+              <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">{pageCopy.emptyDescription}</p>
+              <Button className="mt-5" onClick={loadExams}>{pageCopy.emptyAction}</Button>
+            </CardContent>
+          </Card>
+        ) : upcomingExams.map((exam) => (
+            <Card key={exam.id} className="rounded-2xl border-foreground/10 shadow-sm transition hover:border-foreground/20">
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{exam.subject} • {exam.type}</p>
+                    <h3 className="mt-1 text-lg font-black sm:text-xl">{exam.name}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {[exam.className, exam.date.toLocaleDateString('tr-TR'), formatDuration(exam.duration), exam.questionCount ? `${exam.questionCount} soru` : null].filter(Boolean).join(' • ')}
+                    </p>
                   </div>
-                </div>
-                <div className="space-y-4 border-t border-foreground/[0.07] p-6">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {[exam.className, exam.type].filter(Boolean).map((chip) => (
-                      <span key={chip} className="rounded-full border border-foreground/10 bg-foreground/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">{chip}</span>
-                    ))}
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    {[
-                      [Layers3, 'Soru Sayısı', exam.questionCount],
-                      [Clock3, 'Süre', formatDuration(exam.duration)],
-                      [Target, 'Sınav Tipi', exam.type],
-                    ].map(([Icon, label, value]) => (
-                      <div key={label} className="rounded-2xl border border-foreground/[0.07] bg-foreground/[0.04] p-4">
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <Icon className="h-4 w-4" style={{ color: theme.hue }} />
-                          {label}
-                        </div>
-                        <div className="mt-2 text-2xl font-black text-white">{value}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex justify-end">
-                    <Button onClick={() => startExam(exam)} disabled={submitting} className="h-11 rounded-xl bg-orange-500 px-6 font-black text-white shadow-[0_14px_30px_-18px_rgba(255,157,46,0.9)] hover:bg-orange-600">
-                      Sınava Gir
-                      <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button onClick={() => startExam(exam)} disabled={submitting} className="h-11 w-full shrink-0 rounded-xl bg-orange-500 px-6 font-black text-white hover:bg-orange-600 sm:w-32">
+                    Sınava Gir
+                  </Button>
                 </div>
               </CardContent>
             </Card>
-          );
-        })}
+        ))}
       </div>
 
       <Dialog open={!!activeExam} onOpenChange={(open) => {
@@ -359,10 +313,7 @@ export default function StudentExams({ mockOnly = false }) {
         <DialogContent className="w-[min(96vw,1100px)] max-w-[1100px] max-h-[92vh] overflow-y-auto">
           {deliveryState ? (
             <div className="rounded-[28px] p-10 text-white ci-hero">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-foreground/15">
-                <Send className="h-10 w-10" />
-              </div>
-              <h2 className="mt-6 text-center text-3xl font-black">Öğretmeninize Gönderildi</h2>
+              <h2 className="text-center text-3xl font-black">Öğretmeninize Gönderildi</h2>
               <p className="mt-3 text-center text-foreground/85">
                 Sınavın teslim edildi. Son değerlendirme öğretmen ekranında görünecek.
               </p>
@@ -430,7 +381,7 @@ export default function StudentExams({ mockOnly = false }) {
                               option
                             )}
                           </div>
-                          {selected ? <CheckCircle2 className="h-5 w-5 text-brand-primary" /> : null}
+                          {selected ? <span className="text-sm font-bold text-brand-primary">Seçildi</span> : null}
                         </button>
                       );
                     })}
@@ -488,19 +439,5 @@ export default function StudentExams({ mockOnly = false }) {
         />
       ) : null}
     </motion.div>
-  );
-}
-
-function Metric({
-  icon: Icon, label, value, tone,
-}) {
-  return (
-    <div className="rounded-2xl bg-muted/40 p-4">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Icon className={`h-4 w-4 ${tone}`} />
-        {label}
-      </div>
-      <div className="mt-2 text-2xl font-bold">{value}</div>
-    </div>
   );
 }

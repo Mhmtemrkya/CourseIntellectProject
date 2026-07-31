@@ -48,7 +48,7 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
             return StatusCode(StatusCodes.Status403Forbidden, new { message = "Kurum bağlamı bulunamadı. Lütfen kurum hesabıyla tekrar giriş yapın." });
         }
 
-        var entries = await LoadEntriesAsync(tenantId.Value, cancellationToken);
+        var entries = await LoadEntriesAsync(dbContext, tenantId.Value, cancellationToken);
         return Ok(entries
             .OrderBy(item => item.ClassName, ClassNameComparer)
             .ThenBy(item => DayOrder(item.Day))
@@ -70,7 +70,7 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
         try
         {
             var normalized = Normalize(request) with { Id = Guid.NewGuid().ToString("N"), IsReadOnly = false };
-            var entries = await LoadEntriesAsync(tenantId.Value, cancellationToken);
+            var entries = await LoadEntriesAsync(dbContext, tenantId.Value, cancellationToken);
 
             await ValidateTeacherBranchAsync(tenantId.Value, normalized, cancellationToken);
             ValidateConflicts(normalized, entries, normalized.Id);
@@ -118,7 +118,7 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
         try
         {
             var normalized = Normalize(request) with { Id = id.Trim(), IsReadOnly = false };
-            var entries = await LoadEntriesAsync(tenantId.Value, cancellationToken);
+            var entries = await LoadEntriesAsync(dbContext, tenantId.Value, cancellationToken);
 
             await ValidateTeacherBranchAsync(tenantId.Value, normalized, cancellationToken);
             ValidateConflicts(normalized, entries, normalized.Id);
@@ -162,9 +162,15 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
         return NoContent();
     }
 
-    private async Task<List<ScheduleEntryDto>> LoadEntriesAsync(Guid tenantId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Kurumun ders programı satırları. Ana panel de bugünün ders sayısını buradan
+    /// okur; program çözümlemesi (eski/yeni kayıt biçimi, geçerli sınıf süzgeci)
+    /// tek yerde kalsın diye statik ve paylaşımlıdır.
+    /// </summary>
+    internal static async Task<List<ScheduleEntryDto>> LoadEntriesAsync(
+        CourseIntellectDbContext dbContext, Guid tenantId, CancellationToken cancellationToken)
     {
-        var validClasses = await LoadValidClassKeysAsync(tenantId, cancellationToken);
+        var validClasses = await LoadValidClassKeysAsync(dbContext, tenantId, cancellationToken);
         if (validClasses.Count == 0)
         {
             return [];
@@ -209,7 +215,8 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
             .ToList();
     }
 
-    private async Task<HashSet<string>> LoadValidClassKeysAsync(Guid tenantId, CancellationToken cancellationToken)
+    private static async Task<HashSet<string>> LoadValidClassKeysAsync(
+        CourseIntellectDbContext dbContext, Guid tenantId, CancellationToken cancellationToken)
     {
         var classes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
