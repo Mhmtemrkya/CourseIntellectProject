@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   CreditCard,
@@ -14,12 +14,12 @@ import {
 } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import RoleDashboardColumns from '../../components/dashboard/RoleDashboardColumns';
 import { fetchAccountingDashboard, fetchFinanceDashboard } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 import { filterByPeriod, periodLabel as buildPeriodLabel, shiftAnchor, parseTrDateTime } from '../../lib/financePeriod';
 import {
   PremiumListRow,
-  PremiumMetricCard,
   PremiumPanel,
 } from '../../components/ui/premium-dashboard';
 
@@ -292,6 +292,7 @@ function RateGauge({ rate }) {
 }
 
 export default function FinanceDashboard() {
+  const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [finance, setFinance] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -431,6 +432,32 @@ export default function FinanceDashboard() {
   }
 
   const periodText = buildPeriodLabel(period, anchor);
+  const financeGroups = [
+    {
+      key: 'flow', title: 'Nakit Akışı', description: `${periodText} gelir ve gider özeti`,
+      cards: [
+        { key: 'collected', label: 'Tahsilat', value: formatTry(periodStats.collected), caption: `${periodStats.count} işlem`, icon: CreditCard, tone: 'emerald', path: '/finance/collections' },
+        { key: 'expense', label: 'Gider', value: formatTry(periodStats.expense), caption: 'Maaş ve fatura', icon: Landmark, tone: 'rose', path: '/finance/expenses' },
+        { key: 'net', label: 'Net Akış', value: `${periodStats.net >= 0 ? '+' : ''}${formatTry(periodStats.net)}`, caption: periodStats.net >= 0 ? 'Dönem pozitif' : 'Dönem negatif', icon: periodStats.net >= 0 ? TrendingUp : TrendingDown, tone: periodStats.net >= 0 ? 'blue' : 'rose', path: '/finance/ledger' },
+      ],
+    },
+    {
+      key: 'collection', title: 'Tahsilat Performansı', description: 'Hedef ve gerçekleşme durumu',
+      cards: [
+        { key: 'rate', label: 'Tahsilat Oranı', value: `%${periodStats.rate}`, caption: `Hedef ${formatTry(periodStats.target)}`, icon: Target, tone: 'brand', path: '/finance/dashboard' },
+        { key: 'remaining', label: 'Hedefe Kalan', value: formatTry(periodStats.remaining), caption: 'Dönem hedefi için', icon: Banknote, tone: 'amber', path: '/finance/collection-calendar' },
+        { key: 'refunds', label: 'İade', value: formatTry(periodStats.refundTotal), caption: 'Dönem içindeki iadeler', icon: Receipt, tone: 'violet', path: '/finance/refunds' },
+      ],
+    },
+    {
+      key: 'risk', title: 'Ödeme Riski', description: 'Öncelikli takip edilmesi gereken kayıtlar',
+      cards: [
+        { key: 'overdueAmount', label: 'Geciken Tutar', value: formatTry(periodStats.overdueEntries.reduce((sum, entry) => sum + parseMoney(entry.amount), 0)), caption: `${periodStats.overdueEntries.length} kayıt`, icon: AlertCircle, tone: 'rose', path: '/finance/late-payments' },
+        { key: 'overdueCount', label: 'Geciken Kayıt', value: periodStats.overdueEntries.length, caption: 'Vadesi geçmiş ödeme', icon: Calendar, tone: 'amber', path: '/finance/late-payments' },
+        { key: 'downPayments', label: 'Bekleyen Peşinat', value: finance?.pendingDownPaymentCount || 0, caption: formatTry(parseMoney(finance?.pendingDownPaymentTotal)), icon: Users, tone: 'violet', path: '/finance/installments' },
+      ],
+    },
+  ];
 
   return (
     <motion.div
@@ -468,27 +495,7 @@ export default function FinanceDashboard() {
         </div>
       </motion.div>
 
-      {/* Finansal özet kartları — tümü seçili döneme göre */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <motion.div variants={itemVariants}>
-          <PremiumMetricCard
-            title="Dönem Tahsilatı"
-            value={formatTry(periodStats.collected)}
-            caption={periodStats.refundTotal > 0
-              ? `${periodStats.count} işlem · brüt ${formatTry(periodStats.grossCollected)} − iade ${formatTry(periodStats.refundTotal)}`
-              : `${periodStats.count} işlem · ${periodText}`}
-            icon={CreditCard} tone="emerald" chart="bars" chartValues={flowBuckets.map((b) => b.income)} />
-        </motion.div>
-        <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Dönem Gideri" value={formatTry(periodStats.expense)} caption="Maaş + fatura gideri" icon={Landmark} tone="rose" chart="bars" chartValues={flowBuckets.map((b) => b.expense)} />
-        </motion.div>
-        <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Net Akış" value={`${periodStats.net >= 0 ? '+' : ''}${formatTry(periodStats.net)}`} caption={periodStats.net >= 0 ? 'Dönem pozitif' : 'Dönem negatif'} icon={periodStats.net >= 0 ? TrendingUp : TrendingDown} tone={periodStats.net >= 0 ? 'blue' : 'amber'} chart="line" chartValues={flowBuckets.map((b) => b.net)} />
-        </motion.div>
-        <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Geciken" value={formatTry(periodStats.overdueEntries.reduce((s, e) => s + parseMoney(e.amount), 0))} caption={`${periodStats.overdueEntries.length} kayıt takipte`} icon={AlertCircle} tone="amber" chart="line" chartValues={flowBuckets.map((b) => b.expense)} />
-        </motion.div>
-      </div>
+      <RoleDashboardColumns groups={financeGroups} navigate={navigate} testId="finance-dashboard-columns" />
 
       {/* Gelir-Gider grafiği (profesyonel) */}
       <motion.div variants={itemVariants}>

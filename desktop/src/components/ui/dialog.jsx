@@ -36,9 +36,10 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
       <DialogPrimitive.Title className="sr-only">Dialog</DialogPrimitive.Title>
       {children}
       <DialogPrimitive.Close
-        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-muted/55 text-muted-foreground transition-all hover:border-[hsl(var(--brand-accent)/0.35)] hover:bg-[hsl(var(--brand-accent)/0.1)] hover:text-foreground focus:outline-none focus:ring-2 focus:ring-[hsl(var(--brand-accent)/0.4)] disabled:pointer-events-none">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
+        aria-label="Kapat"
+        className="absolute right-5 top-5 z-10 grid h-9 w-9 place-items-center rounded-xl border border-border/70 bg-muted/55 p-0 text-muted-foreground transition-all hover:border-[hsl(var(--brand-accent)/0.35)] hover:bg-[hsl(var(--brand-accent)/0.1)] hover:text-foreground focus:outline-none focus:ring-2 focus:ring-[hsl(var(--brand-accent)/0.4)] disabled:pointer-events-none">
+        <X className="block h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="sr-only">Kapat</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>
@@ -50,7 +51,7 @@ const DialogHeader = ({
   ...props
 }) => (
   <div
-    className={cn("flex flex-col space-y-1.5 border-b border-border/55 pb-4 pr-10 text-center sm:text-left", className)}
+    className={cn("flex flex-col space-y-1.5 border-b border-border/55 pb-4 pr-12 text-center sm:text-left", className)}
     {...props} />
 )
 DialogHeader.displayName = "DialogHeader"

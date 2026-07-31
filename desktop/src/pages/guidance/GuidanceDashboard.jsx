@@ -22,6 +22,7 @@ import {
 } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import RoleDashboardColumns from '../../components/dashboard/RoleDashboardColumns';
 import { useToast } from '../../hooks/use-toast';
 import {
   createGuidanceRiskReview,
@@ -97,6 +98,30 @@ export default function GuidanceDashboard() {
     }))
     .filter((item) => item.value > 0), [students]);
 
+  const dashboardGroups = [
+    {
+      key: 'risk', title: 'Risk Takibi', description: 'Öncelikli incelenmesi gereken öğrenci durumu',
+      cards: [
+        { key: 'tracked', label: 'Takipteki Öğrenci', value: students.length, caption: 'Rehberlik kapsamındaki öğrenci', icon: Users, tone: 'blue' },
+        { key: 'attention', label: 'İlgilenilecek', value: attention.length, caption: 'İnceleme bekleyen riskli kayıt', icon: ShieldAlert, tone: 'rose' },
+      ],
+    },
+    {
+      key: 'planning', title: 'Görüşme ve Takip', description: 'Yaklaşan görüşme ve randevu yükü',
+      cards: [
+        { key: 'followups', label: 'Yaklaşan Takip', value: followUps.length, caption: 'Takip tarihi yaklaşan görüşme', icon: CalendarClock, tone: 'amber' },
+        { key: 'appointments', label: 'Bekleyen Randevu', value: pendingAppointments, caption: 'Karar bekleyen görüşme talebi', icon: BellRing, tone: 'violet', path: '/g/appointments' },
+      ],
+    },
+    {
+      key: 'distribution', title: 'Risk Dağılımı', description: 'Yüksek ve orta risk yoğunluğu',
+      cards: [
+        { key: 'highRisk', label: 'Yüksek Risk', value: students.filter((student) => student.riskLevel === 'high').length, caption: 'Öncelikli müdahale', icon: AlertTriangle, tone: 'rose' },
+        { key: 'mediumRisk', label: 'Orta Risk', value: students.filter((student) => student.riskLevel === 'medium').length, caption: 'Yakın takip gereken', icon: ClipboardCheck, tone: 'amber' },
+      ],
+    },
+  ];
+
   const markReviewed = async (student) => {
     try {
       await createGuidanceRiskReview({
@@ -129,27 +154,7 @@ export default function GuidanceDashboard() {
 
       {error ? <ErrorBanner title="Veriler alınamadı" message={error} onRetry={load} /> : null}
 
-      {/* Özet kartları */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { icon: Users, label: 'Takipteki Öğrenci', value: students.length, color: '#3b82f6' },
-          { icon: ShieldAlert, label: 'İlgilenilecek', value: attention.length, color: '#ef4444' },
-          { icon: CalendarClock, label: 'Yaklaşan Takip', value: followUps.length, color: '#f59e0b' },
-          { icon: BellRing, label: 'Bekleyen Randevu', value: pendingAppointments, color: '#8b5cf6' },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-2xl border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: `${stat.color}1a`, color: stat.color }}>
-                <stat.icon className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-2xl font-black">{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <RoleDashboardColumns groups={dashboardGroups} navigate={navigate} testId="guidance-dashboard-columns" />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         {/* Öğrenci listesi */}

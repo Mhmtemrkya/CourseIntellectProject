@@ -16,6 +16,7 @@ import {
   UtensilsCrossed,
 } from 'lucide-react';
 import { fetchCafeteriaWeek, saveCafeteriaWeek } from '../../lib/api/modules';
+import RoleDashboardColumns from '../../components/dashboard/RoleDashboardColumns';
 
 const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const meals = [
@@ -120,6 +121,39 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
     fat: sum.fat + nutritionValue(meal.fatGrams),
     fiber: sum.fiber + nutritionValue(meal.fiberGrams),
   }), { calories: 0, protein: 0, carbohydrate: 0, fat: 0, fiber: 0 }), [week]);
+  const menuSummary = useMemo(() => {
+    const entries = week?.meals || [];
+    const planned = entries.filter((meal) => Array.isArray(meal.items) && meal.items.length > 0);
+    return {
+      planned: planned.length,
+      missing: Math.max(0, entries.length - planned.length),
+      allergens: new Set(entries.flatMap((meal) => meal.allergens || []).filter(Boolean)).size,
+    };
+  }, [week]);
+
+  const dashboardGroups = [
+    {
+      key: 'plan', title: 'Haftalık Plan', description: 'Menü hazırlık ve eksik kayıt durumu',
+      cards: [
+        { key: 'planned', label: 'Planlanan Öğün', value: menuSummary.planned, caption: 'Menüsü tamamlanan', icon: UtensilsCrossed, tone: 'emerald' },
+        { key: 'missing', label: 'Eksik Öğün', value: menuSummary.missing, caption: 'Menü girişi bekleyen', icon: Info, tone: menuSummary.missing ? 'rose' : 'blue' },
+      ],
+    },
+    {
+      key: 'nutrition', title: 'Beslenme Özeti', description: 'Haftalık programın temel değerleri',
+      cards: [
+        { key: 'calories', label: 'Toplam Kalori', value: `${Math.round(total.calories)} kcal`, caption: 'Planlanan tüm öğünler', icon: Flame, tone: 'amber' },
+        { key: 'fiber', label: 'Toplam Lif', value: `${Math.round(total.fiber)} g`, caption: 'Haftalık menü toplamı', icon: Leaf, tone: 'emerald' },
+      ],
+    },
+    {
+      key: 'safety', title: 'Gıda Güvenliği', description: 'Alerjen ve menü kontrol bilgileri',
+      cards: [
+        { key: 'allergens', label: 'Alerjen Türü', value: menuSummary.allergens, caption: 'Programda bildirilen', icon: Info, tone: menuSummary.allergens ? 'amber' : 'blue' },
+        { key: 'days', label: 'Planlanan Gün', value: 7, caption: `${formatDay(weekStart)} başlangıç`, icon: CalendarDays, tone: 'cyan' },
+      ],
+    },
+  ];
 
   const updateSelectedMeal = (patch) => {
     if (!selectedMeal) return;
@@ -198,6 +232,8 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
 
       {error && <div className="mb-5 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
       {message && <div className="mb-5 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">{message}</div>}
+
+      {!loading ? <div className="mb-6"><RoleDashboardColumns groups={dashboardGroups} testId="cafeteria-dashboard-columns" /></div> : null}
 
       <div className={editable ? 'grid gap-5 xl:grid-cols-[minmax(680px,1fr)_330px]' : ''}>
         <section className="min-w-0 overflow-hidden rounded-2xl border border-foreground/10 bg-foreground/[0.025]">

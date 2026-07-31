@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import { Save, Briefcase, Copy, BusFront, Route, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { FeatureGate } from '../../components/FeatureGate';
@@ -158,11 +159,14 @@ const buildStaffEditForm = (staff = {}) => ({
 export default function AdminStaffRegistration() {
   const { toast } = useToast();
   const { user } = useApp();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const directoryMode = searchParams.get('view') === 'directory';
   const tenantName = user?.tenant || '';
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [allStaff, setAllStaff] = useState([]);
-  const [roleFilter, setRoleFilter] = useState('Teacher');
+  const [roleFilter, setRoleFilter] = useState(() => searchParams.get('role') || 'all');
+  const [staffSearch, setStaffSearch] = useState('');
   const [branches, setBranches] = useState([]);
   const [branchId, setBranchId] = useState('');
   const [customRoles, setCustomRoles] = useState([]);
@@ -496,6 +500,44 @@ export default function AdminStaffRegistration() {
       : form.role === 'Administrative' || form.role === 'ServiceDriver' ? administrativeBranches : teacherBranches;
   const isServiceDriver = form.role === 'ServiceDriver';
 
+  const staffFilterOptions = useMemo(() => {
+    const custom = customRoles.map((role) => ({ value: `custom:${role.id}`, label: role.name }));
+    return [{ value: 'all', label: 'Tüm Roller' }, ...staffRoleFilters, ...custom];
+  }, [customRoles]);
+
+  const selectedStaffRole = staffFilterOptions.find((role) => role.value === roleFilter) || staffFilterOptions[0];
+  const filteredStaff = useMemo(() => {
+    const normalize = (value) => String(value || '').trim().toLocaleLowerCase('tr-TR');
+    const query = normalize(staffSearch);
+    return allStaff.filter((staff) => {
+      const matchesRole = roleFilter === 'all'
+        || (roleFilter.startsWith('custom:')
+          ? String(staff.customRoleId || '') === roleFilter.slice(7)
+          : [staff.primaryRole, staff.role].some((value) => (
+            normalize(value) === normalize(selectedStaffRole?.value)
+            || normalize(value) === normalize(selectedStaffRole?.label)
+          )));
+      if (!matchesRole) return false;
+      if (!query) return true;
+      return [staff.fullName, staff.username, staff.departmentOrBranch, staff.campus]
+        .some((value) => normalize(value).includes(query));
+    });
+  }, [allStaff, roleFilter, selectedStaffRole, staffSearch]);
+
+  const handleStaffRoleChange = (value) => {
+    setRoleFilter(value);
+    const next = new URLSearchParams(searchParams);
+    next.set('role', value);
+    if (directoryMode) next.set('view', 'directory');
+    setSearchParams(next, { replace: true });
+  };
+
+  const openRegistrationForm = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('view');
+    setSearchParams(next, { replace: true });
+  };
+
   const createTeacherBranch = async (name) => {
     const next = mergeBranches(savedBranches, [name]);
     try {
@@ -511,20 +553,25 @@ export default function AdminStaffRegistration() {
 
   return (
     <motion.div className="space-y-6" initial="hidden" animate="visible" variants={containerVariants}>
-      <motion.div variants={itemVariants} className="flex items-center gap-3">
+      <motion.div variants={itemVariants} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
         <div className="p-2 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl text-white">
           <Briefcase className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Personel Kaydı</h1>
+          <h1 className="text-2xl font-bold">{directoryMode ? 'Aktif Personel' : 'Personel Kaydı'}</h1>
           <p className="text-sm text-muted-foreground">
-            Öğretmen, idari personel veya yemekhaneci kaydı. Kullanıcı adı ve geçici şifre otomatik üretilir.
+            {directoryMode
+              ? 'Kurum kadrosunu role göre filtreleyin, arayın ve yetkili olduğunuz kayıtları yönetin.'
+              : 'Öğretmen, idari personel veya yemekhaneci kaydı. Kullanıcı adı ve geçici şifre otomatik üretilir.'}
           </p>
         </div>
+        </div>
+        {directoryMode ? <Button onClick={openRegistrationForm}>Yeni Personel Kaydı</Button> : null}
       </motion.div>
 
-      <div className="grid grid-cols-3 gap-6">
-        <motion.div variants={itemVariants} className="col-span-2">
+      <div className={directoryMode ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 gap-6 xl:grid-cols-3'}>
+        {!directoryMode ? <motion.div variants={itemVariants} className="xl:col-span-2">
           <Card>
             <CardHeader>
               <CardTitle>Personel Bilgileri</CardTitle>
@@ -721,50 +768,60 @@ export default function AdminStaffRegistration() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </motion.div> : null}
 
         <motion.div variants={itemVariants}>
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Role Göre Personel</CardTitle>
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-base">Aktif Personel Listesi</CardTitle>
+              <p className="text-sm text-muted-foreground">Kadroya rol filtresi ve personel araması uygulayın.</p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger><SelectValue placeholder="Rol seçin" /></SelectTrigger>
-                <SelectContent>
-                  {staffRoleFilters.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="grid gap-3 md:grid-cols-[minmax(220px,0.7fr)_minmax(260px,1.3fr)]">
+                <Select value={roleFilter} onValueChange={handleStaffRoleChange}>
+                  <SelectTrigger aria-label="Personel rolü"><SelectValue placeholder="Rol seçin" /></SelectTrigger>
+                  <SelectContent>
+                    {staffFilterOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={staffSearch}
+                  onChange={(event) => setStaffSearch(event.target.value)}
+                  placeholder="Ad, kullanıcı adı, birim veya kampüs ara"
+                  aria-label="Personel ara"
+                />
+              </div>
 
-              {(() => {
-                const selectedRole = staffRoleFilters.find((r) => r.value === roleFilter);
-                const norm = (v) => String(v || '').trim().toLocaleLowerCase('tr');
-                const filtered = allStaff.filter((s) => {
-                  const role = norm(s.primaryRole || s.role);
-                  return role === norm(selectedRole?.value) || role === norm(selectedRole?.label);
-                });
-                return (
-                  <>
-                    <div className="rounded-xl border bg-muted/30 p-3">
-                      <p className="text-xs text-muted-foreground">{selectedRole?.label} Sayısı</p>
-                      <p className="mt-1 text-2xl font-bold">{filtered.filter((s) => !isUserPassive(s.status)).length}</p>
-                    </div>
-                    {loading ? (
-                      <div className="flex justify-center py-4"><LoadingDots /></div>
-                    ) : filtered.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">Bu rolde kayıtlı personel yok.</p>
-                    ) : (
-                      <div className="space-y-2 max-h-[360px] overflow-y-auto">
-                        {filtered.map((s, i) => {
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/30 p-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">{selectedStaffRole?.label}</p>
+                  <p className="mt-1 text-2xl font-bold">{filteredStaff.filter((staff) => !isUserPassive(staff.status)).length}</p>
+                </div>
+                <p className="text-xs text-muted-foreground">Yalnız aktif personel kayıtları gösterilir.</p>
+              </div>
+
+              {loading ? (
+                <div className="flex justify-center py-8"><LoadingDots /></div>
+              ) : filteredStaff.length === 0 ? (
+                <div className="rounded-xl border border-dashed p-8 text-center">
+                  <p className="font-medium">Eşleşen personel bulunamadı.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Rol filtresini veya arama metnini değiştirin.</p>
+                </div>
+              ) : (
+                <div className={directoryMode ? 'grid gap-3 md:grid-cols-2 xl:grid-cols-3' : 'max-h-[360px] space-y-2 overflow-y-auto'}>
+                        {filteredStaff.map((s, i) => {
                           const isPassive = isUserPassive(s.status);
+                          const customRole = customRoles.find((role) => String(role.id) === String(s.customRoleId || ''));
+                          const standardRole = staffRoleFilters.find((role) => String(role.value).toLowerCase() === String(s.primaryRole || s.role || '').toLowerCase());
+                          const roleLabel = customRole?.name || standardRole?.label || s.primaryRole || s.role || 'Rol belirtilmemiş';
                           return (
-                            <div key={s.id || i} className={`flex items-center gap-3 p-2 rounded-lg bg-muted/40 ${isPassive ? 'opacity-60' : ''}`}>
-                              <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xs font-bold text-purple-600">
+                            <div key={s.id || i} className={`flex items-center gap-3 rounded-xl border border-foreground/10 bg-muted/30 p-3 ${isPassive ? 'opacity-60' : ''}`}>
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600 dark:bg-purple-900/30">
                                 {(s.fullName || '?')[0]}
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-medium truncate">{s.fullName}{isPassive ? ' · Pasif' : ''}</p>
-                                <p className="text-xs text-muted-foreground">{s.departmentOrBranch || selectedRole?.label}</p>
+                                <p className="truncate text-xs text-muted-foreground">{roleLabel} · {s.departmentOrBranch || s.campus || 'Birim belirtilmemiş'}</p>
                               </div>
                               <button
                                 type="button"
@@ -795,11 +852,8 @@ export default function AdminStaffRegistration() {
                             </div>
                           );
                         })}
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

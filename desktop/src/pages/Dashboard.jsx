@@ -3,11 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
-  GraduationCap,
   School,
-  HelpCircle,
-  Calendar,
-  CalendarCheck,
   CalendarClock,
   Megaphone,
   MessageCircle,
@@ -20,22 +16,14 @@ import {
   TrendingDown,
   AlertTriangle,
   ShieldCheck,
-  ClipboardCheck,
   ClipboardList,
-  FileWarning,
   BookOpen,
   Bus,
   Banknote,
   Brain,
   Archive,
-  Percent,
-  KeyRound,
 } from 'lucide-react';
-import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import {
@@ -43,11 +31,8 @@ import {
   PremiumPanel,
   PremiumStatusPill,
 } from '../components/ui/premium-dashboard';
-import { KpiCard } from '../components/ui/kpi-card';
-import { useApp } from '../context/AppContext';
-import { getUserRoles } from '../lib/permissions';
+import RoleDashboardColumns from '../components/dashboard/RoleDashboardColumns';
 import {
-  fetchScheduleEntries,
   fetchAdminAnalytics,
   fetchDrivingSchoolStatus,
   fetchSchoolDashboard,
@@ -62,16 +47,6 @@ const containerVariants = {
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
-};
-
-const todayKeyMap = {
-  1: 'Pazartesi',
-  2: 'Salı',
-  3: 'Çarşamba',
-  4: 'Perşembe',
-  5: 'Cuma',
-  6: 'Cumartesi',
-  0: 'Pazar',
 };
 
 const PERIOD_OPTIONS = [
@@ -103,40 +78,40 @@ const PERIOD_CAPTION = {
  *    paketinde veya kullanıcının rolünde yok demektir (sunucu zaten
  *    hesaplamamıştır — panoda yetkisiz veri görünmez).
  *  • `range: true` olan sayaçlar seçili döneme aittir; alt bilgiye dönem yazılır.
- *  • `money`/`percent` yalnızca biçimlendirmedir.
- *  • `adminOnly: true` kartlar yalnız kurum sahibine görünür; hedef sayfa idari
- *    personele kapalı olduğu için (AdminOnlyRoute) tıklayınca yönlendirilirdi.
+ *  • `money` yalnızca biçimlendirmedir.
  */
+const KPI_GROUPS = [
+  { key: 'student', title: 'Öğrenci ve Akademik', description: 'Öğrenci yaşam döngüsü ve eğitim kaynakları' },
+  { key: 'staff', title: 'Personel', description: 'Aktif kadro, izin ve hesap durumu' },
+  { key: 'finance', title: 'Finans ve Muhasebe', description: 'Tahsilat, gider ve ödeme takibi' },
+  { key: 'operations', title: 'Kurum Operasyonları', description: 'İletişim, görevler ve günlük hizmetler' },
+];
+
+// Ana panoda yalnız kurum sahibinin düzenli takip edeceği üst seviye göstergeler
+// tutulur. Günlük ders/devamsızlık, öğretmen, sınav, soru, izin/onay, belge ve
+// şifre talepleri kendi çalışma ekranlarında yönetilir; burada tekrar edilmez.
 const KPI_META = [
-  ['activeStudents', 'Aktif Öğrenci', Users, 'brand', 'Kayıtlı ve aktif öğrenci', '/students'],
-  ['activeTeachers', 'Öğretmen', GraduationCap, 'emerald', 'Derse giren öğretmen', '/teachers'],
-  ['activeStaff', 'Toplam Personel', UserCog, 'cyan', 'Aktif kadro', '/admin/staff-hr'],
-  ['activeClasses', 'Aktif Sınıf', School, 'violet', 'Öğrencisi olan sınıf', '/classes'],
-  ['todayLessons', 'Bugünkü Ders', Calendar, 'blue', 'Programdaki ders saati', '/schedule'],
-  ['newRegistrations', 'Yeni Kayıt', UserPlus, 'emerald', null, '/students', { range: true }],
-  ['todayAbsent', 'Bugün Devamsız', AlertTriangle, 'rose', 'Derse gelmeyen öğrenci', '/attendance'],
-  ['attendanceRate', 'Devam Oranı', Percent, 'emerald', null, '/attendance', { range: true, percent: true }],
-  ['upcomingExams', 'Yaklaşan Sınav', CalendarCheck, 'blue', '30 gün içinde planlı', '/exams'],
-  ['pendingQuestions', 'Cevap Bekleyen Soru', HelpCircle, 'amber', 'Öğretmen yanıtı bekliyor', '/questions'],
-  ['unreadMessages', 'Okunmamış Mesaj', MessageCircle, 'violet', 'Size gelen yanıtsız mesaj', '/chat'],
-  ['pendingMeetings', 'Görüşme Talebi', Users, 'amber', 'Veli görüşmesi bekliyor', '/admin/meetings'],
-  ['pendingApprovals', 'Bekleyen Onay', ClipboardCheck, 'amber', 'Yönetici kararı bekliyor', '/admin/personnel-approvals', { adminOnly: true }],
-  ['pendingLeaves', 'Bekleyen İzin', CalendarClock, 'amber', 'Personel izin talebi', '/admin/staff-hr'],
-  ['todayOnLeave', 'Bugün İzinli', UserMinus, 'cyan', 'İzindeki personel', '/admin/staff-hr'],
-  ['overdueTasks', 'Geciken Görev', AlertTriangle, 'rose', 'Teslim tarihi geçti', '/admin/task-center'],
-  ['openTasks', 'Açık Görev', ClipboardList, 'blue', 'Devam eden görev', '/admin/task-center'],
-  ['expiringDocuments', 'Süresi Dolan Belge', FileWarning, 'amber', '30 gün içinde geçersiz', '/admin/documents'],
-  ['passwordResetRequests', 'Şifre Talebi', KeyRound, 'amber', 'Sıfırlama onayı bekliyor', '/admin/password-reset-requests'],
-  ['collections', 'Tahsilat', Banknote, 'emerald', null, '/finance/collections', { range: true, money: true }],
-  ['expenses', 'Gider', TrendingDown, 'rose', null, '/finance/expenses', { range: true, money: true }],
-  ['net', 'Net (Tahsilat − Gider)', Wallet, 'brand', null, '/finance/dashboard', { range: true, money: true }],
-  ['overdueInstallmentAmount', 'Geciken Ödeme', ShieldCheck, 'rose', null, '/finance/late-payments', { money: true }],
-  ['pendingInstallmentAmount', 'Bekleyen Taksit', CalendarClock, 'amber', null, '/finance/installments', { money: true }],
-  ['overdueLoans', 'Gecikmiş Kitap', BookOpen, 'amber', 'İade tarihi geçti', '/library'],
-  ['pendingGuidance', 'Rehberlik Talebi', Brain, 'violet', 'Randevu onayı bekliyor', '/g/appointments'],
-  ['activeServiceRoutes', 'Aktif Servis Rotası', Bus, 'cyan', 'Kullanımdaki rota', '/admin/service-tracking'],
-  ['activeAnnouncements', 'Duyuru', Megaphone, 'blue', 'Yayındaki duyuru', '/admin/announcements'],
-  ['passiveAccounts', 'Pasif Kayıt', Archive, 'rose', 'Arşivdeki hesap', '/admin/passive-records'],
+  ['activeStudents', 'Aktif Öğrenci', Users, 'brand', 'Kayıtlı ve aktif öğrenci', '/students', { group: 'student' }],
+  ['activeClasses', 'Aktif Sınıf', School, 'violet', 'Öğrencisi olan sınıf', '/classes', { group: 'student' }],
+  ['overdueLoans', 'Gecikmiş Kitap', BookOpen, 'amber', 'İade tarihi geçti', '/library', { group: 'student' }],
+  ['pendingGuidance', 'Rehberlik Talebi', Brain, 'violet', 'Randevu onayı bekliyor', '/g/appointments', { group: 'student' }],
+
+  ['activeStaff', 'Aktif Personel', UserCog, 'cyan', 'Rolüne göre görüntüle', '/admin/staff-registration?view=directory&role=all', { group: 'staff' }],
+  ['todayOnLeave', 'Bugün İzinli', UserMinus, 'cyan', 'İzindeki personel', '/admin/staff-hr', { group: 'staff' }],
+  ['passiveAccounts', 'Pasif Kayıt', Archive, 'rose', 'Arşivdeki hesap', '/admin/passive-records', { group: 'staff' }],
+
+  ['collections', 'Tahsilat', Banknote, 'emerald', null, '/finance/collections', { group: 'finance', range: true, money: true }],
+  ['expenses', 'Gider', TrendingDown, 'rose', null, '/finance/expenses', { group: 'finance', range: true, money: true }],
+  ['net', 'Net (Tahsilat − Gider)', Wallet, 'brand', null, '/finance/dashboard', { group: 'finance', range: true, money: true }],
+  ['overdueInstallmentAmount', 'Geciken Ödeme', ShieldCheck, 'rose', null, '/finance/late-payments', { group: 'finance', money: true }],
+  ['pendingInstallmentAmount', 'Bekleyen Taksit', CalendarClock, 'amber', null, '/finance/installments', { group: 'finance', money: true }],
+
+  ['unreadMessages', 'Okunmamış Mesaj', MessageCircle, 'violet', 'Size gelen yanıtsız mesaj', '/chat', { group: 'operations' }],
+  ['pendingMeetings', 'Görüşme Talebi', Users, 'amber', 'Veli görüşmesi bekliyor', '/admin/meetings', { group: 'operations' }],
+  ['overdueTasks', 'Geciken Görev', AlertTriangle, 'rose', 'Teslim tarihi geçti', '/admin/task-center', { group: 'operations' }],
+  ['openTasks', 'Açık Görev', ClipboardList, 'blue', 'Devam eden görev', '/admin/task-center', { group: 'operations' }],
+  ['activeServiceRoutes', 'Aktif Servis Rotası', Bus, 'cyan', 'Kullanımdaki rota', '/admin/service-tracking', { group: 'operations' }],
+  ['activeAnnouncements', 'Duyuru', Megaphone, 'blue', 'Yayındaki duyuru', '/admin/announcements', { group: 'operations' }],
 ];
 
 const isoDay = (date) => date.toISOString().slice(0, 10);
@@ -167,39 +142,6 @@ function rangeFor(period, customFrom, customTo) {
   }
 
   return { from: start.toISOString(), to: end.toISOString() };
-}
-
-function LessonCard({ lesson }) {
-  const statusColors = {
-    completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-    ongoing: 'bg-brand-accent/10 text-brand-accent',
-    upcoming: 'bg-muted text-muted-foreground',
-  };
-
-  const statusLabels = {
-    completed: 'Tamamlandı',
-    ongoing: 'Devam Ediyor',
-    upcoming: 'Bekliyor',
-  };
-
-  return (
-    <div className="group flex items-center gap-4 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 transition-all hover:border-[hsl(var(--brand-accent)/0.28)] hover:bg-[hsl(var(--brand-accent)/0.08)]">
-      <div className="flex-shrink-0 w-16 text-center">
-        <p className="text-lg font-bold text-[hsl(var(--brand-accent))]">{lesson.time}</p>
-        <p className="text-xs text-muted-foreground">Program</p>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h4 className="font-semibold truncate">{lesson.subject}</h4>
-          <Badge variant="outline" className="text-xs">{lesson.class}</Badge>
-        </div>
-        <p className="text-sm text-muted-foreground mt-1">{lesson.teacher} • {lesson.room}</p>
-      </div>
-      <Badge className={statusColors[lesson.status] || statusColors.upcoming}>
-        {statusLabels[lesson.status] || statusLabels.upcoming}
-      </Badge>
-    </div>
-  );
 }
 
 function AnnouncementItem({ announcement }) {
@@ -291,15 +233,7 @@ function FinancialChart({ buckets = [], loading = false }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user } = useApp();
-  const isOwner = useMemo(() => {
-    const roles = getUserRoles(user);
-    return roles.includes('admin') || roles.includes('superadmin');
-  }, [user]);
   const [data, setData] = useState(null);
-  const [todayLessons, setTodayLessons] = useState([]);
-  const [selectedInteraction, setSelectedInteraction] = useState(null);
-  const [selectedClass, setSelectedClass] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -338,24 +272,8 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError('');
-      const [payload, scheduleEntries] = await Promise.all([
-        fetchAdminDashboardData(),
-        fetchScheduleEntries().catch(() => []),
-      ]);
-      const todayName = todayKeyMap[new Date().getDay()];
-      const configuredLessons = (Array.isArray(scheduleEntries) ? scheduleEntries : [])
-        .filter((lesson) => lesson.day === todayName)
-        .sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')))
-        .map((lesson) => ({
-          time: lesson.time || 'Saat yok',
-          subject: lesson.subject || 'Ders',
-          class: lesson.className || 'Sınıf',
-          teacher: lesson.teacher || 'Öğretmen',
-          room: lesson.room || 'Derslik',
-          status: 'upcoming',
-        }));
+      const payload = await fetchAdminDashboardData();
       setData(payload);
-      setTodayLessons(configuredLessons.length > 0 ? configuredLessons : (payload.lessons || []));
     } catch (err) {
       setError(err.message || 'Dashboard verisi alınamadı.');
     } finally {
@@ -396,13 +314,7 @@ export default function Dashboard() {
     );
   }
 
-  const lessons = todayLessons;
-  const pendingItems = data?.pendingItems || [];
   const announcements = data?.announcements || [];
-  const classOptions = data?.classOptions || [];
-  const selectedLessons = selectedClass === 'all'
-    ? lessons
-    : lessons.filter((lesson) => lesson.class === selectedClass);
 
   const buckets = analytics?.buckets || [];
   const totals = analytics?.totals || { revenue: 0, registrations: 0, expense: 0, net: 0 };
@@ -427,19 +339,21 @@ export default function Dashboard() {
   // Karta yazılacak değeri ve alt bilgisini üretir. Sunucu null döndürdüyse
   // (modül kapalı / yetki yok) kart hiç render edilmez.
   const kpiCards = KPI_META
-    .filter(([key, , , , , , options]) => kpis[key] != null && !(options?.adminOnly && !isOwner))
+    .filter(([key]) => kpis[key] != null)
     .map(([key, label, Icon, tone, caption, path, options = {}]) => {
       const raw = kpis[key];
       const value = options.money
         ? formatMoney(raw)
-        : options.percent
-          ? `%${Number(raw) || 0}`
-          : raw;
+        : raw;
       let cardCaption = options.range ? PERIOD_CAPTION[period] : caption;
       if (key === 'pendingInstallmentAmount') cardCaption = `${kpis.pendingInstallments || 0} ödenmemiş taksit`;
       if (key === 'overdueInstallmentAmount') cardCaption = `${kpis.overdueInstallments || 0} vadesi geçmiş taksit`;
-      return { key, label, Icon, tone, caption: cardCaption, path, value };
+      return { key, label, Icon, tone, caption: cardCaption, path, value, group: options.group };
     });
+
+  const groupedKpis = KPI_GROUPS
+    .map((group) => ({ ...group, cards: kpiCards.filter((card) => card.group === group.key) }))
+    .filter((group) => group.cards.length > 0);
 
   return (
     <motion.div
@@ -493,20 +407,7 @@ export default function Dashboard() {
         />
       ) : null}
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5" data-testid="dashboard-kpi-grid">
-        {kpiCards.map((card) => (
-          <KpiCard
-            key={card.key}
-            testId={`dashboard-kpi-${card.key}`}
-            label={card.label}
-            value={card.value}
-            caption={card.caption}
-            icon={card.Icon}
-            tone={card.tone}
-            onClick={() => navigate(card.path)}
-          />
-        ))}
-      </div>
+      <RoleDashboardColumns groups={groupedKpis} navigate={navigate} testId="dashboard-kpi-grid" />
 
       <motion.div variants={itemVariants}>
         <PremiumPanel title="Kazanç & Gider Grafiği" description={`${periodLabel} kırılım · ${chartRangeLabel} — bir sütunun üstüne gelince o dönemin kazanç, gider ve kayıt detayı görünür`}>
@@ -537,63 +438,6 @@ export default function Dashboard() {
           </div>
         </PremiumPanel>
       </motion.div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <motion.div variants={itemVariants} className="lg:col-span-2">
-          <PremiumPanel
-            title="Bugünkü Dersler"
-            description={selectedClass === 'all' ? 'Tüm sınıfların bugünkü ders akışı' : `${selectedClass} sınıfının bugünkü ders akışı`}
-            action={(
-              <div className="flex items-center gap-2">
-                <Select value={selectedClass} onValueChange={setSelectedClass}>
-                  <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Sınıf seç" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tüm Sınıflar</SelectItem>
-                    {classOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="sm" onClick={() => navigate('/schedule')}>
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Program
-                </Button>
-              </div>
-            )}
-            contentClassName="space-y-3"
-          >
-              {selectedLessons.length > 0 ? selectedLessons.map((lesson, index) => (
-                <LessonCard key={`${lesson.subject}-${lesson.class}-${index}`} lesson={lesson} />
-              )) : (
-                <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-                  {selectedClass === 'all' ? 'Bugün için kayıtlı ders akışı bulunmuyor.' : `${selectedClass} için bugün kayıtlı ders bulunmuyor.`}
-                </div>
-              )}
-          </PremiumPanel>
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <PremiumPanel
-            title="Bekleyen Etkileşimler"
-            description={`${pendingItems.length} konuşma geri dönüş bekliyor`}
-            action={(
-              <Badge variant="default" className="bg-brand-accent">
-                {pendingItems.length}
-              </Badge>
-            )}
-            contentClassName="space-y-4"
-          >
-              {pendingItems.length > 0 ? pendingItems.map((item) => (
-                <PremiumListRow key={item.id} icon={HelpCircle} title={item.studentName} subtitle={item.question} meta={item.subject} accent onClick={() => setSelectedInteraction(item)} />
-              )) : (
-                <p className="text-sm text-muted-foreground">Bekleyen mesaj veya etkileşim bulunmuyor.</p>
-              )}
-              {pendingItems.length > 0 ? (
-                <Button variant="outline" className="w-full" onClick={() => navigate('/chat')}>
-                  Tüm Etkileşimleri Aç
-                </Button>
-              ) : null}
-          </PremiumPanel>
-        </motion.div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div variants={itemVariants}>
@@ -643,29 +487,6 @@ export default function Dashboard() {
           </PremiumPanel>
         </motion.div>
       </div>
-
-      <Dialog open={!!selectedInteraction} onOpenChange={(open) => !open && setSelectedInteraction(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{selectedInteraction?.studentName || 'Etkileşim detayı'}</DialogTitle>
-            <DialogDescription>Bekleyen etkileşim için hızlı detay ve işlem görünümü.</DialogDescription>
-          </DialogHeader>
-          {selectedInteraction ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{selectedInteraction.subject}</Badge>
-              </div>
-              <div className="rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">
-                {selectedInteraction.question}
-              </div>
-            </div>
-          ) : null}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => navigate('/chat')}>Mesaj Merkezini Aç</Button>
-            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setSelectedInteraction(null)}>Tamam</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
     </motion.div>
   );

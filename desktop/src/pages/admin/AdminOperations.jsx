@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import RoleDashboardColumns from '../../components/dashboard/RoleDashboardColumns';
 import { fetchAdminDashboardData } from '../../lib/api/dashboardData';
 import { fetchAccountingDashboard, fetchAdminAnalytics } from '../../lib/api/modules';
 import { useApp } from '../../context/AppContext';
@@ -96,26 +97,38 @@ export default function AdminOperations() {
   }, [loadAnalytics]);
 
   const activeStudents = dashboard?.activeStudentStats?.[period] || { uniqueCount: 0, totalStudents: dashboard?.stats?.totalStudents || 0 };
-  const engagementLabel = {
-    day: 'Bugün uygulamaya giren öğrenci',
-    week: 'Son 7 günde giren öğrenci',
-    month: 'Son 30 günde giren öğrenci',
-    year: 'Son 1 yılda giren öğrenci',
-  }[period];
   const totals = analytics?.totals || { revenue: 0, registrations: 0, expense: 0, net: 0 };
 
-  const periodCards = [
-    { title: engagementLabel, value: activeStudents.uniqueCount, icon: MessageSquare, detail: `Benzersiz öğrenci · ${activeStudents.totalStudents} toplam`, financeScoped: true },
-    { title: 'Kayıt olan öğrenci', value: totals.registrations || 0, icon: CalendarDays, detail: 'Seçilen dönemde kaydedilen' },
-    { title: 'Dönem kazancı', value: formatMoney(totals.revenue), icon: Receipt, detail: 'Tahsilat toplamı', financeScoped: true },
-    { title: 'Dönem gideri', value: formatMoney(totals.expense), icon: Receipt, detail: 'Maaş + fatura gideri', financeScoped: true },
-  ].filter((card) => !(isAdministrativeOnly && card.financeScoped));
-
-  const items = [
-    { title: 'Duyuru merkezi', count: dashboard?.activities?.length || 0, icon: Megaphone, detail: 'Kurum genelindeki tüm duyurular', onClick: () => navigate('/admin/announcements') },
-    { title: 'Açık finans hareketi', count: finance?.approvals?.length || 0, icon: Receipt, detail: 'Onay ve işlem bekleyen kayıtlar', onClick: () => navigate('/admin/finance-approvals'), financeScoped: true },
-    { title: 'Görüşme akışı', count: dashboard?.activities?.length || 0, icon: CalendarDays, detail: 'Veli talepleri ve öğretmen onayları', onClick: () => navigate('/admin/meetings') },
-  ].filter((item) => !(isAdministrativeOnly && item.financeScoped));
+  const operationGroups = [
+    {
+      key: 'students', title: 'Öğrenci İşlemleri', description: 'Seçilen dönemde öğrenci hareketleri',
+      cards: [
+        { key: 'registrations', label: 'Yeni Kayıt', value: totals.registrations || 0, caption: 'Seçilen dönemde kaydedilen', icon: CalendarDays, tone: 'emerald', path: '/admin/student-registration' },
+        { key: 'active', label: 'Aktif Öğrenci', value: activeStudents.uniqueCount, caption: `${activeStudents.totalStudents} toplam öğrenci`, icon: MessageSquare, tone: 'blue', path: '/students' },
+      ],
+    },
+    {
+      key: 'communication', title: 'İletişim', description: 'Duyuru ve görüşme hareketleri',
+      cards: [
+        { key: 'announcements', label: 'Duyuru', value: dashboard?.activities?.length || 0, caption: 'Kurum geneli bilgilendirme', icon: Megaphone, tone: 'violet', path: '/admin/announcements' },
+        { key: 'meetings', label: 'Görüşme Akışı', value: dashboard?.activities?.length || 0, caption: 'Veli ve öğretmen görüşmeleri', icon: CalendarDays, tone: 'amber', path: '/admin/meetings' },
+      ],
+    },
+    {
+      key: 'pending', title: 'Bekleyen İşler', description: 'Operasyon ekibinin ele alması gereken kayıtlar',
+      cards: [
+        { key: 'pendingItems', label: 'Bekleyen İşlem', value: dashboard?.pendingItems?.length || 0, caption: 'Geri dönüş veya işlem bekliyor', icon: Activity, tone: 'rose', path: '/admin/task-center' },
+        ...(!isAdministrativeOnly ? [{ key: 'approvals', label: 'Finans Onayı', value: finance?.approvals?.length || 0, caption: 'Karar bekleyen finans kaydı', icon: Receipt, tone: 'amber', path: '/admin/finance-approvals' }] : []),
+      ],
+    },
+    ...(!isAdministrativeOnly ? [{
+      key: 'finance', title: 'Finans Özeti', description: 'Seçilen dönemin temel finans hareketleri',
+      cards: [
+        { key: 'revenue', label: 'Dönem Kazancı', value: formatMoney(totals.revenue), caption: 'Tahsilat toplamı', icon: Receipt, tone: 'emerald', path: '/finance/collections' },
+        { key: 'expense', label: 'Dönem Gideri', value: formatMoney(totals.expense), caption: 'Maaş ve fatura gideri', icon: Receipt, tone: 'rose', path: '/finance/expenses' },
+      ],
+    }] : []),
+  ];
 
   const operationalFeed = useMemo(() => (
     [
@@ -159,34 +172,7 @@ export default function AdminOperations() {
         </div>
       </div>
       {error ? <ErrorBanner title="Operasyon verisi alınamadı" message={error} onRetry={loadOperations} /> : null}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {periodCards.map((card) => (
-          <Card key={card.title}>
-            <CardContent className="p-5 flex items-center gap-4">
-              <card.icon className="h-8 w-8 text-brand-primary" />
-              <div className="min-w-0 flex-1">
-                <p className="text-2xl font-bold">{card.value}</p>
-                <p className="text-sm">{card.title}</p>
-                <p className="text-xs text-muted-foreground">{card.detail}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {items.map((item) => (
-          <Card key={item.title} className={`${item.onClick ? 'cursor-pointer hover:bg-muted/30' : ''} transition-colors`} onClick={item.onClick || undefined}>
-            <CardContent className="p-5 flex items-center gap-4">
-              <item.icon className="h-8 w-8 text-brand-primary" />
-              <div className="min-w-0 flex-1">
-                <p className="text-2xl font-bold">{item.count}</p>
-                <p className="text-sm">{item.title}</p>
-                <p className="text-xs text-muted-foreground">{item.detail}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <RoleDashboardColumns groups={operationGroups} navigate={navigate} testId="administrative-dashboard-columns" />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5 text-green-600" />Canlı görev akışı</CardTitle>
