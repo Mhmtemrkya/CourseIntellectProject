@@ -1295,6 +1295,16 @@ export async function createExamResult(payload) {
   return response;
 }
 
+// Girilmiş sonucun düzeltilmesi/silinmesi. Yetki backend'de: sonuç girebilen
+// roller (Admin/Öğretmen, rehberlik branşı hariç) + exams.edit / exams.delete.
+export async function updateExamResult(id, payload) {
+  return api.put(`/api/examresults/${id}`, payload);
+}
+
+export async function deleteExamResult(id) {
+  return api.delete(`/api/examresults/${id}`);
+}
+
 export async function fetchAttendance(params) {
   const response = await api.get('/api/attendance', {
     params,
@@ -1640,6 +1650,13 @@ export async function fetchPlannedExams(params) {
 
 export async function createPlannedExam(payload) {
   const response = await api.post('/api/plannedexams', payload);
+  return response;
+}
+
+// Sınav künyesi düzenleme (başlık, tür, sınıf, ders, tarih/saat, süre, durum...).
+// Yalnız gönderilen alan değişir; yoklama ve soru kaynakları korunur.
+export async function updatePlannedExam(id, payload) {
+  const response = await api.put(`/api/plannedexams/${id}`, payload);
   return response;
 }
 

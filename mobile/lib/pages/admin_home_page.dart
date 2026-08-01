@@ -27,7 +27,7 @@ import 'service_routes_page.dart';
 import 'admin_passive_records_page.dart';
 import 'support_page.dart';
 import 'attendance_overview_page.dart';
-import 'teacher_exam_results_page.dart';
+import 'teacher_exams_page.dart';
 import 'teacher_question_box_page.dart';
 import 'teacher_reports_page.dart';
 import '../pages/accounting_home_page.dart';
@@ -477,20 +477,16 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'Sınav Sonuçları'.tr,
-                      subtitle: 'Kurumsal deneme görünümü'.tr,
+                      title: 'Sınavlar'.tr,
+                      // Kurum genelindeki sınav listesi + "Yönet" penceresi;
+                      // masaüstündeki /exams ekranının aynısı.
+                      subtitle: 'Sınav kayıtları ve sonuç girişi'.tr,
                       color: const Color(0xFF7C3AED),
                       icon: Icons.fact_check_outlined,
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const TeacherExamResultsPage(
-                            exam: {
-                              'title': 'Genel Deneme Sonuç Özeti',
-                              'className': 'Tüm Kurum',
-                              'date': 'Mart 2026',
-                            },
-                          ),
+                          builder: (_) => const TeacherExamsPage(),
                         ),
                       ),
                     ),

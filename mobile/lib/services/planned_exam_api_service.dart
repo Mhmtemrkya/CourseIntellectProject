@@ -52,6 +52,11 @@ class PlannedExamRecord {
   final String teacherName;
   final String sourceType;
   final List<PlannedExamSourceRecord> sources;
+  // Liste ekranı için sunucuda hesaplanan özet (tekil uçlarda null gelir).
+  final int? attendancePresent;
+  final int? attendanceTotal;
+  final int? resultCount;
+  final double? averageScore;
 
   const PlannedExamRecord({
     required this.id,
@@ -73,6 +78,10 @@ class PlannedExamRecord {
     required this.teacherName,
     required this.sourceType,
     required this.sources,
+    this.attendancePresent,
+    this.attendanceTotal,
+    this.resultCount,
+    this.averageScore,
   });
 
   factory PlannedExamRecord.fromMap(Map<String, dynamic> map) {
@@ -95,6 +104,10 @@ class PlannedExamRecord {
       status: map['status'] as String? ?? 'Planlandi',
       teacherName: map['teacherName'] as String? ?? '',
       sourceType: map['sourceType'] as String? ?? '',
+      attendancePresent: (map['attendancePresent'] as num?)?.round(),
+      attendanceTotal: (map['attendanceTotal'] as num?)?.round(),
+      resultCount: (map['resultCount'] as num?)?.round(),
+      averageScore: (map['averageScore'] as num?)?.toDouble(),
       sources: (map['sources'] as List<dynamic>? ?? const [])
           .map((item) => Map<String, dynamic>.from(item as Map))
           .map(
@@ -304,6 +317,74 @@ class PlannedExamApiService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw PlannedExamApiException(
         'Yoklama kaydı yapılamadı (${response.statusCode}).',
+      );
+    }
+  }
+
+  /// Sınav künyesini günceller (başlık, ders, sınıf, tarih, süre, durum...).
+  /// Yalnız gönderilen alan değişir; yoklama ve soru kaynakları korunur.
+  Future<PlannedExamRecord> updatePlannedExam(
+    String id,
+    Map<String, dynamic> payload,
+  ) async {
+    final session = await _session();
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/api/plannedexams/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${session.accessToken}',
+      },
+      body: jsonEncode(payload),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw PlannedExamApiException(
+        'Sınav güncellenemedi (${response.statusCode}).',
+      );
+    }
+
+    return PlannedExamRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
+  }
+
+  /// Sınavın yoklama listesi: check-in yapanlar + sınıfın kalan öğrencileri.
+  Future<List<Map<String, dynamic>>> fetchAttendance(String id) async {
+    final session = await _session();
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/plannedexams/$id/attendance'),
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw PlannedExamApiException(
+        'Yoklama listesi alınamadı (${response.statusCode}).',
+      );
+    }
+
+    return (jsonDecode(response.body) as List<dynamic>)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+  }
+
+  /// Öğretmenin elle işaretlediği yoklama (Present/Late/Absent).
+  Future<void> saveAttendance(
+    String id,
+    List<Map<String, dynamic>> entries,
+  ) async {
+    final session = await _session();
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/plannedexams/$id/attendance'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${session.accessToken}',
+      },
+      body: jsonEncode({'entries': entries}),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw PlannedExamApiException(
+        'Yoklama kaydedilemedi (${response.statusCode}).',
       );
     }
   }

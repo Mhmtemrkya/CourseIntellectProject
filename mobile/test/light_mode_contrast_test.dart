@@ -8,6 +8,7 @@ import 'package:student/theme_provider.dart';
 import 'package:student/widgets/consent_dispatch_sheet.dart';
 import 'package:student/widgets/lesson_tile.dart';
 import 'package:student/pages/support_page.dart';
+import 'package:student/pages/teacher_exams_page.dart';
 import 'package:student/pages/teacher_reports_page.dart';
 import 'package:student/widgets/premium_resource_card.dart';
 
@@ -65,6 +66,16 @@ void main() {
     );
   });
 
+  // Sınavlar listesi kart/rozet/istatistik yoğun: açık temada kaybolmamalı.
+  testWidgets('sınavlar ekranı açık temada okunur', (tester) async {
+    await _expectReadable(
+      tester,
+      const TeacherExamsPage(),
+      scrollable: false,
+      minMeasured: 3,
+    );
+  });
+
   testWidgets('premium kaynak kartı açık temada okunur', (tester) async {
     await _expectReadable(
       tester,
@@ -99,6 +110,9 @@ Future<void> _expectReadable(
   );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
+  // Ağ görselleri (avatar) widget testinde yüklenemez; kontrast taramasını
+  // düşürmesinler — asıl aradığımız metin/zemin kontrastı.
+  while (tester.takeException() != null) {}
 
   final failures = <String>[];
   var measured = 0;

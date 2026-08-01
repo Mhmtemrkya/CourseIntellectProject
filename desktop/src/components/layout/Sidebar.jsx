@@ -43,6 +43,7 @@ const menuConfigs = {
     { path: '/students', icon: Users, label: 'Öğrenciler' },
     { path: '/parents', icon: UserCheck, label: 'Veliler' },
     { path: '/teachers', icon: GraduationCap, label: 'Öğretmenler' },
+    { path: '/admin/staff', icon: Users, label: 'Personeller' },
     { path: '/classes', icon: School, label: 'Sınıflar & Gruplar' },
     { path: '/schedule', icon: Calendar, label: 'Ders Programı' },
     { path: '/admin/finance-approvals', icon: CheckSquare, label: 'Finans Onayları' },

@@ -21,6 +21,9 @@ public sealed class PlannedExamsController(
 {
     public const string SectionKey = "planned-exams";
 
+    // Sınav yaşam döngüsü: taslak → planlandı → tamamlandı (veya iptal).
+    private static readonly string[] AllowedStatuses = ["Taslak", "Planlandı", "Tamamlandı", "İptal"];
+
     [HttpGet]
     public async Task<IActionResult> GetList(
         [FromQuery] string? className = null,
@@ -79,8 +82,52 @@ public sealed class PlannedExamsController(
                 .ToList();
         }
 
-        return Ok(items.Select(MapResponse).ToList());
+        // Liste ekranı her satır için katılım ve ortalama gösterir. Bunları satır
+        // başına ayrı uçtan çekmek N+1 istek demek olurdu; sınıf mevcudu ve sonuç
+        // özeti burada bir kez hesaplanıp gövdeye eklenir.
+        var roster = await LoadClassRosterAsync(cancellationToken);
+        var examResults = await dbContext.ExamResults.AsNoTracking()
+            .Select(item => new ExamScoreRow(item.ExamTitle, item.Subject, item.Score))
+            .ToListAsync(cancellationToken);
+
+        return Ok(items.Select(item => MapResponse(item, BuildSummary(item, roster, examResults))).ToList());
     }
+
+    /// <summary>Sınıf adı → o sınıftaki aktif öğrenci sayısı (katılım paydası).</summary>
+    private async Task<IReadOnlyList<string>> LoadClassRosterAsync(CancellationToken cancellationToken)
+        => await dbContext.Students.AsNoTracking()
+            .Join(dbContext.Users.AsNoTracking(), student => student.UserId, user => user.Id,
+                (student, user) => new { student.ClassName, user.Status })
+            .Where(row => row.Status != CourseIntellect.Domain.Enums.UserStatus.Passive)
+            .Select(row => row.ClassName)
+            .ToListAsync(cancellationToken);
+
+    private static PlannedExamSummary BuildSummary(
+        PlannedExamSnapshot item,
+        IReadOnlyList<string> roster,
+        IReadOnlyList<ExamScoreRow> examResults)
+    {
+        var total = roster.Count(className => ClassMatchesAny(item.ClassName, new[] { className }));
+        var present = item.Attendance.Count(entry =>
+            !string.Equals(entry.Status, "Absent", StringComparison.OrdinalIgnoreCase));
+        // Yoklama listesi sınıf mevcudundan büyük olamaz (mevcut bilinmiyorsa yoklama esas alınır).
+        if (total < present) total = present;
+
+        var scores = examResults
+            .Where(result => string.Equals(result.ExamTitle, item.Title, StringComparison.OrdinalIgnoreCase))
+            .Select(result => result.Score)
+            .ToList();
+
+        return new PlannedExamSummary(
+            present,
+            total,
+            scores.Count,
+            scores.Count == 0 ? null : Math.Round(scores.Average(), 1));
+    }
+
+    private sealed record PlannedExamSummary(int Present, int Total, int ResultCount, double? Average);
+
+    private sealed record ExamScoreRow(string ExamTitle, string Subject, int Score);
 
     [HttpPost]
     [RequireEntitlement("exams", "create")]
@@ -132,6 +179,49 @@ public sealed class PlannedExamsController(
         };
 
         items.Add(item);
+        await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, items, item.TeacherName, cancellationToken);
+        return Ok(MapResponse(item));
+    }
+
+    /// <summary>
+    /// Sınav künyesinin düzenlenmesi (başlık, tür, sınıf, ders, tarih/saat, süre,
+    /// soru sayısı, puan, durum). Yoklama ve soru kaynakları korunur — düzenleme
+    /// yüzünden girilmiş yoklama kaybolmaz. Boş bırakılan alan değiştirilmez.
+    /// </summary>
+    [HttpPut("{id:guid}")]
+    [RequireEntitlement("exams", "edit")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] PlannedExamUpdateRequest request, CancellationToken cancellationToken)
+    {
+        var items = await CompatibilitySnapshotStore.LoadListAsync<PlannedExamSnapshot>(dbContext, SectionKey, cancellationToken);
+        var item = items.FirstOrDefault(exam => exam.Id == id);
+        if (item is null)
+        {
+            return NotFound(new { message = "Sınav bulunamadı." });
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Status) && !AllowedStatuses.Contains(request.Status.Trim()))
+        {
+            return BadRequest(new { message = $"Geçersiz durum. İzin verilenler: {string.Join(", ", AllowedStatuses)}." });
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Title)) item.Title = request.Title.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Type)) item.Type = request.Type.Trim();
+        if (!string.IsNullOrWhiteSpace(request.ClassName)) item.ClassName = request.ClassName.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Subject)) item.Subject = request.Subject.Trim();
+        if (!string.IsNullOrWhiteSpace(request.DateLabel)) item.DateLabel = request.DateLabel.Trim();
+        if (request.StartTime is not null) item.StartTime = request.StartTime.Trim();
+        if (request.EndTime is not null) item.EndTime = request.EndTime.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Duration)) item.Duration = request.Duration.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Status)) item.Status = request.Status.Trim();
+        if (request.QuestionCount is int questionCount && questionCount >= 0) item.QuestionCount = questionCount;
+        if (request.TotalPoint is int totalPoint && totalPoint > 0) item.TotalPoint = totalPoint;
+        if (request.LateEntryLimitMinutes is int lateLimit && lateLimit > 0) item.LateEntryLimitMinutes = lateLimit;
+        if (request.LiveLinkUrl is not null) item.LiveLinkUrl = request.LiveLinkUrl.Trim();
+        if (request.RequireCamera is bool requireCamera) item.RequireCamera = requireCamera;
+        if (request.RequireFullscreen is bool requireFullscreen) item.RequireFullscreen = requireFullscreen;
+        if (request.BlockTabChange is bool blockTabChange) item.BlockTabChange = blockTabChange;
+        if (request.BlockCopyPaste is bool blockCopyPaste) item.BlockCopyPaste = blockCopyPaste;
+
         await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, items, item.TeacherName, cancellationToken);
         return Ok(MapResponse(item));
     }
@@ -658,10 +748,18 @@ public sealed class PlannedExamsController(
         return value is DateTime date ? date : null;
     }
 
-    private static object MapResponse(PlannedExamSnapshot item)
+    private static object MapResponse(PlannedExamSnapshot item) => MapResponse(item, null);
+
+    private static object MapResponse(PlannedExamSnapshot item, PlannedExamSummary? summary)
     {
         return new
         {
+            // Liste ekranı için hazır özet: katılım (var/mevcut) ve girilmiş
+            // sonuçların ortalaması. Tekil uçlarda null döner.
+            attendancePresent = summary?.Present,
+            attendanceTotal = summary?.Total,
+            resultCount = summary?.ResultCount,
+            averageScore = summary?.Average,
             id = item.Id,
             title = item.Title,
             type = item.Type,
@@ -778,6 +876,31 @@ public sealed class PlannedExamCreateRequest
     public string? TeacherName { get; set; }
     public string? SourceType { get; set; }
     public List<PlannedExamSourceRequest>? Sources { get; set; }
+}
+
+/// <summary>
+/// Sınav künyesi düzenleme isteği. Tüm alanlar isteğe bağlıdır: yalnızca gönderilen
+/// alan değişir, gönderilmeyen (null) alan mevcut değerini korur.
+/// </summary>
+public sealed class PlannedExamUpdateRequest
+{
+    public string? Title { get; set; }
+    public string? Type { get; set; }
+    public string? ClassName { get; set; }
+    public string? Subject { get; set; }
+    public string? DateLabel { get; set; }
+    public string? StartTime { get; set; }
+    public string? EndTime { get; set; }
+    public string? Duration { get; set; }
+    public string? Status { get; set; }
+    public int? QuestionCount { get; set; }
+    public int? TotalPoint { get; set; }
+    public int? LateEntryLimitMinutes { get; set; }
+    public string? LiveLinkUrl { get; set; }
+    public bool? RequireCamera { get; set; }
+    public bool? RequireFullscreen { get; set; }
+    public bool? BlockTabChange { get; set; }
+    public bool? BlockCopyPaste { get; set; }
 }
 
 public sealed class PlannedExamSourceRequest

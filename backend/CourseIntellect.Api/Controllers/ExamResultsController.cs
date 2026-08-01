@@ -125,31 +125,83 @@ public sealed class ExamResultsController(
     {
         // Rehberlik öğretmenleri öğrenci sınavlarını yalnızca görüntüleyebilir;
         // sonuç girişi/değişikliği yapamaz. Branş bilgisi personel kaydından okunur.
-        if (User.IsInRole("Teacher") && !User.IsInRole("Admin"))
+        if (await IsGuidanceOnlyTeacherAsync(cancellationToken))
         {
-            var userRaw = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (Guid.TryParse(userRaw, out var userId))
+            return StatusCode(StatusCodes.Status403Forbidden, new
             {
-                var branch = await dbContext.Staff
-                    .AsNoTracking()
-                    .Where(x => x.UserId == userId)
-                    .Select(x => x.DepartmentOrBranch)
-                    .FirstOrDefaultAsync(cancellationToken);
-                if (IsGuidanceBranch(branch))
-                {
-                    return StatusCode(StatusCodes.Status403Forbidden, new
-                    {
-                        message = "Rehberlik öğretmenleri sınav sonuçlarını yalnızca görüntüleyebilir; sonuç girişi yapamaz.",
-                    });
-                }
-            }
+                message = "Rehberlik öğretmenleri sınav sonuçlarını yalnızca görüntüleyebilir; sonuç girişi yapamaz.",
+            });
         }
 
         var result = await academicQueryService.CreateExamResultAsync(request, cancellationToken);
         return Ok(result);
     }
 
+    /// <summary>
+    /// Girilmiş bir sonucun düzeltilmesi (puan/net veya sınav künyesi). Sonuç
+    /// girebilen roller düzeltebilir de — yanlış puan tek yol olarak silinip
+    /// yeniden girilmek zorunda kalmasın.
+    /// </summary>
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Teacher")]
+    [RequireEntitlement("exams", "edit")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateExamResultRequest request, CancellationToken cancellationToken)
+    {
+        if (await IsGuidanceOnlyTeacherAsync(cancellationToken))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Rehberlik öğretmenleri sınav sonuçlarını yalnızca görüntüleyebilir; sonuç düzenleyemez.",
+            });
+        }
+
+        var updated = await academicQueryService.UpdateExamResultAsync(id, request, cancellationToken);
+        return updated is null ? NotFound(new { message = "Sınav sonucu bulunamadı." }) : Ok(updated);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin,Teacher")]
+    [RequireEntitlement("exams", "delete")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        if (await IsGuidanceOnlyTeacherAsync(cancellationToken))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Rehberlik öğretmenleri sınav sonuçlarını yalnızca görüntüleyebilir; sonuç silemez.",
+            });
+        }
+
+        var deleted = await academicQueryService.DeleteExamResultAsync(id, cancellationToken);
+        return deleted ? Ok(new { id }) : NotFound(new { message = "Sınav sonucu bulunamadı." });
+    }
+
     public sealed record ClassRankingDto(int Rank, int TotalStudents, double Average, string ClassName);
+
+    /// <summary>
+    /// Rehberlik branşındaki öğretmen mi (yönetici değil)? Rehber öğretmen sınav
+    /// sonuçlarını yalnızca görüntüler; yazma yollarının hepsinde aynı kontrol.
+    /// </summary>
+    private async Task<bool> IsGuidanceOnlyTeacherAsync(CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole("Teacher") || User.IsInRole("Admin"))
+        {
+            return false;
+        }
+
+        var userRaw = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userRaw, out var userId))
+        {
+            return false;
+        }
+
+        var branch = await dbContext.Staff
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .Select(x => x.DepartmentOrBranch)
+            .FirstOrDefaultAsync(cancellationToken);
+        return IsGuidanceBranch(branch);
+    }
 
     private static bool IsGuidanceBranch(string? branch)
     {

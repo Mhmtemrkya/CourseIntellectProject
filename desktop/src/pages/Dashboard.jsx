@@ -96,7 +96,7 @@ const KPI_META = [
   ['overdueLoans', 'Gecikmiş Kitap', BookOpen, 'amber', 'İade tarihi geçti', '/library', { group: 'student' }],
   ['pendingGuidance', 'Rehberlik Talebi', Brain, 'violet', 'Randevu onayı bekliyor', '/g/appointments', { group: 'student' }],
 
-  ['activeStaff', 'Aktif Personel', UserCog, 'cyan', 'Rolüne göre görüntüle', '/admin/staff-registration?view=directory&role=all', { group: 'staff' }],
+  ['activeStaff', 'Aktif Personel', UserCog, 'cyan', 'Rolüne göre görüntüle', '/admin/staff?role=all', { group: 'staff' }],
   ['todayOnLeave', 'Bugün İzinli', UserMinus, 'cyan', 'İzindeki personel', '/admin/staff-hr', { group: 'staff' }],
   ['passiveAccounts', 'Pasif Kayıt', Archive, 'rose', 'Arşivdeki hesap', '/admin/passive-records', { group: 'staff' }],
 

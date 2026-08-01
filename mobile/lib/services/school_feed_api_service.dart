@@ -240,6 +240,7 @@ class SchoolFeedApiService {
             .map((item) => Map<String, dynamic>.from(item as Map))
             .map(
               (map) => ExamScoreRecord(
+                id: map['id'] as String?,
                 examTitle: map['examTitle'] as String,
                 type: _mapExamType(map['type'] as String),
                 subject: map['subject'] as String,
@@ -433,6 +434,71 @@ class SchoolFeedApiService {
     }
   }
 
+  /// Girilmiş sonucun düzeltilmesi. Öğrenci adı değişmez; yanlış öğrenciye
+  /// girilen sonuç silinip yeniden açılır.
+  Future<void> updateExamResult({
+    required String id,
+    required String examTitle,
+    required String type,
+    required String subject,
+    required String dateLabel,
+    required String className,
+    required int score,
+    required double net,
+  }) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) {
+      throw const SchoolFeedApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
+    }
+
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/api/examresults/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
+      },
+      body: jsonEncode({
+        'examTitle': examTitle.trim(),
+        'type': type,
+        'subject': subject.trim(),
+        'dateLabel': dateLabel.trim(),
+        'className': className.trim(),
+        'score': score,
+        'net': net,
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw SchoolFeedApiException(
+        'Sınav sonucu güncellenemedi (${response.statusCode}).',
+      );
+    }
+  }
+
+  Future<void> deleteExamResult(String id) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) {
+      throw const SchoolFeedApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
+    }
+
+    final response = await http.delete(
+      Uri.parse('${ApiConfig.baseUrl}/api/examresults/$id'),
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
+      },
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw SchoolFeedApiException(
+        'Sınav sonucu silinemedi (${response.statusCode}).',
+      );
+    }
+  }
+
   Future<ExamScoreRecord> createExamResult({
     required String examTitle,
     required String type,
@@ -476,6 +542,7 @@ class SchoolFeedApiService {
 
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
     final record = ExamScoreRecord(
+      id: map['id'] as String?,
       examTitle: map['examTitle'] as String,
       type: _mapExamType(map['type'] as String),
       subject: map['subject'] as String,

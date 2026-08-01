@@ -1,11 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import {
+  Atom,
+  BookOpen,
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Clock,
+  FlaskConical,
+  Globe2,
+  LayoutList,
+  ListChecks,
+  Loader2,
+  Plus,
+  Sigma,
+  Users,
+} from 'lucide-react';
 import { FeatureGate } from '../components/FeatureGate';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Progress } from '../components/ui/progress';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -14,76 +32,141 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
-import { Label } from '../components/ui/label';
-import { Input } from '../components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
+import { useApp } from '../context/AppContext';
+import { getUserRoles } from '../lib/permissions';
 import {
-  createExamResult,
+  createPlannedExam,
   fetchExamResults,
+  fetchPlannedExams,
   fetchStudents,
 } from '../lib/api/modules';
-import ExamManagementSheet from '../components/exams/ExamManagementSheet';
+import ExamManagementSheet, { EXAM_TYPES, classKey } from '../components/exams/ExamManagementSheet';
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 };
 
-function AddExamResultDialog({ open, onOpenChange, students, onCreated }) {
+const PAGE_SIZE = 8;
+const ALL = 'all';
+
+// Sınav türüne göre ikon ve renk — listede sınav satırı bir bakışta ayırt edilsin.
+const TYPE_STYLES = {
+  yazılı: { icon: Sigma, tint: 'bg-sky-500/12 text-sky-600', badge: 'bg-sky-500/12 text-sky-600' },
+  deneme: { icon: FlaskConical, tint: 'bg-amber-500/12 text-amber-600', badge: 'bg-amber-500/12 text-amber-600' },
+  ünite: { icon: Globe2, tint: 'bg-rose-500/12 text-rose-600', badge: 'bg-rose-500/12 text-rose-600' },
+  quiz: { icon: BookOpen, tint: 'bg-emerald-500/12 text-emerald-600', badge: 'bg-emerald-500/12 text-emerald-600' },
+  proje: { icon: Atom, tint: 'bg-violet-500/12 text-violet-600', badge: 'bg-violet-500/12 text-violet-600' },
+};
+
+const STATUS_STYLES = {
+  tamamlandı: 'bg-emerald-500/12 text-emerald-600',
+  planlandı: 'bg-sky-500/12 text-sky-600',
+  taslak: 'bg-amber-500/12 text-amber-600',
+  i̇ptal: 'bg-red-500/12 text-red-600',
+  iptal: 'bg-red-500/12 text-red-600',
+};
+
+// Sonuç kayıtlarında tür, backend enum adıyla gelir (Written/MockExam...).
+// Listede Türkçe etiket göstermek için tek yerden çevrilir.
+const TYPE_LABELS = {
+  written: 'Yazılı',
+  oral: 'Sözlü',
+  quiz: 'Quiz',
+  mockexam: 'Deneme',
+  unit: 'Ünite',
+  project: 'Proje',
+};
+
+const typeLabel = (type) => TYPE_LABELS[String(type || '').toLocaleLowerCase('tr-TR')] || type || 'Yazılı';
+const typeStyle = (type) => TYPE_STYLES[typeLabel(type).toLocaleLowerCase('tr-TR')] || TYPE_STYLES.yazılı;
+const statusStyle = (status) => STATUS_STYLES[String(status || '').toLocaleLowerCase('tr-TR')] || STATUS_STYLES.planlandı;
+
+const TR_MONTHS = ['ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', 'temmuz', 'ağustos', 'eylül', 'ekim', 'kasım', 'aralık'];
+
+// "17 Haziran 2026" / "17.06.2026" / "2026-06-17" biçimlerini tarihe çevirir.
+function parseExamDate(label) {
+  const raw = String(label || '').trim();
+  if (!raw) return null;
+  const iso = new Date(raw);
+  if (!Number.isNaN(iso.getTime()) && /\d{4}-\d{2}-\d{2}/.test(raw)) return iso;
+
+  const dotted = raw.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  if (dotted) return new Date(Number(dotted[3]), Number(dotted[2]) - 1, Number(dotted[1]));
+
+  const turkish = raw.match(/^(\d{1,2})\s+([^\s]+)\s*(\d{4})?$/);
+  if (turkish) {
+    const month = TR_MONTHS.findIndex((name) => name === turkish[2].toLocaleLowerCase('tr-TR'));
+    if (month >= 0) return new Date(Number(turkish[3] || new Date().getFullYear()), month, Number(turkish[1]));
+  }
+  return Number.isNaN(iso.getTime()) ? null : iso;
+}
+
+function formatExamDate(date, fallback) {
+  if (!date) return fallback || '—';
+  return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function weekdayLabel(date, startTime) {
+  if (!date) return startTime || '';
+  const weekday = date.toLocaleDateString('tr-TR', { weekday: 'long' });
+  return [weekday, startTime].filter(Boolean).join(' ');
+}
+
+function StatTile({ icon: Icon, tint, label, value, caption }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-foreground/10 bg-background/60 px-4 py-3">
+      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${tint}`}>
+        <Icon className="h-5 w-5" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-2xl font-black leading-tight tabular-nums">{value}</p>
+        <p className="truncate text-[11px] text-muted-foreground">{caption}</p>
+      </div>
+    </div>
+  );
+}
+
+function NewExamDialog({ open, onOpenChange, onCreated, classOptions }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    studentName: '',
-    className: '',
-    subject: '',
-    title: '',
-    score: '',
+    title: '', subject: '', className: '', type: 'Yazılı',
+    dateLabel: new Date().toISOString().slice(0, 10), startTime: '09:00',
+    duration: '40 dk', questionCount: '20',
   });
+  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const selectedStudent = students.find((student) => student.fullName === form.studentName);
-
-  const handleCreate = async () => {
-    if (!form.studentName || !form.subject || !form.title || !form.score) {
-      toast({
-        title: 'Eksik bilgi',
-        description: 'Öğrenci, ders, başlık ve puan zorunlu.',
-        variant: 'destructive',
-      });
+  const create = async () => {
+    if (!form.title.trim() || !form.subject.trim() || !form.className.trim()) {
+      toast({ title: 'Eksik bilgi', description: 'Başlık, ders ve sınıf zorunlu.', variant: 'destructive' });
       return;
     }
-
     try {
       setSaving(true);
-      const created = await createExamResult({
-        examTitle: form.title,
-        type: 'Yazılı',
-        studentName: form.studentName,
-        className: form.className,
-        subject: form.subject,
-        dateLabel: new Intl.DateTimeFormat('tr-TR').format(new Date()),
-        score: Number(form.score),
-        net: 0,
+      const date = new Date(`${form.dateLabel}T00:00:00`);
+      await createPlannedExam({
+        title: form.title.trim(),
+        type: form.type,
+        className: form.className.trim(),
+        subject: form.subject.trim(),
+        dateLabel: Number.isNaN(date.getTime())
+          ? form.dateLabel
+          : date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }),
+        startTime: form.startTime,
+        duration: form.duration.trim() || '40 dk',
+        questionCount: Number(form.questionCount) || 0,
       });
-      onCreated(created);
+      toast({ title: 'Sınav oluşturuldu', description: `${form.title} listeye eklendi.` });
       onOpenChange(false);
+      await onCreated?.();
     } catch (err) {
-      toast({
-        title: 'Sonuç oluşturulamadı',
-        description: err.message || 'Tekrar deneyin.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Sınav oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -93,50 +176,64 @@ function AddExamResultDialog({ open, onOpenChange, students, onCreated }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Yeni Sınav Sonucu</DialogTitle>
-          <DialogDescription>Öğrenci için sonuç kaydı oluşturun</DialogDescription>
+          <DialogTitle>Yeni Sınav</DialogTitle>
+          <DialogDescription>Sınav künyesini oluşturun; sonuç girişini listeden yapabilirsiniz.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Öğrenci</Label>
-            <Select value={form.studentName} onValueChange={(value) => {
-              const student = students.find((item) => item.fullName === value);
-              setForm((prev) => ({
-                ...prev,
-                studentName: value,
-                className: student?.className || '',
-              }));
-            }}>
-              <SelectTrigger><SelectValue placeholder="Öğrenci seçin" /></SelectTrigger>
-              <SelectContent>
-                {students.map((student) => <SelectItem key={student.id} value={student.fullName}>{student.fullName}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label>Başlık</Label>
+            <Input value={form.title} onChange={(e) => update('title', e.target.value)} placeholder="9. Sınıf Matematik 1. Yazılı" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Sınıf</Label>
-              <Input value={selectedStudent?.className || form.className} readOnly />
-            </div>
-            <div className="space-y-2">
-              <Label>Puan</Label>
-              <Input type="number" value={form.score} onChange={(e) => setForm((prev) => ({ ...prev, score: e.target.value }))} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Ders</Label>
-              <Input value={form.subject} onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))} />
+              <Input value={form.subject} onChange={(e) => update('subject', e.target.value)} placeholder="Matematik" />
             </div>
             <div className="space-y-2">
-              <Label>Başlık</Label>
-              <Input value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} />
+              <Label>Sınıf</Label>
+              {classOptions.length > 0 ? (
+                <Select value={form.className} onValueChange={(value) => update('className', value)}>
+                  <SelectTrigger><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
+                  <SelectContent>
+                    {classOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={form.className} onChange={(e) => update('className', e.target.value)} placeholder="9-A" />
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Tür</Label>
+              <Select value={form.type} onValueChange={(value) => update('type', value)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {EXAM_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tarih</Label>
+              <Input type="date" value={form.dateLabel} onChange={(e) => update('dateLabel', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Saat</Label>
+              <Input type="time" value={form.startTime} onChange={(e) => update('startTime', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Süre</Label>
+              <Input value={form.duration} onChange={(e) => update('duration', e.target.value)} placeholder="40 dk" />
+            </div>
+            <div className="space-y-2">
+              <Label>Soru sayısı</Label>
+              <Input type="number" min="0" value={form.questionCount} onChange={(e) => update('questionCount', e.target.value)} />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
-          <Button onClick={handleCreate} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>İptal</Button>
+          <Button onClick={create} disabled={saving}>
+            {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Oluşturuluyor</> : 'Sınavı Oluştur'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -144,25 +241,41 @@ function AddExamResultDialog({ open, onOpenChange, students, onCreated }) {
 }
 
 export default function Exams() {
-  const [resultDialogOpen, setResultDialogOpen] = useState(false);
-  const [selectedExam, setSelectedExam] = useState(null);
-  const [managedExam, setManagedExam] = useState(null);
-  const [search, setSearch] = useState('');
+  const navigate = useNavigate();
+  const { user } = useApp();
+  const roles = useMemo(() => getUserRoles(user), [user]);
+  const canManage = roles.includes('admin') || roles.includes('superadmin') || roles.includes('teacher');
+
+  const [exams, setExams] = useState([]);
   const [results, setResults] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [search, setSearch] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState(ALL);
+  const [classFilter, setClassFilter] = useState(ALL);
+  const [typeFilter, setTypeFilter] = useState(ALL);
+  const [statusFilter, setStatusFilter] = useState(ALL);
+  const [view, setView] = useState('list');
+  const [page, setPage] = useState(1);
+
+  // Açık modal, satırın KOPYASINI değil kimliğini tutar: bir işlem sonrası liste
+  // tazelenince (durum/puan değişimi) pencere de anında güncel veriyi gösterir.
+  const [managedExamId, setManagedExamId] = useState(null);
+  const [newExamOpen, setNewExamOpen] = useState(false);
+
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
       setError('');
-      const [resultList, studentList] = await Promise.all([
+      const [examList, resultList, studentList] = await Promise.all([
+        fetchPlannedExams().catch(() => []),
         fetchExamResults().catch(() => []),
         fetchStudents().catch(() => []),
       ]);
-      setResults(resultList);
-      setStudents(studentList);
+      setExams(Array.isArray(examList) ? examList : []);
+      setResults(Array.isArray(resultList) ? resultList : []);
+      setStudents(Array.isArray(studentList) ? studentList : []);
     } catch (err) {
       setError(err.message || 'Sınav verileri alınamadı.');
     } finally {
@@ -170,283 +283,389 @@ export default function Exams() {
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const classPerformance = useMemo(() => {
-    const names = [...new Set(results.map((item) => item.className).filter(Boolean))];
-    return names.map((className) => {
-      const items = results.filter((result) => result.className === className);
+  // Planlı sınavlar listenin omurgasıdır. Sınav künyesi olmadan yalnız sonucu
+  // girilmiş kayıtlar da (eski veriler) listede görünsün diye başlığa göre
+  // türetilmiş satırlar eklenir — aksi hâlde girilmiş sonuçlar kaybolur.
+  const rows = useMemo(() => {
+    const planned = exams.map((exam) => {
+      const examResults = results.filter((row) => (row.examTitle || row.title) === exam.title);
+      const average = exam.averageScore ?? (examResults.length
+        ? Math.round((examResults.reduce((sum, row) => sum + (Number(row.score) || 0), 0) / examResults.length) * 10) / 10
+        : null);
       return {
-        className,
-        count: items.length,
-        average: items.length ? Math.round(items.reduce((sum, item) => sum + Number(item.score || 0), 0) / items.length) : 0,
-      };
-    }).sort((a, b) => b.average - a.average);
-  }, [results]);
-  const subjectPerformance = useMemo(() => {
-    const subjects = [...new Set(results.map((item) => item.subject).filter(Boolean))];
-    return subjects.map((subject) => {
-      const items = results.filter((result) => result.subject === subject);
-      return {
-        subject,
-        average: items.length ? Math.round(items.reduce((sum, item) => sum + Number(item.score || 0), 0) / items.length) : 0,
-        count: items.length,
+        ...exam,
+        type: typeLabel(exam.type),
+        resultCount: exam.resultCount ?? examResults.length,
+        averageScore: average,
+        date: parseExamDate(exam.dateLabel),
+        synthetic: false,
       };
     });
-  }, [results]);
 
-  const examSummaries = useMemo(() => {
-    const titles = [...new Set(results.map((item) => item.title).filter(Boolean))];
-    return titles.map((title) => {
-      const items = results.filter((result) => result.title === title);
+    const knownTitles = new Set(planned.map((row) => String(row.title || '').toLocaleLowerCase('tr-TR')));
+    const orphanTitles = [...new Set(results
+      .map((row) => row.examTitle || row.title)
+      .filter((title) => title && !knownTitles.has(String(title).toLocaleLowerCase('tr-TR'))))];
+
+    const orphans = orphanTitles.map((title) => {
+      const examResults = results.filter((row) => (row.examTitle || row.title) === title);
+      const first = examResults[0] || {};
       return {
+        id: `result:${title}`,
         title,
-        subject: items[0]?.subject || 'Ders',
-        className: items[0]?.className || 'Sınıf',
-        count: items.length,
-        average: items.length ? Math.round(items.reduce((sum, item) => sum + Number(item.score || 0), 0) / items.length) : 0,
+        subject: first.subject || 'Ders',
+        className: first.className || '',
+        type: typeLabel(first.type),
+        dateLabel: first.dateLabel || '',
+        startTime: '',
+        duration: '',
+        questionCount: 0,
+        status: 'Tamamlandı',
+        attendancePresent: examResults.length,
+        attendanceTotal: examResults.length,
+        resultCount: examResults.length,
+        averageScore: examResults.length
+          ? Math.round((examResults.reduce((sum, row) => sum + (Number(row.score) || 0), 0) / examResults.length) * 10) / 10
+          : null,
+        date: parseExamDate(first.dateLabel),
+        synthetic: true,
       };
     });
-  }, [results]);
 
-  const filteredSummaries = useMemo(() => examSummaries.filter((item) => `${item.title} ${item.subject} ${item.className}`.toLowerCase().includes(search.toLowerCase())), [examSummaries, search]);
+    return [...planned, ...orphans].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
+  }, [exams, results]);
 
-  const downloadExamSummary = (item) => {
-    const rows = results.filter((result) => result.title === item.title);
-    const csv = [
-      ['Ogrenci', 'Sinif', 'Sinav', 'Ders', 'Puan'],
-      ...rows.map((row) => [row.studentName, row.className, row.title, row.subject, row.score]),
-    ]
-      .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${item.title.replace(/\s+/g, '_').toLowerCase()}_ozet.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  };
+  const subjectOptions = useMemo(() => [...new Set(rows.map((row) => row.subject).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')), [rows]);
+  const classOptions = useMemo(() => [...new Set(rows.map((row) => row.className).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')), [rows]);
+  const typeOptions = useMemo(() => [...new Set(rows.map((row) => row.type).filter(Boolean))], [rows]);
+  const statusOptions = useMemo(() => [...new Set(rows.map((row) => row.status).filter(Boolean))], [rows]);
+  const studentClassOptions = useMemo(
+    () => [...new Set(students.map((student) => student.className).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')),
+    [students],
+  );
 
-  const copyExamSummary = async (item) => {
-    await navigator.clipboard.writeText([
-      item.title,
-      item.subject,
-      item.className,
-      `${item.count} sonuç`,
-      `Ortalama ${item.average}`,
-    ].filter(Boolean).join(' • '));
-  };
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase('tr-TR');
+    return rows.filter((row) => {
+      if (query && !`${row.title} ${row.subject} ${row.className}`.toLocaleLowerCase('tr-TR').includes(query)) return false;
+      if (subjectFilter !== ALL && row.subject !== subjectFilter) return false;
+      if (classFilter !== ALL && classKey(row.className) !== classKey(classFilter)) return false;
+      if (typeFilter !== ALL && row.type !== typeFilter) return false;
+      if (statusFilter !== ALL && row.status !== statusFilter) return false;
+      return true;
+    });
+  }, [rows, search, subjectFilter, classFilter, typeFilter, statusFilter]);
 
-  const managementActions = [
-    { label: 'Görüntüle', onClick: () => setSelectedExam(managedExam) },
-    { label: 'Sonuç Gir', onClick: () => setResultDialogOpen(true) },
-    { label: 'Sonuçları İncele', onClick: () => setSelectedExam(managedExam) },
-    { label: 'PDF', onClick: () => window.print() },
-    { label: 'Kopyala', onClick: () => copyExamSummary(managedExam || {}) },
-  ];
+  useEffect(() => { setPage(1); }, [search, subjectFilter, classFilter, typeFilter, statusFilter, view]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paged = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage],
+  );
+
+  const managedExam = useMemo(
+    () => rows.find((row) => row.id === managedExamId) || null,
+    [rows, managedExamId],
+  );
+
+  const stats = useMemo(() => {
+    const total = rows.length;
+    const completed = rows.filter((row) => String(row.status).toLocaleLowerCase('tr-TR') === 'tamamlandı').length;
+    const now = new Date();
+    const weekAhead = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
+    const upcoming = rows.filter((row) => row.date && row.date >= new Date(now.getFullYear(), now.getMonth(), now.getDate()) && row.date <= weekAhead).length;
+    return {
+      total,
+      completed,
+      completedRate: total ? Math.round((completed / total) * 1000) / 10 : 0,
+      upcoming,
+    };
+  }, [rows]);
+
+  // Takvim görünümü: sınavlar tarihine göre gruplanır (gerçek veriden, dekor değil).
+  const grouped = useMemo(() => {
+    const map = new Map();
+    filtered.forEach((row) => {
+      const key = row.date ? row.date.toISOString().slice(0, 10) : 'tarihsiz';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(row);
+    });
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [filtered]);
 
   if (loading) {
     return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6" data-testid="exams-page">
-      <div>
-        <h1 className="text-3xl font-bold font-heading">Sınavlar</h1>
-        <p className="text-muted-foreground mt-1">Sınav ve soru yönetimi</p>
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-5" data-testid="exams-page">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold font-heading">Sınavlar</h1>
+          <p className="mt-1 text-muted-foreground">Sınav sonuç girişi ve mevcut kayıtları incele.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <FeatureGate module="exams" action="create">
+            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setNewExamOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Yeni Sınav
+            </Button>
+          </FeatureGate>
+          <Button variant="outline" onClick={() => navigate('/t/question-studio')}>
+            <ClipboardList className="mr-2 h-4 w-4" /> Çalışma Alanı
+          </Button>
+        </div>
       </div>
 
       {error ? <ErrorBanner title="Sınav verileri alınamadı" message={error} onRetry={loadData} /> : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Toplam Sonuç — Sınıf, Ders ve Şube Bazlı</CardTitle>
-          <CardDescription>Aktif şube için {results.length} sınav sonucu kaydı</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-6 lg:grid-cols-3">
-          <div className="rounded-2xl border bg-muted/20 p-5 text-center">
-            <p className="text-sm text-muted-foreground">Toplam Sonuç</p>
-            <p className="mt-1 text-4xl font-black">{results.length}</p>
-            <p className="mt-2 text-xs text-muted-foreground">{classPerformance.length} sınıf • {subjectPerformance.length} ders</p>
-          </div>
-          <div>
-            <p className="mb-2 text-sm font-semibold">Sınıf Bazlı</p>
-            <div className="space-y-2 max-h-56 overflow-y-auto">
-              {classPerformance.length === 0 ? <p className="text-sm text-muted-foreground">Kayıt yok.</p> : classPerformance.map((item) => (
-                <div key={item.className} className="flex items-center justify-between rounded-lg border bg-muted/20 px-3 py-2 text-sm">
-                  <span>{item.className}</span>
-                  <span className="flex items-center gap-2 text-muted-foreground"><span>{item.count} sonuç</span><Badge variant="outline">Ort. {item.average}</Badge></span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="mb-2 text-sm font-semibold">Ders Bazlı</p>
-            <div className="space-y-2 max-h-56 overflow-y-auto">
-              {subjectPerformance.length === 0 ? <p className="text-sm text-muted-foreground">Kayıt yok.</p> : subjectPerformance.map((item) => (
-                <div key={item.subject} className="flex items-center justify-between rounded-lg border bg-muted/20 px-3 py-2 text-sm">
-                  <span>{item.subject}</span>
-                  <span className="flex items-center gap-2 text-muted-foreground"><span>{item.count} sonuç</span><Badge variant="outline">Ort. {item.average}</Badge></span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Kenar çubuğu açıkken istatistik + filtre tek satıra sığmıyor ve etiketler
+          kırpılıyordu; yalnız çok geniş ekranda yan yana dururlar. */}
+      <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
+        <div className="grid gap-3 sm:grid-cols-3 2xl:w-auto">
+          <StatTile icon={ClipboardList} tint="bg-sky-500/12 text-sky-600" label="Toplam Sınav" value={stats.total} caption="Tüm zamanlar" />
+          <StatTile icon={CheckCircle2} tint="bg-emerald-500/12 text-emerald-600" label="Tamamlanan" value={stats.completed} caption={`%${stats.completedRate} tamamlandı`} />
+          <StatTile icon={Clock} tint="bg-violet-500/12 text-violet-600" label="Yaklaşan" value={stats.upcoming} caption="7 gün içinde" />
+        </div>
 
-      <Tabs defaultValue="exams" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="exams">Sınavlar</TabsTrigger>
-          <TabsTrigger value="results">Sonuçlar</TabsTrigger>
-        </TabsList>
+        <div className="flex flex-wrap items-center gap-2 2xl:justify-end">
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Sınav ara..."
+            className="h-10 w-full sm:w-44"
+          />
+          <FilterSelect value={subjectFilter} onChange={setSubjectFilter} placeholder="Tüm Dersler" options={subjectOptions} />
+          <FilterSelect value={classFilter} onChange={setClassFilter} placeholder="Tüm Sınıflar" options={classOptions} />
+          <FilterSelect value={typeFilter} onChange={setTypeFilter} placeholder="Tüm Türler" options={typeOptions} />
+          <FilterSelect value={statusFilter} onChange={setStatusFilter} placeholder="Tüm Durumlar" options={statusOptions} />
+          <div className="flex overflow-hidden rounded-xl border border-foreground/10">
+            <button
+              type="button"
+              onClick={() => setView('calendar')}
+              aria-label="Takvim görünümü"
+              className={`grid h-10 w-10 place-items-center transition ${view === 'calendar' ? 'bg-[hsl(var(--brand-accent))] text-white' : 'text-muted-foreground hover:bg-muted'}`}
+            >
+              <CalendarDays className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('list')}
+              aria-label="Liste görünümü"
+              className={`grid h-10 w-10 place-items-center transition ${view === 'list' ? 'bg-[hsl(var(--brand-accent))] text-white' : 'text-muted-foreground hover:bg-muted'}`}
+            >
+              <LayoutList className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
 
-        <TabsContent value="exams" className="space-y-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-md flex-1">
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sınav, ders veya sınıf ara..." />
+      {filtered.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-foreground/15 py-16 text-center">
+          <ListChecks className="mx-auto h-9 w-9 text-muted-foreground" />
+          <p className="mt-3 font-bold">Kayıtlı sınav bulunamadı</p>
+          <p className="mt-1 text-sm text-muted-foreground">Filtreleri değiştirin veya yeni bir sınav oluşturun.</p>
+        </div>
+      ) : view === 'list' ? (
+        <div className="overflow-hidden rounded-2xl border border-foreground/10">
+          <div className="hidden grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_5.5rem] gap-4 border-b border-foreground/10 bg-foreground/[0.035] px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-muted-foreground lg:grid">
+            <span>Sınav Bilgisi</span>
+            <span>Ders - Sınıf</span>
+            <span>Tarih</span>
+            <span>Katılım</span>
+            <span>Ortalama</span>
+            <span>Durum</span>
+            <span className="text-right">İşlemler</span>
+          </div>
+          <div className="divide-y divide-foreground/[0.07]">
+            {paged.map((row) => (
+              <ExamRow key={row.id} row={row} onManage={() => setManagedExamId(row.id)} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {grouped.map(([key, items]) => (
+            <div key={key} className="overflow-hidden rounded-2xl border border-foreground/10">
+              <div className="flex items-center gap-2 border-b border-foreground/10 bg-foreground/[0.035] px-5 py-2.5">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-bold">
+                  {key === 'tarihsiz' ? 'Tarihi belirtilmemiş' : formatExamDate(new Date(`${key}T00:00:00`))}
+                </span>
+                <Badge variant="outline" className="ml-auto">{items.length} sınav</Badge>
+              </div>
+              <div className="divide-y divide-foreground/[0.07]">
+                {items.map((row) => <ExamRow key={row.id} row={row} onManage={() => setManagedExamId(row.id)} />)}
+              </div>
             </div>
-            <FeatureGate module="exams" action="create">
-              <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setResultDialogOpen(true)}>
-                Yeni Sonuç
+          ))}
+        </div>
+      )}
+
+      {view === 'list' && filtered.length > 0 ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">Toplam {filtered.length} sınav</p>
+          {pageCount > 1 ? (
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" className="h-9 w-9" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
+                <ChevronLeft className="h-4 w-4" />
               </Button>
-            </FeatureGate>
-          </div>
-
-          <div className="space-y-3">
-            {filteredSummaries.map((exam) => (
-              <Card key={exam.title} className="rounded-2xl transition hover:border-foreground/20">
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{exam.subject} • Tamamlandı</p>
-                      <h3 className="mt-1 truncate text-lg font-black sm:text-xl">{exam.title}</h3>
-                      <p className="mt-2 text-sm text-muted-foreground">{exam.className} • {exam.count} sonuç • Ortalama {exam.average}</p>
-                    </div>
-                    <Button className="w-full shrink-0 sm:w-28" onClick={() => setManagedExam(exam)}>
-                      Yönet
+              {Array.from({ length: pageCount }, (_, index) => index + 1)
+                .filter((number) => number === 1 || number === pageCount || Math.abs(number - currentPage) <= 1)
+                .map((number, index, list) => (
+                  <span key={number} className="flex items-center gap-1">
+                    {index > 0 && number - list[index - 1] > 1 ? <span className="px-1 text-muted-foreground">…</span> : null}
+                    <Button
+                      variant={number === currentPage ? 'default' : 'outline'}
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={() => setPage(number)}
+                    >
+                      {number}
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="results" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {subjectPerformance.map((item) => (
-              <Card key={item.subject}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="font-medium">{item.subject}</p>
-                      <p className="text-sm text-muted-foreground">{item.count} sonuç</p>
-                    </div>
-                    <Badge variant="outline">{item.average}</Badge>
-                  </div>
-                  <Progress value={item.average} className="h-2" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Sonuç Listesi</CardTitle>
-              <CardDescription>Gerçek sınav sonucu kayıtları</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {results.map((result) => (
-                <div key={result.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                  <div>
-                    <p className="font-medium">{result.studentName}</p>
-                    <p className="text-sm text-muted-foreground">{result.className} • {result.title} • {result.subject}</p>
-                  </div>
-                  <Badge className="bg-brand-primary text-white">{result.score}</Badge>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <AddExamResultDialog
-        open={resultDialogOpen}
-        onOpenChange={setResultDialogOpen}
-        students={students}
-        onCreated={(created) => setResults((prev) => [created, ...prev])}
-      />
-
-      <Dialog open={Boolean(selectedExam)} onOpenChange={(open) => !open && setSelectedExam(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>{selectedExam?.title || 'Sınav detayı'}</DialogTitle>
-            <DialogDescription>
-              {selectedExam?.subject} • {selectedExam?.className}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedExam ? (
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground">Sınıf</p>
-                    <p className="mt-1 font-semibold">{selectedExam.className}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground">Katılım</p>
-                    <p className="mt-1 font-semibold">{selectedExam.count} öğrenci</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground">Ortalama</p>
-                    <p className="mt-1 font-semibold">{selectedExam.average}</p>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="rounded-2xl border">
-                <div className="grid grid-cols-[1.8fr_1fr_0.7fr] gap-3 border-b bg-muted/30 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  <span>Öğrenci</span>
-                  <span>Ders</span>
-                  <span>Puan</span>
-                </div>
-                <div className="divide-y">
-                  {results.filter((item) => item.title === selectedExam.title).map((item) => (
-                    <div key={item.id} className="grid grid-cols-[1.8fr_1fr_0.7fr] gap-3 px-4 py-3 text-sm">
-                      <span className="font-medium">{item.studentName}</span>
-                      <span className="text-muted-foreground">{item.subject}</span>
-                      <Badge className="w-fit bg-brand-primary text-white">{item.score}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                  </span>
+                ))}
+              <Button variant="outline" size="icon" className="h-9 w-9" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           ) : null}
-          <DialogFooter>
-            {selectedExam ? (
-              <Button variant="outline" onClick={() => downloadExamSummary(selectedExam)}>
-                Özeti İndir
-              </Button>
-            ) : null}
-            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setSelectedExam(null)}>Kapat</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      ) : null}
+
+      <NewExamDialog
+        open={newExamOpen}
+        onOpenChange={setNewExamOpen}
+        onCreated={loadData}
+        classOptions={studentClassOptions}
+      />
 
       <ExamManagementSheet
         exam={managedExam}
+        results={results}
+        students={students}
         open={Boolean(managedExam)}
-        onOpenChange={(open) => !open && setManagedExam(null)}
-        actions={managementActions}
+        onOpenChange={(open) => !open && setManagedExamId(null)}
+        onChanged={loadData}
+        canEditResults={canManage}
+        canEditExam={canManage && !managedExam?.synthetic}
+        canDelete={canManage && !managedExam?.synthetic}
       />
     </motion.div>
+  );
+}
+
+function FilterSelect({ value, onChange, placeholder, options }) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-10 w-full sm:w-[9.5rem]"><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL}>{placeholder}</SelectItem>
+        {options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function ExamRow({ row, onManage }) {
+  const style = typeStyle(row.type);
+  const Icon = style.icon;
+  const participation = row.attendanceTotal
+    ? Math.round((row.attendancePresent / row.attendanceTotal) * 100)
+    : null;
+
+  return (
+    <div className="grid grid-cols-1 gap-4 px-5 py-4 transition hover:bg-foreground/[0.02] lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_5.5rem] lg:items-center">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${style.tint}`}>
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <span className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide ${style.badge}`}>
+            {typeLabel(row.type)}
+          </span>
+          <p className="mt-1 truncate text-sm font-black">{row.title}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+            {row.questionCount ? <span className="inline-flex items-center gap-1"><ListChecks className="h-3 w-3" />{row.questionCount} Soru</span> : null}
+            {row.duration ? <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{row.duration}</span> : null}
+            {row.className ? <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{row.className}</span> : null}
+          </p>
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold">{row.subject || '—'}</p>
+        <p className="truncate text-xs text-muted-foreground">{row.className || '—'}</p>
+      </div>
+
+      <div className="min-w-0">
+        <p className="flex items-center gap-1.5 text-sm font-semibold">
+          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+          {formatExamDate(row.date, row.dateLabel)}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">{weekdayLabel(row.date, row.startTime) || '—'}</p>
+      </div>
+
+      <div>
+        {row.attendanceTotal ? (
+          <>
+            <p className="flex items-center gap-1.5 text-sm font-semibold tabular-nums">
+              <Users className="h-3.5 w-3.5 text-muted-foreground" />
+              {row.attendancePresent} / {row.attendanceTotal}
+            </p>
+            <p className="text-xs text-muted-foreground">%{participation}</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">—</p>
+            <p className="text-xs text-muted-foreground">%0</p>
+          </>
+        )}
+      </div>
+
+      <div>
+        {row.averageScore != null ? (
+          <>
+            <p className={`text-lg font-black tabular-nums ${
+              row.averageScore >= 85 ? 'text-emerald-600'
+                : row.averageScore >= 70 ? 'text-sky-600'
+                  : row.averageScore >= 50 ? 'text-amber-600' : 'text-red-600'
+            }`}
+            >
+              {row.averageScore}
+            </p>
+            <p className="text-[11px] text-muted-foreground">Puan</p>
+            <div className="mt-1 h-1.5 w-full max-w-[6rem] overflow-hidden rounded-full bg-foreground/10">
+              <div
+                className={`h-full rounded-full ${
+                  row.averageScore >= 85 ? 'bg-emerald-500'
+                    : row.averageScore >= 70 ? 'bg-sky-500'
+                      : row.averageScore >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                }`}
+                style={{ width: `${Math.min(100, Math.max(2, row.averageScore))}%` }}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-lg font-black text-muted-foreground">—</p>
+            <p className="text-[11px] text-muted-foreground">Puan</p>
+          </>
+        )}
+      </div>
+
+      <div>
+        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${statusStyle(row.status)}`}>
+          {row.status || 'Planlandı'}
+        </span>
+      </div>
+
+      <div className="lg:text-right">
+        <Button size="sm" className="w-full lg:w-auto" onClick={onManage}>Yönet</Button>
+      </div>
+    </div>
   );
 }

@@ -37,6 +37,8 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
       {children}
       <DialogPrimitive.Close
         aria-label="Kapat"
+        data-ci-dialog-close="true"
+        style={{ top: '1.25rem', right: '1.25rem', bottom: 'auto', left: 'auto' }}
         className="absolute right-5 top-5 z-10 grid h-9 w-9 place-items-center rounded-xl border border-border/70 bg-muted/55 p-0 text-muted-foreground transition-all hover:border-[hsl(var(--brand-accent)/0.35)] hover:bg-[hsl(var(--brand-accent)/0.1)] hover:text-foreground focus:outline-none focus:ring-2 focus:ring-[hsl(var(--brand-accent)/0.4)] disabled:pointer-events-none">
         <X className="block h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="sr-only">Kapat</span>

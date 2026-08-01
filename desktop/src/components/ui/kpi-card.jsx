@@ -24,10 +24,10 @@ export const KPI_TONES = {
 
 export const kpiItemVariants = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } };
 
-export function KpiCard({ label, value, caption, icon: Icon, tone = 'brand', onClick, testId }) {
+export function KpiCard({ label, value, caption, icon: Icon, tone = 'brand', onClick, testId, className, containerClassName }) {
   const Wrapper = onClick ? 'button' : 'div';
   return (
-    <motion.div variants={kpiItemVariants}>
+    <motion.div variants={kpiItemVariants} className={containerClassName}>
       <Wrapper
         type={onClick ? 'button' : undefined}
         onClick={onClick}
@@ -36,6 +36,7 @@ export function KpiCard({ label, value, caption, icon: Icon, tone = 'brand', onC
         className={cn(
           'ci-metric-card flex h-full w-full flex-col gap-3 rounded-2xl border border-foreground/10 p-4 text-left transition-all',
           onClick && 'cursor-pointer hover:-translate-y-0.5 hover:border-[hsl(var(--brand-accent)/0.35)]',
+          className,
         )}
       >
         <div className="flex items-center justify-between gap-2">

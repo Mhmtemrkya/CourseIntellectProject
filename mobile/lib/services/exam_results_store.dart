@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class ExamScoreRecord {
+  /// Sunucu kimliği — düzeltme/silme bu kimlikle yapılır (eski kayıtlarda null).
+  final String? id;
   final String examTitle;
   final String type;
   final String subject;
@@ -13,6 +15,7 @@ class ExamScoreRecord {
   int? overallRank;
 
   ExamScoreRecord({
+    this.id,
     required this.examTitle,
     required this.type,
     required this.subject,

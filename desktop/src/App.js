@@ -191,6 +191,7 @@ import AdministrativeDocuments from "./pages/admin/AdministrativeDocuments";
 import AdministrativeAnnouncements from "./pages/admin/AdministrativeAnnouncements";
 import AdminStudentRegistration from "./pages/admin/AdminStudentRegistration";
 import AdminStaffRegistration from "./pages/admin/AdminStaffRegistration";
+import AdminStaffDirectory from "./pages/admin/AdminStaffDirectory";
 import ConsolidatedOverview from "./pages/admin/ConsolidatedOverview";
 import ScopeManagement from "./pages/admin/ScopeManagement";
 import AdminBranchRegistration from "./pages/admin/AdminBranchRegistration";
@@ -360,6 +361,7 @@ function App() {
               <Route path="/admin/student-registration" element={<AdminStudentRegistration />} />
               <Route path="/admin/branch-registration" element={<AdminBranchRegistration />} />
               <Route path="/admin/staff-registration" element={<AdminStaffRegistration />} />
+              <Route path="/admin/staff" element={<AdminStaffDirectory />} />
               <Route path="/consolidated" element={<ConsolidatedOverview />} />
               <Route path="/scope-management" element={<ScopeManagement />} />
               <Route path="/admin/accounting-registration" element={<AdminAccountingRegistration />} />

@@ -27,14 +27,14 @@ export default function RoleDashboardColumns({ groups = [], navigate, testId = '
         <motion.section
           key={group.key}
           variants={groupVariants}
-          className="rounded-3xl border border-foreground/10 bg-foreground/[0.025] p-4 shadow-sm"
+          className="min-w-0"
           data-testid={`${testId}-${group.key}`}
         >
-          <div className="mb-4 min-h-[52px] border-b border-foreground/10 pb-3">
-            <h2 className="text-sm font-black tracking-tight">{group.title}</h2>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{group.description}</p>
+          <div className="mb-3 min-h-[68px] border-b-2 border-[hsl(var(--brand-accent)/0.18)] pb-3">
+            <h2 className="text-sm font-black tracking-tight text-foreground">{group.title}</h2>
+            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{group.description}</p>
           </div>
-          <div className="space-y-3">
+          <div className="grid auto-rows-[126px] grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-1">
             {group.cards.map((card) => (
               <KpiCard
                 key={card.key}
@@ -44,6 +44,8 @@ export default function RoleDashboardColumns({ groups = [], navigate, testId = '
                 caption={card.caption}
                 icon={card.icon || card.Icon}
                 tone={card.tone}
+                containerClassName="h-full min-w-0"
+                className="min-h-[126px] justify-between"
                 onClick={card.onClick || (card.path && navigate ? () => navigate(card.path) : undefined)}
               />
             ))}

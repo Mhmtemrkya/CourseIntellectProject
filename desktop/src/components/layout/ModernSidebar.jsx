@@ -146,6 +146,12 @@ export const menuConfigs = {
       color: "#2563eb",
     },
     {
+      path: "/admin/staff",
+      icon: Users,
+      label: "Personeller",
+      color: "#0ea5e9",
+    },
+    {
       path: "/admin/operations",
       icon: Activity,
       label: "Operasyon",
@@ -1111,7 +1117,7 @@ export const ROLE_LABELS = {
 const ROLE_MENU_GROUPS = {
   admin: [
     { id: "main", title: "Ana Panel", modules: ["dashboard", "driving-school", "driving-registration", "driving-operations", "driving-scheduling", "driving-calendar", "driving-lessons", "driving-fleet-compliance", "driving-assignments", "driving-education", "driving-graduation", "driving-forms", "driving-reports", "kpi", "operations", "global-search", "tasks"] },
-    { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses", "duties"] },
+    { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses", "duties"], paths: ["/admin/staff"] },
     { id: "registrations", title: "Kayıt İşlemleri", modules: ["registrations", "records", "administrative-units", "org-units", "staff-hr", "approvals", "password-reset"], paths: ["/admin/passive-records"] },
     { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons", "library"] },
     { id: "reports", title: "Raporlar", modules: ["reports", "branch-comparison"] },
@@ -1371,6 +1377,7 @@ export function inferModuleKey(item) {
     "/finance/dashboard": "finance",
     "/admin/kpi": "kpi",
     "/admin/academics": "academics",
+    "/admin/staff": "academics",
     "/admin/courses": "courses",
     "/students": "students",
     "/forms": "school-forms",

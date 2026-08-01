@@ -48,9 +48,12 @@ const SheetContent = React.forwardRef(({ side = "right", className, children, ..
     <SheetOverlay />
     <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
       <SheetPrimitive.Close
+        aria-label="Kapat"
+        data-ci-sheet-close="true"
+        style={{ top: '1.25rem', right: '1.25rem', bottom: 'auto', left: 'auto' }}
         className="absolute right-5 top-5 z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-muted/55 text-muted-foreground transition hover:bg-[hsl(var(--brand-accent)/0.1)] hover:text-foreground focus:outline-none focus:ring-2 focus:ring-[hsl(var(--brand-accent)/0.4)] disabled:pointer-events-none">
         <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
+        <span className="sr-only">Kapat</span>
       </SheetPrimitive.Close>
       {children}
     </SheetPrimitive.Content>

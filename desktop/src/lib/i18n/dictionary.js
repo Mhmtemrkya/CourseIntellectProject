@@ -81,7 +81,7 @@ export const TR_EN = {
   'Görevlerim': 'My Duties', 'Kurum Özeti': 'Institution Summary', 'Kurum İçi Arama': 'Global Search',
   'Akademik Yönetim': 'Academic Management', 'Kayıt İşlemleri': 'Registrations',
   'Öğrenci Kaydı': 'Student Registration', 'Veli Kaydı': 'Parent Registration',
-  'Personel Kaydı': 'Staff Registration', 'Şube Kaydı': 'Branch Registration',
+  'Personel Kaydı': 'Staff Registration', 'Personeller': 'Staff', 'Şube Kaydı': 'Branch Registration',
   'İdari Kayıtlar': 'Administrative Records', 'Belge Merkezi': 'Document Center',
   'Personel / İK': 'Staff / HR', 'Organizasyon Birimleri': 'Organization Units',
   'Rol Yönetimi': 'Role Management', 'Yetki Matrisi': 'Permission Matrix',

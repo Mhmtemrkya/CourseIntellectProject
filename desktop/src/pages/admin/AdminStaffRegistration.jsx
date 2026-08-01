@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Save, Briefcase, Copy, BusFront, Route, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { FeatureGate } from '../../components/FeatureGate';
@@ -156,16 +156,19 @@ const buildStaffEditForm = (staff = {}) => ({
   customRoleId: staff.customRoleId || '',
 });
 
-export default function AdminStaffRegistration() {
+export default function AdminStaffRegistration({ mode = 'registration' }) {
   const { toast } = useToast();
   const { user } = useApp();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const directoryMode = searchParams.get('view') === 'directory';
+  const directoryMode = mode === 'directory';
   const tenantName = user?.tenant || '';
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [allStaff, setAllStaff] = useState([]);
-  const [roleFilter, setRoleFilter] = useState(() => searchParams.get('role') || 'all');
+  const [roleFilter, setRoleFilter] = useState(() => (
+    directoryMode ? searchParams.get('role') || 'all' : 'Teacher'
+  ));
   const [staffSearch, setStaffSearch] = useState('');
   const [branches, setBranches] = useState([]);
   const [branchId, setBranchId] = useState('');
@@ -510,6 +513,7 @@ export default function AdminStaffRegistration() {
     const normalize = (value) => String(value || '').trim().toLocaleLowerCase('tr-TR');
     const query = normalize(staffSearch);
     return allStaff.filter((staff) => {
+      if (directoryMode && isUserPassive(staff.status)) return false;
       const matchesRole = roleFilter === 'all'
         || (roleFilter.startsWith('custom:')
           ? String(staff.customRoleId || '') === roleFilter.slice(7)
@@ -522,21 +526,17 @@ export default function AdminStaffRegistration() {
       return [staff.fullName, staff.username, staff.departmentOrBranch, staff.campus]
         .some((value) => normalize(value).includes(query));
     });
-  }, [allStaff, roleFilter, selectedStaffRole, staffSearch]);
+  }, [allStaff, directoryMode, roleFilter, selectedStaffRole, staffSearch]);
 
   const handleStaffRoleChange = (value) => {
     setRoleFilter(value);
+    if (!directoryMode) return;
     const next = new URLSearchParams(searchParams);
     next.set('role', value);
-    if (directoryMode) next.set('view', 'directory');
     setSearchParams(next, { replace: true });
   };
 
-  const openRegistrationForm = () => {
-    const next = new URLSearchParams(searchParams);
-    next.delete('view');
-    setSearchParams(next, { replace: true });
-  };
+  const openRegistrationForm = () => navigate('/admin/staff-registration');
 
   const createTeacherBranch = async (name) => {
     const next = mergeBranches(savedBranches, [name]);
@@ -552,7 +552,13 @@ export default function AdminStaffRegistration() {
   };
 
   return (
-    <motion.div className="space-y-6" initial="hidden" animate="visible" variants={containerVariants}>
+    <motion.div
+      className="space-y-6"
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      data-testid={directoryMode ? 'staff-directory-page' : 'staff-registration-page'}
+    >
       <motion.div variants={itemVariants} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
         <div className="p-2 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl text-white">
@@ -773,23 +779,25 @@ export default function AdminStaffRegistration() {
         <motion.div variants={itemVariants}>
           <Card>
             <CardHeader className="space-y-1">
-              <CardTitle className="text-base">Aktif Personel Listesi</CardTitle>
-              <p className="text-sm text-muted-foreground">Kadroya rol filtresi ve personel araması uygulayın.</p>
+              <CardTitle className="text-base">{directoryMode ? 'Aktif Personel Listesi' : 'Role Göre Personel'}</CardTitle>
+              {directoryMode ? <p className="text-sm text-muted-foreground">Kadroya rol filtresi ve personel araması uygulayın.</p> : null}
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-[minmax(220px,0.7fr)_minmax(260px,1.3fr)]">
+              <div className={directoryMode ? 'grid gap-3 md:grid-cols-[minmax(220px,0.7fr)_minmax(260px,1.3fr)]' : ''}>
                 <Select value={roleFilter} onValueChange={handleStaffRoleChange}>
                   <SelectTrigger aria-label="Personel rolü"><SelectValue placeholder="Rol seçin" /></SelectTrigger>
                   <SelectContent>
-                    {staffFilterOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+                    {(directoryMode ? staffFilterOptions : staffFilterOptions.filter((item) => item.value !== 'all')).map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Input
-                  value={staffSearch}
-                  onChange={(event) => setStaffSearch(event.target.value)}
-                  placeholder="Ad, kullanıcı adı, birim veya kampüs ara"
-                  aria-label="Personel ara"
-                />
+                {directoryMode ? (
+                  <Input
+                    value={staffSearch}
+                    onChange={(event) => setStaffSearch(event.target.value)}
+                    placeholder="Ad, kullanıcı adı, birim veya kampüs ara"
+                    aria-label="Personel ara"
+                  />
+                ) : null}
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/30 p-3">
@@ -797,7 +805,9 @@ export default function AdminStaffRegistration() {
                   <p className="text-xs text-muted-foreground">{selectedStaffRole?.label}</p>
                   <p className="mt-1 text-2xl font-bold">{filteredStaff.filter((staff) => !isUserPassive(staff.status)).length}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">Yalnız aktif personel kayıtları gösterilir.</p>
+                <p className="text-xs text-muted-foreground">
+                  {directoryMode ? 'Yalnız aktif personel kayıtları gösterilir.' : `${selectedStaffRole?.label || 'Personel'} kadrosu`}
+                </p>
               </div>
 
               {loading ? (
@@ -808,47 +818,52 @@ export default function AdminStaffRegistration() {
                   <p className="mt-1 text-sm text-muted-foreground">Rol filtresini veya arama metnini değiştirin.</p>
                 </div>
               ) : (
-                <div className={directoryMode ? 'grid gap-3 md:grid-cols-2 xl:grid-cols-3' : 'max-h-[360px] space-y-2 overflow-y-auto'}>
+                <div
+                  className={directoryMode ? 'grid gap-3 md:grid-cols-2 xl:grid-cols-3' : 'max-h-[360px] space-y-2 overflow-y-auto'}
+                  data-testid={directoryMode ? 'staff-directory-grid' : 'staff-registration-role-list'}
+                >
                         {filteredStaff.map((s, i) => {
                           const isPassive = isUserPassive(s.status);
                           const customRole = customRoles.find((role) => String(role.id) === String(s.customRoleId || ''));
                           const standardRole = staffRoleFilters.find((role) => String(role.value).toLowerCase() === String(s.primaryRole || s.role || '').toLowerCase());
                           const roleLabel = customRole?.name || standardRole?.label || s.primaryRole || s.role || 'Rol belirtilmemiş';
                           return (
-                            <div key={s.id || i} className={`flex items-center gap-3 rounded-xl border border-foreground/10 bg-muted/30 p-3 ${isPassive ? 'opacity-60' : ''}`}>
-                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600 dark:bg-purple-900/30">
+                            <div key={s.id || i} data-testid={directoryMode ? 'staff-directory-card' : 'staff-registration-role-card'} className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-foreground/10 bg-muted/30 p-3 ${isPassive ? 'opacity-60' : ''}`}>
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600 dark:bg-purple-900/30">
                                 {(s.fullName || '?')[0]}
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-medium truncate">{s.fullName}{isPassive ? ' · Pasif' : ''}</p>
                                 <p className="truncate text-xs text-muted-foreground">{roleLabel} · {s.departmentOrBranch || s.campus || 'Birim belirtilmemiş'}</p>
                               </div>
-                              <button
-                                type="button"
-                                className="text-xs font-semibold text-muted-foreground hover:text-foreground"
-                                title="Personel bilgilerini ve yetkilerini düzenle"
-                                onClick={() => {
-                                  setEditStaff(s);
-                                  setEditForm(buildStaffEditForm(s));
-                                }}
-                              >
-                                Düzenle
-                              </button>
-                              <FeatureGate module="staff-hr" action="status">
-                                <UserStatusButton
-                                  isPassive={isPassive}
-                                  className="h-8 px-2 text-xs"
-                                  onToggle={async () => {
-                                    try {
-                                      await updateUserStatus(s.username, isPassive ? 'Active' : 'Passive');
-                                      toast({ title: isPassive ? 'Kullanıcı aktifleştirildi.' : 'Kullanıcı pasife alındı (giriş yapamaz).' });
-                                      await loadRecent();
-                                    } catch (err) {
-                                      toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' });
-                                    }
+                              <div className="col-span-2 flex flex-wrap items-center justify-end gap-2 border-t border-foreground/10 pt-3">
+                                <button
+                                  type="button"
+                                  className="h-8 rounded-lg px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                  title="Personel bilgilerini ve yetkilerini düzenle"
+                                  onClick={() => {
+                                    setEditStaff(s);
+                                    setEditForm(buildStaffEditForm(s));
                                   }}
-                                />
-                              </FeatureGate>
+                                >
+                                  Düzenle
+                                </button>
+                                <FeatureGate module="staff-hr" action="status">
+                                  <UserStatusButton
+                                    isPassive={isPassive}
+                                    className="h-8 px-3 text-xs"
+                                    onToggle={async () => {
+                                      try {
+                                        await updateUserStatus(s.username, isPassive ? 'Active' : 'Passive');
+                                        toast({ title: isPassive ? 'Kullanıcı aktifleştirildi.' : 'Kullanıcı pasife alındı (giriş yapamaz).' });
+                                        await loadRecent();
+                                      } catch (err) {
+                                        toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' });
+                                      }
+                                    }}
+                                  />
+                                </FeatureGate>
+                              </div>
                             </div>
                           );
                         })}

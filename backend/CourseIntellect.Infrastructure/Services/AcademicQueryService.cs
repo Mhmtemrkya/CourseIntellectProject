@@ -130,6 +130,85 @@ public sealed class AcademicQueryService(
         return ToExamResultDto(result, rankingPool);
     }
 
+    /// <summary>
+    /// Sonucu günceller. Puan/net yeniden normalize edilir; sınav künyesi
+    /// (başlık/ders/sınıf/tarih) da düzeltilebilir — yanlış sınıfa veya yanlış
+    /// başlıkla girilen sonuçlar silinip yeniden girilmek zorunda kalmasın.
+    /// Tenant izolasyonu global query filter'dan gelir: başka kurumun kaydı
+    /// zaten bulunamaz (null döner).
+    /// </summary>
+    public async Task<ExamResultDto?> UpdateExamResultAsync(
+        Guid id,
+        UpdateExamResultRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await dbContext.ExamResults.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (result is null)
+        {
+            return null;
+        }
+
+        var normalized = NormalizeExamScoring(request.Score, request.Net, request.CorrectCount, request.WrongCount, request.TotalQuestions);
+        var previousScore = result.Score;
+
+        if (!string.IsNullOrWhiteSpace(request.ExamTitle)) result.ExamTitle = request.ExamTitle.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Subject)) result.Subject = request.Subject.Trim();
+        if (!string.IsNullOrWhiteSpace(request.ClassName)) result.ClassName = request.ClassName.Trim();
+        if (!string.IsNullOrWhiteSpace(request.DateLabel)) result.DateLabel = request.DateLabel.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Type)) result.Type = ParseExamType(request.Type);
+        result.Score = normalized.ScorePercent;
+        result.Net = normalized.Net;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Not değiştiyse veli yeniden bilgilendirilir; aynı puan tekrar kaydedilince
+        // gereksiz bildirim gitmez.
+        if (previousScore != result.Score)
+        {
+            await parentNotifier.NotifyStudentParentAsync(
+                result.StudentName,
+                "Sınav sonucu güncellendi",
+                $"{result.ExamTitle}: {result.Score} puan / {result.Net} net",
+                "ExamResult",
+                cancellationToken);
+        }
+
+        await auditLogService.LogAsync(
+            "Sınav sonucu güncellendi",
+            "Academic",
+            nameof(ExamResult),
+            result.Id.ToString(),
+            $"{result.StudentName} · {result.ExamTitle} · {previousScore} → {result.Score}",
+            cancellationToken);
+
+        var rankingPool = await dbContext.ExamResults
+            .AsNoTracking()
+            .Where(item => item.Subject == result.Subject && item.ExamTitle == result.ExamTitle)
+            .ToListAsync(cancellationToken);
+        return ToExamResultDto(result, rankingPool);
+    }
+
+    public async Task<bool> DeleteExamResultAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var result = await dbContext.ExamResults.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (result is null)
+        {
+            return false;
+        }
+
+        dbContext.ExamResults.Remove(result);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        await auditLogService.LogAsync(
+            "Sınav sonucu silindi",
+            "Academic",
+            nameof(ExamResult),
+            id.ToString(),
+            $"{result.StudentName} · {result.ExamTitle} · {result.Score} puan",
+            cancellationToken);
+        return true;
+    }
+
     private static ExamResultDto ToExamResultDto(ExamResult result, IReadOnlyList<ExamResult> scope)
     {
         var comparable = scope
