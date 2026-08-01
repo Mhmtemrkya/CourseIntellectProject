@@ -20,7 +20,7 @@ export default function RoleDashboardColumns({ groups = [], navigate, testId = '
 
   return (
     <div
-      className={`grid items-start gap-5 ${visibleGroups.length >= 4 ? 'md:grid-cols-2 2xl:grid-cols-4' : visibleGroups.length === 3 ? 'md:grid-cols-2 xl:grid-cols-3' : 'md:grid-cols-2'}`}
+      className={`grid items-start gap-5 ${visibleGroups.length >= 4 ? 'md:grid-cols-2 xl:grid-cols-4' : visibleGroups.length === 3 ? 'md:grid-cols-2 xl:grid-cols-3' : 'md:grid-cols-2'}`}
       data-testid={testId}
     >
       {visibleGroups.map((group) => (
@@ -34,7 +34,7 @@ export default function RoleDashboardColumns({ groups = [], navigate, testId = '
             <h2 className="text-sm font-black tracking-tight text-foreground">{group.title}</h2>
             <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{group.description}</p>
           </div>
-          <div className="grid auto-rows-[126px] grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-1">
+          <div className="grid auto-rows-[126px] grid-cols-2 gap-4">
             {group.cards.map((card) => (
               <KpiCard
                 key={card.key}
