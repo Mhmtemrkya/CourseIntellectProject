@@ -87,6 +87,28 @@ public sealed class StudentsController(
         }
     }
 
+    /// <summary>
+    /// Dönem sonu sınıf yükseltme (ör. 7-A → 8-A). Yalnız kurum yöneticisi ve şube
+    /// müdürü yapabilir — şube müdürü JWT'de Admin rolü taşır, verisi ise şube
+    /// grant'i ile kendi şubesine kilitlidir. İdari personel bu işlemi yapamaz.
+    /// </summary>
+    [HttpPost("promote")]
+    [Authorize(Roles = "Admin")]
+    [RequireEntitlement("students", "edit")]
+    public async Task<IActionResult> PromoteStudents(
+        [FromBody] CourseIntellect.Application.DTOs.Students.PromoteStudentsRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await academicQueryService.PromoteStudentsAsync(request, cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin,Administrative")]
     [RequireEntitlement("students", "delete")]

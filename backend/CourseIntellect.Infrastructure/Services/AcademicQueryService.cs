@@ -509,6 +509,75 @@ public sealed class AcademicQueryService(
             user.ExtraRoles.Select(r => r.ToString()).ToList());
     }
 
+    /// <summary>
+    /// Dönem sonu sınıf yükseltme: seçili öğrenciler tek işlemde hedef sınıfa taşınır.
+    ///
+    /// Öğrenci kaydı ile kullanıcı kaydındaki sınıf bilgisi (DepartmentOrBranch)
+    /// birlikte güncellenir — ikisi ayrışırsa menü/rapor filtreleri şaşar. Tenant
+    /// ve şube izolasyonu global query filter'dan gelir: şube müdürü yalnız kendi
+    /// şubesindeki öğrenciyi taşıyabilir, diğerleri "bulunamadı" döner.
+    /// </summary>
+    public async Task<PromoteStudentsResult> PromoteStudentsAsync(
+        PromoteStudentsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var targetClass = (request.TargetClassName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(targetClass))
+        {
+            throw new InvalidOperationException("Hedef sınıf boş olamaz.");
+        }
+
+        var requestedIds = (request.StudentUserIds ?? []).Distinct().ToList();
+        if (requestedIds.Count == 0)
+        {
+            throw new InvalidOperationException("En az bir öğrenci seçilmelidir.");
+        }
+
+        var students = await dbContext.Students
+            .Where(x => requestedIds.Contains(x.UserId))
+            .ToListAsync(cancellationToken);
+        var users = await dbContext.Users
+            .Where(x => requestedIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        var promoted = new List<(string Name, string From)>();
+        var alreadyInClass = new List<string>();
+        foreach (var student in students)
+        {
+            if (string.Equals(student.ClassName?.Trim(), targetClass, StringComparison.OrdinalIgnoreCase))
+            {
+                alreadyInClass.Add(student.FullName);
+                continue;
+            }
+
+            promoted.Add((student.FullName, string.IsNullOrWhiteSpace(student.ClassName) ? "—" : student.ClassName));
+            student.ClassName = targetClass;
+            if (users.TryGetValue(student.UserId, out var user))
+            {
+                user.DepartmentOrBranch = targetClass;
+            }
+        }
+
+        if (promoted.Count > 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await auditLogService.LogAsync(
+                "Sınıf yükseltme",
+                "Registration",
+                nameof(StudentProfile),
+                targetClass,
+                $"{promoted.Count} öğrenci {targetClass} sınıfına taşındı: "
+                    + string.Join(", ", promoted.Take(20).Select(x => $"{x.Name} ({x.From}→{targetClass})")),
+                cancellationToken);
+        }
+
+        var foundUserIds = students.Select(x => x.UserId).ToHashSet();
+        return new PromoteStudentsResult(
+            promoted.Count,
+            alreadyInClass,
+            requestedIds.Where(id => !foundUserIds.Contains(id)).ToList());
+    }
+
     private async Task EnsureTcNoAvailableAsync(Guid? tenantId, string tcNo, Guid? excludedUserId, CancellationToken cancellationToken)
     {
         if (!tenantId.HasValue || string.IsNullOrEmpty(tcNo)) return;

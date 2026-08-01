@@ -14,6 +14,8 @@ class AdminDirectoryApiException implements Exception {
 
 class AdminStudentRecord {
   final String id;
+  /// Kullanıcı kimliği — sınıf yükseltme bu kimlikle yapılır (profil id'si değil).
+  final String userId;
   final String fullName;
   final String tcNo;
   final String className;
@@ -31,6 +33,7 @@ class AdminStudentRecord {
 
   const AdminStudentRecord({
     required this.id,
+    this.userId = '',
     required this.fullName,
     required this.tcNo,
     required this.className,
@@ -50,6 +53,7 @@ class AdminStudentRecord {
   factory AdminStudentRecord.fromMap(Map<String, dynamic> map) {
     return AdminStudentRecord(
       id: map['id'] as String? ?? '',
+      userId: map['userId'] as String? ?? '',
       fullName: map['fullName'] as String? ?? '',
       tcNo: map['tcNo'] as String? ?? '',
       className: map['className'] as String? ?? '',
@@ -361,6 +365,23 @@ class AdminDirectoryApiService {
 
   Future<void> deleteStudent(String id) async {
     await _authorizedSend('DELETE', '/api/students/$id');
+  }
+
+  /// Dönem sonu sınıf yükseltme (7-A → 8-A). Yetki backend'de: yalnız kurum
+  /// yöneticisi ve şube müdürü; şube müdürü kendi şubesiyle sınırlıdır.
+  Future<Map<String, dynamic>> promoteStudents({
+    required List<String> studentUserIds,
+    required String targetClassName,
+  }) async {
+    final response = await _authorizedSend(
+      'POST',
+      '/api/students/promote',
+      body: {
+        'studentUserIds': studentUserIds,
+        'targetClassName': targetClassName,
+      },
+    );
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
   }
 
   Future<void> updateUserStatus({

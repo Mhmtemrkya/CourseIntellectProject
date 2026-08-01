@@ -74,6 +74,7 @@ import LibraryUserPage from "./pages/library/LibraryUserPage";
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import TeacherSchedule from "./pages/teacher/TeacherSchedule";
 import TeacherAttendance from "./pages/teacher/TeacherAttendance";
+import TeacherStudents from "./pages/teacher/TeacherStudents";
 import TeacherContent from "./pages/teacher/TeacherContent";
 import TeacherQuestions from "./pages/teacher/TeacherQuestions";
 import TeacherExams from "./pages/teacher/TeacherExams";
@@ -325,6 +326,7 @@ function App() {
                   kopyalanmadı; backend zaten Teacher,Admin'e açık. */}
               <Route path="/questions/import" element={<TeacherBulkQuestionUpload />} />
               <Route path="/exams" element={<Exams />} />
+              <Route path="/exams/create" element={<TeacherQuestionStudio />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
               {/* Belge künyesi (ekstre/makbuz başlığı) — Ayarlar içinden açılır. */}
@@ -459,6 +461,7 @@ function App() {
               <Route path="/t/dashboard" element={<TeacherDashboard />} />
               <Route path="/t/schedule" element={<TeacherSchedule />} />
               <Route path="/t/attendance" element={<TeacherAttendance />} />
+              <Route path="/t/students" element={<TeacherStudents />} />
               <Route path="/t/content" element={<TeacherContent />} />
               <Route path="/t/questions" element={<TeacherQuestions />} />
               <Route path="/t/exams" element={<TeacherExams />} />

@@ -19,6 +19,7 @@ import 'admin_announcements_page.dart';
 import 'admin_messages_page.dart';
 import 'admin_meeting_overview_page.dart';
 import 'admin_role_management_page.dart';
+import 'admin_parents_page.dart';
 import 'admin_students_page.dart';
 import 'admin_task_center_page.dart';
 import 'library_manage_page.dart';
@@ -192,6 +193,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
         'Kayıtlı ve aktif öğrenci', () => const AdminStudentsPage());
     add('activeTeachers', 'Öğretmen', Icons.person_search_outlined, green,
         'Derse giren öğretmen', () => const AdminStaffListPage());
+    add('activeStudents', 'Veliler', Icons.family_restroom_rounded, teal,
+        'Veli listesi ve iletişim', () => const AdminParentsPage());
     add('activeStaff', 'Toplam Personel', Icons.badge_outlined, teal,
         'Aktif kadro', () => const AdminStaffListPage());
     add('activeClasses', 'Aktif Sınıf', Icons.meeting_room_outlined, violet,

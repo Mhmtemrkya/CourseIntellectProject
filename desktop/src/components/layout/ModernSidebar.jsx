@@ -731,6 +731,12 @@ export const menuConfigs = {
       color: "#06b6d4",
     },
     {
+      path: "/t/students",
+      icon: Users,
+      label: "Öğrencilerim",
+      color: "#3b82f6",
+    },
+    {
       path: "/t/attendance",
       icon: ClipboardCheck,
       label: "Yoklama",
@@ -1206,7 +1212,11 @@ const MODULE_MENU_REGISTRY = {
   },
   kpi: { default: { path: "/admin/kpi", icon: BarChart3, label: "Kurum Özeti", color: "#22c55e" } },
   academics: { default: { path: "/admin/academics", icon: GraduationCap, label: "Akademik Yönetim", color: "#2563eb" } },
-  students: { default: { path: "/students", icon: Users, label: "Öğrenciler", color: "#8b5cf6" } },
+  students: {
+    default: { path: "/students", icon: Users, label: "Öğrenciler", color: "#8b5cf6" },
+    // Öğretmen kurum listesini değil KENDİ sınıflarındaki öğrencileri görür.
+    teacher: { path: "/t/students", icon: Users, label: "Öğrencilerim", color: "#3b82f6" },
+  },
   "school-forms": { default: { path: "/forms", icon: FileSignature, label: "Sözleşme & Formlar", color: "#9333ea" } },
   parents: { default: { path: "/parents", icon: UserCheck, label: "Veliler", color: "#ec4899" }, parent: { path: "/p/children", icon: Users, label: "Çocuklarım", color: "#8b5cf6" } },
   teachers: { default: { path: "/teachers", icon: GraduationCap, label: "Öğretmenler", color: "#10b981" } },
@@ -1389,6 +1399,7 @@ export function inferModuleKey(item) {
     "/t/schedule": "schedule",
     "/s/schedule": "schedule",
     "/attendance": "attendance",
+    "/t/students": "students",
     "/t/attendance": "attendance",
     "/s/attendance": "attendance",
     "/s/attendance-qr": "attendance",

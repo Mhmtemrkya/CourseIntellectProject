@@ -7,10 +7,12 @@ import {
   Eye,
   Mail,
   Phone,
-  ChevronUp,
-  ChevronDown,
   School,
   Pencil,
+  Users,
+  UserCheck,
+  UserMinus,
+  GraduationCap,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { FeatureGate } from '../components/FeatureGate';
@@ -58,6 +60,7 @@ import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { createStaff, updateStaff, fetchStaff, fetchClasses, fetchPlatformConfigurations, updateUserStatus, upsertPlatformConfiguration } from '../lib/api/modules';
+import DirectoryPage, { DIRECTORY_ALL } from '../components/directory/DirectoryPage';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import { isUserPassive } from '../lib/userStatus';
 import { assetUrl } from '../lib/assetUrl';
@@ -489,10 +492,8 @@ export default function Teachers() {
   const { openDrawer } = useApp();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
-  const [branchFilter, setBranchFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortField, setSortField] = useState('fullName');
-  const [sortDirection, setSortDirection] = useState('asc');
+  const [branchFilter, setBranchFilter] = useState(DIRECTORY_ALL);
+  const [statusFilter, setStatusFilter] = useState(DIRECTORY_ALL);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState(null);
@@ -548,26 +549,16 @@ export default function Teachers() {
     [classNames],
   );
 
-  const filteredTeachers = useMemo(() => {
-    return staff
-      .filter((teacher) => {
-        const matchesSearch = `${teacher.fullName} ${teacher.email}`.toLowerCase().includes(search.toLowerCase());
-        const matchesBranch = branchFilter === 'all' || teacher.departmentOrBranch === branchFilter;
-        const isPassive = isUserPassive(teacher.status);
-        const matchesStatus = statusFilter === 'all'
-          || (statusFilter === 'active' && !isPassive)
-          || (statusFilter === 'passive' && isPassive);
-        return matchesSearch && matchesBranch && matchesStatus;
-      })
-      .sort((a, b) => {
-        const aValue = a[sortField];
-        const bValue = b[sortField];
-        if (sortDirection === 'asc') {
-          return aValue > bValue ? 1 : -1;
-        }
-        return aValue < bValue ? 1 : -1;
-      });
-  }, [staff, search, branchFilter, statusFilter, sortField, sortDirection]);
+  const filteredTeachers = useMemo(() => staff.filter((teacher) => {
+    const haystack = `${teacher.fullName} ${teacher.email} ${teacher.username} ${teacher.phone}`;
+    const matchesSearch = haystack.toLowerCase().includes(search.toLowerCase());
+    const matchesBranch = branchFilter === DIRECTORY_ALL || teacher.departmentOrBranch === branchFilter;
+    const isPassive = isUserPassive(teacher.status);
+    const matchesStatus = statusFilter === DIRECTORY_ALL
+      || (statusFilter === 'active' && !isPassive)
+      || (statusFilter === 'passive' && isPassive);
+    return matchesSearch && matchesBranch && matchesStatus;
+  }), [staff, search, branchFilter, statusFilter]);
 
   // Öğretmeni pasife alma / aktifleştirme: hesap kapatılmaz, girişi engellenir.
   const handleToggleStatus = useCallback(async (teacher) => {
@@ -590,20 +581,6 @@ export default function Teachers() {
       toast({ title: 'Durum güncellenemedi', description: err.message, variant: 'destructive' });
     }
   }, [toast]);
-
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  const SortIcon = ({ field }) => {
-    if (sortField !== field) return null;
-    return sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />;
-  };
 
   const handleCreated = (created) => {
     setStaff((prev) => [{
@@ -637,132 +614,182 @@ export default function Teachers() {
     return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
   }
 
+  const activeCount = staff.filter((teacher) => !isUserPassive(teacher.status)).length;
+  const homeroomCount = staff.filter((teacher) => Boolean(teacher.homeroomClass)).length;
+  const unassignedCount = staff.filter((teacher) => (teacher.assignedClasses || []).length === 0).length;
+
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6" data-testid="teachers-page">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold font-heading">Öğretmenler</h1>
-          <p className="text-muted-foreground mt-1">{staff.filter((t) => !isUserPassive(t.status)).length} kayıtlı öğretmen</p>
-        </div>
-        <FeatureGate module="teachers" action="create">
-          <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Yeni Öğretmen
-          </Button>
-        </FeatureGate>
-      </div>
-
-      {error ? <ErrorBanner title="Öğretmenler alınamadı" message={error} onRetry={loadTeachers} /> : null}
-
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Öğretmen ara..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+    <>
+      <DirectoryPage
+        testId="teachers-page"
+        title="Öğretmenler"
+        subtitle={`${activeCount} öğretmeniniz bulunuyor`}
+        rangeLabel={(from, to, total) => `${total} öğretmenden ${from}-${to} arası gösteriliyor`}
+        emptyTitle="Öğretmen bulunamadı"
+        emptyDescription="Filtreleri değiştirin veya yeni bir öğretmen ekleyin."
+        banner={error ? <ErrorBanner title="Öğretmenler alınamadı" message={error} onRetry={loadTeachers} /> : null}
+        actions={(
+          <FeatureGate module="teachers" action="create">
+            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Yeni Öğretmen
+            </Button>
+          </FeatureGate>
+        )}
+        stats={[
+          { label: 'Toplam Öğretmen', value: staff.length, caption: 'Tüm zamanlar', icon: Users, tint: 'bg-sky-500/12 text-sky-600' },
+          { label: 'Aktif Öğretmen', value: activeCount, caption: `%${staff.length ? Math.round((activeCount / staff.length) * 1000) / 10 : 0}`, icon: UserCheck, tint: 'bg-emerald-500/12 text-emerald-600' },
+          { label: 'Sınıf Öğretmeni', value: homeroomCount, caption: 'Şube sorumlusu', icon: GraduationCap, tint: 'bg-violet-500/12 text-violet-600' },
+          { label: 'Sınıf Ataması Yok', value: unassignedCount, caption: 'Ders programı beklemede', icon: UserMinus, tint: 'bg-amber-500/12 text-amber-600' },
+        ]}
+        search={{ value: search, onChange: setSearch, placeholder: 'Öğretmen ara...' }}
+        filters={[
+          { value: branchFilter, onChange: setBranchFilter, placeholder: 'Tüm Branşlar', options: branches },
+          { value: statusFilter, onChange: setStatusFilter, placeholder: 'Tüm Durumlar', options: [{ value: 'active', label: 'Aktif' }] },
+        ]}
+        rows={filteredTeachers}
+        getRowId={(teacher) => teacher.id}
+        onRowClick={(teacher) => openDrawer(<TeacherDetailDrawer teacher={teacher} />)}
+        columns={[
+          {
+            key: 'fullName',
+            label: 'Öğretmen',
+            sortable: true,
+            width: 'minmax(0,2fr)',
+            render: (teacher) => (
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  {teacher.photoUrl ? <AvatarImage src={assetUrl(teacher.photoUrl)} alt={teacher.fullName} className="object-cover" /> : null}
+                  <AvatarFallback className="bg-brand-primary text-white">
+                    {teacher.fullName.split(' ').map((part) => part[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{teacher.fullName}</p>
+                  <p className="truncate text-xs text-muted-foreground">{teacher.email || teacher.username}</p>
+                </div>
+              </div>
+            ),
+          },
+          {
+            key: 'departmentOrBranch',
+            label: 'Branş',
+            sortable: true,
+            width: 'minmax(0,1fr)',
+            render: (teacher) => (
+              <Badge className="bg-brand-accent text-white">
+                {teacher.departmentOrBranch || (ROLE_LABELS[teacher.role] || teacher.role)}
+              </Badge>
+            ),
+          },
+          {
+            key: 'contact',
+            label: 'İletişim',
+            width: 'minmax(0,1.2fr)',
+            render: (teacher) => (
+              <div className="min-w-0 text-xs">
+                <p className="flex items-center gap-1.5 font-medium"><Phone className="h-3 w-3 text-muted-foreground" />{teacher.phone || '—'}</p>
+                <p className="mt-0.5 flex items-center gap-1.5 truncate text-muted-foreground"><Mail className="h-3 w-3" />{teacher.email || '—'}</p>
+              </div>
+            ),
+          },
+          {
+            key: 'assignedClasses',
+            label: 'Sınıflar',
+            width: 'minmax(0,1.2fr)',
+            render: (teacher) => (
+              <div className="flex flex-wrap gap-1">
+                {(teacher.assignedClasses || []).slice(0, 3).map((item) => (
+                  <Badge key={item} variant="outline" className="text-xs">{item}</Badge>
+                ))}
+                {(teacher.assignedClasses || []).length > 3 ? (
+                  <Badge variant="outline" className="text-xs">+{teacher.assignedClasses.length - 3}</Badge>
+                ) : null}
+                {(teacher.assignedClasses || []).length === 0 ? (
+                  <span className="text-xs text-muted-foreground">Atama yok</span>
+                ) : null}
+              </div>
+            ),
+          },
+          {
+            key: 'homeroomClass',
+            label: 'Sınıf Öğretmeni',
+            sortable: true,
+            width: 'minmax(0,0.9fr)',
+            render: (teacher) => (teacher.homeroomClass
+              ? <Badge variant="outline" className="border-brand-accent/40 text-brand-accent">{teacher.homeroomClass}</Badge>
+              : <span className="text-xs text-muted-foreground">—</span>),
+          },
+          {
+            key: 'status',
+            label: 'Durum',
+            sortable: true,
+            width: 'minmax(0,0.7fr)',
+            render: (teacher) => (isUserPassive(teacher.status)
+              ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
+              : <Badge className="bg-green-100 text-green-700">Aktif</Badge>),
+          },
+        ]}
+        rowActions={(teacher) => (
+          <>
+            <Button variant="ghost" size="icon" title="Detay" onClick={() => openDrawer(<TeacherDetailDrawer teacher={teacher} />)}>
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" title="Düzenle" onClick={() => openEditDialog(teacher)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <FeatureGate module="teachers" action="status">
+              <UserStatusButton
+                iconOnly
+                isPassive={isUserPassive(teacher.status)}
+                onToggle={() => handleToggleStatus(teacher)}
+              />
+            </FeatureGate>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openDrawer(<TeacherDetailDrawer teacher={teacher} />)}>
+                  <Eye className="mr-2 h-4 w-4" /> Detay
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openEditDialog(teacher)}>
+                  <Pencil className="mr-2 h-4 w-4" /> Düzenle
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
+        cardRender={(teacher) => (
+          <button
+            type="button"
+            onClick={() => openDrawer(<TeacherDetailDrawer teacher={teacher} />)}
+            className="flex w-full flex-col items-start gap-3 rounded-2xl border border-foreground/10 bg-background/60 p-4 text-left transition hover:border-[hsl(var(--brand-accent)/0.35)]"
+          >
+            <div className="flex w-full items-center gap-3">
+              <Avatar className="h-11 w-11">
+                {teacher.photoUrl ? <AvatarImage src={assetUrl(teacher.photoUrl)} alt={teacher.fullName} className="object-cover" /> : null}
+                <AvatarFallback className="bg-brand-primary text-white">
+                  {teacher.fullName.split(' ').map((part) => part[0]).join('')}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-bold">{teacher.fullName}</p>
+                <p className="truncate text-xs text-muted-foreground">{teacher.departmentOrBranch || '—'}</p>
+              </div>
+              {isUserPassive(teacher.status)
+                ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
+                : <Badge className="bg-green-100 text-green-700">Aktif</Badge>}
             </div>
-            <Select value={branchFilter} onValueChange={setBranchFilter}>
-              <SelectTrigger className="w-full md:w-40"><SelectValue placeholder="Branş" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tüm Branşlar</SelectItem>
-                {branches.map((branch) => <SelectItem key={branch} value={branch}>{branch}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-36"><SelectValue placeholder="Durum" /></SelectTrigger>
-              {/* Pasifler artık listede gelmiyor (yalnız "Pasif Kayıtlar" ekranında). */}
-              <SelectContent>
-                <SelectItem value="all">Tüm Durumlar</SelectItem>
-                <SelectItem value="active">Aktif</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('fullName')}>
-                  <div className="flex items-center gap-2">Öğretmen<SortIcon field="fullName" /></div>
-                </TableHead>
-                <TableHead>Branş</TableHead>
-                <TableHead>Sınıflar</TableHead>
-                <TableHead>Sınıf Öğretmeni</TableHead>
-                <TableHead>Durum</TableHead>
-                <TableHead className="w-48 text-right">İşlem</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTeachers.map((teacher) => (
-                <TableRow key={teacher.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => openDrawer(<TeacherDetailDrawer teacher={teacher} />)}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        {teacher.photoUrl ? <AvatarImage src={assetUrl(teacher.photoUrl)} alt={teacher.fullName} className="object-cover" /> : null}
-                        <AvatarFallback className="bg-brand-primary text-white">
-                          {teacher.fullName.split(' ').map((n) => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{teacher.fullName}</p>
-                        <p className="text-sm text-muted-foreground">{teacher.email || teacher.username}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell><Badge className="bg-brand-accent text-white">{teacher.departmentOrBranch || (ROLE_LABELS[teacher.role] || teacher.role)}</Badge></TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {(teacher.assignedClasses || []).slice(0, 3).map((cls) => <Badge key={cls} variant="outline" className="text-xs">{cls}</Badge>)}
-                      {(teacher.assignedClasses || []).length === 0 && <span className="text-xs text-muted-foreground">Atama yok</span>}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {teacher.homeroomClass
-                      ? <Badge variant="outline" className="border-brand-accent/40 text-brand-accent">{teacher.homeroomClass}</Badge>
-                      : <span className="text-xs text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell>
-                    {isUserPassive(teacher.status)
-                      ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
-                      : <Badge className="bg-green-100 text-green-700">Aktif</Badge>}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <FeatureGate module="teachers" action="status">
-                        <UserStatusButton
-                          isPassive={isUserPassive(teacher.status)}
-                          onToggle={() => handleToggleStatus(teacher)}
-                        />
-                      </FeatureGate>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openDrawer(<TeacherDetailDrawer teacher={teacher} />)}>
-                            <Eye className="h-4 w-4 mr-2" /> Detay
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(teacher); }}>
-                            <Pencil className="h-4 w-4 mr-2" /> Düzenle
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            <div className="w-full text-xs text-muted-foreground">
+              <p className="truncate">{teacher.email || teacher.username}</p>
+              <p className="truncate">{(teacher.assignedClasses || []).join(', ') || 'Sınıf ataması yok'}</p>
+            </div>
+          </button>
+        )}
+      />
 
       <AddTeacherDialog open={dialogOpen} onOpenChange={setDialogOpen} branches={branches} classes={classes} onCreated={handleCreated} onCreateBranch={createBranch} />
       <EditTeacherDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} teacher={editingTeacher} branches={branches} classes={classes} onUpdated={handleUpdated} onCreateBranch={createBranch} />
-    </motion.div>
+    </>
   );
 }

@@ -8,6 +8,7 @@ import 'package:student/theme_provider.dart';
 import 'package:student/widgets/consent_dispatch_sheet.dart';
 import 'package:student/widgets/lesson_tile.dart';
 import 'package:student/pages/support_page.dart';
+import 'package:student/pages/admin_students_page.dart';
 import 'package:student/pages/teacher_exams_page.dart';
 import 'package:student/pages/teacher_reports_page.dart';
 import 'package:student/widgets/premium_resource_card.dart';
@@ -71,6 +72,16 @@ void main() {
     await _expectReadable(
       tester,
       const TeacherExamsPage(),
+      scrollable: false,
+      minMeasured: 3,
+    );
+  });
+
+  // Dizin ekranı: istatistik kartı, filtre çipi ve satır kartı yoğun.
+  testWidgets('öğrenci dizini açık temada okunur', (tester) async {
+    await _expectReadable(
+      tester,
+      const AdminStudentsPage(),
       scrollable: false,
       minMeasured: 3,
     );

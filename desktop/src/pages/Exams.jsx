@@ -14,7 +14,6 @@ import {
   Globe2,
   LayoutList,
   ListChecks,
-  Loader2,
   Plus,
   Sigma,
   Users,
@@ -23,28 +22,17 @@ import { FeatureGate } from '../components/FeatureGate';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
-import { useToast } from '../hooks/use-toast';
 import { useApp } from '../context/AppContext';
 import { getUserRoles } from '../lib/permissions';
 import {
-  createPlannedExam,
   fetchExamResults,
   fetchPlannedExams,
   fetchStudents,
 } from '../lib/api/modules';
-import ExamManagementSheet, { EXAM_TYPES, classKey } from '../components/exams/ExamManagementSheet';
+import ExamManagementSheet, { classKey } from '../components/exams/ExamManagementSheet';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -132,114 +120,6 @@ function StatTile({ icon: Icon, tint, label, value, caption }) {
   );
 }
 
-function NewExamDialog({ open, onOpenChange, onCreated, classOptions }) {
-  const { toast } = useToast();
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    title: '', subject: '', className: '', type: 'Yazılı',
-    dateLabel: new Date().toISOString().slice(0, 10), startTime: '09:00',
-    duration: '40 dk', questionCount: '20',
-  });
-  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
-
-  const create = async () => {
-    if (!form.title.trim() || !form.subject.trim() || !form.className.trim()) {
-      toast({ title: 'Eksik bilgi', description: 'Başlık, ders ve sınıf zorunlu.', variant: 'destructive' });
-      return;
-    }
-    try {
-      setSaving(true);
-      const date = new Date(`${form.dateLabel}T00:00:00`);
-      await createPlannedExam({
-        title: form.title.trim(),
-        type: form.type,
-        className: form.className.trim(),
-        subject: form.subject.trim(),
-        dateLabel: Number.isNaN(date.getTime())
-          ? form.dateLabel
-          : date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }),
-        startTime: form.startTime,
-        duration: form.duration.trim() || '40 dk',
-        questionCount: Number(form.questionCount) || 0,
-      });
-      toast({ title: 'Sınav oluşturuldu', description: `${form.title} listeye eklendi.` });
-      onOpenChange(false);
-      await onCreated?.();
-    } catch (err) {
-      toast({ title: 'Sınav oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Yeni Sınav</DialogTitle>
-          <DialogDescription>Sınav künyesini oluşturun; sonuç girişini listeden yapabilirsiniz.</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label>Başlık</Label>
-            <Input value={form.title} onChange={(e) => update('title', e.target.value)} placeholder="9. Sınıf Matematik 1. Yazılı" />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Ders</Label>
-              <Input value={form.subject} onChange={(e) => update('subject', e.target.value)} placeholder="Matematik" />
-            </div>
-            <div className="space-y-2">
-              <Label>Sınıf</Label>
-              {classOptions.length > 0 ? (
-                <Select value={form.className} onValueChange={(value) => update('className', value)}>
-                  <SelectTrigger><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
-                  <SelectContent>
-                    {classOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input value={form.className} onChange={(e) => update('className', e.target.value)} placeholder="9-A" />
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Tür</Label>
-              <Select value={form.type} onValueChange={(value) => update('type', value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {EXAM_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Tarih</Label>
-              <Input type="date" value={form.dateLabel} onChange={(e) => update('dateLabel', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Saat</Label>
-              <Input type="time" value={form.startTime} onChange={(e) => update('startTime', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Süre</Label>
-              <Input value={form.duration} onChange={(e) => update('duration', e.target.value)} placeholder="40 dk" />
-            </div>
-            <div className="space-y-2">
-              <Label>Soru sayısı</Label>
-              <Input type="number" min="0" value={form.questionCount} onChange={(e) => update('questionCount', e.target.value)} />
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>İptal</Button>
-          <Button onClick={create} disabled={saving}>
-            {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Oluşturuluyor</> : 'Sınavı Oluştur'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function Exams() {
   const navigate = useNavigate();
   const { user } = useApp();
@@ -263,7 +143,6 @@ export default function Exams() {
   // Açık modal, satırın KOPYASINI değil kimliğini tutar: bir işlem sonrası liste
   // tazelenince (durum/puan değişimi) pencere de anında güncel veriyi gösterir.
   const [managedExamId, setManagedExamId] = useState(null);
-  const [newExamOpen, setNewExamOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -341,11 +220,6 @@ export default function Exams() {
   const classOptions = useMemo(() => [...new Set(rows.map((row) => row.className).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')), [rows]);
   const typeOptions = useMemo(() => [...new Set(rows.map((row) => row.type).filter(Boolean))], [rows]);
   const statusOptions = useMemo(() => [...new Set(rows.map((row) => row.status).filter(Boolean))], [rows]);
-  const studentClassOptions = useMemo(
-    () => [...new Set(students.map((student) => student.className).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')),
-    [students],
-  );
-
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('tr-TR');
     return rows.filter((row) => {
@@ -410,7 +284,7 @@ export default function Exams() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <FeatureGate module="exams" action="create">
-            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setNewExamOpen(true)}>
+            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => navigate('/exams/create?mode=exam&type=Exam')}>
               <Plus className="mr-2 h-4 w-4" /> Yeni Sınav
             </Button>
           </FeatureGate>
@@ -535,13 +409,6 @@ export default function Exams() {
           ) : null}
         </div>
       ) : null}
-
-      <NewExamDialog
-        open={newExamOpen}
-        onOpenChange={setNewExamOpen}
-        onCreated={loadData}
-        classOptions={studentClassOptions}
-      />
 
       <ExamManagementSheet
         exam={managedExam}

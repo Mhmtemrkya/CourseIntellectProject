@@ -152,7 +152,7 @@ export function CommandPalette() {
         return [
           { path: '/students?action=new', icon: Users, label: 'Yeni Öğrenci Ekle' },
           { path: '/attendance', icon: ClipboardCheck, label: 'Yoklama Al' },
-          { path: '/exams?action=new', icon: FileQuestion, label: 'Yeni Sınav Oluştur' },
+          { path: '/exams/create?mode=exam&type=Exam', icon: FileQuestion, label: 'Yeni Sınav Oluştur' },
         ];
       case 'administrative':
         return [

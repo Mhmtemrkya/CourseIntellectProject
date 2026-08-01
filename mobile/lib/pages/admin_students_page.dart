@@ -4,9 +4,15 @@ import 'package:student/i18n/app_locale.dart';
 import 'admin_parent_contact_page.dart';
 import 'admin_student_detail_page.dart';
 import '../services/admin_directory_api_service.dart';
+import '../services/auth_session_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
+import '../widgets/directory_list.dart';
 
+/// Öğrenciler — masaüstündeki `/students` ekranının mobil karşılığı.
+///
+/// Pasifleştirme listeden yapılabilir; kurum yöneticisi ve şube müdürü ayrıca
+/// seçtiği öğrencileri dönem sonunda üst sınıfa taşıyabilir.
 class AdminStudentsPage extends StatefulWidget {
   const AdminStudentsPage({super.key});
 
@@ -15,30 +21,38 @@ class AdminStudentsPage extends StatefulWidget {
 }
 
 class _AdminStudentsPageState extends State<AdminStudentsPage> {
-  final TextEditingController _searchController = TextEditingController();
   List<AdminStudentRecord> _students = const [];
+  List<String> _classes = const [];
   bool _loading = true;
   String? _error;
-  String _selectedClass = 'Tümü';
+  String _search = '';
+  String _classFilter = directoryAll;
+  bool _canPromote = false;
+  final Set<String> _selected = {};
 
   @override
   void initState() {
     super.initState();
-    _loadStudents();
+    _load();
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadStudents() async {
+  Future<void> _load() async {
     try {
+      final session = await AuthSessionStore.instance.load();
+      final role = (session?.primaryRole ?? '').toLowerCase();
       final students = await AdminDirectoryApiService.instance.fetchStudents();
+      List<String> classes;
+      try {
+        classes = await AdminDirectoryApiService.instance.fetchClasses();
+      } catch (_) {
+        classes = const [];
+      }
       if (!mounted) return;
       setState(() {
         _students = students;
+        _classes = classes;
+        // Sınıf yükseltme yalnız kurum yöneticisi ve şube müdüründe.
+        _canPromote = role == 'admin' || role == 'branchmanager';
         _loading = false;
         _error = null;
       });
@@ -48,232 +62,332 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
         _loading = false;
         _error = error.message;
       });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = error.toString();
+      });
+    }
+  }
+
+  bool _isPassive(AdminStudentRecord student) {
+    final status = student.status.toLowerCase();
+    return status == 'passive' || status == 'pasif';
+  }
+
+  List<AdminStudentRecord> get _filtered {
+    final query = _search.trim().toLowerCase();
+    return _students.where((student) {
+      final haystack =
+          '${student.fullName} ${student.parentName} ${student.username} ${student.schoolNumber}'
+              .toLowerCase();
+      if (query.isNotEmpty && !haystack.contains(query)) return false;
+      if (_classFilter != directoryAll && student.className != _classFilter) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  StudentRegistryRecord _mapped(AdminStudentRecord student) =>
+      StudentRegistryRecord(
+        id: student.id,
+        fullName: student.fullName,
+        tcNo: student.tcNo,
+        className: student.className,
+        currentSchool: student.currentSchool,
+        schoolNumber: student.schoolNumber,
+        birthDate: student.birthDate,
+        programType: student.programType,
+        parentName: student.parentName,
+        parentPhone: student.parentPhone,
+        parentEmail: student.parentEmail,
+        address: student.address,
+        note: student.note,
+        username: student.username,
+        password: 'Güvenli sekilde saklaniyor',
+        status: _isPassive(student) ? 'Pasif' : 'Aktif',
+      );
+
+  Future<void> _toggleStatus(AdminStudentRecord student) async {
+    final passive = _isPassive(student);
+    try {
+      await AdminDirectoryApiService.instance.updateUserStatus(
+        username: student.username,
+        isActive: passive,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            passive
+                ? 'Öğrenci aktifleştirildi.'.tr
+                : 'Öğrenci pasife alındı (giriş yapamaz).'.tr,
+          ),
+        ),
+      );
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  Future<void> _promote() async {
+    if (_selected.isEmpty) return;
+    var target = _classes.isNotEmpty ? _classes.first : '';
+    final chosen = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (builderContext, setDialogState) => AlertDialog(
+          title: Text('Sınıf yükseltme'.tr),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${_selected.length} öğrenci seçili. Zaten hedef sınıfta olanlar atlanır.',
+              ),
+              const SizedBox(height: 12),
+              if (_classes.isEmpty)
+                Text('Kayıtlı sınıf yok.'.tr)
+              else
+                DropdownButtonFormField<String>(
+                  initialValue: target,
+                  decoration: InputDecoration(
+                    labelText: 'Hedef sınıf'.tr,
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: _classes
+                      .map(
+                        (item) =>
+                            DropdownMenuItem(value: item, child: Text(item)),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setDialogState(() => target = value ?? target),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('Vazgeç'.tr),
+            ),
+            FilledButton(
+              onPressed: _classes.isEmpty
+                  ? null
+                  : () => Navigator.pop(dialogContext, target),
+              child: Text('Sınıfa taşı'.tr),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (chosen == null || chosen.isEmpty) return;
+
+    try {
+      final result = await AdminDirectoryApiService.instance.promoteStudents(
+        studentUserIds: _selected.toList(),
+        targetClassName: chosen,
+      );
+      if (!mounted) return;
+      final promoted = (result['promoted'] as num?)?.toInt() ?? 0;
+      final skipped = (result['alreadyInClass'] as List?)?.length ?? 0;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '$promoted öğrenci $chosen sınıfına taşındı.'
+            '${skipped > 0 ? ' $skipped öğrenci zaten bu sınıftaydı.' : ''}',
+          ),
+        ),
+      );
+      setState(_selected.clear);
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final students = _students;
-    final classes = [
-      'Tümü',
-      ...{for (final item in students) item.className}.toList()..sort(),
-    ];
-    final filtered = students.where((student) {
-      final matchesClass =
-          _selectedClass == 'Tümü' || student.className == _selectedClass;
-      final query = _searchController.text.trim().toLowerCase();
-      final matchesQuery =
-          query.isEmpty ||
-          student.fullName.toLowerCase().contains(query) ||
-          student.parentName.toLowerCase().contains(query) ||
-          student.currentSchool.toLowerCase().contains(query);
-      return matchesClass && matchesQuery;
-    }).toList();
+    final rows = _filtered;
+    final active = _students.where((student) => !_isPassive(student)).length;
+    final passive = _students.length - active;
+    final classCount = _students
+        .map((student) => student.className)
+        .where((value) => value.trim().isNotEmpty)
+        .toSet()
+        .length;
 
     return AdminScaffold(
       appBar: AppBar(
         title: Text(
-          'Öğrenci Listesi'.tr,
-          style: TextStyle(fontWeight: FontWeight.bold),
+          'Öğrenciler'.tr,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          AdminHeroCard(
-            eyebrow: 'Öğrenci yönetimi',
-            title:
-                'Kurumdaki tüm öğrencileri sınıf, veli ve durum bilgisiyle yönetin.'.tr,
-            description:
-                'Yönetici görünümünde öğrenci arama, sınıf filtreleme ve hızlı erişim aksiyonları tek ekranda sunulur.',
-            metrics: [
-              AdminHeroMetric(label: 'Toplam', value: '${students.length}'),
-              AdminHeroMetric(
-                label: 'Filtrelenen',
-                value: '${filtered.length}',
-              ),
-            ],
+      floatingActionButton: _canPromote && _selected.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: _promote,
+              icon: const Icon(Icons.arrow_upward_rounded),
+              label: Text('${_selected.length} öğrenciyi yükselt'),
+            )
+          : null,
+      child: DirectoryList<AdminStudentRecord>(
+        title: 'Öğrenciler',
+        subtitle: '$active ${'öğrenciniz bulunuyor'.tr}',
+        loading: _loading,
+        error: _error,
+        onRefresh: _load,
+        stats: [
+          DirectoryStat(
+            label: 'Toplam Öğrenci',
+            value: '${_students.length}',
+            caption: 'Tüm zamanlar',
+            icon: Icons.groups_outlined,
+            color: const Color(0xFF2563EB),
           ),
-          const SizedBox(height: 16),
-          if (_loading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_error != null)
-            AdminPanel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_error!, style: Theme.of(context).textTheme.bodyMedium),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: () {
-                      setState(() {
-                        _loading = true;
-                        _error = null;
-                      });
-                      _loadStudents();
-                    },
-                    child: const Text('Tekrar Dene'),
-                  ),
-                ],
-              ),
-            )
-          else ...[
-            AdminPanel(
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.search),
-                      hintText: 'Öğrenci veya veli ara'.tr,
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedClass,
-                    decoration: InputDecoration(
-                      labelText: 'Sınıf Filtresi'.tr,
-                      border: OutlineInputBorder(),
-                    ),
-                    items: classes
-                        .map(
-                          (value) => DropdownMenuItem(
-                            value: value,
-                            child: Text(value),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) =>
-                        setState(() => _selectedClass = value ?? 'Tümü'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            ...filtered.map((student) => _studentCard(context, student)),
-          ],
+          DirectoryStat(
+            label: 'Aktif Öğrenci',
+            value: '$active',
+            caption:
+                '%${_students.isEmpty ? 0 : (active / _students.length * 100).round()}',
+            icon: Icons.verified_user_outlined,
+            color: const Color(0xFF059669),
+          ),
+          DirectoryStat(
+            label: 'Sınıf Sayısı',
+            value: '$classCount',
+            caption: 'Öğrencisi olan sınıf',
+            icon: Icons.meeting_room_outlined,
+            color: const Color(0xFF7C3AED),
+          ),
+          DirectoryStat(
+            label: 'Pasif Öğrenci',
+            value: '$passive',
+            caption: 'Girişi kapalı',
+            icon: Icons.person_off_outlined,
+            color: const Color(0xFFB42318),
+          ),
         ],
-      ),
-    );
-  }
-
-  Widget _studentCard(BuildContext context, AdminStudentRecord student) {
-    final color = switch (student.status) {
-      'Passive' => const Color(0xFFB45309),
-      _ => const Color(0xFF14532D),
-    };
-    final mappedStudent = StudentRegistryRecord(
-      id: student.id,
-      fullName: student.fullName,
-      tcNo: student.tcNo,
-      className: student.className,
-      currentSchool: student.currentSchool,
-      schoolNumber: student.schoolNumber,
-      birthDate: student.birthDate,
-      programType: student.programType,
-      parentName: student.parentName,
-      parentPhone: student.parentPhone,
-      parentEmail: student.parentEmail,
-      address: student.address,
-      note: student.note,
-      username: student.username,
-      password: 'Güvenli sekilde saklaniyor',
-      status: student.status == 'Active' ? 'Aktif' : 'Pasif',
-    );
-
-    return AdminPanel(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: color.withValues(alpha: 0.12),
-                child: Text(
-                  student.fullName[0],
-                  style: TextStyle(color: color, fontWeight: FontWeight.w800),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      student.fullName,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${student.className} • Veli: ${student.parentName}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              AdminAccentBadge(label: student.status, color: color),
-            ],
+        searchHint: 'Öğrenci ara...',
+        onSearchChanged: (value) => setState(() => _search = value),
+        filters: [
+          DirectoryFilter(
+            label: 'Tüm Sınıflar',
+            value: _classFilter,
+            options: _students
+                .map((student) => student.className)
+                .where((value) => value.trim().isNotEmpty)
+                .toSet()
+                .toList(),
+            onChanged: (value) => setState(() => _classFilter = value),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Icon(Icons.phone_outlined, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  student.parentPhone,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+        ],
+        rows: rows,
+        totalLabel: (total) => '${'Toplam'.tr} $total ${'öğrenci'.tr}',
+        emptyTitle: 'Öğrenci bulunamadı',
+        emptyDescription: 'Filtreleri değiştirin veya yeni öğrenci kaydedin.',
+        rowBuilder: (context, student) {
+          final passiveRow = _isPassive(student);
+          final selected = _selected.contains(student.userId);
+          return DirectoryRowCard(
+            title: student.fullName,
+            subtitle: student.schoolNumber.isEmpty
+                ? student.username
+                : '${'Öğrenci No'.tr}: ${student.schoolNumber}',
+            trailingBadge: passiveRow ? 'Pasif'.tr : 'Aktif'.tr,
+            badgeColor: passiveRow
+                ? const Color(0xFFB42318)
+                : const Color(0xFF059669),
+            metrics: [
+              (
+                icon: Icons.meeting_room_outlined,
+                label: 'Sınıf',
+                value: student.className,
+              ),
+              (
+                icon: Icons.person_outline_rounded,
+                label: 'Veli',
+                value: student.parentName,
+              ),
+              (
+                icon: Icons.phone_outlined,
+                label: 'Telefon',
+                value: student.parentPhone,
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${student.currentSchool} • TC: ${student.tcNo} • Kullanıcı: ${student.username}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FilledButton.tonalIcon(
+            actions: [
+              if (_canPromote && student.userId.isNotEmpty)
+                IconButton(
+                  tooltip: selected
+                      ? 'Seçimi kaldır'.tr
+                      : 'Sınıf yükseltme için seç'.tr,
+                  onPressed: () => setState(() {
+                    if (selected) {
+                      _selected.remove(student.userId);
+                    } else {
+                      _selected.add(student.userId);
+                    }
+                  }),
+                  icon: Icon(
+                    selected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: selected
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+                ),
+              IconButton(
+                tooltip: 'Detay'.tr,
                 onPressed: () async {
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          AdminStudentDetailPage(student: mappedStudent),
+                          AdminStudentDetailPage(student: _mapped(student)),
                     ),
                   );
                   if (!mounted) return;
-                  await _loadStudents();
+                  await _load();
                 },
                 icon: const Icon(Icons.badge_outlined),
-                label: const Text('Detay'),
               ),
-              FilledButton.tonalIcon(
+              IconButton(
+                tooltip: 'Veli İletişimi'.tr,
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) =>
-                        AdminParentContactPage(student: mappedStudent),
+                        AdminParentContactPage(student: _mapped(student)),
                   ),
                 ),
                 icon: const Icon(Icons.chat_bubble_outline_rounded),
-                label: Text('Veli İletişimi'.tr),
+              ),
+              // Pasifleştirme listede kalmalı: hesap silinmez, girişi kapanır.
+              IconButton(
+                tooltip: passiveRow ? 'Aktifleştir'.tr : 'Pasifleştir'.tr,
+                onPressed: () => _toggleStatus(student),
+                icon: Icon(
+                  passiveRow
+                      ? Icons.person_add_alt_1_outlined
+                      : Icons.person_off_outlined,
+                  color: passiveRow
+                      ? const Color(0xFF059669)
+                      : const Color(0xFFB42318),
+                ),
               ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }

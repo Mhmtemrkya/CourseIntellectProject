@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlignCenter, AlignLeft, AlignRight, Bookmark, Check, Code2, Eye,
   GripVertical, Highlighter, Image, Italic, Link2, List, ListOrdered,
@@ -28,6 +28,7 @@ import { desktopApiBaseUrl } from '../../lib/auth';
 import {
   createPlannedExam,
   createQuestionBankItem,
+  fetchClasses,
   fetchQuestionBank,
   fetchTeacherWeeklyReportBootstrap,
   saveQuestionStudioDraft,
@@ -119,10 +120,12 @@ function groupQuestionSets(items) {
 
 export default function TeacherQuestionStudio() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useApp();
   const isExamMode = searchParams.get('mode') === 'exam';
+  const isInstitutionExamMode = location.pathname === '/exams/create';
   const examKind = searchParams.get('type') === 'MockExam' ? 'deneme' : 'sınav';
   const examKindTitle = examKind === 'deneme' ? 'Deneme Sınavı' : 'Sınav';
   const editorRef = useRef(null);
@@ -182,11 +185,18 @@ export default function TeacherQuestionStudio() {
     if (!isExamMode) return undefined;
     let alive = true;
     setClassOptionsLoading(true);
-    fetchTeacherWeeklyReportBootstrap({ teacherUsername: user?.username || '' })
-      .then((payload) => {
+    const classRequest = isInstitutionExamMode
+      ? fetchClasses().then((items) => items.map((item) => (
+        typeof item === 'string' ? item : item?.name || item?.className || item?.title || ''
+      )))
+      : fetchTeacherWeeklyReportBootstrap({ teacherUsername: user?.username || '' })
+        .then((payload) => (Array.isArray(payload?.classes) ? payload.classes : []));
+
+    classRequest
+      .then((items) => {
         if (!alive) return;
-        const classes = Array.isArray(payload?.classes)
-          ? payload.classes.map((item) => String(item || '').trim()).filter(Boolean)
+        const classes = Array.isArray(items)
+          ? items.map((item) => String(item || '').trim()).filter(Boolean)
           : [];
         const uniqueClasses = [...new Set(classes)];
         setTeacherClassOptions(uniqueClasses);
@@ -211,7 +221,7 @@ export default function TeacherQuestionStudio() {
     return () => {
       alive = false;
     };
-  }, [isExamMode, toast, user?.username]);
+  }, [isExamMode, isInstitutionExamMode, toast, user?.username]);
 
   const touch = useCallback(() => {
     setDirty(true);
@@ -573,7 +583,9 @@ export default function TeacherQuestionStudio() {
         })),
       });
       toast({ title: `${examKindTitle} oluşturuldu`, description: 'Sınav canlı olarak planlandı ve soruları bağlandı.' });
-      navigate(examForm.type === 'MockExam' ? '/t/mock-exams' : '/t/exams');
+      navigate(isInstitutionExamMode
+        ? '/exams'
+        : examForm.type === 'MockExam' ? '/t/mock-exams' : '/t/exams');
     } catch (error) {
       toast({ title: 'Sınav oluşturulamadı', description: error.message, variant: 'destructive' });
     } finally {
@@ -582,32 +594,32 @@ export default function TeacherQuestionStudio() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-[34px] border border-foreground/10 bg-[hsl(var(--ci-card-muted))] text-foreground shadow-2xl shadow-slate-950/30">
-      <div className="grid min-h-[calc(100vh-2rem)] grid-cols-[minmax(620px,1fr)_360px]">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-[34px] border border-foreground/10 bg-[hsl(var(--ci-card-muted))] text-foreground shadow-2xl shadow-black/10 dark:shadow-slate-950/30">
+      <div className="grid min-h-[calc(100vh-2rem)] grid-cols-1 xl:grid-cols-[minmax(620px,1fr)_360px]">
         <main className="min-w-0 overflow-y-auto p-6">
-          <div className="mb-5 flex items-center justify-between gap-4">
+          <div className="mb-5 flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
             <div>
               <h1 className="text-2xl font-black">{isExamMode ? `${examKindTitle} Oluşturma` : 'Soru Bankası'}</h1>
-              <p className="mt-1 text-sm text-slate-400">{isExamMode ? 'Yeni sınavı soru oluşturma stüdyosu ile hazırla' : 'Yeni soru oluştur'}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{isExamMode ? 'Yeni sınavı soru oluşturma stüdyosu ile hazırla' : 'Yeni soru oluştur'}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {isExamMode ? (
                 <Button
                   variant="outline"
                   onClick={openQuestionBankPicker}
-                  className="border-orange-400/30 bg-orange-500/10 text-orange-100 hover:bg-orange-500/20 hover:text-white"
+                  className="border-orange-500/35 bg-orange-500/10 text-orange-700 hover:bg-orange-500/20 hover:text-orange-800 dark:text-orange-100 dark:hover:text-white"
                 >
                   <LibraryBig className="mr-2 h-4 w-4" />
                   Soru Bankasından Seç
                 </Button>
               ) : null}
-              <Button variant="outline" onClick={() => setPreviewOpen(true)} className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white"><Eye className="mr-2 h-4 w-4" />Önizleme</Button>
+              <Button variant="outline" onClick={() => setPreviewOpen(true)} className="border-foreground/10 bg-background/70 text-foreground hover:bg-foreground/10 hover:text-foreground"><Eye className="mr-2 h-4 w-4" />Önizleme</Button>
               {!isExamMode && savedQuestions.length > 0 && (
-                <Button variant="outline" onClick={() => navigate('/t/question-bank')} className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white">
+                <Button variant="outline" onClick={() => navigate('/t/question-bank')} className="border-foreground/10 bg-background/70 text-foreground hover:bg-foreground/10 hover:text-foreground">
                   Soru Bankasına Dön
                 </Button>
               )}
-              <Button variant="outline" disabled={saving} onClick={() => persistDraft(true)} className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white"><Bookmark className="mr-2 h-4 w-4" />Taslak Kaydet</Button>
+              <Button variant="outline" disabled={saving} onClick={() => persistDraft(true)} className="border-foreground/10 bg-background/70 text-foreground hover:bg-foreground/10 hover:text-foreground"><Bookmark className="mr-2 h-4 w-4" />Taslak Kaydet</Button>
               <Button disabled={saving} onClick={saveQuestion} className="bg-orange-500 text-white hover:bg-orange-600">{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}{isExamMode ? 'Soruyu Sınava Ekle' : 'Kaydet ve Yeni Soru'}</Button>
             </div>
           </div>
@@ -615,10 +627,10 @@ export default function TeacherQuestionStudio() {
           {isExamMode && (
             <section className="mb-5 rounded-[28px] border border-orange-400/20 bg-orange-500/[0.07] p-5">
               <div className="grid gap-3 lg:grid-cols-5">
-                <Field label="Sınav Adı"><Input value={examForm.title} onChange={(event) => { setExamForm((v) => ({ ...v, title: event.target.value })); touch(); }} placeholder="9. Sınıf Matematik 1. Dönem 1. Yazılı" className="border-foreground/10 bg-foreground/5 text-white" /></Field>
+                <Field label="Sınav Adı"><Input value={examForm.title} onChange={(event) => { setExamForm((v) => ({ ...v, title: event.target.value })); touch(); }} placeholder="9. Sınıf Matematik 1. Dönem 1. Yazılı" className="border-foreground/15 bg-background/80 text-foreground" /></Field>
                 <Field label="Sınıf">
                   <Select value={examForm.className} onValueChange={updateExamClassName} disabled={classOptionsLoading || teacherClassOptions.length === 0}>
-                    <SelectTrigger className="border-foreground/10 bg-foreground/5 text-white">
+                    <SelectTrigger className="border-foreground/15 bg-background/80 text-foreground">
                       <SelectValue placeholder={classOptionsLoading ? 'Sınıflar yükleniyor...' : 'Sınıf seç'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -626,29 +638,29 @@ export default function TeacherQuestionStudio() {
                     </SelectContent>
                   </Select>
                 </Field>
-                <Field label="Tarih"><Input type="date" value={examForm.dateLabel} onChange={(event) => { setExamForm((v) => ({ ...v, dateLabel: event.target.value })); touch(); }} className="border-foreground/10 bg-foreground/5 text-white" /></Field>
+                <Field label="Tarih"><Input type="date" value={examForm.dateLabel} onChange={(event) => { setExamForm((v) => ({ ...v, dateLabel: event.target.value })); touch(); }} className="border-foreground/15 bg-background/80 text-foreground" /></Field>
                 <Field label="Süre">
                   <Select value={examForm.duration} onValueChange={updateExamDuration}>
-                    <SelectTrigger className="border-foreground/10 bg-foreground/5 text-white"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="border-foreground/15 bg-background/80 text-foreground"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {EXAM_DURATION_OPTIONS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
                 <div className="flex items-end"><FeatureGate module="exams" action="publish-results"><Button onClick={publishExam} disabled={saving} className="w-full bg-emerald-600 text-white hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" />Sınavı Yayınla</Button></FeatureGate></div>
-                <Field label="Başlama Saati"><Input type="time" value={examForm.startTime} onChange={(event) => { setExamForm((v) => ({ ...v, startTime: event.target.value })); touch(); }} className="border-foreground/10 bg-foreground/5 text-white" /></Field>
-                <Field label="Bitiş Saati"><Input type="time" value={examForm.endTime} onChange={(event) => { setExamForm((v) => ({ ...v, endTime: event.target.value })); touch(); }} className="border-foreground/10 bg-foreground/5 text-white" /></Field>
+                <Field label="Başlama Saati"><Input type="time" value={examForm.startTime} onChange={(event) => { setExamForm((v) => ({ ...v, startTime: event.target.value })); touch(); }} className="border-foreground/15 bg-background/80 text-foreground" /></Field>
+                <Field label="Bitiş Saati"><Input type="time" value={examForm.endTime} onChange={(event) => { setExamForm((v) => ({ ...v, endTime: event.target.value })); touch(); }} className="border-foreground/15 bg-background/80 text-foreground" /></Field>
                 <Field label="Geç Giriş Limiti">
                   <Select value={examForm.lateEntryLimitMinutes} onValueChange={updateLateEntryLimit}>
-                    <SelectTrigger className="border-foreground/10 bg-foreground/5 text-white"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="border-foreground/15 bg-background/80 text-foreground"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {LATE_ENTRY_LIMIT_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </Field>
-                <Field label="Toplam Puan"><Input value={examForm.totalPoint} onChange={(event) => { setExamForm((v) => ({ ...v, totalPoint: event.target.value })); touch(); }} placeholder="100" className="border-foreground/10 bg-foreground/5 text-white" /></Field>
+                <Field label="Toplam Puan"><Input value={examForm.totalPoint} onChange={(event) => { setExamForm((v) => ({ ...v, totalPoint: event.target.value })); touch(); }} placeholder="100" className="border-foreground/15 bg-background/80 text-foreground" /></Field>
                 {searchParams.get('type') !== 'MockExam' ? (
-                  <Field label="Sınav Türü (not girişi etiketi)"><Input value={examForm.type} onChange={(event) => { setExamForm((v) => ({ ...v, type: event.target.value })); touch(); }} placeholder="1. Yazılı" className="border-foreground/10 bg-foreground/5 text-white" /></Field>
+                  <Field label="Sınav Türü (not girişi etiketi)"><Input value={examForm.type} onChange={(event) => { setExamForm((v) => ({ ...v, type: event.target.value })); touch(); }} placeholder="1. Yazılı" className="border-foreground/15 bg-background/80 text-foreground" /></Field>
                 ) : null}
                 <div className="lg:col-span-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   {[
@@ -657,8 +669,8 @@ export default function TeacherQuestionStudio() {
                     ['blockTabChange', 'Sekme değiştirme yasak'],
                     ['blockCopyPaste', 'Kopyala/yapıştır yasak'],
                   ].map(([key, label]) => (
-                    <div key={key} className="flex items-center justify-between rounded-2xl border border-foreground/10 bg-foreground/5 px-4 py-3">
-                      <span className="text-sm text-slate-300">{label}</span>
+                    <div key={key} className="flex items-center justify-between rounded-2xl border border-foreground/10 bg-background/65 px-4 py-3">
+                      <span className="text-sm text-foreground/80">{label}</span>
                       <Switch checked={!!examForm[key]} onCheckedChange={(value) => { setExamForm((v) => ({ ...v, [key]: value })); touch(); }} />
                     </div>
                   ))}
@@ -670,10 +682,10 @@ export default function TeacherQuestionStudio() {
                         value={examForm.liveLinkUrl}
                         onChange={(event) => { setExamForm((v) => ({ ...v, liveLinkUrl: event.target.value })); touch(); }}
                         placeholder="https://zoom.us/j/... veya https://meet.google.com/..."
-                        className="border-foreground/10 bg-foreground/5 text-white"
+                        className="border-foreground/15 bg-background/80 text-foreground"
                       />
                     </Field>
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Kamera zorunluyken öğrenci bu canlı yayına girip kamerasını açmadan sınava başlayamaz. Linke giren öğrenciler yoklamada otomatik "Var" olarak işaretlenir.
                     </p>
                   </div>
@@ -682,13 +694,13 @@ export default function TeacherQuestionStudio() {
               {examQuestions.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {examQuestions.map((question, index) => (
-                    <span key={question.id} className="inline-flex items-center gap-2 rounded-xl border border-orange-400/20 bg-black/20 px-3 py-2 text-xs text-orange-100">
+                    <span key={question.id} className="inline-flex items-center gap-2 rounded-xl border border-orange-500/25 bg-orange-500/[0.08] px-3 py-2 text-xs text-orange-700 dark:text-orange-100">
                       {index + 1}. {question.questionText.slice(0, 42)}
                       <button
                         type="button"
                         aria-label="Soruyu sınavdan çıkar"
                         onClick={() => setExamQuestions((current) => current.filter((item) => item.id !== question.id))}
-                        className="rounded-full p-0.5 text-orange-200 hover:bg-white/10 hover:text-white"
+                        className="rounded-full p-0.5 text-orange-700 hover:bg-orange-500/15 hover:text-orange-900 dark:text-orange-200 dark:hover:text-white"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -702,18 +714,18 @@ export default function TeacherQuestionStudio() {
             <section className="mb-5 rounded-[28px] border border-orange-400/20 bg-orange-500/[0.07] p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-200">Seri soru oluşturma</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-700 dark:text-orange-200">Seri soru oluşturma</p>
                   <h2 className="mt-1 text-xl font-black">{savedQuestions.length} soru bu oturumda soru bankasına eklendi</h2>
-                  <p className="mt-1 text-sm text-slate-400">Her kayıttan sonra editör temizlenir; onlarca soruyu art arda oluşturabilirsin.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Her kayıttan sonra editör temizlenir; onlarca soruyu art arda oluşturabilirsin.</p>
                 </div>
-                <Button variant="outline" onClick={() => navigate('/t/question-bank')} className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white">
+                <Button variant="outline" onClick={() => navigate('/t/question-bank')} className="border-foreground/10 bg-background/70 text-foreground hover:bg-foreground/10 hover:text-foreground">
                   Bitir ve Soru Bankasına Dön
                 </Button>
               </div>
               {savedQuestions.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {savedQuestions.map((question, index) => (
-                    <span key={question.id} className="rounded-xl border border-orange-400/20 bg-black/20 px-3 py-2 text-xs text-orange-100">
+                    <span key={question.id} className="rounded-xl border border-orange-500/25 bg-orange-500/[0.08] px-3 py-2 text-xs text-orange-700 dark:text-orange-100">
                       {index + 1}. {question.questionText?.slice(0, 42) || 'Soru'}
                     </span>
                   ))}
@@ -724,16 +736,16 @@ export default function TeacherQuestionStudio() {
 
           <section className="rounded-[28px] border border-foreground/10 bg-foreground/[0.035] p-5">
             <h1 className="text-2xl font-black">{isExamMode ? 'Sınav İçin Soru Oluştur' : 'Yeni Soru Oluştur'}</h1>
-            <p className="mt-1 text-sm text-slate-400">Biçimli metin, medya, çözüm ve çizim verileri canlı backend üzerinde saklanır.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Biçimli metin, medya, çözüm ve çizim verileri canlı backend üzerinde saklanır.</p>
             <div className="my-5 flex flex-wrap gap-2">
               {QUESTION_TYPES.map((type) => (
-                <button key={type} type="button" onClick={() => changeQuestionType(type)} className={`rounded-2xl border px-4 py-2 text-sm font-bold ${activeType === type ? 'border-orange-400 bg-orange-500/20 text-orange-100' : 'border-foreground/10 bg-foreground/5 text-slate-300'}`}>{type}</button>
+                <button key={type} type="button" onClick={() => changeQuestionType(type)} className={`rounded-2xl border px-4 py-2 text-sm font-bold ${activeType === type ? 'border-orange-500 bg-orange-500/15 text-orange-700 dark:text-orange-100' : 'border-foreground/10 bg-background/65 text-foreground/75'}`}>{type}</button>
               ))}
             </div>
 
-            <div className="rounded-[24px] border border-foreground/10 bg-slate-950/60">
-              <div className="flex items-center justify-between border-b border-foreground/10 px-4 py-3"><h2 className="font-black">Soru Metni</h2><span className="text-xs text-slate-400">Word, görsel ve LaTeX destekli</span></div>
-              <div className="flex flex-wrap items-center gap-1 border-b border-foreground/10 px-4 py-3 text-slate-300">
+            <div className="rounded-[24px] border border-foreground/10 bg-background/75">
+              <div className="flex items-center justify-between border-b border-foreground/10 px-4 py-3"><h2 className="font-black">Soru Metni</h2><span className="text-xs text-muted-foreground">Word, görsel ve LaTeX destekli</span></div>
+              <div className="flex flex-wrap items-center gap-1 border-b border-foreground/10 px-4 py-3 text-foreground/75">
                 {[
                   ['bold', <b key="b">B</b>], ['italic', <Italic key="i" className="h-4 w-4" />], ['underline', <u key="u">U</u>],
                   ['strikeThrough', <span key="s">S</span>], ['insertUnorderedList', <List key="l" className="h-4 w-4" />],
@@ -750,18 +762,18 @@ export default function TeacherQuestionStudio() {
                 <button type="button" disabled={!settings.addVisual} onClick={() => imageInputRef.current?.click()} className="rounded-xl p-2 hover:bg-foreground/10 disabled:cursor-not-allowed disabled:opacity-30"><Image className="h-4 w-4" /></button>
                 <input ref={imageInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={(event) => handleQuestionImage(event.target.files?.[0])} />
               </div>
-              <div ref={editorRef} contentEditable suppressContentEditableWarning data-placeholder="Soru metnini yazın..." onInput={(event) => { setQuestionHtml(event.currentTarget.innerHTML); touch(); }} onPaste={(event) => { const file = Array.from(event.clipboardData.files || []).find((item) => item.type.startsWith('image/')); if (file) { event.preventDefault(); handleQuestionImage(file); } }} className="min-h-[200px] px-5 py-4 text-base leading-8 text-slate-100 outline-none empty:before:text-slate-500 empty:before:content-[attr(data-placeholder)]" />
+              <div ref={editorRef} contentEditable suppressContentEditableWarning data-placeholder="Soru metnini yazın..." onInput={(event) => { setQuestionHtml(event.currentTarget.innerHTML); touch(); }} onPaste={(event) => { const file = Array.from(event.clipboardData.files || []).find((item) => item.type.startsWith('image/')); if (file) { event.preventDefault(); handleQuestionImage(file); } }} className="min-h-[200px] px-5 py-4 text-base leading-8 text-foreground outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]" />
               {settings.addVisual && assetPath && (
                 <figure className={`m-5 flex flex-col ${visual.align === 'left' ? 'items-start' : visual.align === 'right' ? 'items-end' : 'items-center'}`}>
                   <img src={assetUrl(assetPath)} alt={visual.caption || 'Soru görseli'} className="rounded-2xl border border-foreground/10 object-contain" style={{ width: `${visual.width}%`, transform: `rotate(${visual.rotation}deg)` }} />
-                  {visual.caption && <figcaption className="mt-2 text-sm text-slate-400">{visual.caption}</figcaption>}
+                  {visual.caption && <figcaption className="mt-2 text-sm text-muted-foreground">{visual.caption}</figcaption>}
                   <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl bg-foreground/5 p-2">
-                    {['left', 'center', 'right'].map((align) => <button key={align} type="button" onClick={() => { setVisual((value) => ({ ...value, align })); touch(); }} className={`rounded-lg p-2 ${visual.align === align ? 'bg-orange-500/25 text-orange-200' : ''}`}>{align === 'left' ? <AlignLeft className="h-4 w-4" /> : align === 'right' ? <AlignRight className="h-4 w-4" /> : <AlignCenter className="h-4 w-4" />}</button>)}
+                    {['left', 'center', 'right'].map((align) => <button key={align} type="button" onClick={() => { setVisual((value) => ({ ...value, align })); touch(); }} className={`rounded-lg p-2 ${visual.align === align ? 'bg-orange-500/20 text-orange-700 dark:text-orange-200' : ''}`}>{align === 'left' ? <AlignLeft className="h-4 w-4" /> : align === 'right' ? <AlignRight className="h-4 w-4" /> : <AlignCenter className="h-4 w-4" />}</button>)}
                     <Input type="range" min="20" max="100" value={visual.width} onChange={(event) => { setVisual((value) => ({ ...value, width: Number(event.target.value) })); touch(); }} className="h-8 w-32 border-0 bg-transparent" />
                     <button type="button" onClick={() => { setVisual((value) => ({ ...value, rotation: value.rotation + 90 })); touch(); }} className="rounded-lg p-2 hover:bg-foreground/10"><RotateCw className="h-4 w-4" /></button>
                     <button type="button" onClick={() => { setAssetPath(''); touch(); }} className="rounded-lg p-2 text-red-300 hover:bg-red-500/10"><X className="h-4 w-4" /></button>
                   </div>
-                  <Input value={visual.caption} onChange={(event) => { setVisual((value) => ({ ...value, caption: event.target.value })); touch(); }} placeholder="Görsel açıklaması" className="mt-2 max-w-md border-foreground/10 bg-foreground/5 text-white" />
+                  <Input value={visual.caption} onChange={(event) => { setVisual((value) => ({ ...value, caption: event.target.value })); touch(); }} placeholder="Görsel açıklaması" className="mt-2 max-w-md border-foreground/10 bg-background/75 text-foreground" />
                 </figure>
               )}
             </div>
@@ -771,12 +783,12 @@ export default function TeacherQuestionStudio() {
                 <div className="flex items-center justify-between"><h2 className="font-black">Seçenekler</h2><Button variant="ghost" onClick={() => { setOptions((items) => [...items, { id: `option-${Date.now()}`, text: '', imagePath: '', correct: false }]); touch(); }} className="text-orange-300"><Plus className="mr-2 h-4 w-4" />Seçenek Ekle</Button></div>
                 {options.map((option, index) => (
                   <div key={option.id} draggable onDragStart={() => { draggedOptionRef.current = option.id; }} onDragOver={(event) => event.preventDefault()} onDrop={() => moveOption(option.id)} className={`flex items-center gap-3 rounded-2xl border px-3 py-2 ${option.correct ? 'border-emerald-400/60 bg-emerald-500/10' : 'border-foreground/10 bg-foreground/5'}`}>
-                    <GripVertical className="h-4 w-4 cursor-grab text-slate-500" />
-                    <button type="button" onClick={() => markCorrect(option.id)} className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-black ${option.correct ? 'bg-emerald-500 text-white' : 'bg-foreground/10 text-slate-300'}`}>{optionLetter(index)}</button>
-                    <Input value={option.text} onChange={(event) => updateOption(option.id, { text: event.target.value })} placeholder="Şık metni veya LaTeX" className="border-foreground/10 bg-transparent text-white" />
+                    <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground" />
+                    <button type="button" onClick={() => markCorrect(option.id)} className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-black ${option.correct ? 'bg-emerald-500 text-white' : 'bg-foreground/10 text-foreground/75'}`}>{optionLetter(index)}</button>
+                    <Input value={option.text} onChange={(event) => updateOption(option.id, { text: event.target.value })} placeholder="Şık metni veya LaTeX" className="border-foreground/10 bg-transparent text-foreground" />
                     {option.imagePath && <img src={assetUrl(option.imagePath)} alt="" className="h-10 w-10 rounded-lg object-cover" />}
-                    <label className="cursor-pointer rounded-xl p-2 text-slate-400 hover:bg-foreground/10"><Image className="h-4 w-4" /><input type="file" accept="image/*" className="hidden" onChange={(event) => handleOptionImage(option.id, event.target.files?.[0])} /></label>
-                    <button type="button" onClick={() => { if (options.length > 2) { setOptions((items) => items.filter((item) => item.id !== option.id)); touch(); } }} className="rounded-xl p-2 text-slate-400 hover:bg-red-500/10 hover:text-red-300"><Trash2 className="h-4 w-4" /></button>
+                    <label className="cursor-pointer rounded-xl p-2 text-muted-foreground hover:bg-foreground/10"><Image className="h-4 w-4" /><input type="file" accept="image/*" className="hidden" onChange={(event) => handleOptionImage(option.id, event.target.files?.[0])} /></label>
+                    <button type="button" onClick={() => { if (options.length > 2) { setOptions((items) => items.filter((item) => item.id !== option.id)); touch(); } }} className="rounded-xl p-2 text-muted-foreground hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-300"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 ))}
               </div>
@@ -786,12 +798,12 @@ export default function TeacherQuestionStudio() {
               <div className="mt-6 rounded-[24px] border border-emerald-400/20 bg-emerald-500/[0.07] p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
-                    <h2 className="font-black text-emerald-100">Cevaplama / Cevap Anahtarı</h2>
-                    <p className="mt-1 text-sm text-emerald-100/70">
+                    <h2 className="font-black text-emerald-800 dark:text-emerald-100">Cevaplama / Cevap Anahtarı</h2>
+                    <p className="mt-1 text-sm text-emerald-800/75 dark:text-emerald-100/70">
                       Açık uçlu, boşluk doldurma, grafik, kod ve matematik sorularında öğrencinin yazacağı cevabı değerlendirmek için kullanılır.
                     </p>
                   </div>
-                  <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-100">
+                  <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-100">
                     Zorunlu
                   </span>
                 </div>
@@ -799,35 +811,35 @@ export default function TeacherQuestionStudio() {
                   value={expectedAnswer}
                   onChange={(event) => { setExpectedAnswer(event.target.value); touch(); }}
                   placeholder="Örn: x = -2 ve x = 2 / kısa beklenen cevap"
-                  className="border-foreground/10 bg-foreground/5 text-white"
+                  className="border-foreground/10 bg-background/75 text-foreground"
                 />
               </div>
             )}
 
             {settings.addSolution && (
-              <div className="mt-6 rounded-[24px] border border-foreground/10 bg-slate-950/60 p-4">
-                <div className="mb-3 flex items-center justify-between"><h2 className="font-black">Çözüm ve Çizim</h2><div className="flex gap-2"><Button variant="outline" onClick={() => solutionFileRef.current?.click()} className="border-foreground/10 text-white"><Paperclip className="mr-2 h-4 w-4" />Dosya</Button><Button variant="outline" onClick={() => setCanvasOpen(true)} className="border-foreground/10 text-white"><Maximize2 className="mr-2 h-4 w-4" />Çizim Alanı</Button></div></div>
+              <div className="mt-6 rounded-[24px] border border-foreground/10 bg-background/75 p-4">
+                <div className="mb-3 flex items-center justify-between"><h2 className="font-black">Çözüm ve Çizim</h2><div className="flex gap-2"><Button variant="outline" onClick={() => solutionFileRef.current?.click()} className="border-foreground/10 text-foreground"><Paperclip className="mr-2 h-4 w-4" />Dosya</Button><Button variant="outline" onClick={() => setCanvasOpen(true)} className="border-foreground/10 text-foreground"><Maximize2 className="mr-2 h-4 w-4" />Çizim Alanı</Button></div></div>
                 <input ref={solutionFileRef} type="file" className="hidden" onChange={(event) => handleSolutionFile(event.target.files?.[0])} />
-                <div ref={solutionRef} contentEditable suppressContentEditableWarning data-placeholder="Çözüm açıklamasını yazın..." onInput={(event) => { setSolutionHtml(event.currentTarget.innerHTML); touch(); }} className="min-h-[130px] rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 leading-7 outline-none empty:before:text-slate-500 empty:before:content-[attr(data-placeholder)]" />
+                <div ref={solutionRef} contentEditable suppressContentEditableWarning data-placeholder="Çözüm açıklamasını yazın..." onInput={(event) => { setSolutionHtml(event.currentTarget.innerHTML); touch(); }} className="min-h-[130px] rounded-2xl border border-foreground/10 bg-background/65 p-4 leading-7 outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]" />
                 {solutionAssetPath && <a href={assetUrl(solutionAssetPath)} target="_blank" rel="noreferrer" className="mt-3 block text-sm text-orange-300">Yüklenen çözüm dosyasını görüntüle</a>}
-                {settings.addHint && <Textarea value={settings.hint || ''} onChange={(event) => updateSetting('hint', event.target.value)} placeholder="Öğrenciye gösterilecek ipucunu yazın..." className="mt-4 min-h-[72px] border-foreground/10 bg-foreground/5 text-white" />}
+                {settings.addHint && <Textarea value={settings.hint || ''} onChange={(event) => updateSetting('hint', event.target.value)} placeholder="Öğrenciye gösterilecek ipucunu yazın..." className="mt-4 min-h-[72px] border-foreground/10 bg-background/75 text-foreground" />}
               </div>
             )}
           </section>
         </main>
 
-        <aside className="overflow-y-auto border-l border-foreground/10 bg-slate-950/70 p-5">
+        <aside className="overflow-y-auto border-t border-foreground/10 bg-[hsl(var(--ci-card))] p-5 xl:border-l xl:border-t-0">
           <h2 className="mb-5 text-lg font-black">Soru Ayarları</h2>
           <div className="space-y-4">
-            <Field label="Ders"><Select value={settings.subject} onValueChange={(value) => updateSetting('subject', value)}><SelectTrigger className="border-foreground/10 bg-foreground/5 text-white"><SelectValue /></SelectTrigger><SelectContent>{['Matematik', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji', 'İngilizce'].map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select></Field>
-            <Field label="Konu"><Input value={settings.topic} onChange={(event) => updateSetting('topic', event.target.value)} className="border-foreground/10 bg-foreground/5 text-white" /></Field>
-            <Field label="Kazanım"><Input value={settings.outcome} onChange={(event) => updateSetting('outcome', event.target.value)} className="border-foreground/10 bg-foreground/5 text-white" /></Field>
-            <Field label="Zorluk Seviyesi"><div className="grid grid-cols-3 gap-2">{['Kolay', 'Orta', 'Zor'].map((item) => <button key={item} type="button" onClick={() => updateSetting('difficulty', item)} className={`rounded-2xl border px-3 py-2 text-sm font-bold ${settings.difficulty === item ? 'border-orange-400 bg-orange-500/20 text-orange-100' : 'border-foreground/10 bg-foreground/5 text-slate-300'}`}>{item}</button>)}</div></Field>
-            <div className="grid grid-cols-2 gap-3"><Field label="Puan"><Input value={settings.point} onChange={(event) => updateSetting('point', event.target.value)} className="border-foreground/10 bg-foreground/5 text-white" /></Field><Field label="Süre (sn)"><Input value={settings.estimatedSeconds} onChange={(event) => updateSetting('estimatedSeconds', event.target.value)} className="border-foreground/10 bg-foreground/5 text-white" /></Field></div>
+            <Field label="Ders"><Select value={settings.subject} onValueChange={(value) => updateSetting('subject', value)}><SelectTrigger className="border-foreground/15 bg-background/80 text-foreground"><SelectValue /></SelectTrigger><SelectContent>{['Matematik', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji', 'İngilizce'].map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select></Field>
+            <Field label="Konu"><Input value={settings.topic} onChange={(event) => updateSetting('topic', event.target.value)} className="border-foreground/15 bg-background/80 text-foreground" /></Field>
+            <Field label="Kazanım"><Input value={settings.outcome} onChange={(event) => updateSetting('outcome', event.target.value)} className="border-foreground/15 bg-background/80 text-foreground" /></Field>
+            <Field label="Zorluk Seviyesi"><div className="grid grid-cols-3 gap-2">{['Kolay', 'Orta', 'Zor'].map((item) => <button key={item} type="button" onClick={() => updateSetting('difficulty', item)} className={`rounded-2xl border px-3 py-2 text-sm font-bold ${settings.difficulty === item ? 'border-orange-500 bg-orange-500/15 text-orange-700 dark:text-orange-100' : 'border-foreground/10 bg-background/65 text-foreground/75'}`}>{item}</button>)}</div></Field>
+            <div className="grid grid-cols-2 gap-3"><Field label="Puan"><Input value={settings.point} onChange={(event) => updateSetting('point', event.target.value)} className="border-foreground/15 bg-background/80 text-foreground" /></Field><Field label="Süre (sn)"><Input value={settings.estimatedSeconds} onChange={(event) => updateSetting('estimatedSeconds', event.target.value)} className="border-foreground/15 bg-background/80 text-foreground" /></Field></div>
             <Field label="Sınıf">
               {isExamMode ? (
                 <Select value={settings.classLevel} onValueChange={updateExamClassName} disabled={classOptionsLoading || teacherClassOptions.length === 0}>
-                  <SelectTrigger className="border-foreground/10 bg-foreground/5 text-white">
+                  <SelectTrigger className="border-foreground/15 bg-background/80 text-foreground">
                     <SelectValue placeholder={classOptionsLoading ? 'Sınıflar yükleniyor...' : 'Sınıf seç'} />
                   </SelectTrigger>
                   <SelectContent>
@@ -835,14 +847,14 @@ export default function TeacherQuestionStudio() {
                   </SelectContent>
                 </Select>
               ) : (
-                <Input value={settings.classLevel} onChange={(event) => updateSetting('classLevel', event.target.value)} className="border-foreground/10 bg-foreground/5 text-white" />
+                <Input value={settings.classLevel} onChange={(event) => updateSetting('classLevel', event.target.value)} className="border-foreground/15 bg-background/80 text-foreground" />
               )}
             </Field>
-            <Field label="Etiketler"><Input value={settings.tags} onChange={(event) => updateSetting('tags', event.target.value)} className="border-foreground/10 bg-foreground/5 text-white" /></Field>
-            <Field label="Açıklama"><Textarea value={settings.description} onChange={(event) => updateSetting('description', event.target.value)} className="min-h-[80px] border-foreground/10 bg-foreground/5 text-white" /></Field>
-            <Field label="Yayın Durumu"><Select value={settings.publishStatus} onValueChange={(value) => updateSetting('publishStatus', value)}><SelectTrigger className="border-foreground/10 bg-foreground/5 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Published">Yayında</SelectItem><SelectItem value="Draft">Taslak</SelectItem></SelectContent></Select></Field>
-            {[['addSolution', 'Çözüm Alanı'], ['addHint', 'İpucu'], ['addVisual', 'Görsel']].map(([key, label]) => <div key={key} className="flex items-center justify-between rounded-2xl border border-foreground/10 bg-foreground/5 px-4 py-3"><span className="text-sm text-slate-300">{label}</span><Switch checked={!!settings[key]} onCheckedChange={(value) => updateSetting(key, value)} /></div>)}
-            <div className="rounded-2xl border border-foreground/10 bg-foreground/5 px-4 py-3 text-xs text-slate-400">Autosave: <span className="font-bold text-orange-200">{autosave}</span>{uploading && <span className="ml-2">Dosya yükleniyor...</span>}</div>
+            <Field label="Etiketler"><Input value={settings.tags} onChange={(event) => updateSetting('tags', event.target.value)} className="border-foreground/15 bg-background/80 text-foreground" /></Field>
+            <Field label="Açıklama"><Textarea value={settings.description} onChange={(event) => updateSetting('description', event.target.value)} className="min-h-[80px] border-foreground/15 bg-background/80 text-foreground" /></Field>
+            <Field label="Yayın Durumu"><Select value={settings.publishStatus} onValueChange={(value) => updateSetting('publishStatus', value)}><SelectTrigger className="border-foreground/15 bg-background/80 text-foreground"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Published">Yayında</SelectItem><SelectItem value="Draft">Taslak</SelectItem></SelectContent></Select></Field>
+            {[['addSolution', 'Çözüm Alanı'], ['addHint', 'İpucu'], ['addVisual', 'Görsel']].map(([key, label]) => <div key={key} className="flex items-center justify-between rounded-2xl border border-foreground/10 bg-background/65 px-4 py-3"><span className="text-sm text-foreground/80">{label}</span><Switch checked={!!settings[key]} onCheckedChange={(value) => updateSetting(key, value)} /></div>)}
+            <div className="rounded-2xl border border-foreground/10 bg-background/65 px-4 py-3 text-xs text-muted-foreground">Autosave: <span className="font-bold text-orange-700 dark:text-orange-200">{autosave}</span>{uploading && <span className="ml-2">Dosya yükleniyor...</span>}</div>
           </div>
         </aside>
       </div>
@@ -852,7 +864,7 @@ export default function TeacherQuestionStudio() {
           <DialogHeader>
             <DialogTitle>Pasif Testlerden Soru Seç</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             Bir veya daha fazla testi açıp istediğin soruları seçebilirsin. Pasif testler öğrencinin soru bankasında görünmez.
           </p>
           {bankPickerLoading ? (
@@ -860,7 +872,7 @@ export default function TeacherQuestionStudio() {
               <Loader2 className="h-7 w-7 animate-spin text-orange-400" />
             </div>
           ) : passiveQuestionSets.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-foreground/15 bg-foreground/[0.03] p-8 text-center text-slate-400">
+            <div className="rounded-2xl border border-dashed border-foreground/15 bg-foreground/[0.03] p-8 text-center text-muted-foreground">
               Pasif soru seti bulunamadı. Soru bankasında kullanmak istediğin testi önce pasife alabilirsin.
             </div>
           ) : (
@@ -879,8 +891,8 @@ export default function TeacherQuestionStudio() {
                         />
                         <AccordionTrigger className="flex-1 text-left hover:no-underline">
                           <span>
-                            <span className="block font-bold text-white">{set.title}</span>
-                            <span className="mt-1 block text-xs text-slate-400">
+                            <span className="block font-bold text-foreground">{set.title}</span>
+                            <span className="mt-1 block text-xs text-muted-foreground">
                               {set.subject} • {set.questions.length} soru • {selectedCount} seçili
                             </span>
                           </span>
@@ -891,7 +903,7 @@ export default function TeacherQuestionStudio() {
                           {set.questions.map((question, index) => (
                             <label
                               key={question.id}
-                              className="flex cursor-pointer items-start gap-3 rounded-xl border border-foreground/10 bg-black/20 p-3 hover:border-orange-400/30"
+                              className="flex cursor-pointer items-start gap-3 rounded-xl border border-foreground/10 bg-background/70 p-3 hover:border-orange-500/35"
                             >
                               <Checkbox
                                 checked={stagedQuestionIds.has(question.id)}
@@ -899,8 +911,8 @@ export default function TeacherQuestionStudio() {
                                 className="mt-0.5 border-slate-500 data-[state=checked]:bg-orange-500"
                               />
                               <span className="min-w-0">
-                                <span className="block text-xs font-bold text-orange-200">Soru {index + 1} • {question.type}</span>
-                                <span className="mt-1 block text-sm leading-6 text-slate-200">{question.questionText}</span>
+                                <span className="block text-xs font-bold text-orange-700 dark:text-orange-200">Soru {index + 1} • {question.type}</span>
+                                <span className="mt-1 block text-sm leading-6 text-foreground/85">{question.questionText}</span>
                               </span>
                             </label>
                           ))}
@@ -913,7 +925,7 @@ export default function TeacherQuestionStudio() {
             </ScrollArea>
           )}
           <div className="flex items-center justify-between gap-3 border-t border-foreground/10 pt-4">
-            <span className="text-sm text-slate-400">{stagedQuestionIds.size} soru seçili</span>
+            <span className="text-sm text-muted-foreground">{stagedQuestionIds.size} soru seçili</span>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setBankPickerOpen(false)}>Vazgeç</Button>
               <Button
@@ -931,18 +943,18 @@ export default function TeacherQuestionStudio() {
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground">
           <DialogHeader><DialogTitle>Soru Önizleme</DialogTitle></DialogHeader>
-          <div className="rounded-3xl border border-foreground/10 bg-slate-950/60 p-6">
+          <div className="rounded-3xl border border-foreground/10 bg-background/75 p-6">
             <p className="mb-3 text-xs font-bold uppercase tracking-wider text-orange-300">{settings.subject} / {settings.topic || 'Konu seçilmedi'} / {settings.difficulty}</p>
             <div className="leading-8" dangerouslySetInnerHTML={{ __html: questionHtml ? DOMPurify.sanitize(questionHtml) : '<p class=\"text-slate-500\">Soru metni henüz yazılmadı.</p>' }} />
             {assetPath && <img src={assetUrl(assetPath)} alt={visual.caption || 'Soru görseli'} className="mx-auto my-5 rounded-2xl object-contain" style={{ width: `${visual.width}%`, transform: `rotate(${visual.rotation}deg)` }} />}
             {choiceType && <div className="mt-5 grid gap-3 sm:grid-cols-2">{options.filter((item) => item.text.trim()).map((option, index) => <div key={option.id} className={`rounded-2xl border p-3 ${option.correct ? 'border-emerald-500/45 bg-emerald-500/10' : 'border-foreground/10'}`}><div><b className="mr-3 text-orange-300">{optionLetter(index)}</b>{option.text}</div>{option.imagePath && <img src={assetUrl(option.imagePath)} alt="" className="mt-3 h-24 w-full rounded-xl object-contain" />}</div>)}</div>}
             {!choiceType && expectedAnswer.trim() && (
               <div className="mt-5 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4">
-                <p className="mb-2 font-bold text-emerald-200">Beklenen Cevap</p>
-                <p className="text-emerald-50">{expectedAnswer}</p>
+                <p className="mb-2 font-bold text-emerald-800 dark:text-emerald-200">Beklenen Cevap</p>
+                <p className="text-emerald-900 dark:text-emerald-50">{expectedAnswer}</p>
               </div>
             )}
-            {solutionHtml && <div className="mt-6 rounded-2xl border border-purple-400/30 bg-purple-500/10 p-4"><p className="mb-2 font-bold text-purple-200">Çözüm</p><div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(solutionHtml) }} /></div>}
+            {solutionHtml && <div className="mt-6 rounded-2xl border border-purple-400/30 bg-purple-500/10 p-4"><p className="mb-2 font-bold text-purple-800 dark:text-purple-200">Çözüm</p><div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(solutionHtml) }} /></div>}
           </div>
         </DialogContent>
       </Dialog>
@@ -951,7 +963,7 @@ export default function TeacherQuestionStudio() {
         <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground">
           <DialogHeader><DialogTitle>Çözüm Çizim Alanı</DialogTitle></DialogHeader>
           <DrawingCanvas questionAttemptId="question-studio-live" onSnapshot={(dataUrl) => { canvasSnapshotRef.current = dataUrl; setAutosave('Çizim kaydedilmeyi bekliyor'); }} onStrokeComplete={(stroke) => { setCanvasStrokes((items) => [...items, stroke]); touch(); }} />
-          <div className="flex justify-end gap-3"><Button variant="outline" onClick={() => setCanvasOpen(false)} className="border-foreground/10 text-white">Kapat</Button><Button onClick={async () => { await uploadCanvasSnapshot(); setCanvasOpen(false); }} className="bg-orange-500 text-white"><Upload className="mr-2 h-4 w-4" />Çizimi Kaydet</Button></div>
+          <div className="flex justify-end gap-3"><Button variant="outline" onClick={() => setCanvasOpen(false)} className="border-foreground/10 text-foreground">Kapat</Button><Button onClick={async () => { await uploadCanvasSnapshot(); setCanvasOpen(false); }} className="bg-orange-500 text-white"><Upload className="mr-2 h-4 w-4" />Çizimi Kaydet</Button></div>
         </DialogContent>
       </Dialog>
     </motion.div>
@@ -959,5 +971,5 @@ export default function TeacherQuestionStudio() {
 }
 
 function Field({ label, children }) {
-  return <div className="space-y-2"><Label className="text-xs font-bold text-slate-400">{label}</Label>{children}</div>;
+  return <div className="space-y-2"><Label className="text-xs font-bold text-muted-foreground">{label}</Label>{children}</div>;
 }

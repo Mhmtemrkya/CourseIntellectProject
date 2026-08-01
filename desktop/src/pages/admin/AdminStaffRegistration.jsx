@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Save, Briefcase, Copy, BusFront, Route, ShieldCheck } from 'lucide-react';
+import {
+  Save, Briefcase, Copy, BusFront, Route, ShieldCheck,
+  Users, UserCheck, GraduationCap, Mail, Phone, Pencil, Plus,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { FeatureGate } from '../../components/FeatureGate';
 import { UserStatusButton } from '../../components/UserStatusButton';
@@ -17,6 +20,10 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '../../components/ui/dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
+import { Badge } from '../../components/ui/badge';
+import DirectoryPage from '../../components/directory/DirectoryPage';
+import { assetUrl } from '../../lib/assetUrl';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
@@ -551,6 +558,406 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
     }
   };
 
+  // Kayıt ve dizin görünümü aynı diyalogları paylaşır (kimlik bilgisi + düzenleme).
+  const dialogs = (
+    <>
+      <Dialog open={!!credentials} onOpenChange={(open) => !open && setCredentials(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{credentials?.roleLabel} Oluşturuldu</DialogTitle>
+            <DialogDescription>
+              Bilgiler PDF olarak indirildi. Kaybederseniz aşağıdan tekrar indirebilirsiniz.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-xl border bg-muted/30 p-4">
+              <p className="text-sm text-muted-foreground">Ad Soyad</p>
+              <p className="mt-1 font-medium">{credentials?.fullName || '-'}</p>
+            </div>
+            <div className="rounded-xl border bg-muted/30 p-4">
+              <p className="text-sm text-muted-foreground">Kullanıcı Adı</p>
+              <p className="mt-1 font-mono text-base font-bold break-all">{credentials?.username || '-'}</p>
+            </div>
+            {credentials?.email ? (
+              <div className="rounded-xl border bg-muted/30 p-4">
+                <p className="text-sm text-muted-foreground">E-posta ile giriş</p>
+                <p className="mt-1 font-mono text-base font-bold break-all">{credentials.email}</p>
+              </div>
+            ) : null}
+            <div className="rounded-xl border bg-amber-50 dark:bg-amber-950/30 p-4">
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Geçici Şifre</p>
+              <p className="mt-1 font-mono text-base font-bold tracking-wider">{credentials?.password || '-'}</p>
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">İlk girişte değiştirilmesi zorunludur.</p>
+            </div>
+            {credentials?.serviceSummary ? (
+              <div className="rounded-xl border bg-muted/30 p-4">
+                <p className="text-sm text-muted-foreground">Servis Bağlantısı</p>
+                <p className="mt-1 font-medium">{credentials.serviceSummary}</p>
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCredentials(null)}>Kapat</Button>
+            <Button variant="outline" onClick={copyCredentials}>
+              <Copy className="mr-2 h-4 w-4" /> Kopyala
+            </Button>
+            <Button onClick={downloadAgain}>PDF İndir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Personel bilgileri ve yöneticiye özel yetki ataması */}
+      <Dialog open={!!editStaff} onOpenChange={(open) => !open && setEditStaff(null)}>
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-4xl overflow-y-auto sm:w-full">
+          <DialogHeader>
+            <DialogTitle>Personel Düzenle — {editStaff?.fullName}</DialogTitle>
+            <DialogDescription>
+              İletişim, görev ve özlük bilgilerini güncelleyin. Yetki ve şube ataması yalnızca kurum yöneticisi tarafından değiştirilebilir.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5 py-1">
+            <section className="rounded-xl border p-4">
+              <h3 className="mb-4 text-sm font-semibold">Personel bilgileri</h3>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <Label>Personel fotoğrafı</Label>
+                  <div className="mt-2">
+                    <PhotoCapture value={editForm.photoUrl} onChange={(photoUrl) => setEditForm((f) => ({ ...f, photoUrl }))} folder="staff-photos" size={96} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Ad Soyad *</Label>
+                  <Input value={editForm.fullName} onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))} maxLength={150} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Kullanıcı Adı</Label>
+                  <Input value={editStaff?.username || ''} readOnly className="bg-muted" />
+                </div>
+                <div className="space-y-2">
+                  <Label>TC Kimlik No</Label>
+                  <Input value={editStaff?.tcNo || ''} readOnly className="bg-muted" />
+                </div>
+                <div className="space-y-2">
+                  <Label>İşe Başlama Tarihi</Label>
+                  <Input value={editStaff?.startDate || ''} readOnly className="bg-muted" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefon</Label>
+                  <Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: maskTrPhone(e.target.value) }))} placeholder="+90 5XX XXX XX XX" inputMode="tel" maxLength={17} />
+                </div>
+                <div className="space-y-2">
+                  <Label>E-posta</Label>
+                  <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: maskEmail(e.target.value) }))} maxLength={254} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Birim / Branş</Label>
+                  <Input value={editForm.departmentOrBranch} onChange={(e) => setEditForm((f) => ({ ...f, departmentOrBranch: e.target.value }))} maxLength={120} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Eğitim</Label>
+                  <Input value={editForm.education} onChange={(e) => setEditForm((f) => ({ ...f, education: e.target.value }))} maxLength={120} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Kampüs</Label>
+                  <Input value={editForm.campus} onChange={(e) => setEditForm((f) => ({ ...f, campus: e.target.value }))} maxLength={120} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Rehberlik Sınıfı</Label>
+                  <Input value={editForm.homeroomClass} onChange={(e) => setEditForm((f) => ({ ...f, homeroomClass: e.target.value }))} maxLength={40} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Atanan Sınıflar</Label>
+                  <Input value={editForm.assignedClasses} onChange={(e) => setEditForm((f) => ({ ...f, assignedClasses: e.target.value }))} placeholder="9-A, 10-B (virgülle ayırın)" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Medeni Durum</Label>
+                  <Select value={editForm.maritalStatus} onValueChange={(value) => setEditForm((f) => ({ ...f, maritalStatus: value }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bekar">Bekar</SelectItem>
+                      <SelectItem value="Evli">Evli</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Çocuk Sayısı</Label>
+                  <Input type="number" min="0" max="20" value={editForm.childCount} onChange={(e) => setEditForm((f) => ({ ...f, childCount: maskPositiveInteger(e.target.value, 20) }))} />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Not</Label>
+                  <Textarea value={editForm.note} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))} rows={3} maxLength={1000} />
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+              <div className="mb-4 flex items-start gap-3">
+                <ShieldCheck className="mt-0.5 h-5 w-5 text-blue-600" />
+                <div>
+                  <h3 className="text-sm font-semibold">Rol, şube ve yetki profili</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {canManageAssignments
+                      ? 'Seçilen yetki profili personelin erişebileceği modül ve işlemleri belirler.'
+                      : 'Bu alanı yalnızca kurum yöneticisi değiştirebilir.'}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Temel Rol</Label>
+                  <Select
+                    disabled={!canManageAssignments}
+                    value={editForm.role}
+                    onValueChange={(value) => setEditForm((f) => ({ ...f, role: value, customRoleId: '' }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Rol seçin" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Teacher">Öğretmen</SelectItem>
+                      <SelectItem value="BranchManager">Şube Müdürü</SelectItem>
+                      <SelectItem value="Administrative">İdari Personel</SelectItem>
+                      <SelectItem value="Accounting">Muhasebe</SelectItem>
+                      <SelectItem value="Cafeteria">Yemekhaneci</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Şube {editForm.role === 'BranchManager' ? '*' : ''}</Label>
+                  <Select disabled={!canManageAssignments} value={editForm.branchId || '__none__'} onValueChange={(value) => setEditForm((f) => ({ ...f, branchId: value === '__none__' ? '' : value }))}>
+                    <SelectTrigger><SelectValue placeholder="Şube seçin" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Kurum geneli</SelectItem>
+                      {branches.filter((branch) => branch.isActive !== false).map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Yetki Profili</Label>
+                  <Select
+                    disabled={!canManageAssignments}
+                    value={editForm.customRoleId || '__base__'}
+                    onValueChange={(value) => {
+                      const role = customRoles.find((item) => item.id === value);
+                      setEditForm((formValue) => ({
+                        ...formValue,
+                        customRoleId: value === '__base__' ? '' : value,
+                        role: role?.baseRole || formValue.role,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Yetki profili seçin" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__base__">Temel rol yetkileri</SelectItem>
+                      {customRoles
+                        .filter((role) => !editForm.role || role.baseRole === editForm.role)
+                        .map((role) => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {selectedEditCustomRole ? (
+                <div className="mt-4 rounded-lg border bg-background p-3">
+                  <p className="text-xs font-semibold">Verilecek erişimler</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(selectedEditCustomRole.modules || []).map((module) => (
+                      <span key={`module-${module}`} className="rounded-full bg-blue-100 px-2.5 py-1 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">{module}</span>
+                    ))}
+                    {(selectedEditCustomRole.permissions || []).map((permission) => (
+                      <span key={`permission-${permission}`} className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">{permission}</span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => setEditStaff(null)} disabled={editSaving}>Vazgeç</Button>
+              <Button onClick={handleEditStaff} disabled={editSaving}>
+                <Save className="mr-2 h-4 w-4" />
+                {editSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+
+  // ── Dizin görünümü: kurum genelindeki aktif kadro, ortak dizin iskeletiyle ──
+  if (directoryMode && loading) {
+    return <div className="flex min-h-[60vh] items-center justify-center"><LoadingDots /></div>;
+  }
+
+  if (directoryMode) {
+    const activeStaff = allStaff.filter((staff) => !isUserPassive(staff.status));
+    const teacherCount = activeStaff.filter((staff) => (
+      String(staff.primaryRole || staff.role || '').toLowerCase() === 'teacher'
+    )).length;
+    const roleLabelOf = (staff) => {
+      const custom = customRoles.find((role) => String(role.id) === String(staff.customRoleId || ''));
+      const standard = staffRoleFilters.find((role) => (
+        String(role.value).toLowerCase() === String(staff.primaryRole || staff.role || '').toLowerCase()
+      ));
+      return custom?.name || standard?.label || staff.primaryRole || staff.role || 'Rol belirtilmemiş';
+    };
+
+    return (
+      <>
+        <DirectoryPage
+          testId="staff-directory-page"
+          title="Personeller"
+          subtitle={`${activeStaff.length} personeliniz bulunuyor`}
+          rangeLabel={(from, to, total) => `${total} personelden ${from}-${to} arası gösteriliyor`}
+          emptyTitle="Eşleşen personel bulunamadı"
+          emptyDescription="Rol filtresini veya arama metnini değiştirin."
+          actions={(
+            <FeatureGate module="registrations" action="staff-register">
+              <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={openRegistrationForm}>
+                <Plus className="mr-2 h-4 w-4" /> Yeni Personel Kaydı
+              </Button>
+            </FeatureGate>
+          )}
+          stats={[
+            { label: 'Toplam Personel', value: allStaff.length, caption: 'Tüm kadro', icon: Users, tint: 'bg-sky-500/12 text-sky-600' },
+            { label: 'Aktif Personel', value: activeStaff.length, caption: 'Giriş yapabilir', icon: UserCheck, tint: 'bg-emerald-500/12 text-emerald-600' },
+            { label: 'Öğretmen', value: teacherCount, caption: 'Akademik kadro', icon: GraduationCap, tint: 'bg-violet-500/12 text-violet-600' },
+            { label: 'Rol Sayısı', value: Math.max(0, staffFilterOptions.length - 1), caption: 'Standart + özel rol', icon: ShieldCheck, tint: 'bg-amber-500/12 text-amber-600' },
+          ]}
+          search={{ value: staffSearch, onChange: setStaffSearch, placeholder: 'Personel ara...' }}
+          filters={[{
+            value: roleFilter,
+            onChange: handleStaffRoleChange,
+            placeholder: 'Tüm Roller',
+            options: staffFilterOptions.filter((item) => item.value !== 'all'),
+          }]}
+          rows={filteredStaff}
+          getRowId={(staff) => staff.id || staff.userId || staff.username}
+          columns={[
+            {
+              key: 'fullName',
+              label: 'Personel',
+              sortable: true,
+              width: 'minmax(0,2fr)',
+              render: (staff) => (
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    {staff.photoUrl ? <AvatarImage src={assetUrl(staff.photoUrl)} alt={staff.fullName} className="object-cover" /> : null}
+                    <AvatarFallback className="bg-brand-primary text-white">
+                      {String(staff.fullName || '?').split(' ').map((part) => part[0]).join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{staff.fullName}</p>
+                    <p className="truncate text-xs text-muted-foreground">{staff.username || '—'}</p>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: 'role',
+              label: 'Rol',
+              sortable: true,
+              sortValue: roleLabelOf,
+              width: 'minmax(0,1fr)',
+              render: (staff) => <Badge className="bg-brand-accent text-white">{roleLabelOf(staff)}</Badge>,
+            },
+            {
+              key: 'departmentOrBranch',
+              label: 'Birim / Branş',
+              sortable: true,
+              width: 'minmax(0,1fr)',
+              render: (staff) => (
+                <div className="min-w-0">
+                  <p className="truncate text-sm">{staff.departmentOrBranch || '—'}</p>
+                  <p className="truncate text-xs text-muted-foreground">{staff.campus || ''}</p>
+                </div>
+              ),
+            },
+            {
+              key: 'contact',
+              label: 'İletişim',
+              width: 'minmax(0,1.2fr)',
+              render: (staff) => (
+                <div className="min-w-0 text-xs">
+                  <p className="flex items-center gap-1.5 font-medium"><Phone className="h-3 w-3 text-muted-foreground" />{staff.phone || '—'}</p>
+                  <p className="mt-0.5 flex items-center gap-1.5 truncate text-muted-foreground"><Mail className="h-3 w-3" />{staff.email || '—'}</p>
+                </div>
+              ),
+            },
+            {
+              key: 'startDate',
+              label: 'Başlangıç',
+              sortable: true,
+              width: 'minmax(0,0.8fr)',
+              render: (staff) => <span className="text-xs text-muted-foreground">{staff.startDate || '—'}</span>,
+            },
+            {
+              key: 'status',
+              label: 'Durum',
+              sortable: true,
+              width: 'minmax(0,0.7fr)',
+              render: (staff) => (isUserPassive(staff.status)
+                ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
+                : <Badge className="bg-green-100 text-green-700">Aktif</Badge>),
+            },
+          ]}
+          rowActions={(staff) => (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Düzenle"
+                onClick={() => { setEditStaff(staff); setEditForm(buildStaffEditForm(staff)); }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              {/* Pasifleştirme listeden yapılabilmeli: hesap silinmez, girişi kapanır. */}
+              <FeatureGate module="staff-hr" action="status">
+                <UserStatusButton
+                  iconOnly
+                  isPassive={isUserPassive(staff.status)}
+                  onToggle={async () => {
+                    try {
+                      await updateUserStatus(staff.username, isUserPassive(staff.status) ? 'Active' : 'Passive');
+                      toast({ title: isUserPassive(staff.status) ? 'Kullanıcı aktifleştirildi.' : 'Kullanıcı pasife alındı (giriş yapamaz).' });
+                      await loadRecent();
+                    } catch (err) {
+                      toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' });
+                    }
+                  }}
+                />
+              </FeatureGate>
+            </>
+          )}
+          cardRender={(staff) => (
+            <div
+              data-testid="staff-directory-card"
+              className="flex w-full flex-col gap-3 rounded-2xl border border-foreground/10 bg-background/60 p-4"
+            >
+              <div className="flex items-center gap-3">
+                <Avatar className="h-11 w-11">
+                  {staff.photoUrl ? <AvatarImage src={assetUrl(staff.photoUrl)} alt={staff.fullName} className="object-cover" /> : null}
+                  <AvatarFallback className="bg-brand-primary text-white">
+                    {String(staff.fullName || '?').split(' ').map((part) => part[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold">{staff.fullName}</p>
+                  <p className="truncate text-xs text-muted-foreground">{roleLabelOf(staff)}</p>
+                </div>
+              </div>
+              <p className="truncate text-xs text-muted-foreground">
+                {staff.departmentOrBranch || staff.campus || 'Birim belirtilmemiş'}
+              </p>
+            </div>
+          )}
+        />
+        {dialogs}
+      </>
+    );
+  }
+
   return (
     <motion.div
       className="space-y-6"
@@ -874,226 +1281,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
         </motion.div>
       </div>
 
-      <Dialog open={!!credentials} onOpenChange={(open) => !open && setCredentials(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{credentials?.roleLabel} Oluşturuldu</DialogTitle>
-            <DialogDescription>
-              Bilgiler PDF olarak indirildi. Kaybederseniz aşağıdan tekrar indirebilirsiniz.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="rounded-xl border bg-muted/30 p-4">
-              <p className="text-sm text-muted-foreground">Ad Soyad</p>
-              <p className="mt-1 font-medium">{credentials?.fullName || '-'}</p>
-            </div>
-            <div className="rounded-xl border bg-muted/30 p-4">
-              <p className="text-sm text-muted-foreground">Kullanıcı Adı</p>
-              <p className="mt-1 font-mono text-base font-bold break-all">{credentials?.username || '-'}</p>
-            </div>
-            {credentials?.email ? (
-              <div className="rounded-xl border bg-muted/30 p-4">
-                <p className="text-sm text-muted-foreground">E-posta ile giriş</p>
-                <p className="mt-1 font-mono text-base font-bold break-all">{credentials.email}</p>
-              </div>
-            ) : null}
-            <div className="rounded-xl border bg-amber-50 dark:bg-amber-950/30 p-4">
-              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Geçici Şifre</p>
-              <p className="mt-1 font-mono text-base font-bold tracking-wider">{credentials?.password || '-'}</p>
-              <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">İlk girişte değiştirilmesi zorunludur.</p>
-            </div>
-            {credentials?.serviceSummary ? (
-              <div className="rounded-xl border bg-muted/30 p-4">
-                <p className="text-sm text-muted-foreground">Servis Bağlantısı</p>
-                <p className="mt-1 font-medium">{credentials.serviceSummary}</p>
-              </div>
-            ) : null}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCredentials(null)}>Kapat</Button>
-            <Button variant="outline" onClick={copyCredentials}>
-              <Copy className="mr-2 h-4 w-4" /> Kopyala
-            </Button>
-            <Button onClick={downloadAgain}>PDF İndir</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Personel bilgileri ve yöneticiye özel yetki ataması */}
-      <Dialog open={!!editStaff} onOpenChange={(open) => !open && setEditStaff(null)}>
-        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-4xl overflow-y-auto sm:w-full">
-          <DialogHeader>
-            <DialogTitle>Personel Düzenle — {editStaff?.fullName}</DialogTitle>
-            <DialogDescription>
-              İletişim, görev ve özlük bilgilerini güncelleyin. Yetki ve şube ataması yalnızca kurum yöneticisi tarafından değiştirilebilir.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-5 py-1">
-            <section className="rounded-xl border p-4">
-              <h3 className="mb-4 text-sm font-semibold">Personel bilgileri</h3>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="md:col-span-2">
-                  <Label>Personel fotoğrafı</Label>
-                  <div className="mt-2">
-                    <PhotoCapture value={editForm.photoUrl} onChange={(photoUrl) => setEditForm((f) => ({ ...f, photoUrl }))} folder="staff-photos" size={96} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Ad Soyad *</Label>
-                  <Input value={editForm.fullName} onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))} maxLength={150} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Kullanıcı Adı</Label>
-                  <Input value={editStaff?.username || ''} readOnly className="bg-muted" />
-                </div>
-                <div className="space-y-2">
-                  <Label>TC Kimlik No</Label>
-                  <Input value={editStaff?.tcNo || ''} readOnly className="bg-muted" />
-                </div>
-                <div className="space-y-2">
-                  <Label>İşe Başlama Tarihi</Label>
-                  <Input value={editStaff?.startDate || ''} readOnly className="bg-muted" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Telefon</Label>
-                  <Input value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: maskTrPhone(e.target.value) }))} placeholder="+90 5XX XXX XX XX" inputMode="tel" maxLength={17} />
-                </div>
-                <div className="space-y-2">
-                  <Label>E-posta</Label>
-                  <Input type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: maskEmail(e.target.value) }))} maxLength={254} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Birim / Branş</Label>
-                  <Input value={editForm.departmentOrBranch} onChange={(e) => setEditForm((f) => ({ ...f, departmentOrBranch: e.target.value }))} maxLength={120} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Eğitim</Label>
-                  <Input value={editForm.education} onChange={(e) => setEditForm((f) => ({ ...f, education: e.target.value }))} maxLength={120} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Kampüs</Label>
-                  <Input value={editForm.campus} onChange={(e) => setEditForm((f) => ({ ...f, campus: e.target.value }))} maxLength={120} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Rehberlik Sınıfı</Label>
-                  <Input value={editForm.homeroomClass} onChange={(e) => setEditForm((f) => ({ ...f, homeroomClass: e.target.value }))} maxLength={40} />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Atanan Sınıflar</Label>
-                  <Input value={editForm.assignedClasses} onChange={(e) => setEditForm((f) => ({ ...f, assignedClasses: e.target.value }))} placeholder="9-A, 10-B (virgülle ayırın)" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Medeni Durum</Label>
-                  <Select value={editForm.maritalStatus} onValueChange={(value) => setEditForm((f) => ({ ...f, maritalStatus: value }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Bekar">Bekar</SelectItem>
-                      <SelectItem value="Evli">Evli</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Çocuk Sayısı</Label>
-                  <Input type="number" min="0" max="20" value={editForm.childCount} onChange={(e) => setEditForm((f) => ({ ...f, childCount: maskPositiveInteger(e.target.value, 20) }))} />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Not</Label>
-                  <Textarea value={editForm.note} onChange={(e) => setEditForm((f) => ({ ...f, note: e.target.value }))} rows={3} maxLength={1000} />
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 dark:border-blue-900 dark:bg-blue-950/20">
-              <div className="mb-4 flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 h-5 w-5 text-blue-600" />
-                <div>
-                  <h3 className="text-sm font-semibold">Rol, şube ve yetki profili</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {canManageAssignments
-                      ? 'Seçilen yetki profili personelin erişebileceği modül ve işlemleri belirler.'
-                      : 'Bu alanı yalnızca kurum yöneticisi değiştirebilir.'}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label>Temel Rol</Label>
-                  <Select
-                    disabled={!canManageAssignments}
-                    value={editForm.role}
-                    onValueChange={(value) => setEditForm((f) => ({ ...f, role: value, customRoleId: '' }))}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Rol seçin" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Teacher">Öğretmen</SelectItem>
-                      <SelectItem value="BranchManager">Şube Müdürü</SelectItem>
-                      <SelectItem value="Administrative">İdari Personel</SelectItem>
-                      <SelectItem value="Accounting">Muhasebe</SelectItem>
-                      <SelectItem value="Cafeteria">Yemekhaneci</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Şube {editForm.role === 'BranchManager' ? '*' : ''}</Label>
-                  <Select disabled={!canManageAssignments} value={editForm.branchId || '__none__'} onValueChange={(value) => setEditForm((f) => ({ ...f, branchId: value === '__none__' ? '' : value }))}>
-                    <SelectTrigger><SelectValue placeholder="Şube seçin" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Kurum geneli</SelectItem>
-                      {branches.filter((branch) => branch.isActive !== false).map((branch) => (
-                        <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Yetki Profili</Label>
-                  <Select
-                    disabled={!canManageAssignments}
-                    value={editForm.customRoleId || '__base__'}
-                    onValueChange={(value) => {
-                      const role = customRoles.find((item) => item.id === value);
-                      setEditForm((formValue) => ({
-                        ...formValue,
-                        customRoleId: value === '__base__' ? '' : value,
-                        role: role?.baseRole || formValue.role,
-                      }));
-                    }}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Yetki profili seçin" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__base__">Temel rol yetkileri</SelectItem>
-                      {customRoles
-                        .filter((role) => !editForm.role || role.baseRole === editForm.role)
-                        .map((role) => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {selectedEditCustomRole ? (
-                <div className="mt-4 rounded-lg border bg-background p-3">
-                  <p className="text-xs font-semibold">Verilecek erişimler</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {(selectedEditCustomRole.modules || []).map((module) => (
-                      <span key={`module-${module}`} className="rounded-full bg-blue-100 px-2.5 py-1 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">{module}</span>
-                    ))}
-                    {(selectedEditCustomRole.permissions || []).map((permission) => (
-                      <span key={`permission-${permission}`} className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">{permission}</span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </section>
-
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button variant="outline" onClick={() => setEditStaff(null)} disabled={editSaving}>Vazgeç</Button>
-              <Button onClick={handleEditStaff} disabled={editSaving}>
-                <Save className="mr-2 h-4 w-4" />
-                {editSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {dialogs}
     </motion.div>
   );
 }

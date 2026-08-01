@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../services/staff_registry_store.dart';
+import '../widgets/directory_list.dart';
 import 'admin_staff_detail_page.dart';
 import 'admin_staff_registration_page.dart';
 
@@ -93,277 +94,159 @@ class _AdminStaffListPageState extends State<AdminStaffListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final filtered = _filtered;
+    final staff = _store.staff;
+    final active = staff.where((record) => _isActive(record.status)).length;
+    final teachers = staff.where((record) => record.roleType == 'Öğretmen').length;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Personel Yönetimi'.tr),
-        actions: [
-          IconButton(
-            onPressed: _isRefreshing ? null : _refresh,
-            icon: _isRefreshing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.refresh),
-          ),
-        ],
+        title: Text(
+          'Personeller'.tr,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openRegistration,
-        icon: const Icon(Icons.person_add_alt_1),
-        label: const Text('Yeni Personel'),
+        icon: const Icon(Icons.person_add_alt_1_rounded),
+        label: Text('Yeni Personel'.tr),
       ),
-      body: !_store.isLoaded
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _refresh,
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TextField(
-                            controller: _searchController,
-                            onChanged: (value) =>
-                                setState(() => _search = value),
-                            decoration: InputDecoration(
-                              hintText:
-                                  'Ad, kullanıcı adı, departman veya e-posta ara…'.tr,
-                              prefixIcon: const Icon(Icons.search),
-                              filled: true,
-                              fillColor: theme.scaffoldBackgroundColor,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: [
-                                _FilterChipGroup(
-                                  label: 'Rol',
-                                  options: _roleOptions,
-                                  selected: _roleFilter,
-                                  onChanged: (value) =>
-                                      setState(() => _roleFilter = value),
-                                ),
-                                const SizedBox(width: 12),
-                                _FilterChipGroup(
-                                  label: 'Durum',
-                                  options: _statusOptions,
-                                  selected: _statusFilter,
-                                  onChanged: (value) =>
-                                      setState(() => _statusFilter = value),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '${filtered.length} kayıt',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.textTheme.bodySmall?.color
-                                  ?.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (filtered.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Text(
-                            'Filtrelere uyan personel bulunamadı.'.tr,
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    SliverList.builder(
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) {
-                        final record = filtered[index];
-                        return _StaffTile(
-                          record: record,
-                          onTap: () => _openDetail(record),
-                        );
-                      },
-                    ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 96)),
-                ],
+      body: DirectoryList<StaffRegistryRecord>(
+        title: 'Personeller',
+        subtitle: '$active ${'personeliniz bulunuyor'.tr}',
+        loading: _isRefreshing,
+        onRefresh: _refresh,
+        stats: [
+          DirectoryStat(
+            label: 'Toplam Personel',
+            value: '${staff.length}',
+            caption: 'Tüm kadro',
+            icon: Icons.groups_outlined,
+            color: const Color(0xFF2563EB),
+          ),
+          DirectoryStat(
+            label: 'Aktif Personel',
+            value: '$active',
+            caption: 'Giriş yapabilir',
+            icon: Icons.verified_user_outlined,
+            color: const Color(0xFF059669),
+          ),
+          DirectoryStat(
+            label: 'Öğretmen',
+            value: '$teachers',
+            caption: 'Akademik kadro',
+            icon: Icons.school_outlined,
+            color: const Color(0xFF7C3AED),
+          ),
+          DirectoryStat(
+            label: 'Pasif Personel',
+            value: '${staff.length - active}',
+            caption: 'Girişi kapalı',
+            icon: Icons.person_off_outlined,
+            color: const Color(0xFFB42318),
+          ),
+        ],
+        searchHint: 'Personel ara...',
+        onSearchChanged: (value) => setState(() => _search = value),
+        filters: [
+          DirectoryFilter(
+            label: 'Tüm Roller',
+            value: _roleFilter == 'Tümü' ? directoryAll : _roleFilter,
+            options: _roleOptions.where((item) => item != 'Tümü').toList(),
+            onChanged: (value) => setState(
+              () => _roleFilter = value == directoryAll ? 'Tümü' : value,
+            ),
+          ),
+          DirectoryFilter(
+            label: 'Tüm Durumlar',
+            value: _statusFilter == 'Tümü' ? directoryAll : _statusFilter,
+            options: _statusOptions.where((item) => item != 'Tümü').toList(),
+            onChanged: (value) => setState(
+              () => _statusFilter = value == directoryAll ? 'Tümü' : value,
+            ),
+          ),
+        ],
+        rows: filtered,
+        totalLabel: (total) => '${'Toplam'.tr} $total ${'personel'.tr}',
+        emptyTitle: 'Personel bulunamadı',
+        emptyDescription: 'Filtreleri değiştirin veya yeni personel ekleyin.',
+        rowBuilder: (context, record) {
+          final passive = !_isActive(record.status);
+          return DirectoryRowCard(
+            title: record.fullName,
+            subtitle: record.username.isEmpty
+                ? record.roleType
+                : '${record.roleType} · ${record.username}',
+            trailingBadge: passive ? 'Pasif'.tr : 'Aktif'.tr,
+            badgeColor: passive
+                ? const Color(0xFFB42318)
+                : const Color(0xFF059669),
+            onTap: () => _openDetail(record),
+            metrics: [
+              (
+                icon: Icons.badge_outlined,
+                label: 'Birim',
+                value: record.branchOrDepartment,
               ),
-            ),
-    );
-  }
-}
-
-class _FilterChipGroup extends StatelessWidget {
-  final String label;
-  final List<String> options;
-  final String selected;
-  final ValueChanged<String> onChanged;
-
-  const _FilterChipGroup({
-    required this.label,
-    required this.options,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('$label:', style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(width: 8),
-        ...options.map(
-          (option) => Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: ChoiceChip(
-              label: Text(option),
-              selected: selected == option,
-              onSelected: (_) => onChanged(option),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StaffTile extends StatelessWidget {
-  final StaffRegistryRecord record;
-  final VoidCallback onTap;
-
-  const _StaffTile({required this.record, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isActive = record.status == 'Aktif' || record.status == 'Active';
-    final initials = _initials(record.fullName);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Material(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: theme.colorScheme.primary.withValues(
-                    alpha: 0.12,
-                  ),
-                  child: Text(
-                    initials,
-                    style: TextStyle(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+              (
+                icon: Icons.phone_outlined,
+                label: 'Telefon',
+                value: record.phone,
+              ),
+              (
+                icon: Icons.event_outlined,
+                label: 'Başlangıç',
+                value: record.startDate,
+              ),
+            ],
+            actions: [
+              IconButton(
+                tooltip: 'Detay'.tr,
+                onPressed: () => _openDetail(record),
+                icon: const Icon(Icons.chevron_right_rounded),
+              ),
+              // Pasifleştirme listede kalmalı: hesap silinmez, girişi kapanır.
+              IconButton(
+                tooltip: passive ? 'Aktifleştir'.tr : 'Pasifleştir'.tr,
+                onPressed: () => _toggleStatus(record),
+                icon: Icon(
+                  passive
+                      ? Icons.person_add_alt_1_outlined
+                      : Icons.person_off_outlined,
+                  color: passive
+                      ? const Color(0xFF059669)
+                      : const Color(0xFFB42318),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        record.fullName.isEmpty ? '(Ad yok)' : record.fullName,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${record.roleType} • ${record.branchOrDepartment.isEmpty ? 'Belirtilmemiş' : record.branchOrDepartment}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.textTheme.bodySmall?.color?.withValues(
-                            alpha: 0.72,
-                          ),
-                        ),
-                      ),
-                      if (record.homeroomClass.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(Icons.school_outlined, size: 14, color: theme.colorScheme.primary),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${record.homeroomClass} sınıf öğretmeni',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: (isActive ? Colors.green : Colors.grey).withValues(
-                      alpha: 0.15,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    isActive ? 'Aktif' : 'Pasif',
-                    style: TextStyle(
-                      color: isActive
-                          ? Colors.green.shade800
-                          : Colors.grey.shade700,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.chevron_right),
-              ],
-            ),
-          ),
-        ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  String _initials(String name) {
-    final parts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((p) => p.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  Future<void> _toggleStatus(StaffRegistryRecord record) async {
+    final passive = !_isActive(record.status);
+    try {
+      await _store.updateStatus(
+        username: record.username,
+        status: passive ? 'Aktif' : 'Pasif',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            passive
+                ? 'Personel aktifleştirildi.'.tr
+                : 'Personel pasife alındı (giriş yapamaz).'.tr,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
   }
 }

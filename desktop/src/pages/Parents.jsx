@@ -10,11 +10,12 @@ import {
   CalendarDays,
   MessageSquare,
   Info,
-  ChevronUp,
-  ChevronDown,
   KeyRound,
+  UserCheck,
+  UserMinus,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import DirectoryPage, { DIRECTORY_ALL } from '../components/directory/DirectoryPage';
 import { FeatureGate } from '../components/FeatureGate';
 import { UserStatusButton } from '../components/UserStatusButton';
 import { Card, CardContent } from '../components/ui/card';
@@ -162,8 +163,8 @@ export default function Parents() {
   const [accounts, setAccounts] = useState([]);
   const [accountSearch, setAccountSearch] = useState('');
   const [search, setSearch] = useState('');
-  const [sortField, setSortField] = useState('name');
-  const [sortDirection, setSortDirection] = useState('asc');
+  const [statusFilter, setStatusFilter] = useState(DIRECTORY_ALL);
+  const [classFilter, setClassFilter] = useState(DIRECTORY_ALL);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -189,33 +190,51 @@ export default function Parents() {
     loadParents();
   }, [loadParents]);
 
-  const filteredParents = useMemo(() => {
-    return parents
-      .filter((parent) => {
-        const target = `${parent.name} ${parent.email} ${parent.phone}`.toLowerCase();
-        return target.includes(search.toLowerCase());
-      })
-      .sort((a, b) => {
-        const left = a[sortField];
-        const right = b[sortField];
-        if (sortDirection === 'asc') return left > right ? 1 : -1;
-        return left < right ? 1 : -1;
-      });
-  }, [parents, search, sortField, sortDirection]);
+  const nameKey = (value = '') => value.trim().toLocaleLowerCase('tr-TR');
 
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
+  // Veli listesi öğrencilerden türetilir; giriş HESABI ayrı uçtan gelir. İkisi
+  // tek satırda birleştirilir ki pasifleştirme listeden yapılabilsin.
+  const parentRows = useMemo(() => {
+    const accountByName = new Map(accounts.map((account) => [nameKey(account.fullName), account]));
+    const used = new Set();
+    const rows = parents.map((parent) => {
+      const account = accountByName.get(nameKey(parent.name));
+      if (account) used.add(nameKey(parent.name));
+      return { ...parent, account: account || null, status: account?.status || null };
+    });
+    // Öğrencisi listede olmayan (ör. çocuğu pasif) hesaplar da görünsün.
+    accounts
+      .filter((account) => !used.has(nameKey(account.fullName)))
+      .forEach((account) => rows.push({
+        id: `account:${account.userId}`,
+        name: account.fullName,
+        email: account.email || '',
+        phone: account.phone || '',
+        children: (account.children || []).map((child) => ({ id: child, fullName: child })),
+        classNames: [],
+        meetings: 0,
+        account,
+        status: account.status,
+      }));
+    return rows;
+  }, [parents, accounts]);
+
+  const parentClasses = useMemo(
+    () => [...new Set(parentRows.flatMap((parent) => parent.classNames || []))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'tr')),
+    [parentRows],
+  );
+
+  const filteredParents = useMemo(() => parentRows.filter((parent) => {
+    const haystack = `${parent.name} ${parent.email} ${parent.phone} ${parent.account?.username || ''}`.toLowerCase();
+    if (!haystack.includes(search.toLowerCase())) return false;
+    if (classFilter !== DIRECTORY_ALL && !(parent.classNames || []).includes(classFilter)) return false;
+    if (statusFilter !== DIRECTORY_ALL) {
+      const passive = isUserPassive(parent.status);
+      if (statusFilter === 'active' && passive) return false;
+      if (statusFilter === 'passive' && !passive) return false;
     }
-  };
-
-  const SortIcon = ({ field }) => {
-    if (sortField !== field) return null;
-    return sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />;
-  };
+    return true;
+  }), [parentRows, search, classFilter, statusFilter]);
 
   // Veli hesabını pasife alma / aktifleştirme: hesap silinmez, girişi engellenir.
   const handleToggleAccountStatus = useCallback(async (account) => {
@@ -245,205 +264,169 @@ export default function Parents() {
     return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
   }
 
+  const withAccount = parentRows.filter((parent) => parent.account).length;
+  const passiveAccounts = parentRows.filter((parent) => isUserPassive(parent.status)).length;
+  const childCount = parentRows.reduce((sum, parent) => sum + (parent.children?.length || 0), 0);
+
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6" data-testid="parents-page">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold font-heading">Veliler</h1>
-          <p className="text-muted-foreground mt-1">{parents.filter((p) => p.children.some((c) => !isUserPassive(c.status))).length} kayıtlı veli</p>
-        </div>
+    <DirectoryPage
+      testId="parents-page"
+      title="Veliler"
+      subtitle={`${parentRows.length} veliniz bulunuyor`}
+      rangeLabel={(from, to, total) => `${total} veliden ${from}-${to} arası gösteriliyor`}
+      emptyTitle="Veli bulunamadı"
+      emptyDescription="Filtreleri değiştirin veya öğrenci kaydından veli ekleyin."
+      banner={error ? <ErrorBanner title="Veliler alınamadı" message={error} onRetry={loadParents} /> : null}
+      actions={(
         <FeatureGate module="parents" action="create">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/admin/parent-registration')}
-          >
-            <Info className="h-4 w-4 mr-2" />
-            Yeni Veli Bilgisi
+          <Button variant="outline" onClick={() => navigate('/admin/student-registration')}>
+            <Info className="mr-2 h-4 w-4" /> Öğrenci kaydından ekle
           </Button>
         </FeatureGate>
-      </div>
-
-      {error ? <ErrorBanner title="Veli listesi alınamadı" message={error} onRetry={loadParents} /> : null}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
+      )}
+      stats={[
+        { label: 'Toplam Veli', value: parentRows.length, caption: 'Tüm zamanlar', icon: Users, tint: 'bg-sky-500/12 text-sky-600' },
+        { label: 'Giriş Hesabı Olan', value: withAccount, caption: 'Veli paneline girebilir', icon: KeyRound, tint: 'bg-emerald-500/12 text-emerald-600' },
+        { label: 'Bağlı Öğrenci', value: childCount, caption: 'Veli-öğrenci eşleşmesi', icon: UserCheck, tint: 'bg-violet-500/12 text-violet-600' },
+        { label: 'Pasif Hesap', value: passiveAccounts, caption: 'Girişi kapalı', icon: UserMinus, tint: 'bg-rose-500/12 text-rose-600' },
+      ]}
+      search={{ value: search, onChange: setSearch, placeholder: 'Veli ara...' }}
+      filters={[
+        { value: classFilter, onChange: setClassFilter, placeholder: 'Tüm Sınıflar', options: parentClasses },
+        {
+          value: statusFilter,
+          onChange: setStatusFilter,
+          placeholder: 'Tüm Durumlar',
+          options: [{ value: 'active', label: 'Aktif' }, { value: 'passive', label: 'Pasif' }],
+        },
+      ]}
+      rows={filteredParents}
+      getRowId={(parent) => parent.id}
+      onRowClick={(parent) => openDrawer(<ParentDetailDrawer parent={parent} />)}
+      columns={[
+        {
+          key: 'name',
+          label: 'Veli',
+          sortable: true,
+          width: 'minmax(0,1.8fr)',
+          render: (parent) => (
             <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-brand-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Toplam Veli</p>
-                <p className="text-2xl font-bold">{parents.filter((p) => p.children.some((c) => !isUserPassive(c.status))).length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <CalendarDays className="h-5 w-5 text-brand-accent" />
-              <div>
-                <p className="text-sm text-muted-foreground">Toplam Görüşme</p>
-                <p className="text-2xl font-bold">{parents.reduce((sum, item) => sum + item.meetings, 0)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <MessageSquare className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Bağlı Öğrenci</p>
-                <p className="text-2xl font-bold">{parents.reduce((sum, item) => sum + item.children.filter((c) => !isUserPassive(c.status)).length, 0)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Veli ara..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('name')}>
-                  <div className="flex items-center gap-2">Veli <SortIcon field="name" /></div>
-                </TableHead>
-                <TableHead>İletişim</TableHead>
-                <TableHead>Öğrenciler</TableHead>
-                <TableHead>Görüşmeler</TableHead>
-                <TableHead className="w-12" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredParents.map((parent) => (
-                <TableRow
-                  key={parent.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => openDrawer(<ParentDetailDrawer parent={parent} />)}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-brand-primary text-white">
-                          {parent.name.split(' ').map((part) => part[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{parent.name}</p>
-                        <p className="text-xs text-muted-foreground">{parent.classNames.join(', ') || 'Sınıf yok'}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1 text-sm">
-                      <p>{parent.email || 'E-posta yok'}</p>
-                      <p className="text-muted-foreground">{parent.phone || 'Telefon yok'}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {parent.children.map((child) => (
-                        <Badge key={child.id} variant="outline">{child.fullName}</Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{parent.meetings}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={(event) => {
-                      event.stopPropagation();
-                      openDrawer(<ParentDetailDrawer parent={parent} />);
-                    }}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {accounts.length > 0 ? (
-        <Card data-tour="parent-accounts">
-          <CardContent className="p-4 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <KeyRound className="h-5 w-5 text-brand-primary" /> Veli Hesapları
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Giriş hesapları: kurumdan ayrılan velileri pasife alın; hesap silinmez, giriş engellenir.
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-brand-primary text-white">
+                  {parent.name.split(' ').map((part) => part[0]).join('')}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{parent.name}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {parent.account?.username || parent.classNames.join(', ') || 'Giriş hesabı yok'}
                 </p>
               </div>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Hesap ara..." value={accountSearch} onChange={(e) => setAccountSearch(e.target.value)} className="pl-10" />
-              </div>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Veli</TableHead>
-                  <TableHead>Kullanıcı Adı</TableHead>
-                  <TableHead>Bağlı Öğrenciler</TableHead>
-                  <TableHead>Son Giriş</TableHead>
-                  <TableHead>Durum</TableHead>
-                  <TableHead className="w-32" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAccounts.map((account) => {
-                  const isPassive = isUserPassive(account.status);
-                  return (
-                    <TableRow key={account.userId}>
-                      <TableCell>
-                        <p className="font-medium">{account.fullName}</p>
-                        <p className="text-xs text-muted-foreground">{account.phone || 'Telefon yok'}</p>
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{account.username}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {(account.children || []).length > 0
-                            ? account.children.map((child) => <Badge key={child} variant="outline">{child}</Badge>)
-                            : <span className="text-xs text-muted-foreground">Bağlantı yok</span>}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {account.lastLoginAtUtc ? new Date(account.lastLoginAtUtc).toLocaleString('tr-TR') : 'Hiç girmedi'}
-                      </TableCell>
-                      <TableCell>
-                        {isPassive
-                          ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
-                          : <Badge className="bg-green-100 text-green-700">Aktif</Badge>}
-                      </TableCell>
-                      <TableCell>
-                        <FeatureGate module="parents" action="status">
-                          <UserStatusButton
-                            isPassive={isPassive}
-                            onToggle={() => handleToggleAccountStatus(account)}
-                          />
-                        </FeatureGate>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : null}
-    </motion.div>
+          ),
+        },
+        {
+          key: 'contact',
+          label: 'İletişim',
+          width: 'minmax(0,1.3fr)',
+          render: (parent) => (
+            <div className="min-w-0 text-xs">
+              <p className="flex items-center gap-1.5 font-medium"><Phone className="h-3 w-3 text-muted-foreground" />{parent.phone || '—'}</p>
+              <p className="mt-0.5 flex items-center gap-1.5 truncate text-muted-foreground"><Mail className="h-3 w-3" />{parent.email || '—'}</p>
+            </div>
+          ),
+        },
+        {
+          key: 'children',
+          label: 'Öğrenciler',
+          width: 'minmax(0,1.4fr)',
+          render: (parent) => (
+            <div className="flex flex-wrap gap-1">
+              {(parent.children || []).slice(0, 3).map((child) => (
+                <Badge key={child.id || child.fullName} variant="outline" className="text-xs">{child.fullName}</Badge>
+              ))}
+              {(parent.children || []).length > 3 ? (
+                <Badge variant="outline" className="text-xs">+{parent.children.length - 3}</Badge>
+              ) : null}
+              {(parent.children || []).length === 0 ? <span className="text-xs text-muted-foreground">Bağlantı yok</span> : null}
+            </div>
+          ),
+        },
+        {
+          key: 'meetings',
+          label: 'Görüşme',
+          sortable: true,
+          width: 'minmax(0,0.6fr)',
+          render: (parent) => <Badge variant="secondary">{parent.meetings}</Badge>,
+        },
+        {
+          key: 'lastLogin',
+          label: 'Son Giriş',
+          width: 'minmax(0,0.9fr)',
+          sortValue: (parent) => parent.account?.lastLoginAtUtc || '',
+          render: (parent) => (
+            <span className="text-xs text-muted-foreground">
+              {parent.account?.lastLoginAtUtc
+                ? new Date(parent.account.lastLoginAtUtc).toLocaleDateString('tr-TR')
+                : 'Hiç girmedi'}
+            </span>
+          ),
+        },
+        {
+          key: 'status',
+          label: 'Durum',
+          sortable: true,
+          width: 'minmax(0,0.7fr)',
+          render: (parent) => {
+            if (!parent.account) return <span className="text-xs text-muted-foreground">Hesap yok</span>;
+            return isUserPassive(parent.status)
+              ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
+              : <Badge className="bg-green-100 text-green-700">Aktif</Badge>;
+          },
+        },
+      ]}
+      rowActions={(parent) => (
+        <>
+          <Button variant="ghost" size="icon" title="Detay" onClick={() => openDrawer(<ParentDetailDrawer parent={parent} />)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          {/* Giriş hesabı olan veli listeden pasife alınabilir. */}
+          {parent.account ? (
+            <FeatureGate module="parents" action="status">
+              <UserStatusButton
+                iconOnly
+                isPassive={isUserPassive(parent.status)}
+                onToggle={() => handleToggleAccountStatus(parent.account)}
+              />
+            </FeatureGate>
+          ) : null}
+        </>
+      )}
+      cardRender={(parent) => (
+        <button
+          type="button"
+          onClick={() => openDrawer(<ParentDetailDrawer parent={parent} />)}
+          className="flex w-full flex-col items-start gap-3 rounded-2xl border border-foreground/10 bg-background/60 p-4 text-left transition hover:border-[hsl(var(--brand-accent)/0.35)]"
+        >
+          <div className="flex w-full items-center gap-3">
+            <Avatar className="h-11 w-11">
+              <AvatarFallback className="bg-brand-primary text-white">
+                {parent.name.split(' ').map((part) => part[0]).join('')}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-bold">{parent.name}</p>
+              <p className="truncate text-xs text-muted-foreground">{parent.phone || parent.email || '—'}</p>
+            </div>
+            {parent.account && isUserPassive(parent.status)
+              ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
+              : null}
+          </div>
+          <p className="w-full truncate text-xs text-muted-foreground">
+            {(parent.children || []).map((child) => child.fullName).join(', ') || 'Bağlı öğrenci yok'}
+          </p>
+        </button>
+      )}
+    />
   );
 }

@@ -437,6 +437,12 @@ export async function fetchTeacherReportAnalytics(params) {
   }
 }
 
+// Dönem sonu sınıf yükseltme (7-A → 8-A). Yalnız kurum yöneticisi ve şube müdürü;
+// yetki backend'de zorlanır (Admin rolü + students.edit).
+export async function promoteStudents(payload) {
+  return api.post('/api/students/promote', payload);
+}
+
 export async function fetchClasses() {
   const response = await api.get('/api/classes');
   if (Array.isArray(response)) {

@@ -24,6 +24,7 @@ import 'package:student/services/accounting_finance_store.dart';
 import 'package:student/services/school_feed_api_service.dart';
 import 'package:student/pages/student_study_plan_page.dart';
 import 'package:student/widgets/responsive_layout.dart';
+import 'package:student/pages/teacher_students_page.dart';
 import 'package:student/widgets/teacher_header.dart';
 
 import '../widgets/adaptive_scaffold.dart';
@@ -1663,6 +1664,12 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
         "title": "Ödevler",
         "color": Colors.orange,
         "page": const TeacherAssignmentsPage(),
+      },
+      {
+        "icon": Icons.groups_rounded,
+        "title": "Öğrencilerim",
+        "color": const Color(0xFF2563EB),
+        "page": const TeacherStudentsPage(),
       },
       {
         "icon": Icons.fact_check_rounded,
