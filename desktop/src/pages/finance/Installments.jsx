@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search, Plus, Calendar, CheckCircle, Clock,
   AlertCircle,
@@ -37,13 +37,7 @@ function parseMoney(value) {
   return parseFinanceMoney(value);
 }
 
-const monthOptions = [
-  { value: 'all', label: 'Tüm Aylar' },
-  ...Array.from({ length: 12 }, (_, index) => ({
-    value: String(index + 1),
-    label: new Date(2026, index, 1).toLocaleDateString('tr-TR', { month: 'long' }),
-  })),
-];
+const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
 function parseFinanceDate(value) {
   if (!value) return null;
@@ -67,7 +61,15 @@ function parseFinanceDate(value) {
 function monthMatches(value, monthFilter) {
   if (monthFilter === 'all') return true;
   const date = parseFinanceDate(value);
-  return date ? date.getMonth() + 1 === Number(monthFilter) : false;
+  if (!date) return false;
+  const [year, month] = monthFilter.split('-').map(Number);
+  return date.getFullYear() === year && date.getMonth() + 1 === month;
+}
+
+function rangeMatches(value, range) {
+  if (!range) return true;
+  const date = parseFinanceDate(value);
+  return Boolean(date && date >= range.from && date < range.to);
 }
 
 function statusKey(status) {
@@ -80,9 +82,12 @@ function statusKey(status) {
 // Vade tarihi geçmiş ve ödenmemiş taksitleri de gecikmiş sayar.
 function effectiveStatus(plan) {
   const key = statusKey(plan.status);
-  if (key === 'completed' || key === 'overdue') return key;
+  if (key === 'completed') return key;
   const due = parseFinanceDate(plan.dueDate || plan.due);
-  return due && due.getTime() < Date.now() ? 'overdue' : 'current';
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  if (due) return due.getTime() < todayStart.getTime() ? 'overdue' : 'current';
+  return key;
 }
 
 function CreatePlanDialog({
@@ -194,11 +199,24 @@ function CreatePlanDialog({
 
 export default function Installments() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const incomingStatus = searchParams.get('status');
+  const incomingPeriod = searchParams.get('period');
+  const incomingFrom = searchParams.get('from');
+  const incomingTo = searchParams.get('to');
+  const incomingLabel = searchParams.get('label');
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [monthFilter, setMonthFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(() => (
+    ['current', 'overdue', 'completed'].includes(incomingStatus) ? incomingStatus : 'all'
+  ));
+  const [monthFilter, setMonthFilter] = useState(() => {
+    const from = parseFinanceDate(incomingFrom);
+    return incomingPeriod === 'month' && from
+      ? `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}`
+      : 'all';
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [students, setStudents] = useState([]);
@@ -209,8 +227,13 @@ export default function Installments() {
     try {
       setLoading(true);
       setError('');
+      const from = parseFinanceDate(incomingFrom);
+      const to = parseFinanceDate(incomingTo);
+      const accountingRange = from && to && to > from
+        ? { fromUtc: from.toISOString(), toUtc: to.toISOString() }
+        : {};
       const [accounting, studentList] = await Promise.all([
-        fetchAccountingDashboard(),
+        fetchAccountingDashboard(accountingRange),
         fetchStudents().catch(() => []),
       ]);
       setDashboard(accounting);
@@ -220,13 +243,42 @@ export default function Installments() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [incomingFrom, incomingTo]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    setStatusFilter(['current', 'overdue', 'completed'].includes(incomingStatus) ? incomingStatus : 'all');
+    const from = parseFinanceDate(incomingFrom);
+    setMonthFilter(
+      incomingPeriod === 'month' && from
+        ? `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}`
+        : 'all',
+    );
+  }, [incomingFrom, incomingPeriod, incomingStatus]);
+
   const plans = useMemo(() => dashboard?.installments || [], [dashboard]);
+  const incomingRange = useMemo(() => {
+    const from = parseFinanceDate(incomingFrom);
+    const to = parseFinanceDate(incomingTo);
+    return from && to && to > from ? { from, to } : null;
+  }, [incomingFrom, incomingTo]);
+  const monthOptions = useMemo(() => {
+    const years = new Set([new Date().getFullYear()]);
+    plans.forEach((plan) => {
+      const date = parseFinanceDate(plan.dueDate || plan.due);
+      if (date) years.add(date.getFullYear());
+    });
+    return [
+      { value: 'all', label: 'Tüm Aylar' },
+      ...[...years].sort((a, b) => b - a).flatMap((year) => MONTHS_TR.map((month, index) => ({
+        value: `${year}-${String(index + 1).padStart(2, '0')}`,
+        label: `${month} ${year}`,
+      }))),
+    ];
+  }, [plans]);
   // Öğrenci adı → {sınıf, şube} eşlemesi (sınıf/şube filtreleri için).
   const studentMeta = useMemo(() => {
     const map = new Map();
@@ -245,8 +297,9 @@ export default function Installments() {
     const matchesBranch = branchFilter === 'all' || meta.branchName === branchFilter;
     const matchesStatus = statusFilter === 'all' || effectiveStatus(plan) === statusFilter;
     const matchesMonth = monthMatches(plan.dueDate || plan.due, monthFilter);
-    return matchesSearch && matchesClass && matchesBranch && matchesStatus && matchesMonth;
-  }), [monthFilter, plans, search, classFilter, branchFilter, statusFilter, studentMeta]);
+    const matchesIncomingRange = rangeMatches(plan.dueDate || plan.due, incomingRange);
+    return matchesSearch && matchesClass && matchesBranch && matchesStatus && matchesMonth && matchesIncomingRange;
+  }), [monthFilter, plans, search, classFilter, branchFilter, statusFilter, studentMeta, incomingRange]);
 
   const getStatusBadge = (plan) => {
     const key = effectiveStatus(plan);
@@ -312,6 +365,27 @@ export default function Installments() {
       </div>
 
       {error ? <ErrorBanner title="Taksit planları alınamadı" message={error} onRetry={loadData} /> : null}
+
+      {incomingRange ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-foreground">{incomingLabel || 'Seçili dönem'} bekleyen tahsilatları</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Dashboard kartındaki vade aralığı uygulanıyor · {filteredPlans.length} kayıt</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSearchParams({});
+              setStatusFilter('all');
+              setMonthFilter('all');
+            }}
+          >
+            Dönem filtresini temizle
+          </Button>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-l-4 border-l-green-500">
@@ -419,6 +493,14 @@ export default function Installments() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {filteredPlans.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-32 text-center">
+                    <p className="font-semibold text-foreground">Bu filtrelere uygun tahsilat bulunamadı.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Dönemi veya diğer filtreleri değiştirerek tekrar deneyebilirsiniz.</p>
+                  </TableCell>
+                </TableRow>
+              ) : null}
               {filteredPlans.map((plan) => {
                 const meta = studentMeta.get(String(plan.student || '').toLowerCase()) || {};
                 return (

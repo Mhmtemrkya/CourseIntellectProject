@@ -24,6 +24,9 @@ import {
   Archive,
 } from 'lucide-react';
 import { Input } from '../components/ui/input';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '../components/ui/select';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import {
@@ -59,18 +62,12 @@ const PERIOD_OPTIONS = [
   ['custom', 'Özel'],
 ];
 
+const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
 const moneyFormatter = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
 function formatMoney(value) {
   return moneyFormatter.format(Number(value) || 0);
 }
-
-const PERIOD_CAPTION = {
-  day: 'Bugün',
-  week: 'Son 7 gün',
-  month: 'Son 1 ay',
-  year: 'Son 1 yıl',
-  custom: 'Seçili aralık',
-};
 
 /**
  * Kurum sahibinin panosu — sürücü kursu operasyon merkezinin okul karşılığı.
@@ -105,8 +102,8 @@ const KPI_META = [
   ['collections', 'Tahsilat', Banknote, 'emerald', null, '/finance/collections', { group: 'finance', range: true, money: true }],
   ['expenses', 'Gider', TrendingDown, 'rose', null, '/finance/expenses', { group: 'finance', range: true, money: true }],
   ['net', 'Net (Tahsilat − Gider)', Wallet, 'brand', null, '/finance/dashboard', { group: 'finance', range: true, money: true }],
-  ['overdueInstallmentAmount', 'Geciken Ödeme', ShieldCheck, 'rose', null, '/finance/late-payments', { group: 'finance', money: true }],
-  ['pendingInstallmentAmount', 'Bekleyen Taksit', CalendarClock, 'amber', null, '/finance/installments', { group: 'finance', money: true }],
+  ['overdueInstallmentAmount', 'Geciken Tahsilat', ShieldCheck, 'rose', null, '/finance/late-payments', { group: 'finance', money: true }],
+  ['pendingInstallmentAmount', 'Bekleyen Tahsilatlar', CalendarClock, 'amber', null, '/finance/installments', { group: 'finance', money: true }],
 
   ['unreadMessages', 'Okunmamış Mesaj', MessageCircle, 'violet', 'Size gelen yanıtsız mesaj', '/chat', { group: 'operations' }],
   ['pendingMeetings', 'Görüşme Talebi', Users, 'amber', 'Veli görüşmesi bekliyor', '/admin/meetings', { group: 'operations' }],
@@ -117,24 +114,29 @@ const KPI_META = [
 ];
 
 const isoDay = (date) => date.toISOString().slice(0, 10);
+const localIsoDay = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 // Seçilen dönemi [from, to) aralığına çevirir. Bitiş HARİÇTİR (backend böyle bekler).
-function rangeFor(period, customFrom, customTo) {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+function rangeFor(period, anchor, customFrom, customTo) {
+  const reference = anchor instanceof Date ? anchor : new Date(anchor);
+  const start = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
   const end = new Date(start);
 
   if (period === 'day') {
     end.setDate(end.getDate() + 1);
   } else if (period === 'week') {
-    start.setDate(start.getDate() - 6);
-    end.setDate(end.getDate() + 1);
+    const daysFromMonday = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - daysFromMonday);
+    end.setTime(start.getTime());
+    end.setDate(end.getDate() + 7);
   } else if (period === 'month') {
-    start.setMonth(start.getMonth() - 1);
-    end.setDate(end.getDate() + 1);
+    start.setDate(1);
+    end.setTime(start.getTime());
+    end.setMonth(end.getMonth() + 1);
   } else if (period === 'year') {
-    start.setFullYear(start.getFullYear() - 1);
-    end.setDate(end.getDate() + 1);
+    start.setMonth(0, 1);
+    end.setTime(start.getTime());
+    end.setFullYear(end.getFullYear() + 1);
   } else {
     const from = new Date(`${customFrom}T00:00:00`);
     const to = new Date(`${customTo}T00:00:00`);
@@ -144,6 +146,25 @@ function rangeFor(period, customFrom, customTo) {
   }
 
   return { from: start.toISOString(), to: end.toISOString() };
+}
+
+function periodCaption(period, anchor) {
+  if (period === 'day') return 'Bugünkü';
+  if (period === 'week') return 'Bu haftaki';
+  if (period === 'month') return `${MONTHS_TR[anchor.getMonth()]} ayı`;
+  if (period === 'year') return `${anchor.getFullYear()} yılı`;
+  return 'Seçili aralık';
+}
+
+function installmentFilterPath(period, range, caption) {
+  const params = new URLSearchParams({
+    status: 'current',
+    period,
+    from: localIsoDay(new Date(range.from)),
+    to: localIsoDay(new Date(range.to)),
+    label: caption,
+  });
+  return `/finance/installments?${params.toString()}`;
 }
 
 function AnnouncementItem({ announcement }) {
@@ -239,7 +260,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [period, setPeriod] = useState('week');
+  const [period, setPeriod] = useState('day');
+  const [anchor, setAnchor] = useState(() => new Date());
   const [customFrom, setCustomFrom] = useState(() => new Date(new Date().setDate(new Date().getDate() - 13)).toISOString().slice(0, 10));
   const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [analytics, setAnalytics] = useState(null);
@@ -256,7 +278,7 @@ export default function Dashboard() {
     return () => { active = false; };
   }, [navigate]);
 
-  const range = useMemo(() => rangeFor(period, customFrom, customTo), [period, customFrom, customTo]);
+  const range = useMemo(() => rangeFor(period, anchor, customFrom, customTo), [period, anchor, customFrom, customTo]);
 
   const loadOverview = useCallback(async () => {
     if (!range) return;
@@ -295,9 +317,14 @@ export default function Dashboard() {
   }, []);
 
   const loadAnalytics = useCallback(async () => {
-    const params = period === 'custom'
-      ? (customFrom && customTo ? { period: 'custom', from: customFrom, to: customTo } : null)
-      : { period };
+    const inclusiveEnd = range ? new Date(new Date(range.to).getTime() - 1) : null;
+    const params = range
+      ? {
+          period: 'custom',
+          from: localIsoDay(new Date(range.from)),
+          to: localIsoDay(inclusiveEnd),
+        }
+      : null;
     if (!params) return;
     try {
       setAnalyticsLoading(true);
@@ -308,7 +335,7 @@ export default function Dashboard() {
     } finally {
       setAnalyticsLoading(false);
     }
-  }, [period, customFrom, customTo]);
+  }, [range]);
 
   useEffect(() => {
     loadDashboard();
@@ -332,6 +359,12 @@ export default function Dashboard() {
   const buckets = analytics?.buckets || [];
   const totals = analytics?.totals || { revenue: 0, registrations: 0, expense: 0, net: 0 };
   const periodLabel = PERIOD_OPTIONS.find(([value]) => value === period)?.[1] || '';
+  const selectedPeriodCaption = periodCaption(period, anchor);
+  const monthOptions = MONTHS_TR.map((month, index) => ({
+    value: `${anchor.getFullYear()}-${String(index + 1).padStart(2, '0')}`,
+    label: `${month} ${anchor.getFullYear()}`,
+  }));
+  const selectedMonth = `${anchor.getFullYear()}-${String(anchor.getMonth() + 1).padStart(2, '0')}`;
 
   // Grafik her zaman ÇOK KOVALI bir eğridir (ör. haftalık kırılım = son 12 hafta);
   // üstteki KPI kartları ise yalnız seçili dönemi gösterir. İki blok farklı
@@ -358,10 +391,14 @@ export default function Dashboard() {
       const value = options.money
         ? formatMoney(raw)
         : raw;
-      let cardCaption = options.range ? PERIOD_CAPTION[period] : caption;
-      if (key === 'pendingInstallmentAmount') cardCaption = `${kpis.pendingInstallments || 0} ödenmemiş taksit`;
-      if (key === 'overdueInstallmentAmount') cardCaption = `${kpis.overdueInstallments || 0} vadesi geçmiş taksit`;
-      return { key, label, Icon, tone, caption: cardCaption, path, value, group: options.group };
+      let cardCaption = options.range ? selectedPeriodCaption : caption;
+      let cardPath = path;
+      if (key === 'pendingInstallmentAmount') {
+        cardCaption = `${selectedPeriodCaption} · ${kpis.pendingInstallments || 0} tahsilat`;
+        cardPath = installmentFilterPath(period, range, selectedPeriodCaption);
+      }
+      if (key === 'overdueInstallmentAmount') cardCaption = `${kpis.overdueInstallments || 0} vadesi geçmiş tahsilat`;
+      return { key, label, Icon, tone, caption: cardCaption, path: cardPath, value, group: options.group };
     });
 
   const groupedKpis = KPI_GROUPS
@@ -387,13 +424,29 @@ export default function Dashboard() {
               <button
                 key={value}
                 type="button"
-                onClick={() => setPeriod(value)}
+                onClick={() => { setPeriod(value); if (value !== 'custom') setAnchor(new Date()); }}
                 className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors ${period === value ? 'bg-[hsl(var(--brand-accent))] text-white shadow' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 {label}
               </button>
             ))}
           </div>
+          {period === 'month' ? (
+            <Select
+              value={selectedMonth}
+              onValueChange={(value) => {
+                const [year, month] = value.split('-').map(Number);
+                setAnchor(new Date(year, month - 1, 1));
+              }}
+            >
+              <SelectTrigger className="h-9 w-full min-w-[170px] sm:w-[190px]" aria-label="Ay seçin">
+                <SelectValue placeholder="Ay seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((month) => <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          ) : null}
           {period === 'custom' ? (
             <div className="flex items-center gap-2">
               <Input type="date" value={customFrom} max={customTo} onChange={(event) => setCustomFrom(event.target.value)} className="h-9 w-40" />

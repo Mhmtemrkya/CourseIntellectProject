@@ -668,7 +668,7 @@ export default function FinanceDashboard() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-red-500" />
-                  Geciken Ödemeler
+                  Geciken Tahsilatlar
                 </CardTitle>
                 <CardDescription>Takip gerektiren backend taksitleri</CardDescription>
               </div>
@@ -677,7 +677,7 @@ export default function FinanceDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {periodStats.overdueEntries.length === 0 ? (
-                  <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Geciken ödeme yok.</p>
+                  <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Geciken tahsilat yok.</p>
                 ) : periodStats.overdueEntries.slice(0, 8).map((student) => (
                   <div key={student.id} className="flex items-center justify-between p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10">
                     <div className="flex items-center gap-3">

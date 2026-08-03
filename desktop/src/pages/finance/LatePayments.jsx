@@ -63,7 +63,7 @@ export default function LatePayments() {
       setDashboard(accounting);
       setStudents(studentList);
     } catch (err) {
-      setError(err.message || 'Geciken ödeme verileri alınamadı.');
+      setError(err.message || 'Geciken tahsilat verileri alınamadı.');
     } finally {
       setLoading(false);
     }
@@ -136,7 +136,7 @@ export default function LatePayments() {
     const selectedPayments = filteredPayments.filter((item) => selected.includes(item.id));
     try {
       await Promise.all(selectedPayments.map((payment) => createAccountingNotification({
-        title: `${payment.student} - Geciken Ödeme`,
+        title: `${payment.student} - Geciken Tahsilat`,
         message: `${payment.parent} için ${payment.student} adlı öğrencinin ödemesinde gecikme var. Lütfen iletişime geçin. Kanal: ${type === 'sms' ? 'SMS' : 'E-posta'}`,
       })));
       toast({
@@ -163,7 +163,7 @@ export default function LatePayments() {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
         <LoadingDots />
-        <p className="text-muted-foreground">Geciken ödemeler yükleniyor...</p>
+        <p className="text-muted-foreground">Geciken tahsilatlar yükleniyor...</p>
       </div>
     );
   }
@@ -178,7 +178,7 @@ export default function LatePayments() {
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-heading">Geciken Ödemeler</h1>
+          <h1 className="text-3xl font-bold font-heading">Geciken Tahsilatlar</h1>
           <p className="text-muted-foreground mt-1">
             {latePayments.length} kayıt • Toplam: {formatCurrency(totalLate)}
           </p>
@@ -191,7 +191,7 @@ export default function LatePayments() {
         </div>
       </div>
 
-      {error ? <ErrorBanner title="Geciken ödemeler alınamadı" message={error} onRetry={loadData} /> : null}
+      {error ? <ErrorBanner title="Geciken tahsilatlar alınamadı" message={error} onRetry={loadData} /> : null}
 
       <Card className="border-red-200 bg-red-50/50 dark:bg-red-900/10">
         <CardContent className="p-4 flex items-center gap-4">

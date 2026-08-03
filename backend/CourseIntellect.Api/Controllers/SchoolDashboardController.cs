@@ -255,9 +255,17 @@ public sealed class SchoolDashboardController(
                 .Where(x => x.Amount > x.PaidAmount)
                 .Select(x => new { Remaining = x.Amount - x.PaidAmount, x.DueDateUtc })
                 .ToListAsync(cancellationToken);
-            pendingInstallments = openInstallments.Count;
-            pendingInstallmentAmount = openInstallments.Sum(x => x.Remaining);
-            var overdue = openInstallments.Where(x => x.DueDateUtc < now).ToList();
+            // "Bekleyen tahsilat" seçili takvim aralığının vadesidir. Böylece
+            // günlük/haftalık/aylık karttaki sayı, karttan açılan taksit listesiyle
+            // birebir aynı kalır. Gecikenler ise dönemden bağımsız olarak bugün
+            // itibarıyla müdahale bekleyen tüm açık alacaklardır.
+            var pendingRangeStart = rangeStart > todayStart ? rangeStart : todayStart;
+            var dueInRange = openInstallments
+                .Where(x => x.DueDateUtc >= pendingRangeStart && x.DueDateUtc < rangeEnd)
+                .ToList();
+            pendingInstallments = dueInRange.Count;
+            pendingInstallmentAmount = dueInRange.Sum(x => x.Remaining);
+            var overdue = openInstallments.Where(x => x.DueDateUtc < todayStart).ToList();
             overdueInstallments = overdue.Count;
             overdueInstallmentAmount = overdue.Sum(x => x.Remaining);
 

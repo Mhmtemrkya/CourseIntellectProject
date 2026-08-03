@@ -222,6 +222,50 @@ public sealed class SchoolDashboardTests : IDisposable
         Assert.Equal(3, kpis.GetProperty("unreadMessages").GetInt32());
     }
 
+    [Fact]
+    public async Task PendingCollections_RespectSelectedDueDateRange_WhileOverdueStaysActionable()
+    {
+        await SeedAsync();
+        var selectedDay = DateTime.UtcNow.Date.AddDays(5);
+        db.Context.FinanceInstallments.AddRange(
+            new FinanceInstallment
+            {
+                TenantId = TenantA,
+                EnrollmentContractId = Guid.NewGuid(),
+                StudentName = "Ali VELI",
+                DueDateUtc = selectedDay.AddHours(8),
+                Amount = 1200m,
+                PaidAmount = 200m,
+            },
+            new FinanceInstallment
+            {
+                TenantId = TenantA,
+                EnrollmentContractId = Guid.NewGuid(),
+                StudentName = "Ayse YILMAZ",
+                DueDateUtc = selectedDay.AddDays(2),
+                Amount = 3000m,
+                PaidAmount = 0m,
+            },
+            new FinanceInstallment
+            {
+                TenantId = TenantA,
+                EnrollmentContractId = Guid.NewGuid(),
+                StudentName = "Geciken OGRENCI",
+                DueDateUtc = DateTime.UtcNow.AddDays(-3),
+                Amount = 750m,
+                PaidAmount = 0m,
+            });
+        await db.Context.SaveChangesAsync();
+        var controller = CreateController(TenantA, "finance");
+
+        var kpis = KpisOf(await controller.Get(selectedDay, selectedDay.AddDays(1), CancellationToken.None));
+
+        Assert.Equal(1, kpis.GetProperty("pendingInstallments").GetInt32());
+        Assert.Equal(1000m, kpis.GetProperty("pendingInstallmentAmount").GetDecimal());
+        Assert.Equal(1, kpis.GetProperty("overdueInstallments").GetInt32());
+        Assert.Equal(750m, kpis.GetProperty("overdueInstallmentAmount").GetDecimal());
+    }
+
     /// <summary>
     /// Uyarı sırası panonun SÖZLEŞMESİDİR: masaüstü ve mobil listeyi olduğu gibi
     /// çizer, kendileri sıralamaz. Önce kritikler, sonra müdahale önceliği.

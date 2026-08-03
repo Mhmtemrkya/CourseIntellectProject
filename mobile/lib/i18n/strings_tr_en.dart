@@ -2,12 +2,15 @@
 // Otomatik üretim: desktop/src/lib/i18n/dictionary*.js kaynak alınır.
 const Map<String, String> kTrEn = {
   'Kurum Seçin': 'Select Institution',
-  'Yönetmek istediğiniz kurumu seçin': 'Select the institution you want to manage',
-  'Tüm ekranlar seçtiğiniz kuruma göre görüntülenir.': 'All screens are shown for the selected institution.',
+  'Yönetmek istediğiniz kurumu seçin':
+      'Select the institution you want to manage',
+  'Tüm ekranlar seçtiğiniz kuruma göre görüntülenir.':
+      'All screens are shown for the selected institution.',
   '{n} şube': '{n} branches',
   'Şube Müdürü': 'Branch Manager',
   'Şube Yönetimi': 'Branch Management',
-  'Şube müdürü için şube seçimi zorunludur.': 'Branch selection is required for a branch manager.',
+  'Şube müdürü için şube seçimi zorunludur.':
+      'Branch selection is required for a branch manager.',
   'Konsolide Görünüm': 'Consolidated View',
   'Tüm kurumların toplamı': 'Total across all institutions',
   'kurumun toplamı': 'institutions total',
@@ -50,13 +53,15 @@ const Map<String, String> kTrEn = {
   'Sorumlu (zorunlu)': 'Manager (required)',
   'Personel seçin': 'Select staff',
   'Şube için sorumlu seçimi zorunludur.': 'A manager is required for a branch.',
-  'Kuruma özgü rol tanımlayın (ör. Kayıt Sorumlusu)': 'Define institution-specific roles (e.g. Registrar)',
+  'Kuruma özgü rol tanımlayın (ör. Kayıt Sorumlusu)':
+      'Define institution-specific roles (e.g. Registrar)',
   'Atama': 'Assignment',
   'Atama Düzenle': 'Edit Assignment',
   '— Değiştirme —': '— Keep as is —',
   '(özel rolü kaldır)': '(remove custom role)',
   'Atama güncellendi.': 'Assignment updated.',
-  'Öğrenci pasife alındı (giriş yapamaz).': 'Student set to passive (cannot log in).',
+  'Öğrenci pasife alındı (giriş yapamaz).':
+      'Student set to passive (cannot log in).',
   'Öğrenci aktifleştirildi.': 'Student activated.',
   'Ogrenci': 'Student',
   'Kullanici Adi': 'Username',
@@ -2482,38 +2487,51 @@ const Map<String, String> kTrEn = {
   '{n} müsait': '{n} available',
   '{n} dk': '{n} min',
   '{n} saat': '{n} hours',
-  'Devam etmeden önce aydınlatma metnini okuyup anladığınızı ve kullanım koşullarını kabul ettiğinizi onaylayın. Açık rızalar isteğe bağlıdır.': 'Before continuing, confirm that you have read and understood the privacy notice and accept the terms of use. Explicit consents are optional.',
+  'Devam etmeden önce aydınlatma metnini okuyup anladığınızı ve kullanım koşullarını kabul ettiğinizi onaylayın. Açık rızalar isteğe bağlıdır.':
+      'Before continuing, confirm that you have read and understood the privacy notice and accept the terms of use. Explicit consents are optional.',
   'Tüm yasal metinleri oku': 'Read all legal documents',
   'Ticari/etkinlik ileti izni': 'Marketing/event message consent',
-  'Kampanya, etkinlik ve tanıtım amaçlı e-posta/SMS gönderimine açık rıza veriyorum.': 'I give explicit consent to receive campaign, event and promotional email/SMS.',
+  'Kampanya, etkinlik ve tanıtım amaçlı e-posta/SMS gönderimine açık rıza veriyorum.':
+      'I give explicit consent to receive campaign, event and promotional email/SMS.',
   'Anlık bildirim izni': 'Push notification consent',
-  'Duyuru, sınav, ödev, ödeme ve görüşme hatırlatmalarının cihaz bildirimiyle gönderilmesine izin veriyorum.': 'I allow announcements, exams, homework, payment and meeting reminders to be sent as device notifications.',
+  'Duyuru, sınav, ödev, ödeme ve görüşme hatırlatmalarının cihaz bildirimiyle gönderilmesine izin veriyorum.':
+      'I allow announcements, exams, homework, payment and meeting reminders to be sent as device notifications.',
   'Kullanım analitiği izni': 'Usage analytics consent',
-  'Hizmet kalitesini artırmak için kullanım verilerimin toplulaştırılmış analizlerde kullanılmasına izin veriyorum.': 'I allow my usage data to be used in aggregated analyses to improve service quality.',
-  'Uygulamayı kullanabilmek için KVKK aydınlatmasını okuyup anladığınızı ve kullanım koşullarını kabul ettiğinizi onaylamanız gerekir.': 'To use the app you must confirm that you have read and understood the privacy notice and accept the terms of use.',
+  'Hizmet kalitesini artırmak için kullanım verilerimin toplulaştırılmış analizlerde kullanılmasına izin veriyorum.':
+      'I allow my usage data to be used in aggregated analyses to improve service quality.',
+  'Uygulamayı kullanabilmek için KVKK aydınlatmasını okuyup anladığınızı ve kullanım koşullarını kabul ettiğinizi onaylamanız gerekir.':
+      'To use the app you must confirm that you have read and understood the privacy notice and accept the terms of use.',
   'Tüm Yasal Metinler': 'All Legal Documents',
   'Yasal Metinler': 'Legal Documents',
-  'Bu alanlar sadece yönetici ve idari birimler tarafından güncellenebilir.': 'These fields can only be updated by management and administrative units.',
-  'Bu alanlar sadece yönetiçi ve idari birimler tarafından güncellenebilir.': 'These fields can only be updated by management and administrative units.',
-  'Canlı banner, sessiz mod ve önizleme ayarlarını yönet.': 'Manage live banner, silent mode and preview settings.',
+  'Bu alanlar sadece yönetici ve idari birimler tarafından güncellenebilir.':
+      'These fields can only be updated by management and administrative units.',
+  'Bu alanlar sadece yönetiçi ve idari birimler tarafından güncellenebilir.':
+      'These fields can only be updated by management and administrative units.',
+  'Canlı banner, sessiz mod ve önizleme ayarlarını yönet.':
+      'Manage live banner, silent mode and preview settings.',
   'Bildirim Tercihleri': 'Notification Preferences',
   'Dark Mode': 'Dark Mode',
-  'Hesap güvenliği için şifrenizi güncelleyin.': 'Update your password for account security.',
+  'Hesap güvenliği için şifrenizi güncelleyin.':
+      'Update your password for account security.',
   'Dil / Language': 'Language',
 
   // ── Sürücü kursu ──
   'Sürücü Kursu': 'Driving School',
   'Sürücü Kursu Operasyon Merkezi': 'Driving School Operations Center',
-  'Kursiyer, ders, eğitmen ve filo operasyonlarının canlı özeti': 'Live summary of trainees, lessons, instructors and fleet operations',
+  'Kursiyer, ders, eğitmen ve filo operasyonlarının canlı özeti':
+      'Live summary of trainees, lessons, instructors and fleet operations',
   'Operasyon Uyarıları': 'Operational Alerts',
-  'Evrak, bakım ve çakışma kontrolleri': 'Document, maintenance and conflict checks',
+  'Evrak, bakım ve çakışma kontrolleri':
+      'Document, maintenance and conflict checks',
   'Kritik uyarı yok': 'No critical alerts',
   'Tüm kontroller güncel.': 'All checks are up to date.',
-  'Evrak, bakım ve çakışma kontrolleri güncel.': 'Document, maintenance and conflict checks are up to date.',
+  'Evrak, bakım ve çakışma kontrolleri güncel.':
+      'Document, maintenance and conflict checks are up to date.',
   'Aylık Yeni Kayıtlar': 'Monthly New Registrations',
   'Son dönem kursiyer kayıt eğilimi': 'Recent trainee registration trend',
   'Panel açılamadı': 'Panel could not be opened',
-  'Sürücü kursu paneli yüklenemedi.': 'Driving school panel could not be loaded.',
+  'Sürücü kursu paneli yüklenemedi.':
+      'Driving school panel could not be loaded.',
   'Kritik': 'Critical',
   'Kursiyer': 'Trainee',
   'Kursiyerler': 'Trainees',
@@ -2551,13 +2569,15 @@ const Map<String, String> kTrEn = {
   'Tamamlanan Ders': 'Completed Lesson',
   'Henüz tamamlanmış ders yok.': 'No completed lessons yet.',
   'Ders Hareketleri': 'Lesson Activity',
-  'Bu tarih aralığında ders hareketi yok.': 'No lesson activity in this date range.',
+  'Bu tarih aralığında ders hareketi yok.':
+      'No lesson activity in this date range.',
   'Tarih aralığını genişletmeyi deneyin.': 'Try widening the date range.',
   'İşlenen Süre': 'Processed Time',
   'Defterden düşen': 'Deducted from ledger',
   'Ortalama değerlendirme': 'Average evaluation',
   'Kategori Performansı': 'Category Performance',
-  'Değerlendirme kategorilerinin ortalaması': 'Average of evaluation categories',
+  'Değerlendirme kategorilerinin ortalaması':
+      'Average of evaluation categories',
   'Ders değerlendirmeleri': 'Lesson evaluations',
   'Ayrıntılı kriterler': 'Detailed criteria',
   'Ön kontrol': 'Pre-check',
@@ -2567,7 +2587,8 @@ const Map<String, String> kTrEn = {
   'CSV Raporu': 'CSV Report',
   'Paket ve Filo Yönetimi': 'Package and Fleet Management',
   'Paket ve Filo': 'Package and Fleet',
-  'Ehliyet sınıfı ve vites türüne göre güvenli operasyon tanımları': 'Safe operation definitions by license class and transmission type',
+  'Ehliyet sınıfı ve vites türüne göre güvenli operasyon tanımları':
+      'Safe operation definitions by license class and transmission type',
   'Eğitim Paketleri': 'Training Packages',
   'Eğitim Paketi': 'Training Package',
   'Ders süresi ve fiyat tanımları': 'Lesson duration and pricing definitions',
@@ -2588,15 +2609,18 @@ const Map<String, String> kTrEn = {
   'Model yılı': 'Model year',
   'Kilometre': 'Odometer',
   'Filo Evrak ve Bakım': 'Fleet Documents and Maintenance',
-  'Zorunlu evrakı veya güvenlik kaydı uygun olmayan araçlar randevuya otomatik kapanır.': 'Vehicles with missing mandatory documents or open safety records are automatically blocked from appointments.',
+  'Zorunlu evrakı veya güvenlik kaydı uygun olmayan araçlar randevuya otomatik kapanır.':
+      'Vehicles with missing mandatory documents or open safety records are automatically blocked from appointments.',
   'Uygunluk Uyarısı': 'Compliance Alert',
   'Filo uygun': 'Fleet compliant',
   'Aksiyon bekliyor': 'Action required',
   'Yeni Araç Evrakı': 'New Vehicle Document',
-  'Muayene, sigorta ve ruhsat arşivi': 'Inspection, insurance and registration archive',
+  'Muayene, sigorta ve ruhsat arşivi':
+      'Inspection, insurance and registration archive',
   'Evrak Durumları': 'Document Status',
   'Henüz evrak yüklenmedi.': 'No documents uploaded yet.',
-  'Muayene ve sigorta belgelerini yükleyin.': 'Upload inspection and insurance documents.',
+  'Muayene ve sigorta belgelerini yükleyin.':
+      'Upload inspection and insurance documents.',
   'Süresi Sorunlu Evrak': 'Documents With Date Issues',
   'Dolan veya yaklaşan': 'Expired or expiring',
   'Kullanım Dışı Araç': 'Grounded Vehicle',
@@ -2619,10 +2643,12 @@ const Map<String, String> kTrEn = {
   'Yükle ve Onayla': 'Upload and Approve',
   'Açık Bakım ve Arızalar': 'Open Maintenance and Faults',
   'Açık servis kaydı yok.': 'No open service records.',
-  'Filodaki tüm araçlar güvenli görünüyor.': 'All vehicles in the fleet appear safe.',
+  'Filodaki tüm araçlar güvenli görünüyor.':
+      'All vehicles in the fleet appear safe.',
   'Bakım / Arıza Bildir': 'Report Maintenance / Fault',
   'Arıza / Hasar Bildir': 'Report Fault / Damage',
-  'Güvenli olmayan araç randevuya kapanır': 'An unsafe vehicle is blocked from appointments',
+  'Güvenli olmayan araç randevuya kapanır':
+      'An unsafe vehicle is blocked from appointments',
   'Bakım': 'Maintenance',
   'Arıza': 'Fault',
   'Hasar': 'Damage',
@@ -2656,7 +2682,8 @@ const Map<String, String> kTrEn = {
   'Evraklar': 'Documents',
   'Evraklarım': 'My Documents',
   'Zorunlu': 'Mandatory',
-  'Zorunlu evrakların tamamı eklendi.': 'All mandatory documents have been added.',
+  'Zorunlu evrakların tamamı eklendi.':
+      'All mandatory documents have been added.',
   'Geçmiş belge sürümleri': 'Previous document versions',
   'Son geçerlilik tarihi': 'Expiry date',
   'T.C. Kimlik': 'National ID',
@@ -2664,7 +2691,8 @@ const Map<String, String> kTrEn = {
   'İmzalı sözleşme': 'Signed contract',
   'Mezuniyet & Sertifika': 'Graduation & Certificate',
   'Mezuniyet & Belgeler': 'Graduation & Documents',
-  'Eğitim, sınav, evrak ve finans koşullarını tek kontrol listesinde kapatın.': 'Close training, exam, document and finance requirements in a single checklist.',
+  'Eğitim, sınav, evrak ve finans koşullarını tek kontrol listesinde kapatın.':
+      'Close training, exam, document and finance requirements in a single checklist.',
   'Mezun Et': 'Graduate',
   'Mezuniyeti onaylı': 'Graduation approved',
   'Mezuniyet takibinde': 'In graduation tracking',
@@ -2810,8 +2838,8 @@ const Map<String, String> kTrEn = {
   '30 gün içinde geçersiz': 'Invalid within 30 days',
   'Şifre Talebi': 'Password Requests',
   'Sıfırlama onayı bekliyor': 'Awaiting reset approval',
-  'Geciken Ödeme': 'Overdue Payments',
-  'Bekleyen Taksit': 'Pending Installments',
+  'Geciken Tahsilat': 'Overdue Collection',
+  'Bekleyen Tahsilatlar': 'Pending Collections',
   'Gecikmiş Kitap': 'Overdue Books',
   'İade tarihi geçti': 'Return date has passed',
   'Rehberlik Talebi': 'Counseling Requests',
@@ -2866,44 +2894,52 @@ const Map<String, String> kTrEn = {
   'Henüz veli kaydınız yok': 'You have no parent records yet',
   'Size atanmış sınıf yok': 'No class is assigned to you',
   'Sınıflarınızda öğrenci yok': 'No students in your classes',
-  'Kurumunuzu kurmaya devam edin':
-      'Continue setting up your institution',
+  'Kurumunuzu kurmaya devam edin': 'Continue setting up your institution',
   'kritik': 'critical',
   'uyarı': 'warning',
   'İmzasız Evrak': 'Unsigned Forms',
   'Onam formu imza bekliyor': 'Consent forms awaiting signature',
 
   // ── Sınavlar ekranı ve Yönet penceresi ──
-  'Sınav sonuç girişi ve mevcut kayıtlar': 'Exam result entry and existing records',
+  'Sınav sonuç girişi ve mevcut kayıtlar':
+      'Exam result entry and existing records',
   'Yeni Sınav': 'New Exam',
   'Tüm Türler': 'All Types',
   'Yönet': 'Manage',
   'Sınav Yönetimi': 'Exam Management',
   'Kayıtlı sınav bulunamadı': 'No exams found',
-  'Filtreleri değiştirin veya yeni bir sınav oluşturun.': 'Change the filters or create a new exam.',
-  'Künye, istatistik ve öğrenci sonuçları': 'Details, statistics and student results',
+  'Filtreleri değiştirin veya yeni bir sınav oluşturun.':
+      'Change the filters or create a new exam.',
+  'Künye, istatistik ve öğrenci sonuçları':
+      'Details, statistics and student results',
   'Sonuç Gir / Düzenle': 'Enter / Edit Results',
   'Sınıf listesiyle toplu puan girişi': 'Bulk score entry with the class list',
   'Var / yok / geç kaldı işaretle': 'Mark present / absent / late',
-  'Planlı sınav kaydı olmadığı için kapalı': 'Disabled — no planned exam record',
+  'Planlı sınav kaydı olmadığı için kapalı':
+      'Disabled — no planned exam record',
   'Sınavı Düzenle': 'Edit Exam',
-  'Başlık, ders, sınıf, tarih, süre ve durum': 'Title, subject, class, date, duration and status',
+  'Başlık, ders, sınıf, tarih, süre ve durum':
+      'Title, subject, class, date, duration and status',
   'PDF Raporu': 'PDF Report',
   'Sonuç raporunu paylaş': 'Share the result report',
   'CSV Paylaş': 'Share CSV',
   'Sonuç listesini tabloya aktar': 'Export the result list to a spreadsheet',
   'Özeti Kopyala': 'Copy Summary',
-  'Sınav künyesi ve ortalamayı panoya al': 'Copy exam details and average to the clipboard',
+  'Sınav künyesi ve ortalamayı panoya al':
+      'Copy exam details and average to the clipboard',
   'Sınavı Sil': 'Delete Exam',
   'Kayıt listeden kaldırılır': 'The record is removed from the list',
   'Sınav Detayı': 'Exam Detail',
   'Puan dağılımı': 'Score distribution',
   'Sonuç Girişi': 'Score Entry',
   'Sonuçları Kaydet': 'Save Results',
-  'Puanı boş bırakılan öğrenci kaydedilmez.': 'Students left blank are not saved.',
+  'Puanı boş bırakılan öğrenci kaydedilmez.':
+      'Students left blank are not saved.',
   'Bu sınıfta öğrenci bulunamadı.': 'No students found in this class.',
-  'Bu sınav için henüz sonuç girilmemiş.': 'No results entered for this exam yet.',
-  'Bu sınav için öğrenci listesi bulunamadı.': 'No student list found for this exam.',
+  'Bu sınav için henüz sonuç girilmemiş.':
+      'No results entered for this exam yet.',
+  'Bu sınav için öğrenci listesi bulunamadı.':
+      'No student list found for this exam.',
   'Sınav kayıtları ve sonuç girişi': 'Exam records and result entry',
   'Tüm zamanlar': 'All time',
   'sınav': 'exams',
@@ -2922,7 +2958,8 @@ const Map<String, String> kTrEn = {
   'Özet panoya kopyalandı.': 'Summary copied to the clipboard.',
   'En az bir öğrenciye puan yazın.': 'Enter a score for at least one student.',
   'Başlık, ders ve sınıf zorunlu.': 'Title, subject and class are required.',
-  'Sınav kaydı kalıcı olarak silinir.': 'The exam record is permanently deleted.',
+  'Sınav kaydı kalıcı olarak silinir.':
+      'The exam record is permanently deleted.',
   'DURUM': 'STATUS',
 
   // ── Dizin ekranları (öğrenci / personel / veli) ──
@@ -2944,12 +2981,17 @@ const Map<String, String> kTrEn = {
   'Personel bulunamadı': 'No staff found',
   'Veli bulunamadı': 'No parents found',
   'Kayıt bulunamadı': 'No records found',
-  'Filtreleri değiştirin veya yeni kayıt ekleyin.': 'Change the filters or add a new record.',
-  'Filtreleri değiştirin veya yeni öğrenci kaydedin.': 'Change the filters or enroll a new student.',
-  'Filtreleri değiştirin veya yeni personel ekleyin.': 'Change the filters or add new staff.',
-  'Filtreleri değiştirin veya öğrenci kaydından veli ekleyin.': 'Change the filters or add a parent from a student record.',
+  'Filtreleri değiştirin veya yeni kayıt ekleyin.':
+      'Change the filters or add a new record.',
+  'Filtreleri değiştirin veya yeni öğrenci kaydedin.':
+      'Change the filters or enroll a new student.',
+  'Filtreleri değiştirin veya yeni personel ekleyin.':
+      'Change the filters or add new staff.',
+  'Filtreleri değiştirin veya öğrenci kaydından veli ekleyin.':
+      'Change the filters or add a parent from a student record.',
   'Filtreleri değiştirin.': 'Change the filters.',
-  'Ders programında adınıza yazılmış bir sınıf yok.': 'No class is assigned to you in the timetable.',
+  'Ders programında adınıza yazılmış bir sınıf yok.':
+      'No class is assigned to you in the timetable.',
   'Sınıf yükseltme': 'Class promotion',
   'Hedef sınıf': 'Target class',
   'Sınıfa taşı': 'Move to class',
@@ -2958,7 +3000,8 @@ const Map<String, String> kTrEn = {
   'Sınıf yükseltme için seç': 'Select for class promotion',
   'Pasifleştir': 'Deactivate',
   'Aktifleştir': 'Activate',
-  'Personel pasife alındı (giriş yapamaz).': 'Staff deactivated (cannot sign in).',
+  'Personel pasife alındı (giriş yapamaz).':
+      'Staff deactivated (cannot sign in).',
   'Personel aktifleştirildi.': 'Staff activated.',
   'Öğrenci No': 'Student No',
   'Sınav geçmişi': 'Exam history',

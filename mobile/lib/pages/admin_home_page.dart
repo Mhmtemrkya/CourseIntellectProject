@@ -56,7 +56,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
     ('month', 'Aylık'),
     ('year', 'Yıllık'),
   ];
-  String _period = 'week';
+  String _period = 'day';
+  DateTime _periodAnchor = DateTime.now();
   List<Map<String, dynamic>> _buckets = const [];
   Map<String, dynamic> _totals = const {};
   int? _selectedBucket;
@@ -95,17 +96,28 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   /// Seçili dönemi [from, to) aralığına çevirir (bitiş HARİÇ — backend böyle bekler).
   (String, String) _range() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final today = DateTime(
+      _periodAnchor.year,
+      _periodAnchor.month,
+      _periodAnchor.day,
+    );
     final start = switch (_period) {
-      'week' => today.subtract(const Duration(days: 6)),
-      'month' => DateTime(today.year, today.month - 1, today.day),
-      'year' => DateTime(today.year - 1, today.month, today.day),
+      'week' => today.subtract(Duration(days: today.weekday - 1)),
+      'month' => DateTime(today.year, today.month),
+      'year' => DateTime(today.year),
       _ => today,
     };
-    final end = today.add(const Duration(days: 1));
+    final end = switch (_period) {
+      'week' => start.add(const Duration(days: 7)),
+      'month' => DateTime(start.year, start.month + 1),
+      'year' => DateTime(start.year + 1),
+      _ => start.add(const Duration(days: 1)),
+    };
     return (start.toUtc().toIso8601String(), end.toUtc().toIso8601String());
   }
+
+  String _localDay(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
   Future<void> _loadDashboard() async {
     try {
@@ -132,13 +144,23 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   Future<void> _loadAnalytics() async {
     try {
-      final result = await AdminWorkflowApiService.instance.getAnalytics(period: _period);
+      final (from, to) = _range();
+      final endInclusive = DateTime.parse(
+        to,
+      ).toLocal().subtract(const Duration(days: 1));
+      final result = await AdminWorkflowApiService.instance.getAnalytics(
+        period: 'custom',
+        from: _localDay(DateTime.parse(from).toLocal()),
+        to: _localDay(endInclusive),
+      );
       if (!mounted) return;
       setState(() {
         _buckets = (result['buckets'] as List<dynamic>? ?? const [])
             .map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
-        _totals = Map<String, dynamic>.from(result['totals'] as Map? ?? const {});
+        _totals = Map<String, dynamic>.from(
+          result['totals'] as Map? ?? const {},
+        );
         _selectedBucket = _buckets.isEmpty ? null : _buckets.length - 1;
       });
     } catch (_) {
@@ -161,11 +183,26 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   String _periodCaption() => switch (_period) {
-    'week' => 'Son 7 gün',
-    'month' => 'Son 1 ay',
-    'year' => 'Son 1 yıl',
-    _ => 'Bugün',
+    'week' => 'Bu haftaki',
+    'month' => '${_monthNames[_periodAnchor.month - 1]} ayı',
+    'year' => '${_periodAnchor.year} yılı',
+    _ => 'Bugünkü',
   };
+
+  static const _monthNames = [
+    'Ocak',
+    'Şubat',
+    'Mart',
+    'Nisan',
+    'Mayıs',
+    'Haziran',
+    'Temmuz',
+    'Ağustos',
+    'Eylül',
+    'Ekim',
+    'Kasım',
+    'Aralık',
+  ];
 
   // Para biçimi ortak `utils/format.dart`'tan gelir ("5.000 TL").
   String _money(num value) => formatMoney(value);
@@ -207,71 +244,265 @@ class _AdminHomePageState extends State<AdminHomePage> {
     const amber = Color(0xFFB45309);
     const red = Color(0xFFB42318);
 
-    add('activeStudents', 'Aktif Öğrenci', Icons.school_outlined, brand,
-        'Kayıtlı ve aktif öğrenci', () => const AdminStudentsPage());
-    add('activeTeachers', 'Öğretmen', Icons.person_search_outlined, green,
-        'Derse giren öğretmen', () => const AdminStaffListPage());
-    add('activeStudents', 'Veliler', Icons.family_restroom_rounded, teal,
-        'Veli listesi ve iletişim', () => const AdminParentsPage());
-    add('activeStaff', 'Toplam Personel', Icons.badge_outlined, teal,
-        'Aktif kadro', () => const AdminStaffListPage());
-    add('activeClasses', 'Aktif Sınıf', Icons.meeting_room_outlined, violet,
-        'Öğrencisi olan sınıf', () => const AdminClassManagementPage());
-    add('todayLessons', 'Bugünkü Ders', Icons.calendar_today_outlined, brand,
-        'Programdaki ders saati', () => const AdminScheduleListPage());
-    add('newRegistrations', 'Yeni Kayıt', Icons.person_add_alt_1_outlined, green,
-        period, () => const AdminStudentsPage());
-    add('todayAbsent', 'Bugün Devamsız', Icons.warning_amber_rounded, red,
-        'Derse gelmeyen öğrenci', () => const AttendanceOverviewPage());
-    add('attendanceRate', 'Devam Oranı', Icons.fact_check_outlined, green,
-        period, () => const AttendanceOverviewPage(), percent: true);
-    add('upcomingExams', 'Yaklaşan Sınav', Icons.event_available_outlined, brand,
-        '30 gün içinde planlı', () => const AdminExamResultsPage());
-    add('pendingQuestions', 'Cevap Bekleyen Soru', Icons.help_outline_rounded,
-        amber, 'Öğretmen yanıtı bekliyor', () => const QuestionBoxPage());
-    add('unreadMessages', 'Okunmamış Mesaj', Icons.chat_bubble_outline_rounded,
-        violet, 'Size gelen yanıtsız mesaj', () => const AdminMessagesPage());
-    add('pendingMeetings', 'Görüşme Talebi', Icons.calendar_month_outlined,
-        amber, 'Veli görüşmesi bekliyor', () => const AdminMeetingOverviewPage());
-    add('pendingApprovals', 'Bekleyen Onay', Icons.verified_user_outlined, amber,
-        'Yönetici kararı bekliyor', () => const AdminPersonnelApprovalsPage());
-    add('pendingLeaves', 'Bekleyen İzin', Icons.event_busy_outlined, amber,
-        'Personel izin talebi', () => const AdminWorkflowHubPage());
-    add('todayOnLeave', 'Bugün İzinli', Icons.person_off_outlined, teal,
-        'İzindeki personel', () => const AdminWorkflowHubPage());
-    add('overdueTasks', 'Geciken Görev', Icons.assignment_late_outlined, red,
-        'Teslim tarihi geçti', () => const AdminTaskCenterPage());
-    add('openTasks', 'Açık Görev', Icons.playlist_add_check_circle_outlined,
-        brand, 'Devam eden görev', () => const AdminTaskCenterPage());
-    add('expiringDocuments', 'Süresi Dolan Belge', Icons.description_outlined,
-        amber, '30 gün içinde geçersiz', () => const AdministrativeDocumentsPage());
-    add('passwordResetRequests', 'Şifre Talebi', Icons.key_outlined, amber,
-        'Sıfırlama onayı bekliyor', () => const PasswordResetRequestsPage());
-    add('pendingConsentForms', 'İmzasız Evrak', Icons.draw_outlined, amber,
-        'Onam formu imza bekliyor', () => const AdminStudentsPage());
-    add('collections', 'Tahsilat', Icons.payments_outlined, green, period,
-        () => const AccountingHomePage(), money: true);
-    add('expenses', 'Gider', Icons.trending_down_rounded, red, period,
-        () => const AdminFinancePage(), money: true);
-    add('net', 'Net (Tahsilat − Gider)', Icons.account_balance_wallet_outlined,
-        brand, period, () => const AccountingHomePage(), money: true);
-    add('overdueInstallmentAmount', 'Geciken Ödeme', Icons.report_gmailerrorred_outlined,
-        red, '${_kpis['overdueInstallments'] ?? 0} vadesi geçmiş taksit',
-        () => const AccountingOverduePage(), money: true);
-    add('pendingInstallmentAmount', 'Bekleyen Taksit', Icons.pending_actions_rounded,
-        amber, '${_kpis['pendingInstallments'] ?? 0} ödenmemiş taksit',
-        () => const AccountingInstallmentsPage(), money: true);
-    add('overdueLoans', 'Gecikmiş Kitap', Icons.menu_book_outlined, amber,
-        'İade tarihi geçti', () => const LibraryManagePage());
-    add('pendingGuidance', 'Rehberlik Talebi', Icons.psychology_outlined, violet,
-        'Randevu onayı bekliyor', () => const CounselorAppointmentsPage());
-    add('activeServiceRoutes', 'Aktif Servis Rotası',
-        Icons.directions_bus_filled_outlined, teal, 'Kullanımdaki rota',
-        () => const ServiceRoutesPage());
-    add('activeAnnouncements', 'Duyuru', Icons.campaign_outlined, brand,
-        'Yayındaki duyuru', () => const AdminAnnouncementsPage());
-    add('passiveAccounts', 'Pasif Kayıt', Icons.inventory_2_outlined, red,
-        'Arşivdeki hesap', () => const AdminPassiveRecordsPage());
+    add(
+      'activeStudents',
+      'Aktif Öğrenci',
+      Icons.school_outlined,
+      brand,
+      'Kayıtlı ve aktif öğrenci',
+      () => const AdminStudentsPage(),
+    );
+    add(
+      'activeTeachers',
+      'Öğretmen',
+      Icons.person_search_outlined,
+      green,
+      'Derse giren öğretmen',
+      () => const AdminStaffListPage(),
+    );
+    add(
+      'activeStudents',
+      'Veliler',
+      Icons.family_restroom_rounded,
+      teal,
+      'Veli listesi ve iletişim',
+      () => const AdminParentsPage(),
+    );
+    add(
+      'activeStaff',
+      'Toplam Personel',
+      Icons.badge_outlined,
+      teal,
+      'Aktif kadro',
+      () => const AdminStaffListPage(),
+    );
+    add(
+      'activeClasses',
+      'Aktif Sınıf',
+      Icons.meeting_room_outlined,
+      violet,
+      'Öğrencisi olan sınıf',
+      () => const AdminClassManagementPage(),
+    );
+    add(
+      'todayLessons',
+      'Bugünkü Ders',
+      Icons.calendar_today_outlined,
+      brand,
+      'Programdaki ders saati',
+      () => const AdminScheduleListPage(),
+    );
+    add(
+      'newRegistrations',
+      'Yeni Kayıt',
+      Icons.person_add_alt_1_outlined,
+      green,
+      period,
+      () => const AdminStudentsPage(),
+    );
+    add(
+      'todayAbsent',
+      'Bugün Devamsız',
+      Icons.warning_amber_rounded,
+      red,
+      'Derse gelmeyen öğrenci',
+      () => const AttendanceOverviewPage(),
+    );
+    add(
+      'attendanceRate',
+      'Devam Oranı',
+      Icons.fact_check_outlined,
+      green,
+      period,
+      () => const AttendanceOverviewPage(),
+      percent: true,
+    );
+    add(
+      'upcomingExams',
+      'Yaklaşan Sınav',
+      Icons.event_available_outlined,
+      brand,
+      '30 gün içinde planlı',
+      () => const AdminExamResultsPage(),
+    );
+    add(
+      'pendingQuestions',
+      'Cevap Bekleyen Soru',
+      Icons.help_outline_rounded,
+      amber,
+      'Öğretmen yanıtı bekliyor',
+      () => const QuestionBoxPage(),
+    );
+    add(
+      'unreadMessages',
+      'Okunmamış Mesaj',
+      Icons.chat_bubble_outline_rounded,
+      violet,
+      'Size gelen yanıtsız mesaj',
+      () => const AdminMessagesPage(),
+    );
+    add(
+      'pendingMeetings',
+      'Görüşme Talebi',
+      Icons.calendar_month_outlined,
+      amber,
+      'Veli görüşmesi bekliyor',
+      () => const AdminMeetingOverviewPage(),
+    );
+    add(
+      'pendingApprovals',
+      'Bekleyen Onay',
+      Icons.verified_user_outlined,
+      amber,
+      'Yönetici kararı bekliyor',
+      () => const AdminPersonnelApprovalsPage(),
+    );
+    add(
+      'pendingLeaves',
+      'Bekleyen İzin',
+      Icons.event_busy_outlined,
+      amber,
+      'Personel izin talebi',
+      () => const AdminWorkflowHubPage(),
+    );
+    add(
+      'todayOnLeave',
+      'Bugün İzinli',
+      Icons.person_off_outlined,
+      teal,
+      'İzindeki personel',
+      () => const AdminWorkflowHubPage(),
+    );
+    add(
+      'overdueTasks',
+      'Geciken Görev',
+      Icons.assignment_late_outlined,
+      red,
+      'Teslim tarihi geçti',
+      () => const AdminTaskCenterPage(),
+    );
+    add(
+      'openTasks',
+      'Açık Görev',
+      Icons.playlist_add_check_circle_outlined,
+      brand,
+      'Devam eden görev',
+      () => const AdminTaskCenterPage(),
+    );
+    add(
+      'expiringDocuments',
+      'Süresi Dolan Belge',
+      Icons.description_outlined,
+      amber,
+      '30 gün içinde geçersiz',
+      () => const AdministrativeDocumentsPage(),
+    );
+    add(
+      'passwordResetRequests',
+      'Şifre Talebi',
+      Icons.key_outlined,
+      amber,
+      'Sıfırlama onayı bekliyor',
+      () => const PasswordResetRequestsPage(),
+    );
+    add(
+      'pendingConsentForms',
+      'İmzasız Evrak',
+      Icons.draw_outlined,
+      amber,
+      'Onam formu imza bekliyor',
+      () => const AdminStudentsPage(),
+    );
+    add(
+      'collections',
+      'Tahsilat',
+      Icons.payments_outlined,
+      green,
+      period,
+      () => const AccountingHomePage(),
+      money: true,
+    );
+    add(
+      'expenses',
+      'Gider',
+      Icons.trending_down_rounded,
+      red,
+      period,
+      () => const AdminFinancePage(),
+      money: true,
+    );
+    add(
+      'net',
+      'Net (Tahsilat − Gider)',
+      Icons.account_balance_wallet_outlined,
+      brand,
+      period,
+      () => const AccountingHomePage(),
+      money: true,
+    );
+    add(
+      'overdueInstallmentAmount',
+      'Geciken Tahsilat',
+      Icons.report_gmailerrorred_outlined,
+      red,
+      '${_kpis['overdueInstallments'] ?? 0} vadesi geçmiş tahsilat',
+      () => const AccountingOverduePage(),
+      money: true,
+    );
+    final (pendingFrom, pendingTo) = _range();
+    add(
+      'pendingInstallmentAmount',
+      'Bekleyen Tahsilatlar',
+      Icons.pending_actions_rounded,
+      amber,
+      '$period · ${_kpis['pendingInstallments'] ?? 0} tahsilat',
+      () => AccountingInstallmentsPage(
+        from: DateTime.parse(pendingFrom).toLocal(),
+        to: DateTime.parse(pendingTo).toLocal(),
+        periodLabel: period,
+      ),
+      money: true,
+    );
+    add(
+      'overdueLoans',
+      'Gecikmiş Kitap',
+      Icons.menu_book_outlined,
+      amber,
+      'İade tarihi geçti',
+      () => const LibraryManagePage(),
+    );
+    add(
+      'pendingGuidance',
+      'Rehberlik Talebi',
+      Icons.psychology_outlined,
+      violet,
+      'Randevu onayı bekliyor',
+      () => const CounselorAppointmentsPage(),
+    );
+    add(
+      'activeServiceRoutes',
+      'Aktif Servis Rotası',
+      Icons.directions_bus_filled_outlined,
+      teal,
+      'Kullanımdaki rota',
+      () => const ServiceRoutesPage(),
+    );
+    add(
+      'activeAnnouncements',
+      'Duyuru',
+      Icons.campaign_outlined,
+      brand,
+      'Yayındaki duyuru',
+      () => const AdminAnnouncementsPage(),
+    );
+    add(
+      'passiveAccounts',
+      'Pasif Kayıt',
+      Icons.inventory_2_outlined,
+      red,
+      'Arşivdeki hesap',
+      () => const AdminPassiveRecordsPage(),
+    );
 
     return items;
   }
@@ -308,7 +539,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
               AdminHeroCard(
                 eyebrow: 'Kurumsal kontrol merkezi',
                 title:
-                    'Akademik başarı, finans sağlığı ve operasyonel işleyiş tek yönetiçi ekranında.'.tr,
+                    'Akademik başarı, finans sağlığı ve operasyonel işleyiş tek yönetiçi ekranında.'
+                        .tr,
                 description:
                     'Kurum genelinde riskleri, büyüme alanlarını ve kritik süreçleri aynı panelden yönetin.',
                 metrics: [
@@ -987,10 +1219,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                       ),
                     ),
                     if (page != null)
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: theme.hintColor,
-                      ),
+                      Icon(Icons.chevron_right_rounded, color: theme.hintColor),
                   ],
                 ),
               ),
@@ -1051,9 +1280,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 kpi.value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 2),
               Text(
@@ -1070,7 +1299,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Widget _analyticsCard(BuildContext context) {
-    final selected = (_selectedBucket != null && _selectedBucket! < _buckets.length)
+    final selected =
+        (_selectedBucket != null && _selectedBucket! < _buckets.length)
         ? _buckets[_selectedBucket!]
         : (_buckets.isNotEmpty ? _buckets.last : null);
     num maxMoney = 1;
@@ -1092,7 +1322,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 label: Text(p.$2),
                 selected: p.$1 == _period,
                 onSelected: (_) {
-                  setState(() => _period = p.$1);
+                  setState(() {
+                    _period = p.$1;
+                    _periodAnchor = DateTime.now();
+                  });
                   _loadAnalytics();
                   // Dönemsel KPI'lar (yeni kayıt, devam oranı, tahsilat, gider)
                   // aynı seçime bağlıdır; grafikle birlikte tazelenir.
@@ -1101,11 +1334,39 @@ class _AdminHomePageState extends State<AdminHomePage> {
               );
             }).toList(),
           ),
+          if (_period == 'month') ...[
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              initialValue: _periodAnchor.month,
+              decoration: const InputDecoration(
+                labelText: 'Ay seçin',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              items: List.generate(
+                12,
+                (index) => DropdownMenuItem(
+                  value: index + 1,
+                  child: Text('${_monthNames[index]} ${_periodAnchor.year}'),
+                ),
+              ),
+              onChanged: (month) {
+                if (month == null) return;
+                setState(
+                  () => _periodAnchor = DateTime(_periodAnchor.year, month),
+                );
+                _loadAnalytics();
+                _loadDashboard();
+              },
+            ),
+          ],
           const SizedBox(height: 12),
           if (_buckets.isEmpty)
             Padding(
               padding: EdgeInsets.symmetric(vertical: 28),
-              child: Center(child: Text('Seçilen dönem için veri bulunmuyor.'.tr)),
+              child: Center(
+                child: Text('Seçilen dönem için veri bulunmuyor.'.tr),
+              ),
             )
           else ...[
             if (selected != null)
@@ -1121,12 +1382,30 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   children: [
                     Text(
                       '${selected['label']}',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 6),
-                    _legendRow(const Color(0xFF16A34A), 'Kazanç', _finance.formatAmount(((selected['revenue'] as num?) ?? 0).round())),
-                    _legendRow(const Color(0xFFDC2626), 'Gider', _finance.formatAmount(((selected['expense'] as num?) ?? 0).round())),
-                    _legendRow(const Color(0xFF0EA5E9), 'Kayıt', '${selected['registrations'] ?? 0} öğrenci'),
+                    _legendRow(
+                      const Color(0xFF16A34A),
+                      'Kazanç',
+                      _finance.formatAmount(
+                        ((selected['revenue'] as num?) ?? 0).round(),
+                      ),
+                    ),
+                    _legendRow(
+                      const Color(0xFFDC2626),
+                      'Gider',
+                      _finance.formatAmount(
+                        ((selected['expense'] as num?) ?? 0).round(),
+                      ),
+                    ),
+                    _legendRow(
+                      const Color(0xFF0EA5E9),
+                      'Kayıt',
+                      '${selected['registrations'] ?? 0} öğrenci',
+                    ),
                   ],
                 ),
               ),
@@ -1139,7 +1418,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   final bucket = _buckets[index];
                   final revenue = ((bucket['revenue'] as num?) ?? 0).toDouble();
                   final expense = ((bucket['expense'] as num?) ?? 0).toDouble();
-                  final active = (_selectedBucket ?? _buckets.length - 1) == index;
+                  final active =
+                      (_selectedBucket ?? _buckets.length - 1) == index;
                   return Expanded(
                     child: GestureDetector(
                       onTap: () => setState(() => _selectedBucket = index),
@@ -1153,9 +1433,21 @@ class _AdminHomePageState extends State<AdminHomePage> {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Expanded(child: _bar(revenue / maxMoney, const Color(0xFF16A34A), active)),
+                                  Expanded(
+                                    child: _bar(
+                                      revenue / maxMoney,
+                                      const Color(0xFF16A34A),
+                                      active,
+                                    ),
+                                  ),
                                   const SizedBox(width: 2),
-                                  Expanded(child: _bar(expense / maxMoney, const Color(0xFFDC2626), active)),
+                                  Expanded(
+                                    child: _bar(
+                                      expense / maxMoney,
+                                      const Color(0xFFDC2626),
+                                      active,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -1170,11 +1462,27 @@ class _AdminHomePageState extends State<AdminHomePage> {
             const SizedBox(height: 12),
             Row(
               children: [
-                _totalChip('Kazanç', _finance.formatAmount(((_totals['revenue'] as num?) ?? 0).round()), const Color(0xFF16A34A)),
+                _totalChip(
+                  'Kazanç',
+                  _finance.formatAmount(
+                    ((_totals['revenue'] as num?) ?? 0).round(),
+                  ),
+                  const Color(0xFF16A34A),
+                ),
                 const SizedBox(width: 8),
-                _totalChip('Gider', _finance.formatAmount(((_totals['expense'] as num?) ?? 0).round()), const Color(0xFFDC2626)),
+                _totalChip(
+                  'Gider',
+                  _finance.formatAmount(
+                    ((_totals['expense'] as num?) ?? 0).round(),
+                  ),
+                  const Color(0xFFDC2626),
+                ),
                 const SizedBox(width: 8),
-                _totalChip('Kayıt', '${_totals['registrations'] ?? 0}', const Color(0xFF0EA5E9)),
+                _totalChip(
+                  'Kayıt',
+                  '${_totals['registrations'] ?? 0}',
+                  const Color(0xFF0EA5E9),
+                ),
               ],
             ),
           ],
@@ -1201,7 +1509,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
       padding: const EdgeInsets.only(top: 2),
       child: Row(
         children: [
-          Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           const SizedBox(width: 8),
           Text(label),
           const Spacer(),
@@ -1222,9 +1537,20 @@ class _AdminHomePageState extends State<AdminHomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12)),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w900), overflow: TextOverflow.ellipsis),
+            Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w900),
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),

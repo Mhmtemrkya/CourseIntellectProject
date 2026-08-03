@@ -56,7 +56,16 @@ bool _monthMatches(String value, String monthFilter) {
 }
 
 class AccountingInstallmentsPage extends StatefulWidget {
-  const AccountingInstallmentsPage({super.key});
+  final DateTime? from;
+  final DateTime? to;
+  final String? periodLabel;
+
+  const AccountingInstallmentsPage({
+    super.key,
+    this.from,
+    this.to,
+    this.periodLabel,
+  });
 
   @override
   State<AccountingInstallmentsPage> createState() =>
@@ -99,9 +108,24 @@ class _AccountingInstallmentsPageState
   @override
   Widget build(BuildContext context) {
     final filtered = _store.installments
+        .where((plan) {
+          if (widget.from == null || widget.to == null) return true;
+          final due = _parseFinanceDate(plan.due);
+          if (due == null) return false;
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          return plan.status != 'Ödendi' &&
+              !due.isBefore(today) &&
+              !due.isBefore(widget.from!) &&
+              due.isBefore(widget.to!);
+        })
         .where((plan) => _filter == 'Tümü' || plan.status == _filter)
         .where((plan) => _monthMatches(plan.due, _monthFilter))
-        .where((plan) => _studentSearch.isEmpty || plan.student.toLowerCase().contains(_studentSearch.toLowerCase()))
+        .where(
+          (plan) =>
+              _studentSearch.isEmpty ||
+              plan.student.toLowerCase().contains(_studentSearch.toLowerCase()),
+        )
         .toList();
 
     return AccountingScaffold(
@@ -122,7 +146,8 @@ class _AccountingInstallmentsPageState
           AccountingHeroCard(
             eyebrow: 'Taksit planlama',
             title:
-                'Bekleyen, alınan ve geciken taksitleri aylık akışla izleyin.'.tr,
+                'Bekleyen, alınan ve geciken taksitleri aylık akışla izleyin.'
+                    .tr,
             description:
                 'Yeni taksit planı oluştururken ilk taksit, başlangıç tarihi ve notlar aynı formda yönetilir.',
             colors: const [Color(0xFF0F172A), Color(0xFF7C3AED)],
@@ -140,6 +165,25 @@ class _AccountingInstallmentsPageState
             ],
           ),
           const SizedBox(height: 16),
+          if (widget.from != null && widget.to != null) ...[
+            AccountingPanel(
+              child: Row(
+                children: [
+                  const Icon(Icons.filter_alt_outlined),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '${widget.periodLabel ?? 'Seçili dönem'} bekleyen tahsilatları · ${filtered.length} kayıt',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           TextField(
             decoration: InputDecoration(
               labelText: 'Öğrenci ara'.tr,
@@ -310,7 +354,10 @@ class _AccountingInstallmentsPageState
                     colors: [Color(0xFF0F172A), Color(0xFF7C3AED)],
                     metrics: [
                       AccountingHeroMetric(label: 'Plan', value: 'Aylık'),
-                      AccountingHeroMetric(label: 'Önizleme'.tr, value: 'Aktif'),
+                      AccountingHeroMetric(
+                        label: 'Önizleme'.tr,
+                        value: 'Aktif',
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -401,7 +448,8 @@ class _AccountingInstallmentsPageState
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      'Plan oluşturmak için önce öğrenci kaydı gerekir.'.tr,
+                                      'Plan oluşturmak için önce öğrenci kaydı gerekir.'
+                                          .tr,
                                     ),
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -420,7 +468,9 @@ class _AccountingInstallmentsPageState
                                 if (!mounted) return;
                                 messenger.showSnackBar(
                                   SnackBar(
-                                    content: Text('Taksit planı oluşturuldu.'.tr),
+                                    content: Text(
+                                      'Taksit planı oluşturuldu.'.tr,
+                                    ),
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );
