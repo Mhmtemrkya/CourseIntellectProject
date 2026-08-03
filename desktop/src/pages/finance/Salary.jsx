@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatMoney as formatCurrency } from '../../lib/format';
 import { motion } from 'framer-motion';
 import {
   Wallet, Plus, Search, DollarSign, Users, Calendar, Trash2,
@@ -38,11 +39,6 @@ const months = [
   'Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran',
   'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik',
 ];
-
-function formatCurrency(val) {
-  const amount = Number(val) || 0;
-  return `${amount.toLocaleString('tr-TR', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 2 })} TL`;
-}
 
 function parseMoney(value) {
   return parseFinanceMoney(value);

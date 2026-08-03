@@ -9,6 +9,7 @@ import { createDrivingLead, fetchDrivingLeadPackageOptions, fetchDrivingLeads, u
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { isValidTrPhone, maskTrPhone } from '../../lib/inputMasks';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
+import { formatDate } from '../../lib/format';
 
 const STATUS = {
   New: { label: 'Yeni', className: 'bg-blue-500/15 text-blue-600' },
@@ -177,7 +178,7 @@ export default function DrivingLeads() {
                   <p className="text-xs text-muted-foreground">
                     {maskTrPhone(lead.phone) || 'Telefon yok'}
                     {lead.source ? ` • ${lead.source}` : ''}
-                    {' • '}{new Date(lead.createdAtUtc).toLocaleDateString('tr-TR')}
+                    {' • '}{formatDate(lead.createdAtUtc)}
                     {lead.note ? ` • ${lead.note}` : ''}
                   </p>
                 </div>

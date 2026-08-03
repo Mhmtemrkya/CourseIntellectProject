@@ -135,9 +135,11 @@ export default function TeacherStudents() {
         : `${myStudents.length} öğrenci`}
       rangeLabel={(from, to, total) => `${total} öğrenciden ${from}-${to} arası gösteriliyor`}
       emptyTitle="Öğrenci bulunamadı"
-      emptyDescription={myClasses.length === 0
+      emptyDescription="Aramanıza uyan öğrenci yok. Farklı bir sınıf deneyin."
+      blankTitle={myClasses.length === 0 ? 'Size atanmış sınıf yok' : 'Sınıflarınızda öğrenci yok'}
+      blankDescription={myClasses.length === 0
         ? 'Ders programında adınıza yazılmış bir sınıf yok. Yönetimden ders programınızı kontrol edin.'
-        : 'Filtreleri değiştirin.'}
+        : 'Sınıflarınıza öğrenci kaydedildiğinde bu liste otomatik dolar.'}
       banner={error ? <ErrorBanner title="Öğrenciler alınamadı" message={error} onRetry={load} /> : null}
       actions={(
         <>

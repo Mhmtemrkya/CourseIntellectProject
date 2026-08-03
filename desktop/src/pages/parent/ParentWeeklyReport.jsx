@@ -12,6 +12,7 @@ import { fetchParentDashboardData } from '../../lib/api/dashboardData';
 import { fetchTeacherWeeklyReportsForParent } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { openExternalUrl } from '../../lib/tauri';
+import { formatMoney } from '../../lib/format';
 
 function decodeHtmlEntities(value) {
   return String(value || '')
@@ -110,7 +111,7 @@ export default function ParentWeeklyReport() {
       `Sınıf: ${data.selectedChild.className || 'Tanımsız'}`,
       `Devam oranı: %${data.selectedChildSummary?.attendance || 0}`,
       `Son sınav: ${data.selectedChildSummary?.lastExam?.subject || '-'} / ${data.selectedChildSummary?.lastExam?.score || 0}`,
-      `Bekleyen ödeme: ₺${Number(data.selectedChildSummary?.pendingPayment || 0).toLocaleString('tr-TR')}`,
+      `Bekleyen ödeme: ${formatMoney(data.selectedChildSummary?.pendingPayment)}`,
       `Duyuru sayısı: ${data.announcements?.length || 0}`,
     ].join('\n');
   }, [data]);

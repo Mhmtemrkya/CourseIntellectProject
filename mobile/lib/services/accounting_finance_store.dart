@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'accounting_api_service.dart';
+import 'package:student/utils/format.dart';
 
 String _normalizeFinanceText(Object? value) {
   final text = (value ?? '').toString().trim();
@@ -501,6 +502,9 @@ class AccountingFinanceStore extends ChangeNotifier {
       .fold<int>(0, (sum, item) => sum + parseAmount(item.amount).abs());
 
   List<InstallmentRecord> installments = [];
+  /// Gider defteri satırları (ortak /api/finance/expenses) — pano "Gider"
+  /// toplamına bordro ve fatura ile birlikte girer.
+  List<ExpenseLedgerRecord> expenseLedger = [];
   List<AccountingBenefitRecord> benefits = [];
   List<FinanceNotificationRecord> notifications = [];
   List<AuditLogRecord> auditLogs = [];
@@ -516,6 +520,12 @@ class AccountingFinanceStore extends ChangeNotifier {
       benefits = payload.benefits;
       notifications = payload.notifications;
       auditLogs = payload.auditLogs;
+      // Gider defteri ayrı uçtadır; erişim yoksa (rol kısıtı) pano yine çalışsın.
+      try {
+        expenseLedger = await AccountingApiService.instance.fetchExpenseLedger();
+      } catch (_) {
+        expenseLedger = [];
+      }
       lastError = null;
       isLoaded = true;
     } catch (error) {
@@ -586,18 +596,8 @@ class AccountingFinanceStore extends ChangeNotifier {
     return parsed == null ? 0 : parsed.round();
   }
 
-  String formatAmount(int amount) {
-    final text = amount.toString();
-    final buffer = StringBuffer();
-    for (var i = 0; i < text.length; i++) {
-      final reverseIndex = text.length - i;
-      buffer.write(text[i]);
-      if (reverseIndex > 1 && reverseIndex % 3 == 1) {
-        buffer.write('.');
-      }
-    }
-    return '₺${buffer.toString()}';
-  }
+  /// Gösterim biçimi ortak `utils/format.dart`'tan gelir ("5.000 TL").
+  String formatAmount(int amount) => formatMoney(amount);
 
   Future<void> addInvoice({
     required String title,

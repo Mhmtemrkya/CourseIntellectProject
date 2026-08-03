@@ -20,6 +20,7 @@ import { assetUrl } from '../../lib/assetUrl';
 import { isValidTcKimlik, isValidTrPhone, maskTcKimlik, maskTrPhone } from '../../lib/inputMasks';
 import { PROFESSIONS, OTHER_PROFESSION } from '../../lib/professions';
 import { FileButton } from '../../components/ui/file-button';
+import { formatDate, formatMoney } from '../../lib/format';
 
 const selectClass = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
 
@@ -858,7 +859,7 @@ export default function DrivingStudentWizard() {
                   <select required className={selectClass} value={form.packageId} onChange={(e) => set({ packageId: e.target.value })}>
                     <option value="">Seçin</option>
                     {reference.packages.filter((x) => x.isActive).map((x) => (
-                      <option key={x.id} value={x.id}>{x.name} • {x.licenseClass} • ₺{Number(x.price).toLocaleString('tr-TR')}</option>
+                      <option key={x.id} value={x.id}>{x.name} • {x.licenseClass} • {formatMoney(Number(x.price))}</option>
                     ))}
                   </select>
                 </Field>
@@ -954,12 +955,12 @@ export default function DrivingStudentWizard() {
           {step === 5 && (
             canSeeFinance ? (
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Brüt tutar (₺)" hint={selectedPackage ? `Paket fiyatı: ₺${Number(selectedPackage.price).toLocaleString('tr-TR')}` : undefined}>
+                <Field label="Brüt tutar (TL)" hint={selectedPackage ? `Paket fiyatı: ${formatMoney(Number(selectedPackage.price))}` : undefined}>
                   <Input type="number" min="0" value={form.finance.grossAmount} onChange={(e) => set({ finance: { ...form.finance, grossAmount: e.target.value } })} />
                 </Field>
-                <Field label="İndirim (₺)"><Input type="number" min="0" value={form.finance.discountAmount} onChange={(e) => set({ finance: { ...form.finance, discountAmount: e.target.value } })} /></Field>
+                <Field label="İndirim (TL)"><Input type="number" min="0" value={form.finance.discountAmount} onChange={(e) => set({ finance: { ...form.finance, discountAmount: e.target.value } })} /></Field>
                 <Field label="İndirim nedeni"><Input value={form.finance.discountReason} onChange={(e) => set({ finance: { ...form.finance, discountReason: e.target.value } })} /></Field>
-                <Field label="Peşinat (₺)"><Input type="number" min="0" value={form.finance.downPayment} onChange={(e) => set({ finance: { ...form.finance, downPayment: e.target.value } })} /></Field>
+                <Field label="Peşinat (TL)"><Input type="number" min="0" value={form.finance.downPayment} onChange={(e) => set({ finance: { ...form.finance, downPayment: e.target.value } })} /></Field>
                 {Number(form.finance.downPayment) > 0 ? (
                   <Field label="Peşinat durumu" hint={form.finance.downPaymentPaid ? 'Kayıtta tahsil edildi; makbuz kesilir.' : 'Tahsil edilmedi; “Peşinat Bekleyenler”de görünür.'}>
                     <div className="flex gap-2">
@@ -1000,7 +1001,7 @@ export default function DrivingStudentWizard() {
                         Direksiyon sınav ücreti
                       </Check>
                       <div className="mt-2 flex items-center gap-2">
-                        <Input type="number" min="0" placeholder="₺" value={form.drivingExamFee || ''} onChange={(e) => set({ drivingExamFee: e.target.value })} />
+                        <Input type="number" min="0" placeholder="TL" value={form.drivingExamFee || ''} onChange={(e) => set({ drivingExamFee: e.target.value })} />
                         <label className="flex shrink-0 items-center gap-1 text-xs font-semibold">
                           <input type="checkbox" checked={form.drivingExamFeePaid} onChange={(e) => set({ drivingExamFeePaid: e.target.checked })} />Ödendi
                         </label>
@@ -1018,15 +1019,15 @@ export default function DrivingStudentWizard() {
                     <div className="mt-3 grid gap-2 sm:grid-cols-4">
                       <div>
                         <span className="text-xs text-muted-foreground">Kurs ücreti (net)</span>
-                        <p className="text-xl font-black">₺{netAmount.toLocaleString('tr-TR')}</p>
+                        <p className="text-xl font-black">{formatMoney(netAmount)}</p>
                         {Number(form.finance.discountAmount) > 0 && (
-                          <p className="text-[11px] text-muted-foreground">₺{Number(form.finance.grossAmount || 0).toLocaleString('tr-TR')} − ₺{Number(form.finance.discountAmount).toLocaleString('tr-TR')} indirim</p>
+                          <p className="text-[11px] text-muted-foreground">{formatMoney(Number(form.finance.grossAmount || 0))} − {formatMoney(Number(form.finance.discountAmount))} indirim</p>
                         )}
                       </div>
                       <div>
                         <span className="text-xs text-muted-foreground">Peşinat</span>
                         <p className={`text-xl font-black ${downPaymentAmount > 0 ? 'text-emerald-600' : ''}`}>
-                          {downPaymentAmount > 0 ? `− ₺${downPaymentAmount.toLocaleString('tr-TR')}` : '₺0'}
+                          {downPaymentAmount > 0 ? `− ${formatMoney(downPaymentAmount)}` : formatMoney(0)}
                         </p>
                         {downPaymentAmount > 0 && (
                           <p className={`text-[11px] font-semibold ${form.finance.downPaymentPaid ? 'text-emerald-600' : 'text-amber-600'}`}>
@@ -1036,22 +1037,22 @@ export default function DrivingStudentWizard() {
                       </div>
                       <div>
                         <span className="text-xs text-muted-foreground">Taksitlendirilecek</span>
-                        <p className="text-xl font-black">₺{remainingAfterDownPayment.toLocaleString('tr-TR')}</p>
+                        <p className="text-xl font-black">{formatMoney(remainingAfterDownPayment)}</p>
                         <p className="text-[11px] text-muted-foreground">Kurs ücreti − peşinat</p>
                       </div>
                       <div>
                         <span className="text-xs text-muted-foreground">Taksit tutarı</span>
-                        <p className="text-xl font-black text-brand-primary">{perInstallment > 0 ? `₺${perInstallment.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : '—'}</p>
+                        <p className="text-xl font-black text-brand-primary">{perInstallment > 0 ? `${formatMoney(perInstallment)}` : '—'}</p>
                         <p className="text-[11px] text-muted-foreground">
                           {Number(form.finance.installmentCount) > 0
-                            ? `${form.finance.installmentCount} taksit${form.finance.firstInstallmentDate ? ` • ilk vade ${new Date(form.finance.firstInstallmentDate).toLocaleDateString('tr-TR')}` : ''}`
+                            ? `${form.finance.installmentCount} taksit${form.finance.firstInstallmentDate ? ` • ilk vade ${formatDate(form.finance.firstInstallmentDate)}` : ''}`
                             : 'Taksit sayısı girilmedi'}
                         </p>
                       </div>
                     </div>
                     {remainingAfterDownPayment > 0 && Number(form.finance.installmentCount) === 0 && (
                       <p className="mt-2 text-[11px] font-semibold text-amber-600">
-                        Taksit sayısı 0 — kalan ₺{remainingAfterDownPayment.toLocaleString('tr-TR')} için taksit planı oluşturulmaz.
+                        Taksit sayısı 0 — kalan {formatMoney(remainingAfterDownPayment)} için taksit planı oluşturulmaz.
                       </p>
                     )}
                     {downPaymentAmount > netAmount && (
@@ -1064,13 +1065,13 @@ export default function DrivingStudentWizard() {
                   <div className="rounded-2xl border border-dashed p-4">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <b className="text-sm">Sınav ücretleri (taksite dâhil değil)</b>
-                      <span className="text-lg font-black">₺{examFeesTotal.toLocaleString('tr-TR')}</span>
+                      <span className="text-lg font-black">{formatMoney(examFeesTotal)}</span>
                     </div>
                     {examFeesTotal > 0 ? (
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
                         {Number(form.drivingExamFee) > 0 && (
                           <span>
-                            Direksiyon ₺{Number(form.drivingExamFee).toLocaleString('tr-TR')}
+                            Direksiyon {formatMoney(Number(form.drivingExamFee))}
                             <b className={form.drivingExamFeePaid ? 'text-emerald-600' : 'text-amber-600'}>
                               {form.drivingExamFeePaid ? ' • ödendi' : ' • bekliyor'}
                             </b>
@@ -1088,9 +1089,9 @@ export default function DrivingStudentWizard() {
 
                   <div className="flex flex-wrap items-baseline justify-between gap-2 rounded-2xl border bg-brand-primary/[0.06] p-4">
                     <span className="text-sm font-bold">Kursiyerden tahsil edilecek toplam</span>
-                    <span className="text-xl font-black text-brand-primary">₺{grandTotal.toLocaleString('tr-TR')}</span>
+                    <span className="text-xl font-black text-brand-primary">{formatMoney(grandTotal)}</span>
                     <span className="w-full text-[11px] text-muted-foreground">
-                      Kurs ücreti ₺{netAmount.toLocaleString('tr-TR')} + sınav ücretleri ₺{examFeesTotal.toLocaleString('tr-TR')}
+                      Kurs ücreti {formatMoney(netAmount)} + sınav ücretleri {formatMoney(examFeesTotal)}
                     </span>
                   </div>
                 </div>
@@ -1160,18 +1161,18 @@ export default function DrivingStudentWizard() {
                 {canSeeFinance && (
                   <div className="rounded-2xl border p-4">
                     <b className="text-sm text-muted-foreground">Finans</b>
-                    <p className="text-lg font-black">₺{netAmount.toLocaleString('tr-TR')}</p>
+                    <p className="text-lg font-black">{formatMoney(netAmount)}</p>
                     <p className="text-sm text-muted-foreground">
-                      Peşinat ₺{downPaymentAmount.toLocaleString('tr-TR')}
+                      Peşinat {formatMoney(downPaymentAmount)}
                       {downPaymentAmount > 0 ? (form.finance.downPaymentPaid ? ' (tahsil edilecek)' : ' (bekliyor)') : ''}
                       {' • '}
                       {Number(form.finance.installmentCount) > 0
-                        ? `${form.finance.installmentCount} × ₺${perInstallment.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`
+                        ? `${form.finance.installmentCount} × ${formatMoney(perInstallment)}`
                         : 'taksit yok'}
                     </p>
                     {examFeesTotal > 0 && (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Ayrıca sınav ücreti ₺{examFeesTotal.toLocaleString('tr-TR')} (taksite dâhil değil)
+                        Ayrıca sınav ücreti {formatMoney(examFeesTotal)} (taksite dâhil değil)
                       </p>
                     )}
                   </div>

@@ -81,6 +81,15 @@ const webpackConfig = {
       },
     },
   },
+  // Jest, webpack'in '@' takma adını kendiliğinden bilmez; testte '@/lib/utils'
+  // gibi importlar bu eşlemeyle çözülür.
+  jest: {
+    configure: {
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/src/$1',
+      },
+    },
+  },
   webpack: {
     alias: {
       '@': path.resolve(__dirname, 'src'),

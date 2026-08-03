@@ -9,6 +9,7 @@ import { changeDrivingMebbisWorkStatus, downloadDrivingMebbisWorkCenter, fetchDr
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
+import { formatDate, formatDateTime } from '../../lib/format';
 
 const STATUS = {
   Preparing: { label: 'Hazırlanıyor', className: 'bg-amber-500/15 text-amber-700' },
@@ -135,7 +136,7 @@ export default function DrivingMebbisWorkCenter() {
           const actions = item.workType === 'TermDeadline' ? [] : (NEXT[item.status] || []).filter((target) => canManage && (target !== 'Verified' || canVerify));
           return <div key={key} className="rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">{item.photoUrl ? <img src={assetUrl(item.photoUrl)} alt={item.title} className="h-12 w-12 shrink-0 rounded-xl border object-cover" /> : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border bg-muted text-muted-foreground"><Users className="h-5 w-5" /></div>}<div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><b>{item.title}</b><Badge className={`border-0 ${tone.className}`}>{tone.label}</Badge><Badge variant="outline">{TYPES[item.workType] || item.category}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{item.reference}{item.dueAtUtc ? ` • Son tarih: ${new Date(item.dueAtUtc).toLocaleDateString('tr-TR')}` : ''}</p></div></div>
+              <div className="flex min-w-0 items-center gap-3">{item.photoUrl ? <img src={assetUrl(item.photoUrl)} alt={item.title} className="h-12 w-12 shrink-0 rounded-xl border object-cover" /> : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border bg-muted text-muted-foreground"><Users className="h-5 w-5" /></div>}<div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><b>{item.title}</b><Badge className={`border-0 ${tone.className}`}>{tone.label}</Badge><Badge variant="outline">{TYPES[item.workType] || item.category}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{item.reference}{item.dueAtUtc ? ` • Son tarih: ${formatDate(item.dueAtUtc)}` : ''}</p></div></div>
               <div className="flex flex-wrap gap-2">
                 {canManage && item.workType === 'CandidateRegistration' && item.studentDrivingProfileId && item.status !== 'Verified' && <Button size="sm" onClick={() => navigate(`/driving/mebbis/assistant/${item.studentDrivingProfileId}`)}><Copy className="mr-2 h-4 w-4" />Giriş Asistanı</Button>}
                 {actions.map((target) => <Button key={target} size="sm" variant={target === 'Error' ? 'destructive' : target === 'Verified' ? 'default' : 'outline'} disabled={savingKey === key} onClick={() => changeStatus(item, target)}>{ACTION[target]}</Button>)}
@@ -147,7 +148,7 @@ export default function DrivingMebbisWorkCenter() {
         })}</div>
       )}
       {pagination.totalPages > 1 && <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm"><span>Toplam {pagination.total} kayıt · Sayfa {pagination.page}/{pagination.totalPages}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={loading || pagination.page <= 1} onClick={() => setPage((x) => Math.max(1, x - 1))}><ChevronLeft className="mr-1 h-4 w-4" />Önceki</Button><Button size="sm" variant="outline" disabled={loading || pagination.page >= pagination.totalPages} onClick={() => setPage((x) => x + 1)}>Sonraki<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>}
-      {data?.generatedAtUtc && <p className="text-right text-xs text-muted-foreground">Veri zamanı: {new Date(data.generatedAtUtc).toLocaleString('tr-TR')}</p>}
+      {data?.generatedAtUtc && <p className="text-right text-xs text-muted-foreground">Veri zamanı: {formatDateTime(data.generatedAtUtc)}</p>}
     </DrivingPage>
   );
 }

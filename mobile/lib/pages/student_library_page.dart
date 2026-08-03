@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/library_api_service.dart';
+import 'package:student/utils/format.dart';
 
 const _navy = Color(0xFF15294B);
 const _orange = Color(0xFFF7941D);
@@ -62,11 +63,8 @@ class _StudentLibraryPageState extends State<StudentLibraryPage> {
             || (b['author'] as String? ?? '').toLowerCase().contains(q);
       }).toList();
 
-  String _formatDate(dynamic value) {
-    final d = DateTime.tryParse(value?.toString() ?? '');
-    if (d == null) return '—';
-    return '${d.day}.${d.month}.${d.year}';
-  }
+  // Tarih biçimi ortak `utils/format.dart`'tan gelir (02.08.2026).
+  String _formatDate(dynamic value) => formatDate(value);
 
   @override
   Widget build(BuildContext context) {

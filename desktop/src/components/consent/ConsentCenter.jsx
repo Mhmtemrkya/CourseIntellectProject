@@ -18,6 +18,7 @@ import { Textarea } from '../ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { useToast } from '../../hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { formatDateTime } from '../../lib/format';
 
 /** İmza bekleyen form varken bu aralıkta yoklanır — imza anında ekrana düşsün. */
 const POLL_INTERVAL_MS = 2500;
@@ -266,7 +267,7 @@ export default function ConsentCenter({
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <StatusBadge status={row.status} />
                       {row.status === 'AwaitingSignature' && row.stationName ? <span>{row.stationName}</span> : null}
-                      {row.signedAtUtc ? <span>{new Date(row.signedAtUtc).toLocaleString('tr-TR')}</span> : null}
+                      {row.signedAtUtc ? <span>{formatDateTime(row.signedAtUtc)}</span> : null}
                       {!row.requiresSignature ? <span>· imza istenmiyor</span> : null}
                     </div>
                   </div>

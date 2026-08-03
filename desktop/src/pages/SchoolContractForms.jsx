@@ -32,6 +32,7 @@ import {
   uploadConsentDocument,
 } from '../lib/api/modules';
 import { cn } from '@/lib/utils';
+import { formatDateTime } from '../lib/format';
 
 /** İmza bekleyen form varken bu aralıkta yoklanır — imza anında ekrana düşsün. */
 const POLL_INTERVAL_MS = 2500;
@@ -419,7 +420,7 @@ export default function SchoolContractForms() {
                                 <span>{form.stationName}</span>
                               ) : null}
                               {form?.signedAtUtc ? (
-                                <span>{new Date(form.signedAtUtc).toLocaleString('tr-TR')}</span>
+                                <span>{formatDateTime(form.signedAtUtc)}</span>
                               ) : null}
                               {isPdf && template.documentFileName ? <span>· {template.documentFileName}</span> : null}
                             </div>

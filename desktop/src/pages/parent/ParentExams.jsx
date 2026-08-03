@@ -16,6 +16,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchExamResults, fetchParentAcademic } from '../../lib/api/modules';
 import { useApp } from '../../context/AppContext';
+import { formatDate } from '../../lib/format';
 import {
   EmptyPanel,
   IconTile,
@@ -43,7 +44,7 @@ function examDate(exam) {
   const value = exam.createdAt || exam.date;
   if (!value) return '-';
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? decodeText(value) : parsed.toLocaleDateString('tr-TR');
+  return Number.isNaN(parsed.getTime()) ? decodeText(value) : formatDate(parsed);
 }
 
 function resultStatus(score) {

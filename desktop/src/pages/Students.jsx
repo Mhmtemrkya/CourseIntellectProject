@@ -72,6 +72,7 @@ import { getUserRoles } from '../lib/permissions';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import { assetUrl } from '../lib/assetUrl';
 import { isUserPassive, normalizeUserStatus, userStatusLabel } from '../lib/userStatus';
+import { StatusBadge } from '../components/ui/status-badge';
 import {
   isValidEmail, isValidTcKimlik, isValidTrPhone, maskEmail, maskTcKimlik, maskTrPhone,
 } from '../lib/inputMasks';
@@ -871,7 +872,15 @@ export default function Students() {
         subtitle={`${activeCount} öğrenciniz bulunuyor`}
         rangeLabel={(from, to, total) => `${total} öğrenciden ${from}-${to} arası gösteriliyor`}
         emptyTitle="Öğrenci bulunamadı"
-        emptyDescription="Filtreleri değiştirin veya yeni bir öğrenci kaydı oluşturun."
+        emptyDescription="Aramanıza uyan öğrenci yok. Farklı bir sınıf veya durum deneyin."
+        emptyIcon={Users}
+        blankTitle="Henüz öğrenci kaydınız yok"
+        blankDescription="İlk öğrenciyi kaydettiğinizde yoklama, sınav ve tahsilat ekranları da çalışmaya başlar."
+        blankAction={{
+          label: 'İlk öğrenciyi kaydet',
+          icon: Plus,
+          onClick: () => navigate('/admin/student-registration'),
+        }}
         banner={error ? <ErrorBanner title="Öğrenciler alınamadı" message={error} onRetry={loadStudents} /> : null}
         actions={(
           <FeatureGate module="students" action="create">
@@ -976,9 +985,7 @@ export default function Students() {
             sortable: true,
             width: 'minmax(0,0.7fr)',
             render: (student) => (
-              <Badge className={isUserPassive(student.status) ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}>
-                {userStatusLabel(student.status)}
-              </Badge>
+              <StatusBadge status={userStatusLabel(student.status)} />
             ),
           },
         ]}

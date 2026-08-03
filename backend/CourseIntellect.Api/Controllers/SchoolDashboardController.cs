@@ -35,6 +35,18 @@ public sealed class SchoolDashboardController(
 {
     private static readonly string[] PresentStatuses = ["Katildi", "Gec", "Izinli"];
 
+    // Sınıf defteri ClassesController ile AYNI iki yapılandırma türünde tutulur.
+    private const string ClassRegistryType = "class-registry";
+    private const string ClassManagementType = "class-management";
+
+    /// <summary>
+    /// Uyarıların kurum sahibine gösterilme sırası. Aynı ciddiyetteki uyarılar bu
+    /// sırayla dizilir: para kaybettiren iş önce, bilgilendirme sonra. Listede
+    /// olmayan tür sona düşer.
+    /// </summary>
+    private static readonly string[] AlertPriority =
+        ["Finance", "Approval", "Consent", "Attendance", "Task", "Leave", "Document", "Account", "Library"];
+
     [HttpGet]
     public async Task<IActionResult> Get(
         [FromQuery] DateTime? from,
@@ -273,6 +285,20 @@ public sealed class SchoolDashboardController(
             ? await dbContext.GuidanceAppointments.AsNoTracking().CountAsync(x => x.Status == "Bekliyor", cancellationToken)
             : null;
 
+        // İmza bekleyen onam formu: tablete gönderilmiş ama imzalanmamış kayıt.
+        // Taslak (henüz tablete gitmemiş) sayılmaz — o personelin elindeki iş değil.
+        int? pendingConsentForms = null;
+        if (canSee.Consent)
+        {
+            pendingConsentForms = await dbContext.ConsentFormRecords.AsNoTracking()
+                .CountAsync(x => x.Status == ConsentFormStatus.AwaitingSignature, cancellationToken);
+            if (pendingConsentForms > 0)
+            {
+                alerts.Add(BuildAlert("Consent", "Warning", "İmzasız evrak",
+                    $"{pendingConsentForms} onam formu imza bekliyor.", "/students"));
+            }
+        }
+
         int? activeServiceRoutes = null;
         if (canSee.Service)
         {
@@ -352,12 +378,101 @@ public sealed class SchoolDashboardController(
                 overdueInstallmentAmount,
                 overdueLoans,
                 pendingGuidance,
+                pendingConsentForms,
                 activeServiceRoutes,
             },
-            alerts = alerts.OrderBy(x => x.Severity == "Critical" ? 0 : 1).ToList(),
+            // Panonun EN ÜSTÜNDEKİ eylem bloğunu bu liste besler: önce kritikler,
+            // sonra kurum sahibinin müdahale sırası (para → onay → evrak → devamsızlık…).
+            alerts = alerts
+                .OrderBy(x => x.Severity == "Critical" ? 0 : 1)
+                .ThenBy(x => Array.IndexOf(AlertPriority, x.Type) is var index && index >= 0 ? index : AlertPriority.Length)
+                .ToList(),
             charts = new { monthlyRegistrations = registrationSeries },
         });
     }
+
+    /// <summary>
+    /// Yeni kurum kurulum sihirbazı: kurumun "yayına hazır" olması için gereken
+    /// adımlar ve hangilerinin bittiği. Adımlar BAĞIMLILIK sırasındadır —
+    /// sınıf olmadan program, program olmadan sağlıklı kayıt kurulamaz.
+    ///
+    /// <para>Her adım kendi verisinden hesaplanır (kullanıcının "bitti" işaretine
+    /// güvenilmez): kurum bir adımı başka bir ekrandan tamamladıysa sihirbaz da
+    /// bunu görür. Hepsi bitince <c>completed</c> true döner ve istemci bloğu
+    /// hiç çizmez.</para>
+    /// </summary>
+    [HttpGet("setup")]
+    public async Task<IActionResult> GetSetup(CancellationToken cancellationToken)
+    {
+        // Sınıf defteri ClassesController ile AYNI iki kaynağın birleşimidir:
+        // elle tanımlanan sınıflar + öğrencilerin sınıf adları. Yalnız birine
+        // bakmak, sınıfları zaten dolu bir kuruma "sınıf tanımlayın" derdi.
+        var registeredClasses = await dbContext.PlatformConfigurations.AsNoTracking()
+            .Where(x => x.ConfigurationType == ClassRegistryType || x.ConfigurationType == ClassManagementType)
+            .Select(x => x.DisplayName)
+            .ToListAsync(cancellationToken);
+        var studentClasses = await dbContext.Students.AsNoTracking()
+            .Where(x => x.ClassName != "")
+            .Select(x => x.ClassName)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var classCount = registeredClasses.Concat(studentClasses)
+            .Select(CompatibilitySnapshotStore.NormalizeClassName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+
+        var teacherCount = await dbContext.Staff.AsNoTracking()
+            .Join(dbContext.Users.AsNoTracking(), s => s.UserId, u => u.Id, (s, u) => new { s.Role, u.Status })
+            .CountAsync(x => x.Status != UserStatus.Passive && x.Role == UserRole.Teacher, cancellationToken);
+
+        var lessonCount = 0;
+        if (tenantContext.CurrentTenantId is Guid tenantId)
+        {
+            var entries = await ScheduleController.LoadEntriesAsync(dbContext, tenantId, cancellationToken);
+            lessonCount = entries.Count;
+        }
+
+        // "Ücret planı" kurumda ayrı bir varlık değil: ücret her öğrencinin kayıt
+        // sözleşmesinde yaşar. Bu yüzden adım "ilk kayıt + ücret sözleşmesi"dir.
+        var contractCount = await dbContext.EnrollmentContracts.AsNoTracking()
+            .CountAsync(cancellationToken);
+
+        var steps = new[]
+        {
+            BuildStep("classes", "Sınıfları tanımlayın", classCount,
+                "Öğrenci kaydı, yoklama ve ders programı sınıf listesine dayanır.",
+                "/classes", "Sınıf ekle", "sınıf tanımlı"),
+            BuildStep("teachers", "Öğretmenleri ekleyin", teacherCount,
+                "Kadronuzu tanıtın; ders programı ve sınıf atamaları için gerekli.",
+                "/admin/staff-registration", "Öğretmen ekle", "öğretmen kayıtlı"),
+            BuildStep("schedule", "Ders programını kurun", lessonCount,
+                "Haftalık program; yoklama ve günlük ders sayacının kaynağıdır.",
+                "/schedule", "Programı aç", "ders saati planlı"),
+            BuildStep("enrollment", "İlk kaydı ve ücret sözleşmesini oluşturun", contractCount,
+                "Ücret ve taksit planı öğrencinin kayıt sözleşmesinde tutulur.",
+                "/admin/student-registration", "Öğrenci kaydet", "kayıt sözleşmesi"),
+        };
+
+        Response.Headers.CacheControl = "no-store, private";
+
+        return Ok(new
+        {
+            completed = steps.All(x => x.Done),
+            completedSteps = steps.Count(x => x.Done),
+            totalSteps = steps.Length,
+            steps,
+        });
+    }
+
+    private static SetupStep BuildStep(
+        string key, string title, int count, string description,
+        string actionPath, string actionLabel, string countLabel)
+        => new(key, title, description, count > 0, count, countLabel, actionPath, actionLabel);
+
+    private sealed record SetupStep(
+        string Key, string Title, string Description, bool Done,
+        int Count, string CountLabel, string ActionPath, string ActionLabel);
 
     private (Guid UserId, string FullName) CurrentUser()
     {
@@ -392,7 +507,9 @@ public sealed class SchoolDashboardController(
             Finance: await Allowed("finance"),
             Library: await Allowed("library"),
             Guidance: await Allowed("guidance"),
-            Service: await Allowed("service"));
+            Service: await Allowed("service"),
+            // Onam formları öğrenci modülünün bir özelliğidir (ConsentController ile aynı kapı).
+            Consent: await entitlementService.IsAllowedAsync(User, "students", "consent", cancellationToken));
     }
 
     private sealed record ModuleAccess(
@@ -410,7 +527,8 @@ public sealed class SchoolDashboardController(
         bool Finance,
         bool Library,
         bool Guidance,
-        bool Service);
+        bool Service,
+        bool Consent);
 
     private static string TurkishDayName(DayOfWeek day) => day switch
     {

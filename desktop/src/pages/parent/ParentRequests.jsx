@@ -13,6 +13,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { createApproval, fetchMyApprovals } from '../../lib/api/modules';
+import { formatDate } from '../../lib/format';
 
 const TYPES = ['Erken Çıkış', 'İzin', 'Gezi Onamı', 'KVKK / Fotoğraf Onamı', 'Kayıt Yenileme', 'Diğer'];
 const STATUS_META = {
@@ -105,7 +106,7 @@ export default function ParentRequests() {
                       <span className="font-semibold">{item.title}</span>
                       <Badge variant="outline">{item.category}</Badge>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">{item.description || '—'} • {new Date(item.createdAtUtc).toLocaleDateString('tr-TR')}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{item.description || '—'} • {formatDate(item.createdAtUtc)}</p>
                   </div>
                   <span className={`inline-flex items-center gap-1 font-semibold ${tone}`}><Icon className="h-4 w-4" />{label}</span>
                 </CardContent>

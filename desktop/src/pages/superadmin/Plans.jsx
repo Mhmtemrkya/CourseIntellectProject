@@ -15,6 +15,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { useToast } from '../../hooks/use-toast';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { formatDateTime, formatMoney } from '../../lib/format';
 import {
   fetchPlatformPackages,
   fetchPlatformTenants,
@@ -174,7 +175,7 @@ function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Aylık Fiyat (₺)</Label>
+              <Label>Aylık Fiyat (TL)</Label>
               <Input
                 type="number"
                 min="0"
@@ -183,7 +184,7 @@ function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Yıllık Fiyat / ay (₺)</Label>
+              <Label>Yıllık Fiyat / ay (TL)</Label>
               <Input
                 type="number"
                 min="0"
@@ -667,7 +668,7 @@ export default function Plans() {
           <h1 className="text-3xl font-bold font-heading">Paketler</h1>
           <p className="text-muted-foreground mt-1">
             Marketing sitesinin fiyatlar sayfasıyla senkron çalışır.
-            {lastSavedAt ? ` Son güncelleme: ${lastSavedAt.toLocaleString('tr-TR')}` : ''}
+            {lastSavedAt ? ` Son güncelleme: ${formatDateTime(lastSavedAt)}` : ''}
           </p>
         </div>
         <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={handleOpenCreate} disabled={saving}>
@@ -700,12 +701,12 @@ export default function Plans() {
                   <CardDescription>{plan.description || '—'}</CardDescription>
                   <div className="pt-4">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold">₺{plan.priceMonthly}</span>
+                      <span className="text-4xl font-bold">{formatMoney(plan.priceMonthly)}</span>
                       <span className="text-muted-foreground text-sm">/ay</span>
                     </div>
                     {plan.priceYearly > 0 && plan.priceYearly !== plan.priceMonthly ? (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Yıllık ödemede ₺{plan.priceYearly}/ay
+                        Yıllık ödemede {formatMoney(plan.priceYearly)}/ay
                       </p>
                     ) : null}
                   </div>

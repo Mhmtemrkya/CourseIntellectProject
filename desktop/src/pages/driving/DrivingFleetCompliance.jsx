@@ -12,6 +12,7 @@ import {
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard, itemVariants } from './_shared';
+import { formatDate, formatMoney } from '../../lib/format';
 
 const selectClass = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
 const initialDocument = { vehicleId: '', documentType: 'Inspection', documentNumber: '', startsAtUtc: '', expiresAtUtc: '', reminderDays: 30, description: '', file: null };
@@ -278,7 +279,7 @@ export default function DrivingFleetCompliance({ embedded = false }) {
                 <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{item.plateNumber} • {item.documentType}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{item.documentNumber} • {new Date(item.expiresAtUtc).toLocaleDateString('tr-TR')}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{item.documentNumber} • {formatDate(item.expiresAtUtc)}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <a className="text-xs font-bold text-[hsl(var(--brand-accent))] hover:underline" href={item.fileUrl} target="_blank" rel="noreferrer">Dosya</a>
@@ -300,7 +301,7 @@ export default function DrivingFleetCompliance({ embedded = false }) {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{item.plateNumber} • {item.title}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {item.recordType} • {item.priority} • ₺{Number(item.totalCost).toLocaleString('tr-TR')}
+                      {item.recordType} • {item.priority} • {formatMoney(Number(item.totalCost))}
                     </p>
                   </div>
                   {!item.vehicleUsable ? (

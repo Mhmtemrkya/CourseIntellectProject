@@ -21,6 +21,7 @@ import {
 } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { isImageValue, stripOptionPrefix } from '../../lib/questionMedia';
+import { formatDate } from '../../lib/format';
 
 const SUBJECT_COLORS = {
   Matematik: { gradient: 'from-sky-500 to-blue-600', tint: 'bg-sky-500/10 text-sky-700', mark: 'M', tagline: 'Sayısal akış ve hız kontrolü' },
@@ -290,7 +291,7 @@ export default function StudentExams({ mockOnly = false }) {
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{exam.subject} • {exam.type}</p>
                     <h3 className="mt-1 text-lg font-black sm:text-xl">{exam.name}</h3>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {[exam.className, exam.date.toLocaleDateString('tr-TR'), formatDuration(exam.duration), exam.questionCount ? `${exam.questionCount} soru` : null].filter(Boolean).join(' • ')}
+                      {[exam.className, formatDate(exam.date), formatDuration(exam.duration), exam.questionCount ? `${exam.questionCount} soru` : null].filter(Boolean).join(' • ')}
                     </p>
                   </div>
                   <Button onClick={() => startExam(exam)} disabled={submitting} className="h-11 w-full shrink-0 rounded-xl bg-orange-500 px-6 font-black text-white hover:bg-orange-600 sm:w-32">

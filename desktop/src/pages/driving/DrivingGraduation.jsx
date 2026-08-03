@@ -29,6 +29,7 @@ import { assetUrl } from '../../lib/assetUrl';
 import { createTypedDocumentUrl } from '../../lib/fileMime';
 import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 import ConsentCompletionGate, { useConsentGate } from '../../components/consent/ConsentCompletionGate';
+import { formatDate } from '../../lib/format';
 
 const STATUS_LABELS = {
   PreRegistered: 'Ön kayıt', DocumentsPending: 'Evrak bekliyor', Active: 'Aktif', TheoryOngoing: 'Teorik eğitim',
@@ -353,7 +354,7 @@ export default function DrivingGraduation() {
                 {graduated && (
                   <div className="space-y-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.04] p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <b className="text-emerald-700">Mezuniyet: {new Date(graduation.graduatedAtUtc).toLocaleDateString('tr-TR')}</b>
+                      <b className="text-emerald-700">Mezuniyet: {formatDate(graduation.graduatedAtUtc)}</b>
                       <Badge className="border-0 bg-emerald-600 text-white">Tamamlandı</Badge>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">

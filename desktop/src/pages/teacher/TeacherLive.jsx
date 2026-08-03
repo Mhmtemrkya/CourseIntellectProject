@@ -28,6 +28,7 @@ import {
   openLiveRoomSession,
 } from '../../lib/api/modules';
 import { openExternalUrl } from '../../lib/tauri';
+import { formatDate } from '../../lib/format';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -355,7 +356,7 @@ export default function TeacherLive() {
                     <PremiumStatusPill tone={nextLesson.status === 'live' ? 'live' : 'soon'}>{nextLesson.class}</PremiumStatusPill>
                     <h3 className="mt-2 text-xl font-black leading-tight">{nextLesson.title}</h3>
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1"><CalendarPlus className="h-4 w-4" />{nextLesson.date ? new Date(nextLesson.date).toLocaleDateString('tr-TR') : 'Bugün'}</span>
+                      <span className="flex items-center gap-1"><CalendarPlus className="h-4 w-4" />{nextLesson.date ? formatDate(nextLesson.date) : 'Bugün'}</span>
                       <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{nextLesson.time} ({nextLesson.duration} dk)</span>
                     </div>
                   </div>
@@ -422,7 +423,7 @@ export default function TeacherLive() {
                     <span className="shrink-0 rounded-lg bg-[hsl(var(--brand-accent)/0.14)] px-2 py-0.5 text-[11px] font-bold text-[hsl(var(--brand-accent))]">{lesson.class}</span>
                     <p className="truncate text-sm font-semibold">{lesson.title}</p>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{lesson.date ? new Date(lesson.date).toLocaleDateString('tr-TR') : ''}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{lesson.date ? formatDate(lesson.date) : ''}</p>
                 </div>
                 <div className="shrink-0 text-center">
                   <p className="text-sm font-black tabular-nums">{att.attended}/{att.total}</p>

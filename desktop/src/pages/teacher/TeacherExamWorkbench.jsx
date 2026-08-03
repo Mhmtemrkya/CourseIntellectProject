@@ -9,6 +9,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchPlannedExamSubmissions, fetchPlannedExams } from '../../lib/api/modules';
+import { formatDateTime } from '../../lib/format';
 
 export default function TeacherExamWorkbench() {
   const { user } = useApp();
@@ -77,7 +78,7 @@ export default function TeacherExamWorkbench() {
                       <div>
                         <div className="font-semibold">{item.studentName}</div>
                         <div className="text-sm text-muted-foreground">
-                          {new Date(item.submittedAtUtc).toLocaleString('tr-TR')}
+                          {formatDateTime(item.submittedAtUtc)}
                         </div>
                       </div>
                     </div>

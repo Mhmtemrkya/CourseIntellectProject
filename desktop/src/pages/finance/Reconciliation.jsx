@@ -7,6 +7,8 @@ import { Badge } from '../../components/ui/badge';
 import { useToast } from '../../hooks/use-toast';
 import { reconcileFinance } from '../../lib/api/modules';
 import { formatCurrency } from '../../lib/financeDocuments';
+import { formatDate } from '../../lib/format';
+import { StatusBadge } from '../../components/ui/status-badge';
 
 const PLACEHOLDER = 'HVL123, 5000, 2026-06-01\nPOS987, 2500, 2026-06-02\nEFT456, 1800, 2026-06-03';
 
@@ -115,15 +117,15 @@ export default function Reconciliation() {
                 <div key={`${item.reference}-${idx}`} className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold">{item.reference || 'Referans yok'}</p>
-                    <p className="text-sm text-muted-foreground">{new Date(item.date).toLocaleDateString('tr-TR')} • {formatCurrency(item.amount)}</p>
+                    <p className="text-sm text-muted-foreground">{formatDate(item.date)} • {formatCurrency(item.amount)}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     {item.matchStatus === 'Matched' ? (
                       <span className="text-sm text-muted-foreground">Makbuz: {item.receiptNo || '—'}</span>
                     ) : null}
-                    <Badge className={item.matchStatus === 'Matched' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
+                    <StatusBadge tone={item.matchStatus === 'Matched' ? 'success' : 'danger'}>
                       {item.matchStatus === 'Matched' ? 'Eşleşti' : 'Eşleşmedi'}
-                    </Badge>
+                    </StatusBadge>
                   </div>
                 </div>
               ))}

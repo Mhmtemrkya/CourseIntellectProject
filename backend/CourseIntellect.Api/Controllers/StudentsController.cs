@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using CourseIntellect.Api.Authorization;
+using CourseIntellect.Api.Security;
+using CourseIntellect.Infrastructure.Persistence;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -12,12 +14,26 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class StudentsController(
     IAcademicQueryService academicQueryService,
-    IStudentFinanceService studentFinanceService) : ControllerBase
+    IStudentFinanceService studentFinanceService,
+    CourseIntellectDbContext dbContext) : ControllerBase
 {
+    /// <summary>
+    /// Öğrenci listesi. KAPSAM DENETİMİ ŞART: bu uç TC kimlik no, adres ve veli
+    /// telefonu taşır. Personel rolleri kurumun tamamını görür; ÖĞRENCİ yalnız
+    /// kendisini, VELİ yalnız kendi çocuklarını görür — aksi hâlde tek bir
+    /// öğrenci hesabı tüm kurumun kişisel verisini çekebilir.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetStudents(CancellationToken cancellationToken)
     {
         var students = await academicQueryService.GetStudentsAsync(cancellationToken);
+
+        var allowedNames = await StudentScope.ResolveAllowedStudentNamesAsync(User, dbContext, cancellationToken);
+        if (allowedNames is not null)
+        {
+            students = StudentScope.FilterByStudentNames(students, allowedNames, item => item.FullName);
+        }
+
         return Ok(students);
     }
 

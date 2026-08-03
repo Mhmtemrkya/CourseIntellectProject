@@ -18,6 +18,7 @@ import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingS
 import { assetUrl } from '../../lib/assetUrl';
 import { maskTrPhone } from '../../lib/inputMasks';
 import { FileButton } from '../../components/ui/file-button';
+import { formatDate, formatDateTime } from '../../lib/format';
 
 const STATUS_LABELS = {
   PreRegistered: 'Ön kayıt', DocumentsPending: 'Evrak bekliyor', Active: 'Aktif',
@@ -44,8 +45,8 @@ const DOCUMENT_STATUS = {
 };
 
 const transmissionLabel = (value) => (value === 'Manual' ? 'Manuel' : 'Otomatik');
-const dateTime = (value) => (value ? new Date(value).toLocaleString('tr-TR') : '—');
-const dateOnly = (value) => (value ? new Date(value).toLocaleDateString('tr-TR') : '—');
+const dateTime = (value) => (value ? formatDateTime(value) : '—');
+const dateOnly = (value) => (value ? formatDate(value) : '—');
 
 // Gruplar genelde aylık açılır (ör. "Temmuz 2026") — yeni grup adına bu ayı öner.
 const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];

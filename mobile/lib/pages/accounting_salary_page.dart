@@ -6,6 +6,7 @@ import 'accounting_salary_detail_page.dart';
 import 'accounting_salary_form_page.dart';
 import '../widgets/app_header.dart';
 import '../widgets/accounting_ui.dart';
+import '../utils/format.dart';
 
 class AccountingSalaryPage extends StatefulWidget {
   const AccountingSalaryPage({super.key});
@@ -63,7 +64,7 @@ class _AccountingSalaryPageState extends State<AccountingSalaryPage> {
               AccountingHeroMetric(
                 label: 'Bu Ay Bordro',
                 value:
-                    '₺${_store.salaries.fold<int>(0, (sum, item) => sum + _parseAmount(item.amount)).toString()}',
+                    formatMoney(_store.salaries.fold<int>(0, (sum, item) => sum + _parseAmount(item.amount))),
               ),
               AccountingHeroMetric(
                 label: 'Bekleyen',

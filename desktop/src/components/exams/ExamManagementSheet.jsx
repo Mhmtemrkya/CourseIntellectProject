@@ -41,6 +41,7 @@ import {
   updatePlannedExam,
 } from '../../lib/api/modules';
 import { computeExamStats, downloadExamReportPdf } from '../../lib/examReportPdf';
+import { StatusBadge } from '../ui/status-badge';
 
 export const EXAM_TYPES = ['Yazılı', 'Deneme', 'Ünite', 'Quiz', 'Proje'];
 export const EXAM_STATUSES = ['Taslak', 'Planlandı', 'Tamamlandı', 'İptal'];
@@ -238,7 +239,7 @@ export default function ExamManagementSheet({
             <SheetTitle className="pr-8 text-2xl font-black leading-tight">{exam.title}</SheetTitle>
             <SheetDescription className="flex flex-wrap items-center gap-2">
               <span>{[exam.subject, exam.className, exam.dateLabel].filter(Boolean).join(' • ')}</span>
-              <Badge variant="outline">{exam.status || 'Planlandı'}</Badge>
+              <StatusBadge status={exam.status || 'Planlandı'} />
             </SheetDescription>
           </SheetHeader>
 

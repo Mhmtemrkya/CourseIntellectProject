@@ -12,6 +12,7 @@ import PendingDownPayments from '../../components/finance/PendingDownPayments';
 // Tahsilat penceresi Cari Hesaplar ekranıyla ortaktır; akış tek yerde durur.
 import CollectModal from '../../components/finance/DrivingCollectModal';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
+import { formatDate, formatMoney as money } from '../../lib/format';
 
 const STATUS_LABELS = {
   PreRegistered: 'Ön kayıt', DocumentsPending: 'Evrak bekliyor', Active: 'Aktif',
@@ -25,7 +26,6 @@ const BUCKETS = [
   { key: 'all', label: 'Tümü' },
 ];
 
-const money = (v) => `₺${Number(v || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`;
 // "2026-09" → "Eylül 2026"
 const monthLabel = (value) => {
   const [year, month] = String(value).split('-').map(Number);
@@ -198,8 +198,8 @@ export default function DrivingCollection() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {r.monthDue
-                    ? `${monthLabel(dueMonth)} vadesi: ${new Date(r.monthDue.dueDateUtc).toLocaleDateString('tr-TR')}${r.monthDue.count > 1 ? ` (${r.monthDue.count} taksit)` : ''}`
-                    : r.nextDueDateUtc ? `Sıradaki vade: ${new Date(r.nextDueDateUtc).toLocaleDateString('tr-TR')}` : 'Vade yok'}
+                    ? `${monthLabel(dueMonth)} vadesi: ${formatDate(r.monthDue.dueDateUtc)}${r.monthDue.count > 1 ? ` (${r.monthDue.count} taksit)` : ''}`
+                    : r.nextDueDateUtc ? `Sıradaki vade: ${formatDate(r.nextDueDateUtc)}` : 'Vade yok'}
                   {' • '}Kayıt: {r.registrationBranchName || '—'}{r.registrarName ? ` (${r.registrarName})` : ''}
                 </p>
               </div>

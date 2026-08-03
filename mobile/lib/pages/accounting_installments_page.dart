@@ -6,6 +6,7 @@ import '../services/accounting_finance_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/responsive_overlays.dart';
+import '../widgets/status_badge.dart';
 
 const _monthOptions = <String, String>{
   'all': 'Tüm Aylar',
@@ -194,12 +195,10 @@ class _AccountingInstallmentsPageState
   }
 
   Widget _planCard(BuildContext context, InstallmentRecord plan) {
-    final color = switch (plan.status) {
-      'Ödendi' => const Color(0xFF0F766E),
-      'Geciken' => const Color(0xFFB42318),
-      'Sonraki Ay' => const Color(0xFF7C3AED),
-      _ => const Color(0xFF2563EB),
-    };
+    // Renk ortak durum sözlüğünden; "Sonraki Ay" bu ekrana özgü kalır.
+    final color = plan.status == 'Sonraki Ay'
+        ? const Color(0xFF7C3AED)
+        : statusToneColor(resolveStatus(plan.status).tone, context);
 
     return InkWell(
       borderRadius: BorderRadius.circular(24),

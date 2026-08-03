@@ -20,6 +20,7 @@ import {
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
+import { formatMoney } from '../../lib/format';
 import {
   createAnnouncement,
   createCourse,
@@ -56,7 +57,7 @@ const emptyAnnounce = {
 
 function moneyLabel(value) {
   const parsed = Number(value || 0);
-  return Number.isFinite(parsed) ? `TL ${parsed.toLocaleString('tr-TR')}` : String(value || '-');
+  return Number.isFinite(parsed) ? formatMoney(parsed) : String(value || '-');
 }
 
 export default function AdminCourses() {

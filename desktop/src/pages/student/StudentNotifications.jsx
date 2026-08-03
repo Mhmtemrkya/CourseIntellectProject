@@ -13,6 +13,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../hooks/use-toast';
 import { fetchNotifications, markNotificationRead } from '../../lib/api/modules';
+import { formatDate } from '../../lib/format';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -43,7 +44,7 @@ function timeAgo(dateStr) {
   if (diff < 3600) return `${Math.floor(diff / 60)} dk once`;
   if (diff < 86400) return `${Math.floor(diff / 3600)} saat once`;
   if (diff < 604800) return `${Math.floor(diff / 86400)} gun once`;
-  return date.toLocaleDateString('tr-TR');
+  return formatDate(date);
 }
 
 export default function StudentNotifications() {

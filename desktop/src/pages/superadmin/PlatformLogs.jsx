@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { formatDate, formatDateTime } from '../../lib/format';
 import {
   fetchPlatformAuditLogs,
   fetchPlatformAuditOverview,
@@ -143,7 +144,7 @@ export default function PlatformLogs() {
             </div>
             <p className="mt-2 text-2xl font-bold">{tenant.totalCount}</p>
             <p className="text-xs text-muted-foreground">
-              Son 7 gün: {tenant.last7DaysCount} • Son işlem: {tenant.lastActivityUtc ? new Date(tenant.lastActivityUtc).toLocaleDateString('tr-TR') : '—'}
+              Son 7 gün: {tenant.last7DaysCount} • Son işlem: {tenant.lastActivityUtc ? formatDate(tenant.lastActivityUtc) : '—'}
             </p>
           </button>
         ))}
@@ -193,7 +194,7 @@ export default function PlatformLogs() {
                   {item.branchName ? <Badge variant="outline">{item.branchName}</Badge> : null}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{item.actorName} • {new Date(item.createdAtUtc).toLocaleString('tr-TR')}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{item.actorName} • {formatDateTime(item.createdAtUtc)}</p>
               </div>
             </div>
           ))}

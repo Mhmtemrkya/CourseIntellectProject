@@ -39,7 +39,10 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
     };
 
     [HttpGet]
-    [Authorize(Roles = "Admin,Administrative,Teacher,Student")]
+    // Veli de çocuğunun ders programını görebilmeli; liste kuruma aittir ve
+    // kişisel veri taşımaz. Rol listesinde olmadığı için veli panelindeki
+    // program bölümü sessizce 403 alıyordu.
+    [Authorize(Roles = "Admin,Administrative,Teacher,Student,Parent,BranchManager")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
         var tenantId = await ResolveTenantIdAsync(cancellationToken);

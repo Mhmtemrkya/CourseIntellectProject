@@ -2827,6 +2827,20 @@ const Map<String, String> kTrEn = {
   'Son 1 yıl': 'Last 1 year',
   'Müdahale gerektiren bir durum yok': 'Nothing needs attention',
   'Kurum özeti yüklenemedi.': 'Institution summary could not be loaded.',
+  'Öncelikli İşler': 'Priority Actions',
+  'Daha': 'More',
+  'Filtreleri temizle': 'Clear filters',
+  'Henüz öğrenci kaydınız yok': 'You have no student records yet',
+  'Henüz personel kaydınız yok': 'You have no staff records yet',
+  'Henüz veli kaydınız yok': 'You have no parent records yet',
+  'Size atanmış sınıf yok': 'No class is assigned to you',
+  'Sınıflarınızda öğrenci yok': 'No students in your classes',
+  'Kurumunuzu kurmaya devam edin':
+      'Continue setting up your institution',
+  'kritik': 'critical',
+  'uyarı': 'warning',
+  'İmzasız Evrak': 'Unsigned Forms',
+  'Onam formu imza bekliyor': 'Consent forms awaiting signature',
 
   // ── Sınavlar ekranı ve Yönet penceresi ──
   'Sınav sonuç girişi ve mevcut kayıtlar': 'Exam result entry and existing records',
@@ -2931,4 +2945,6 @@ const Map<String, String> kTrEn = {
   'Ulaşılabilir veli': 'Reachable parents',
   'İletişim eksik': 'Contact missing',
   'Veli listesi ve iletişim': 'Parent list and contact',
+  '• Gider defteri': '• Expense ledger',
+  'Gider defteri': 'Expense ledger',
 };

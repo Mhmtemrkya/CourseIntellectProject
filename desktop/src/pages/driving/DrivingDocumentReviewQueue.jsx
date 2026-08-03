@@ -10,6 +10,7 @@ import { createTypedDocumentUrl } from '../../lib/fileMime';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 import { assetUrl } from '../../lib/assetUrl';
+import { formatDateTime } from '../../lib/format';
 
 const STATUS = {
   PendingApproval: { label: 'Onay bekliyor', tone: 'bg-amber-500/15 text-amber-700' },
@@ -102,7 +103,7 @@ export default function DrivingDocumentReviewQueue() {
     {items.length === 0 ? <DrivingNotice icon={CheckCircle2} title="Bu filtrede belge yok." message="Evrak kuyruğu güncel." /> : <div className="space-y-3">{items.map((item) => {
       const values = draft(item); const tone = STATUS[item.status] || STATUS.PendingApproval; const busy = saving === item.id;
       return <section key={item.id} className="rounded-2xl border p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div className="flex items-center gap-3">{item.studentPhotoUrl ? <img src={assetUrl(item.studentPhotoUrl)} alt={item.studentName} className="h-12 w-12 shrink-0 rounded-xl border object-cover" /> : null}<div><div className="flex flex-wrap items-center gap-2"><b>{item.studentName}</b><Badge variant="outline">#{item.studentNumber}</Badge><Badge className={`border-0 ${tone.tone}`}>{tone.label}</Badge></div><p className="mt-1 text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">Yüklendi: {new Date(item.uploadedAtUtc).toLocaleString('tr-TR')} • {item.fileName || 'Dosya'}{item.identityKind !== 'TurkishId' ? ' • Yabancı kursiyer' : ''}</p></div></div><Button variant="outline" onClick={() => openPreview(item)}><Eye className="mr-2 h-4 w-4" />Belgeyi güvenli aç</Button></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div className="flex items-center gap-3">{item.studentPhotoUrl ? <img src={assetUrl(item.studentPhotoUrl)} alt={item.studentName} className="h-12 w-12 shrink-0 rounded-xl border object-cover" /> : null}<div><div className="flex flex-wrap items-center gap-2"><b>{item.studentName}</b><Badge variant="outline">#{item.studentNumber}</Badge><Badge className={`border-0 ${tone.tone}`}>{tone.label}</Badge></div><p className="mt-1 text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">Yüklendi: {formatDateTime(item.uploadedAtUtc)} • {item.fileName || 'Dosya'}{item.identityKind !== 'TurkishId' ? ' • Yabancı kursiyer' : ''}</p></div></div><Button variant="outline" onClick={() => openPreview(item)}><Eye className="mr-2 h-4 w-4" />Belgeyi güvenli aç</Button></div>
         {item.rejectionReason && <p className="mt-3 rounded-xl bg-red-500/10 p-3 text-xs text-red-700">Son gerekçe: {item.rejectionReason}</p>}
         <label className="mt-4 block text-xs font-medium">Personel iç notu<Input className="mt-1" maxLength={1000} placeholder="Kursiyere gösterilmez" value={values.note} onChange={(e) => setDraft(item, { note: e.target.value })} /></label>
         <label className="mt-3 block text-xs font-medium">Ret / yeniden yükleme gerekçesi<Input className="mt-1" maxLength={500} placeholder="Kursiyere bildirim olarak gönderilir" value={values.reason} onChange={(e) => setDraft(item, { reason: e.target.value })} /></label>

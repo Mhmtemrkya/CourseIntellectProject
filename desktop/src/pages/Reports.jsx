@@ -53,6 +53,7 @@ import {
 import { formatCurrency, parseFinanceMoney } from '../lib/financeDocuments';
 import { downloadSchoolAsistReportPdf } from '../lib/schoolAsistReportPdf';
 import { useToast } from '../hooks/use-toast';
+import { formatMoney } from '../lib/format';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -100,7 +101,7 @@ function formatDate(value) {
   if (!value) return 'Tarih yok';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString('tr-TR');
+  return formatDate(date);
 }
 
 function isPaidStatus(status) {
@@ -652,7 +653,7 @@ function AdministrativeReportOverview() {
                           <p className="text-sm text-muted-foreground">Kalan Borç</p>
                           <p className={`font-semibold ${student.enrollmentBalance > 0 ? (student.enrollmentOverdueCount > 0 ? 'text-red-500' : 'text-amber-600') : 'text-green-600'}`}>
                             {student.enrollmentNet > 0
-                              ? `${student.enrollmentBalance.toLocaleString('tr-TR')} ₺`
+                              ? formatMoney(student.enrollmentBalance)
                               : '—'}
                           </p>
                         </div>

@@ -65,6 +65,7 @@ import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import { isUserPassive } from '../lib/userStatus';
 import { assetUrl } from '../lib/assetUrl';
 import { mergeBranches, readSavedStaffBranches, staffBranchConfigurationPayload } from '../lib/staffBranches';
+import { StatusBadge } from '../components/ui/status-badge';
 import {
   isValidTcKimlik, isValidTrPhone, maskPositiveInteger, maskTcKimlik, maskTrPhone,
 } from '../lib/inputMasks';
@@ -626,7 +627,15 @@ export default function Teachers() {
         subtitle={`${activeCount} öğretmeniniz bulunuyor`}
         rangeLabel={(from, to, total) => `${total} öğretmenden ${from}-${to} arası gösteriliyor`}
         emptyTitle="Öğretmen bulunamadı"
-        emptyDescription="Filtreleri değiştirin veya yeni bir öğretmen ekleyin."
+        emptyDescription="Aramanıza uyan öğretmen yok. Farklı bir branş veya durum deneyin."
+        emptyIcon={Users}
+        blankTitle="Henüz öğretmen eklemediniz"
+        blankDescription="Kadronuzu tanıtın; ders programı ve sınıf atamaları öğretmen listesine dayanır."
+        blankAction={{
+          label: 'İlk öğretmeni ekle',
+          icon: Plus,
+          onClick: () => setDialogOpen(true),
+        }}
         banner={error ? <ErrorBanner title="Öğretmenler alınamadı" message={error} onRetry={loadTeachers} /> : null}
         actions={(
           <FeatureGate module="teachers" action="create">
@@ -724,9 +733,7 @@ export default function Teachers() {
             label: 'Durum',
             sortable: true,
             width: 'minmax(0,0.7fr)',
-            render: (teacher) => (isUserPassive(teacher.status)
-              ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
-              : <Badge className="bg-green-100 text-green-700">Aktif</Badge>),
+            render: (teacher) => (<StatusBadge status={isUserPassive(teacher.status) ? 'Pasif' : 'Aktif'} />),
           },
         ]}
         rowActions={(teacher) => (
@@ -776,9 +783,7 @@ export default function Teachers() {
                 <p className="truncate font-bold">{teacher.fullName}</p>
                 <p className="truncate text-xs text-muted-foreground">{teacher.departmentOrBranch || '—'}</p>
               </div>
-              {isUserPassive(teacher.status)
-                ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
-                : <Badge className="bg-green-100 text-green-700">Aktif</Badge>}
+              {<StatusBadge status={isUserPassive(teacher.status) ? 'Pasif' : 'Aktif'} />}
             </div>
             <div className="w-full text-xs text-muted-foreground">
               <p className="truncate">{teacher.email || teacher.username}</p>

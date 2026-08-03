@@ -704,7 +704,7 @@ public sealed class DrivingGraduationController(
                         ? $" (mevzuat asgarisi: {DrivingCurriculum.MinimumPracticeLessonHoursFor(profile.LicenseClass)} ders saati)" : string.Empty)),
             new("theoryExam", "E-sınav sonucu", passedTypes.Contains(DrivingExamType.TheoryEExam), passedTypes.Contains(DrivingExamType.TheoryEExam) ? "Geçti" : "Başarılı sonuç yok"),
             new("drivingExam", "Direksiyon sınavı sonucu", passedTypes.Contains(DrivingExamType.DrivingPractice), passedTypes.Contains(DrivingExamType.DrivingPractice) ? "Geçti" : "Başarılı sonuç yok"),
-            new("finance", "Finansal kapanış", debt <= 0, debt <= 0 ? "Borç yok" : $"Kalan borç: {debt:0.00} TRY"),
+            new("finance", "Finansal kapanış", debt <= 0, debt <= 0 ? "Borç yok" : $"Kalan borç: {MoneyText.Format(debt)}"),
             new("schedule", "Açık randevu ve talepler", openAppointments == 0 && pendingRequests == 0, $"{openAppointments} açık randevu, {pendingRequests} bekleyen talep"),
         };
         return new GraduationChecklistResponse(profileId, student.FullName, items.All(x => x.Completed), items, now, attendancePercent, settings.MinimumTheoryAttendancePercent, settings.ExcusedAbsencePolicy.ToString());

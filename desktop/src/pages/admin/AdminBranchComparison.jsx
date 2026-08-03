@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatMoney as formatCurrency } from '../../lib/format';
 import { motion } from 'framer-motion';
 import {
   GitBranch, Users, GraduationCap, DollarSign, TrendingUp,
@@ -23,10 +24,6 @@ const itemVariants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
-
-function formatCurrency(val) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val || 0);
-}
 
 export default function AdminBranchComparison() {
   const [branches, setBranches] = useState([]);

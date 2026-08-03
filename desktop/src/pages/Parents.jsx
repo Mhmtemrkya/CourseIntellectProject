@@ -38,6 +38,8 @@ import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { fetchMeetingRequests, fetchParentAccounts, fetchStudents, updateUserStatus } from '../lib/api/modules';
 import { isUserPassive } from '../lib/userStatus';
+import { formatDate } from '../lib/format';
+import { StatusBadge } from '../components/ui/status-badge';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -275,7 +277,15 @@ export default function Parents() {
       subtitle={`${parentRows.length} veliniz bulunuyor`}
       rangeLabel={(from, to, total) => `${total} veliden ${from}-${to} arası gösteriliyor`}
       emptyTitle="Veli bulunamadı"
-      emptyDescription="Filtreleri değiştirin veya öğrenci kaydından veli ekleyin."
+      emptyDescription="Aramanıza uyan veli yok. Farklı bir sınıf veya durum deneyin."
+      emptyIcon={Users}
+      blankTitle="Henüz veli kaydınız yok"
+      blankDescription="Veliler ayrı ayrı eklenmez: öğrenci kaydı sırasında girilen veli bilgisinden otomatik oluşur."
+      blankAction={{
+        label: 'Öğrenci kaydına git',
+        icon: Info,
+        onClick: () => navigate('/admin/student-registration'),
+      }}
       banner={error ? <ErrorBanner title="Veliler alınamadı" message={error} onRetry={loadParents} /> : null}
       actions={(
         <FeatureGate module="parents" action="create">
@@ -367,7 +377,7 @@ export default function Parents() {
           render: (parent) => (
             <span className="text-xs text-muted-foreground">
               {parent.account?.lastLoginAtUtc
-                ? new Date(parent.account.lastLoginAtUtc).toLocaleDateString('tr-TR')
+                ? formatDate(parent.account.lastLoginAtUtc)
                 : 'Hiç girmedi'}
             </span>
           ),
@@ -379,9 +389,7 @@ export default function Parents() {
           width: 'minmax(0,0.7fr)',
           render: (parent) => {
             if (!parent.account) return <span className="text-xs text-muted-foreground">Hesap yok</span>;
-            return isUserPassive(parent.status)
-              ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
-              : <Badge className="bg-green-100 text-green-700">Aktif</Badge>;
+            return <StatusBadge status={isUserPassive(parent.status) ? 'Pasif' : 'Aktif'} />;
           },
         },
       ]}

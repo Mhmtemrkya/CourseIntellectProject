@@ -274,10 +274,12 @@ builder.Services
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
+                // WebSocket el sıkışması Authorization başlığı taşıyamaz; SignalR
+                // token'ı query string'de gönderir. Liste eksik kalırsa o hub HER
+                // kullanıcıda 401 döner — "/hubs/study-plan" ve "/hubs/question-import"
+                // bu yüzden hiç bağlanamıyordu. Yeni hub eklenince buraya da eklenmeli.
                 if (!string.IsNullOrWhiteSpace(accessToken)
-                    && (path.StartsWithSegments("/hubs/messages")
-                        || path.StartsWithSegments("/hubs/exam-solving")
-                        || path.StartsWithSegments("/hubs/service-tracking")))
+                    && path.StartsWithSegments("/hubs"))
                 {
                     context.Token = accessToken;
                 }

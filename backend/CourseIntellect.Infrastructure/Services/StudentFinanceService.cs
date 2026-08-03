@@ -138,7 +138,7 @@ public sealed class StudentFinanceService(
                 PaidAtUtc = DateTime.UtcNow,
             }, cancellationToken);
 
-            var amountLabel = $"₺{downPayment.ToString("N2", CultureInfo.GetCultureInfo("tr-TR"))}";
+            var amountLabel = MoneyText.Format(downPayment, currency);
             await dbContext.AccountingNotifications.AddAsync(new AccountingNotification
             {
                 Title = "Kayıt peşinatı tahsil edildi",
@@ -835,7 +835,7 @@ public sealed class StudentFinanceService(
         };
         await dbContext.FinancePayments.AddAsync(payment, cancellationToken);
 
-        var amountLabel = $"₺{remainingDownPayment.ToString("N2", CultureInfo.GetCultureInfo("tr-TR"))}";
+        var amountLabel = MoneyText.Format(remainingDownPayment, contract.Currency);
         await dbContext.AccountingNotifications.AddAsync(new AccountingNotification
         {
             Title = "Bekleyen peşinat tahsil edildi",
@@ -1433,7 +1433,7 @@ public sealed class StudentFinanceService(
             await parentNotifier.NotifyStudentParentAsync(
                 group.Key,
                 isOverdue ? "Geciken ödeme hatırlatması" : "Yaklaşan ödeme hatırlatması",
-                $"{group.Key} için {(isOverdue ? "vadesi geçen" : "yaklaşan")} {totalDue.ToString("N2")} ₺ taksit bulunuyor.",
+                $"{group.Key} için {(isOverdue ? "vadesi geçen" : "yaklaşan")} {MoneyText.Format(totalDue)} taksit bulunuyor.",
                 "FinanceReminder",
                 cancellationToken);
             notified++;

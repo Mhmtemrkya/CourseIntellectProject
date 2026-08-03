@@ -48,6 +48,7 @@ import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 import { isUserPassive } from '../../lib/userStatus';
 import { getInstitutionType } from '../../lib/institutionType';
 import { mergeBranches, readSavedStaffBranches, staffBranchConfigurationPayload } from '../../lib/staffBranches';
+import { StatusBadge } from '../../components/ui/status-badge';
 import {
   isValidEmail,
   isValidTcKimlik,
@@ -810,7 +811,15 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
           subtitle={`${activeStaff.length} personeliniz bulunuyor`}
           rangeLabel={(from, to, total) => `${total} personelden ${from}-${to} arası gösteriliyor`}
           emptyTitle="Eşleşen personel bulunamadı"
-          emptyDescription="Rol filtresini veya arama metnini değiştirin."
+          emptyDescription="Aramanıza uyan personel yok. Farklı bir rol deneyin."
+          emptyIcon={Users}
+          blankTitle="Henüz personel kaydınız yok"
+          blankDescription="Öğretmen, sekreter ve yönetici hesapları buradan açılır; her personel kendi rolüyle giriş yapar."
+          blankAction={{
+            label: 'İlk personeli kaydet',
+            icon: Plus,
+            onClick: openRegistrationForm,
+          }}
           actions={(
             <FeatureGate module="registrations" action="staff-register">
               <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={openRegistrationForm}>
@@ -897,9 +906,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
               label: 'Durum',
               sortable: true,
               width: 'minmax(0,0.7fr)',
-              render: (staff) => (isUserPassive(staff.status)
-                ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
-                : <Badge className="bg-green-100 text-green-700">Aktif</Badge>),
+              render: (staff) => (<StatusBadge status={isUserPassive(staff.status) ? 'Pasif' : 'Aktif'} />),
             },
           ]}
           rowActions={(staff) => (

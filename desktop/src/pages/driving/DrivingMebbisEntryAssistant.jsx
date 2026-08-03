@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { useToast } from '../../hooks/use-toast';
 import { completeDrivingMebbisEntryAssistant, downloadDrivingMebbisPhoto, fetchDrivingMebbisEntryAssistant, runDrivingPhotoInspection, updateDrivingMebbisEntryField } from '../../lib/api/modules';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader } from './_shared';
+import { formatDateTime } from '../../lib/format';
 
 export default function DrivingMebbisEntryAssistant() {
   const { profileId } = useParams();
@@ -108,7 +109,7 @@ export default function DrivingMebbisEntryAssistant() {
 
     <div className="space-y-3">{data.fields.map((field, index) => <div key={field.key} className={`rounded-2xl border p-4 ${field.completed ? 'border-emerald-400/50 bg-emerald-500/5' : ''}`}>
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <div className="flex min-w-0 flex-1 gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold">{index + 1}</span><div className="min-w-0"><p className="text-xs font-medium text-muted-foreground">{field.label}</p><p className={`break-words font-semibold ${!field.hasValue ? 'text-red-600' : ''}`}>{field.hasValue ? field.value : 'Bilgi eksik'}</p>{field.completed && <p className="mt-1 text-xs text-emerald-700">{field.completedByName || 'Yetkili kullanıcı'} • {new Date(field.completedAtUtc).toLocaleString('tr-TR')}</p>}</div></div>
+        <div className="flex min-w-0 flex-1 gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold">{index + 1}</span><div className="min-w-0"><p className="text-xs font-medium text-muted-foreground">{field.label}</p><p className={`break-words font-semibold ${!field.hasValue ? 'text-red-600' : ''}`}>{field.hasValue ? field.value : 'Bilgi eksik'}</p>{field.completed && <p className="mt-1 text-xs text-emerald-700">{field.completedByName || 'Yetkili kullanıcı'} • {formatDateTime(field.completedAtUtc)}</p>}</div></div>
         <div className="flex gap-2"><Button variant="outline" disabled={!field.hasValue} onClick={() => copy(field)}><Copy className="mr-2 h-4 w-4" />Kopyala</Button><Button variant={field.completed ? 'default' : 'outline'} disabled={!field.hasValue || saving === field.key} onClick={() => toggle(field)}>{field.completed ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}{field.completed ? 'Girildi' : 'Girdim'}</Button></div>
       </div>
     </div>)}</div>
@@ -127,7 +128,7 @@ function PhotoInspectionPanel({ inspection, busy, onInspect, onDownload }) {
     {!inspection ? <p className="mt-4 rounded-xl bg-amber-500/10 p-3 text-sm">Güncel fotoğraf için denetim kaydı yok. MEBBİS girişine hazır olmak için denetimi çalıştırın.</p> : <>
       <div className="mt-4 flex flex-wrap gap-2 text-xs"><Badge className={`border-0 ${tone.badge}`}>{tone.label}</Badge><Badge variant="outline">{inspection.width}×{inspection.height}</Badge><Badge variant="outline">{inspection.faceCount} yüz</Badge><Badge variant="outline">Işık {Number(inspection.averageBrightness).toFixed(0)}/255</Badge>{inspection.mebbisCopyAvailable && <Badge variant="outline">600×800 JPEG hazır</Badge>}</div>
       <div className="mt-3 grid gap-2 md:grid-cols-2">{inspection.checks.map((check) => { const checkTone = QUALITY[check.severity] || QUALITY.Red; return <div key={check.key} className={`rounded-xl border p-3 ${checkTone.box}`}><div className="flex justify-between gap-2"><b className="text-sm">{check.title}</b><Badge className={`border-0 ${checkTone.badge}`}>{check.severity}</Badge></div><p className="mt-1 text-xs">{check.message}</p></div>; })}</div>
-      <p className="mt-3 text-xs text-muted-foreground">Denetim: {new Date(inspection.createdAtUtc).toLocaleString('tr-TR')} • Motor {inspection.analyzerVersion}</p>
+      <p className="mt-3 text-xs text-muted-foreground">Denetim: {formatDateTime(inspection.createdAtUtc)} • Motor {inspection.analyzerVersion}</p>
     </>}
   </section>;
 }

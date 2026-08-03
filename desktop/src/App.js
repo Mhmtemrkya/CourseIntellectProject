@@ -19,6 +19,7 @@ import Students from "./pages/Students";
 import Parents from "./pages/Parents";
 import Teachers from "./pages/Teachers";
 import Classes from "./pages/Classes";
+import ClassDetail from "./pages/ClassDetail";
 import Schedule from "./pages/Schedule";
 import Attendance from "./pages/Attendance";
 import KioskQR from "./pages/KioskQR";
@@ -316,6 +317,7 @@ function App() {
               <Route path="/parents" element={<Parents />} />
               <Route path="/teachers" element={<Teachers />} />
               <Route path="/classes" element={<Classes />} />
+              <Route path="/classes/:className" element={<ClassDetail />} />
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/admin/schedule" element={<Schedule />} />
               <Route path="/attendance" element={<Attendance />} />

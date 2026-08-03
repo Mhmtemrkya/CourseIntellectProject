@@ -20,6 +20,7 @@ import { useToast } from '../../hooks/use-toast';
 import StudentFinanceAccountDialog from '../../components/finance/StudentFinanceAccountDialog';
 import { backfillDownPaymentMethod, backfillFinanceInstallments, fetchAccountingDashboard, fetchFinanceDashboard, sendFinanceReminders } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
+import { formatDate } from '../../lib/format';
 
 function tl(value) {
   const amount = Number(value || 0);
@@ -80,7 +81,7 @@ function periodDateRange(period, customFrom, customTo) {
   return {
     fromUtc: from.toISOString(),
     toUtc: to.toISOString(),
-    label: `${from.toLocaleDateString('tr-TR')} – ${new Date(to.getTime() - 1).toLocaleDateString('tr-TR')}`,
+    label: `${formatDate(from)} – ${formatDate(to.getTime() - 1)}`,
   };
 }
 

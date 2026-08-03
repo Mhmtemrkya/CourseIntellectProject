@@ -18,6 +18,7 @@ import {
   PremiumMetricCard,
   PremiumPanel,
 } from '../../components/ui/premium-dashboard';
+import { formatMoney } from '../../lib/format';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -70,7 +71,7 @@ export default function SADashboard() {
         {[
           ['Toplam Kurum', stats.totalTenants, Building2, 'blue'],
           ['Toplam Kullanıcı', stats.totalUsers, Users, 'violet'],
-          ['Toplam Tahsilat', `₺${Number(stats.monthlyRevenue || 0).toLocaleString('tr-TR')}`, CreditCard, 'emerald'],
+          ['Toplam Tahsilat', formatMoney(stats.monthlyRevenue), CreditCard, 'emerald'],
           ['API Çağrısı', Number(stats.apiCalls || 0).toLocaleString('tr-TR'), Activity, 'amber'],
         ].map(([label, value, Icon, tone]) => (
           <PremiumMetricCard key={label} title={label} value={value} icon={Icon} tone={tone} trend="Canlı" />
@@ -164,7 +165,7 @@ export default function SADashboard() {
             <AlertTriangle className="h-6 w-6 text-yellow-600" />
             <div>
               <p className="font-medium">Dikkat: gecikmiş platform finans kaydı var</p>
-              <p className="text-sm text-muted-foreground">Toplam gecikmiş tutar ₺{Number(stats.overduePayments || 0).toLocaleString('tr-TR')}</p>
+              <p className="text-sm text-muted-foreground">Toplam gecikmiş tutar {formatMoney(Number(stats.overduePayments || 0))}</p>
             </div>
           </CardContent>
         </Card>

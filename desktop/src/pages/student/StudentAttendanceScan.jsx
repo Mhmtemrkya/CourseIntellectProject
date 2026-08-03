@@ -11,6 +11,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { checkInAttendanceQrSession, fetchActiveAttendanceQrSessions, fetchAttendance } from '../../lib/api/modules';
 import { useToast } from '../../hooks/use-toast';
+import { formatDateTime } from '../../lib/format';
 
 function normalize(value = '') {
   return String(value).toLowerCase().trim();
@@ -179,7 +180,7 @@ export default function StudentAttendanceScan() {
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-muted-foreground">Tarih</span>
-                <span className="font-medium">{selectedRecord.lessonDate ? new Date(selectedRecord.lessonDate).toLocaleString('tr-TR') : 'Belirtilmedi'}</span>
+                <span className="font-medium">{selectedRecord.lessonDate ? formatDateTime(selectedRecord.lessonDate) : 'Belirtilmedi'}</span>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-muted-foreground">Durum</span>

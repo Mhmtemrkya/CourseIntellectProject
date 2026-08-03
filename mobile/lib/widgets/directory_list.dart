@@ -40,7 +40,20 @@ class DirectoryFilter {
 
 const directoryAll = 'all';
 
-class DirectoryList<T> extends StatelessWidget {
+/// Boş listede gösterilen birincil eylem (ör. "İlk öğrenciyi kaydet").
+class DirectoryBlankAction {
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const DirectoryBlankAction({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+}
+
+class DirectoryList<T> extends StatefulWidget {
   final String title;
   final String subtitle;
   final List<DirectoryStat> stats;
@@ -50,8 +63,14 @@ class DirectoryList<T> extends StatelessWidget {
   final List<T> rows;
   final Widget Function(BuildContext context, T row) rowBuilder;
   final String Function(int total) totalLabel;
+  // Boş listenin İKİ hâli ayrıdır (masaüstü DirectoryPage ile aynı kural):
+  //  • filtre/arama daraltmış → arama metnini değiştir,
+  //  • kurumda hiç kayıt yok  → ilk kaydı oluştur.
   final String emptyTitle;
   final String emptyDescription;
+  final String? blankTitle;
+  final String? blankDescription;
+  final DirectoryBlankAction? blankAction;
   final bool loading;
   final String? error;
   final Future<void> Function() onRefresh;
@@ -71,47 +90,78 @@ class DirectoryList<T> extends StatelessWidget {
     required this.onRefresh,
     this.emptyTitle = 'Kayıt bulunamadı',
     this.emptyDescription = 'Filtreleri değiştirin veya yeni kayıt ekleyin.',
+    this.blankTitle,
+    this.blankDescription,
+    this.blankAction,
     this.loading = false,
     this.error,
     this.banner,
   });
 
   @override
+  State<DirectoryList<T>> createState() => _DirectoryListState<T>();
+}
+
+class _DirectoryListState<T> extends State<DirectoryList<T>> {
+  // Arama metni sayfada tutuluyor; boş durumun hangi hâl olduğunu bilebilmek
+  // için kopyası burada da izlenir (sayfaların imzasını değiştirmeden).
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool get _isFiltering =>
+      _searchController.text.trim().isNotEmpty ||
+      widget.filters.any((filter) => filter.value != directoryAll);
+
+  void _clearFilters() {
+    _searchController.clear();
+    widget.onSearchChanged('');
+    for (final filter in widget.filters) {
+      filter.onChanged(directoryAll);
+    }
+    setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return RefreshIndicator(
-      onRefresh: onRefresh,
+      onRefresh: widget.onRefresh,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         children: [
           Text(
-            title.tr,
+            widget.title.tr,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 2),
-          Text(subtitle, style: theme.textTheme.bodySmall),
+          Text(widget.subtitle, style: theme.textTheme.bodySmall),
           const SizedBox(height: 14),
-          if (loading) const LinearProgressIndicator(),
-          if (error != null)
+          if (widget.loading) const LinearProgressIndicator(),
+          if (widget.error != null)
             AdminPanel(
               margin: const EdgeInsets.only(bottom: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(error!),
+                  Text(widget.error!),
                   const SizedBox(height: 10),
                   FilledButton(
-                    onPressed: onRefresh,
+                    onPressed: widget.onRefresh,
                     child: Text('Tekrar Dene'.tr),
                   ),
                 ],
               ),
             ),
-          ?banner,
-          if (stats.isNotEmpty) ...[
+          ?widget.banner,
+          if (widget.stats.isNotEmpty) ...[
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -119,54 +169,92 @@ class DirectoryList<T> extends StatelessWidget {
               childAspectRatio: 2.5,
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
-              children: stats.map((stat) => _statTile(theme, stat)).toList(),
+              children: widget.stats
+                  .map((stat) => _statTile(theme, stat))
+                  .toList(),
             ),
             const SizedBox(height: 14),
           ],
           TextField(
-            onChanged: onSearchChanged,
+            controller: _searchController,
+            onChanged: (value) {
+              widget.onSearchChanged(value);
+              setState(() {}); // boş durum hâli aramaya göre değişir
+            },
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search_rounded),
-              hintText: searchHint.tr,
+              hintText: widget.searchHint.tr,
               isDense: true,
               border: const OutlineInputBorder(),
             ),
           ),
-          if (filters.isNotEmpty) ...[
+          if (widget.filters.isNotEmpty) ...[
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: filters
+              children: widget.filters
                   .map((filter) => _filterChip(context, filter))
                   .toList(),
             ),
           ],
           const SizedBox(height: 14),
-          if (!loading && rows.isEmpty)
+          if (!widget.loading && widget.rows.isEmpty)
             AdminPanel(
               child: Column(
                 children: [
+                  Icon(
+                    _isFiltering
+                        ? Icons.search_off_rounded
+                        : Icons.inbox_outlined,
+                    size: 36,
+                    color: theme.hintColor,
+                  ),
+                  const SizedBox(height: 10),
                   Text(
-                    emptyTitle.tr,
+                    (_isFiltering
+                            ? widget.emptyTitle
+                            : (widget.blankTitle ?? widget.emptyTitle))
+                        .tr,
+                    textAlign: TextAlign.center,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    emptyDescription.tr,
+                    (_isFiltering
+                            ? widget.emptyDescription
+                            : (widget.blankDescription ??
+                                  widget.emptyDescription))
+                        .tr,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall,
                   ),
+                  const SizedBox(height: 14),
+                  if (_isFiltering)
+                    OutlinedButton.icon(
+                      onPressed: _clearFilters,
+                      icon: const Icon(Icons.filter_alt_off_rounded, size: 18),
+                      label: Text('Filtreleri temizle'.tr),
+                    )
+                  else if (widget.blankAction != null)
+                    FilledButton.icon(
+                      onPressed: widget.blankAction!.onPressed,
+                      icon: Icon(widget.blankAction!.icon, size: 18),
+                      label: Text(widget.blankAction!.label.tr),
+                    ),
                 ],
               ),
             )
           else
-            ...rows.map((row) => rowBuilder(context, row)),
-          if (rows.isNotEmpty) ...[
+            ...widget.rows.map((row) => widget.rowBuilder(context, row)),
+          if (widget.rows.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(totalLabel(rows.length), style: theme.textTheme.bodySmall),
+            Text(
+              widget.totalLabel(widget.rows.length),
+              style: theme.textTheme.bodySmall,
+            ),
           ],
         ],
       ),
@@ -296,7 +384,9 @@ class DirectoryRowCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 22,
-                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
+                  backgroundColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.12,
+                  ),
                   backgroundImage: (photoUrl ?? '').isEmpty
                       ? null
                       : NetworkImage(photoUrl!),
@@ -400,10 +490,7 @@ class DirectoryRowCard extends StatelessWidget {
             ],
             if (actions.isNotEmpty) ...[
               const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: actions,
-              ),
+              Row(mainAxisAlignment: MainAxisAlignment.end, children: actions),
             ],
           ],
         ),

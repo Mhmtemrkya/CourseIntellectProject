@@ -11,6 +11,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchLiveRoomSessions, fetchStudents } from '../../lib/api/modules';
 import { openExternalUrl } from '../../lib/tauri';
+import { formatDateTime } from '../../lib/format';
 
 export default function TeacherLiveRoom() {
   const navigate = useNavigate();
@@ -133,7 +134,7 @@ export default function TeacherLiveRoom() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-3 rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground md:grid-cols-3">
                 <div className="flex items-center gap-2"><Users className="h-4 w-4 text-brand-primary" />Beklenen katılımcı: {item.participantCount}</div>
-                <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-brand-accent" />{item.startsAt ? new Date(item.startsAt).toLocaleString('tr-TR') : 'Tarih belirtilmedi'}</div>
+                <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-brand-accent" />{item.startsAt ? formatDateTime(item.startsAt) : 'Tarih belirtilmedi'}</div>
                 <div className="flex items-center gap-2"><Badge variant="outline">{item.className}</Badge></div>
               </div>
               <div className="flex items-center gap-2">
@@ -165,7 +166,7 @@ export default function TeacherLiveRoom() {
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">Başlangıç</span>
-                  <span className="font-medium">{selectedSession.startsAt ? new Date(selectedSession.startsAt).toLocaleString('tr-TR') : 'Belirtilmedi'}</span>
+                  <span className="font-medium">{selectedSession.startsAt ? formatDateTime(selectedSession.startsAt) : 'Belirtilmedi'}</span>
                 </div>
               </div>
               <div className="rounded-xl border p-4 text-sm text-muted-foreground break-all">

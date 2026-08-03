@@ -38,6 +38,7 @@ import '../services/accounting_finance_store.dart';
 import '../services/admin_workflow_api_service.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/responsive_layout.dart';
+import 'package:student/utils/format.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -65,6 +66,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
   Map<String, dynamic> _kpis = const {};
   List<Map<String, dynamic>> _dashboardAlerts = const [];
 
+  // Kurulum sihirbazı durumu; tamamlanmışsa (veya alınamazsa) kart çizilmez.
+  Map<String, dynamic>? _setupStatus;
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +78,19 @@ class _AdminHomePageState extends State<AdminHomePage> {
     _finance.loadDashboard();
     _loadAnalytics();
     _loadDashboard();
+    _loadSetupStatus();
+  }
+
+  Future<void> _loadSetupStatus() async {
+    try {
+      final result = await AdminWorkflowApiService.instance.getSetupStatus();
+      if (!mounted) return;
+      setState(() => _setupStatus = result);
+    } catch (_) {
+      // Kurulumu bitmiş kurumun panosunu hata ile meşgul etmeyiz: kart düşer.
+      if (!mounted) return;
+      setState(() => _setupStatus = null);
+    }
   }
 
   /// Seçili dönemi [from, to) aralığına çevirir (bitiş HARİÇ — backend böyle bekler).
@@ -150,7 +167,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
     _ => 'Bugün',
   };
 
-  String _money(num value) => '₺${value.round()}';
+  // Para biçimi ortak `utils/format.dart`'tan gelir ("5.000 TL").
+  String _money(num value) => formatMoney(value);
 
   /// Kurum sahibinin görmesi gereken tüm sayaçlar — masaüstü panosuyla aynı sıra.
   /// Değeri null gelen (modül kapalı / yetki yok) kart listeye hiç girmez.
@@ -229,6 +247,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
         amber, '30 gün içinde geçersiz', () => const AdministrativeDocumentsPage());
     add('passwordResetRequests', 'Şifre Talebi', Icons.key_outlined, amber,
         'Sıfırlama onayı bekliyor', () => const PasswordResetRequestsPage());
+    add('pendingConsentForms', 'İmzasız Evrak', Icons.draw_outlined, amber,
+        'Onam formu imza bekliyor', () => const AdminStudentsPage());
     add('collections', 'Tahsilat', Icons.payments_outlined, green, period,
         () => const AccountingHomePage(), money: true);
     add('expenses', 'Gider', Icons.trending_down_rounded, red, period,
@@ -303,6 +323,12 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 ],
               ),
               const SizedBox(height: 16),
+              // Kurulumu bitmemiş kurumda sihirbaz en üstte: yeni kurumun ilk işi
+              // uyarıları kovalamak değil, kurumu ayağa kaldırmaktır.
+              ..._setupWizard(context),
+              // Eylem bloğu KPI kartlarının ÜSTÜNDE durur (masaüstü panosuyla aynı
+              // yerde ve aynı sırada); sıralamayı sunucu belirler.
+              ..._priorityActions(context),
               if (kpis.isEmpty)
                 AdminPanel(
                   child: Text(
@@ -663,86 +689,317 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   MaterialPageRoute(builder: (_) => const SupportPage()),
                 ),
               ),
-              const SizedBox(height: 18),
-              AdminSectionTitle(title: 'Öncelikli Uyarılar'.tr),
-              const SizedBox(height: 12),
-              if (_dashboardAlerts.isEmpty)
-                AdminPanel(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF059669).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.verified_rounded,
-                          color: Color(0xFF059669),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Müdahale gerektiren bir durum yok'.tr,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                ..._dashboardAlerts.map((item) {
-                  final critical = item['severity'] == 'Critical';
-                  final color = critical
-                      ? const Color(0xFFB42318)
-                      : const Color(0xFFB45309);
-                  return AdminPanel(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Icon(
-                            Icons.priority_high_rounded,
-                            color: color,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${item['title'] ?? ''}',
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w800),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${item['message'] ?? ''}',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// Kurulum adımının `actionPath`i → mobil sayfa. Masaüstü rotalarıyla aynı
+  /// anahtarlar; karşılığı olmayan adım yalnız metin olarak gösterilir.
+  Widget Function()? _setupPage(String? actionPath) => switch (actionPath) {
+    '/classes' => () => const AdminClassManagementPage(),
+    '/admin/staff-registration' => () => const AdminStaffListPage(),
+    '/schedule' => () => const AdminScheduleListPage(),
+    '/admin/student-registration' => () => const AdminStudentsPage(),
+    _ => null,
+  };
+
+  /// Yeni kurum kurulum sihirbazı (masaüstündeki blokla aynı adımlar ve sıra).
+  /// Adımların bitip bitmediğini sunucu kurumun verisinden hesaplar.
+  List<Widget> _setupWizard(BuildContext context) {
+    final status = _setupStatus;
+    if (status == null || status['completed'] == true) return const [];
+
+    final steps = (status['steps'] as List<dynamic>? ?? const [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+    if (steps.isEmpty) return const [];
+
+    final theme = Theme.of(context);
+    final total = (status['totalSteps'] as num?)?.toInt() ?? steps.length;
+    final done = (status['completedSteps'] as num?)?.toInt() ?? 0;
+    final nextIndex = steps.indexWhere((step) => step['done'] != true);
+    const brand = Color(0xFF2563EB);
+
+    return [
+      AdminPanel(
+        margin: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: brand.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.rocket_launch_outlined, color: brand),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Kurumunuzu kurmaya devam edin'.tr,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                Text(
+                  '$done / $total',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: total == 0 ? 0 : done / total,
+                minHeight: 6,
+                backgroundColor: theme.dividerColor.withValues(alpha: 0.5),
+                valueColor: const AlwaysStoppedAnimation(brand),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...steps.asMap().entries.map((entry) {
+              final index = entry.key;
+              final step = entry.value;
+              final stepDone = step['done'] == true;
+              final page = _setupPage(step['actionPath'] as String?);
+              final isNext = index == nextIndex;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                onTap: stepDone || page == null
+                    ? null
+                    : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => page()),
+                      ),
+                leading: Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: stepDone
+                        ? const Color(0xFF059669).withValues(alpha: 0.14)
+                        : Colors.transparent,
+                    border: stepDone
+                        ? null
+                        : Border.all(color: theme.dividerColor),
+                  ),
+                  child: stepDone
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: Color(0xFF059669),
+                        )
+                      : Text(
+                          '${index + 1}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                ),
+                title: Text(
+                  '${step['title'] ?? ''}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    decoration: stepDone ? TextDecoration.lineThrough : null,
+                    color: stepDone ? theme.hintColor : null,
+                  ),
+                ),
+                subtitle: Text(
+                  stepDone
+                      ? '${step['count'] ?? 0} ${step['countLabel'] ?? ''}'
+                      : '${step['description'] ?? ''}',
+                  style: theme.textTheme.bodySmall,
+                ),
+                trailing: stepDone || page == null
+                    ? null
+                    : Icon(
+                        Icons.chevron_right_rounded,
+                        color: isNext ? brand : theme.hintColor,
+                      ),
+              );
+            }),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  /// Sunucunun uyarı türü → ikon. Masaüstündeki eylem bloğuyla aynı eşleme.
+  static const _alertIcons = <String, IconData>{
+    'Finance': Icons.account_balance_wallet_outlined,
+    'Approval': Icons.verified_user_outlined,
+    'Consent': Icons.draw_outlined,
+    'Attendance': Icons.event_busy_outlined,
+    'Task': Icons.assignment_late_outlined,
+    'Leave': Icons.event_busy_outlined,
+    'Document': Icons.description_outlined,
+    'Account': Icons.key_outlined,
+    'Library': Icons.menu_book_outlined,
+  };
+
+  /// Sunucunun `actionPath`i masaüstü rotasıdır; mobilde karşılık gelen sayfaya
+  /// çevrilir. Karşılığı olmayan yol için satır tıklanamaz kalır (yanlış ekrana
+  /// götürmektense hiç götürmemek daha doğru).
+  Widget Function()? _alertPage(String? actionPath) => switch (actionPath) {
+    '/finance/late-payments' => () => const AccountingOverduePage(),
+    '/finance/installments' => () => const AccountingInstallmentsPage(),
+    '/admin/personnel-approvals' => () => const AdminPersonnelApprovalsPage(),
+    '/students' => () => const AdminStudentsPage(),
+    '/attendance' => () => const AttendanceOverviewPage(),
+    '/admin/task-center' => () => const AdminTaskCenterPage(),
+    '/admin/staff-hr' => () => const AdminWorkflowHubPage(),
+    '/admin/documents' => () => const AdministrativeDocumentsPage(),
+    '/admin/password-reset-requests' => () => const PasswordResetRequestsPage(),
+    '/library' => () => const LibraryManagePage(),
+    _ => null,
+  };
+
+  /// Panonun tepesindeki eylem bloğu: "bugün neye müdahale etmeliyim?".
+  /// Sıra sunucudan gelir, burada YENİDEN SIRALANMAZ — masaüstüyle aynı kalsın.
+  List<Widget> _priorityActions(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // İş yokken blok tek satıra iner; KPI kartları ekranın üstünde kalır.
+    if (_dashboardAlerts.isEmpty) {
+      return [
+        AdminPanel(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.verified_rounded, color: Color(0xFF059669)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Müdahale gerektiren bir durum yok'.tr,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ];
+    }
+
+    final criticalCount = _dashboardAlerts
+        .where((item) => item['severity'] == 'Critical')
+        .length;
+    final warningCount = _dashboardAlerts.length - criticalCount;
+
+    return [
+      AdminSectionTitle(title: 'Öncelikli İşler'.tr),
+      const SizedBox(height: 4),
+      Row(
+        children: [
+          if (criticalCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: Text(
+                '$criticalCount ${'kritik'.tr}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFFB42318),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          if (warningCount > 0)
+            Text(
+              '$warningCount ${'uyarı'.tr}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: const Color(0xFFB45309),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      ..._dashboardAlerts.map((item) {
+        final critical = item['severity'] == 'Critical';
+        final color = critical
+            ? const Color(0xFFB42318)
+            : const Color(0xFFB45309);
+        final page = _alertPage(item['actionPath'] as String?);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Material(
+            color: color.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: page == null
+                  ? null
+                  : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => page()),
+                    ),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: color.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        _alertIcons['${item['type']}'] ??
+                            Icons.priority_high_rounded,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${item['title'] ?? ''}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${item['message'] ?? ''}',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (page != null)
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: theme.hintColor,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+      const SizedBox(height: 6),
+    ];
   }
 
   // Masaüstü panosundaki KPI kartının mobil karşılığı: her kart tıklanabilir ve

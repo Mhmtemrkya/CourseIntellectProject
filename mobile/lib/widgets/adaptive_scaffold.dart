@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../onboarding/onboarding_store.dart';
 import '../onboarding/onboarding_ui.dart';
 import '../theme_provider.dart';
@@ -53,6 +54,27 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
   int _currentIndex = 0;
   late final List<Widget?> _pages;
 
+  /// Telefonda alt şeritte kalan sabit sekme sayısı. Fazlası "Daha" ekranına
+  /// düşer: 7-9 sekmelik şeritte etiketler okunmuyor, ikonlar birbirine giriyordu.
+  static const _pinnedTabs = 4;
+
+  /// "Daha" listesi açık mı? Sekme seçiliyken de açılabilir (kullanıcı listeye
+  /// geri döner), bu yüzden `_currentIndex`ten AYRI tutulur.
+  bool _showMoreSheet = false;
+
+  /// Şerit taşmıyorsa "Daha" hiç eklenmez — 5 sekme rahat sığıyor.
+  bool get _usesMoreTab => widget.destinations.length > _pinnedTabs + 1;
+
+  /// Alt şeritte kaç doğrudan sekme var (Daha hariç).
+  int get _visibleTabCount =>
+      _usesMoreTab ? _pinnedTabs : widget.destinations.length;
+
+  /// "Daha"ya düşen hedefler ve gerçek indeksleri.
+  List<MapEntry<int, AdaptiveDestination>> get _overflowDestinations => [
+    for (var i = _visibleTabCount; i < widget.destinations.length; i++)
+      MapEntry(i, widget.destinations[i]),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -62,8 +84,20 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
   }
 
   void _changePage(int index) {
-    setState(() => _currentIndex = index);
+    setState(() {
+      _currentIndex = index;
+      _showMoreSheet = false;
+    });
     _maybeShowTabIntro(index);
+  }
+
+  /// Alt şeritteki dokunuş. Son sıra "Daha" ise sayfa değiştirmez, listeyi açar.
+  void _onBarTap(int barIndex) {
+    if (_usesMoreTab && barIndex == _visibleTabCount) {
+      setState(() => _showMoreSheet = true);
+      return;
+    }
+    _changePage(barIndex);
   }
 
   // ─── Onboarding ─────────────────────────────────────────────────────────
@@ -120,18 +154,29 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     return _pages[index]!;
   }
 
-  Widget _buildPageStack() {
+  Widget _buildPageStack({bool showMore = false}) {
     return Stack(
-      children: List.generate(widget.destinations.length, (index) {
-        final page = index == _currentIndex ? _buildPage(index) : _pages[index];
-        return Offstage(
-          offstage: _currentIndex != index,
-          child: TickerMode(
-            enabled: _currentIndex == index,
-            child: page ?? const SizedBox.shrink(),
+      children: [
+        ...List.generate(widget.destinations.length, (index) {
+          final active = !showMore && index == _currentIndex;
+          final page = index == _currentIndex
+              ? _buildPage(index)
+              : _pages[index];
+          return Offstage(
+            offstage: !active,
+            child: TickerMode(
+              enabled: active,
+              child: page ?? const SizedBox.shrink(),
+            ),
+          );
+        }),
+        if (showMore)
+          _MoreDestinationsPage(
+            entries: _overflowDestinations,
+            currentIndex: _currentIndex,
+            onSelected: _changePage,
           ),
-        );
-      }),
+      ],
     );
   }
 
@@ -143,6 +188,17 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
+        // "Daha" listesi açıkken geri, listeyi kapatıp bulunulan sekmeye döner —
+        // uygulamadan çıkmaz. Aksi hâlde kullanıcı listeden çıkamıyordu.
+        if (_showMoreSheet) {
+          setState(() => _showMoreSheet = false);
+          return;
+        }
+        // "Daha" altındaki bir hedefteyken geri, o hedefin geldiği listeye döner.
+        if (_usesMoreTab && _currentIndex >= _visibleTabCount) {
+          setState(() => _showMoreSheet = true);
+          return;
+        }
         await handleBottomNavBack(
           context,
           currentIndex: _currentIndex,
@@ -199,8 +255,14 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     final isDark = theme.brightness == Brightness.dark;
     final navTheme = theme.bottomNavigationBarTheme;
 
+    // "Daha" sekmesi, altındaki hedeflerden biri açıkken de seçili görünür:
+    // kullanıcı hangi grupta olduğunu şeritten okuyabilsin.
+    final barIndex = _showMoreSheet || _currentIndex >= _visibleTabCount
+        ? _visibleTabCount
+        : _currentIndex;
+
     return Scaffold(
-      body: _buildPageStack(),
+      body: _buildPageStack(showMore: _showMoreSheet),
       bottomNavigationBar: GestureDetector(
         onLongPress: _replayCurrentTabIntro,
         child: DecoratedBox(
@@ -226,8 +288,8 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
               children: [
                 const _MobileInstitutionBrand(),
                 BottomNavigationBar(
-                  currentIndex: _currentIndex,
-                  onTap: _changePage,
+                  currentIndex: barIndex,
+                  onTap: _onBarTap,
                   type: BottomNavigationBarType.fixed,
                   backgroundColor: navTheme.backgroundColor,
                   selectedItemColor: navTheme.selectedItemColor,
@@ -235,19 +297,113 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                   selectedLabelStyle: navTheme.selectedLabelStyle,
                   unselectedLabelStyle: navTheme.unselectedLabelStyle,
                   elevation: 0,
-                  items: widget.destinations
-                      .map(
-                        (d) => BottomNavigationBarItem(
-                          icon: Icon(d.icon),
-                          label: d.label,
-                        ),
-                      )
-                      .toList(),
+                  items: [
+                    for (final d in widget.destinations.take(_visibleTabCount))
+                      BottomNavigationBarItem(
+                        icon: Icon(d.icon),
+                        label: d.label,
+                      ),
+                    if (_usesMoreTab)
+                      BottomNavigationBarItem(
+                        icon: const Icon(Icons.grid_view_rounded),
+                        label: 'Daha'.tr,
+                      ),
+                  ],
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// "Daha" ekranı: alt şeride sığmayan hedeflerin listesi.
+///
+/// Masaüstündeki hub mantığının mobil karşılığı — şerit dört ana işi tutar,
+/// gerisi tek bir ekranda başlıklı kartlar hâlinde durur. Seçilen hedef normal
+/// bir sekme gibi açılır (yeni rota İTİLMEZ): sayfa durumu korunur, geri
+/// tuşunun anlamı değişmez.
+class _MoreDestinationsPage extends StatelessWidget {
+  final List<MapEntry<int, AdaptiveDestination>> entries;
+  final int currentIndex;
+  final ValueChanged<int> onSelected;
+
+  const _MoreDestinationsPage({
+    required this.entries,
+    required this.currentIndex,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Daha'.tr,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+      body: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        itemCount: entries.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final entry = entries[index];
+          final destination = entry.value;
+          final selected = entry.key == currentIndex;
+          final color = destination.sidebarColor ?? theme.colorScheme.primary;
+
+          return Material(
+            color: selected
+                ? color.withValues(alpha: 0.10)
+                : theme.cardColor.withValues(
+                    alpha: theme.brightness == Brightness.dark ? 0.86 : 0.96,
+                  ),
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => onSelected(entry.key),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: selected
+                        ? color.withValues(alpha: 0.55)
+                        : theme.dividerColor.withValues(alpha: 0.72),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(destination.icon, color: color),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        destination.label.tr,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, color: theme.hintColor),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

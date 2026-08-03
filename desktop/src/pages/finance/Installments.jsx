@@ -26,6 +26,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { createInstallment, fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
 import { formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
+import { StatusBadge } from '../../components/ui/status-badge';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -249,17 +250,16 @@ export default function Installments() {
 
   const getStatusBadge = (plan) => {
     const key = effectiveStatus(plan);
-    const config = {
-      current: { label: 'Güncel', icon: Clock, className: 'bg-yellow-100 text-yellow-700' },
-      overdue: { label: 'Gecikti', icon: AlertCircle, className: 'bg-red-100 text-red-700' },
-      completed: { label: 'Tamamlandı', icon: CheckCircle, className: 'bg-green-100 text-green-700' },
-    };
-    const { label, icon: Icon, className } = config[key];
+    // Etiket ve ton ortak sözlükten gelir; ikon plana özgüdür.
+    const icons = { current: Clock, overdue: AlertCircle, completed: CheckCircle };
+    const labels = { current: 'Güncel', overdue: 'Gecikti', completed: 'Tamamlandı' };
+    const tones = { current: 'warning', overdue: 'danger', completed: 'success' };
+    const Icon = icons[key];
     return (
-      <Badge className={`${className} flex items-center gap-1`}>
+      <StatusBadge status={labels[key]} tone={tones[key]}>
         <Icon className="h-3 w-3" />
-        {label}
-      </Badge>
+        {labels[key]}
+      </StatusBadge>
     );
   };
 

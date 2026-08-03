@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/support_tickets_api_service.dart';
+import '../utils/format.dart';
 
 const _navy = Color(0xFF021622);
 const _navyDeep = Color(0xFF0A2535);
@@ -700,11 +701,7 @@ class _TicketCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime d) {
-    final l = d.toLocal();
-    return '${l.day.toString().padLeft(2, '0')}.${l.month.toString().padLeft(2, '0')}.${l.year} '
-        '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
-  }
+  String _formatDate(DateTime d) => formatDateTime(d);
 
   Widget _statusBadge(String status) {
     final v = status.toLowerCase();

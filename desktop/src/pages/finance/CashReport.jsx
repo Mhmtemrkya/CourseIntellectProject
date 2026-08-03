@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatMoney as formatCurrency } from '../../lib/format';
 import { motion } from 'framer-motion';
 import {
   Receipt, TrendingUp, TrendingDown, CreditCard, Banknote, Building2,
@@ -21,6 +22,7 @@ import { fetchAccountingDashboard } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 import { filterByPeriod, periodLabel, shiftAnchor } from '../../lib/financePeriod';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatDate } from '../../lib/format';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -31,11 +33,6 @@ const itemVariants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
-
-function formatCurrency(val) {
-  const amount = Number(val) || 0;
-  return `${amount.toLocaleString('tr-TR', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 2 })} TL`;
-}
 
 function parseAmount(value) {
   return parseFinanceMoney(value);
@@ -279,7 +276,7 @@ export default function CashReport() {
                       <TableCell>
                         <Badge variant="outline">{c.method || c.paymentMethod || c.type || 'Belirtilmemiş'}</Badge>
                       </TableCell>
-                      <TableCell>{c.time || (c.date ? new Date(c.date).toLocaleDateString('tr-TR') : '-')}</TableCell>
+                      <TableCell>{c.time || (c.date ? formatDate(c.date) : '-')}</TableCell>
                     </TableRow>
                   ))
                 )}

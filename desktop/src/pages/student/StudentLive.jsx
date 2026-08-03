@@ -13,6 +13,7 @@ import { useApp } from '../../context/AppContext';
 import { fetchLiveRoomSessions, fetchStudents } from '../../lib/api/modules';
 import { resolveCurrentStudent } from '../../lib/userMatching';
 import { openHttpUrl } from '../../lib/safeOpen';
+import { formatDate } from '../../lib/format';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -242,7 +243,7 @@ export default function StudentLive() {
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white"><Video className="h-5 w-5" /></div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">{lesson.subject}</p>
-                      <p className="text-xs text-muted-foreground">{lesson.teacher} • {lesson.date ? new Date(lesson.date).toLocaleDateString('tr-TR') : ''}</p>
+                      <p className="text-xs text-muted-foreground">{lesson.teacher} • {lesson.date ? formatDate(lesson.date) : ''}</p>
                     </div>
                     {lesson.meetLink ? (
                       <Button variant="outline" size="sm" onClick={() => handleJoin(lesson)}><Play className="mr-1 h-4 w-4" />İzle</Button>

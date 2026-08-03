@@ -13,6 +13,7 @@ import {
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 import DrivingFleetCompliance from './DrivingFleetCompliance';
+import { formatDate, formatDateTime, formatMoney as money } from '../../lib/format';
 
 const initialVehicle = { plateNumber: '', brand: '', model: '', modelYear: new Date().getFullYear(), licenseClass: 'B', transmissionType: 1, currentKilometer: 0, inspectionExpiresAtUtc: '', insuranceExpiresAtUtc: '' };
 
@@ -54,9 +55,8 @@ const STATUS_FILTERS = [
 ];
 
 const transmissionLabel = (value) => (value === 1 || value === 'Manual' ? 'Manuel' : 'Otomatik');
-const money = (value) => `₺${Number(value || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`;
-const dateOnly = (value) => (value ? new Date(value).toLocaleDateString('tr-TR') : '—');
-const dateTime = (value) => (value ? new Date(value).toLocaleString('tr-TR') : '—');
+const dateOnly = (value) => (value ? formatDate(value) : '—');
+const dateTime = (value) => (value ? formatDateTime(value) : '—');
 
 function Row({ label, value }) {
   return (

@@ -370,11 +370,13 @@ public sealed class AccountingService(
     private static decimal ParseAmount(string amount) => MoneyParser.Parse(amount);
     private static string FormatAmount(decimal amount) => MoneyParser.Format(amount);
 
+    /// <summary>
+    /// Kullanıcının serbest yazdığı tutarı ("5000", "₺5.000,00") ortak gösterim
+    /// biçimine getirir ("5.000 TL"). Eskiden yalnız başına "₺" ekliyordu; aynı
+    /// kayıt listede farklı, kartta farklı görünüyordu.
+    /// </summary>
     private static string NormalizeAmount(string amount)
-    {
-        var value = amount.Trim();
-        return value.StartsWith("₺") ? value : $"₺{value}";
-    }
+        => MoneyParser.Format(MoneyParser.Parse(amount));
 
     private static bool IsApprovedStatus(string? status)
     {

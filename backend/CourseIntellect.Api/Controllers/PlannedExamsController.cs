@@ -129,7 +129,10 @@ public sealed class PlannedExamsController(
 
     private sealed record ExamScoreRow(string ExamTitle, string Subject, int Score);
 
+    // Sınav planlamak yönetim/öğretmen işidir; rol kapısı olmadan öğrenci ve veli
+    // de kurumda sınav oluşturabiliyordu.
     [HttpPost]
+    [Authorize(Roles = "Teacher,Admin,Administrative,BranchManager")]
     [RequireEntitlement("exams", "create")]
     public async Task<IActionResult> Create([FromBody] PlannedExamCreateRequest request, CancellationToken cancellationToken)
     {
@@ -189,6 +192,7 @@ public sealed class PlannedExamsController(
     /// yüzünden girilmiş yoklama kaybolmaz. Boş bırakılan alan değiştirilmez.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Teacher,Admin,Administrative,BranchManager")]
     [RequireEntitlement("exams", "edit")]
     public async Task<IActionResult> Update(Guid id, [FromBody] PlannedExamUpdateRequest request, CancellationToken cancellationToken)
     {
@@ -227,6 +231,7 @@ public sealed class PlannedExamsController(
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Teacher,Admin,Administrative,BranchManager")]
     [RequireEntitlement("exams", "delete")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

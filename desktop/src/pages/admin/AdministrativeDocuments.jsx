@@ -16,6 +16,7 @@ import {
   fetchAdminDocuments, createAdminDocument, archiveAdminDocument, uploadFile,
 } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
+import { formatDate } from '../../lib/format';
 
 const CATEGORIES = ['Genel', 'Gelen Evrak', 'Giden Evrak', 'Sözleşme', 'Politika', 'Resmi Yazı'];
 const DIRECTIONS = [['Internal', 'Kurum İçi'], ['Incoming', 'Gelen'], ['Outgoing', 'Giden']];
@@ -81,7 +82,7 @@ function expiryInfo(value) {
   const days = Math.ceil((date.getTime() - Date.now()) / 86400000);
   if (days < 0) return { tone: 'text-red-600', label: 'Süresi doldu', icon: AlertTriangle };
   if (days <= 30) return { tone: 'text-amber-600', label: `${days} gün kaldı`, icon: Clock3 };
-  return { tone: 'text-muted-foreground', label: date.toLocaleDateString('tr-TR'), icon: Clock3 };
+  return { tone: 'text-muted-foreground', label: formatDate(date), icon: Clock3 };
 }
 
 export default function AdministrativeDocuments() {
@@ -220,7 +221,7 @@ export default function AdministrativeDocuments() {
                       {item.status === 'Archived' ? <Badge>Arşiv</Badge> : null}
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {item.relatedParty || '—'} • {new Date(item.createdAtUtc).toLocaleDateString('tr-TR')}
+                      {item.relatedParty || '—'} • {formatDate(item.createdAtUtc)}
                       {exp ? <span className={`ml-2 inline-flex items-center gap-1 ${exp.tone}`}><exp.icon className="h-3.5 w-3.5" />{exp.label}</span> : null}
                     </p>
                   </div>

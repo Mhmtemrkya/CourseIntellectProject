@@ -15,6 +15,7 @@ import {
   fetchDrivingVehicles, fetchDrivingWorkingHours, setDrivingWorkingHours,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
+import { formatDate, formatDateTime } from '../../lib/format';
 
 const selectClass = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
 
@@ -272,7 +273,7 @@ export default function DrivingAssignments() {
                     <p className="text-xs text-muted-foreground">
                       {ASSIGNMENT_TYPES.find((x) => x.value === item.assignmentType)?.label || item.assignmentType}
                       {' • '}öncelik {item.priority}
-                      {item.startsOnUtc && ` • ${new Date(item.startsOnUtc).toLocaleDateString('tr-TR')} – ${new Date(item.endsOnUtc).toLocaleDateString('tr-TR')}`}
+                      {item.startsOnUtc && ` • ${formatDate(item.startsOnUtc)} – ${formatDate(item.endsOnUtc)}`}
                       {item.daysOfWeekMask > 0 && ` • ${DAYS.filter((d) => (item.daysOfWeekMask & (1 << d.value)) !== 0).map((d) => d.label).join(', ')}`}
                     </p>
                   </div>
@@ -388,7 +389,7 @@ export default function DrivingAssignments() {
                   <div>
                     <b>{item.instructorName}</b>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(item.startsAtUtc).toLocaleString('tr-TR')} – {new Date(item.endsAtUtc).toLocaleString('tr-TR')} • {item.leaveType}
+                      {formatDateTime(item.startsAtUtc)} – {formatDateTime(item.endsAtUtc)} • {item.leaveType}
                       {item.reason && ` • ${item.reason}`}
                     </p>
                   </div>

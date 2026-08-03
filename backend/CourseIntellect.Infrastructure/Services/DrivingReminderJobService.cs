@@ -371,7 +371,7 @@ public sealed class DrivingReminderJobService(
 
             await notifier.NotifyStudentAsync(student.Id,
                 "Gecikmiş ödemeniz var",
-                $"{overdue.Count} taksitinizin vadesi geçti. Toplam gecikmiş tutar: {overdue.Sum():N2} ₺. "
+                $"{overdue.Count} taksitinizin vadesi geçti. Toplam gecikmiş tutar: {MoneyText.Format(overdue.Sum())}. "
                     + "Borcunuz belirli bir eşiği aşarsa yeni randevu alamayabilirsiniz.",
                 DrivingNotificationCategories.Finance,
                 // Haftada bir: her gün borç hatırlatmak taciz olur.

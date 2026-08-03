@@ -1,19 +1,45 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  Columns3,
   LayoutGrid,
   List,
+  Rows3,
   Search,
   Users,
+  X,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Checkbox } from '../ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import {
+  DEFAULT_DENSITY,
+  readPreferences,
+  toggleHiddenColumn,
+  visibleColumns,
+  writePreferences,
+} from '../../lib/directoryPreferences';
+
+// Yoğunluk modunun satır/başlık ölçüleri. "Sık" mod ekrana ~%40 daha fazla satır
+// sığdırır; uzun listelerde kaydırmayı azaltmak için istendi.
+const DENSITY_STYLES = {
+  comfortable: { row: 'px-5 py-3.5 text-sm', head: 'px-5 py-3', card: 'gap-4' },
+  compact: { row: 'px-4 py-2 text-[13px]', head: 'px-4 py-2', card: 'gap-3' },
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -45,8 +71,17 @@ export default function DirectoryPage({
   selection,
   bulkActions,
   cardRender,
+  // İki ayrı boşluk vardır ve aynı şey DEĞİLDİR:
+  //  • filtre/arama sonucu boş → kullanıcı aramasını değiştirmeli,
+  //  • kurumda hiç kayıt yok → kullanıcı İLK kaydı oluşturmalı.
+  // Aynı metni ikisine de göstermek yeni kurumu çıkmaza sokuyordu.
   emptyTitle = 'Kayıt bulunamadı',
   emptyDescription = 'Filtreleri değiştirin veya yeni kayıt ekleyin.',
+  emptyIcon: EmptyIcon = Users,
+  // Hiç kayıt yokken gösterilecek ilk-kurulum metni ve birincil eylemi.
+  blankTitle,
+  blankDescription,
+  blankAction,
   // Türkçe ek düşmesi sayfadan gelir: "6 öğrenciden 1-6 arası gösteriliyor".
   rangeLabel = (from, to, total) => `${total} kayıttan ${from}-${to} arası gösteriliyor`,
   banner,
@@ -55,7 +90,29 @@ export default function DirectoryPage({
   const [view, setView] = useState('list');
   const [sort, setSort] = useState({ key: null, direction: 'asc' });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(defaultPageSize);
+
+  // Görünüm tercihleri kullanıcının son bıraktığı hâlden başlar (tablo bazında).
+  const [preferences, setPreferences] = useState(() => readPreferences(testId));
+  const pageSize = preferences.pageSize || defaultPageSize;
+  const density = preferences.density || DEFAULT_DENSITY;
+  const densityStyle = DENSITY_STYLES[density] || DENSITY_STYLES[DEFAULT_DENSITY];
+
+  const updatePreferences = useCallback((patch) => {
+    setPreferences((prev) => {
+      const next = { ...prev, ...patch };
+      writePreferences(testId, next);
+      return next;
+    });
+  }, [testId]);
+
+  const setPageSize = useCallback((value) => updatePreferences({ pageSize: value }), [updatePreferences]);
+
+  // Gizlenebilir sütunlar: ilki kimlik sütunudur, listede yer almaz.
+  const shownColumns = useMemo(
+    () => visibleColumns(columns, preferences.hiddenColumns),
+    [columns, preferences.hiddenColumns],
+  );
+  const hideableColumns = columns.slice(1);
 
   const filterSignature = filters.map((filter) => filter.value).join('|');
   useEffect(() => { setPage(1); }, [search?.value, filterSignature, pageSize]);
@@ -110,9 +167,19 @@ export default function DirectoryPage({
       : { key, direction: 'asc' }));
   };
 
+  // Arama kutusu doluysa ya da bir filtre "tümü"nden başka bir değerdeyse liste
+  // daraltılmış demektir; boş sonuç "kurumda kayıt yok" anlamına GELMEZ.
+  const isFiltering = Boolean(search?.value?.trim())
+    || filters.some((filter) => filter.value && filter.value !== DIRECTORY_ALL);
+
+  const clearFilters = () => {
+    search?.onChange('');
+    filters.forEach((filter) => filter.onChange(DIRECTORY_ALL));
+  };
+
   const rangeStart = sorted.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const rangeEnd = Math.min(currentPage * pageSize, sorted.length);
-  const gridTemplate = columns.map((column) => column.width || 'minmax(0,1fr)').join(' ');
+  const gridTemplate = shownColumns.map((column) => column.width || 'minmax(0,1fr)').join(' ');
 
   return (
     <motion.div
@@ -183,15 +250,48 @@ export default function DirectoryPage({
         </div>
 
         <div className="flex items-center gap-2">
-          {selection && selectedIds.length > 0 ? (
-            <div className="flex items-center gap-2 rounded-xl border border-[hsl(var(--brand-accent)/0.35)] bg-[hsl(var(--brand-accent)/0.08)] px-3 py-1.5">
-              <span className="text-xs font-bold">{selectedIds.length} seçili</span>
-              {bulkActions}
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => selection.onChange([])}>
-                Temizle
-              </Button>
-            </div>
+          {hideableColumns.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-10 gap-1.5" data-testid={testId ? `${testId}-columns` : undefined}>
+                  <Columns3 className="h-4 w-4" />
+                  Sütunlar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Görünecek sütunlar</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {hideableColumns.map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.key}
+                    checked={!preferences.hiddenColumns.includes(column.key)}
+                    // Radix menüyü kapatmasın: kullanıcı arka arkaya sütun açıp kapatır.
+                    onSelect={(event) => event.preventDefault()}
+                    onCheckedChange={() => updatePreferences({
+                      hiddenColumns: toggleHiddenColumn(columns, preferences.hiddenColumns, column.key),
+                    })}
+                  >
+                    {column.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : null}
+
+          {/* Yoğunluk: rahat ↔ sık. Tercih tabloya özel saklanır. */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 gap-1.5"
+            aria-pressed={density === 'compact'}
+            data-testid={testId ? `${testId}-density` : undefined}
+            data-density={density}
+            onClick={() => updatePreferences({ density: density === 'compact' ? 'comfortable' : 'compact' })}
+          >
+            <Rows3 className="h-4 w-4" />
+            {density === 'compact' ? 'Sık' : 'Rahat'}
+          </Button>
+
           {cardRender ? (
             <div className="flex overflow-hidden rounded-xl border border-foreground/10">
               <button
@@ -216,10 +316,35 @@ export default function DirectoryPage({
       </div>
 
       {sorted.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-foreground/15 py-16 text-center">
-          <Users className="mx-auto h-9 w-9 text-muted-foreground" />
-          <p className="mt-3 font-bold">{emptyTitle}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{emptyDescription}</p>
+        <div
+          className="rounded-2xl border border-dashed border-foreground/15 px-6 py-16 text-center"
+          data-testid={testId ? `${testId}-empty` : undefined}
+          data-empty-kind={isFiltering ? 'filtered' : 'blank'}
+        >
+          {isFiltering ? (
+            <>
+              <Search className="mx-auto h-9 w-9 text-muted-foreground" />
+              <p className="mt-3 font-bold">{emptyTitle}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{emptyDescription}</p>
+              <Button variant="outline" size="sm" className="mt-5" onClick={clearFilters}>
+                Filtreleri temizle
+              </Button>
+            </>
+          ) : (
+            <>
+              <EmptyIcon className="mx-auto h-9 w-9 text-[hsl(var(--brand-accent)/0.7)]" />
+              <p className="mt-3 font-bold">{blankTitle || emptyTitle}</p>
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                {blankDescription || emptyDescription}
+              </p>
+              {blankAction ? (
+                <Button size="sm" className="mt-5" onClick={blankAction.onClick}>
+                  {blankAction.icon ? <blankAction.icon className="mr-1.5 h-4 w-4" /> : null}
+                  {blankAction.label}
+                </Button>
+              ) : null}
+            </>
+          )}
         </div>
       ) : view === 'grid' && cardRender ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -230,13 +355,13 @@ export default function DirectoryPage({
       ) : (
         <div className="overflow-hidden rounded-2xl border border-foreground/10">
           <div
-            className="hidden items-center gap-4 border-b border-foreground/10 bg-foreground/[0.035] px-5 py-3 text-[11px] font-bold uppercase tracking-wide text-muted-foreground lg:grid"
+            className={`hidden items-center ${densityStyle.card} border-b border-foreground/10 bg-foreground/[0.035] ${densityStyle.head} text-[11px] font-bold uppercase tracking-wide text-muted-foreground lg:grid`}
             style={{ gridTemplateColumns: `${selection ? '1.75rem ' : ''}${gridTemplate}${rowActions ? ' 10.5rem' : ''}` }}
           >
             {selection ? (
               <Checkbox checked={allOnPageSelected} onCheckedChange={toggleAllOnPage} aria-label="Tümünü seç" />
             ) : null}
-            {columns.map((column) => (
+            {shownColumns.map((column) => (
               column.sortable ? (
                 <button
                   key={column.key}
@@ -268,7 +393,7 @@ export default function DirectoryPage({
                   onKeyDown={onRowClick ? (event) => {
                     if (event.key === 'Enter') onRowClick(row);
                   } : undefined}
-                  className={`grid grid-cols-1 items-center gap-4 px-5 py-3.5 text-sm transition lg:grid ${onRowClick ? 'cursor-pointer hover:bg-foreground/[0.025]' : ''}`}
+                  className={`grid grid-cols-1 items-center ${densityStyle.card} ${densityStyle.row} transition lg:grid ${onRowClick ? 'cursor-pointer hover:bg-foreground/[0.025]' : ''}`}
                   style={{ gridTemplateColumns: `${selection ? '1.75rem ' : ''}${gridTemplate}${rowActions ? ' 10.5rem' : ''}` }}
                 >
                   {selection ? (
@@ -280,7 +405,7 @@ export default function DirectoryPage({
                       />
                     </span>
                   ) : null}
-                  {columns.map((column) => (
+                  {shownColumns.map((column) => (
                     <div key={column.key} className={`min-w-0 ${column.className || ''}`}>
                       {column.render(row)}
                     </div>
@@ -343,6 +468,34 @@ export default function DirectoryPage({
           </div>
         </div>
       ) : null}
+
+      {/* Toplu işlem çubuğu ekranın altına sabitlenir: seçim yaparken listeyi
+          kaydırınca eylemler gözden kaybolmasın. `.app-shell > *` kuralı
+          Tailwind'in `fixed`ini ezebildiği için PORTAL ile body'ye basılır. */}
+      {selection && selectedIds.length > 0 && typeof document !== 'undefined'
+        ? createPortal(
+          <div
+            className="fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4"
+            data-testid={testId ? `${testId}-bulkbar` : undefined}
+          >
+            <div className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--brand-accent)/0.4)] bg-[hsl(var(--ci-surface-1,var(--card)))] px-4 py-3 shadow-2xl backdrop-blur">
+              <span className="rounded-full bg-[hsl(var(--brand-accent)/0.15)] px-3 py-1 text-sm font-bold text-[hsl(var(--brand-accent))]">
+                {selectedIds.length} seçili
+              </span>
+              {bulkActions}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 px-2 text-xs"
+                onClick={() => selection.onChange([])}
+              >
+                <X className="h-3.5 w-3.5" /> Seçimi bırak
+              </Button>
+            </div>
+          </div>,
+          document.body,
+        )
+        : null}
     </motion.div>
   );
 }

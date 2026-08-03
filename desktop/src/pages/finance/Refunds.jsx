@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/input';
 import { FeatureGate } from '../../components/FeatureGate';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
+import { chargeLabel, getFinanceVocabulary } from '../../lib/financeVocabulary';
 import { useToast } from '../../hooks/use-toast';
 import {
   fetchDrivingCharges,
@@ -30,15 +31,6 @@ const EMPTY_FORM = {
   reason: '',
 };
 
-const CHARGE_LABELS = {
-  ExtraLesson: 'Ek direksiyon dersi',
-  ExamFee: 'Sınav ücreti',
-  FileFee: 'Dosya masrafı',
-  ExtraService: 'Ek hizmet',
-  PackageDifference: 'Paket / vites farkı',
-  Other: 'Diğer ücret',
-};
-
 function money(value, currency = 'TRY') {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(Number(value) || 0);
 }
@@ -54,6 +46,8 @@ function paymentLabel(item) {
 
 export default function Refunds() {
   const { user } = useApp();
+  // Kurum türüne göre dil (kursiyer/öğrenci) ve ek ücret kalem adları.
+  const vocabulary = getFinanceVocabulary(user);
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const { can, loading: permissionLoading } = useDrivingPermissions();
@@ -79,7 +73,7 @@ export default function Refunds() {
         id: String(isDrivingSchool ? row.profileId : row.studentUserId || row.studentName),
         name: isDrivingSchool ? row.fullName : row.studentName,
         secondary: isDrivingSchool
-          ? row.studentNumber != null ? `Kursiyer No: #${row.studentNumber}` : row.groupName || ''
+          ? row.studentNumber != null ? `${vocabulary.person} No: #${row.studentNumber}` : row.groupName || ''
           : row.className || '',
       })));
     } catch (err) {
@@ -120,7 +114,7 @@ export default function Refunds() {
       }
     } catch (err) {
       setDetail(null);
-      setError(err.message || 'Kursiyer hesabı yüklenemedi.');
+      setError(err.message || `${vocabulary.person} hesabı yüklenemedi.`);
     } finally {
       setDetailLoading(false);
     }
@@ -155,7 +149,7 @@ export default function Refunds() {
     ? (item.refundedAtUtc ? 0 : Number(item.netAmount) || 0)
     : Number(item.refundableAmount) || 0);
   const recordLabel = (item) => (isCharge(item)
-    ? CHARGE_LABELS[item.chargeType] || item.chargeType
+    ? chargeLabel(vocabulary, item.chargeType)
     : paymentLabel(item));
 
   const refundable = records.filter((item) => (isCharge(item)
@@ -309,7 +303,7 @@ export default function Refunds() {
         </div>
         <div>
           <h1 className="text-3xl font-black tracking-tight">İadeler</h1>
-          <p className="mt-1 text-muted-foreground">Kursiyer tahsilatlarını tek ve denetlenebilir bir ekrandan yönetin.</p>
+          <p className="mt-1 text-muted-foreground">{vocabulary.person} tahsilatlarını tek ve denetlenebilir bir ekrandan yönetin.</p>
         </div>
       </div>
 
@@ -319,7 +313,7 @@ export default function Refunds() {
         {[
           ['İade Edilebilir', money(refundableTotal, currency), ReceiptText, 'text-emerald-600 bg-emerald-500/10'],
           ['İade Edilen', money(refundedTotal, currency), CheckCircle2, 'text-red-600 bg-red-500/10'],
-          ['Seçili Kursiyer', selectedStudent?.name || 'Seçilmedi', UserRound, 'text-blue-600 bg-blue-500/10'],
+          [`Seçili ${vocabulary.person}`, selectedStudent?.name || 'Seçilmedi', UserRound, 'text-blue-600 bg-blue-500/10'],
         ].map(([label, value, Icon, tone]) => (
           <Card key={label}><CardContent className="flex items-center gap-3 p-4">
             <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tone}`}><Icon className="h-5 w-5" /></div>
@@ -330,11 +324,11 @@ export default function Refunds() {
 
       <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="h-fit">
-          <CardHeader className="pb-3"><CardTitle className="text-lg">Kursiyer seçin</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-lg">{vocabulary.person} seçin</CardTitle></CardHeader>
           <CardContent>
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="pl-9" placeholder="Ad veya kursiyer no ara" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input className="pl-9" placeholder={vocabulary.personSearchHint} value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             {loading ? <div className="py-8 text-center"><LoadingDots /></div> : (
               <div className="max-h-[58vh] space-y-2 overflow-y-auto pr-1">
@@ -346,7 +340,7 @@ export default function Refunds() {
                     <div className="min-w-0"><p className="truncate text-sm font-black">{student.name}</p><p className="truncate text-xs text-muted-foreground">{student.secondary || 'Finans hesabı'}</p></div>
                   </button>
                 ))}
-                {filteredStudents.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Eşleşen kursiyer bulunamadı.</p>}
+                {filteredStudents.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Eşleşen kayıt bulunamadı.</p>}
               </div>
             )}
           </CardContent>
@@ -354,7 +348,7 @@ export default function Refunds() {
 
         <div className="min-w-0 space-y-5">
           {!selectedId ? (
-            <Card><CardContent className="py-16 text-center"><UserRound className="mx-auto h-10 w-10 text-muted-foreground" /><p className="mt-3 font-bold">İşlem yapmak için bir kursiyer seçin.</p></CardContent></Card>
+            <Card><CardContent className="py-16 text-center"><UserRound className="mx-auto h-10 w-10 text-muted-foreground" /><p className="mt-3 font-bold">İşlem yapmak için bir {vocabulary.person.toLocaleLowerCase('tr-TR')} seçin.</p></CardContent></Card>
           ) : detailLoading ? (
             <Card><CardContent className="py-16 text-center"><LoadingDots /></CardContent></Card>
           ) : (
@@ -380,7 +374,7 @@ export default function Refunds() {
                       </div>
                     </div>
                   ))}
-                  {refundable.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Bu kursiyer için iade edilebilir işlem yok.</p>}
+                  {refundable.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">Bu kayıt için iade edilebilir işlem yok.</p>}
                 </CardContent>
               </Card>
 

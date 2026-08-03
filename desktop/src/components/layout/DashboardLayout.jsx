@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { checkIsServiceDriver } from '../../lib/driverGuard';
 import { EntitlementGuard } from '../EntitlementGuard';
 import { PremiumSidebar } from './PremiumSidebar';
+import { SectionHubTabs } from './SectionHub';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { PageErrorBoundary } from '../system/PageErrorBoundary';
@@ -115,6 +116,9 @@ export function DashboardLayout() {
               <div ref={pageRef} className="ci-page p-4 lg:p-5 xl:p-6">
                 <PageErrorBoundary key={location.pathname}>
                   <EntitlementGuard>
+                    {/* Konu hub'ındaki ekranlarda kardeş sekmeler; diğer
+                        adreslerde hiç çizilmez. */}
+                    <SectionHubTabs />
                     <Outlet />
                   </EntitlementGuard>
                 </PageErrorBoundary>

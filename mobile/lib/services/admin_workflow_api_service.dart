@@ -400,6 +400,13 @@ class AdminWorkflowApiService {
         await _get('/api/admin/dashboard', {'from': ?from, 'to': ?to}) as Map,
       );
 
+  // Yeni kurum kurulum sihirbazı: adımlar ve hangilerinin bittiği. "Bitti"
+  // bilgisi kullanıcının işaretinden değil, kurumun kendi verisinden hesaplanır.
+  Future<Map<String, dynamic>> getSetupStatus() async =>
+      Map<String, dynamic>.from(
+        await _get('/api/admin/dashboard/setup') as Map,
+      );
+
   // ---- Dönemsel analitik (kazanç / kayıt / gider) ----
   // period: day | week | month | year. İsteğe bağlı özel aralık: from/to (yyyy-MM-dd).
   Future<Map<String, dynamic>> getAnalytics({

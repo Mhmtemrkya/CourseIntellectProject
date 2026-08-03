@@ -38,10 +38,54 @@ class AccountingDashboardPayload {
   });
 }
 
+/// Gider defteri satırı (ortak /api/finance/expenses).
+class ExpenseLedgerRecord {
+  final String id;
+  final String title;
+  final String category;
+  final int amount;
+  final DateTime? expenseDate;
+
+  const ExpenseLedgerRecord({
+    required this.id,
+    required this.title,
+    required this.category,
+    required this.amount,
+    required this.expenseDate,
+  });
+
+  factory ExpenseLedgerRecord.fromMap(Map<String, dynamic> map) {
+    final raw = map['expenseDateUtc'] as String?;
+    return ExpenseLedgerRecord(
+      id: map['id'] as String? ?? '',
+      title: map['title'] as String? ?? '',
+      category: map['category'] as String? ?? '',
+      amount: ((map['amount'] as num?) ?? 0).round(),
+      expenseDate: raw == null ? null : DateTime.tryParse(raw)?.toLocal(),
+    );
+  }
+}
+
 class AccountingApiService {
   AccountingApiService._();
 
   static final AccountingApiService instance = AccountingApiService._();
+
+  /// Gider defteri (Finans > Giderler) — kurumdan bağımsız ortak uç.
+  /// Muhasebe panosundaki "Gider" toplamı bordro ve fatura yanında bunu da sayar;
+  /// aksi hâlde muhasebecinin girdiği kira/elektrik faturası panoda görünmez.
+  /// Uç düz dizi DEĞİL `{ items, summary, ... }` döner.
+  Future<List<ExpenseLedgerRecord>> fetchExpenseLedger() async {
+    final response = await _authorizedGet('/api/finance/expenses');
+    final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    return (map['items'] as List<dynamic>? ?? const [])
+        .map(
+          (item) => ExpenseLedgerRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
+        .toList();
+  }
 
   Future<AccountingDashboardPayload> fetchDashboard() async {
     final response = await _authorizedGet('/api/accounting/dashboard');

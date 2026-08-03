@@ -32,6 +32,7 @@ import {
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
+import { formatMoney } from '../../lib/format';
 import {
   checkoutLibraryBook,
   createLibraryBook,
@@ -248,7 +249,7 @@ export default function LibraryPage() {
       toast({
         title: 'İade alındı',
         description: result?.fineAmount > 0
-          ? `${loan.bookTitle} — ${result.overdueDays} gün gecikme, ceza ₺${result.fineAmount}`
+          ? `${loan.bookTitle} — ${result.overdueDays} gün gecikme, ceza ${formatMoney(result.fineAmount)}`
           : loan.bookTitle,
       });
       load();
@@ -440,7 +441,7 @@ export default function LibraryPage() {
                 ) : (
                   <Badge variant="outline" className="rounded-lg border-emerald-500/30 text-emerald-600">Son: {formatDate(loan.dueAtUtc)}</Badge>
                 )}
-                {loan.fineAmount > 0 && <p className="mt-1 text-red-500">Ceza: ₺{loan.fineAmount}</p>}
+                {loan.fineAmount > 0 && <p className="mt-1 text-red-500">Ceza: {formatMoney(loan.fineAmount)}</p>}
               </div>
               {!loan.returnedAtUtc && (
                 <div className="flex gap-2">
@@ -579,7 +580,7 @@ export default function LibraryPage() {
               <Input type="number" min="1" className="mt-1 rounded-xl" value={settings.extensionDays} onChange={(e) => setSettings((p) => ({ ...p, extensionDays: e.target.value }))} />
             </div>
             <div>
-              <Label>Günlük gecikme cezası (₺, 0 = yok)</Label>
+              <Label>Günlük gecikme cezası (TL, 0 = yok)</Label>
               <Input type="number" min="0" step="0.5" className="mt-1 rounded-xl" value={settings.finePerDay} onChange={(e) => setSettings((p) => ({ ...p, finePerDay: e.target.value }))} />
             </div>
           </div>

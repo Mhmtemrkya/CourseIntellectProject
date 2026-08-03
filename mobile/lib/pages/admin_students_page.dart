@@ -294,7 +294,11 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
         rows: rows,
         totalLabel: (total) => '${'Toplam'.tr} $total ${'öğrenci'.tr}',
         emptyTitle: 'Öğrenci bulunamadı',
-        emptyDescription: 'Filtreleri değiştirin veya yeni öğrenci kaydedin.',
+        emptyDescription:
+            'Aramanıza uyan öğrenci yok. Farklı bir sınıf veya durum deneyin.',
+        blankTitle: 'Henüz öğrenci kaydınız yok',
+        blankDescription:
+            'İlk öğrenciyi kaydettiğinizde yoklama, sınav ve tahsilat ekranları da çalışmaya başlar.',
         rowBuilder: (context, student) {
           final passiveRow = _isPassive(student);
           final selected = _selected.contains(student.userId);

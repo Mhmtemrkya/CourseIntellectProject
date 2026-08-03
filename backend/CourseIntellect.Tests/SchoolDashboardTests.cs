@@ -126,6 +126,60 @@ public sealed class SchoolDashboardTests : IDisposable
         return JsonDocument.Parse(json).RootElement.GetProperty("kpis");
     }
 
+    private static string[] AlertTypesOf(IActionResult result)
+    {
+        var ok = Assert.IsType<OkObjectResult>(result);
+        // Uyarılar record olduğu için ASP.NET'in camelCase düzeni elle uygulanır.
+        var json = JsonSerializer.Serialize(ok.Value, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        });
+        return [.. JsonDocument.Parse(json).RootElement.GetProperty("alerts")
+            .EnumerateArray()
+            .Select(x => x.GetProperty("type").GetString() ?? string.Empty)];
+    }
+
+    /// <summary>
+    /// Panonun tepesindeki eylem bloğunu besleyecek dört ayrı iş: vadesi geçmiş
+    /// taksit, bekleyen onay, imzasız onam formu ve bugünkü devamsızlık.
+    /// </summary>
+    private async Task SeedActionableWorkAsync()
+    {
+        db.Context.FinanceInstallments.Add(new FinanceInstallment
+        {
+            TenantId = TenantA,
+            EnrollmentContractId = Guid.NewGuid(),
+            StudentName = "Ali VELI",
+            DueDateUtc = DateTime.UtcNow.AddDays(-10),
+            Amount = 2000m,
+            PaidAmount = 0m,
+        });
+        db.Context.ApprovalRequests.Add(new ApprovalRequest
+        {
+            TenantId = TenantA,
+            Title = "Malzeme talebi",
+            Status = "Pending",
+        });
+        db.Context.ConsentFormRecords.Add(new ConsentFormRecord
+        {
+            TenantId = TenantA,
+            StudentProfileId = Guid.NewGuid(),
+            StudentName = "Ali VELI",
+            Title = "Gezi izni",
+            Status = ConsentFormStatus.AwaitingSignature,
+        });
+        db.Context.AttendanceEntries.Add(new AttendanceEntry
+        {
+            TenantId = TenantA,
+            StudentName = "Ayse YILMAZ",
+            ClassName = "9-B",
+            LessonDate = DateTime.UtcNow,
+            Status = "Devamsiz",
+        });
+
+        await db.Context.SaveChangesAsync();
+    }
+
     [Fact]
     public async Task Kpis_CountOnlyOwnTenant_AndSkipPassiveAccounts()
     {
@@ -166,6 +220,84 @@ public sealed class SchoolDashboardTests : IDisposable
         Assert.Equal(1500m, kpis.GetProperty("collections").GetDecimal());
         Assert.Equal(1, kpis.GetProperty("overdueLoans").GetInt32());
         Assert.Equal(3, kpis.GetProperty("unreadMessages").GetInt32());
+    }
+
+    /// <summary>
+    /// Uyarı sırası panonun SÖZLEŞMESİDİR: masaüstü ve mobil listeyi olduğu gibi
+    /// çizer, kendileri sıralamaz. Önce kritikler, sonra müdahale önceliği.
+    /// </summary>
+    [Fact]
+    public async Task Alerts_AreOrdered_ByCriticalThenActionPriority()
+    {
+        await SeedAsync();
+        await SeedActionableWorkAsync();
+        var controller = CreateController(TenantA, "finance", "approvals", "students", "attendance", "library");
+
+        var types = AlertTypesOf(await controller.Get(null, null, CancellationToken.None));
+
+        Assert.Equal(["Finance", "Approval", "Consent", "Attendance", "Library"], types);
+    }
+
+    [Fact]
+    public async Task ConsentAlert_IsHidden_WhenStudentModuleIsNotEntitled()
+    {
+        await SeedAsync();
+        await SeedActionableWorkAsync();
+        var controller = CreateController(TenantA, "approvals"); // "students" kapalı
+
+        var result = await controller.Get(null, null, CancellationToken.None);
+
+        Assert.DoesNotContain("Consent", AlertTypesOf(result));
+        Assert.Equal(JsonValueKind.Null, KpisOf(result).GetProperty("pendingConsentForms").ValueKind);
+    }
+
+    private static JsonElement SetupOf(IActionResult result)
+    {
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var json = JsonSerializer.Serialize(ok.Value, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        });
+        return JsonDocument.Parse(json).RootElement;
+    }
+
+    /// <summary>
+    /// Yeni kurumun panosu boş değil, kurulum sihirbazıyla açılır: hiçbir adım
+    /// bitmemiştir ve adımlar bağımlılık sırasındadır.
+    /// </summary>
+    [Fact]
+    public async Task Setup_ListsAllStepsAsPending_ForFreshInstitution()
+    {
+        db.Context.TenantWorkspaces.Add(new TenantWorkspace { Id = TenantA, Name = "Yeni Okul", Slug = "yeni-okul" });
+        await db.Context.SaveChangesAsync();
+        var controller = CreateController(TenantA);
+
+        var setup = SetupOf(await controller.GetSetup(CancellationToken.None));
+
+        Assert.False(setup.GetProperty("completed").GetBoolean());
+        Assert.Equal(0, setup.GetProperty("completedSteps").GetInt32());
+        Assert.Equal(
+            ["classes", "teachers", "schedule", "enrollment"],
+            setup.GetProperty("steps").EnumerateArray().Select(x => x.GetProperty("key").GetString()));
+    }
+
+    /// <summary>
+    /// Adım "bitti" bilgisi kullanıcının işaretinden değil kurumun verisinden
+    /// gelir: öğretmen kadrosu varsa o adım kendiliğinden tamamlanır.
+    /// </summary>
+    [Fact]
+    public async Task Setup_MarksStepDone_FromInstitutionData()
+    {
+        await SeedAsync(); // A kurumunda 1 öğretmen var
+        var controller = CreateController(TenantA);
+
+        var setup = SetupOf(await controller.GetSetup(CancellationToken.None));
+
+        var teacherStep = setup.GetProperty("steps").EnumerateArray()
+            .Single(x => x.GetProperty("key").GetString() == "teachers");
+        Assert.True(teacherStep.GetProperty("done").GetBoolean());
+        Assert.Equal(1, teacherStep.GetProperty("count").GetInt32());
+        Assert.Equal(1, setup.GetProperty("completedSteps").GetInt32());
     }
 
     [Fact]

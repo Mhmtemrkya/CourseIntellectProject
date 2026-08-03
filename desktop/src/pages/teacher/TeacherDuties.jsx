@@ -12,6 +12,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { useApp } from '../../context/AppContext';
 import { fetchMyAdminTasks, fetchMyDuties, fetchMyDutyStats, updateAdminTaskStatus } from '../../lib/api/modules';
 import { useToast } from '../../hooks/use-toast';
+import { formatDateTime } from '../../lib/format';
 
 const WEEKDAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const PAGE_SIZE = 5;
@@ -257,7 +258,7 @@ export default function TeacherDuties() {
                     <p className="font-bold">{task.title}</p>
                     <p className="mt-1 text-sm text-muted-foreground">{task.description || 'Açıklama yok'}</p>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Başlangıç: {task.startDateUtc ? new Date(task.startDateUtc).toLocaleString('tr-TR') : '—'} · Bitiş: {task.endDateUtc ? new Date(task.endDateUtc).toLocaleString('tr-TR') : '—'}
+                      Başlangıç: {task.startDateUtc ? formatDateTime(task.startDateUtc) : '—'} · Bitiş: {task.endDateUtc ? formatDateTime(task.endDateUtc) : '—'}
                     </p>
                     {task.rejectionReason ? (
                       <p className="mt-2 rounded-lg border border-rose-500/20 bg-rose-500/10 p-2 text-xs text-rose-300">Mazeret: {task.rejectionReason}</p>

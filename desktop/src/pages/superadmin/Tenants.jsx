@@ -17,6 +17,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchPlatformTenants, approveTenant, rejectTenant, fetchTenantFeatures, saveTenantFeatures } from '../../lib/api/modules';
 import { Switch } from '../../components/ui/switch';
+import { formatMoney } from '../../lib/format';
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 
@@ -258,7 +259,7 @@ export default function Tenants() {
                   <TableCell><Badge variant="outline">{tenant.plan}</Badge></TableCell>
                   <TableCell><div className="flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground" /><span>{tenant.users}</span></div></TableCell>
                   <TableCell>{tenant.branches}</TableCell>
-                  <TableCell><span className="font-medium">₺{Number(tenant.monthlyFee || 0).toLocaleString('tr-TR')}</span></TableCell>
+                  <TableCell><span className="font-medium">{formatMoney(Number(tenant.monthlyFee || 0))}</span></TableCell>
                   <TableCell>{statusBadge(tenant.status)}</TableCell>
                   <TableCell>
                     {tenant.status === 'pending' ? (
@@ -337,7 +338,7 @@ export default function Tenants() {
               <div><p className="font-medium">Plan</p><p className="text-muted-foreground">{selectedTenant.plan}</p></div>
               <div><p className="font-medium">Durum</p>{statusBadge(selectedTenant.status)}</div>
               <div><p className="font-medium">Kullanıcı / Şube</p><p className="text-muted-foreground">{selectedTenant.users} kullanıcı · {selectedTenant.branches} şube</p></div>
-              <div><p className="font-medium">Aylık Tutar</p><p className="text-muted-foreground">₺{Number(selectedTenant.monthlyFee || 0).toLocaleString('tr-TR')}</p></div>
+              <div><p className="font-medium">Aylık Tutar</p><p className="text-muted-foreground">{formatMoney(Number(selectedTenant.monthlyFee || 0))}</p></div>
             </div>
           ) : null}
         </DialogContent>

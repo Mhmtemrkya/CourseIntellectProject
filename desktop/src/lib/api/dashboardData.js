@@ -869,7 +869,6 @@ export async function fetchParentDashboardData(user) {
     }),
     api.get('/api/messages/threads'),
     api.get('/api/attendance'),
-    api.get('/api/accounting/dashboard'),
     api.get('/api/homework'),
     api.get('/api/schedule'),
     api.get('/api/plannedexams'),
@@ -881,12 +880,11 @@ export async function fetchParentDashboardData(user) {
   const announcements = safeData(results[1], []);
   const threads = safeData(results[2], []);
   const attendance = safeData(results[3], []);
-  const accounting = results[4].status === 'fulfilled' ? results[4].value : null;
-  const homework = safeData(results[5], []);
-  const scheduleEntries = safeData(results[6], []);
-  const plannedExams = safeData(results[7], []);
-  const notifications = safeData(results[8], []);
-  const financeAccounts = safeData(results[9], []);
+  const homework = safeData(results[4], []);
+  const scheduleEntries = safeData(results[5], []);
+  const plannedExams = safeData(results[6], []);
+  const notifications = safeData(results[7], []);
+  const financeAccounts = safeData(results[8], []);
 
   const selectedChild = children[0] || null;
 
@@ -907,16 +905,14 @@ export async function fetchParentDashboardData(user) {
     const absentCount = childAttendance.filter((item) => normalizeText(item.status).includes('devamsiz')).length;
     const totalAttendance = childAttendance.length;
     const attendanceRate = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
-    const childCollections = (accounting?.collections || []).filter(
-      (item) => normalizeText(item.name) === normalizeText(child.fullName)
+    // Çocuğun ödeme özeti VELİ KAPSAMLI uçtan gelir (/api/parent/finance/children).
+    // Eskiden yönetici ucu (/api/accounting/dashboard) okunuyordu; veli o uca
+    // erişemediği için (403) ödenen/bekleyen tutar her velide 0 görünüyordu.
+    const childAccount = (Array.isArray(financeAccounts) ? financeAccounts : []).find(
+      (item) => normalizeText(item.studentName) === normalizeText(child.fullName)
     );
-    const childInstallments = (accounting?.installments || []).filter(
-      (item) => normalizeText(item.student) === normalizeText(child.fullName)
-    );
-    const paidTotal = childCollections.reduce((sum, item) => sum + safeNumber(item.amount), 0);
-    const pendingPayment = childInstallments
-      .filter((item) => normalizeText(item.status) !== 'odendi')
-      .reduce((sum, item) => sum + safeNumber(item.amount), 0);
+    const paidTotal = safeNumber(childAccount?.paidTotal);
+    const pendingPayment = safeNumber(childAccount?.balance);
 
     return {
       attendance: attendanceRate,

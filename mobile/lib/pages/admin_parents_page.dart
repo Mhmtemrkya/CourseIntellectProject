@@ -76,16 +76,15 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
       if (name.isEmpty) continue;
       grouped.putIfAbsent(name.toLowerCase(), () => []).add(student);
     }
-    final rows =
-        grouped.values.map((children) {
-          final first = children.first;
-          return _ParentRow(
-            name: first.parentName,
-            phone: first.parentPhone,
-            email: first.parentEmail,
-            children: children,
-          );
-        }).toList()..sort((a, b) => a.name.compareTo(b.name));
+    final rows = grouped.values.map((children) {
+      final first = children.first;
+      return _ParentRow(
+        name: first.parentName,
+        phone: first.parentPhone,
+        email: first.parentEmail,
+        children: children,
+      );
+    }).toList()..sort((a, b) => a.name.compareTo(b.name));
     return rows;
   }
 
@@ -196,19 +195,17 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
         rows: rows,
         totalLabel: (total) => '${'Toplam'.tr} $total ${'veli'.tr}',
         emptyTitle: 'Veli bulunamadı',
-        emptyDescription: 'Filtreleri değiştirin veya öğrenci kaydından veli ekleyin.',
+        emptyDescription:
+            'Aramanıza uyan veli yok. Farklı bir sınıf veya durum deneyin.',
+        blankTitle: 'Henüz veli kaydınız yok',
+        blankDescription:
+            'Veliler ayrı ayrı eklenmez: öğrenci kaydı sırasında girilen veli bilgisinden otomatik oluşur.',
         rowBuilder: (context, parent) => DirectoryRowCard(
           title: parent.name,
-          subtitle: parent.children
-              .map((child) => child.fullName)
-              .join(', '),
+          subtitle: parent.children.map((child) => child.fullName).join(', '),
           trailingBadge: '${parent.children.length} ${'öğrenci'.tr}',
           metrics: [
-            (
-              icon: Icons.phone_outlined,
-              label: 'Telefon',
-              value: parent.phone,
-            ),
+            (icon: Icons.phone_outlined, label: 'Telefon', value: parent.phone),
             (
               icon: Icons.mail_outline_rounded,
               label: 'E-posta',

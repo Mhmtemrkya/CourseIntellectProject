@@ -13,6 +13,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { fetchApprovals, decideApproval } from '../../lib/api/modules';
+import { formatMoney } from '../../lib/format';
 
 const STATUS_LABEL = {
   Pending: 'İncelemede',
@@ -25,9 +26,9 @@ function statusLabel(status) {
   return STATUS_LABEL[status] || status || 'İncelemede';
 }
 
-function money(amount, currency = '₺') {
-  if (amount == null) return null;
-  return `${Number(amount).toLocaleString('tr-TR')} ${currency}`;
+// Para biçimi ortak `lib/format.js`'ten gelir ("5.000 TL").
+function money(amount) {
+  return amount == null ? null : formatMoney(amount);
 }
 
 export default function AdminPersonnelApprovals() {

@@ -12,21 +12,48 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/staff-hr")]
 public sealed class StaffHrController(IStaffHrService staffHrService) : ControllerBase
 {
+    /// <summary>
+    /// İzin kayıtları izin türü ve gerekçe (sağlık, ölüm, doğum) taşır. Öğrenci ve
+    /// veli bu ekrana hiç girmez; personel yalnız KENDİ izinlerini görür, tüm kadroyu
+    /// yalnız yönetim (kurum yöneticisi / idari / şube müdürü) görür.
+    /// </summary>
     [HttpGet("leaves")]
     public async Task<IActionResult> GetLeaves(
         [FromQuery] string? status,
         [FromQuery] string? staffName,
         CancellationToken cancellationToken)
     {
+        if (!IsStaff())
+        {
+            return Forbid();
+        }
+
+        if (!IsStaffManager())
+        {
+            staffName = CurrentUserName();
+        }
+
         return Ok(await staffHrService.GetLeavesAsync(status, staffName, cancellationToken));
     }
 
     [HttpPost("leaves")]
     public async Task<IActionResult> CreateLeave([FromBody] CreateLeaveRequest request, CancellationToken cancellationToken)
     {
+        if (!IsStaff())
+        {
+            return Forbid();
+        }
+
         if (string.IsNullOrWhiteSpace(request.StaffName) && string.IsNullOrWhiteSpace(CurrentUserName()))
         {
             return BadRequest(new { message = "Personel adı zorunludur." });
+        }
+
+        // Yönetici olmayan personel yalnız kendi adına izin talep edebilir;
+        // aksi hâlde başkasının adına izin kaydı açılabiliyordu.
+        if (!IsStaffManager())
+        {
+            request = request with { StaffUserId = CurrentUserId(), StaffName = CurrentUserName() };
         }
 
         return Ok(await staffHrService.CreateLeaveAsync(request, CurrentUserId(), CurrentUserName(), cancellationToken));
@@ -44,9 +71,19 @@ public sealed class StaffHrController(IStaffHrService staffHrService) : Controll
     [HttpGet("leave-balance")]
     public async Task<IActionResult> GetLeaveBalance([FromQuery] string staffName, CancellationToken cancellationToken)
     {
+        if (!IsStaff())
+        {
+            return Forbid();
+        }
+
         if (string.IsNullOrWhiteSpace(staffName))
         {
             return BadRequest(new { message = "staffName gerekli." });
+        }
+
+        if (!IsStaffManager() && !string.Equals(staffName.Trim(), CurrentUserName().Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return Forbid();
         }
 
         return Ok(await staffHrService.GetLeaveBalanceAsync(staffName, cancellationToken));
@@ -55,6 +92,16 @@ public sealed class StaffHrController(IStaffHrService staffHrService) : Controll
     [HttpGet("assets")]
     public async Task<IActionResult> GetAssets([FromQuery] string? staffName, CancellationToken cancellationToken)
     {
+        if (!IsStaff())
+        {
+            return Forbid();
+        }
+
+        if (!IsStaffManager())
+        {
+            staffName = CurrentUserName();
+        }
+
         return Ok(await staffHrService.GetAssetsAsync(staffName, cancellationToken));
     }
 
@@ -79,6 +126,17 @@ public sealed class StaffHrController(IStaffHrService staffHrService) : Controll
         var result = await staffHrService.ReturnAssetAsync(id, CurrentUserId(), CurrentUserName(), cancellationToken);
         return result is null ? NotFound() : Ok(result);
     }
+
+    /// <summary>Personel kadrosu rolleri — öğrenci/veli bu ekranların dışındadır.</summary>
+    private bool IsStaff()
+        => User.IsInRole("Admin") || User.IsInRole("Administrative") || User.IsInRole("BranchManager")
+        || User.IsInRole("Accounting") || User.IsInRole("Teacher") || User.IsInRole("Cafeteria")
+        || User.IsInRole("Developer");
+
+    /// <summary>Tüm kadronun izin/demirbaş kaydını görebilen yönetim rolleri.</summary>
+    private bool IsStaffManager()
+        => User.IsInRole("Admin") || User.IsInRole("Administrative") || User.IsInRole("BranchManager")
+        || User.IsInRole("Developer");
 
     private Guid? CurrentUserId()
     {

@@ -9,6 +9,7 @@ import {
   createExpense, deleteExpense, fetchExpenses, updateExpense,
 } from '../../lib/api/modules';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from '../driving/_shared';
+import { formatDate, formatDateTime } from '../../lib/format';
 
 // Backend enum'larıyla birebir; personel maaş/primi kasıtlı olarak YOK.
 const CATEGORIES = [
@@ -24,8 +25,8 @@ const CATEGORIES = [
 ];
 const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map((x) => [x.value, x.label]));
 const money = (v) => `${Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`;
-const dateTime = (v) => (v ? new Date(v).toLocaleString('tr-TR') : '—');
-const dateOnly = (v) => (v ? new Date(v).toLocaleDateString('tr-TR') : '—');
+const dateTime = (v) => (v ? formatDateTime(v) : '—');
+const dateOnly = (v) => (v ? formatDate(v) : '—');
 const todayInput = () => new Date().toISOString().slice(0, 10);
 
 const EMPTY_FORM = { category: 'Fuel', title: '', amount: '', expenseDate: todayInput(), vendorName: '', invoiceNo: '', vehicleId: '', note: '' };

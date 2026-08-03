@@ -29,13 +29,15 @@ import { LoadingDots } from '../components/animations/AnimatedIcon';
 import {
   PremiumListRow,
   PremiumPanel,
-  PremiumStatusPill,
 } from '../components/ui/premium-dashboard';
 import RoleDashboardColumns from '../components/dashboard/RoleDashboardColumns';
+import ActionPriorityPanel from '../components/dashboard/ActionPriorityPanel';
+import SetupWizardPanel from '../components/dashboard/SetupWizardPanel';
 import {
   fetchAdminAnalytics,
   fetchDrivingSchoolStatus,
   fetchSchoolDashboard,
+  fetchSchoolSetupStatus,
 } from '../lib/api/modules';
 import { fetchAdminDashboardData } from '../lib/api/dashboardData';
 
@@ -244,6 +246,7 @@ export default function Dashboard() {
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [overview, setOverview] = useState(null);
   const [overviewError, setOverviewError] = useState('');
+  const [setupStatus, setSetupStatus] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -267,6 +270,16 @@ export default function Dashboard() {
   }, [range]);
 
   useEffect(() => { loadOverview(); }, [loadOverview]);
+
+  // Kurulum durumu dönemden bağımsızdır; bir kez yüklenir. Alınamazsa sihirbaz
+  // hiç çizilmez — kurulumu bitmiş kurumun panosunu hata bandıyla meşgul etmeyiz.
+  useEffect(() => {
+    let active = true;
+    fetchSchoolSetupStatus()
+      .then((status) => { if (active) setSetupStatus(status); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -407,6 +420,27 @@ export default function Dashboard() {
         />
       ) : null}
 
+      {/* Kurulumu bitmemiş kurumda sihirbaz en üstte durur: yeni kurumun ilk işi
+          uyarıları kovalamak değil, kurumu ayağa kaldırmaktır. Kurulum bitince
+          bileşen kendini hiç çizmez. */}
+      {setupStatus && !setupStatus.completed ? (
+        <motion.div variants={itemVariants}>
+          <SetupWizardPanel status={setupStatus} navigate={navigate} />
+        </motion.div>
+      ) : null}
+
+      {/* Eylem bloğu KPI kartlarının ÜSTÜNDE durur: kurum sahibi panoyu açtığında
+          önce "yapılacak iş"i, sonra durumu görür. Sıra sunucudan gelir. */}
+      <motion.div variants={itemVariants}>
+        <ActionPriorityPanel
+          alerts={overviewAlerts}
+          navigate={navigate}
+          emptyDetail={data?.todayLeaves?.length
+            ? `Bugün izinli personel: ${data.todayLeaves.map((item) => item.staffName).join(', ')}`
+            : 'Tüm kontroller güncel.'}
+        />
+      </motion.div>
+
       <RoleDashboardColumns groups={groupedKpis} navigate={navigate} testId="dashboard-kpi-grid" />
 
       <motion.div variants={itemVariants}>
@@ -439,54 +473,16 @@ export default function Dashboard() {
         </PremiumPanel>
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div variants={itemVariants}>
-          <PremiumPanel title="Duyurular" description={`${announcements.length} güncel duyuru gösteriliyor`}>
-              {announcements.length > 0 ? announcements.map((announcement) => (
-                <AnnouncementItem key={announcement.id || announcement.title} announcement={announcement} />
-              )) : (
-                <p className="text-sm text-muted-foreground">Henüz yayınlanmış duyuru bulunmuyor.</p>
-              )}
-          </PremiumPanel>
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <PremiumPanel
-            title="Operasyon Uyarıları"
-            description={overviewAlerts.length > 0
-              ? `${overviewAlerts.filter((item) => item.severity === 'Critical').length} kritik · ${overviewAlerts.filter((item) => item.severity !== 'Critical').length} uyarı`
-              : 'Müdahale gerektiren bir durum yok'}
-            contentClassName="space-y-2.5"
-          >
-              {overviewAlerts.length === 0 ? (
-                <div className="flex min-h-[180px] flex-col items-center justify-center text-center">
-                  <ShieldCheck className="h-10 w-10 text-emerald-500" />
-                  <p className="mt-3 font-bold">Kritik uyarı yok</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {data?.todayLeaves?.length
-                      ? `Bugün izinli personel: ${data.todayLeaves.map((item) => item.staffName).join(', ')}`
-                      : 'Tüm kontroller güncel.'}
-                  </p>
-                </div>
-              ) : overviewAlerts.map((alert, index) => (
-                <button
-                  key={`${alert.type}-${alert.title}-${index}`}
-                  type="button"
-                  onClick={() => alert.actionPath && navigate(alert.actionPath)}
-                  className="flex w-full items-start justify-between gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left transition hover:border-[hsl(var(--brand-accent)/0.4)] hover:bg-[hsl(var(--brand-accent)/0.05)]"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">{alert.title}</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">{alert.message}</span>
-                  </span>
-                  <PremiumStatusPill tone={alert.severity === 'Critical' ? 'danger' : 'warn'}>
-                    {alert.severity === 'Critical' ? 'Kritik' : 'Uyarı'}
-                  </PremiumStatusPill>
-                </button>
-              ))}
-          </PremiumPanel>
-        </motion.div>
-      </div>
+      {/* Uyarılar panonun tepesindeki eylem bloğuna taşındı; burada yalnız duyuru kalır. */}
+      <motion.div variants={itemVariants}>
+        <PremiumPanel title="Duyurular" description={`${announcements.length} güncel duyuru gösteriliyor`}>
+            {announcements.length > 0 ? announcements.map((announcement) => (
+              <AnnouncementItem key={announcement.id || announcement.title} announcement={announcement} />
+            )) : (
+              <p className="text-sm text-muted-foreground">Henüz yayınlanmış duyuru bulunmuyor.</p>
+            )}
+        </PremiumPanel>
+      </motion.div>
 
     </motion.div>
   );

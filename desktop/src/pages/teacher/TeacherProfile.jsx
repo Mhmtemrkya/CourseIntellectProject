@@ -14,6 +14,7 @@ import { LegalDocumentsPanel } from '../../components/legal/LegalDocumentsPanel'
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { fetchStaff, fetchExamResults, fetchHomework, changePassword } from '../../lib/api/modules';
+import { formatDate } from '../../lib/format';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -165,7 +166,7 @@ export default function TeacherProfile() {
           <CardContent className="flex items-center gap-3 py-4">
             <Calendar className="h-8 w-8 text-brand-accent" />
             <div>
-              <p className="text-2xl font-bold">{new Date().toLocaleDateString('tr-TR')}</p>
+              <p className="text-2xl font-bold">{formatDate(new Date())}</p>
               <p className="text-xs text-muted-foreground">Bugun</p>
             </div>
           </CardContent>

@@ -22,6 +22,7 @@ import {
   TONES,
   itemVariants,
 } from './_shared';
+import { formatMoney } from '../../lib/format';
 
 // Aralığa bağlı KPI'lar (ders, tahsilat) seçilen döneme göre değişir; yapısal
 // olanlar (aktif kursiyer, filo) her zaman "şu an"ın fotoğrafıdır.
@@ -203,7 +204,7 @@ export default function DrivingSchoolDashboard() {
             {KPI_META.map(([key, label, Icon, tone, caption, path]) => {
               const raw = data.kpis?.[key] ?? 0;
               const value = CURRENCY_KPIS.has(key)
-                ? `₺${Number(raw).toLocaleString('tr-TR')}`
+                ? `${formatMoney(Number(raw))}`
                 : raw;
               // Mezun sayısı kümülatiftir; seçili dönemde mezun olan varsa alt bilgide belirtilir.
               const graduatedInPeriod = Number(data.kpis?.graduatedInPeriod || 0);
@@ -239,7 +240,7 @@ export default function DrivingSchoolDashboard() {
                   <p className="text-xs text-muted-foreground">Kayıtta peşinatı tahsil edilmemiş sözleşmeler — tıklayıp tahsil edin.</p>
                 </div>
               </div>
-              <span className="text-lg font-black text-amber-600">₺{Number(pendingPesinat.total).toLocaleString('tr-TR')}</span>
+              <span className="text-lg font-black text-amber-600">{formatMoney(Number(pendingPesinat.total))}</span>
             </button>
           ) : null}
 

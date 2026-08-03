@@ -27,6 +27,7 @@ import { createTypedDocumentUrl } from '../../lib/fileMime';
 import { FileButton } from '../../components/ui/file-button';
 import ConsentAlertBanner from '../../components/consent/ConsentAlertBanner';
 import ConsentCenter from '../../components/consent/ConsentCenter';
+import { formatDate, formatDateTime, formatMoney as money } from '../../lib/format';
 import {
   DRIVING_EVALUATION_CATEGORIES, DRIVING_EVALUATION_CRITERIA, downloadDrivingEvaluationCsv,
   evaluationScores, lessonAverage,
@@ -74,9 +75,8 @@ const MEBBIS_EVENT_LABELS = {
 };
 
 const minutes = (value) => `${Math.round(Number(value || 0))} dk`;
-const money = (value) => `₺${Number(value || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`;
-const dateTime = (value) => (value ? new Date(value).toLocaleString('tr-TR') : '—');
-const dateOnly = (value) => (value ? new Date(value).toLocaleDateString('tr-TR') : '—');
+const dateTime = (value) => (value ? formatDateTime(value) : '—');
+const dateOnly = (value) => (value ? formatDate(value) : '—');
 
 function Stat({ label, value, tone }) {
   return (
@@ -690,7 +690,7 @@ export default function DrivingStudentDetail() {
               ) : (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground">Direksiyon sınav ücreti (₺) • {examRights?.practice?.used || 1}. giriş</label>
+                    <label className="text-xs font-semibold text-muted-foreground">Direksiyon sınav ücreti (TL) • {examRights?.practice?.used || 1}. giriş</label>
                     <div className="mt-1 flex items-center gap-2">
                       <Input type="number" min="0" value={examFeeDraft.drivingExamFee} onChange={(e) => setExamFeeDraft({ ...examFeeDraft, drivingExamFee: e.target.value })} />
                       <label className="flex shrink-0 items-center gap-1 text-xs font-semibold">
@@ -1051,7 +1051,7 @@ export default function DrivingStudentDetail() {
                         </option>
                       ))}
                     </select>
-                    <Input required type="number" min="1" placeholder="Tutar (₺)" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
+                    <Input required type="number" min="1" placeholder="Tutar (TL)" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
                     <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={paymentForm.method} onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}>
                       <option value="Nakit">Nakit</option><option value="Kart">Kart</option><option value="Havale">Havale</option>
                     </select>
@@ -1071,7 +1071,7 @@ export default function DrivingStudentDetail() {
                     >
                       {CHARGE_TYPES.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
                     </select>
-                    <Input required type="number" min="1" placeholder="Tutar (₺)" value={chargeForm.grossAmount} onChange={(e) => setChargeForm({ ...chargeForm, grossAmount: e.target.value })} />
+                    <Input required type="number" min="1" placeholder="Tutar (TL)" value={chargeForm.grossAmount} onChange={(e) => setChargeForm({ ...chargeForm, grossAmount: e.target.value })} />
                     {chargeForm.chargeType === 'ExtraLesson' && (
                       <Input
                         required

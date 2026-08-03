@@ -12,6 +12,7 @@ import { fetchDrivingExamRights, saveDrivingExamRight, updateDrivingExamFees } f
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
 import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
+import { formatDate, formatMoney } from '../../lib/format';
 
 const emptyForm = {
   candidateId: null,
@@ -24,7 +25,7 @@ const emptyForm = {
 };
 
 const typeLabel = (type) => (type === 'DrivingPractice' ? 'Direksiyon' : 'Teorik');
-const dateLabel = (value) => (value ? new Date(value).toLocaleDateString('tr-TR') : '—');
+const dateLabel = (value) => (value ? formatDate(value) : '—');
 
 export default function DrivingExamRights() {
   const { toast } = useToast();
@@ -257,7 +258,7 @@ export default function DrivingExamRights() {
                     <span className="text-muted-foreground">{(student.practice?.used || 0) > 0 ? student.practice.used : 1}. sınav girişi</span>
                     {Number(student.drivingExamFee) > 0 ? (
                       <span className="flex items-center gap-1.5">
-                        <b>₺{Number(student.drivingExamFee).toLocaleString('tr-TR')}</b>
+                        <b>{formatMoney(Number(student.drivingExamFee))}</b>
                         <Badge className={student.drivingExamFeePaid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
                           {student.drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
                         </Badge>
@@ -291,7 +292,7 @@ export default function DrivingExamRights() {
                   </Badge>
                   {attempt.examType === 'DrivingPractice' && (
                     <Badge className={student?.drivingExamFeePaid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
-                      ₺{Number(student?.drivingExamFee || 0).toLocaleString('tr-TR')} • {student?.drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
+                      {formatMoney(Number(student?.drivingExamFee || 0))} • {student?.drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
                     </Badge>
                   )}
                   {canEnter && <Button size="sm" variant="outline" onClick={() => openEdit(attempt)}><Pencil className="mr-1 h-3.5 w-3.5" />Düzenle</Button>}

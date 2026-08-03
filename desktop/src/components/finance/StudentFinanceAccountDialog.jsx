@@ -7,6 +7,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { LoadingDots } from '../animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
+import { formatDate } from '../../lib/format';
 import {
   fetchStudentFinanceAccount,
   recordFinancePayment,
@@ -160,7 +161,7 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
                     <div key={item.id} className="flex items-center justify-between rounded-lg border bg-card p-3 text-sm">
                       <div>
                         <span className="font-semibold">{item.label || `${item.seqNo}. Taksit`}</span>
-                        <span className="ml-2 text-muted-foreground">{new Date(item.dueDateUtc).toLocaleDateString('tr-TR')}</span>
+                        <span className="ml-2 text-muted-foreground">{formatDate(item.dueDateUtc)}</span>
                       </div>
                       <div className="flex items-center gap-4">
                         <span>{tl(item.amount, currency)}</span>
@@ -184,7 +185,7 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <span className="font-semibold">{item.receiptNo || (isRefund ? 'İade Belgesi' : 'Makbuz')}</span>
-                          <span className="ml-2 text-muted-foreground">{isRefund ? item.refundChannel || 'İade' : item.method} · {new Date(item.paidAtUtc).toLocaleDateString('tr-TR')}</span>
+                          <span className="ml-2 text-muted-foreground">{isRefund ? item.refundChannel || 'İade' : item.method} · {formatDate(item.paidAtUtc)}</span>
                           {item.isDownPayment ? <span className="ml-2 rounded-full bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-600">Peşinat</span> : null}
                         </div>
                         <div className="flex items-center gap-3">

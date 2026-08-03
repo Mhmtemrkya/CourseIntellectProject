@@ -25,6 +25,7 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { fetchAccountingDashboard, updateApprovalStatus } from '../../lib/api/modules';
 import { formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
+import { StatusBadge } from '../../components/ui/status-badge';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -100,13 +101,8 @@ export default function Approvals() {
 
   const getStatusBadge = (status) => {
     const key = approvalStatus(status);
-    const styles = {
-      pending: 'bg-yellow-100 text-yellow-700',
-      approved: 'bg-green-100 text-green-700',
-      rejected: 'bg-red-100 text-red-700',
-    };
     const labels = { pending: 'Bekliyor', approved: 'Onaylandı', rejected: 'Reddedildi' };
-    return <Badge className={styles[key]}>{labels[key]}</Badge>;
+    return <StatusBadge status={labels[key]} />;
   };
 
   const handleApprove = async (approval) => {

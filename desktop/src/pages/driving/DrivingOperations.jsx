@@ -8,6 +8,7 @@ import { useToast } from '../../hooks/use-toast';
 import { createDrivingPackage, deleteDrivingPackage, fetchDrivingPackages, updateDrivingPackage } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard, itemVariants } from './_shared';
+import { formatMoney } from '../../lib/format';
 
 const initialPackage = { name: '', licenseClass: 'B', transmissionType: 1, drivingLessonMinutes: 840, theoryLessonMinutes: 720, price: 0 };
 const licenseClasses = ['A', 'A1', 'A2', 'B', 'BE', 'C', 'C1', 'CE', 'C1E', 'D', 'D1', 'DE', 'D1E', 'F', 'M'];
@@ -172,7 +173,7 @@ export default function DrivingOperations() {
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      <span className="mr-2 font-black tabular-nums">₺{Number(p.price).toLocaleString('tr-TR')}</span>
+                      <span className="mr-2 font-black tabular-nums">{formatMoney(Number(p.price))}</span>
                       {canUpdatePackage ? (
                         <Button type="button" variant="outline" size="icon" aria-label={`${p.name} paketini düzenle`} onClick={() => startEditing(p)}>
                           <Pencil className="h-4 w-4" />

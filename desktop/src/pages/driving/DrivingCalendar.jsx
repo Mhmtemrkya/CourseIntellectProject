@@ -17,6 +17,7 @@ import {
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
+import { formatDate } from '../../lib/format';
 
 // Takvim YEREL saatte çizilir; API UTC konuşur. Tarayıcının kendi saat dilimi
 // Türkiye ise Date nesnesi doğal olarak doğru saati verir.
@@ -854,7 +855,7 @@ function AppointmentDialog({ appointment, onClose, onOpenStudent }) {
           </Badge>
 
           <div className="space-y-1.5 text-sm">
-            <p><b>Zaman:</b> {start.toLocaleDateString('tr-TR')} {hhmm(start)} – {hhmm(end)}</p>
+            <p><b>Zaman:</b> {formatDate(start)} {hhmm(start)} – {hhmm(end)}</p>
             <p><b>Öğretmen:</b> {appointment.instructorName}</p>
             <p><b>Araç:</b> {appointment.vehiclePlate}</p>
             {appointment.branchName && <p><b>Şube:</b> {appointment.branchName}</p>}

@@ -15,7 +15,7 @@ import {
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import RoleDashboardColumns from '../../components/dashboard/RoleDashboardColumns';
-import { fetchAccountingDashboard, fetchFinanceDashboard } from '../../lib/api/modules';
+import { fetchAccountingDashboard, fetchExpenses, fetchFinanceDashboard } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 import { filterByPeriod, periodLabel as buildPeriodLabel, shiftAnchor, parseTrDateTime } from '../../lib/financePeriod';
 import {
@@ -167,7 +167,7 @@ function FlowChart({ buckets, period }) {
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-3 rounded-sm bg-emerald-400" /> Gelir (tahsilat)</span>
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-3 rounded-sm bg-rose-400" /> Gider (maaş + fatura)</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-3 rounded-sm bg-rose-400" /> Gider (defter + maaş + fatura)</span>
       </div>
 
       <div className="relative w-full">
@@ -250,6 +250,7 @@ function FlowChart({ buckets, period }) {
             <div className="mt-2 space-y-0.5 border-t border-foreground/10 pt-2 text-[11px] text-muted-foreground">
               <p className="flex justify-between"><span>• Maaş gideri</span><span className="tabular-nums">{formatTry(active.salaryExp)}</span></p>
               <p className="flex justify-between"><span>• Fatura gideri</span><span className="tabular-nums">{formatTry(active.invoiceExp)}</span></p>
+              <p className="flex justify-between"><span>• Gider defteri</span><span className="tabular-nums">{formatTry(active.ledgerExp)}</span></p>
               <p className="flex justify-between"><span>• Tahsilat adedi</span><span className="tabular-nums">{active.count} işlem</span></p>
             </div>
             <p className={`mt-2 flex items-center justify-between gap-4 border-t border-foreground/10 pt-2 font-bold ${active.net >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}><span>Net</span><span className="tabular-nums">{active.net >= 0 ? '+' : ''}{formatTry(active.net)}</span></p>
@@ -298,6 +299,7 @@ export default function FinanceDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCollection, setSelectedCollection] = useState(null);
+  const [expenses, setExpenses] = useState([]);
   const [period, setPeriod] = useState('month');
   const [anchor, setAnchor] = useState(() => new Date());
 
@@ -305,12 +307,17 @@ export default function FinanceDashboard() {
     try {
       setLoading(true);
       setError('');
-      const [fin, acc] = await Promise.all([
+      // Gider defteri (Finans > Giderler) ayrı uçtadır; panodaki "Gider" kartı
+      // onu saymazsa muhasebeci girdiği elektrik/kira faturasını burada göremez.
+      const [fin, acc, expenseRows] = await Promise.all([
         fetchFinanceDashboard(),
         fetchAccountingDashboard().catch(() => null),
+        fetchExpenses().catch(() => null),
       ]);
       setFinance(fin || null);
       setDashboard(acc);
+      // Uç { items, summary, ... } döner; dizi bekleyen kod boş kalıyordu.
+      setExpenses(Array.isArray(expenseRows?.items) ? expenseRows.items : []);
     } catch (err) {
       setError(err.message || 'Finans verileri alınamadı.');
     } finally {
@@ -363,7 +370,9 @@ export default function FinanceDashboard() {
     const refundTotal = periodRefunds.reduce((s, c) => s + Math.abs(parseMoney(c.amount)), 0);
     const grossCollected = sum(periodCollections);
     const collected = Math.max(0, grossCollected - refundTotal);
-    const expense = sum(periodSalaries) + sum(periodInvoices.filter(isExpenseInvoice));
+    const periodExpenses = filterByPeriod(expenses, (e) => e.expenseDateUtc, period, anchor);
+    const ledgerExpense = periodExpenses.reduce((total, item) => total + (Number(item.amount) || 0), 0);
+    const expense = sum(periodSalaries) + sum(periodInvoices.filter(isExpenseInvoice)) + ledgerExpense;
     const unpaidDue = sum(periodInstallments.filter((i) => !isPaid(i.status)));
     const target = collected + unpaidDue; // bu dönemde beklenen toplam
     const rate = target > 0 ? Math.min(100, Math.round((collected / target) * 100)) : (collected > 0 ? 100 : 0);
@@ -376,6 +385,7 @@ export default function FinanceDashboard() {
       cash: sum(byMethod(periodCollections, 'nakit')),
       cardBank: sum(byMethod(periodCollections, 'kart', 'card', 'pos', 'havale', 'eft', 'bank', 'banka', 'transfer')),
       expense,
+      ledgerExpense,
       net: collected - expense,
       dueTotal: sum(periodInstallments),
       unpaidDue,
@@ -387,7 +397,7 @@ export default function FinanceDashboard() {
       recent: [...periodCollections].sort((a, b) => (parseTrDateTime(b.time) || 0) - (parseTrDateTime(a.time) || 0)),
       overdueEntries,
     };
-  }, [dashboard, period, anchor]);
+  }, [dashboard, expenses, period, anchor]);
 
   // Önceki dönem tahsilatı (hedef kartındaki trend için).
   const prevCollected = useMemo(() => {
@@ -406,6 +416,7 @@ export default function FinanceDashboard() {
     const collections = dashboard?.collections || [];
     const salaries = dashboard?.salaries || [];
     const invoices = dashboard?.invoices || [];
+    const ledgerRows = expenses || [];
     return createPeriodBuckets(period, anchor).map(({ start, end }) => {
       const inBucket = (d) => d && d >= start && d < end;
       let count = 0;
@@ -417,10 +428,14 @@ export default function FinanceDashboard() {
       }, 0);
       const salaryExp = salaries.reduce((s, x) => (inBucket(parseTrDate(x.payDate || x.date)) ? s + parseMoney(x.amount) : s), 0);
       const invoiceExp = invoices.reduce((s, x) => ((inBucket(parseTrDate(x.subtitle || x.date)) && isExpenseInvoice(x)) ? s + parseMoney(x.amount) : s), 0);
-      const expense = salaryExp + invoiceExp;
-      return { label: bucketLabel(start, period), fullLabel: bucketFullLabel(start, period), income, expense, salaryExp, invoiceExp, count, net: income - expense };
+      const ledgerExp = ledgerRows.reduce((total, item) => {
+        const date = item.expenseDateUtc ? new Date(item.expenseDateUtc) : null;
+        return inBucket(date) ? total + (Number(item.amount) || 0) : total;
+      }, 0);
+      const expense = salaryExp + invoiceExp + ledgerExp;
+      return { label: bucketLabel(start, period), fullLabel: bucketFullLabel(start, period), income, expense, salaryExp, invoiceExp, ledgerExp, count, net: income - expense };
     });
-  }, [dashboard, period, anchor]);
+  }, [dashboard, expenses, period, anchor]);
 
   if (loading) {
     return (
@@ -437,7 +452,7 @@ export default function FinanceDashboard() {
       key: 'flow', title: 'Nakit Akışı', description: `${periodText} gelir ve gider özeti`,
       cards: [
         { key: 'collected', label: 'Tahsilat', value: formatTry(periodStats.collected), caption: `${periodStats.count} işlem`, icon: CreditCard, tone: 'emerald', path: '/finance/collections' },
-        { key: 'expense', label: 'Gider', value: formatTry(periodStats.expense), caption: 'Maaş ve fatura', icon: Landmark, tone: 'rose', path: '/finance/expenses' },
+        { key: 'expense', label: 'Gider', value: formatTry(periodStats.expense), caption: 'Gider defteri + maaş + fatura', icon: Landmark, tone: 'rose', path: '/finance/expenses' },
         { key: 'net', label: 'Net Akış', value: `${periodStats.net >= 0 ? '+' : ''}${formatTry(periodStats.net)}`, caption: periodStats.net >= 0 ? 'Dönem pozitif' : 'Dönem negatif', icon: periodStats.net >= 0 ? TrendingUp : TrendingDown, tone: periodStats.net >= 0 ? 'blue' : 'rose', path: '/finance/ledger' },
       ],
     },

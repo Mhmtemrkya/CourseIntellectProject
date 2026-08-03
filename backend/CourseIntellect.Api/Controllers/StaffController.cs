@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Staff;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -11,10 +12,46 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class StaffController(IStaffManagementService staffManagementService) : ControllerBase
 {
+    /// <summary>
+    /// Personel listesi. Öğrenci ve veli bu listeyi "öğretmen seçme" (soru kutusu,
+    /// görüşme talebi) akışlarında kullanır; bu yüzden erişim tamamen kapatılmaz
+    /// ama KİŞİSEL VERİ ALANLARI (TC, telefon, e-posta, eğitim, medeni durum, not)
+    /// maskelenir. Aksi hâlde tek bir öğrenci hesabı tüm kadronun TC'sini çekebilir.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] string? role, CancellationToken cancellationToken)
     {
         var staff = await staffManagementService.GetStaffAsync(role, cancellationToken);
+
+        // Personel rolleri (yönetim/muhasebe/idari) kadronun tamamını görür.
+        // Öğretmen KENDİ kaydını tam görür (profil ekranı buradan okur), meslektaş
+        // kayıtlarında kişisel alanlar maskelenir. Öğrenci/veli hepsinde maskelidir.
+        var isStaffManager = User.IsInRole("Admin") || User.IsInRole("Administrative")
+            || User.IsInRole("Accounting") || User.IsInRole("BranchManager");
+        if (!isStaffManager)
+        {
+            var selfUserRaw = User.FindFirstValue("user_id") ?? User.FindFirstValue("sub")
+                ?? User.FindFirstValue("nameid") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            Guid.TryParse(selfUserRaw, out var selfUserId);
+            var selfUsername = (User.FindFirstValue("unique_name") ?? string.Empty).Trim();
+
+            staff = staff.Select(item => (item.UserId != Guid.Empty && item.UserId == selfUserId)
+                || (selfUsername.Length > 0 && string.Equals(item.Username, selfUsername, StringComparison.OrdinalIgnoreCase))
+                ? item
+                : item with
+            {
+                TcNo = string.Empty,
+                Phone = string.Empty,
+                Email = string.Empty,
+                Education = string.Empty,
+                MaritalStatus = string.Empty,
+                ChildCount = 0,
+                Note = string.Empty,
+                Username = string.Empty,
+                StartDate = string.Empty,
+            }).ToList();
+        }
+
         return Ok(staff);
     }
 

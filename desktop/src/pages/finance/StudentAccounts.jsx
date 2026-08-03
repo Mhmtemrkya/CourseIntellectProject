@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
 import { useApp } from '../../context/AppContext';
+import { getFinanceVocabulary } from '../../lib/financeVocabulary';
 import { resolveUserInstitutionType } from '../../lib/auth';
 import DrivingCollectModal from '../../components/finance/DrivingCollectModal';
 import { useToast } from '../../hooks/use-toast';
@@ -50,6 +51,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '../../components/ui/dialog';
 import { Label } from '../../components/ui/label';
+import { StatusBadge } from '../../components/ui/status-badge';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -127,6 +129,9 @@ function StudentAccountDrawer({
 }) {
   // Sürücü kursunda "veli" kavramı yoktur; kursiyerin muhatabı kendisidir.
   const { user } = useApp();
+  // Finans modülü iki kurum türünde ortaktır; dil ve sürücü kursuna özgü
+  // kalemler kurum türüne göre değişir.
+  const vocabulary = getFinanceVocabulary(user);
   const isDrivingSchool = resolveUserInstitutionType(user) === 'DrivingSchool';
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(true);
@@ -246,12 +251,12 @@ function StudentAccountDrawer({
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          [grossTotal, 'Kurs Ücreti', 'text-foreground'],
+          [grossTotal, vocabulary.fee, 'text-foreground'],
           [discountTotal, 'İndirim', 'text-blue-600'],
-          [Math.max(0, grossTotal - discountTotal), 'Net Kurs Ücreti', 'text-foreground'],
+          [Math.max(0, grossTotal - discountTotal), vocabulary.netFee, 'text-foreground'],
           [downPaymentPaidTotal, downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? `Peşinat • ${formatCurrency(downPaymentTotal)} bekleniyor` : 'Ödenen Peşinat', downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? 'text-amber-600' : 'text-green-600'],
           [paid, 'Toplam Tahsil Edilen', 'text-green-600'],
-          [courseRemaining, 'Kurs Borcu', courseRemaining > 0 ? 'text-red-600' : 'text-green-600'],
+          [courseRemaining, vocabulary.feeDebt, courseRemaining > 0 ? 'text-red-600' : 'text-green-600'],
           [additionalChargeRemaining, 'Ek Ücret Borcu', additionalChargeRemaining > 0 ? 'text-red-600' : 'text-green-600'],
           [remaining, 'Toplam Ödenecek', remaining > 0 ? 'text-red-600' : 'text-green-600'],
         ].map(([value, label, color, isCount]) => (
@@ -266,6 +271,9 @@ function StudentAccountDrawer({
 
       {detailError ? <ErrorBanner title="Cari hesap ayrıntıları alınamadı" message={detailError} /> : null}
 
+      {/* Direksiyon sınav ücreti YALNIZ sürücü kursunda vardır; okulda bu kart
+          hiç çizilmez. */}
+      {vocabulary.showDrivingExamFee ? (
       <Card className="border-brand-primary/20">
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -314,6 +322,7 @@ function StudentAccountDrawer({
           )}
         </CardContent>
       </Card>
+      ) : null}
 
       {detailLoading ? (
         <div className="flex justify-center py-6"><LoadingDots /></div>
@@ -348,7 +357,7 @@ function StudentAccountDrawer({
                     <div>
                       <p className="text-sm font-medium flex items-center gap-2">
                         {item.label || 'Taksit'}
-                        {overdue ? <Badge className="bg-red-100 text-red-700 text-[10px]">Gecikti</Badge> : null}
+                        {overdue ? <StatusBadge status="Gecikti" size="sm" /> : null}
                       </p>
                       <p className="text-xs text-muted-foreground">{formatDateUtc(item.dueDateUtc)}</p>
                     </div>
@@ -427,6 +436,7 @@ export default function StudentAccounts() {
   const { openDrawer, user } = useApp();
   // Sürücü kursunda "veli" kavramı yoktur; kursiyerin muhatabı kendisidir.
   const isDrivingSchool = resolveUserInstitutionType(user) === 'DrivingSchool';
+  const vocabulary = getFinanceVocabulary(user);
   // Sürücü kursunda tahsilat, "Ödeme Al" ile AYNI pencereden alınır: taksit planı
   // görünür, taksit seçilir, ödenmiş taksitler pasiftir, makbuz + tarih-saat düşer.
   const [drivingRows, setDrivingRows] = useState([]);
@@ -691,13 +701,8 @@ export default function StudentAccounts() {
   }), [accounts, search, classFilter, branchFilter, statusFilter, examFeeFilter]);
 
   const getStatusBadge = (status) => {
-    const styles = {
-      paid: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-      current: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-      overdue: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    };
-    const labels = { paid: 'Ödendi', current: 'Güncel', overdue: 'Gecikmiş' };
-    return <Badge className={styles[status]}>{labels[status]}</Badge>;
+    const labels = { paid: 'Ödendi', current: 'Güncel', overdue: 'Gecikti' };
+    return <StatusBadge status={labels[status]} />;
   };
 
   if (loading) {
@@ -779,16 +784,19 @@ export default function StudentAccounts() {
                 <SelectItem value="overdue">Gecikmiş</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={examFeeFilter} onValueChange={setExamFeeFilter}>
-              <SelectTrigger className="w-full md:w-44">
-                <SelectValue placeholder="Sınav ücreti" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tüm sınav ücretleri</SelectItem>
-                <SelectItem value="paid">Sınav ücreti ödendi</SelectItem>
-                <SelectItem value="unpaid">Sınav ücreti ödenmedi</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Direksiyon sınav ücreti filtresi okulda anlamsız — gizlenir. */}
+            {vocabulary.showDrivingExamFee ? (
+              <Select value={examFeeFilter} onValueChange={setExamFeeFilter}>
+                <SelectTrigger className="w-full md:w-44">
+                  <SelectValue placeholder="Sınav ücreti" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm sınav ücretleri</SelectItem>
+                  <SelectItem value="paid">Sınav ücreti ödendi</SelectItem>
+                  <SelectItem value="unpaid">Sınav ücreti ödenmedi</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : null}
           </div>
         </CardContent>
       </Card>
@@ -798,13 +806,13 @@ export default function StudentAccounts() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Öğrenci</TableHead>
+                <TableHead>{vocabulary.person}</TableHead>
                 <TableHead>Sınıf</TableHead>
-                <TableHead>Kurs Ücreti</TableHead>
+                <TableHead>{vocabulary.fee}</TableHead>
                 <TableHead>İndirim</TableHead>
                 <TableHead>Peşinat</TableHead>
                 <TableHead>Kalan</TableHead>
-                <TableHead>Direksiyon Sınavı</TableHead>
+                {vocabulary.showDrivingExamFee ? <TableHead>Direksiyon Sınavı</TableHead> : null}
                 <TableHead>Durum</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -859,6 +867,7 @@ export default function StudentAccounts() {
                   <TableCell className={account.remaining > 0 ? 'text-red-600 font-bold' : 'text-green-600'}>
                     {formatCurrency(account.remaining)}
                   </TableCell>
+                  {vocabulary.showDrivingExamFee ? (
                   <TableCell>
                     <div className="space-y-1">
                       <span className="text-sm font-medium">{account.drivingExamAttemptNo}. giriş • {formatCurrency(account.drivingExamFee)}</span>
@@ -867,6 +876,7 @@ export default function StudentAccounts() {
                       </Badge>
                     </div>
                   </TableCell>
+                  ) : null}
                   <TableCell>{getStatusBadge(account.status)}</TableCell>
                   <TableCell>
                     <DropdownMenu>

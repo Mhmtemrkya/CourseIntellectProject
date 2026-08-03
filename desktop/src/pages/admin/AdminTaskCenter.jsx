@@ -11,6 +11,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchAdminTasks, createAdminTask, updateAdminTaskStatus, fetchStaff } from '../../lib/api/modules';
+import { formatDate, formatDateTime } from '../../lib/format';
 
 const STATUS = [
   ['PendingAcceptance', 'Kabul Bekliyor'],
@@ -29,7 +30,7 @@ function dueInfo(value) {
   const days = Math.ceil((date.getTime() - Date.now()) / 86400000);
   if (days < 0) return { tone: 'text-red-600', label: 'Gecikti', icon: AlertTriangle };
   if (days <= 3) return { tone: 'text-amber-600', label: `${days} gün`, icon: Clock3 };
-  return { tone: 'text-muted-foreground', label: date.toLocaleDateString('tr-TR'), icon: Clock3 };
+  return { tone: 'text-muted-foreground', label: formatDate(date), icon: Clock3 };
 }
 
 export default function AdminTaskCenter() {
@@ -155,7 +156,7 @@ export default function AdminTaskCenter() {
                         {due ? <span className={`ml-2 inline-flex items-center gap-1 ${due.tone}`}><due.icon className="h-3 w-3" />{due.label}</span> : null}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Başlangıç: {item.startDateUtc ? new Date(item.startDateUtc).toLocaleString('tr-TR') : '—'} · Bitiş: {item.endDateUtc ? new Date(item.endDateUtc).toLocaleString('tr-TR') : '—'}
+                        Başlangıç: {item.startDateUtc ? formatDateTime(item.startDateUtc) : '—'} · Bitiş: {item.endDateUtc ? formatDateTime(item.endDateUtc) : '—'}
                       </p>
                       {item.rejectionReason ? (
                         <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-xs text-rose-700">

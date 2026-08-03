@@ -53,6 +53,10 @@ public static class MoneyParser
     }
 
     /// <summary>Ondalık tutarı Türkçe para biçiminde gösterir (₺1.500,50).</summary>
-    public static string Format(decimal amount) =>
-        $"₺{amount.ToString("N2", CultureInfo.GetCultureInfo("tr-TR"))}";
+    /// <summary>
+    /// Gösterim biçimi ortak <see cref="MoneyText"/> kuralına bağlıdır
+    /// ("5.000 TL"). Eskiden "₺5.000,00" üretiyordu; aynı tutar ekrana
+    /// ekrandan farklı yazıldığı için tek kaynağa taşındı.
+    /// </summary>
+    public static string Format(decimal amount) => MoneyText.Format(amount);
 }

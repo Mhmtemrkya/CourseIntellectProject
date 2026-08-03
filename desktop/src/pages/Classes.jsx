@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, BookOpen, Check, ChevronRight, Eye, GraduationCap, ImagePlus,
   Lock, Palette, Plus, Save, Search, Settings, ShieldCheck, Sparkles,
@@ -195,6 +196,8 @@ function Preview({ form, selectedTeachers, selectedStudents, assignments }) {
 
 export default function Classes() {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -374,9 +377,16 @@ export default function Classes() {
       return;
     }
     if (!managementClassName || !classNames.some((item) => normalize(item) === normalize(managementClassName))) {
-      setManagementClassName(classNames[0]);
+      const requestedClass = searchParams.get('manage');
+      const requestedMatch = classNames.find((item) => normalize(item) === normalize(requestedClass));
+      setManagementClassName(requestedMatch || classNames[0]);
     }
-  }, [classNames, managementClassName]);
+  }, [classNames, managementClassName, searchParams]);
+
+  const openClassDetail = (className) => {
+    setViewOpen(false);
+    navigate(`/classes/${encodeURIComponent(className)}`);
+  };
 
   useEffect(() => {
     if (!managementClassName) {
@@ -802,7 +812,7 @@ export default function Classes() {
                 <Eye className="mr-1.5 h-4 w-4" /> Gör ({existingSummary.length})
               </Button>
             </div>
-            <div className="mt-4 space-y-2">{existingSummary.length === 0 ? <p className="text-sm text-slate-400">Henüz kayıtlı sınıf yönetim kaydı yok.</p> : existingSummary.slice(0, 6).map((item) => <div key={item.code || item.name} className="rounded-xl border border-foreground/10 p-3"><div className="flex items-center justify-between gap-2"><b>{item.name}</b><div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full" style={{ background: item.color }} /><FeatureGate module="classes" action="delete"><Button type="button" variant="ghost" size="icon" title={`${item.name} sınıfını sil`} className="h-8 w-8 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => openDeleteDialog(item.name)}><Trash2 className="h-4 w-4" /></Button></FeatureGate></div></div><p className="mt-1 text-xs text-slate-400">{item.studentCount} öğrenci • {item.teacherCount} öğretmen • {item.courseCount} ders</p></div>)}</div>
+            <div className="mt-4 space-y-2">{existingSummary.length === 0 ? <p className="text-sm text-slate-400">Henüz kayıtlı sınıf yönetim kaydı yok.</p> : existingSummary.slice(0, 6).map((item) => <div key={item.code || item.name} className="flex items-center gap-2 rounded-xl border border-foreground/10 p-2 transition hover:border-blue-500/35 hover:bg-blue-500/5"><button type="button" className="min-w-0 flex-1 rounded-lg p-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" onClick={() => openClassDetail(item.name)}><div className="flex items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-full" style={{ background: item.color }} /><b className="truncate">{item.name}</b><ChevronRight className="ml-auto h-4 w-4 shrink-0 text-slate-500" /></div><p className="mt-1 truncate text-xs text-slate-400">{item.studentCount} öğrenci • {item.teacherCount} öğretmen • {item.courseCount} ders</p></button><FeatureGate module="classes" action="delete"><Button type="button" variant="ghost" size="icon" title={`${item.name} sınıfını sil`} className="h-8 w-8 shrink-0 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => openDeleteDialog(item.name)}><Trash2 className="h-4 w-4" /></Button></FeatureGate></div>)}</div>
           </div>
         </aside>
       </div>
@@ -817,7 +827,7 @@ export default function Classes() {
             {existingSummary.length === 0 ? (
               <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Henüz kayıtlı sınıf bulunmuyor.</p>
             ) : existingSummary.map((item) => (
-              <div key={item.code || item.name} className="rounded-2xl border p-4">
+              <div key={item.code || item.name} className="rounded-2xl border p-4 transition hover:border-blue-500/35 hover:bg-blue-500/[0.03]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="h-9 w-9 rounded-full" style={{ background: item.color }} />
@@ -853,6 +863,9 @@ export default function Classes() {
                   </div>
                 ) : null}
                 {item.description ? <p className="mt-3 text-sm text-muted-foreground">{item.description}</p> : null}
+                <Button type="button" variant="outline" className="mt-4 w-full justify-between" onClick={() => openClassDetail(item.name)}>
+                  Sınıf detayını aç <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             ))}
           </div>

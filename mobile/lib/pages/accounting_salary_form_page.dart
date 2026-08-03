@@ -4,6 +4,7 @@ import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_api_service.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/app_header.dart';
+import 'package:student/utils/format.dart';
 
 class AccountingSalaryFormPage extends StatefulWidget {
   const AccountingSalaryFormPage({super.key});
@@ -280,13 +281,13 @@ class _AccountingSalaryFormPageState extends State<AccountingSalaryFormPage> {
         )
         .map(
           (item) =>
-              '${item.label.text.trim()}: ${item.isAddition ? '+' : '-'}₺${_money(item.amount.text)}',
+              '${item.label.text.trim()}: ${item.isAddition ? '+' : '-'}${formatMoney(item.amount.text)}',
         )
         .join(', ');
     final breakdown = _payrollActive
-        ? 'Brüt ₺${_money(_amountController.text)} → Net ₺${_money(_netSalary)} '
-              '(SGK ₺${_money(_sgkEmployeeController.text)}, İşsizlik ₺${_money(_unemploymentController.text)}, '
-              'Gelir V. ₺${_money(_incomeTaxController.text)}, Damga ₺${_money(_stampTaxController.text)}'
+        ? 'Brüt ${formatMoney(_amountController.text)} → Net ${formatMoney(_netSalary)} '
+              '(SGK ${formatMoney(_sgkEmployeeController.text)}, İşsizlik ${formatMoney(_unemploymentController.text)}, '
+              'Gelir V. ${formatMoney(_incomeTaxController.text)}, Damga ${formatMoney(_stampTaxController.text)}'
               '${customSummary.isEmpty ? '' : '; Özel kalemler: $customSummary'})'
         : '';
 
@@ -410,7 +411,7 @@ class _AccountingSalaryFormPageState extends State<AccountingSalaryFormPage> {
                 ),
               ),
               Text(
-                '₺${_money(_netSalary)}',
+                formatMoney(_netSalary),
                 style: const TextStyle(
                   color: Color(0xFF0F766E),
                   fontSize: 18,

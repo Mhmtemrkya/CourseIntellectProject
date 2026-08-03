@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAuditBranchSummary, fetchAuditLogsPaged, fetchOrgUnits } from '../../lib/api/modules';
+import { formatDateTime } from '../../lib/format';
 
 const CATEGORIES = ['', 'Login', 'Approval', 'HR', 'Document', 'Task', 'Admin', 'Account', 'Permission', 'Registration', 'Finance', 'OrgUnit', 'DrivingSchool'];
 const CATEGORY_LABEL = {
@@ -393,7 +394,7 @@ export default function AdminAuditLog() {
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
                     <ContextChips item={item} />
-                    <p className="mt-1 text-xs text-muted-foreground">{item.actorName} • {new Date(item.createdAtUtc).toLocaleString('tr-TR')}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{item.actorName} • {formatDateTime(item.createdAtUtc)}</p>
                   </div>
                 </div>
               );

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Wrench, Clock, ShieldCheck, RefreshCw, LogOut } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { formatDateTime } from '../lib/format';
 
 export default function MaintenancePage({ message, since, onRetry, onLogout }) {
   const sinceDate = since ? new Date(since) : null;
@@ -32,7 +33,7 @@ export default function MaintenancePage({ message, since, onRetry, onLogout }) {
           {sinceDate && (
             <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-foreground/[0.03] px-3 py-1.5 text-xs text-foreground/60">
               <Clock className="h-3.5 w-3.5" />
-              Başlangıç: {sinceDate.toLocaleString('tr-TR')}
+              Başlangıç: {formatDateTime(sinceDate)}
             </div>
           )}
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatMoney as formatCurrency } from '../../lib/format';
 import { motion } from 'framer-motion';
 import {
   BookOpen, Search, DollarSign, Users, TrendingUp, AlertCircle, Eye, FilePlus2,
@@ -21,6 +22,8 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchStudents, fetchFinanceSummaries, fetchStudentFinanceAccount, createEnrollment } from '../../lib/api/modules';
+import { formatDate } from '../../lib/format';
+import { StatusBadge } from '../../components/ui/status-badge';
 
 const emptyEnrollForm = {
   grossAmount: '',
@@ -41,11 +44,6 @@ const itemVariants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
-
-function formatCurrency(val) {
-  const amount = Number(val) || 0;
-  return `${amount.toLocaleString('tr-TR', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 2 })} TL`;
-}
 
 function normalizeLedgerKey(value) {
   return String(value || '')
@@ -360,7 +358,7 @@ export default function Ledger() {
                       <TableCell className="font-mono text-orange-600">{formatCurrency(item.balance)}</TableCell>
                       <TableCell>
                         {item.hasOverdue ? (
-                          <Badge className="bg-red-100 text-red-700">Gecikme</Badge>
+                          <StatusBadge status="Gecikti" />
                         ) : item.balance <= 0 ? (
                           <Badge className="bg-green-100 text-green-700">Tamamlandı</Badge>
                         ) : (
@@ -415,7 +413,7 @@ export default function Ledger() {
                 payments.slice(0, 8).map((payment) => (
                   <div key={payment.id} className="flex items-center justify-between py-1.5 text-sm border-b last:border-0">
                     <span className="text-muted-foreground">
-                      {payment.paidAtUtc ? new Date(payment.paidAtUtc).toLocaleDateString('tr-TR') : '-'}
+                      {payment.paidAtUtc ? formatDate(payment.paidAtUtc) : '-'}
                       {payment.method ? ` • ${payment.method}` : ''}
                     </span>
                     <span className="font-mono text-green-600">{formatCurrency(payment.amount)}</span>

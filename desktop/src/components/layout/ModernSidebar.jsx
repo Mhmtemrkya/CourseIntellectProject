@@ -79,6 +79,10 @@ import { getUserRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 // Menu items for each role
 // Muhasebe rolündeki tüm finans sayfaları. Kurum yöneticisi (admin) de bu
 // sayfaların tamamına "Finans" grubu altında erişebilsin diye paylaşılır.
+// Finans menüsü. Bu liste TAM kalır: rol/modül/paket filtreleri tek tek yollar
+// üzerinden çalışır. Görünür kalan ekranlar en sonda konu hub'larına katlanır
+// (bkz. lib/navigation/hubs.js + collapseMenuHubs) — böylece bir sekme role
+// kapalıysa hub yine açılır, hub'ın tüm sekmeleri kapalıysa hub hiç görünmez.
 const FINANCE_MENU_ITEMS = [
   { path: "/finance/dashboard", icon: LayoutDashboard, label: "Muhasebe Özet", color: "#3b82f6" },
   { path: "/finance/student-accounts", icon: Users, label: "Cari Hesaplar", color: "#8b5cf6" },
@@ -89,7 +93,7 @@ const FINANCE_MENU_ITEMS = [
   { path: "/finance/collection-calendar", icon: Calendar, label: "Tahsilat Takvimi", color: "#14b8a6" },
   { path: "/finance/reconciliation", icon: Shield, label: "Mutabakat", color: "#22c55e" },
   { path: "/finance/bulk-actions", icon: Layers, label: "Toplu İşlemler", color: "#f97316" },
-  { path: "/finance/audit-log", icon: Activity, label: "Audit Log", color: "#6366f1" },
+  { path: "/finance/audit-log", icon: Activity, label: "Denetim Kaydı", color: "#6366f1" },
   { path: "/finance/discounts-scholarships", icon: Gift, label: "İndirim & Burs", color: "#ec4899" },
   { path: "/finance/late-payments", icon: AlertCircle, label: "Gecikenler", color: "#ef4444" },
   { path: "/finance/overdue-rules", icon: Bell, label: "Gecikme Kuralları", color: "#f43f5e" },
@@ -503,114 +507,7 @@ export const menuConfigs = {
   ],
   finance: [
     ...DRIVING_MENU_ITEMS,
-    {
-      path: "/finance/dashboard",
-      icon: LayoutDashboard,
-      label: "Muhasebe Özet",
-      color: "#3b82f6",
-    },
-    {
-      path: "/finance/student-accounts",
-      icon: Users,
-      label: "Cari Hesaplar",
-      color: "#8b5cf6",
-    },
-    {
-      path: "/finance/collections",
-      icon: CreditCard,
-      label: "Tahsilatlar",
-      color: "#10b981",
-    },
-    {
-      path: "/finance/refunds",
-      icon: RotateCcw,
-      label: "İadeler",
-      color: "#ef4444",
-    },
-    {
-      path: "/finance/installments",
-      icon: Receipt,
-      label: "Taksitler",
-      color: "#f59e0b",
-    },
-    {
-      path: "/finance/invoices-receipts",
-      icon: FileText,
-      label: "Fatura & Makbuz",
-      color: "#06b6d4",
-    },
-    {
-      path: "/finance/collection-calendar",
-      icon: Calendar,
-      label: "Tahsilat Takvimi",
-      color: "#14b8a6",
-    },
-    {
-      path: "/finance/reconciliation",
-      icon: Shield,
-      label: "Mutabakat",
-      color: "#22c55e",
-    },
-    {
-      path: "/finance/bulk-actions",
-      icon: Layers,
-      label: "Toplu İşlemler",
-      color: "#f97316",
-    },
-    {
-      path: "/finance/audit-log",
-      icon: Activity,
-      label: "Audit Log",
-      color: "#6366f1",
-    },
-    {
-      path: "/finance/discounts-scholarships",
-      icon: Gift,
-      label: "İndirim & Burs",
-      color: "#ec4899",
-    },
-    {
-      path: "/finance/late-payments",
-      icon: AlertCircle,
-      label: "Gecikenler",
-      color: "#ef4444",
-    },
-    {
-      path: "/finance/overdue-rules",
-      icon: Bell,
-      label: "Gecikme Kuralları",
-      color: "#f43f5e",
-    },
-    {
-      path: "/finance/salary",
-      icon: Wallet,
-      label: "Maaş Yönetimi",
-      color: "#10b981",
-    },
-    {
-      path: "/finance/expenses",
-      icon: TrendingDown,
-      label: "Giderler",
-      color: "#e11d48",
-    },
-    {
-      path: "/finance/cash-report",
-      icon: Receipt,
-      label: "Kasa Raporu",
-      color: "#a855f7",
-    },
-    {
-      path: "/finance/ledger",
-      icon: BookOpen,
-      label: "Hesap Defteri",
-      color: "#6366f1",
-    },
-    {
-      path: "/finance/export",
-      icon: Download,
-      label: "Dışa Aktar",
-      color: "#84cc16",
-    },
+    ...FINANCE_MENU_ITEMS,
     { path: "/chat", icon: MessageSquare, label: "Mesajlar", color: "#0ea5e9" },
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],

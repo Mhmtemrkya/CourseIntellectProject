@@ -13,6 +13,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { IdentityCard } from '../../components/identity/IdentityCard';
 import { fetchStudents, fetchStaff } from '../../lib/api/modules';
 import { isUserPassive } from '../../lib/userStatus';
+import { formatDateTime } from '../../lib/format';
 
 function normalizeText(value = '') {
   return String(value).trim().toLowerCase();
@@ -60,7 +61,7 @@ function buildRecordSummary(record) {
     '',
     ...rows.map(([label, value]) => `${label}: ${value}`),
     '',
-    'Oluşturulma Tarihi: ' + new Date().toLocaleString('tr-TR'),
+    'Oluşturulma Tarihi: ' + formatDateTime(),
   ].join('\n');
 }
 

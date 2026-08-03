@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../services/auth_api_service.dart';
 import '../widgets/admin_ui.dart';
+import '../utils/format.dart';
 
 class PasswordResetRequestsPage extends StatefulWidget {
   const PasswordResetRequestsPage({super.key});
@@ -385,12 +386,7 @@ class _PasswordResetRequestsPageState extends State<PasswordResetRequestsPage> {
     );
   }
 
-  String _formatDate(DateTime? value) {
-    if (value == null) return '-';
-    final local = value.toLocal();
-    String two(int number) => number.toString().padLeft(2, '0');
-    return '${two(local.day)}.${two(local.month)}.${local.year} ${two(local.hour)}:${two(local.minute)}';
-  }
+  String _formatDate(DateTime? value) => formatDateTime(value, fallback: '-');
 
   String _statusLabel(String status) {
     switch (status) {

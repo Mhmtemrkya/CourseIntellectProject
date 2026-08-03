@@ -18,6 +18,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
 import { downloadBlob, parseFinanceMoney } from '../../lib/financeDocuments';
+import { formatDate } from '../../lib/format';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -281,7 +282,7 @@ export default function Export() {
                     <div>
                       <p className="font-medium text-sm">{item.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(item.date).toLocaleDateString('tr-TR')} • {item.size}
+                        {formatDate(item.date)} • {item.size}
                       </p>
                     </div>
                   </div>

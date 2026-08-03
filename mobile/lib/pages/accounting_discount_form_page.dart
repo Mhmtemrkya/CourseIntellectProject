@@ -4,6 +4,7 @@ import 'package:student/i18n/app_locale.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/app_header.dart';
 import '../widgets/accounting_ui.dart';
+import 'package:student/utils/format.dart';
 
 class AccountingDiscountFormPage extends StatefulWidget {
   const AccountingDiscountFormPage({super.key});
@@ -183,7 +184,7 @@ class _AccountingDiscountFormPageState
                   _previewLine('Uygulanacak Oran', '%${rateController.text}'),
                   _previewLine(
                     'Yeni Tutar',
-                    '₺${discounted.toStringAsFixed(0)}',
+                    formatMoney(discounted),
                   ),
                   const SizedBox(height: 16),
                   SizedBox(

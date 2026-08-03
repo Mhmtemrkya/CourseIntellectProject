@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchCafeteriaWeek } from '../../lib/api/modules';
+import { formatDate } from '../../lib/format';
 
 const MEAL_LABEL = { Breakfast: 'Kahvaltı', Lunch: 'Öğle Yemeği', Dinner: 'Akşam Yemeği', Snack: 'İkindi' };
 const DAY_NAMES = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
@@ -66,7 +67,7 @@ export default function ParentCafeteria() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => shiftWeek(-7)}><ChevronLeft className="h-4 w-4" /></Button>
-          <span className="text-sm font-semibold">{new Date(weekStart).toLocaleDateString('tr-TR')} haftası</span>
+          <span className="text-sm font-semibold">{formatDate(weekStart)} haftası</span>
           <Button variant="outline" size="icon" onClick={() => shiftWeek(7)}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </div>
@@ -82,7 +83,7 @@ export default function ParentCafeteria() {
             const d = new Date(day.date);
             return (
               <Card key={day.date}>
-                <CardHeader><CardTitle className="text-base">{DAY_NAMES[d.getDay()]} • {d.toLocaleDateString('tr-TR')}</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-base">{DAY_NAMES[d.getDay()]} • {formatDate(d)}</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   {filledMeals.map((m, idx) => (
                     <div key={`${m.mealType}-${idx}`} className="rounded-xl border bg-muted/20 p-3">

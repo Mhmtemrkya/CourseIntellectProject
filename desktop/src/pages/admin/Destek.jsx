@@ -33,6 +33,7 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import { formatDateTime } from '../../lib/format';
 import {
   fetchMySupportTickets,
   createMySupportTicket,
@@ -369,7 +370,7 @@ export default function Destek() {
                         ) : null}
 
                         <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
-                          <span>{new Date(t.createdAtUtc).toLocaleString('tr-TR')}</span>
+                          <span>{formatDateTime(t.createdAtUtc)}</span>
                           <div className="flex items-center gap-2">
                             {t.messages ? <span className="font-mono">{t.messages} mesaj</span> : null}
                             <PriorityChip priority={t.priority} />

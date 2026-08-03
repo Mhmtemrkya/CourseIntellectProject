@@ -22,6 +22,7 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createContent, deleteContent, fetchContents, fetchStudents, saveContentExtras, updateContent, updateContentStatus, uploadFile } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
+import { formatDate } from '../../lib/format';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -1075,7 +1076,7 @@ export default function TeacherContent() {
                       : isSunum(item) ? 'border-violet-500/30 bg-violet-500/12 text-violet-300'
                       : 'border-foreground/10 bg-foreground/5 text-muted-foreground';
                     const TypeIcon = t.includes('video') ? Video : FileText;
-                    const created = item.createdAt && !Number.isNaN(new Date(item.createdAt).getTime()) ? new Date(item.createdAt).toLocaleDateString('tr-TR') : (item.dateLabel || '-');
+                    const created = item.createdAt && !Number.isNaN(new Date(item.createdAt).getTime()) ? formatDate(item.createdAt) : (item.dateLabel || '-');
                     return (
                       <tr key={item.id || item.title} className="border-b border-foreground/[0.06] transition-colors hover:bg-foreground/[0.025]">
                         <td className="px-4 py-3">
@@ -1132,7 +1133,7 @@ export default function TeacherContent() {
             {recentAdded.map((item, index) => (
               <button key={item.id || index} onClick={() => { setSelectedContent(item); setPlayInlineVideo(false); }} className="flex w-full items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left transition-colors hover:bg-[hsl(var(--brand-accent)/0.06)]">
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><FileText className="h-4 w-4" /></span>
-                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="truncate text-xs text-muted-foreground">{item.createdAt && !Number.isNaN(new Date(item.createdAt).getTime()) ? new Date(item.createdAt).toLocaleDateString('tr-TR') : (item.dateLabel || '')}</p></div>
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="truncate text-xs text-muted-foreground">{item.createdAt && !Number.isNaN(new Date(item.createdAt).getTime()) ? formatDate(item.createdAt) : (item.dateLabel || '')}</p></div>
               </button>
             ))}
           </PremiumPanel>

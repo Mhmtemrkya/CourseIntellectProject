@@ -34,8 +34,7 @@ class _TeacherStudentsPageState extends State<TeacherStudentsPage> {
     _load();
   }
 
-  String _normalize(String? value) =>
-      (value ?? '').trim().toLowerCase();
+  String _normalize(String? value) => (value ?? '').trim().toLowerCase();
 
   Future<void> _load() async {
     try {
@@ -85,16 +84,17 @@ class _TeacherStudentsPageState extends State<TeacherStudentsPage> {
     return _students.where((student) {
       final status = student.status.toLowerCase();
       if (status == 'passive' || status == 'pasif') return false;
-      if (classKeys.isNotEmpty && !classKeys.contains(_normalize(student.className))) {
+      if (classKeys.isNotEmpty &&
+          !classKeys.contains(_normalize(student.className))) {
         return false;
       }
       if (_classFilter != directoryAll && student.className != _classFilter) {
         return false;
       }
       if (query.isEmpty) return true;
-      return '${student.fullName} ${student.parentName}'
-          .toLowerCase()
-          .contains(query);
+      return '${student.fullName} ${student.parentName}'.toLowerCase().contains(
+        query,
+      );
     }).toList();
   }
 
@@ -103,7 +103,8 @@ class _TeacherStudentsPageState extends State<TeacherStudentsPage> {
     final rows = _filtered;
     final mineCount = _students.where((student) {
       final classKeys = _myClasses.map(_normalize).toSet();
-      return classKeys.isEmpty || classKeys.contains(_normalize(student.className));
+      return classKeys.isEmpty ||
+          classKeys.contains(_normalize(student.className));
     }).length;
 
     return Scaffold(
@@ -150,9 +151,14 @@ class _TeacherStudentsPageState extends State<TeacherStudentsPage> {
         rows: rows,
         totalLabel: (total) => '${'Toplam'.tr} $total ${'öğrenci'.tr}',
         emptyTitle: 'Öğrenci bulunamadı',
-        emptyDescription: _myClasses.isEmpty
-            ? 'Ders programında adınıza yazılmış bir sınıf yok.'
-            : 'Filtreleri değiştirin.',
+        emptyDescription:
+            'Aramanıza uyan öğrenci yok. Farklı bir sınıf deneyin.',
+        blankTitle: _myClasses.isEmpty
+            ? 'Size atanmış sınıf yok'
+            : 'Sınıflarınızda öğrenci yok',
+        blankDescription: _myClasses.isEmpty
+            ? 'Ders programında adınıza yazılmış bir sınıf yok. Yönetimden ders programınızı kontrol edin.'
+            : 'Sınıflarınıza öğrenci kaydedildiğinde bu liste otomatik dolar.',
         rowBuilder: (context, student) => DirectoryRowCard(
           title: student.fullName,
           subtitle: student.schoolNumber.isEmpty

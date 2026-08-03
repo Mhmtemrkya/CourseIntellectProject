@@ -12,7 +12,12 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/approvals")]
 public sealed class ApprovalsController(IApprovalService approvalService) : ControllerBase
 {
+    /// <summary>
+    /// Kurumun tüm onay talepleri (satın alma, izin, evrak). Personel iş akışıdır;
+    /// öğrenci ve veli görmemeli — kendi talebini görmek için "mine" ucu var.
+    /// </summary>
     [HttpGet]
+    [Authorize(Roles = "Admin,Administrative,BranchManager,Accounting,Teacher,Cafeteria,Developer")]
     public async Task<IActionResult> Get(
         [FromQuery] string? status,
         [FromQuery] string? category,
@@ -33,6 +38,9 @@ public sealed class ApprovalsController(IApprovalService approvalService) : Cont
         return Ok(await approvalService.GetByRequesterAsync(userId.Value, cancellationToken));
     }
 
+    // Talep OLUŞTURMA herkese açıktır: veli mobil uygulamada belge/izin talebini
+    // buradan gönderir. Kayıt sahibi sunucuda oturumdan yazıldığı için başkasının
+    // adına talep açılamaz; talebi görüntüleme ise "mine" ucuyla sınırlıdır.
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateApprovalRequest request, CancellationToken cancellationToken)
     {

@@ -49,6 +49,7 @@ import { useToast } from '../hooks/use-toast';
 import { useApp } from '../context/AppContext';
 import { desktopApiBaseUrl } from '../lib/auth';
 import { createQuestionThread, fetchQuestionThreads, fetchStaff, replyQuestionThread, uploadFile } from '../lib/api/modules';
+import { formatDateTime } from '../lib/format';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -577,7 +578,7 @@ export default function Questions() {
                         ))}
                       </div>
                     ) : null}
-                    <p className="text-xs text-muted-foreground mt-2">{new Date(selectedThread.createdAt).toLocaleString('tr-TR')}</p>
+                    <p className="text-xs text-muted-foreground mt-2">{formatDateTime(selectedThread.createdAt)}</p>
                   </div>
 
                   <div className="space-y-3">
@@ -607,7 +608,7 @@ export default function Questions() {
                             ))}
                           </div>
                         ) : null}
-                        <p className="text-xs text-muted-foreground mt-2">{new Date(reply.createdAt).toLocaleString('tr-TR')}</p>
+                        <p className="text-xs text-muted-foreground mt-2">{formatDateTime(reply.createdAt)}</p>
                       </div>
                     ))}
                   </div>

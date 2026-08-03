@@ -3,6 +3,7 @@ import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useToast } from '../../hooks/use-toast';
 import { collectDownPayment, fetchPendingDownPayments } from '../../lib/api/modules';
+import { formatDate } from '../../lib/format';
 
 const money = (value, currency = 'TRY') =>
   `${Number(value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency === 'TRY' ? 'TL' : currency}`;
@@ -87,7 +88,7 @@ export default function PendingDownPayments({ onCollected }) {
               </div>
               <p className="text-xs text-muted-foreground">
                 Beklenen peşinat: <b className="text-red-600">{money(row.downPayment, row.currency)}</b>
-                {row.createdAtUtc ? ` • Kayıt: ${new Date(row.createdAtUtc).toLocaleDateString('tr-TR')}` : ''}
+                {row.createdAtUtc ? ` • Kayıt: ${formatDate(row.createdAtUtc)}` : ''}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">

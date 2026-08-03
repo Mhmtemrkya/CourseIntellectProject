@@ -1342,6 +1342,12 @@ export async function fetchSchoolDashboard(params = {}) {
   return api.get('/api/admin/dashboard', { params });
 }
 
+// Yeni kurum kurulum sihirbazı: adımlar ve hangilerinin bittiği. "Bitti" bilgisi
+// kullanıcının işaretinden değil, kurumun kendi verisinden hesaplanır.
+export async function fetchSchoolSetupStatus() {
+  return api.get('/api/admin/dashboard/setup');
+}
+
 export async function fetchAccountingDashboard(range = {}) {
   const response = await api.get('/api/accounting/dashboard', {
     params: Object.keys(range).length ? range : undefined,

@@ -8,6 +8,7 @@ import {
   collectDrivingDownPayment, fetchDrivingPaymentContext, recordDrivingPayment,
 } from '../../lib/api/modules';
 import { useApp } from '../../context/AppContext';
+import { formatDate, formatDateTime } from '../../lib/format';
 
 /**
  * Sürücü kursu tahsilat penceresi.
@@ -190,7 +191,7 @@ function CollectModal({ row, branches = [], onClose, onDone }) {
                                 <b>{i.label || `${i.seqNo}. Taksit`}</b>
                                 <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${i.overdue ? 'bg-red-500/15 text-red-600' : st.cls}`}>{i.overdue ? 'Gecikmiş' : st.label}</span>
                               </div>
-                              <p className="text-xs text-muted-foreground">Vade: {new Date(i.dueDateUtc).toLocaleDateString('tr-TR')} • Tutar: {money(i.amount)}{i.paidAmount > 0 ? ` • Ödenen: ${money(i.paidAmount)}` : ''}</p>
+                              <p className="text-xs text-muted-foreground">Vade: {formatDate(i.dueDateUtc)} • Tutar: {money(i.amount)}{i.paidAmount > 0 ? ` • Ödenen: ${money(i.paidAmount)}` : ''}</p>
                             </div>
                             <span className={`shrink-0 font-black ${i.remaining > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{i.remaining > 0 ? money(i.remaining) : '✓'}</span>
                           </button>
@@ -255,7 +256,7 @@ function CollectModal({ row, branches = [], onClose, onDone }) {
                           {p.receiptNo ? <span className="text-[10px] text-muted-foreground">#{p.receiptNo}</span> : null}
                         </div>
                         <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          {new Date(p.paidAtUtc).toLocaleString('tr-TR')}
+                          {formatDateTime(p.paidAtUtc)}
                           {p.collectedByName ? ` • Alan: ${p.collectedByName}` : ''}
                           {p.branchName ? ` • Şube: ${p.branchName}` : ''}
                         </p>

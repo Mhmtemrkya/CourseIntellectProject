@@ -150,9 +150,9 @@ function InstitutionSettingsModal({ initial, onClose, onSaved }) {
           <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Mevzuat ücretleri ve ders saatleri</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Teorik saat ücreti (₺)" type="number" value={form.theoryHourlyFee} onChange={set('theoryHourlyFee')} />
-              <Field label="Direksiyon saat ücreti (₺)" type="number" value={form.drivingHourlyFee} onChange={set('drivingHourlyFee')} />
-              <Field label="Direksiyon sınav ücreti (₺)" type="number" value={form.drivingExamFee} onChange={set('drivingExamFee')} />
+              <Field label="Teorik saat ücreti (TL)" type="number" value={form.theoryHourlyFee} onChange={set('theoryHourlyFee')} />
+              <Field label="Direksiyon saat ücreti (TL)" type="number" value={form.drivingHourlyFee} onChange={set('drivingHourlyFee')} />
+              <Field label="Direksiyon sınav ücreti (TL)" type="number" value={form.drivingExamFee} onChange={set('drivingExamFee')} />
               <Field label="Zorunlu teorik ders saati" type="number" value={form.theoryHours} onChange={set('theoryHours')} />
               <Field label="Zorunlu direksiyon ders saati" type="number" value={form.drivingHours} onChange={set('drivingHours')} />
             </div>

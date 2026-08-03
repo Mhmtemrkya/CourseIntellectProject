@@ -40,6 +40,8 @@ import {
 } from '../../lib/financeDocuments';
 import { filterByPeriod, periodLabel as buildPeriodLabel, shiftAnchor } from '../../lib/financePeriod';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatDate } from '../../lib/format';
+import { StatusBadge } from '../../components/ui/status-badge';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -480,13 +482,9 @@ export default function InvoicesReceipts() {
   const filteredReceipts = useMemo(() => periodReceipts.filter((rec) => `${rec.name} ${rec.id} ${rec.note}`.toLowerCase().includes(search.toLowerCase())), [periodReceipts, search]);
 
   const getStatusBadge = (status) => {
-    const styles = {
-      paid: 'bg-green-100 text-green-700',
-      unpaid: 'bg-yellow-100 text-yellow-700',
-      overdue: 'bg-red-100 text-red-700',
-    };
-    const labels = { paid: 'Ödendi', unpaid: 'Bekliyor', overdue: 'Gecikmiş' };
-    return <Badge className={styles[status]}>{labels[status]}</Badge>;
+    // Etiket ve renk ortak durum sözlüğünden gelir.
+    const labels = { paid: 'Ödendi', unpaid: 'Bekliyor', overdue: 'Gecikti' };
+    return <StatusBadge status={labels[status]} />;
   };
 
   const stats = useMemo(() => ({
@@ -928,8 +926,8 @@ export default function InvoicesReceipts() {
                     <p><strong>Kategori:</strong> {selectedRecord.category}</p>
                     <p><strong>Durum:</strong> {statusFromInvoice(selectedRecord)}</p>
                     <p><strong>İlgili kişi/kurum:</strong> {selectedRecord.counterparty || '-'}</p>
-                    <p><strong>Fatura tarihi:</strong> {selectedRecord.issueDateUtc ? new Date(selectedRecord.issueDateUtc).toLocaleDateString('tr-TR') : selectedRecord.subtitle}</p>
-                    <p><strong>Son ödeme tarihi:</strong> {selectedRecord.dueDateUtc ? new Date(selectedRecord.dueDateUtc).toLocaleDateString('tr-TR') : '-'}</p>
+                    <p><strong>Fatura tarihi:</strong> {selectedRecord.issueDateUtc ? formatDate(selectedRecord.issueDateUtc) : selectedRecord.subtitle}</p>
+                    <p><strong>Son ödeme tarihi:</strong> {selectedRecord.dueDateUtc ? formatDate(selectedRecord.dueDateUtc) : '-'}</p>
                     <p><strong>Ödeme yöntemi:</strong> {selectedRecord.paymentMethod || '-'}</p>
                     <p><strong>Açıklama:</strong> {selectedRecord.note || selectedRecord.subtitle || '-'}</p>
                   </>

@@ -1,20 +1,20 @@
+import { formatMoney, parseMoney } from './format';
+
+/**
+ * Sunucudan metin olarak gelen tutarı sayıya çevirir ("5.000 TL" → 5000).
+ * Çözüm ortak `lib/format.js`'tedir; virgülsüz "5.000" değerini ÜÇ BİN sayar
+ * (eski sürüm 5 okuyordu).
+ */
 export function parseFinanceMoney(value) {
-  const raw = String(value ?? '0').trim();
-  const cleaned = raw.replace(/[^\d,.-]/g, '');
-  const hasComma = cleaned.includes(',');
-  const normalized = hasComma
-    ? cleaned.replace(/\./g, '').replace(',', '.')
-    : cleaned.replace(/,/g, '');
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : 0;
+  return parseMoney(value);
 }
 
+/**
+ * Finans ekranlarının para biçimi. Gövde ortak `lib/format.js`'e taşındı;
+ * bu isim eski çağrı yerleri için korunur — yeni kodda `formatMoney` kullan.
+ */
 export function formatCurrency(value) {
-  const amount = parseFinanceMoney(value);
-  return `${amount.toLocaleString('tr-TR', {
-    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
-    maximumFractionDigits: 2,
-  })} TL`;
+  return formatMoney(parseFinanceMoney(value));
 }
 
 export function normalizeFinanceText(value) {

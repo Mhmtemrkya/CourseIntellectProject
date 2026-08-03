@@ -11,7 +11,12 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class UsersController(IUserDirectoryService userDirectoryService) : ControllerBase
 {
+    /// <summary>
+    /// Kurum kullanıcı dizini (ad, kullanıcı adı, rol, son giriş). Yönetim
+    /// ekranlarına aittir — öğrenci/veli/öğretmen bu listeyi görmemeli.
+    /// </summary>
     [HttpGet]
+    [Authorize(Roles = "Admin,Administrative,Accounting,BranchManager")]
     public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 200, CancellationToken cancellationToken = default)
     {
         var result = await userDirectoryService.GetUsersPagedAsync(page, pageSize, cancellationToken);
@@ -58,7 +63,12 @@ public sealed class UsersController(IUserDirectoryService userDirectoryService) 
         return Ok(result);
     }
 
+    /// <summary>
+    /// Rol kataloğu; kullanıcı sayıları ve giriş/politika ayarlarını taşır.
+    /// Yönetim ekranlarının verisidir — öğrenci/veli/öğretmen görmemeli.
+    /// </summary>
     [HttpGet("roles")]
+    [Authorize(Roles = "Admin,Administrative,BranchManager")]
     public async Task<IActionResult> GetRoles(CancellationToken cancellationToken)
     {
         var roles = await userDirectoryService.GetRolesAsync(cancellationToken);

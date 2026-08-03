@@ -24,6 +24,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createExcuseRequest, fetchAttendance, fetchMyExcuseRequests, fetchStudents, uploadFile } from '../../lib/api/modules';
+import { formatDate } from '../../lib/format';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -354,7 +355,7 @@ export default function ParentExcuseRequest() {
                   excuses.map((ex) => (
                     <TableRow key={ex.id}>
                       <TableCell className="font-medium">{ex.childName || '-'}</TableCell>
-                      <TableCell>{ex.date ? new Date(ex.date).toLocaleDateString('tr-TR') : '-'}</TableCell>
+                      <TableCell>{ex.date ? formatDate(ex.date) : '-'}</TableCell>
                       <TableCell className="max-w-xs truncate">{ex.reason || '-'}</TableCell>
                       <TableCell>{statusBadge(ex.status)}</TableCell>
                       <TableCell>{ex.attachmentName || '-'}</TableCell>

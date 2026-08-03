@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
+import { formatDate, formatMoney } from '../../lib/format';
 import {
   fetchAccountingDashboard,
   fetchPlatformOverview,
@@ -181,7 +182,7 @@ export default function Billing() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Toplam Tahsilat</p>
-                    <p className="text-3xl font-bold mt-2">₺{platformStats.totalRevenue.toLocaleString('tr-TR')}</p>
+                    <p className="text-3xl font-bold mt-2">{formatMoney(platformStats.totalRevenue)}</p>
                     <div className="flex items-center gap-1 mt-2 text-green-500">
                       <TrendingUp className="h-4 w-4" />
                       <span className="text-sm">Ödenmiş abonelikler</span>
@@ -198,7 +199,7 @@ export default function Billing() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Bekleyen</p>
-                    <p className="text-3xl font-bold mt-2">₺{platformStats.pending.toLocaleString('tr-TR')}</p>
+                    <p className="text-3xl font-bold mt-2">{formatMoney(platformStats.pending)}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-brand-accent/10">
                     <Calendar className="h-6 w-6 text-brand-accent" />
@@ -211,7 +212,7 @@ export default function Billing() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Geciken</p>
-                    <p className="text-3xl font-bold mt-2">₺{platformStats.overdue.toLocaleString('tr-TR')}</p>
+                    <p className="text-3xl font-bold mt-2">{formatMoney(platformStats.overdue)}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-yellow-100 dark:bg-yellow-900/30">
                     <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
@@ -296,12 +297,12 @@ export default function Billing() {
                         </TableCell>
                         <TableCell>{invoice.planName}</TableCell>
                         <TableCell>{invoice.billingPeriod}</TableCell>
-                        <TableCell className="font-mono">₺{Number(invoice.amount || 0).toLocaleString('tr-TR')}</TableCell>
+                        <TableCell className="font-mono">{formatMoney(Number(invoice.amount || 0))}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {new Date(invoice.issuedAtUtc).toLocaleDateString('tr-TR')}
+                          {formatDate(invoice.issuedAtUtc)}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {new Date(invoice.dueAtUtc).toLocaleDateString('tr-TR')}
+                          {formatDate(invoice.dueAtUtc)}
                         </TableCell>
                         <TableCell><StatusBadge status={invoice.status} /></TableCell>
                         <TableCell>
@@ -348,7 +349,7 @@ export default function Billing() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Toplam Gelir</p>
-                    <p className="text-3xl font-bold mt-2">₺{Number(stats.monthlyRevenue || 0).toLocaleString('tr-TR')}</p>
+                    <p className="text-3xl font-bold mt-2">{formatMoney(Number(stats.monthlyRevenue || 0))}</p>
                     <div className="flex items-center gap-1 mt-2 text-green-500">
                       <TrendingUp className="h-4 w-4" />
                       <span className="text-sm">Tahsilat toplamı</span>
@@ -365,7 +366,7 @@ export default function Billing() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Bekleyen</p>
-                    <p className="text-3xl font-bold mt-2">₺{Number(stats.pendingPayments || 0).toLocaleString('tr-TR')}</p>
+                    <p className="text-3xl font-bold mt-2">{formatMoney(Number(stats.pendingPayments || 0))}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-brand-accent/10">
                     <Calendar className="h-6 w-6 text-brand-accent" />
@@ -378,7 +379,7 @@ export default function Billing() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Geciken</p>
-                    <p className="text-3xl font-bold mt-2">₺{Number(stats.overduePayments || 0).toLocaleString('tr-TR')}</p>
+                    <p className="text-3xl font-bold mt-2">{formatMoney(Number(stats.overduePayments || 0))}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-yellow-100 dark:bg-yellow-900/30">
                     <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
@@ -448,9 +449,9 @@ export default function Billing() {
                     <TableRow key={invoice.id} className="hover:bg-muted/50">
                       <TableCell className="font-mono text-sm">{invoice.id}</TableCell>
                       <TableCell className="font-medium">{invoice.studentName || 'Öğrenci'}</TableCell>
-                      <TableCell>₺{Number(invoice.amount || 0).toLocaleString('tr-TR')}</TableCell>
-                      <TableCell>{new Date(invoice.createdAt || Date.now()).toLocaleDateString('tr-TR')}</TableCell>
-                      <TableCell>{invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('tr-TR') : '-'}</TableCell>
+                      <TableCell>{formatMoney(Number(invoice.amount || 0))}</TableCell>
+                      <TableCell>{formatDate(invoice.createdAt || Date.now())}</TableCell>
+                      <TableCell>{invoice.dueDate ? formatDate(invoice.dueDate) : '-'}</TableCell>
                       <TableCell><StatusBadge status={invoice.status} /></TableCell>
                       <TableCell>
                         <Button variant="outline" size="sm" onClick={() => navigate('/finance/invoices-receipts')}>Detay</Button>

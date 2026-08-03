@@ -110,6 +110,6 @@ public sealed class PlatformBrandingSecurityTests : IDisposable
         Plan = "Standard",
         Status = "Active",
     };
-
+    // Dispose pattern to clean up the test database context
     public void Dispose() => db.Dispose();
 }

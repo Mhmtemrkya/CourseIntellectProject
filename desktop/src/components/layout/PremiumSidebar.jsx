@@ -22,6 +22,7 @@ import { getDrivingPermissions, isDrivingPathAllowed, resetDrivingPermissionCach
 import { getInstitutionType, isModuleAllowedForInstitution, resetInstitutionTypeCache } from "../../lib/institutionType";
 import { getEntitlements, isModuleAllowed, resetEntitlementCache } from "../../lib/entitlements";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
+import { collapseMenuHubs } from "../../lib/navigation/hubs";
 import { cn } from "../../lib/utils";
 import brandLogo from "../../assets/brand/emblem.png";
 import { FloatingParticles, GlowingOrb } from "../animations/AnimatedBackground";
@@ -42,6 +43,24 @@ import {
 /** Bir menü yolu mevcut adresi tam olarak veya alt rota olarak karşılıyor mu? */
 function pathIsActive(pathname, path) {
   return pathname === path || pathname.startsWith(`${path}/`);
+}
+
+/**
+ * Menü girişinin temsil ettiği tüm yollar. Hub girişleri kendi yolunun yanında
+ * sekmelerinin yollarını da (`covers`) taşır; kullanıcı hub'ın herhangi bir
+ * sekmesindeyken menüde hub satırı işaretli kalır.
+ */
+function itemPaths(item) {
+  return item?.covers?.length ? [item.path, ...item.covers] : [item.path];
+}
+
+/** Menü girişini karşılayan en uzun eşleşme (yoksa null). */
+function matchedPath(pathname, item) {
+  return itemPaths(item).reduce(
+    (best, path) =>
+      pathIsActive(pathname, path) && (!best || path.length > best.length) ? path : best,
+    null,
+  );
 }
 
 function SidebarLink({ item, compact, mobile, onNavigate, activePath }) {
@@ -342,7 +361,9 @@ export function PremiumSidebar() {
               : item,
           )
         : visibleItems;
-    return buildGroupedMenuItems(routedItems, primaryRole);
+    // Son adım: aynı işi bitiren ekranları konu hub'ına katla. Filtrelerden
+    // sonra çalışır ki role/pakete kapalı ekran hub'a girmesin.
+    return buildGroupedMenuItems(collapseMenuHubs(routedItems), primaryRole);
   }, [
     disabledFeatures,
     entitlements,
@@ -356,7 +377,7 @@ export function PremiumSidebar() {
 
   useEffect(() => {
     const activeGroup = groups.find((group) =>
-      group.items.some((item) => pathIsActive(location.pathname, item.path)),
+      group.items.some((item) => matchedPath(location.pathname, item)),
     );
     setOpenGroups((current) => {
       const next = new Set(current);
@@ -368,16 +389,14 @@ export function PremiumSidebar() {
   const mainGroup = groups.find((group) => group.id === "main");
   const moduleGroups = groups.filter((group) => group.id !== "main");
   const allItems = groups.flatMap((group) => group.items);
-  // Aktif menü girişi "en uzun eşleşen yol" ile bulunur; karar için tüm
-  // görünür yollar gerekir (bkz. pathIsActive).
-  const allPaths = allItems.map((item) => item.path);
-  const activePath = allPaths.reduce(
-    (best, path) =>
-      pathIsActive(location.pathname, path) && (!best || path.length > best.length)
-        ? path
-        : best,
-    null,
-  );
+  // Aktif menü girişi "en uzun eşleşen yol" ile bulunur; hub girişleri sekme
+  // yollarını da kapsar (bkz. matchedPath).
+  const activeMatch = allItems.reduce((best, item) => {
+    const hit = matchedPath(location.pathname, item);
+    if (!hit) return best;
+    return !best || hit.length > best.hit.length ? { hit, path: item.path } : best;
+  }, null);
+  const activePath = activeMatch?.path ?? null;
   const compact = sidebarCollapsed && !mobile;
   // Kurum adı: önce markalamada verilen özel ad, yoksa oturumdaki kurum kaydı.
   // Markalama adı çoğu kurumda boştur; tek başına kullanılırsa satır boş kalır.
@@ -637,7 +656,7 @@ export function PremiumSidebar() {
                     {moduleGroups.map((group, index) => {
                       const open = openGroups.has(group.id);
                       const active = group.items.some((item) =>
-                        pathIsActive(location.pathname, item.path),
+                        matchedPath(location.pathname, item),
                       );
                       const GroupIcon = group.items[0]?.icon || Layers;
 

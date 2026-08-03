@@ -7,6 +7,7 @@ import 'package:student/services/linked_children_service.dart';
 import 'package:student/widgets/adaptive_scaffold.dart';
 import 'package:student/widgets/app_header.dart';
 import 'package:student/widgets/responsive_layout.dart';
+import '../widgets/status_badge.dart';
 
 class VeliOdemePage extends StatefulWidget {
   const VeliOdemePage({super.key});
@@ -361,12 +362,6 @@ class _InstallmentRow extends StatelessWidget {
     required this.status,
   });
 
-  Color _statusColor() {
-    if (status == "Ödendi") return Colors.green;
-    if (status == "Bekliyor") return Colors.orange;
-    return Colors.grey;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -376,14 +371,7 @@ class _InstallmentRow extends StatelessWidget {
           Expanded(child: Text(month)),
           Text(amount),
           const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _statusColor().withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(status, style: TextStyle(color: _statusColor())),
-          ),
+          StatusBadge(status: status),
         ],
       ),
     );

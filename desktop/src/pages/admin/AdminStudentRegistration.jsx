@@ -20,6 +20,7 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createStudent, fetchClasses, fetchStudents, fetchStaff, fetchOrgUnits } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
+import { formatMoney } from '../../lib/format';
 import {
   isValidEmail, isValidTcKimlik, isValidTrPhone, maskEmail, maskTcKimlik, maskTrPhone,
 } from '../../lib/inputMasks';
@@ -404,11 +405,11 @@ export default function AdminStudentRegistration() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label>Toplam Ücret (₺)</Label>
+                        <Label>Toplam Ücret (TL)</Label>
                         <Input type="number" min="0" value={form.enrollmentGrossAmount} onChange={(e) => handleChange('enrollmentGrossAmount', e.target.value)} placeholder="Örn: 60000" />
                       </div>
                       <div>
-                        <Label>İndirim (₺)</Label>
+                        <Label>İndirim (TL)</Label>
                         <Input type="number" min="0" value={form.enrollmentDiscountAmount} onChange={(e) => handleChange('enrollmentDiscountAmount', e.target.value)} placeholder="Örn: 5000" />
                       </div>
                       <div>
@@ -420,7 +421,7 @@ export default function AdminStudentRegistration() {
                         <Input value={form.academicYear} onChange={(e) => handleChange('academicYear', e.target.value)} placeholder="2025-2026" maxLength={40} />
                       </div>
                       <div>
-                        <Label>Peşinat (₺)</Label>
+                        <Label>Peşinat (TL)</Label>
                         <Input type="number" min="0" value={form.enrollmentDownPayment} onChange={(e) => handleChange('enrollmentDownPayment', e.target.value)} placeholder="Örn: 10000" />
                       </div>
                       {form.enrollmentDownPayment ? (
@@ -475,9 +476,9 @@ export default function AdminStudentRegistration() {
                           const perInstallment = count > 0 ? Math.round(((net - down) / count) * 100) / 100 : 0;
                           return (
                             <div className="flex flex-wrap gap-x-6 gap-y-1">
-                              <span>Net: <b>{net.toLocaleString('tr-TR')} ₺</b></span>
-                              <span>Peşinat: <b>{down.toLocaleString('tr-TR')} ₺</b></span>
-                              {count > 0 ? <span>{count} taksit × <b>{perInstallment.toLocaleString('tr-TR')} ₺</b></span> : <span>Taksit yok</span>}
+                              <span>Net: <b>{formatMoney(net)}</b></span>
+                              <span>Peşinat: <b>{formatMoney(down)}</b></span>
+                              {count > 0 ? <span>{count} taksit × <b>{formatMoney(perInstallment)}</b></span> : <span>Taksit yok</span>}
                             </div>
                           );
                         })()}

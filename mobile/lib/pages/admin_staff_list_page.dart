@@ -97,7 +97,9 @@ class _AdminStaffListPageState extends State<AdminStaffListPage> {
     final filtered = _filtered;
     final staff = _store.staff;
     final active = staff.where((record) => _isActive(record.status)).length;
-    final teachers = staff.where((record) => record.roleType == 'Öğretmen').length;
+    final teachers = staff
+        .where((record) => record.roleType == 'Öğretmen')
+        .length;
 
     return Scaffold(
       appBar: AppBar(
@@ -169,7 +171,11 @@ class _AdminStaffListPageState extends State<AdminStaffListPage> {
         rows: filtered,
         totalLabel: (total) => '${'Toplam'.tr} $total ${'personel'.tr}',
         emptyTitle: 'Personel bulunamadı',
-        emptyDescription: 'Filtreleri değiştirin veya yeni personel ekleyin.',
+        emptyDescription:
+            'Aramanıza uyan personel yok. Farklı bir rol deneyin.',
+        blankTitle: 'Henüz personel kaydınız yok',
+        blankDescription:
+            'Öğretmen, sekreter ve yönetici hesapları buradan açılır; her personel kendi rolüyle giriş yapar.',
         rowBuilder: (context, record) {
           final passive = !_isActive(record.status);
           return DirectoryRowCard(

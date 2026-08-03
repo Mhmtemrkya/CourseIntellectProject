@@ -29,6 +29,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createCollection, deleteCollection, fetchAccountingDashboard, fetchStudents, updateCollection } from '../../lib/api/modules';
+import { formatDate } from '../../lib/format';
 import {
   buildFinanceDocumentHtml,
   downloadCsvRows,
@@ -331,7 +332,7 @@ export default function Collections() {
     .reduce((sum, item) => sum + plannedCollectionAmount(item), 0), [monthFilter, plannedCollections]);
 
   const totalToday = useMemo(() => {
-    const today = new Date().toLocaleDateString('tr-TR');
+    const today = formatDate(new Date());
     return collections
       .filter((item) => String(item.time || '').includes(today))
       .reduce((sum, item) => sum + parseMoney(item.amount), 0);

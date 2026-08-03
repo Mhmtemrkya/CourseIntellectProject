@@ -122,6 +122,7 @@ class _Bucket {
   final int expense;
   final int salary;
   final int invoice;
+  final int ledger;
   final int count;
 
   const _Bucket({
@@ -131,6 +132,7 @@ class _Bucket {
     required this.expense,
     required this.salary,
     required this.invoice,
+    required this.ledger,
     required this.count,
   });
 
@@ -297,8 +299,14 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
           .where((i) => range.contains(_parseTrDate(i.subtitle)) && _isExpenseInvoice(i))
           .map((i) => i.amount),
     );
-    return salary + invoice;
+    final ledger = _sumLedger(range);
+    return salary + invoice + ledger;
   }
+
+  /// Seçili aralıktaki gider defteri toplamı.
+  int _sumLedger(_Range range) => _store.expenseLedger
+      .where((item) => range.contains(item.expenseDate))
+      .fold<int>(0, (sum, item) => sum + item.amount);
 
   int get _periodUnpaidDue => _sumAmount(
         _periodInstallments
@@ -358,13 +366,15 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
             .where((i) => range.contains(_parseTrDate(i.subtitle)) && _isExpenseInvoice(i))
             .map((i) => i.amount),
       );
+      final ledger = _sumLedger(range);
       return _Bucket(
         label: _bucketLabel(_period, range, index),
         fullLabel: _bucketFullLabel(_period, range, index),
         income: _sumAmount(coll.map((c) => c.amount)),
-        expense: salary + invoice,
+        expense: salary + invoice + ledger,
         salary: salary,
         invoice: invoice,
+        ledger: ledger,
         count: coll.length,
       );
     });
@@ -1447,6 +1457,8 @@ class _FlowChartState extends State<_FlowChart> {
           const Divider(height: 16),
           _detailRow(context, '• Maaş gideri',
               widget.formatAmount(bucket.salary), theme.textTheme.bodySmall?.color),
+          _detailRow(context, '• Gider defteri',
+              widget.formatAmount(bucket.ledger), const Color(0xFFF43F5E)),
           _detailRow(context, '• Fatura gideri',
               widget.formatAmount(bucket.invoice), theme.textTheme.bodySmall?.color),
           _detailRow(context, '• Tahsilat adedi', '${bucket.count} işlem',
