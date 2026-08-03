@@ -57,6 +57,9 @@ const emptyForm = {
   enrollmentGrossAmount: '',
   enrollmentDiscountAmount: '',
   enrollmentDiscountReason: '',
+  // Burs: işaretliyse oran girilir, tutarı sunucu brüt üzerinden hesaplar.
+  enrollmentHasScholarship: false,
+  enrollmentScholarshipPercent: '',
   enrollmentDownPayment: '',
   enrollmentDownPaymentMethod: 'Nakit',
   enrollmentDownPaymentPaid: true,
@@ -180,6 +183,11 @@ export default function AdminStudentRegistration() {
         // Peşinat girildiyse ödendi/ödenmedi; peşinat yoksa anlamsız (true).
         enrollmentDownPaymentPaid: form.enrollmentDownPayment ? !!form.enrollmentDownPaymentPaid : true,
         enrollmentInstallmentCount: form.enrollmentInstallmentCount ? Number(form.enrollmentInstallmentCount) : null,
+        // Burs kutusu işaretli değilse oran HİÇ gönderilmez (null): kutuyu açıp
+        // kapatan kullanıcıda hayalet oran kalmasın.
+        enrollmentScholarshipPercent: form.enrollmentHasScholarship && form.enrollmentScholarshipPercent
+          ? Number(form.enrollmentScholarshipPercent)
+          : null,
       }, branchId || undefined);
       const studentInfo = {
         fullName: created.fullName || form.fullName.trim(),
@@ -411,6 +419,7 @@ export default function AdminStudentRegistration() {
                       <div>
                         <Label>İndirim (TL)</Label>
                         <Input type="number" min="0" value={form.enrollmentDiscountAmount} onChange={(e) => handleChange('enrollmentDiscountAmount', e.target.value)} placeholder="Örn: 5000" />
+                        <p className="mt-1 text-[11px] text-muted-foreground">Burs dışındaki indirim (kardeş, erken kayıt…).</p>
                       </div>
                       <div>
                         <Label>İndirim Sebebi</Label>
@@ -465,17 +474,73 @@ export default function AdminStudentRegistration() {
                         <Input type="number" min="0" max="48" value={form.enrollmentInstallmentCount} onChange={(e) => handleChange('enrollmentInstallmentCount', e.target.value)} placeholder="Örn: 10" />
                       </div>
                     </div>
+                    {/* Burs: oran girilir, tutarı sunucu brüt üzerinden hesaplar.
+                        Ekrandaki önizleme sunucudaki formülün birebir aynısıdır. */}
+                    <div className="rounded-xl border border-dashed p-3">
+                      <label className="flex items-center gap-2 text-sm font-semibold">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-[hsl(var(--brand-accent))]"
+                          checked={form.enrollmentHasScholarship}
+                          onChange={(e) => {
+                            handleChange('enrollmentHasScholarship', e.target.checked);
+                            if (!e.target.checked) handleChange('enrollmentScholarshipPercent', '');
+                          }}
+                        />
+                        Burslu öğrenci
+                      </label>
+                      {form.enrollmentHasScholarship ? (
+                        <div className="mt-3 grid gap-3 sm:grid-cols-[10rem_1fr] sm:items-end">
+                          <div>
+                            <Label>Burs Oranı (%)</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.5"
+                              value={form.enrollmentScholarshipPercent}
+                              onChange={(e) => handleChange('enrollmentScholarshipPercent', e.target.value)}
+                              placeholder="Örn: 40"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Bursun tutarı toplam ücret üzerinden otomatik hesaplanır ve indirime eklenir;
+                            taksit planı kalan net tutara göre kurulur.
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          İşaretlenirse oran girilir; ücret hesabı otomatik yapılır.
+                        </p>
+                      )}
+                    </div>
+
                     {form.enrollmentGrossAmount ? (
                       <div className="rounded-lg bg-muted/40 p-3 text-sm">
                         {(() => {
+                          // Sunucudaki CreateEnrollmentAsync ile AYNI sıra:
+                          // burs tutarı brütten hesaplanır, diğer indirimle toplanır,
+                          // toplam brütte kırpılır, net = brüt − toplam indirim.
                           const gross = Number(form.enrollmentGrossAmount) || 0;
-                          const discount = Math.min(Number(form.enrollmentDiscountAmount) || 0, gross);
+                          const percent = form.enrollmentHasScholarship
+                            ? Math.min(Math.max(Number(form.enrollmentScholarshipPercent) || 0, 0), 100)
+                            : 0;
+                          const scholarship = Math.round((gross * percent) / 100 * 100) / 100;
+                          const other = Math.max(Number(form.enrollmentDiscountAmount) || 0, 0);
+                          const discount = Math.min(other + scholarship, gross);
                           const net = gross - discount;
                           const down = Math.min(Number(form.enrollmentDownPayment) || 0, net);
                           const count = Number(form.enrollmentInstallmentCount) || 0;
                           const perInstallment = count > 0 ? Math.round(((net - down) / count) * 100) / 100 : 0;
                           return (
                             <div className="flex flex-wrap gap-x-6 gap-y-1">
+                              <span>Brüt: <b>{formatMoney(gross)}</b></span>
+                              {percent > 0 ? (
+                                <span className="text-emerald-600">
+                                  Burs %{percent}: <b>−{formatMoney(scholarship)}</b>
+                                </span>
+                              ) : null}
+                              {other > 0 ? <span>İndirim: <b>−{formatMoney(other)}</b></span> : null}
                               <span>Net: <b>{formatMoney(net)}</b></span>
                               <span>Peşinat: <b>{formatMoney(down)}</b></span>
                               {count > 0 ? <span>{count} taksit × <b>{formatMoney(perInstallment)}</b></span> : <span>Taksit yok</span>}

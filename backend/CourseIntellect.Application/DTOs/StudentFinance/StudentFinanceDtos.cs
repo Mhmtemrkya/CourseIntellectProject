@@ -6,6 +6,10 @@ public sealed record CreateEnrollmentRequest(
     string ClassName,
     string AcademicYear,
     decimal GrossAmount,
+    /// <summary>
+    /// Burs DIŞINDAKİ indirim (kardeş, erken kayıt, personel çocuğu…).
+    /// Sözleşmeye yazılan toplam indirim = bu tutar + bursun para karşılığı.
+    /// </summary>
     decimal DiscountAmount,
     string? DiscountReason,
     decimal DownPayment,
@@ -17,7 +21,13 @@ public sealed record CreateEnrollmentRequest(
     string? DownPaymentMethod = null,
     // Peşinat kayıt anında tahsil edildi mi? false → makbuz kesilmez, peşinat
     // "bekliyor" olarak sözleşmede durur. Varsayılan true (geriye dönük uyum).
-    bool DownPaymentPaid = true);
+    bool DownPaymentPaid = true,
+    /// <summary>
+    /// Burs oranı (0–100). 0/boş → öğrenci burslu değildir. Bursun tutarı
+    /// sunucuda brüt üzerinden hesaplanır; istemcinin gönderdiği tutara
+    /// GÜVENİLMEZ (indirim tutarı istemciden zorlanamasın).
+    /// </summary>
+    decimal ScholarshipPercent = 0);
 
 public sealed record RecordPaymentRequest(
     Guid? StudentUserId,
@@ -28,7 +38,12 @@ public sealed record RecordPaymentRequest(
     string? Method,
     string? Note,
     /// <summary>Tahsilatın yapıldığı şube. Boşsa aktörün etkin şubesine düşer.</summary>
-    Guid? BranchId = null);
+    Guid? BranchId = null,
+    /// <summary>
+    /// İstemcinin ürettiği tekil istek kimliği. Aynı kimlikle gelen ikinci istek
+    /// yeni tahsilat OLUŞTURMAZ, ilk makbuzu döndürür (çift tahsilat koruması).
+    /// </summary>
+    Guid? ClientRequestId = null);
 
 public sealed record FinanceInstallmentDto(
     Guid Id,
@@ -63,7 +78,11 @@ public sealed record FinancePaymentDto(
     string ExternalReference = "",
     decimal AllocatedRefundableAmount = 0,
     decimal UnallocatedRefundableAmount = 0,
-    bool IsDownPayment = false);
+    bool IsDownPayment = false,
+    /// <summary>Tahsilatı alan personelin adı — makbuzun izi ekranda görünür.</summary>
+    string CollectedByName = "",
+    /// <summary>Tahsilatın işlendiği şube adı.</summary>
+    string BranchName = "");
 
 public sealed record EnrollmentContractDto(
     Guid Id,
@@ -83,7 +102,11 @@ public sealed record EnrollmentContractDto(
     DateTime CreatedAtUtc,
     IReadOnlyList<FinanceInstallmentDto> Installments,
     decimal DownPaymentPaidAmount = 0,
-    string DownPaymentStatus = "Bekliyor");
+    string DownPaymentStatus = "Bekliyor",
+    /// <summary>Burs oranı (0–100); 0 ise öğrenci burslu değildir.</summary>
+    decimal ScholarshipPercent = 0,
+    /// <summary>Bursun para karşılığı — <see cref="DiscountAmount"/>'ın İÇİNDEDİR.</summary>
+    decimal ScholarshipAmount = 0);
 
 /// <summary>Bekleyen peşinatı tahsil etme isteği; yöntem boşsa "Nakit".</summary>
 public sealed record CollectDownPaymentRequest(string? Method = null);
@@ -126,7 +149,14 @@ public sealed record StudentFinanceAccountDto(
     decimal CourseRemaining = 0,
     decimal AdditionalChargeRemaining = 0,
     decimal StandaloneExamFeeRemaining = 0,
-    decimal TotalPayable = 0);
+    decimal TotalPayable = 0,
+    /// <summary>
+    /// Öğrencinin etkin burs oranı — birden çok sözleşme varsa EN YÜKSEK oran.
+    /// 0 ise burslu değildir ve istemci burs kartını hiç çizmez.
+    /// </summary>
+    decimal ScholarshipPercent = 0,
+    /// <summary>Tüm sözleşmelerde bursun toplam para karşılığı.</summary>
+    decimal ScholarshipAmount = 0);
 
 public sealed record StudentFinanceSummaryDto(
     Guid? StudentUserId,

@@ -167,10 +167,10 @@ export default function ParentMeetings() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <section className="rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#1e293b_0%,#0f766e_58%,#22c55e_100%)] p-7 text-white shadow-xl">
+      <section className="ci-hero rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#1e293b_0%,#0f766e_58%,#22c55e_100%)] p-7 text-white shadow-xl">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">Veli Görüşme Merkezi</Badge>
+            <Badge className="ci-hero-label bg-foreground/12 text-white hover:bg-foreground/12">Veli Görüşme Merkezi</Badge>
             <h1 className="mt-3 text-3xl font-bold font-heading">Öğretmenin tanımladığı gün ve saatlerden seçerek talep oluştur</h1>
             <p className="mt-2 max-w-2xl text-sm text-foreground/75">Sadece öğretmenin uygun açtığı saatleri görür, ilgili günü seçip listedeki saatlerden birini işaretlersin.</p>
           </div>

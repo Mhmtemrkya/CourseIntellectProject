@@ -135,7 +135,7 @@ export default function ParentWeeklyReport() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="lg:col-span-2 overflow-hidden border-slate-200/70">
-          <CardHeader className="bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] text-white">
+          <CardHeader className="ci-hero border-b border-border text-white">
             <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" />Öğretmenden Gelen Haftalık Raporlar</CardTitle>
             <CardDescription className="text-foreground/75">Gönderilen özel raporlar seçili öğrencinin haftalık alanına düşer.</CardDescription>
           </CardHeader>
@@ -201,7 +201,7 @@ export default function ParentWeeklyReport() {
         <DialogContent className="sm:max-w-4xl overflow-hidden p-0">
           {selectedTeacherReport ? (
             <>
-              <div className="bg-[linear-gradient(135deg,#111827_0%,#1e40af_60%,#38bdf8_100%)] px-8 py-8 text-white">
+              <div className="ci-hero border-b border-border px-8 py-8 text-white">
                 <div className="flex flex-wrap gap-2">
                   <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">{selectedTeacherReport.subject}</Badge>
                   <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">{selectedTeacherReport.weeklyPeriodLabel}</Badge>

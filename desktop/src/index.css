@@ -1172,9 +1172,46 @@ code {
     color: #fff !important;
 }
 
-.light .ci-page .ci-hero,
-.light .ci-page .ci-hero .text-white {
-    color: #fff !important;
+.light :is(.ci-page, .ci-dialog, .ci-drawer) .ci-hero {
+    isolation: isolate;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 88% 34%, hsl(var(--brand-accent) / 0.08) 0 4.8rem, transparent 4.9rem),
+        radial-gradient(circle at 93% 68%, hsl(var(--brand-accent) / 0.055) 0 3.7rem, transparent 3.8rem),
+        hsl(var(--card)) !important;
+    border-color: hsl(var(--border) / 0.92) !important;
+    color: hsl(var(--foreground)) !important;
+    box-shadow:
+        0 1px 2px hsl(var(--foreground) / 0.03),
+        0 14px 36px -24px hsl(var(--foreground) / 0.28) !important;
+}
+
+.light :is(.ci-page, .ci-dialog, .ci-drawer) .ci-hero::before {
+    position: absolute;
+    z-index: 1;
+    inset: 0 auto 0 0;
+    width: 5px;
+    border-radius: inherit;
+    background: hsl(var(--brand-accent));
+    content: '';
+    pointer-events: none;
+}
+
+.light :is(.ci-page, .ci-dialog, .ci-drawer) .ci-hero :is(h1, h2, h3, .text-white) {
+    color: hsl(var(--foreground)) !important;
+}
+
+.light :is(.ci-page, .ci-dialog, .ci-drawer) .ci-hero .ci-hero-label {
+    border-color: hsl(var(--brand-accent) / 0.18) !important;
+    background: hsl(var(--brand-accent) / 0.1) !important;
+    color: hsl(var(--brand-accent-text, var(--brand-accent))) !important;
+    box-shadow: none !important;
+}
+
+.light :is(.ci-page, .ci-dialog, .ci-drawer) .ci-hero .ci-hero-stat {
+    border-color: hsl(var(--brand-accent) / 0.13) !important;
+    background: hsl(var(--brand-accent) / 0.055) !important;
+    backdrop-filter: none;
 }
 
 .light [data-ci-sidebar] .text-fuchsia-200 {

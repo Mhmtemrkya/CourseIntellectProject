@@ -141,10 +141,10 @@ export default function AdministrativeRecords() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="administrative-records-page">
-      <div className="rounded-[28px] border border-border p-7 text-white shadow-xl" style={{ background: 'radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.16), transparent 36%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 55%, var(--brand-p-700, #1d4d63) 100%)' }}>
+      <div className="ci-hero rounded-[28px] border border-border p-7 text-white shadow-xl" style={{ background: 'radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.16), transparent 36%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 55%, var(--brand-p-700, #1d4d63) 100%)' }}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <Badge className="border-foreground/20 bg-foreground/10 text-white">İdari Operasyon</Badge>
+            <Badge className="ci-hero-label border-foreground/20 bg-foreground/10 text-white">İdari Operasyon</Badge>
             <h1 className="mt-4 text-3xl font-bold font-heading">İdari Kayıtlar</h1>
             <p className="mt-2 text-sm text-foreground/80">
               Öğrenci, veli ve personel kayıtlarını daha okunur kartlar, sade detay görünümü ve gerçek dosya çıktısıyla yönetin.
@@ -157,7 +157,7 @@ export default function AdministrativeRecords() {
               [activeStaffCount, 'Personel'],
               [records.length, 'Toplam'],
             ].map(([value, label]) => (
-              <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3 backdrop-blur">
+              <div key={label} className="ci-hero-stat rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3 backdrop-blur">
                 <p className="text-2xl font-bold">{value}</p>
                 <p className="text-xs uppercase tracking-[0.18em] text-foreground/70">{label}</p>
               </div>

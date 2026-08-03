@@ -796,6 +796,9 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.NetAmount).HasPrecision(18, 2);
             entity.Property(x => x.DownPayment).HasPrecision(18, 2);
             entity.Property(x => x.DownPaymentPaidAmount).HasPrecision(18, 2);
+            // Burs: oran yüzdedir (0–100), tutar toplam indirimin içindedir.
+            entity.Property(x => x.ScholarshipPercent).HasColumnName("scholarship_percent").HasPrecision(5, 2);
+            entity.Property(x => x.ScholarshipAmount).HasColumnName("scholarship_amount").HasPrecision(18, 2);
             entity.Property(x => x.Currency).HasMaxLength(8).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(500);
@@ -837,6 +840,13 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasIndex(x => x.StudentUserId);
             entity.HasIndex(x => x.FinanceInstallmentId);
             entity.HasIndex(x => x.OriginalPaymentId);
+            // Idempotency: aynı istek kimliğiyle ikinci bir tahsilat YAZILAMAZ.
+            // Kısmi indeks — kimlik göndermeyen eski/dış çağrılar etkilenmez.
+            // Kolon adı açıkça verilir; indeks filtresi bu adı kullanıyor.
+            entity.Property(x => x.ClientRequestId).HasColumnName("client_request_id");
+            entity.HasIndex(x => new { x.TenantId, x.ClientRequestId })
+                .IsUnique()
+                .HasFilter("client_request_id IS NOT NULL");
         });
 
         modelBuilder.Entity<FinancePaymentAllocation>(entity =>

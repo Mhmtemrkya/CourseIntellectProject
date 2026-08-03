@@ -29,33 +29,42 @@ class StudentFinanceApiService {
   }
 
   Map<String, String> _headers(AuthSession session, {bool json = false}) => {
-        'Authorization': 'Bearer ${session.accessToken}',
-        if (json) 'Content-Type': 'application/json',
-      };
+    'Authorization': 'Bearer ${session.accessToken}',
+    if (json) 'Content-Type': 'application/json',
+  };
 
   Future<dynamic> _get(String path, [Map<String, String>? query]) async {
     final session = await _session();
-    final uri = Uri.parse('${ApiConfig.baseUrl}$path')
-        .replace(queryParameters: query);
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}$path',
+    ).replace(queryParameters: query);
     final response = await http.get(uri, headers: _headers(session));
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StudentFinanceApiException('İstek başarısız (${response.statusCode}).');
+      throw StudentFinanceApiException(
+        'İstek başarısız (${response.statusCode}).',
+      );
     }
     return response.body.isEmpty ? null : jsonDecode(response.body);
   }
 
-  Future<dynamic> _post(String path, Map<String, dynamic> body,
-      [Map<String, String>? query]) async {
+  Future<dynamic> _post(
+    String path,
+    Map<String, dynamic> body, [
+    Map<String, String>? query,
+  ]) async {
     final session = await _session();
-    final uri = Uri.parse('${ApiConfig.baseUrl}$path')
-        .replace(queryParameters: query);
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}$path',
+    ).replace(queryParameters: query);
     final response = await http.post(
       uri,
       headers: _headers(session, json: true),
       body: jsonEncode(body),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StudentFinanceApiException('İşlem başarısız (${response.statusCode}).');
+      throw StudentFinanceApiException(
+        'İşlem başarısız (${response.statusCode}).',
+      );
     }
     return response.body.isEmpty ? null : jsonDecode(response.body);
   }
@@ -65,7 +74,8 @@ class StudentFinanceApiService {
     String? studentUserId,
   }) async {
     final result = await _get('/api/student-finance/account', {
-      if (studentName != null && studentName.isNotEmpty) 'studentName': studentName,
+      if (studentName != null && studentName.isNotEmpty)
+        'studentName': studentName,
       if (studentUserId != null && studentUserId.isNotEmpty)
         'studentUserId': studentUserId,
     });
@@ -101,15 +111,17 @@ class StudentFinanceApiService {
   }) async {
     final session = await _session();
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/student-finance/statement')
-        .replace(queryParameters: {
-      ..._statementQuery(
-        studentName: studentName,
-        studentUserId: studentUserId,
-        fromUtc: fromUtc,
-        toUtc: toUtc,
-      ),
-      'format': 'pdf',
-    });
+        .replace(
+          queryParameters: {
+            ..._statementQuery(
+              studentName: studentName,
+              studentUserId: studentUserId,
+              fromUtc: fromUtc,
+              toUtc: toUtc,
+            ),
+            'format': 'pdf',
+          },
+        );
     final response = await http.get(uri, headers: _headers(session));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StudentFinanceApiException(
@@ -125,13 +137,13 @@ class StudentFinanceApiService {
     DateTime? fromUtc,
     DateTime? toUtc,
   }) => {
-        if (studentName != null && studentName.isNotEmpty)
-          'studentName': studentName,
-        if (studentUserId != null && studentUserId.isNotEmpty)
-          'studentUserId': studentUserId,
-        if (fromUtc != null) 'fromUtc': fromUtc.toIso8601String(),
-        if (toUtc != null) 'toUtc': toUtc.toIso8601String(),
-      };
+    if (studentName != null && studentName.isNotEmpty)
+      'studentName': studentName,
+    if (studentUserId != null && studentUserId.isNotEmpty)
+      'studentUserId': studentUserId,
+    if (fromUtc != null) 'fromUtc': fromUtc.toIso8601String(),
+    if (toUtc != null) 'toUtc': toUtc.toIso8601String(),
+  };
 
   // Veli: kendi çocuklarının finans hesapları + ödeme.
   Future<List<Map<String, dynamic>>> getParentChildrenFinance() async {
@@ -170,6 +182,9 @@ class StudentFinanceApiService {
         .toList();
   }
 
+  /// [clientRequestId]: çift tahsilat koruması. Tahsilat penceresi açılışında
+  /// BİR kez üretilir; aynı kimlikle gelen ikinci istek sunucuda yeni kayıt
+  /// oluşturmaz, ilk makbuzu döndürür.
   Future<Map<String, dynamic>> recordPayment({
     required String studentName,
     required double amount,
@@ -177,6 +192,8 @@ class StudentFinanceApiService {
     String? enrollmentContractId,
     String? financeInstallmentId,
     String? note,
+    String? studentUserId,
+    String? clientRequestId,
   }) async {
     final result = await _post('/api/student-finance/payments', {
       'studentName': studentName,
@@ -185,7 +202,21 @@ class StudentFinanceApiService {
       'enrollmentContractId': ?enrollmentContractId,
       'financeInstallmentId': ?financeInstallmentId,
       'note': ?note,
+      'studentUserId': ?studentUserId,
+      'clientRequestId': ?clientRequestId,
     });
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  /// Bekleyen peşinatı makbuzlu tahsil eder ve sözleşmeyi "ödendi" işaretler.
+  Future<Map<String, dynamic>> collectDownPayment({
+    required String contractId,
+    String method = 'Nakit',
+  }) async {
+    final result = await _post(
+      '/api/student-finance/contracts/$contractId/collect-down-payment',
+      {'method': method},
+    );
     return Map<String, dynamic>.from(result as Map);
   }
 
@@ -204,12 +235,12 @@ class StudentFinanceApiService {
     return Map<String, dynamic>.from(result as Map);
   }
 
-  Future<Map<String, dynamic>> sendReminders({int upcomingWindowDays = 7}) async {
-    final result = await _post(
-      '/api/student-finance/reminders',
-      const {},
-      {'upcomingWindowDays': '$upcomingWindowDays'},
-    );
+  Future<Map<String, dynamic>> sendReminders({
+    int upcomingWindowDays = 7,
+  }) async {
+    final result = await _post('/api/student-finance/reminders', const {}, {
+      'upcomingWindowDays': '$upcomingWindowDays',
+    });
     return Map<String, dynamic>.from(result as Map);
   }
 

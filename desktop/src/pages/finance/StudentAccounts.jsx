@@ -22,6 +22,7 @@ import { useApp } from '../../context/AppContext';
 import { getFinanceVocabulary } from '../../lib/financeVocabulary';
 import { resolveUserInstitutionType } from '../../lib/auth';
 import DrivingCollectModal from '../../components/finance/DrivingCollectModal';
+import SchoolCollectModal from '../../components/finance/SchoolCollectModal';
 import { useToast } from '../../hooks/use-toast';
 import { SheetHeader, SheetTitle, SheetDescription } from '../../components/ui/sheet';
 import ConsentAlertBanner from '../../components/consent/ConsentAlertBanner';
@@ -124,7 +125,6 @@ function StudentAccountDrawer({
   onCreateCollection,
   onExportStatement,
   onPrintStatement,
-  creatingCollection,
   onUpdated,
 }) {
   // Sürücü kursunda "veli" kavramı yoktur; kursiyerin muhatabı kendisidir.
@@ -186,6 +186,9 @@ function StudentAccountDrawer({
   const remaining = detail ? Number(detail.totalPayable) || 0 : account.remaining;
   const courseRemaining = detail ? Number(detail.courseRemaining) || 0 : 0;
   const additionalChargeRemaining = detail ? Number(detail.additionalChargeRemaining) || 0 : 0;
+  // Burs kartı YALNIZ burslu öğrencide çizilir; oran 0 ise kart hiç yoktur.
+  const scholarshipPercent = Number(detail?.scholarshipPercent) || 0;
+  const scholarshipAmount = Number(detail?.scholarshipAmount) || 0;
   const standaloneExamFeeRemaining = detail ? Number(detail.standaloneExamFeeRemaining) || 0 : 0;
   const grossTotal = Number(detail?.grossTotal) || account.grossTotal;
   const discountTotal = Number(detail?.discountTotal) || account.discountTotal;
@@ -257,7 +260,12 @@ function StudentAccountDrawer({
           [downPaymentPaidTotal, downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? `Peşinat • ${formatCurrency(downPaymentTotal)} bekleniyor` : 'Ödenen Peşinat', downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? 'text-amber-600' : 'text-green-600'],
           [paid, 'Toplam Tahsil Edilen', 'text-green-600'],
           [courseRemaining, vocabulary.feeDebt, courseRemaining > 0 ? 'text-red-600' : 'text-green-600'],
-          [additionalChargeRemaining, 'Ek Ücret Borcu', additionalChargeRemaining > 0 ? 'text-red-600' : 'text-green-600'],
+          // "Ek Ücret Borcu" YALNIZ sürücü kursunda anlamlıdır: kalem DrivingCharge
+          // kayıtlarından gelir ve okulda böyle bir kayıt hiç oluşmaz — okul
+          // yöneticisi sürekli "0 TL" gösteren bir kartla karşılaşmasın.
+          ...(vocabulary.isDrivingSchool
+            ? [[additionalChargeRemaining, vocabulary.additionalChargeDebt, additionalChargeRemaining > 0 ? 'text-red-600' : 'text-green-600']]
+            : []),
           [remaining, 'Toplam Ödenecek', remaining > 0 ? 'text-red-600' : 'text-green-600'],
         ].map(([value, label, color, isCount]) => (
           <Card key={label}>
@@ -267,6 +275,20 @@ function StudentAccountDrawer({
             </CardContent>
           </Card>
         ))}
+
+        {/* Burs kartı: SADECE burslu öğrencide. Oran 0 ise hiç çizilmez —
+            bursu olmayan öğrencide "%0 burs" göstermenin bir anlamı yok. */}
+        {scholarshipPercent > 0 ? (
+          <Card className="border-emerald-500/40 bg-emerald-500/[0.06]" data-testid="scholarship-card">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-emerald-600">%{scholarshipPercent}</p>
+              <p className="text-xs font-semibold text-muted-foreground">Burs Oranı</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {formatCurrency(scholarshipAmount)} indirim uygulandı
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       {detailError ? <ErrorBanner title="Cari hesap ayrıntıları alınamadı" message={detailError} /> : null}
@@ -405,9 +427,8 @@ function StudentAccountDrawer({
       </Card>
 
       <div className="flex gap-3 pt-4">
-        <Button className="flex-1 bg-brand-primary hover:bg-brand-primary/90" onClick={() => onCreateCollection?.(account)} disabled={creatingCollection}>
-          <CreditCard className="h-4 w-4 mr-2" />
-          {creatingCollection ? 'İşleniyor...' : 'Tahsilat Gir'}
+        <Button className="flex-1 bg-brand-primary hover:bg-brand-primary/90" onClick={() => onCreateCollection?.(account)}>
+          <CreditCard className="h-4 w-4 mr-2" /> Tahsilat Gir
         </Button>
         <Button
           variant="outline"
@@ -442,6 +463,8 @@ export default function StudentAccounts() {
   const [drivingRows, setDrivingRows] = useState([]);
   const [drivingBranches, setDrivingBranches] = useState([]);
   const [collectTarget, setCollectTarget] = useState(null);
+  // Okul tarafındaki tahsilat penceresinin hedefi (sürücü kursununkinden ayrı).
+  const [schoolCollectTarget, setSchoolCollectTarget] = useState(null);
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('all');
@@ -452,7 +475,8 @@ export default function StudentAccounts() {
   const [dashboard, setDashboard] = useState(null);
   const [summaries, setSummaries] = useState([]);
   const [bulkProcessing, setBulkProcessing] = useState(false);
-  const [activeCollectionId, setActiveCollectionId] = useState(null);
+  // Toplu tahsilat onayı: { count, total }
+  const [bulkConfirm, setBulkConfirm] = useState(null);
   const [statementBusyId, setStatementBusyId] = useState(null);
   const [statementPreview, setStatementPreview] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -557,40 +581,11 @@ export default function StudentAccounts() {
       return;
     }
 
-    const remaining = Math.max(0, account.remaining);
-    if (remaining <= 0) {
-      toast({
-        title: 'Tahsilat gerekmiyor',
-        description: `${account.name} için açık bakiye bulunmuyor.`,
-      });
-      return;
-    }
-
-    try {
-      setActiveCollectionId(account.id);
-      const payload = await createCollection({
-        name: account.name,
-        studentUserId: account.userId,
-        className: account.className,
-        amount: formatCurrency(remaining),
-        method: 'Kart',
-        note: `${account.className} cari hesap tahsilatı`,
-      });
-      applyCollectionToDashboard(account, payload);
-      toast({
-        title: 'Tahsilat işlendi',
-        description: `${account.name} için ${formatCurrency(remaining)} tahsil edildi.`,
-      });
-    } catch (err) {
-      toast({
-        title: 'Tahsilat girilemedi',
-        description: err.message || 'Tekrar deneyin.',
-        variant: 'destructive',
-      });
-    } finally {
-      setActiveCollectionId(null);
-    }
-  }, [applyCollectionToDashboard, toast, isDrivingSchool, resolveDrivingRow]);
+    // Okul: tahsilat penceresi açılır. ÖNCEDEN bu buton hiçbir şey sormadan
+    // kalan bakiyenin tamamını "Kart" ile tahsil edilmiş yazıyordu — tahsilat
+    // geri alınamaz bir para hareketi, tutar/yöntem/taksit kullanıcıya sorulur.
+    setSchoolCollectTarget(account);
+  }, [toast, isDrivingSchool, resolveDrivingRow]);
 
   const handleExportStatement = useCallback(async (account, range) => {
     try {
@@ -645,7 +640,10 @@ export default function StudentAccounts() {
     anchor.click();
   }, [statementFileName, statementPreview]);
 
-  const handleBulkCollection = async () => {
+  // Toplu tahsilat LİSTEDEKİ HER borçluyu tam bakiyesiyle tahsil eder; tek
+  // tıkla geri alınamaz bir para hareketi zinciri başlatır. Bu yüzden kaç
+  // hesap ve ne kadar tutar işleneceği önce açıkça onaylatılır.
+  const requestBulkCollection = () => {
     const debtors = filteredAccounts.filter((account) => account.remaining > 0);
     if (debtors.length === 0) {
       toast({
@@ -654,6 +652,16 @@ export default function StudentAccounts() {
       });
       return;
     }
+    setBulkConfirm({
+      count: debtors.length,
+      total: debtors.reduce((sum, account) => sum + Math.max(0, account.remaining), 0),
+    });
+  };
+
+  const handleBulkCollection = async () => {
+    setBulkConfirm(null);
+    const debtors = filteredAccounts.filter((account) => account.remaining > 0);
+    if (debtors.length === 0) return;
 
     try {
       setBulkProcessing(true);
@@ -727,7 +735,7 @@ export default function StudentAccounts() {
           <h1 className="text-3xl font-bold font-heading">Cari Hesaplar</h1>
           <p className="text-muted-foreground mt-1">{accounts.length} öğrenci hesabı</p>
         </div>
-        <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={handleBulkCollection} disabled={bulkProcessing}>
+        <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={requestBulkCollection} disabled={bulkProcessing}>
           <Plus className="h-4 w-4 mr-2" />
           {bulkProcessing ? 'İşleniyor...' : 'Toplu Tahsilat'}
         </Button>
@@ -829,7 +837,6 @@ export default function StudentAccounts() {
                       onCreateCollection={handleCreateCollection}
                       onExportStatement={handleExportStatement}
                       onPrintStatement={handlePrintStatement}
-                      creatingCollection={activeCollectionId === account.id}
                       onUpdated={loadData}
                     />,
                     { size: 'wide' },
@@ -885,15 +892,21 @@ export default function StudentAccounts() {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      {/* Menü içeriği portala çizilse de React olayları AĞAÇ
+                          üzerinden yayılır: durdurulmazsa menüdeki tıklama satırı
+                          da tetikleyip detay çekmecesini açıyor ve çekmece
+                          tahsilat penceresinin üstüne binip onu kilitliyordu. */}
+                      <DropdownMenuContent
+                        align="end"
+                        onClick={(event) => event.stopPropagation()}
+                      >
                         <DropdownMenuItem onClick={() => openDrawer(
                           <StudentAccountDrawer
                             account={account}
                             onCreateCollection={handleCreateCollection}
                             onExportStatement={handleExportStatement}
                             onPrintStatement={handlePrintStatement}
-                            creatingCollection={activeCollectionId === account.id}
-                            onUpdated={loadData}
+                                  onUpdated={loadData}
                           />,
                           { size: 'wide' },
                         )}
@@ -953,6 +966,46 @@ export default function StudentAccounts() {
 
       {/* Sürücü kursu tahsilatı: "Ödeme Al" ile aynı pencere — taksit planı,
           taksit seçimi, ödenmiş taksitlerin pasifliği ve makbuz burada. */}
+      {/* Toplu tahsilat onayı — kaç hesabın ne kadarının işleneceği yazılmadan
+          bu işlem başlatılamaz. */}
+      <Dialog open={!!bulkConfirm} onOpenChange={(open) => { if (!open) setBulkConfirm(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Toplu tahsilat onayı</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p>
+              Listedeki <b>{bulkConfirm?.count} öğrencinin</b> açık bakiyesinin tamamı,
+              toplam <b>{formatCurrency(bulkConfirm?.total || 0)}</b>, tahsil edilmiş olarak kaydedilecek.
+            </p>
+            <p className="rounded-xl border border-amber-400/40 bg-amber-500/[0.07] p-3 text-amber-700">
+              Bu işlem geri alınamaz; yanlış kayıt ancak tek tek iade girilerek düzeltilir.
+              Tek bir öğrenci için tahsilat almak istiyorsanız satırdaki <b>Tahsilat Gir</b>'i kullanın.
+            </p>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setBulkConfirm(null)}>Vazgeç</Button>
+            <Button onClick={handleBulkCollection} disabled={bulkProcessing}>
+              {bulkProcessing ? 'İşleniyor…' : 'Onaylıyorum, tahsil et'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Okul tahsilatı: taksit planı, tutar/yöntem seçimi ve makbuz burada.
+          Kaydedildikten sonra cari hesap ve pano yeniden yüklenir. */}
+      {schoolCollectTarget && (
+        <SchoolCollectModal
+          account={schoolCollectTarget}
+          onClose={() => setSchoolCollectTarget(null)}
+          onDone={(result) => {
+            if (result?.silent) { loadData(); return; }
+            setSchoolCollectTarget(null);
+            loadData();
+          }}
+        />
+      )}
+
       {collectTarget && (
         <DrivingCollectModal
           row={collectTarget}

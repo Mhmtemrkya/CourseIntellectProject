@@ -26,5 +26,8 @@ public sealed record CreateStudentRequest(
     // Peşinatın tahsil edildiği ödeme yöntemi (Nakit/Kart/Havale) — kasa dağılımına doğru düşmesi için.
     string? EnrollmentDownPaymentMethod = null,
     // Peşinat kayıt anında tahsil edildi mi? false → makbuz kesilmez, peşinat "bekliyor" olur.
-    bool EnrollmentDownPaymentPaid = true
+    bool EnrollmentDownPaymentPaid = true,
+    // Burs oranı (0–100). Doluysa bursun tutarı brüt üzerinden SUNUCUDA hesaplanıp
+    // toplam indirime eklenir; istemci indirim tutarını zorlayamaz.
+    decimal? EnrollmentScholarshipPercent = null
 );

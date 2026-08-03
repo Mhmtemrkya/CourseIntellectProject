@@ -498,17 +498,17 @@ export default function AdminRoleManagement() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="admin-role-management-page">
-      <div className="rounded-[28px] border border-border p-7 text-white shadow-xl" style={{ background: 'radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.16), transparent 30%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #14213d) 50%, var(--brand-p-700, #312e81) 100%)' }}>
+      <div className="ci-hero rounded-[28px] border border-border p-7 text-white shadow-xl" style={{ background: 'radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.16), transparent 30%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #14213d) 50%, var(--brand-p-700, #312e81) 100%)' }}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <Badge className="border-foreground/20 bg-foreground/10 text-white">Yetki Tasarımı</Badge>
+            <Badge className="ci-hero-label border-foreground/20 bg-foreground/10 text-white">Yetki Tasarımı</Badge>
             <h1 className="mt-4 text-3xl font-bold font-heading">Rol Yönetimi</h1>
             <p className="mt-2 text-sm text-foreground/80">Kişi bazlı erişimi, modül haklarını ve işlem izinlerini daha kurumsal bir panel üzerinden yönetin.</p>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3"><p className="text-xl font-bold">{people.length}</p><p className="text-xs uppercase tracking-[0.18em] text-foreground/70">Kişi</p></div>
-            <div className="rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3"><p className="text-xl font-bold">{Object.keys(grouped).length}</p><p className="text-xs uppercase tracking-[0.18em] text-foreground/70">Rol</p></div>
-            <div className="rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3"><p className="text-xl font-bold">{filteredPeople.length}</p><p className="text-xs uppercase tracking-[0.18em] text-foreground/70">Filtre</p></div>
+            <div className="ci-hero-stat rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3"><p className="text-xl font-bold">{people.length}</p><p className="text-xs uppercase tracking-[0.18em] text-foreground/70">Kişi</p></div>
+            <div className="ci-hero-stat rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3"><p className="text-xl font-bold">{Object.keys(grouped).length}</p><p className="text-xs uppercase tracking-[0.18em] text-foreground/70">Rol</p></div>
+            <div className="ci-hero-stat rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3"><p className="text-xl font-bold">{filteredPeople.length}</p><p className="text-xs uppercase tracking-[0.18em] text-foreground/70">Filtre</p></div>
           </div>
         </div>
       </div>

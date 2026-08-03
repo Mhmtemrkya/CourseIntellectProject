@@ -212,10 +212,10 @@ export default function TeacherAnnouncements() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="teacher-announcements-page">
-      <section className="rounded-[32px] border border-brand-primary/10 bg-[linear-gradient(135deg,var(--brand-primary-hex)_0%,var(--brand-accent-hex)_100%)] p-7 text-white shadow-xl">
+      <section className="ci-hero rounded-[32px] border border-brand-primary/10 bg-[linear-gradient(135deg,var(--brand-primary-hex)_0%,var(--brand-accent-hex)_100%)] p-7 text-white shadow-xl">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">Öğretmen Duyuru Merkezi</Badge>
+            <Badge className="ci-hero-label bg-foreground/12 text-white hover:bg-foreground/12">Öğretmen Duyuru Merkezi</Badge>
             <div>
               <h1 className="text-3xl font-bold font-heading">Sınıf seç, kişiyi belirle, doğrudan hedefe yayınla</h1>
               <p className="mt-2 max-w-2xl text-sm text-foreground/75">
@@ -229,7 +229,7 @@ export default function TeacherAnnouncements() {
               { label: 'Öğrenci Duyurusu', value: summaryStats.studentCount, icon: GraduationCap },
               { label: 'Seçili Kişi', value: summaryStats.targetedCount, icon: CheckCircle2 },
             ].map((item) => (
-              <div key={item.label} className="rounded-[24px] border border-foreground/10 bg-foreground/10 px-4 py-4 backdrop-blur">
+              <div key={item.label} className="ci-hero-stat rounded-[24px] border border-foreground/10 bg-foreground/10 px-4 py-4 backdrop-blur">
                 <item.icon className="h-5 w-5 text-foreground/85" />
                 <p className="mt-3 text-2xl font-bold">{item.value}</p>
                 <p className="text-xs uppercase tracking-[0.18em] text-foreground/65">{item.label}</p>

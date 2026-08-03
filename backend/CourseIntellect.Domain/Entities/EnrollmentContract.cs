@@ -28,6 +28,29 @@ public sealed class EnrollmentContract : IBranchScopedEntity
     public bool DownPaymentPaid { get; set; } = true;
     /// <summary>Peşinatın fiilen tahsil edilmiş net tutarı; kısmi iadeyi de taşır.</summary>
     public decimal DownPaymentPaidAmount { get; set; }
+
+    // ─── Burs ────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Burs oranı (0–100). 0 ise öğrenci burslu DEĞİLDİR ve burs kartı hiçbir
+    /// ekranda çizilmez.
+    /// </summary>
+    public decimal ScholarshipPercent { get; set; }
+
+    /// <summary>
+    /// Bursun para karşılığı: <c>GrossAmount × ScholarshipPercent / 100</c>.
+    ///
+    /// Hesaplanabilir olmasına rağmen SAKLANIR: sözleşme kurulduğu andaki brüt
+    /// tutar üzerinden hesaplanmıştır ve tahsilat/iade geçmişi bu tutara
+    /// dayanır. Sonradan brüt değişirse geçmiş makbuzlar bozulmasın diye
+    /// yeniden türetilmez.
+    ///
+    /// <para><b>Değişmez kural:</b> <see cref="DiscountAmount"/> TOPLAM indirimdir
+    /// ve bursu İÇERİR (burs + diğer indirimler). Net = Brüt − DiscountAmount.
+    /// Böylece net/taksit/ekstre/iade hesapları burstan habersiz çalışmaya devam
+    /// eder; burs yalnız girdi ve gösterim katmanında ayrışır.</para>
+    /// </summary>
+    public decimal ScholarshipAmount { get; set; }
+
     public int InstallmentCount { get; set; }
     public string Currency { get; set; } = "TRY";
     public string Status { get; set; } = "Active";

@@ -293,11 +293,18 @@ public sealed class SchoolDashboardTests : IDisposable
 
         var setup = SetupOf(await controller.GetSetup(CancellationToken.None));
 
-        var teacherStep = setup.GetProperty("steps").EnumerateArray()
-            .Single(x => x.GetProperty("key").GetString() == "teachers");
+        var steps = setup.GetProperty("steps").EnumerateArray().ToList();
+        var teacherStep = steps.Single(x => x.GetProperty("key").GetString() == "teachers");
         Assert.True(teacherStep.GetProperty("done").GetBoolean());
         Assert.Equal(1, teacherStep.GetProperty("count").GetInt32());
-        Assert.Equal(1, setup.GetProperty("completedSteps").GetInt32());
+
+        // Sınıf adımı da biter: öğrencilerin sınıf adları (9-A, 9-B) sınıf
+        // defterinin ikinci kaynağıdır — elle tanımlanmış sınıf olmasa bile.
+        var classStep = steps.Single(x => x.GetProperty("key").GetString() == "classes");
+        Assert.True(classStep.GetProperty("done").GetBoolean());
+        Assert.Equal(2, classStep.GetProperty("count").GetInt32());
+
+        Assert.Equal(2, setup.GetProperty("completedSteps").GetInt32());
     }
 
     [Fact]

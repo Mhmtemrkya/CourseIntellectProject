@@ -44,6 +44,13 @@ public sealed class StudentsController(
         [FromBody] CourseIntellect.Application.DTOs.Students.CreateStudentRequest request,
         CancellationToken cancellationToken)
     {
+        // Burs oranı yüzde alanıdır: 0–100 dışı bir değer sessizce kırpılmaz,
+        // kullanıcıya hata döner (yanlış hesaplanmış bir sözleşme oluşmasın).
+        if (request.EnrollmentScholarshipPercent is decimal percent && (percent < 0 || percent > 100))
+        {
+            return BadRequest(new { message = "Burs oranı 0 ile 100 arasında olmalıdır." });
+        }
+
         try
         {
             var result = await academicQueryService.CreateStudentAsync(
@@ -71,7 +78,8 @@ public sealed class StudentsController(
                     "TRY",
                     "Kayıt sırasında oluşturuldu",
                     request.EnrollmentDownPaymentMethod,
-                    request.EnrollmentDownPaymentPaid),
+                    request.EnrollmentDownPaymentPaid,
+                    request.EnrollmentScholarshipPercent ?? 0),
                 CurrentUserId(),
                 cancellationToken);
         }

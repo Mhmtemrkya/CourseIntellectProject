@@ -25,7 +25,21 @@ public sealed class StudentFinanceService(
         CancellationToken cancellationToken = default)
     {
         var gross = Math.Max(0, request.GrossAmount);
-        var discount = Math.Clamp(request.DiscountAmount, 0, gross);
+
+        // ── Burs ─────────────────────────────────────────────────────────────
+        // Oran 0–100 arasına kelepçelenir ve bursun TUTARI sunucuda hesaplanır;
+        // istemci indirim tutarını doğrudan zorlayamaz.
+        //
+        // DiscountAmount TOPLAM indirimdir (burs + diğer): net, taksit planı,
+        // ekstre ve iade hesapları tek bir indirim kalemi üzerinden yürür, burs
+        // ayrı bir hesap yolu AÇMAZ. Toplam brütü aşamaz.
+        var scholarshipPercent = Math.Clamp(request.ScholarshipPercent, 0m, 100m);
+        var scholarshipAmount = Math.Round(gross * scholarshipPercent / 100m, 2, MidpointRounding.AwayFromZero);
+        var otherDiscount = Math.Max(0, request.DiscountAmount);
+        var discount = Math.Clamp(otherDiscount + scholarshipAmount, 0, gross);
+        // Toplam brütü aşıp kırpıldıysa bursun kayıtlı tutarı da gerçekte
+        // uygulanan kadar olmalı — aksi halde "burs 12.000" yazıp net 0 çıkardı.
+        scholarshipAmount = Math.Min(scholarshipAmount, discount);
         var net = gross - discount;
         var downPayment = Math.Clamp(request.DownPayment, 0, net);
         var installmentCount = Math.Max(0, request.InstallmentCount);
@@ -40,8 +54,10 @@ public sealed class StudentFinanceService(
             AcademicYear = request.AcademicYear?.Trim() ?? string.Empty,
             GrossAmount = gross,
             DiscountAmount = discount,
-            DiscountReason = request.DiscountReason?.Trim() ?? string.Empty,
+            DiscountReason = ComposeDiscountReason(request.DiscountReason, scholarshipPercent),
             NetAmount = net,
+            ScholarshipPercent = scholarshipPercent,
+            ScholarshipAmount = scholarshipAmount,
             DownPayment = downPayment,
             // Peşinatı yoksa (0) "beklemede" kavramı anlamsız → paid=true. Varsa,
             // kayıt anında tahsil edilip edilmediği isteğe bağlıdır.
@@ -285,6 +301,23 @@ public sealed class StudentFinanceService(
         var allocatedRefundableByPayment = paymentAllocations
             .GroupBy(item => item.FinancePaymentId)
             .ToDictionary(group => group.Key, group => group.Sum(item => item.Amount - item.RefundedAmount));
+
+        // Makbuzun izi: tahsilatı kim aldı, hangi şubede. Pasifleşmiş personel de
+        // görünmeli (IgnoreQueryFilters) — geçmiş makbuzun sahibi kaybolmamalı.
+        var collectorIds = payments.Where(item => item.CreatedByUserId != null)
+            .Select(item => item.CreatedByUserId!.Value).Distinct().ToList();
+        var collectorNames = collectorIds.Count == 0
+            ? []
+            : await dbContext.Users.IgnoreQueryFilters().AsNoTracking()
+                .Where(item => collectorIds.Contains(item.Id))
+                .ToDictionaryAsync(item => item.Id, item => item.FullName, cancellationToken);
+        var paymentBranchIds = payments.Where(item => item.BranchId != null)
+            .Select(item => item.BranchId!.Value).Distinct().ToList();
+        var paymentBranchNames = paymentBranchIds.Count == 0
+            ? []
+            : await dbContext.OrgUnits.AsNoTracking()
+                .Where(item => paymentBranchIds.Contains(item.Id))
+                .ToDictionaryAsync(item => item.Id, item => item.Name, cancellationToken);
         var currency = contracts.FirstOrDefault()?.Currency
             ?? installments.FirstOrDefault()?.Currency
             ?? "TRY";
@@ -378,7 +411,13 @@ public sealed class StudentFinanceService(
                 item,
                 refundedByPayment.GetValueOrDefault(item.Id),
                 item.Amount > 0 ? Math.Max(0, item.Amount - refundedByPayment.GetValueOrDefault(item.Id)) : 0,
-                allocatedRefundableByPayment.GetValueOrDefault(item.Id))).ToList(),
+                allocatedRefundableByPayment.GetValueOrDefault(item.Id),
+                item.CreatedByUserId is Guid collectorId
+                    ? collectorNames.GetValueOrDefault(collectorId, string.Empty)
+                    : string.Empty,
+                item.BranchId is Guid paymentBranchId
+                    ? paymentBranchNames.GetValueOrDefault(paymentBranchId, string.Empty)
+                    : string.Empty)).ToList(),
             grossCollected,
             refundedTotal,
             grossTotal,
@@ -394,7 +433,12 @@ public sealed class StudentFinanceService(
             courseRemaining,
             additionalChargeRemaining,
             standaloneExamFeeRemaining,
-            totalPayable);
+            totalPayable,
+            // Birden çok sözleşmede oranlar farklı olabilir; kart tek oran
+            // gösterdiği için EN YÜKSEK oran "öğrencinin bursu" sayılır,
+            // tutar ise hepsinin toplamıdır.
+            contracts.Count == 0 ? 0 : contracts.Max(item => item.ScholarshipPercent),
+            contracts.Sum(item => item.ScholarshipAmount));
     }
 
     public async Task<StudentStatementDto> GetStatementAsync(
@@ -639,6 +683,20 @@ public sealed class StudentFinanceService(
         var nameLower = name.ToLowerInvariant();
         var method = string.IsNullOrWhiteSpace(request.Method) ? "Nakit" : request.Method.Trim();
 
+        // ── Çift tahsilat koruması ───────────────────────────────────────────
+        // Aynı istek kimliğiyle daha önce kayıt oluştuysa YENİSİ YAZILMAZ; ilk
+        // makbuz aynen döner. Kullanıcı iki kez tıklasa ya da ağ hatasında istek
+        // yeniden gönderilse bile öğrenciden iki kez tahsilat görünmez.
+        if (request.ClientRequestId is Guid clientRequestId && clientRequestId != Guid.Empty)
+        {
+            var existing = await dbContext.FinancePayments.AsNoTracking()
+                .FirstOrDefaultAsync(item => item.ClientRequestId == clientRequestId, cancellationToken);
+            if (existing is not null)
+            {
+                return MapPayment(existing);
+            }
+        }
+
         Guid? contractId = request.EnrollmentContractId;
         var currency = "TRY";
 
@@ -747,6 +805,7 @@ public sealed class StudentFinanceService(
             CreatedByUserId = createdByUserId,
             // Şube açıkça seçildiyse onu yaz; boşsa ApplyTenantContext aktörün şubesine düşürür.
             BranchId = request.BranchId,
+            ClientRequestId = request.ClientRequestId == Guid.Empty ? null : request.ClientRequestId,
             PaidAtUtc = DateTime.UtcNow,
         };
         await dbContext.FinancePayments.AddAsync(payment, cancellationToken);
@@ -1623,7 +1682,21 @@ public sealed class StudentFinanceService(
             contract.DownPaymentPaidAmount,
             contract.DownPayment <= 0 || contract.DownPaymentPaidAmount >= contract.DownPayment
                 ? "Ödendi"
-                : contract.DownPaymentPaidAmount > 0 ? "Kısmi" : "Bekliyor");
+                : contract.DownPaymentPaidAmount > 0 ? "Kısmi" : "Bekliyor",
+            contract.ScholarshipPercent,
+            contract.ScholarshipAmount);
+    }
+
+    /// <summary>
+    /// İndirim sebebi metnine bursu da yazar; ekstre/sözleşme çıktısında "neden
+    /// indirim yapılmış" tek satırda okunabilsin. Burs yoksa metin değişmez.
+    /// </summary>
+    private static string ComposeDiscountReason(string? reason, decimal scholarshipPercent)
+    {
+        var text = reason?.Trim() ?? string.Empty;
+        if (scholarshipPercent <= 0) return text;
+        var label = $"%{scholarshipPercent:0.##} burs";
+        return string.IsNullOrEmpty(text) ? label : $"{label} + {text}";
     }
 
     private static FinanceInstallmentDto MapInstallment(FinanceInstallment installment, DateTime nowUtc) =>
@@ -1643,7 +1716,9 @@ public sealed class StudentFinanceService(
         FinancePayment payment,
         decimal refundedAmount = 0,
         decimal refundableAmount = 0,
-        decimal allocatedRefundableAmount = 0) =>
+        decimal allocatedRefundableAmount = 0,
+        string collectedByName = "",
+        string branchName = "") =>
         new(
             payment.Id,
             payment.EnrollmentContractId,
@@ -1665,5 +1740,7 @@ public sealed class StudentFinanceService(
             payment.ExternalReference,
             allocatedRefundableAmount,
             Math.Max(0, refundableAmount - allocatedRefundableAmount),
-            payment.Note.StartsWith("Kayıt peşinatı", StringComparison.OrdinalIgnoreCase));
+            payment.Note.StartsWith("Kayıt peşinatı", StringComparison.OrdinalIgnoreCase),
+            collectedByName,
+            branchName);
 }

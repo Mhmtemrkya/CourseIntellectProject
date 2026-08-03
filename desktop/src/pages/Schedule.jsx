@@ -370,10 +370,10 @@ export default function Schedule() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="schedule-page">
-      <div className="rounded-[30px] border border-border p-7 text-white shadow-xl" style={{ background: `radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.16) 0%, transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 52%, var(--brand-p-700, #0f766e) 100%)` }}>
+      <div className="ci-hero rounded-[30px] border border-border p-7 text-white shadow-xl" style={{ background: `radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.16) 0%, transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 52%, var(--brand-p-700, #0f766e) 100%)` }}>
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <Badge className="border-foreground/20 bg-foreground/10 text-white">{roleTitle(window.location.pathname)}</Badge>
+            <Badge className="ci-hero-label border-foreground/20 bg-foreground/10 text-white">{roleTitle(window.location.pathname)}</Badge>
             <h1 className="mt-4 text-3xl font-bold font-heading">Ders Programı Oluşturma</h1>
             <p className="mt-2 text-sm text-foreground/80">
               Sınıf bazlı programı canlı backend verisiyle oluştur. Aynı öğretmen aynı gün ve saatte iki farklı sınıfa atanamaz; çakışma backend tarafından da engellenir.
@@ -386,7 +386,7 @@ export default function Schedule() {
               [stats.weeklySlots, 'Slot'],
               [`%${stats.occupancy}`, 'Doluluk'],
             ].map(([value, label]) => (
-              <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3">
+              <div key={label} className="ci-hero-stat rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3">
                 <p className="text-2xl font-bold">{value}</p>
                 <p className="text-xs uppercase tracking-[0.18em] text-foreground/70">{label}</p>
               </div>
@@ -689,7 +689,7 @@ export default function Schedule() {
           {selectedLesson ? (
             <div className="space-y-4">
               <div className="rounded-[26px] p-6 text-white ci-hero">
-                <Badge className="border-foreground/20 bg-foreground/12 text-white">{selectedLesson.className}</Badge>
+                <Badge className="ci-hero-label border-foreground/20 bg-foreground/12 text-white">{selectedLesson.className}</Badge>
                 <h3 className="mt-4 text-2xl font-semibold">{selectedLesson.subject}</h3>
                 <p className="mt-2 text-sm text-foreground/80">{selectedLesson.day} • {selectedLesson.time}</p>
               </div>

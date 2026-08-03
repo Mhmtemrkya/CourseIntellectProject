@@ -41,6 +41,9 @@ class _AdminStudentRegistrationPageState
   final _grossAmountController = TextEditingController();
   final _discountAmountController = TextEditingController();
   final _discountReasonController = TextEditingController();
+  // Burs: işaretliyse oran girilir, tutarı sunucu brüt üzerinden hesaplar.
+  final _scholarshipPercentController = TextEditingController();
+  bool _hasScholarship = false;
   final _downPaymentController = TextEditingController();
   final _installmentCountController = TextEditingController();
 
@@ -68,8 +71,12 @@ class _AdminStudentRegistrationPageState
 
   Future<void> _loadRoster() async {
     final results = await Future.wait([
-      AdminDirectoryApiService.instance.fetchStudents().catchError((_) => <AdminStudentRecord>[]),
-      AdminDirectoryApiService.instance.fetchStaff().catchError((_) => <AdminStaffRecord>[]),
+      AdminDirectoryApiService.instance.fetchStudents().catchError(
+        (_) => <AdminStudentRecord>[],
+      ),
+      AdminDirectoryApiService.instance.fetchStaff().catchError(
+        (_) => <AdminStaffRecord>[],
+      ),
     ]);
     if (!mounted) return;
     setState(() {
@@ -88,7 +95,9 @@ class _AdminStudentRegistrationPageState
         return t == 'şube' || t == 'sube' || t == 'kampüs' || t == 'kampus';
       }).toList();
       if (!mounted) return;
-      setState(() => _branches = branchUnits.isNotEmpty ? branchUnits : activeUnits);
+      setState(
+        () => _branches = branchUnits.isNotEmpty ? branchUnits : activeUnits,
+      );
     } catch (_) {
       /* şube yoksa alan gizli kalır */
     }
@@ -122,6 +131,7 @@ class _AdminStudentRegistrationPageState
     _grossAmountController.dispose();
     _discountAmountController.dispose();
     _discountReasonController.dispose();
+    _scholarshipPercentController.dispose();
     _downPaymentController.dispose();
     _installmentCountController.dispose();
     super.dispose();
@@ -155,7 +165,8 @@ class _AdminStudentRegistrationPageState
             AdminHeroCard(
               eyebrow: 'Kayıt merkezi',
               title:
-                  'Öğrenci kaydını idari standartlara uygun şekilde tamamlayın.'.tr,
+                  'Öğrenci kaydını idari standartlara uygun şekilde tamamlayın.'
+                      .tr,
               description:
                   'Kayıt sonrası öğrenci için sistem kullanıcı adı ve şifre otomatik üretilir; veli bilgileri ve program alanı aynı akışta tamamlanır.',
               colors: [Color(0xFF0F172A), Color(0xFF0F766E)],
@@ -284,10 +295,12 @@ class _AdminStudentRegistrationPageState
                       ),
                       hint: Text('Şube seçin'.tr),
                       items: _branches
-                          .map((b) => DropdownMenuItem(
-                                value: b['id'] as String?,
-                                child: Text((b['name'] as String?) ?? ''),
-                              ))
+                          .map(
+                            (b) => DropdownMenuItem(
+                              value: b['id'] as String?,
+                              child: Text((b['name'] as String?) ?? ''),
+                            ),
+                          )
                           .toList(),
                       onChanged: (value) => setState(() => _branchId = value),
                     ),
@@ -355,13 +368,14 @@ class _AdminStudentRegistrationPageState
                   AdminSectionTitle(title: 'Kayıt Ücreti & Taksit Planı'.tr),
                   const SizedBox(height: 6),
                   Text(
-                    'Tutar girilirse kayıtta otomatik sözleşme ve taksit planı oluşturulur. Boş bırakılırsa finans kaydı oluşturulmaz.'.tr,
+                    'Tutar girilirse kayıtta otomatik sözleşme ve taksit planı oluşturulur. Boş bırakılırsa finans kaydı oluşturulmaz.'
+                        .tr,
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
                   _buildField(
                     controller: _grossAmountController,
-                    label: 'Toplam Ücret (₺)'.tr,
+                    label: 'Toplam Ücret (TL)'.tr,
                     required: false,
                   ),
                   const SizedBox(height: 12),
@@ -370,7 +384,7 @@ class _AdminStudentRegistrationPageState
                       Expanded(
                         child: _buildField(
                           controller: _discountAmountController,
-                          label: 'İndirim (₺)'.tr,
+                          label: 'İndirim (TL)'.tr,
                           required: false,
                         ),
                       ),
@@ -385,12 +399,57 @@ class _AdminStudentRegistrationPageState
                     ],
                   ),
                   const SizedBox(height: 12),
+                  // Burs — masaüstü kayıt formuyla aynı kural: oran girilir,
+                  // bursun tutarı ve net ücret sunucuda hesaplanır.
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context).dividerColor,
+                        style: BorderStyle.solid,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          value: _hasScholarship,
+                          title: Text(
+                            'Burslu öğrenci'.tr,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          onChanged: (value) => setState(() {
+                            _hasScholarship = value;
+                            if (!value) _scholarshipPercentController.clear();
+                          }),
+                        ),
+                        if (_hasScholarship) ...[
+                          const SizedBox(height: 8),
+                          _buildField(
+                            controller: _scholarshipPercentController,
+                            label: 'Burs Oranı (%)'.tr,
+                            required: false,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Bursun tutarı toplam ücret üzerinden otomatik hesaplanır ve indirime eklenir.'
+                                .tr,
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: _buildField(
                           controller: _downPaymentController,
-                          label: 'Peşinat (₺)'.tr,
+                          label: 'Peşinat (TL)'.tr,
                           required: false,
                         ),
                       ),
@@ -413,7 +472,10 @@ class _AdminStudentRegistrationPageState
                     ),
                     items: const [
                       DropdownMenuItem(value: 'Nakit', child: Text('Nakit')),
-                      DropdownMenuItem(value: 'Kart', child: Text('Kart / POS')),
+                      DropdownMenuItem(
+                        value: 'Kart',
+                        child: Text('Kart / POS'),
+                      ),
                       DropdownMenuItem(
                         value: 'Havale',
                         child: Text('Havale / EFT'),
@@ -425,7 +487,10 @@ class _AdminStudentRegistrationPageState
                   const SizedBox(height: 12),
                   Text(
                     'Peşinat Durumu'.tr,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Row(
@@ -456,8 +521,12 @@ class _AdminStudentRegistrationPageState
                     child: Text(
                       _downPaymentPaid
                           ? 'Kayıtta tahsil edildi; makbuz kesilir.'.tr
-                          : 'Tahsil edilmedi; “Peşinat Bekleyenler” listesinde görünür.'.tr,
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                          : 'Tahsil edilmedi; “Peşinat Bekleyenler” listesinde görünür.'
+                                .tr,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -560,13 +629,17 @@ class _AdminStudentRegistrationPageState
   }
 
   Widget _classRosterPanel(BuildContext context) {
-    final selectedClass = _rosterClass ?? (_classOptions.isNotEmpty ? _classOptions.first : null);
+    final selectedClass =
+        _rosterClass ?? (_classOptions.isNotEmpty ? _classOptions.first : null);
     final roster = selectedClass == null
         ? const <AdminStudentRecord>[]
         : _allStudents.where((s) => s.className == selectedClass).toList();
     final homeroom = selectedClass == null
         ? null
-        : _allStaff.where((t) => t.homeroomClass == selectedClass).cast<AdminStaffRecord?>().firstWhere((_) => true, orElse: () => null);
+        : _allStaff
+              .where((t) => t.homeroomClass == selectedClass)
+              .cast<AdminStaffRecord?>()
+              .firstWhere((_) => true, orElse: () => null);
 
     return AdminPanel(
       child: Column(
@@ -579,8 +652,13 @@ class _AdminStudentRegistrationPageState
           else
             DropdownButtonFormField<String>(
               initialValue: selectedClass,
-              decoration: InputDecoration(labelText: 'Sınıf'.tr, border: OutlineInputBorder()),
-              items: _classOptions.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+              decoration: InputDecoration(
+                labelText: 'Sınıf'.tr,
+                border: OutlineInputBorder(),
+              ),
+              items: _classOptions
+                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  .toList(),
               onChanged: (v) => setState(() => _rosterClass = v),
             ),
           const SizedBox(height: 12),
@@ -591,7 +669,10 @@ class _AdminStudentRegistrationPageState
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _rosterStat('Sınıf Öğretmeni', homeroom?.fullName ?? 'Atanmadı'),
+                child: _rosterStat(
+                  'Sınıf Öğretmeni',
+                  homeroom?.fullName ?? 'Atanmadı',
+                ),
               ),
             ],
           ),
@@ -606,14 +687,25 @@ class _AdminStudentRegistrationPageState
                   children: [
                     CircleAvatar(
                       radius: 16,
-                      backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                      backgroundColor: const Color(
+                        0xFF2563EB,
+                      ).withValues(alpha: 0.12),
                       child: Text(
                         s.fullName.isEmpty ? '?' : s.fullName.characters.first,
-                        style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w800, fontSize: 13),
+                        style: const TextStyle(
+                          color: Color(0xFF2563EB),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Expanded(child: Text(s.fullName, style: const TextStyle(fontWeight: FontWeight.w600))),
+                    Expanded(
+                      child: Text(
+                        s.fullName,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -627,7 +719,9 @@ class _AdminStudentRegistrationPageState
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+        color: Theme.of(
+          context,
+        ).scaffoldBackgroundColor.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -684,21 +778,38 @@ class _AdminStudentRegistrationPageState
         academicYear: _academicYearController.text.trim().isEmpty
             ? null
             : _academicYearController.text.trim(),
-        enrollmentGrossAmount: double.tryParse(_grossAmountController.text.trim()),
-        enrollmentDiscountAmount:
-            double.tryParse(_discountAmountController.text.trim()),
+        enrollmentGrossAmount: double.tryParse(
+          _grossAmountController.text.trim(),
+        ),
+        enrollmentDiscountAmount: double.tryParse(
+          _discountAmountController.text.trim(),
+        ),
         enrollmentDiscountReason: _discountReasonController.text.trim().isEmpty
             ? null
             : _discountReasonController.text.trim(),
-        enrollmentDownPayment: double.tryParse(_downPaymentController.text.trim()),
-        enrollmentDownPaymentMethod:
-            _downPaymentController.text.trim().isEmpty ? null : _downPaymentMethod,
+        enrollmentDownPayment: double.tryParse(
+          _downPaymentController.text.trim(),
+        ),
+        enrollmentDownPaymentMethod: _downPaymentController.text.trim().isEmpty
+            ? null
+            : _downPaymentMethod,
         // Peşinat girildiyse ödendi/ödenmedi; peşinat yoksa anlamsız (true).
-        enrollmentDownPaymentPaid:
-            _downPaymentController.text.trim().isEmpty ? true : _downPaymentPaid,
-        enrollmentInstallmentCount:
-            int.tryParse(_installmentCountController.text.trim()),
-        branchId: (_branchId != null && _branchId!.isNotEmpty) ? _branchId : null,
+        enrollmentDownPaymentPaid: _downPaymentController.text.trim().isEmpty
+            ? true
+            : _downPaymentPaid,
+        enrollmentInstallmentCount: int.tryParse(
+          _installmentCountController.text.trim(),
+        ),
+        // Kutu kapalıysa oran HİÇ gönderilmez: açıp kapatan kullanıcıda
+        // hayalet oran kalmasın.
+        enrollmentScholarshipPercent: _hasScholarship
+            ? double.tryParse(
+                _scholarshipPercentController.text.trim().replaceAll(',', '.'),
+              )
+            : null,
+        branchId: (_branchId != null && _branchId!.isNotEmpty)
+            ? _branchId
+            : null,
       );
       await AnnouncementStore.instance.addAnnouncement(
         title: '${_fullNameController.text.trim()} kaydı tamamlandı',
@@ -763,7 +874,8 @@ class _AdminStudentRegistrationPageState
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Öğrenci sisteme girebilir. Aşağıdaki giriş bilgileri otomatik oluşturuldu.'.tr,
+                  'Öğrenci sisteme girebilir. Aşağıdaki giriş bilgileri otomatik oluşturuldu.'
+                      .tr,
                   style: Theme.of(
                     dialogContext,
                   ).textTheme.bodyMedium?.copyWith(height: 1.45),
@@ -777,7 +889,8 @@ class _AdminStudentRegistrationPageState
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    'Veli için hoş geldiniz duyurusu ve idari bildirim kaydı otomatik oluşturuldu.'.tr,
+                    'Veli için hoş geldiniz duyurusu ve idari bildirim kaydı otomatik oluşturuldu.'
+                        .tr,
                     style: TextStyle(
                       color: Color(0xFF1D4ED8),
                       fontWeight: FontWeight.w700,
@@ -863,7 +976,8 @@ class _AdminStudentRegistrationPageState
                     border: Border.all(color: Colors.amber.shade200),
                   ),
                   child: Text(
-                    'Tüm geçici şifreler ilk girişte zorunlu olarak değiştirilmelidir.'.tr,
+                    'Tüm geçici şifreler ilk girişte zorunlu olarak değiştirilmelidir.'
+                        .tr,
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.amber.shade900,
@@ -1092,7 +1206,11 @@ class _DownPaymentStatusButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: selected ? color : Colors.grey.shade500),
+            Icon(
+              icon,
+              size: 18,
+              color: selected ? color : Colors.grey.shade500,
+            ),
             const SizedBox(width: 6),
             Text(
               label,

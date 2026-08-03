@@ -2829,6 +2829,37 @@ const Map<String, String> kTrEn = {
   'Kurum özeti yüklenemedi.': 'Institution summary could not be loaded.',
   'Öncelikli İşler': 'Priority Actions',
   'Daha': 'More',
+  // ── Tahsilat penceresi & burs ──
+  'Tahsil Et': 'Collect',
+  'Kaydediliyor…': 'Saving…',
+  'Tahsilat kaydedildi': 'Collection saved',
+  'Tahsilat kaydedilemedi': 'Collection could not be saved',
+  'Geçerli bir tutar girin': 'Enter a valid amount',
+  'Tahsil edilecek tutar (TL)': 'Amount to collect (TL)',
+  'Ödeme yöntemi': 'Payment method',
+  'Makbuza düşülecek açıklama': 'Description printed on the receipt',
+  'Taksit planı — ödenecek taksidi seçin':
+      'Installment plan — pick the installment to pay',
+  'Taksit planı yok — tutarı elle girin, tahsilat açık makbuz olarak kaydedilir.':
+      'No installment plan — enter the amount manually; an open receipt is recorded.',
+  'Seçim yapılmazsa tahsilat en eski vadeden başlayarak mahsup edilir.':
+      'Without a selection the payment is applied from the oldest due date.',
+  'Aşan tutar makbuza avans olarak düşer.':
+      'The excess is recorded on the receipt as an advance.',
+  'Son tahsilatlar': 'Recent collections',
+  'Peşinat bekliyor': 'Down payment pending',
+  'Peşinat tahsil edildi': 'Down payment collected',
+  'Peşinat tahsil edilemedi': 'Down payment could not be collected',
+  'Cari hesap bilgisi alınamadı.': 'Account details could not be loaded.',
+  'Tekrar dene': 'Try again',
+  'Net Ücret': 'Net Fee',
+  'Burslu öğrenci': 'Scholarship student',
+  'Burs Oranı (%)': 'Scholarship rate (%)',
+  'Burs Oranı': 'Scholarship Rate',
+  'burslu': 'scholarship',
+  'indirim uygulandı': 'discount applied',
+  'Bursun tutarı toplam ücret üzerinden otomatik hesaplanır ve indirime eklenir.':
+      'The scholarship amount is calculated from the total fee and added to the discount.',
   'Filtreleri temizle': 'Clear filters',
   'Henüz öğrenci kaydınız yok': 'You have no student records yet',
   'Henüz personel kaydınız yok': 'You have no staff records yet',

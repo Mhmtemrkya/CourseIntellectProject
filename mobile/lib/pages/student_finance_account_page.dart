@@ -5,7 +5,9 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:student/i18n/app_locale.dart';
+import 'package:student/utils/format.dart';
 import '../services/student_finance_api_service.dart';
+import '../widgets/school_collect_sheet.dart';
 
 class StudentFinanceAccountPage extends StatefulWidget {
   final String studentName;
@@ -35,8 +37,9 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
       _error = null;
     });
     try {
-      final data = await StudentFinanceApiService.instance
-          .getAccount(studentName: widget.studentName);
+      final data = await StudentFinanceApiService.instance.getAccount(
+        studentName: widget.studentName,
+      );
       if (!mounted) return;
       setState(() => _account = data);
     } catch (e) {
@@ -47,25 +50,18 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
     }
   }
 
-  String _tl(dynamic value) {
-    final number = (value is num) ? value : double.tryParse('$value') ?? 0;
-    return '${number.toStringAsFixed(2)} ₺';
-  }
+  String _tl(dynamic value) =>
+      formatMoney(value is num ? value : double.tryParse('$value') ?? 0);
 
+  /// Tahsilat artık tek satırlık "tutar gir" kutusuyla DEĞİL, masaüstündekiyle
+  /// aynı pencereyle alınır: taksit seçimi, ödeme yöntemi, makbuz notu ve çift
+  /// tahsilat koruması orada yaşar.
   Future<void> _recordPayment() async {
-    final amount = await _amountDialog('Ödeme Al', 'Tahsil edilecek tutar');
-    if (amount == null) return;
-    setState(() => _busy = true);
-    try {
-      await StudentFinanceApiService.instance
-          .recordPayment(studentName: widget.studentName, amount: amount);
-      await _load();
-      _snack('Ödeme kaydedildi: ${_tl(amount)}');
-    } catch (e) {
-      _snack('Ödeme kaydedilemedi: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    final collected = await SchoolCollectSheet.show(
+      context,
+      studentName: widget.studentName,
+    );
+    if (collected && mounted) await _load();
   }
 
   Future<void> _refund() async {
@@ -124,7 +120,10 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Vazgeç'.tr)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Vazgeç'.tr),
+          ),
           ElevatedButton(
             onPressed: () {
               final value = double.tryParse(controller.text.trim());
@@ -139,7 +138,9 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Color _statusColor(String status) {
@@ -177,89 +178,166 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!)))
-              : !hasData
-                  ? Center(child: Text('Bu öğrenci için finans kaydı bulunamadı.'.tr))
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView(
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          _summaryCard(account),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: _busy ? null : _recordPayment,
-                                  icon: const Icon(Icons.payments_rounded),
-                                  label: Text('Ödeme Al'.tr),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _busy ? null : _refund,
-                                  icon: const Icon(Icons.undo_rounded),
-                                  label: Text('İade'.tr),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _busy ? null : _downloadStatement,
-                              icon: const Icon(Icons.description_outlined),
-                              label: Text('Ekstre (PDF)'.tr),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text('Taksitler', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                          const SizedBox(height: 8),
-                          ...((account['installments'] as List<dynamic>? ?? []).map(_installmentTile)),
-                          const SizedBox(height: 16),
-                          Text('Ödemeler / Makbuzlar'.tr, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                          const SizedBox(height: 8),
-                          ...((account['payments'] as List<dynamic>? ?? []).map(_paymentTile)),
-                        ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(_error!),
+              ),
+            )
+          : !hasData
+          ? Center(child: Text('Bu öğrenci için finans kaydı bulunamadı.'.tr))
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _summaryCard(account),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _busy ? null : _recordPayment,
+                          icon: const Icon(Icons.payments_rounded),
+                          label: Text('Ödeme Al'.tr),
+                        ),
                       ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _busy ? null : _refund,
+                          icon: const Icon(Icons.undo_rounded),
+                          label: Text('İade'.tr),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _busy ? null : _downloadStatement,
+                      icon: const Icon(Icons.description_outlined),
+                      label: Text('Ekstre (PDF)'.tr),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Taksitler',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  ...((account['installments'] as List<dynamic>? ?? []).map(
+                    _installmentTile,
+                  )),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Ödemeler / Makbuzlar'.tr,
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  ...((account['payments'] as List<dynamic>? ?? []).map(
+                    _paymentTile,
+                  )),
+                ],
+              ),
+            ),
     );
   }
 
   Widget _summaryCard(Map<String, dynamic> account) {
     Widget cell(String label, dynamic value) => Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 2),
-              Text(_tl(value), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-            ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 2),
+          Text(
+            _tl(value),
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
           ),
-        );
+        ],
+      ),
+    );
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Row(children: [cell('Net', account['netTotal']), cell('Ödenen', account['paidTotal'])]),
+            Row(
+              children: [
+                cell('Net', account['netTotal']),
+                cell('Ödenen', account['paidTotal']),
+              ],
+            ),
             const SizedBox(height: 12),
-            Row(children: [
-              cell('Kalan', account['balance']),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
+              children: [
+                cell('Kalan', account['balance']),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Geciken Taksit',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${account['overdueCount'] ?? 0}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            // Burs kartı YALNIZ burslu öğrencide çizilir; oran 0 ise hiç yoktur.
+            if ((account['scholarshipPercent'] as num? ?? 0) > 0) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF059669).withValues(alpha: 0.08),
+                  border: Border.all(
+                    color: const Color(0xFF059669).withValues(alpha: 0.35),
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
                   children: [
-                    const Text('Geciken Taksit', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    const SizedBox(height: 2),
-                    Text('${account['overdueCount'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                    const Icon(Icons.school_outlined, color: Color(0xFF059669)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '%${account['scholarshipPercent']} ${'Burs Oranı'.tr}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: Color(0xFF059669),
+                            ),
+                          ),
+                          Text(
+                            '${_tl(account['scholarshipAmount'])} ${'indirim uygulandı'.tr}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ]),
+            ],
           ],
         ),
       ),
@@ -279,7 +357,14 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(_tl(item['amount'])),
-          Text(_statusLabel(status), style: TextStyle(color: _statusColor(status), fontSize: 12, fontWeight: FontWeight.w700)),
+          Text(
+            _statusLabel(status),
+            style: TextStyle(
+              color: _statusColor(status),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -292,10 +377,15 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
       dense: true,
       contentPadding: EdgeInsets.zero,
       title: Text(item['receiptNo'] as String? ?? 'Makbuz'),
-      subtitle: Text('${item['method']} · ${'${item['paidAtUtc']}'.split('T').first}'),
+      subtitle: Text(
+        '${item['method']} · ${'${item['paidAtUtc']}'.split('T').first}',
+      ),
       trailing: Text(
         _tl(amount),
-        style: TextStyle(color: amount < 0 ? Colors.red : Colors.green, fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: amount < 0 ? Colors.red : Colors.green,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

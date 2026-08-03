@@ -33,4 +33,16 @@ public sealed class FinancePayment : IBranchScopedEntity
     public string RefundReason { get; set; } = string.Empty;
     public string RefundChannel { get; set; } = string.Empty;
     public string ExternalReference { get; set; } = string.Empty;
+
+    /// <summary>
+    /// İstemcinin ürettiği tekil istek kimliği (idempotency anahtarı).
+    ///
+    /// Tahsilat ekranı her pencere açılışında bir kez üretir; ağ hatasında
+    /// tekrar denense ya da kullanıcı iki kez tıklasa bile AYNI kimlik gelir ve
+    /// sunucu ikinci kaydı OLUŞTURMAZ, mevcut makbuzu döndürür. Para hareketinde
+    /// çift kayıt tazmini olmadığı için bu koruma istemci tarafına bırakılamaz.
+    ///
+    /// Eski kayıtlarda ve idempotency göndermeyen çağrılarda null'dır.
+    /// </summary>
+    public Guid? ClientRequestId { get; set; }
 }

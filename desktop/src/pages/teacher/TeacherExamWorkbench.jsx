@@ -51,14 +51,14 @@ export default function TeacherExamWorkbench() {
           const submissions = submissionMap[exam.id] || [];
           return (
             <Card key={exam.id} className="overflow-hidden border-0 shadow-sm">
-              <div className="bg-gradient-to-r from-slate-900 to-slate-700 p-6 text-white">
+              <div className="ci-hero border-b border-border p-6 text-white">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground/60">{exam.subject}</div>
                     <h2 className="mt-2 text-2xl font-black">{exam.title}</h2>
                     <p className="mt-2 text-sm text-foreground/80">{exam.className} • {exam.duration} • {exam.questionCount} soru</p>
                   </div>
-                  <div className="rounded-3xl bg-foreground/12 px-4 py-3 text-right backdrop-blur">
+                  <div className="ci-hero-stat rounded-3xl border border-foreground/10 bg-foreground/12 px-4 py-3 text-right backdrop-blur">
                     <div className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground/70">Teslim</div>
                     <div className="mt-1 text-2xl font-black">{submissions.length}</div>
                   </div>

@@ -1244,7 +1244,7 @@ export default function TeacherContent() {
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.24),transparent_42%)]" />
                   <div className="relative flex items-start justify-between gap-4">
                     <div>
-                      <Badge className="border-foreground/20 bg-foreground/15 text-white">{selectedContent.subject}</Badge>
+                      <Badge className="ci-hero-label border-foreground/20 bg-foreground/15 text-white">{selectedContent.subject}</Badge>
                       <h3 className="mt-4 text-2xl font-semibold">{selectedContent.title}</h3>
                       <p className="mt-2 text-sm text-foreground/85">{selectedContent.teacher} • {selectedContent.grade}</p>
                     </div>

@@ -57,6 +57,8 @@ class RegistrationApiService {
     bool enrollmentDownPaymentPaid = true,
     int? enrollmentInstallmentCount,
     String? academicYear,
+    // Burs oranı (0–100). Tutarı sunucu brüt üzerinden hesaplar.
+    double? enrollmentScholarshipPercent,
     String? branchId,
   }) async {
     final response = await _authorizedPost(
@@ -83,6 +85,7 @@ class RegistrationApiService {
         'enrollmentDownPaymentPaid': enrollmentDownPaymentPaid,
         'enrollmentInstallmentCount': ?enrollmentInstallmentCount,
         'academicYear': ?academicYear,
+        'enrollmentScholarshipPercent': ?enrollmentScholarshipPercent,
       },
     );
 
@@ -146,7 +149,8 @@ class RegistrationApiService {
         // Şube müdürü için zorunlu; backend body'den açık BranchId okur (header ayrıca auto-stamp).
         if (branchId != null && branchId.isNotEmpty) 'branchId': branchId,
         // Özel rol ataması (opsiyonel); modül kısıtı backend'de zorlanır.
-        if (customRoleId != null && customRoleId.isNotEmpty) 'customRoleId': customRoleId,
+        if (customRoleId != null && customRoleId.isNotEmpty)
+          'customRoleId': customRoleId,
       },
     );
 
@@ -170,7 +174,10 @@ class RegistrationApiService {
 
     final response = await http.delete(
       Uri.parse('${ApiConfig.baseUrl}/api/staff/users/$userId'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}',
+        ...ScopeHeaders.merged,
+      },
     );
 
     if (response.statusCode == 404) return;
@@ -257,7 +264,8 @@ class RegistrationApiService {
 
     final headers = {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
+      'Authorization': 'Bearer ${session.accessToken}',
+      ...ScopeHeaders.merged,
     };
     // Seçilen şube: backend yetkiye göre dikkate alır (owner ise damgalar).
     if (branchId != null && branchId.isNotEmpty) {
