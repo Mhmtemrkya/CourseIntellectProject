@@ -33,22 +33,30 @@ public sealed class EntitlementService(CourseIntellectDbContext dbContext, IMemo
         }
 
         var cacheKey = $"custom-role-modules:{customRoleId:N}";
-        if (!cache.TryGetValue(cacheKey, out List<string>? modules) || modules is null)
+        if (!cache.TryGetValue(cacheKey, out CustomRoleModuleGate? gate) || gate is null)
         {
-            var serialized = await dbContext.CustomRoles
+            var row = await dbContext.CustomRoles
                 .IgnoreQueryFilters()
                 .AsNoTracking()
                 .Where(x => x.Id == customRoleId)
-                .Select(x => x.ModulesSerialized)
+                .Select(x => new { x.ModulesSerialized, x.ModulesRestricted })
                 .FirstOrDefaultAsync(cancellationToken);
-            modules = string.IsNullOrWhiteSpace(serialized)
+            var modules = row is null || string.IsNullOrWhiteSpace(row.ModulesSerialized)
                 ? []
-                : JsonSerializer.Deserialize<List<string>>(serialized) ?? [];
-            cache.Set(cacheKey, modules, CacheTtl);
+                : JsonSerializer.Deserialize<List<string>>(row.ModulesSerialized) ?? [];
+            gate = new CustomRoleModuleGate(modules, row?.ModulesRestricted ?? false);
+            cache.Set(cacheKey, gate, CacheTtl);
         }
 
-        // Boş liste = kısıt tanımlanmamış (tam taban rol).
-        return modules.Count == 0 || modules.Contains(module, StringComparer.OrdinalIgnoreCase);
+        // Liste bağlayıcıysa (yetki matrisinden kurulmuş rol) modül listede OLMALI;
+        // boş liste "hiçbir sayfa yok" demektir. Bağlayıcı değilse (eski kayıt)
+        // boş liste "kısıt tanımlanmamış" sayılır ve taban rol geçerli kalır.
+        if (gate.Restricted)
+        {
+            return gate.Modules.Contains(module, StringComparer.OrdinalIgnoreCase);
+        }
+
+        return gate.Modules.Count == 0 || gate.Modules.Contains(module, StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task<bool> IsAllowedAsync(
@@ -252,6 +260,9 @@ public sealed class EntitlementService(CourseIntellectDbContext dbContext, IMemo
     private sealed record ResolvedModule(bool Enabled, Dictionary<string, bool> Actions);
 
     private sealed record ResolvedRole(Dictionary<string, ResolvedModule> Modules);
+
+    /// <summary>Özel rolün modül kapısı: liste + listenin bağlayıcı olup olmadığı.</summary>
+    private sealed record CustomRoleModuleGate(List<string> Modules, bool Restricted);
 
     private sealed record ResolvedPackage(bool Unrestricted, Dictionary<string, ResolvedRole> Roles);
 }

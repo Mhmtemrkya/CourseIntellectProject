@@ -321,7 +321,7 @@ public sealed class SchoolDashboardTests : IDisposable
         Assert.False(setup.GetProperty("completed").GetBoolean());
         Assert.Equal(0, setup.GetProperty("completedSteps").GetInt32());
         Assert.Equal(
-            ["classes", "teachers", "schedule", "enrollment"],
+            ["branches", "classes", "teachers", "schedule", "enrollment"],
             setup.GetProperty("steps").EnumerateArray().Select(x => x.GetProperty("key").GetString()));
     }
 
@@ -333,6 +333,14 @@ public sealed class SchoolDashboardTests : IDisposable
     public async Task Setup_MarksStepDone_FromInstitutionData()
     {
         await SeedAsync(); // A kurumunda 1 öğretmen var
+        db.Context.OrgUnits.Add(new OrgUnit
+        {
+            TenantId = TenantA,
+            Name = "Merkez Şube",
+            UnitType = "Şube",
+            IsActive = true,
+        });
+        await db.Context.SaveChangesAsync();
         var controller = CreateController(TenantA);
 
         var setup = SetupOf(await controller.GetSetup(CancellationToken.None));
@@ -348,7 +356,29 @@ public sealed class SchoolDashboardTests : IDisposable
         Assert.True(classStep.GetProperty("done").GetBoolean());
         Assert.Equal(2, classStep.GetProperty("count").GetInt32());
 
-        Assert.Equal(2, setup.GetProperty("completedSteps").GetInt32());
+        var branchStep = steps.Single(x => x.GetProperty("key").GetString() == "branches");
+        Assert.True(branchStep.GetProperty("done").GetBoolean());
+        Assert.Equal(1, branchStep.GetProperty("count").GetInt32());
+
+        Assert.Equal(3, setup.GetProperty("completedSteps").GetInt32());
+    }
+
+    [Fact]
+    public async Task Setup_BranchStep_IgnoresInactiveBranchesAndOtherUnitTypes()
+    {
+        db.Context.TenantWorkspaces.Add(new TenantWorkspace { Id = TenantA, Name = "Yeni Okul", Slug = "yeni-okul" });
+        db.Context.OrgUnits.AddRange(
+            new OrgUnit { TenantId = TenantA, Name = "Eski Şube", UnitType = "Şube", IsActive = false },
+            new OrgUnit { TenantId = TenantA, Name = "Muhasebe", UnitType = "Departman", IsActive = true });
+        await db.Context.SaveChangesAsync();
+        var controller = CreateController(TenantA);
+
+        var setup = SetupOf(await controller.GetSetup(CancellationToken.None));
+        var branchStep = setup.GetProperty("steps").EnumerateArray()
+            .Single(x => x.GetProperty("key").GetString() == "branches");
+
+        Assert.False(branchStep.GetProperty("done").GetBoolean());
+        Assert.Equal(0, branchStep.GetProperty("count").GetInt32());
     }
 
     [Fact]

@@ -5,7 +5,7 @@ import { Button } from '../ui/button';
  * Yeni kurum kurulum sihirbazı.
  *
  * Boş bir panoyu "sıfır" olarak bırakmak yerine kurumu ilk kuruluma yönlendirir:
- * sınıflar → öğretmenler → ders programı → ilk kayıt & ücret sözleşmesi.
+ * şube → sınıflar → öğretmenler → ders programı → ilk kayıt & ücret sözleşmesi.
  *
  * Adımların bitip bitmediğini SUNUCU kurumun kendi verisinden hesaplar; burada
  * yerel bir "tamamlandı" işareti tutulmaz. Kurum bir adımı başka ekrandan

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +8,7 @@ import '../utils/input_formatters.dart';
 
 import '../services/admin_directory_api_service.dart';
 import '../services/admin_workflow_api_service.dart';
+import '../widgets/role_create_sheet.dart';
 import '../services/driving_school_api_service.dart';
 import '../services/auth_session_store.dart';
 import '../services/credentials_pdf_service.dart';
@@ -14,6 +17,72 @@ import '../services/service_tracking_api_service.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/responsive_layout.dart';
+
+/// Öğretmen branşlarının saklandığı yapılandırma anahtarı. Masaüstündeki
+/// `lib/staffBranches.js` ile BİREBİR aynı olmalı; ayrılırsa iki platform
+/// farklı liste görür.
+const _staffBranchConfigurationType = 'staff-branches';
+const _staffBranchScopeKey = 'teacher-branches';
+
+/// Masaüstündeki varsayılan branş listesi (mobilde 4 sabit değer vardı).
+const _defaultTeacherBranches = [
+  'Matematik',
+  'Fizik',
+  'Kimya',
+  'Biyoloji',
+  'Türkçe / Edebiyat',
+  'Tarih',
+  'Coğrafya',
+  'İngilizce',
+  'Almanca',
+  'Fransızca',
+  'İspanyolca',
+  'Felsefe',
+  'Din Kültürü ve Ahlak Bilgisi',
+  'Beden Eğitimi',
+  'Müzik',
+  'Görsel Sanatlar',
+  'Bilgisayar / Bilişim Teknolojileri',
+  'Matematik (İlkokul)',
+  'Türkçe (İlkokul)',
+  'Hayat Bilgisi',
+  'Fen Bilimleri',
+  'Sosyal Bilgiler',
+  'Rehberlik',
+  'Okul Öncesi',
+  'Özel Eğitim',
+  'Diğer',
+];
+
+List<String> _mergeBranches(Iterable<String> extra) {
+  final set = <String>{
+    ..._defaultTeacherBranches,
+    ...extra.map((item) => item.trim()).where((item) => item.isNotEmpty),
+  };
+  final list = set.toList()..sort((a, b) => a.compareTo(b));
+  return list;
+}
+
+List<String> _readSavedBranches(List<Map<String, dynamic>> configurations) {
+  for (final item in configurations) {
+    if (item['scopeKey'] != _staffBranchScopeKey) continue;
+    final raw = item['payloadJson'];
+    if (raw is! String || raw.isEmpty) continue;
+    try {
+      final parsed = jsonDecode(raw);
+      final branches = (parsed as Map)['branches'];
+      if (branches is List) {
+        return branches
+            .map((e) => '$e'.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }
+    } catch (_) {
+      /* bozuk kayıt sabit listeyi bozmaz */
+    }
+  }
+  return const [];
+}
 
 class AdminStaffRegistrationPage extends StatefulWidget {
   const AdminStaffRegistrationPage({super.key});
@@ -61,6 +130,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   final _routeEndController = TextEditingController(text: '09:00');
 
   String _teacherBranch = 'Matematik';
+
+  /// Öğretmen branşları — masaüstüyle AYNI kaynak: sabit liste + kurumun
+  /// kaydettiği özel branşlar (`staff-branches` yapılandırması).
+  List<String> _teacherBranchOptions = List.of(_defaultTeacherBranches);
   String _personnelRole = 'Administrative';
   String _personnelDepartment = 'Öğrenci Isleri';
   String _routeType = 'Morning';
@@ -86,6 +159,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     _loadBranches();
     _loadStaff();
     _loadCustomRoles();
+    _loadTeacherBranches();
     _loadInstitutionType();
   }
 
@@ -115,6 +189,88 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       /* kurum türü okunamazsa okul varsayılanları kalır */
     }
   }
+
+  Future<void> _loadTeacherBranches() async {
+    try {
+      final configs = await AdminWorkflowApiService.instance
+          .getPlatformConfigurations(_staffBranchConfigurationType);
+      final saved = _readSavedBranches(configs);
+      if (!mounted) return;
+      setState(() => _teacherBranchOptions = _mergeBranches(saved));
+    } catch (_) {
+      /* okunamazsa sabit liste kalır */
+    }
+  }
+
+  /// Yeni branşı kuruma kaydeder ve forma seçer. Masaüstüyle aynı yapılandırma
+  /// anahtarını kullanır; iki platform aynı listeyi görür.
+  Future<bool> _createTeacherBranch(String name) async {
+    final next = _mergeBranches([..._teacherBranchOptions, name]);
+    try {
+      await AdminWorkflowApiService.instance.upsertPlatformConfiguration({
+        'configurationType': _staffBranchConfigurationType,
+        'scopeKey': _staffBranchScopeKey,
+        'displayName': 'Öğretmen Branşları',
+        'payloadJson': jsonEncode({'branches': next}),
+      });
+      if (!mounted) return true;
+      setState(() {
+        _teacherBranchOptions = next;
+        _teacherBranch = name;
+      });
+      _snack('${'Branş oluşturuldu'.tr}: $name');
+      return true;
+    } catch (e) {
+      if (mounted) _snack('${'Branş oluşturulamadı'.tr}: $e');
+      return false;
+    }
+  }
+
+  Future<void> _openBranchSheet() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Yeni Branş'.tr),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 80,
+          decoration: InputDecoration(
+            labelText: 'Branş adı'.tr,
+            hintText: 'Örn: Astronomi',
+            border: const OutlineInputBorder(),
+          ),
+          onSubmitted: (value) => Navigator.pop(ctx, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Vazgeç'.tr),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: Text('Branşı Ekle'.tr),
+          ),
+        ],
+      ),
+    );
+    if (name != null && name.isNotEmpty) await _createTeacherBranch(name);
+  }
+
+  Future<void> _openRoleSheet() async {
+    final role = await RoleCreateSheet.show(context);
+    if (role == null || !mounted) return;
+    // Yeni rol listeye eklenir; kullanıcı kaydı bölmeden seçebilir.
+    setState(() {
+      _customRoles = [..._customRoles, role]
+        ..sort((a, b) => '${a['name']}'.compareTo('${b['name']}'));
+    });
+  }
+
+  void _snack(String message) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message)));
 
   Future<void> _loadCustomRoles() async {
     try {
@@ -216,6 +372,20 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
           'Öğretmen ve Personel Kaydı'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        // Masaüstündeki "Rol Ekle" / "Branş Ekle" butonlarının mobil karşılığı:
+        // tanım üretmek için ayrı ekrana gitmeye ve kaydı bölmeye gerek yok.
+        actions: [
+          IconButton(
+            tooltip: 'Rol Ekle'.tr,
+            onPressed: _openRoleSheet,
+            icon: const Icon(Icons.verified_user_outlined),
+          ),
+          IconButton(
+            tooltip: 'Branş Ekle'.tr,
+            onPressed: _openBranchSheet,
+            icon: const Icon(Icons.playlist_add_rounded),
+          ),
+        ],
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
@@ -312,35 +482,20 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       labelText: 'Branş'.tr,
                       border: OutlineInputBorder(),
                     ),
-                    items: _isDrivingSchool
-                        ? const [
-                            DropdownMenuItem(
-                              value: 'Direksiyon Öğretmeni',
-                              child: Text('Direksiyon Öğretmeni'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Teorik Öğretmen',
-                              child: Text('Teorik Öğretmen'),
-                            ),
-                          ]
-                        : [
-                            DropdownMenuItem(
-                              value: 'Matematik',
-                              child: Text('Matematik'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Fen Bilimleri',
-                              child: Text('Fen Bilimleri'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Türkçe',
-                              child: Text('Türkçe'.tr),
-                            ),
-                            DropdownMenuItem(
-                              value: 'İngilizce',
-                              child: Text('İngilizce'.tr),
-                            ),
-                          ],
+                    items:
+                        (_isDrivingSchool
+                                ? const [
+                                    'Direksiyon Öğretmeni',
+                                    'Teorik Öğretmen',
+                                  ]
+                                : _teacherBranchOptions)
+                            .map(
+                              (branch) => DropdownMenuItem(
+                                value: branch,
+                                child: Text(branch),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (value) => setState(
                       () => _teacherBranch = value ?? _teacherBranch,
                     ),

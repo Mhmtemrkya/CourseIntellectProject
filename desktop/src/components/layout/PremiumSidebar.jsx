@@ -23,6 +23,7 @@ import { getInstitutionType, isModuleAllowedForInstitution, resetInstitutionType
 import { getEntitlements, isModuleAllowed, resetEntitlementCache } from "../../lib/entitlements";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 import { collapseMenuHubs } from "../../lib/navigation/hubs";
+import { fetchMyCustomRole } from "../../lib/api/modules";
 import { cn } from "../../lib/utils";
 import brandLogo from "../../assets/brand/emblem.png";
 import { FloatingParticles, GlowingOrb } from "../animations/AnimatedBackground";
@@ -232,6 +233,9 @@ export function PremiumSidebar() {
     resolveUserInstitutionType(user),
   );
   const [drivingPermissions, setDrivingPermissions] = useState(null);
+  // Kullanıcının özel rolü varsa menü o rolün SAYFA listesiyle daraltılır.
+  // null = özel rol yok / kısıt yok. { modules:Set, restricted:bool } = kısıtlı.
+  const [customRoleGate, setCustomRoleGate] = useState(null);
   const [openGroups, setOpenGroups] = useState(() => new Set());
 
   useEffect(() => {
@@ -293,6 +297,28 @@ export function PremiumSidebar() {
     };
   }, [institutionType, user]);
 
+  useEffect(() => {
+    let active = true;
+    fetchMyCustomRole()
+      .then((data) => {
+        if (!active) return;
+        // Sunucu kısıtlı rolde BOŞ dizi de gönderebilir ("hiçbir sayfa");
+        // bu yüzden restricted bayrağı ayrı taşınır.
+        const restricted = Boolean(data?.modulesRestricted);
+        const list = Array.isArray(data?.modules) ? data.modules : null;
+        setCustomRoleGate(
+          restricted || list
+            ? {
+              restricted,
+              modules: new Set((list || []).map((key) => String(key).toLowerCase())),
+            }
+            : null,
+        );
+      })
+      .catch(() => { if (active) setCustomRoleGate(null); });
+    return () => { active = false; };
+  }, [user?.id]);
+
   const roles = useMemo(() => getUserRoles(user), [user]);
   const primaryRole = roles[0] || "student";
   const enabledModules = useMemo(
@@ -353,14 +379,32 @@ export function PremiumSidebar() {
     // menü ehliyet SORU BANKASINA yönlenir. Böylece bulk-yükleme ile eklenen
     // sorular aynı yerde görünür ('questions' modülü her zaman açık olduğundan
     // 'question-bank' modülü tenant pakette olmasa bile erişim garanti).
+    // Özel rol kısıtı: kurum yöneticisinin yetki matrisinde işaretlemediği sayfa
+    // menüde GÖRÜNMEZ. Yalnız daraltır (hiçbir zaman genişletmez); profil gibi
+    // temel girişler dışarıda tutulur, yoksa kullanıcı hesabına erişemez.
+    const customRoleItems = customRoleGate?.restricted || customRoleGate?.modules?.size
+      ? visibleItems.filter((item) => {
+        const moduleKey = inferModuleKey(item);
+        // Profil daima kalır: kullanıcı kendi hesabına erişemezse uygulama
+        // kullanılamaz hâle gelir.
+        if (moduleKey === "profile") return true;
+        // FAIL-CLOSED: modül anahtarı çözülemeyen sayfa, KISITLI rolde gizlenir.
+        // Aksi hâlde eşlemesi olmayan ekranlar (ör. /admin/passive-registrations
+        // gibi PII taşıyan listeler) hiçbir sayfa seçilmemiş bir rolde bile
+        // görünüyordu. Kısıtsız (eski) rollerde davranış değişmez.
+        if (!moduleKey) return !customRoleGate.restricted;
+        return customRoleGate.modules.has(moduleKey.toLowerCase());
+      })
+      : visibleItems;
+
     const routedItems =
       institutionType === "DrivingSchool"
-        ? visibleItems.map((item) =>
+        ? customRoleItems.map((item) =>
             item.path === "/questions"
               ? { ...item, path: "/t/question-bank", label: "Soru Bankası" }
               : item,
           )
-        : visibleItems;
+        : customRoleItems;
     // Son adım: aynı işi bitiren ekranları konu hub'ına katla. Filtrelerden
     // sonra çalışır ki role/pakete kapalı ekran hub'a girmesin.
     return buildGroupedMenuItems(collapseMenuHubs(routedItems), primaryRole);
@@ -369,6 +413,7 @@ export function PremiumSidebar() {
     entitlements,
     institutionType,
     drivingPermissions,
+    customRoleGate,
     enabledModules,
     primaryRole,
     roles,

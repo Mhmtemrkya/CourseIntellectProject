@@ -972,17 +972,131 @@ export const PAGE_TOURS = {
   },
 };
 
+const AREA_GUIDES = {
+  institution: {
+    overview: 'Bu ekran kurum sahibinin akademik, idari ve operasyonel kararlarını tek bir iş akışında yürütmesi için hazırlanmıştır. Gösterilen kayıtlar aktif kurum ve seçili şube kapsamına göre sunulur.',
+    workflow: 'Önerilen kullanım sırası:\n\n1. Üst bölümdeki özet ve uyarıları kontrol edin.\n2. Tarih, şube, sınıf veya durum filtreleri varsa çalışma kapsamını belirleyin.\n3. Listeden ilgili kaydı açıp ayrıntıları doğrulayın.\n4. Değişiklikten sonra sayaç, durum rozeti ve işlem geçmişini yeniden kontrol edin.',
+    controls: 'Arama ve filtreleri birlikte kullanarak doğru kayıt kümesine ulaşın. Bir karta veya satıra tıkladığınızda açılan detay ekranında kişi, şube, tarih ve durum bilgisini işlem yapmadan önce karşılaştırın. Boş sonuç görürseniz önce aktif filtreleri temizleyin.',
+    safety: 'Kurum ve şube izolasyonu sunucuda uygulanır. Kullanıcıya yalnız rolünün ve paketinin izin verdiği işlemler gösterilir. Pasife alma, yetki, finans ve kayıt değişiklikleri denetim izine yazılır; kalıcı geçmiş gerektiğinde silmek yerine pasife alma akışını kullanın.',
+  },
+  finance: {
+    overview: 'Bu ekran sözleşme, taksit, tahsilat, gider ve mutabakat süreçlerinin ilgili bölümünü yönetir. Tutarları değerlendirirken seçili dönem, ödeme durumu ve şube kapsamını birlikte okuyun.',
+    workflow: 'Önerilen finans akışı:\n\n1. Öğrenci veya sözleşmeyi doğrulayın.\n2. Vade, kalan tutar ve önceki tahsilatları inceleyin.\n3. İşlem türünü ve ödeme yöntemini seçin.\n4. Kaydettikten sonra bakiye, taksit durumu ve makbuz hareketini karşılaştırın.\n5. Gün sonunda kasa ve mutabakat raporunu kontrol edin.',
+    controls: 'Dönem, durum, sınıf, şube ve metin filtreleri birbirini tamamlar. “Geciken” geçmiş vadeli açık alacağı; “bekleyen” ise seçilen dönemde vadesi gelecek açık alacağı ifade eder. İade veya düzeltme öncesinde orijinal makbuz ve işlem referansını açın.',
+    safety: 'Finans kayıtları kurum/şube kapsamında tutulur ve yetkisiz rollerden gizlenir. Tahsilat ve iade gibi kritik hareketler denetim kaydına yazılır. Yanlış kaydı silmek yerine desteklenen iade/düzeltme akışını kullanarak mali izi koruyun.',
+  },
+  teacher: {
+    overview: 'Bu ekran öğretmenin ders, içerik, sınav, ödev veya öğrenci takibi görevlerinden birini yürütür. Görünen sınıflar ve öğrenciler yalnız öğretmenin yetkili olduğu ders kapsamından gelir.',
+    workflow: 'Önerilen öğretmen akışı:\n\n1. Sınıf, ders ve tarih seçimini doğrulayın.\n2. Bekleyen öğrenci işlerini ve son teslimleri inceleyin.\n3. İçerik/not/sonuç girişini tamamlayın.\n4. Kaydetme sonrasında yayın ve görünürlük durumunu kontrol edin.\n5. Gerekliyse öğrenci veya veliye açıklayıcı geri bildirim gönderin.',
+    controls: 'Sınıf ve ders filtreleri yanlış gruba işlem yapılmasını önler. Taslak, yayınlandı ve tamamlandı durumlarını birbirinden ayırın. Toplu işlemden önce listede görünen öğrenci sayısı ile hedef sınıf mevcudunu karşılaştırın.',
+    safety: 'Öğrenci notları, yoklama ve kişisel geri bildirimler eğitim kaydıdır. Yalnız yetkili sınıf ve derslerde işlem yapın; hassas öğrenci bilgilerini serbest açıklama alanlarına gereksiz yere yazmayın.',
+  },
+  student: {
+    overview: 'Bu sayfa öğrencinin ders, ödev, sınav, içerik veya kişisel gelişim sürecinin ilgili bölümünü gösterir. Bilgiler yalnız kendi hesabınıza ve sınıfınıza aittir.',
+    workflow: 'Önerilen kullanım:\n\n1. Yaklaşan tarihleri ve öğretmen açıklamalarını okuyun.\n2. İlgili ders veya konu filtresini seçin.\n3. Çalışmanızı tamamlayıp teslim/yayın durumunu kontrol edin.\n4. Sonuç veya geri bildirim geldiyse eksik konuları çalışma planınıza ekleyin.',
+    controls: 'Tarih, ders ve durum filtreleri yoğun listeleri sadeleştirir. Taslak bir çalışmanın teslim edilmiş sayılmadığını; süreli sınavlarda sayacın sınav başladıktan sonra durdurulamayabileceğini unutmayın.',
+    safety: 'Hesap ve sınav güvenliğiniz için şifrenizi paylaşmayın. Yüklediğiniz dosyada gereksiz kişisel bilgi bulunmamasına dikkat edin; yalnız kendi kayıtlarınıza erişebilirsiniz.',
+  },
+  parent: {
+    overview: 'Bu ekran velinin seçili öğrencisine ait akademik, devam, iletişim veya ödeme bilgisini gösterir. Birden fazla çocuğunuz varsa işlem öncesinde doğru öğrencinin seçili olduğunu kontrol edin.',
+    workflow: 'Önerilen veli akışı:\n\n1. Öğrenci seçimini doğrulayın.\n2. Güncel uyarı ve son tarihleri inceleyin.\n3. Gerekli belge, mazeret veya görüşme talebini açıklamasıyla gönderin.\n4. Talebin onay durumunu ve okuldan gelen yanıtı takip edin.',
+    controls: 'Tarih ve durum filtreleri geçmiş ile güncel kayıtları ayırır. Bir sonuca itiraz veya açıklama gerekiyorsa ilgili kaydı açarak öğretmen/yönetim iletişim kanalını kullanın.',
+    safety: 'Yalnız size bağlı öğrencilerin kayıtları gösterilir. Sağlık, rehberlik ve finans bilgilerini ekran görüntüsü olarak gereksiz kişilerle paylaşmayın; resmi iletişim için uygulamadaki güvenli kanalları kullanın.',
+  },
+  guidance: {
+    overview: 'Bu ekran rehberlik görüşmeleri, randevular, envanterler ve öğrenci takip planlarının ilgili bölümünü yönetir. Görünürlük, rehberlik rolü ve kayıt gizlilik seviyesiyle sınırlandırılır.',
+    workflow: 'Önerilen rehberlik akışı:\n\n1. Öğrenci ve randevu bağlamını doğrulayın.\n2. Önceki görüşme ve takip hedeflerini inceleyin.\n3. Görüşme sonucunu uygun gizlilik seviyesiyle kaydedin.\n4. Takip tarihi ve gerekiyorsa yönlendirme oluşturun.\n5. Raporlarda yalnız gerekli toplulaştırılmış bilgiyi paylaşın.',
+    controls: 'Randevu durumu, tarih ve öğrenci filtrelerini kullanın. “Özel” not ile yönetimle paylaşılabilen notu bilinçli seçin; görüşme kaydını tamamlamadan önce takip tarihini doğrulayın.',
+    safety: 'Rehberlik notları hassas kişisel veridir. Gereksiz tanı veya özel hayat ayrıntısı yazmayın, yalnız görev amacıyla erişin ve paylaşım seviyesini her kayıtta kontrol edin.',
+  },
+  platform: {
+    overview: 'Bu ekran platform yöneticisinin kurum, paket, sistem sağlığı veya destek süreçlerinden birini yönetir. İşlemler tek bir kurumu değil platform genelini etkileyebilir.',
+    workflow: 'Önerilen platform akışı:\n\n1. Hedef kurum ve ortamı doğrulayın.\n2. Mevcut yapılandırmayı ve son denetim kayıtlarını inceleyin.\n3. Değişikliği en dar kapsamda uygulayın.\n4. Sonuç metriklerini ve hata kayıtlarını kontrol edin.\n5. Geri dönüş gerektirecek değişiklikleri açıklamasıyla belgeleyin.',
+    controls: 'Kurum, plan, durum ve tarih filtrelerini birlikte kullanın. Toplu işlemden önce hedef kurum sayısını ve seçili modülleri yeniden kontrol edin.',
+    safety: 'Platform yetkileri yüksek etkilidir. Kurum izolasyonunu aşan işlemleri yalnız açık operasyon gerekçesiyle yapın; rol, paket, bakım ve erişim değişikliklerinin denetim kaydını kontrol edin.',
+  },
+};
+
+const ROLE_PAGE_TIPS = {
+  admin: 'Kurum sahibi için öneri: güne Dashboard uyarılarıyla başlayın; şube, personel ve finans değişikliklerinden sonra Kayıt Geçmişi sayfasından işlemin doğru kullanıcı ve kapsamla yazıldığını doğrulayın.',
+  branchmanager: 'Şube yöneticisi için öneri: üst bölümde seçili şubeyi kontrol edin. Kurum geneline ait olduğunu düşündüğünüz bir kayıt görünmüyorsa yetki genişletmeye çalışmak yerine kurum sahibiyle kapsam atamasını doğrulayın.',
+  administrative: 'İdari personel için öneri: kayıt ve belge işlemlerinde kişi bilgilerini iki kez doğrulayın; yetkiniz dışındaki finans veya rol işlemlerini ilgili birime yönlendirin.',
+  finance: 'Muhasebe için öneri: her tahsilat gününde makbuz, kalan bakiye ve kasa yöntemini birlikte kontrol edin; düzeltmeleri silme yerine iade veya karşı kayıtla yapın.',
+  teacher: 'Öğretmen için öneri: sınıf ve ders kapsamını doğrulamadan toplu not, yoklama veya yayın işlemi başlatmayın.',
+  student: 'Öğrenci için öneri: tarih sırasına göre yaklaşan işleri tamamlayın ve teslimden sonra durumun “gönderildi/tamamlandı” olduğunu kontrol edin.',
+  parent: 'Veli için öneri: birden fazla öğrenciniz varsa mesaj, mazeret ve ödeme işleminden önce üstteki öğrenci seçimini kontrol edin.',
+  counselor: 'Rehberlik için öneri: her görüşmede görünürlük seviyesini seçin ve yalnız takip için gerekli bilgileri kaydedin.',
+  superadmin: 'Platform yöneticisi için öneri: hedef kurum, ortam ve etki alanını değişiklikten önce ve sonra doğrulayın.',
+};
+
+const WELCOME_PLAYBOOKS = {
+  admin: [
+    { title: 'İlk kurulum sırası', body: 'Kurumunuzu güvenli bir veri yapısıyla başlatmak için Dashboard üzerindeki kurulum kartını izleyin:\n\n1. Şubeyi ve sorumlusunu kaydedin.\n2. Sınıfları tanımlayın.\n3. Öğretmen kadrosunu ekleyin.\n4. Haftalık ders programını kurun.\n5. İlk öğrenci kaydıyla ücret sözleşmesi ve taksit planını oluşturun.\n\nHer adım gerçek kurum verisinden otomatik tamamlanır; ayrıca “tamamlandı” işaretlemeniz gerekmez.' },
+    { title: 'Kurum sahibinin günlük kontrolü', body: 'Her gün Dashboard dönemini “Günlük” bırakıp devamsızlık, bekleyen tahsilat ve operasyon uyarılarını inceleyin. Ardından görev/onay akışını temizleyin. Haftalık görünümde personel ve akademik eğilimi, aylık görünümde seçtiğiniz ayın tahsilat–gider dengesini kontrol edin.' },
+    { title: 'Şube, rol ve denetim güvenliği', body: 'Şubeler veri sınırıdır; personele doğru şube ve rol atamak görünürlük açısından kritiktir. Kurumdan ayrılan hesabı silmek yerine pasife alın. Rol, şube, kayıt ve finans değişikliklerini Kayıt Geçmişi ekranında kullanıcı, zaman ve kapsam bilgileriyle doğrulayın.' },
+  ],
+};
+
+function areaFor(pathname) {
+  if (pathname.startsWith('/finance/')) return 'finance';
+  if (pathname.startsWith('/t/')) return 'teacher';
+  if (pathname.startsWith('/s/')) return 'student';
+  if (pathname.startsWith('/p/')) return 'parent';
+  if (pathname.startsWith('/g/')) return 'guidance';
+  if (pathname.startsWith('/sa/')) return 'platform';
+  return 'institution';
+}
+
+function readablePageName(pathname, config) {
+  const configuredTitle = config?.steps?.[0]?.title;
+  if (configuredTitle) return configuredTitle;
+  const segment = pathname.split('/').filter(Boolean).at(-1) || 'dashboard';
+  return segment
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase('tr-TR'));
+}
+
+function matchingPageConfig(pathname) {
+  if (PAGE_TOURS[pathname]) return PAGE_TOURS[pathname];
+  const prefix = Object.keys(PAGE_TOURS)
+    .filter((path) => pathname.startsWith(`${path}/`))
+    .sort((a, b) => b.length - a.length)[0];
+  return prefix ? PAGE_TOURS[prefix] : null;
+}
+
+function roleTip(roles) {
+  const set = new Set(roles || []);
+  const order = ['superadmin', 'admin', 'branchmanager', 'finance', 'administrative', 'counselor', 'teacher', 'student', 'parent'];
+  return ROLE_PAGE_TIPS[order.find((role) => set.has(role))] || 'Bu sayfada yalnız rolünüzün izin verdiği kayıt ve işlemler görünür. Emin olmadığınız kritik işlemlerde kurum yöneticinizle kapsamı doğrulayın.';
+}
+
 // Rol anahtarı → karşılama turu. BranchManager admin menüsünü kullanır.
 export function findWelcomeTour(roles) {
   const order = ['superadmin', 'admin', 'counselor', 'teacher', 'finance', 'administrative', 'cafeteria', 'student', 'parent'];
   const set = new Set(roles);
-  if (set.has('branchmanager')) return WELCOME_TOURS.admin;
-  const key = order.find((role) => set.has(role));
-  return key ? WELCOME_TOURS[key] : null;
+  const key = set.has('branchmanager') ? 'admin' : order.find((role) => set.has(role));
+  if (!key) return null;
+  const tour = WELCOME_TOURS[key];
+  const extra = WELCOME_PLAYBOOKS[key] || [
+    { title: 'Önerilen günlük çalışma', body: roleTip(roles) },
+    { title: 'Güvenli kullanım', body: 'Her işlemden önce seçili kişi, tarih, kurum/şube ve durum bilgisini doğrulayın. Rolünüz dışında kalan bir işlem gerektiğinde hesabı veya kapsamı değiştirmeye çalışmak yerine yetkili birime yönlendirin.' },
+  ];
+  return { ...tour, id: `${tour.id}:v2`, steps: [...tour.steps, ...extra] };
 }
 
-export function findPageTour(pathname) {
-  const config = PAGE_TOURS[pathname];
-  if (!config) return null;
-  return { id: `page:${pathname}`, steps: config.steps };
+export function findPageTour(pathname, roles = []) {
+  if (!pathname || pathname === '/') return null;
+  const config = matchingPageConfig(pathname);
+  const area = AREA_GUIDES[areaFor(pathname)];
+  const title = readablePageName(pathname, config);
+  const specificSteps = config?.steps || [
+    { title, body: area.overview },
+  ];
+  const detailSteps = [
+    { title: `${title}: önerilen iş akışı`, body: area.workflow },
+    { title: 'Filtreler, detaylar ve doğrulama', body: area.controls },
+    { title: 'Güvenli ve izlenebilir kullanım', body: area.safety },
+    { title: 'Rolünüz için pratik öneri', body: roleTip(roles) },
+  ];
+  return { id: `page:v3:${pathname}`, steps: [...specificSteps, ...detailSteps] };
 }

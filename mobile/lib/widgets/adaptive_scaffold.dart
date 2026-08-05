@@ -102,10 +102,10 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 
   // ─── Onboarding ─────────────────────────────────────────────────────────
 
-  String get _welcomeTourId => 'welcome:${widget.userRole ?? 'genel'}';
+  String get _welcomeTourId => 'welcome:v2:${widget.userRole ?? 'genel'}';
 
   String _tabTourId(int index) =>
-      'tab:${widget.userRole ?? 'genel'}:${widget.destinations[index].label}';
+      'tab:v2:${widget.userRole ?? 'genel'}:${widget.destinations[index].label}';
 
   Future<void> _maybeShowOnboarding() async {
     final store = OnboardingStore.instance;

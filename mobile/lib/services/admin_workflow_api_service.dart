@@ -225,15 +225,46 @@ class AdminWorkflowApiService {
   Future<List<Map<String, dynamic>>> getCustomRoles() async =>
       _list(await _get('/api/custom-roles'));
 
-  Future<void> createCustomRole({
+  /// Yetki matrisinin kaynağı: role verilebilecek sayfa kataloğu. Sunucudan
+  /// gelir; kaydederken sunucu yine aynı katalogla doğrular (istemciye güvenilmez).
+  Future<List<Map<String, dynamic>>> getRoleModuleCatalog() async {
+    final result = await _get('/api/custom-roles/module-catalog');
+    final map = Map<String, dynamic>.from(result as Map);
+    return (map['groups'] as List<dynamic>? ?? const [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+
+  /// [modulesRestricted] true → [modules] BAĞLAYICIDIR; boş liste "hiçbir sayfa
+  /// yok" demektir. Bayrak olmadan sunucu boş listeyi "kısıt yok" (tam yetki)
+  /// sayar — yetki matrisinden gelen istekler daima true gönderir.
+  Future<Map<String, dynamic>> createCustomRole({
     required String name,
     required String baseRole,
     required List<String> modules,
-  }) async => _post('/api/custom-roles', {
-    'name': name,
-    'baseRole': baseRole,
-    'modules': modules,
-  });
+    bool modulesRestricted = false,
+  }) async {
+    final result = await _post('/api/custom-roles', {
+      'name': name,
+      'baseRole': baseRole,
+      'modules': modules,
+      'modulesRestricted': modulesRestricted,
+    });
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  // ---- Kurum yapılandırmaları (öğretmen branşları burada saklanır) ----
+  Future<List<Map<String, dynamic>>> getPlatformConfigurations(
+    String configurationType,
+  ) async => _list(
+    await _get('/api/platformconfigurations', {
+      'configurationType': configurationType,
+    }),
+  );
+
+  Future<void> upsertPlatformConfiguration(
+    Map<String, dynamic> payload,
+  ) async => _put('/api/platformconfigurations', payload);
 
   Future<void> deleteCustomRole(String id) async =>
       _delete('/api/custom-roles/$id');

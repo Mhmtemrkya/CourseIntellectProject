@@ -15,14 +15,38 @@ class RoleIntro {
 
 const Map<String, RoleIntro> roleIntros = {
   'Yönetici': RoleIntro(
-    title: 'Hoş geldiniz! 👋',
+    title: 'Kurum yönetim merkezine hoş geldiniz',
     body:
-        'Kurum yönetim uygulamanıza hoş geldiniz. Alttaki sekmelerle panel, '
-        'akademik işler, finans, operasyon ve raporlar arasında gezinirsiniz.\n\n'
-        'Bu kısa tanıtım her sekmenin ne işe yaradığını gösterir. Ayrıca her '
-        'sekmeye ilk geçişinizde o bölümün kısa açıklaması otomatik açılır.\n\n'
-        'İpucu: Alt menüye uzun basarak bulunduğunuz sekmenin tanıtımını '
+        'Kurum sahibi olarak akademik, idari, finansal ve operasyonel akışın '
+        'tamamını bu çalışma alanından yönetirsiniz.\n\n'
+        'İLK KURULUM SIRASI\n'
+        '1. Şubeyi ve sorumlusunu kaydedin.\n'
+        '2. Sınıfları tanımlayın.\n'
+        '3. Öğretmen ve personel kadrosunu ekleyin.\n'
+        '4. Haftalık ders programını oluşturun.\n'
+        '5. İlk öğrenci kaydıyla ücret sözleşmesi ve taksit planını kurun.\n\n'
+        'GÜNLÜK KONTROL\n'
+        'Panelde devamsızlık, bekleyen tahsilat ve kritik operasyon uyarılarını '
+        'inceleyin; ardından onay ve görev akışını temizleyin.\n\n'
+        'Her sekme kartı önerilen iş akışını ve dikkat edilmesi gereken güvenlik '
+        'noktalarını açıklar. Alt menüye uzun basarak bulunduğunuz tanıtımı '
         'istediğiniz zaman yeniden açabilirsiniz.',
+  ),
+  'Süper Admin': RoleIntro(
+    title: 'Platform yönetim merkezine hoş geldiniz',
+    body:
+        'Kurum yaşam döngüsü, paketler, sistem sağlığı ve destek süreçlerini '
+        'platform genelinde yönetirsiniz.\n\nHer işlemden önce hedef kurum ve ortamı '
+        'doğrulayın; değişikliği en dar kapsamda uygulayın ve sonrasında denetim '
+        'kaydı ile sistem metriklerini kontrol edin. Sekme tanıtımları bu güvenli '
+        'iş akışını adım adım hatırlatır.',
+  ),
+  'Yemekhane': RoleIntro(
+    title: 'Yemekhane çalışma alanına hoş geldiniz',
+    body:
+        'Haftalık menü, öğün yayınlama ve ilgili duyuruları buradan yönetirsiniz. '
+        'Menüyü yayınlamadan önce tarih, öğün, alerjen ve hedef kurum/şube '
+        'bilgilerini doğrulayın. Her sekmeye ilk geçişte ayrıntılı kullanım kartı açılır.',
   ),
   'Öğrenci': RoleIntro(
     title: 'Hoş geldin! 🎓',
@@ -138,8 +162,7 @@ const Map<String, Map<String, String>> tabDetails = {
     'Soru Bankası':
         'E-sınav hazırlığı için soru çözün. Yanlışlarınız kaydedilir; tekrar '
         'çalışmanız gereken konular size önerilir.',
-    'Profil':
-        'Hesap bilgileriniz, tema/dil ayarları ve çıkış.',
+    'Profil': 'Hesap bilgileriniz, tema/dil ayarları ve çıkış.',
   },
   'Direksiyon Öğretmeni': {
     'Derslerim':
@@ -161,8 +184,7 @@ const Map<String, Map<String, String>> tabDetails = {
         'tarafındaki içerik altyapısının aynısını kullanır.',
     'Soru Bankası':
         'E-sınav hazırlığı için soru ekleyip kursiyerlere yönlendirebilirsiniz.',
-    'Profil':
-        'Hesap bilgileriniz, tema/dil ayarları ve çıkış.',
+    'Profil': 'Hesap bilgileriniz, tema/dil ayarları ve çıkış.',
   },
   'Sürücü Kursu': {
     'Panel':
@@ -201,16 +223,14 @@ const Map<String, Map<String, String>> tabDetails = {
     'Konu Anlatımı':
         'Trafik ve ilk yardım içerikleri. Okul tarafındaki içerik yönetiminin '
         'aynısını kullanır.',
-    'Soru Bankası':
-        'E-sınav hazırlığı için soru stüdyosu ve sınav altyapısı.',
+    'Soru Bankası': 'E-sınav hazırlığı için soru stüdyosu ve sınav altyapısı.',
     'Finans':
         'Sözleşmeler, taksitler ve tahsilatlar.\n\n'
         '• Ek direksiyon dersi satışı hem ücreti hem ders dakikasını aynı '
         'işlemde ekler.\n'
         '• Borcu kurumun belirlediği eşiği aşan kursiyer yeni randevu alamaz.\n'
         '• Tüm finansal hareketler denetim kaydına yazılır.',
-    'Profil':
-        'Hesap bilgileriniz, tema/dil ayarları ve çıkış.',
+    'Profil': 'Hesap bilgileriniz, tema/dil ayarları ve çıkış.',
   },
   'Yönetici': {
     'Panel':
@@ -257,27 +277,21 @@ const Map<String, Map<String, String>> tabDetails = {
         'takip et.',
     'Kütüphane':
         'Kütüphanedeki kitapları ara; ödünç aldıklarını ve iade tarihlerini gör.',
-    'Mesajlar':
-        'Öğretmenlerinle mesajlaş; takıldığın soruları sorabilirsin.',
-    'Profil':
-        'Profilin, rozetlerin, tema ve bildirim ayarların burada.',
+    'Mesajlar': 'Öğretmenlerinle mesajlaş; takıldığın soruları sorabilirsin.',
+    'Profil': 'Profilin, rozetlerin, tema ve bildirim ayarların burada.',
   },
   'Öğretmen': {
     'Ana Sayfa':
         'Bugünkü dersleriniz, bekleyen işler ve duyurular tek ekranda.',
-    'Program':
-        'Haftalık ders programınız. Değişiklikler anında yansır.',
+    'Program': 'Haftalık ders programınız. Değişiklikler anında yansır.',
     'Onaylar':
         'Veli görüşme talepleri ve size gelen onay istekleri burada; '
         'onaylayın ya da yeni zaman önerin.',
-    'Görevlerim':
-        'Size atanan nöbet ve görevler; tamamlandıkça işaretleyin.',
-    'Kütüphane':
-        'Kütüphane kataloğu; ödünç işlemlerinizi görürsünüz.',
+    'Görevlerim': 'Size atanan nöbet ve görevler; tamamlandıkça işaretleyin.',
+    'Kütüphane': 'Kütüphane kataloğu; ödünç işlemlerinizi görürsünüz.',
     'Mesajlar':
         'Öğrenci, veli ve yönetimle mesajlaşma. Öğrenci soruları da buraya düşer.',
-    'Profil':
-        'Hesap bilgileriniz, tema/dil ve bildirim ayarları.',
+    'Profil': 'Hesap bilgileriniz, tema/dil ve bildirim ayarları.',
   },
   'Veli': {
     'Ana Sayfa':
@@ -286,24 +300,19 @@ const Map<String, Map<String, String>> tabDetails = {
     'Devamsızlık':
         'Gün gün yoklama kayıtları. Devamsızlık işlendiğinde anında bildirim '
         'alırsınız; mazeret bildirimini buradan iletebilirsiniz.',
-    'Duyurular':
-        'Okuldan gelen duyurular ve haberler.',
+    'Duyurular': 'Okuldan gelen duyurular ve haberler.',
     'Ödemeler':
         'Taksit planı, ödenenler ve kalan bakiye. Makbuzlarınızı görüntüleyip '
         'indirebilirsiniz.',
     'Rehberlik':
         'Rehber öğretmenden randevu isteyin; çocuğunuzla ilgili görüşme '
         'geçmişini takip edin.',
-    'Kütüphane':
-        'Çocuğunuzun ödünç aldığı kitaplar ve iade tarihleri.',
-    'Mesajlar':
-        'Öğretmenler ve okul yönetimiyle mesajlaşma.',
-    'Profil':
-        'Hesap bilgileriniz, bildirim tercihleri ve çıkış.',
+    'Kütüphane': 'Çocuğunuzun ödünç aldığı kitaplar ve iade tarihleri.',
+    'Mesajlar': 'Öğretmenler ve okul yönetimiyle mesajlaşma.',
+    'Profil': 'Hesap bilgileriniz, bildirim tercihleri ve çıkış.',
   },
   'Muhasebeci': {
-    'Panel':
-        'Günlük tahsilat, bekleyen taksitler ve kasa özeti tek ekranda.',
+    'Panel': 'Günlük tahsilat, bekleyen taksitler ve kasa özeti tek ekranda.',
     'Tahsilatlar':
         'Alınan tüm ödemeler: tarih, yöntem, makbuz numarası. Yeni tahsilat '
         'girişi ve iade işlemleri buradan yapılır.',
@@ -311,12 +320,9 @@ const Map<String, Map<String, String>> tabDetails = {
         'Tüm taksit planları vade sırasıyla; geciken taksitler işaretlenir.',
     'Defter':
         'Tüm finansal hareketlerin kronolojik dökümü; mutabakat için kullanın.',
-    'Mesajlar':
-        'Yönetim ve velilerle mesajlaşma.',
-    'Dışa Aktar':
-        'Finansal verileri Excel/PDF olarak dışa aktarın.',
-    'Profil':
-        'Hesap bilgileriniz ve ayarlar.',
+    'Mesajlar': 'Yönetim ve velilerle mesajlaşma.',
+    'Dışa Aktar': 'Finansal verileri Excel/PDF olarak dışa aktarın.',
+    'Profil': 'Hesap bilgileriniz ve ayarlar.',
   },
   'İdari Birimler': {
     'Panel':
@@ -326,14 +332,10 @@ const Map<String, Map<String, String>> tabDetails = {
         'kullanıcı adı/şifre üretir; bilgileri paylaşabilirsiniz.',
     'Duyurular':
         'Hedef kitle seçerek duyuru yayınlayın; ilgili panellere anında düşer.',
-    'Mesajlar':
-        'Kurum içi mesajlaşma.',
-    'Kütüphane':
-        'Kütüphane kataloğu ve ödünç işlemleri.',
-    'Raporlar':
-        'Operasyonel raporlar ve dökümler.',
-    'Profil':
-        'Hesap bilgileriniz ve ayarlar.',
+    'Mesajlar': 'Kurum içi mesajlaşma.',
+    'Kütüphane': 'Kütüphane kataloğu ve ödünç işlemleri.',
+    'Raporlar': 'Operasyonel raporlar ve dökümler.',
+    'Profil': 'Hesap bilgileriniz ve ayarlar.',
   },
   'Rehberlik Öğretmeni': {
     'Vaka Merkezi':
@@ -342,16 +344,11 @@ const Map<String, Map<String, String>> tabDetails = {
     'Randevular':
         'Öğrenci ve velilerden gelen randevu talepleri; onaylayın ya da yeni '
         'zaman önerin.',
-    'Program':
-        'Haftalık programınız ve planlı görüşmeleriniz.',
-    'Rapor':
-        'Görüşme yoğunluğu ve öğrenci gelişim raporları.',
-    'Kütüphane':
-        'Kütüphane kataloğu.',
-    'Mesajlar':
-        'Öğrenci, veli ve yönetimle mesajlaşma.',
-    'Profil':
-        'Hesap bilgileriniz ve ayarlar.',
+    'Program': 'Haftalık programınız ve planlı görüşmeleriniz.',
+    'Rapor': 'Görüşme yoğunluğu ve öğrenci gelişim raporları.',
+    'Kütüphane': 'Kütüphane kataloğu.',
+    'Mesajlar': 'Öğrenci, veli ve yönetimle mesajlaşma.',
+    'Profil': 'Hesap bilgileriniz ve ayarlar.',
   },
 };
 
@@ -360,6 +357,15 @@ String tabDetailFor(String? role, String label) {
   final byRole = tabDetails[role ?? ''];
   final detail = byRole?[label];
   if (detail != null) return detail;
-  return '"$label" bölümüne hoş geldiniz. Bu sekmedeki içerik ve işlemler '
-      'rolünüze göre düzenlenmiştir; ekranı keşfetmekten çekinmeyin.';
+  return '"$label" bölümüne hoş geldiniz. Bu sekmedeki kayıt ve işlemler '
+      'rolünüze, kurumunuza ve seçili şube kapsamına göre düzenlenir.\n\n'
+      'ÖNERİLEN İŞ AKIŞI\n'
+      '1. Üstteki özet ve uyarıları okuyun.\n'
+      '2. Kişi, tarih, sınıf/şube ve durum seçimini doğrulayın.\n'
+      '3. İlgili kaydı açıp ayrıntıları kontrol edin.\n'
+      '4. İşlemden sonra durum rozetini ve güncellenen sayacı yeniden inceleyin.\n\n'
+      'GÜVENLİ KULLANIM\n'
+      'Kalıcı geçmiş gereken kayıtları silmek yerine pasife alma veya resmi '
+      'düzeltme akışını kullanın. Yetkiniz dışında kalan bir işlem için kapsamı '
+      'genişletmeye çalışmayın; kurum yöneticisine yönlendirin.';
 }

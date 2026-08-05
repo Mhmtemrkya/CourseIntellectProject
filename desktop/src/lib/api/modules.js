@@ -921,6 +921,9 @@ export async function updateStaffAssignment(userId, payload) {
 
 // ── Özel roller (kurum yöneticisi tanımlar; modül erişimi API'de zorlanır) ──
 export async function fetchCustomRoles() { return api.get('/api/custom-roles'); }
+// Yetki matrisinin kaynağı: role verilebilecek sayfa kataloğu (sunucudan gelir,
+// istemcide sabit liste tutulmaz — kaydederken de aynı katalogla doğrulanır).
+export async function fetchRoleModuleCatalog() { return api.get('/api/custom-roles/module-catalog'); }
 export async function fetchMyCustomRole() { return api.get('/api/custom-roles/my'); }
 export async function createCustomRole(payload) { return api.post('/api/custom-roles', payload); }
 export async function updateCustomRole(id, payload) { return api.put(`/api/custom-roles/${id}`, payload); }

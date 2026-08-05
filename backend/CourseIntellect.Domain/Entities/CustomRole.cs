@@ -19,8 +19,27 @@ public sealed class CustomRole : ITenantScopedEntity
     /// <summary>Panel ve temel yetki tabanı (Administrative/Teacher/Cafeteria...).</summary>
     public UserRole BaseRole { get; set; } = UserRole.Administrative;
 
-    /// <summary>İzinli modül anahtarları (JSON dizi). Boş = kısıt yok (tam taban rol).</summary>
+    /// <summary>
+    /// İzinli modül anahtarları (JSON dizi).
+    ///
+    /// <para><b>Boş listenin anlamı <see cref="ModulesRestricted"/>'a bağlıdır</b> —
+    /// bu ayrım güvenlik açısından kritiktir:</para>
+    /// <list type="bullet">
+    ///   <item><c>ModulesRestricted=false</c> (eski kayıtlar): boş liste "kısıt
+    ///   tanımlanmamış" demektir, taban rolün tamamı geçerlidir.</item>
+    ///   <item><c>ModulesRestricted=true</c> (yetki matrisinden kurulan roller):
+    ///   liste BAĞLAYICIDIR; boş liste "hiçbir sayfaya erişim yok" demektir.</item>
+    /// </list>
+    /// Bayrak olmadan "hiçbir sayfa seçme" isteği sessizce "tam yetki"ye
+    /// dönüşürdü.
+    /// </summary>
     public string ModulesSerialized { get; set; } = "[]";
+
+    /// <summary>
+    /// Modül listesi bağlayıcı mı? Yetki matrisinden oluşturulan rollerde daima
+    /// true. Eski roller false kalır ve davranışları değişmez.
+    /// </summary>
+    public bool ModulesRestricted { get; set; }
 
     /// <summary>
     /// İnce taneli izin kodları (JSON dizi, ör. <c>driving.vehicle.update</c>). Boş = taban

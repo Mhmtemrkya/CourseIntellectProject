@@ -402,7 +402,7 @@ public sealed class SchoolDashboardController(
     /// <summary>
     /// Yeni kurum kurulum sihirbazı: kurumun "yayına hazır" olması için gereken
     /// adımlar ve hangilerinin bittiği. Adımlar BAĞIMLILIK sırasındadır —
-    /// sınıf olmadan program, program olmadan sağlıklı kayıt kurulamaz.
+    /// şube ve sınıf olmadan program, program olmadan sağlıklı kayıt kurulamaz.
     ///
     /// <para>Her adım kendi verisinden hesaplanır (kullanıcının "bitti" işaretine
     /// güvenilmez): kurum bir adımı başka bir ekrandan tamamladıysa sihirbaz da
@@ -412,6 +412,18 @@ public sealed class SchoolDashboardController(
     [HttpGet("setup")]
     public async Task<IActionResult> GetSetup(CancellationToken cancellationToken)
     {
+        // Şube/kampüs kurulumun ilk veri sınırıdır. Yalnız aktif ve gerçekten
+        // şube niteliğindeki organizasyon birimleri adımı tamamlar; departman
+        // veya pasife alınmış eski bir şube kurumu yanlışlıkla hazır göstermez.
+        var branchCount = await dbContext.OrgUnits.AsNoTracking()
+            .CountAsync(x => x.IsActive
+                && new[]
+                {
+                    "Şube", "şube", "ŞUBE", "Sube", "sube", "SUBE",
+                    "Kampüs", "kampüs", "KAMPÜS", "Kampus", "kampus", "KAMPUS",
+                }.Contains(x.UnitType),
+                cancellationToken);
+
         // Sınıf defteri ClassesController ile AYNI iki kaynağın birleşimidir:
         // elle tanımlanan sınıflar + öğrencilerin sınıf adları. Yalnız birine
         // bakmak, sınıfları zaten dolu bir kuruma "sınıf tanımlayın" derdi.
@@ -448,6 +460,9 @@ public sealed class SchoolDashboardController(
 
         var steps = new[]
         {
+            BuildStep("branches", "Şubenizi kaydedin", branchCount,
+                "Şube; öğrenci, personel, finans ve yetki verilerinin güvenli çalışma kapsamını belirler.",
+                "/admin/branch-registration", "Şube kaydet", "aktif şube"),
             BuildStep("classes", "Sınıfları tanımlayın", classCount,
                 "Öğrenci kaydı, yoklama ve ders programı sınıf listesine dayanır.",
                 "/classes", "Sınıf ekle", "sınıf tanımlı"),

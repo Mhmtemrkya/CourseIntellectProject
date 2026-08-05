@@ -276,6 +276,9 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(80).IsRequired();
             entity.Property(x => x.BaseRole).HasColumnName("base_role").HasConversion<string>().HasMaxLength(40).IsRequired();
             entity.Property(x => x.ModulesSerialized).HasColumnName("modules").HasMaxLength(4000);
+            // Eski roller false kalır: boş modül listesi onlarda "kısıt yok" demeye
+            // devam eder. Yetki matrisinden kurulan roller true kaydedilir.
+            entity.Property(x => x.ModulesRestricted).HasColumnName("modules_restricted").HasDefaultValue(false);
             entity.Property(x => x.PermissionsSerialized).HasColumnName("permissions").HasMaxLength(8000).HasDefaultValue("[]");
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
             entity.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();

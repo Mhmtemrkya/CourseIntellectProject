@@ -14,6 +14,7 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import PhotoCapture from '../../components/ui/photo-capture';
 import { BranchSelectWithCreate } from '../../components/registration/BranchSelectWithCreate';
+import RoleCreateDialog from '../../components/registration/RoleCreateDialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../../components/ui/select';
@@ -182,6 +183,11 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
   const [branchId, setBranchId] = useState('');
   const [customRoles, setCustomRoles] = useState([]);
   const [savedBranches, setSavedBranches] = useState([]);
+  // Kayıt ekranındaki "Rol Ekle" / "Branş Ekle" pencereleri.
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [branchDialogOpen, setBranchDialogOpen] = useState(false);
+  const [newBranchName, setNewBranchName] = useState('');
+  const [savingBranch, setSavingBranch] = useState(false);
   const [editStaff, setEditStaff] = useState(null);
   const [editForm, setEditForm] = useState(() => buildStaffEditForm());
   const [editSaving, setEditSaving] = useState(false);
@@ -559,9 +565,64 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
     }
   };
 
+  const saveNewBranch = async () => {
+    const clean = newBranchName.trim();
+    if (!clean) return;
+    setSavingBranch(true);
+    const ok = await createTeacherBranch(clean);
+    setSavingBranch(false);
+    if (ok !== false) {
+      // Yeni branş doğrudan forma seçilir: kullanıcı listeden tekrar aramasın.
+      handleChange('departmentOrBranch', clean);
+      setNewBranchName('');
+      setBranchDialogOpen(false);
+    }
+  };
+
   // Kayıt ve dizin görünümü aynı diyalogları paylaşır (kimlik bilgisi + düzenleme).
   const dialogs = (
     <>
+      {/* Rol oluşturma — yetki matrisi penceresi. Oluşan rol listeye eklenir
+          ve forma seçilir, kayıt akışı bölünmez. */}
+      <RoleCreateDialog
+        open={roleDialogOpen}
+        onClose={() => setRoleDialogOpen(false)}
+        onCreated={(role) => {
+          setCustomRoles((prev) => [...prev, role].sort((a, b) => a.name.localeCompare(b.name, 'tr')));
+        }}
+      />
+
+      <Dialog open={branchDialogOpen} onOpenChange={(open) => { if (!open && !savingBranch) setBranchDialogOpen(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Yeni Branş</DialogTitle>
+            <DialogDescription>
+              Branş, öğretmen kaydında seçim listesine eklenir ve kurumun tamamında kullanılabilir.
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label htmlFor="new-branch-name">Branş adı</Label>
+            <Input
+              id="new-branch-name"
+              value={newBranchName}
+              onChange={(event) => setNewBranchName(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); saveNewBranch(); } }}
+              placeholder="Örn: Astronomi"
+              maxLength={80}
+              disabled={savingBranch}
+              autoFocus
+              className="mt-1"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setBranchDialogOpen(false)} disabled={savingBranch}>Vazgeç</Button>
+            <Button onClick={saveNewBranch} disabled={savingBranch || !newBranchName.trim()}>
+              {savingBranch ? 'Ekleniyor…' : 'Branşı Ekle'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!credentials} onOpenChange={(open) => !open && setCredentials(null)}>
         <DialogContent>
           <DialogHeader>
@@ -987,7 +1048,21 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
           </p>
         </div>
         </div>
-        {directoryMode ? <Button onClick={openRegistrationForm}>Yeni Personel Kaydı</Button> : null}
+        {directoryMode ? (
+          <Button onClick={openRegistrationForm}>Yeni Personel Kaydı</Button>
+        ) : (
+          // Kayıt ekranında personelin ihtiyaç duyduğu iki tanım burada üretilir:
+          // rol (yetki matrisiyle) ve öğretmen branşı. Ayrı bir ayar sayfasına
+          // gitmeden, kaydı yarıda bırakmadan eklenebilir.
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => setRoleDialogOpen(true)} data-testid="add-role-button">
+              <ShieldCheck className="mr-2 h-4 w-4" /> Rol Ekle
+            </Button>
+            <Button variant="outline" onClick={() => setBranchDialogOpen(true)} data-testid="add-branch-button">
+              <Plus className="mr-2 h-4 w-4" /> Branş Ekle
+            </Button>
+          </div>
+        )}
       </motion.div>
 
       <div className={directoryMode ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 gap-6 xl:grid-cols-3'}>

@@ -127,7 +127,7 @@ export function OnboardingProvider({ children }) {
     setStepIndex(0);
   }, [activeTour, markSeen]);
 
-  const pageTour = useMemo(() => findPageTour(location.pathname), [location.pathname]);
+  const pageTour = useMemo(() => findPageTour(location.pathname, roles), [location.pathname, roles]);
   const welcomeTour = useMemo(() => (roles.length ? findWelcomeTour(roles) : null), [roles]);
 
   // Otomatik başlatma: sayfa render olduktan sonra kısa gecikmeyle.
@@ -146,7 +146,7 @@ export function OnboardingProvider({ children }) {
   // Rota değişince açık turu kapat (hedefler artık ekranda değil).
   useEffect(() => {
     setActiveTour((current) => {
-      if (current && current.id.startsWith('page:') && current.id !== `page:${location.pathname}`) {
+      if (current && current.id.startsWith('page:') && !current.id.endsWith(`:${location.pathname}`)) {
         return null;
       }
       return current;

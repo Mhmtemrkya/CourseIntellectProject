@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import 'admin_branch_comparison_page.dart';
+import 'admin_branch_registration_page.dart';
 import 'admin_class_management_page.dart';
 import 'admin_exam_results_page.dart';
 import 'admin_finance_page.dart';
@@ -931,6 +932,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
   /// Kurulum adımının `actionPath`i → mobil sayfa. Masaüstü rotalarıyla aynı
   /// anahtarlar; karşılığı olmayan adım yalnız metin olarak gösterilir.
   Widget Function()? _setupPage(String? actionPath) => switch (actionPath) {
+    '/admin/branch-registration' => () => const AdminBranchRegistrationPage(),
     '/classes' => () => const AdminClassManagementPage(),
     '/admin/staff-registration' => () => const AdminStaffListPage(),
     '/schedule' => () => const AdminScheduleListPage(),
@@ -1013,7 +1015,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     : () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => page()),
-                      ),
+                      ).then((_) => _loadSetupStatus()),
                 leading: Container(
                   width: 32,
                   height: 32,
