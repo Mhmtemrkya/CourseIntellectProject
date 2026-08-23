@@ -1,0 +1,12 @@
+# SchoolAsist pazarlama sitesi
+#
+# Yönetim yolları burada BİLEREK listelenmiyor: robots.txt herkese açık bir
+# dosyadır ve "Disallow: /admin" yazmak paneli gizlemek değil, adresini ilan
+# etmek olur. O sayfalar arama motorlarından X-Robots-Tag: noindex başlığıyla
+# tutulur (public/_headers ve deploy/nginx-security.conf).
+#
+# Asıl koruma hiçbir zaman burada değil: yönetim uçları API tarafında rol ve
+# kurum kapsamı kontrolünden geçer.
+
+User-agent: *
+Allow: /
