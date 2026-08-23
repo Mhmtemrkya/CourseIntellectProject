@@ -24,6 +24,9 @@ outputs/*
 .env.production
 .env.development
 
+# Yerel araç tanımları (Higgsfield skill'leri) — proje kodu değil
+.agents/
+
 # IDE
 .idea/
 .vscode/
