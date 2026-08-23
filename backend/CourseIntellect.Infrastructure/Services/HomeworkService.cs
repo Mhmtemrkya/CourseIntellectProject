@@ -13,7 +13,21 @@ public sealed class HomeworkService(
     CourseIntellectDbContext dbContext,
     Hangfire.IBackgroundJobClient backgroundJobClient) : IHomeworkService
 {
-    public async Task<IReadOnlyList<HomeworkAssignmentDto>> GetAssignmentsAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Ödev kartlarını ve GÖRÜLMESİNE İZİN VERİLEN teslimleri döner.
+    ///
+    /// Eskiden her kimlik doğrulanmış kullanıcıya tüm öğrencilerin teslim notları
+    /// ve dosya URL'leri gidiyordu; bir öğrenci sınıf arkadaşlarının ödevlerini
+    /// okuyabiliyordu. Artık öğrenci yalnız kendi teslimini görür, teslimlerin
+    /// tamamını yalnız öğretmen/yönetim görür.
+    ///
+    /// Teslim SAYISI (submitted/total) herkese açık kalır — ilerleme göstergesi
+    /// kişisel veri değildir ve arayüz buna dayanır.
+    /// </summary>
+    public async Task<IReadOnlyList<HomeworkAssignmentDto>> GetAssignmentsAsync(
+        string requestorRole,
+        string requestorName,
+        CancellationToken cancellationToken = default)
     {
         var assignments = await dbContext.Set<HomeworkAssignment>()
             .OrderByDescending(x => x.Id)
@@ -25,9 +39,33 @@ public sealed class HomeworkService(
             .OrderByDescending(x => x.Id)
             .ToListAsync(cancellationToken);
 
+        var seesEverySubmission = IsStaff(requestorRole);
+        var ownName = requestorName.Trim();
+
         return assignments
-            .Select(item => ToDto(item, submissions.Where(x => x.AssignmentId == item.Id).ToList()))
+            .Select(item =>
+            {
+                var all = submissions.Where(x => x.AssignmentId == item.Id).ToList();
+                var visible = seesEverySubmission
+                    ? all
+                    : all.Where(x => !string.IsNullOrWhiteSpace(ownName)
+                        && string.Equals(x.StudentName.Trim(), ownName, StringComparison.OrdinalIgnoreCase)).ToList();
+                // Sayaç gerçek toplamdan gelir; görünen liste daraltılmış olabilir.
+                return ToDto(item, visible, all.Count);
+            })
             .ToList();
+    }
+
+    /// <summary>Teslimlerin tamamını görebilen roller. Tanınmayan rol göremez (fail-closed).</summary>
+    private static bool IsStaff(string role)
+    {
+        var normalized = role.Trim();
+        return normalized.Equals("Teacher", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("Admin", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("Administrative", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("InstitutionAdmin", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("Idare", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("Developer", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<HomeworkAssignmentDto> CreateAssignmentAsync(CreateHomeworkAssignmentRequest request, CancellationToken cancellationToken = default)
@@ -71,13 +109,30 @@ public sealed class HomeworkService(
         return true;
     }
 
-    public async Task<HomeworkAssignmentDto?> SubmitAssignmentAsync(Guid id, CreateHomeworkSubmissionRequest request, CancellationToken cancellationToken = default)
+    public async Task<HomeworkAssignmentDto?> SubmitAssignmentAsync(
+        Guid id,
+        string requestorRole,
+        string requestorName,
+        CreateHomeworkSubmissionRequest request,
+        CancellationToken cancellationToken = default)
     {
         var entity = await dbContext.Set<HomeworkAssignment>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null) return null;
 
+        // TESLİM SAHİPLİĞİ: öğrencinin teslimi DAİMA kendi adına yazılır. Gövdedeki
+        // StudentName yok sayılır — eskiden bu alan serbest olduğu için bir öğrenci
+        // başka bir öğrencinin adına teslim oluşturabiliyor ya da onun teslimini
+        // (aynı ad + assignment eşleşmesiyle) üzerine yazabiliyordu.
+        // Öğretmen/yönetim, öğrenci adına teslim girebilir (kâğıt teslim kaydı).
+        var isStaff = IsStaff(requestorRole);
+        var studentName = (isStaff ? request.StudentName : requestorName).Trim();
+        if (string.IsNullOrWhiteSpace(studentName))
+        {
+            throw new InvalidOperationException("Teslim için öğrenci adı belirlenemedi.");
+        }
+
         var existing = await dbContext.Set<HomeworkSubmission>()
-            .FirstOrDefaultAsync(x => x.AssignmentId == id && x.StudentName == request.StudentName, cancellationToken);
+            .FirstOrDefaultAsync(x => x.AssignmentId == id && x.StudentName == studentName, cancellationToken);
 
         if (existing is null)
         {
@@ -85,7 +140,7 @@ public sealed class HomeworkService(
             {
                 TenantId = entity.TenantId,
                 AssignmentId = id,
-                StudentName = request.StudentName.Trim(),
+                StudentName = studentName,
             };
             await dbContext.Set<HomeworkSubmission>().AddAsync(existing, cancellationToken);
         }
@@ -95,16 +150,31 @@ public sealed class HomeworkService(
         existing.SubmittedAtLabel = BuildDateLabel();
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var submissions = await dbContext.Set<HomeworkSubmission>()
+        var allSubmissions = await dbContext.Set<HomeworkSubmission>()
             .Where(x => x.AssignmentId == id)
             .OrderByDescending(x => x.Id)
             .ToListAsync(cancellationToken);
-        return ToDto(entity, submissions);
+
+        // Dönüş de listeleme ile aynı görünürlük kuralına uyar: öğrenci yalnız
+        // kendi teslimini geri alır, başkalarınınkini değil.
+        var visible = isStaff
+            ? allSubmissions
+            : allSubmissions.Where(x => string.Equals(x.StudentName.Trim(), studentName, StringComparison.OrdinalIgnoreCase)).ToList();
+        return ToDto(entity, visible, allSubmissions.Count);
     }
 
-    private static HomeworkAssignmentDto ToDto(HomeworkAssignment entity, IReadOnlyList<HomeworkSubmission> submissions)
+    /// <param name="visibleSubmissions">Çağıranın görmeye YETKİLİ olduğu teslimler.</param>
+    /// <param name="submittedCount">
+    /// Gerçek teslim sayısı. Görünen liste daraltılmış olabileceği için sayaç ayrı
+    /// geçirilir; aksi hâlde öğrencide ilerleme "1/30" yerine hep "1/30" görünürdü.
+    /// Verilmezse görünen liste sayılır (öğretmen/yönetim yolu).
+    /// </param>
+    private static HomeworkAssignmentDto ToDto(
+        HomeworkAssignment entity,
+        IReadOnlyList<HomeworkSubmission> visibleSubmissions,
+        int? submittedCount = null)
     {
-        var submissionDtos = submissions
+        var submissionDtos = visibleSubmissions
             .Select(x => new HomeworkSubmissionDto(
                 x.Id,
                 x.StudentName,
@@ -113,7 +183,7 @@ public sealed class HomeworkService(
                 x.SubmittedAtLabel))
             .ToList();
 
-        var submitted = submissionDtos.Count;
+        var submitted = submittedCount ?? submissionDtos.Count;
         var total = entity.TotalStudents;
         var status = submitted == 0 ? "Yeni" : submitted >= total ? "Tamamlandi" : "Devam Ediyor";
 

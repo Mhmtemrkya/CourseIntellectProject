@@ -38,6 +38,11 @@ public static class DependencyInjection
         services.AddHttpClient<IDocumentIntelligenceService, AzureDocumentIntelligenceService>();
         // NVİ TC kimlik doğrulama (halka açık KPSPublic SOAP servisi).
         services.AddHttpClient<IIdentityVerificationService, NviIdentityVerificationService>();
+        // Halka açık formların bot koruması (Turnstile/hCaptcha).
+        services.AddHttpClient<ICaptchaVerificationService, CaptchaVerificationService>();
+        // Giden e-posta (düz SMTP; sağlayıcı bağımsız).
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddScoped<ITenantSetupDocumentService, TenantSetupDocumentPdfService>();
 
         services.AddScoped<DatabaseSeeder>();
         services.AddScoped<DrivingSchoolSeeder>();

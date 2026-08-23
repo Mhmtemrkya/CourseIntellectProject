@@ -19,3 +19,5 @@ jobs:
         run: dotnet restore backend/CourseIntellect.sln
       - name: Build
         run: dotnet build backend/CourseIntellect.sln --no-restore /p:UseAppHost=false
+      - name: Test
+        run: dotnet test backend/CourseIntellect.Tests/CourseIntellect.Tests.csproj --no-build --verbosity normal

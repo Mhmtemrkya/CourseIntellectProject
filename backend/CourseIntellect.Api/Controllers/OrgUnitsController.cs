@@ -47,6 +47,7 @@ public sealed class OrgUnitsController(
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> SetActive(Guid id, [FromBody] SetOrgUnitActiveRequest request, CancellationToken cancellationToken)
     {
+        if (!await CanManageUnitAsync(id, cancellationToken)) return Forbid();
         var unit = await dbContext.OrgUnits.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (unit is null) return NotFound();
         unit.IsActive = request.IsActive;
@@ -156,14 +157,57 @@ public sealed class OrgUnitsController(
     [RequireEntitlement("org-units", "manage")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateOrgUnitRequest request, CancellationToken cancellationToken)
     {
+        if (!await CanManageUnitAsync(id, cancellationToken)) return Forbid();
         var result = await orgUnitService.UpdateAsync(id, request, cancellationToken);
         return result is null ? NotFound() : Ok(result);
     }
 
     [HttpDelete("{id:guid}")]
     [RequireEntitlement("org-units", "manage")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken) =>
-        await orgUnitService.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        if (!await CanManageUnitAsync(id, cancellationToken)) return Forbid();
+        return await orgUnitService.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();
+    }
+
+    /// <summary>
+    /// Çağıran bu birimi yönetebilir mi?
+    ///
+    /// BranchManager, JWT'de Admin alias'ı taşıdığı için rol kontrolünden geçiyor
+    /// ama verisi kendi şubesine kilitlidir. OrgUnit şube-KAPSAMLI bir varlık
+    /// olmadığından (şubenin KENDİSİ) global şube filtresi buraya uygulanmaz ve
+    /// şube yöneticisi doğrudan ID vererek BAŞKA bir şubeyi düzenleyip
+    /// silebiliyordu. Şube yöneticisi yalnız kendi şubesine ve onun alt
+    /// birimlerine dokunabilir; kısıtsız yönetici tüm birimlere.
+    /// </summary>
+    private async Task<bool> CanManageUnitAsync(Guid unitId, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole("BranchManager")) return true;
+
+        if (!Guid.TryParse(User.FindFirstValue("branch_id"), out var ownBranchId))
+        {
+            // Şube yöneticisiyiz ama şubemiz belli değil → hiçbir şey yönetilemez.
+            return false;
+        }
+
+        if (unitId == ownBranchId) return true;
+
+        // Kendi şubesinin altındaki birimler de yönetilebilir (sınırlı derinlikte
+        // yukarı yürünür; döngüye karşı adım sayısı sabittir).
+        var currentId = unitId;
+        for (var depth = 0; depth < 8; depth++)
+        {
+            var parentId = await dbContext.OrgUnits.AsNoTracking()
+                .Where(x => x.Id == currentId)
+                .Select(x => x.ParentUnitId)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (parentId is null) return false;
+            if (parentId == ownBranchId) return true;
+            currentId = parentId.Value;
+        }
+
+        return false;
+    }
 
     private Guid? CurrentUserId()
     {

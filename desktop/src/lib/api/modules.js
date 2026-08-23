@@ -1187,8 +1187,38 @@ export async function approveTenant(id) {
   return response;
 }
 
-export async function rejectTenant(id) {
-  const response = await api.put(`/api/platformops/tenants/${id}/reject`);
+export async function rejectTenant(id, reason) {
+  const response = await api.put(`/api/platformops/tenants/${id}/reject`, null, {
+    params: reason ? { reason } : undefined,
+  });
+  return response;
+}
+
+// ─── Kurum kaydı kuyruğu: kara liste ve şüpheli işareti ─────────────────────
+
+export async function fetchRegistrationBlocklist() {
+  const response = await api.get('/api/platformops/registration-blocklist');
+  return response;
+}
+
+export async function addRegistrationBlocklistEntry(payload) {
+  const response = await api.post('/api/platformops/registration-blocklist', payload);
+  return response;
+}
+
+export async function removeRegistrationBlocklistEntry(id) {
+  await api.delete(`/api/platformops/registration-blocklist/${id}`);
+}
+
+export async function regenerateSetupDocument(id) {
+  const response = await api.post(`/api/platformops/tenants/${id}/setup-document`);
+  return response;
+}
+
+export async function setApplicationSuspicious(id, value, reason) {
+  const response = await api.put(`/api/platformops/tenants/${id}/suspicious`, null, {
+    params: { value, ...(reason ? { reason } : {}) },
+  });
   return response;
 }
 

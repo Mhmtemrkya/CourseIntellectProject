@@ -43,6 +43,14 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
                 message = ex.Message,
             });
         }
+        catch (TemporaryPasswordExpiredException ex)
+        {
+            return Unauthorized(new
+            {
+                code = "TEMPORARY_PASSWORD_EXPIRED",
+                message = ex.Message,
+            });
+        }
     }
 
     [HttpPost("refresh")]

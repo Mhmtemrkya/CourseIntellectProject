@@ -35,6 +35,7 @@ public sealed class SchoolDashboardTests : IDisposable
 
         public Task<IReadOnlyList<MessageItemDto>> GetMessagesAsync(Guid currentUserId, string currentUserName, Guid threadId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
+        
 
         public Task<MessageThreadDto> CreateOrGetThreadAsync(Guid currentUserId, string currentUserName, string currentUserRole, CreateThreadRequest request, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();

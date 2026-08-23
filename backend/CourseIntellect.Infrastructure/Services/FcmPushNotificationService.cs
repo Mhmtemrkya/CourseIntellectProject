@@ -61,7 +61,11 @@ public sealed class FcmPushNotificationService(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "FCM push send failed for user {UserId}. The main workflow will continue.", userId);
+            // Teslim edilemeyen push SESSİZ kalmamalı. Ana akış bilerek devam eder
+            // (bildirim kaybı, kaydın kendisini geri almayı haklı çıkarmaz) ama bu
+            // bir HATADIR: uyarı seviyesinde loglandığı sürece kimse teslimatın
+            // koptuğunu fark etmiyordu.
+            logger.LogError(ex, "FCM push delivery FAILED for user {UserId}. The user will not receive this notification; the main workflow continues.", userId);
         }
     }
 
@@ -120,7 +124,7 @@ public sealed class FcmPushNotificationService(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "FCM push (by name/role) failed. The main workflow will continue.");
+            logger.LogError(ex, "FCM push delivery FAILED (by name/role). Recipients will not receive this notification; the main workflow continues.");
         }
     }
 

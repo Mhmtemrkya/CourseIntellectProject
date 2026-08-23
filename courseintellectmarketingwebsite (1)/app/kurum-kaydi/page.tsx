@@ -13,8 +13,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useLanguage } from "@/context/language-context"
 import { apiRequest, ApiRequestError } from "@/lib/api-client"
+import { TurnstileWidget, turnstileEnabled } from "@/components/turnstile-widget"
 
 const plans = [
   { value: "Starter", label: { tr: "Starter — Küçük Kurumlar", en: "Starter — Small Institutions" } },
@@ -43,6 +45,7 @@ const features = [
 export default function KurumKaydiPage() {
   const { language } = useLanguage()
   const [submitted, setSubmitted] = useState(false)
+  const [verificationRequired, setVerificationRequired] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [form, setForm] = useState({
@@ -54,6 +57,9 @@ export default function KurumKaydiPage() {
     estimatedStudents: 50,
     institutionType: "PrivateSchool",
   })
+  const [kvkkAccepted, setKvkkAccepted] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
 
   const t = {
     title: { tr: "Kurumunuzu Kaydedin", en: "Register Your Institution" },
@@ -79,6 +85,26 @@ export default function KurumKaydiPage() {
       tr: "Başvurunuz platform yönetimine iletildi. Onaylandıktan sonra kurum admin giriş bilgileriniz size iletilecek.",
       en: "Your application has been sent to platform management. After approval, your institution admin credentials will be shared with you.",
     },
+    successVerifyDesc: {
+      tr: "E-posta adresinize bir doğrulama bağlantısı gönderdik. Başvurunuzun incelemeye alınması için bağlantıya tıklayın.",
+      en: "We sent a verification link to your email address. Click it so your application can be reviewed.",
+    },
+    kvkk: {
+      tr: "Kişisel verilerimin aydınlatma metni kapsamında işlenmesini kabul ediyorum.",
+      en: "I consent to the processing of my personal data as described in the privacy notice.",
+    },
+    kvkkRequired: {
+      tr: "Devam etmek için aydınlatma metnini onaylamanız gerekir.",
+      en: "You must accept the privacy notice to continue.",
+    },
+    captchaRequired: {
+      tr: "Lütfen \"robot değilim\" doğrulamasını tamamlayın.",
+      en: "Please complete the human verification.",
+    },
+    captchaUnavailable: {
+      tr: "Güvenlik doğrulaması yüklenemedi. Sayfayı yenileyip tekrar deneyin.",
+      en: "Security verification could not load. Refresh the page and try again.",
+    },
     backHome: { tr: "Ana Sayfaya Dön", en: "Back to Home" },
     back: { tr: "Geri", en: "Back" },
     privacy: { tr: "Gizlilik", en: "Privacy" },
@@ -95,9 +121,17 @@ export default function KurumKaydiPage() {
       setSubmitted(true)
       return
     }
+    if (!kvkkAccepted) {
+      setError(t.kvkkRequired[language])
+      return
+    }
+    if (turnstileEnabled && !captchaToken) {
+      setError(t.captchaRequired[language])
+      return
+    }
     setLoading(true)
     try {
-      await apiRequest("/api/platformops/tenants/register", {
+      const response = await apiRequest<{ verificationRequired?: boolean }>("/api/platformops/tenants/register", {
         method: "POST",
         token: null,
         body: {
@@ -108,10 +142,16 @@ export default function KurumKaydiPage() {
           plan: form.plan,
           estimatedStudents: Number(form.estimatedStudents),
           institutionType: form.institutionType,
+          captchaToken,
+          kvkkAccepted,
         },
       })
+      setVerificationRequired(response?.verificationRequired === true)
       setSubmitted(true)
     } catch (err: unknown) {
+      // Token tek kullanımlıktır: başarısız denemeden sonra widget yenilenmeli.
+      setCaptchaToken(null)
+      setCaptchaResetKey((k) => k + 1)
       if (err instanceof ApiRequestError && err.code === "NETWORK_ERROR") {
         setError(
           language === "tr"
@@ -157,7 +197,7 @@ export default function KurumKaydiPage() {
               </div>
             </div>
             <h2 className="text-2xl font-bold mb-3">{t.successTitle[language]}</h2>
-            <p className="text-muted-foreground mb-8">{t.successDesc[language]}</p>
+            <p className="text-muted-foreground mb-8">{verificationRequired ? t.successVerifyDesc[language] : t.successDesc[language]}</p>
             <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
               <Link href="/">{t.backHome[language]}</Link>
             </Button>
@@ -363,6 +403,32 @@ export default function KurumKaydiPage() {
                       />
                     </div>
                   </div>
+
+                  <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+                    <Checkbox
+                      id="kvkk"
+                      checked={kvkkAccepted}
+                      onCheckedChange={(checked) => setKvkkAccepted(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <Label htmlFor="kvkk" className="text-xs font-normal leading-relaxed text-muted-foreground">
+                      {t.kvkk[language]}{" "}
+                      <Link href="/kvkk" className="underline hover:text-foreground">
+                        {t.privacy[language]}
+                      </Link>
+                      {" · "}
+                      <Link href="/kullanim-sartlari" className="underline hover:text-foreground">
+                        {t.terms[language]}
+                      </Link>
+                    </Label>
+                  </div>
+
+                  <TurnstileWidget
+                    language={language}
+                    resetKey={captchaResetKey}
+                    onToken={setCaptchaToken}
+                    onError={() => setError(t.captchaUnavailable[language])}
+                  />
 
                   {error && <p className="text-sm text-destructive">{error}</p>}
 

@@ -45,6 +45,12 @@ public interface IStudentFinanceService
         Guid? createdByUserId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Sıradaki makbuz numarası. Makbuz numarası TEK yerden üretilir; kendi
+    /// numarasını üreten her akış er ya da geç mükerrer numara yazar.
+    /// </summary>
+    Task<string> NextReceiptNumberAsync(CancellationToken cancellationToken = default);
+
     Task<FinanceDashboardDto> GetDashboardAsync(
         string? className,
         DateTime? fromUtc = null,

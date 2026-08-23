@@ -215,6 +215,23 @@ class AuthApiService {
     }
 
     if (response.statusCode == 401) {
+      // Geçici parolanın süresi dolduysa backend ayırt edilebilir bir kod döner.
+      // Genel "şifre yanlış" mesajı kurumu bulunmayan bir sorunun peşine düşürürdü.
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> &&
+            decoded['code']?.toString() == 'TEMPORARY_PASSWORD_EXPIRED') {
+          final m = decoded['message']?.toString();
+          throw AuthApiException(
+            m != null && m.isNotEmpty
+                ? m
+                : 'Geçici parolanızın süresi doldu.',
+            code: 'TEMPORARY_PASSWORD_EXPIRED',
+          );
+        }
+      } on FormatException {
+        // Gövde JSON değilse genel mesaja düş.
+      }
       throw const AuthApiException('Kullanıcı adı veya şifre yanlış.');
     }
 

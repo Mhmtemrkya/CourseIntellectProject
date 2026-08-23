@@ -3,6 +3,7 @@ using CourseIntellect.Domain.Enums;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using System.Text.Json;
 
 namespace CourseIntellect.Infrastructure.Persistence;
@@ -10,10 +11,19 @@ namespace CourseIntellect.Infrastructure.Persistence;
 public sealed class DatabaseSeeder(
     CourseIntellectDbContext dbContext,
     IPasswordHasher passwordHasher,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    IHostEnvironment environment)
 {
     private const string DefaultDeveloperAdminUsername = "admin@courseintlecct.com";
     private const string LegacyPlatformAdminUsername = "admin.ece";
+
+    /// <summary>
+    /// Sabit/tahmin edilebilir parolalı demo hesapları (kurum.admin/KRM2026A gibi)
+    /// PRODUCTION'da hiçbir koşulda oluşturulmaz. Database:Seed varsayılanı zaten
+    /// canlıda kapalıdır; bu ikinci kapı, ayar elle açıldığında bile canlı sisteme
+    /// bilinen kimlik bilgileriyle hesap düşmesini engeller.
+    /// </summary>
+    private bool DemoAccountsAllowed => !environment.IsProduction();
 
     private string DeveloperAdminUsername =>
         Environment.GetEnvironmentVariable("COURSE_INTELLECT_PLATFORM_ADMIN_USERNAME")
@@ -60,7 +70,8 @@ public sealed class DatabaseSeeder(
             await AssignLegacyUsersToDemoTenantAsync(demoTenant, cancellationToken);
             await AssignLegacyTenantDataToDemoTenantAsync(demoTenant, cancellationToken);
 
-            if (!dbContext.Users.Any(x => x.PrimaryRole == UserRole.Accounting && x.Username == "muhasebe.selim"))
+            if (DemoAccountsAllowed
+                && !dbContext.Users.Any(x => x.PrimaryRole == UserRole.Accounting && x.Username == "muhasebe.selim"))
             {
                 var seededAccountingUser = new AppUser
                 {
@@ -220,6 +231,18 @@ public sealed class DatabaseSeeder(
             Campus = "Platform",
             DepartmentOrBranch = "Development"
         };
+
+        // PRODUCTION, BOŞ VERİTABANI: yalnız platform admini kurulur (parolası
+        // ortam değişkeninden gelir ve güç şartlarını sağlamak zorundadır).
+        // "Demo Kurum" ve sabit parolalı örnek kullanıcılar canlıya HİÇ düşmez.
+        if (!DemoAccountsAllowed)
+        {
+            await dbContext.Users.AddAsync(developerUser, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await BackfillUserScopeGrantsAsync(cancellationToken);
+            return;
+        }
+
         var tenantAdminUser = new AppUser
         {
             TenantId = demoTenant.Id,

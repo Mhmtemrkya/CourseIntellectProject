@@ -331,6 +331,15 @@ export async function loginWithBackend(username, password) {
   }
 
   if (response.status === 401) {
+    // Geçici parolanın süresi dolduysa backend ayırt edilebilir bir kod döner.
+    // Genel "şifre yanlış" mesajı kurumu bulunmayan bir sorunun peşine düşürürdü.
+    let body = null;
+    try { body = await response.json(); } catch {}
+    if (body?.code === "TEMPORARY_PASSWORD_EXPIRED") {
+      const err = new Error(body.message || "Geçici parolanızın süresi doldu.");
+      err.code = "TEMPORARY_PASSWORD_EXPIRED";
+      throw err;
+    }
     throw new Error("Kullanıcı adı veya şifre yanlış.");
   }
 

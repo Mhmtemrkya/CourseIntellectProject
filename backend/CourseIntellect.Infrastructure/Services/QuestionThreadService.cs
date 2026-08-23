@@ -73,11 +73,22 @@ public sealed class QuestionThreadService(CourseIntellectDbContext dbContext) : 
         Guid threadId,
         string senderName,
         string senderRole,
+        string senderUsername,
         CreateQuestionThreadReplyRequest request,
         CancellationToken cancellationToken = default)
     {
         var thread = await dbContext.StudentQuestionThreads.FirstOrDefaultAsync(x => x.Id == threadId, cancellationToken);
         if (thread is null)
+        {
+            return null;
+        }
+
+        // Yetkilendirme: yanıt yolu LİSTELEME ile aynı kuralı uygular. Eskiden hiç
+        // kontrol yoktu; aynı kurumdaki bir öğrenci, bildiği bir thread GUID'ine
+        // yanıt yazıp dönen DTO üzerinden sorunun metnini, soruyu soran öğrencinin
+        // adını, ekleri ve tüm yanıt geçmişini okuyabiliyordu. Yetkisizde null
+        // döner — "bulunamadı" ile aynı sonuç, thread'in varlığı sızmaz.
+        if (!CanAccessThread(thread, senderRole, senderName, senderUsername))
         {
             return null;
         }
@@ -105,6 +116,34 @@ public sealed class QuestionThreadService(CourseIntellectDbContext dbContext) : 
             .ToListAsync(cancellationToken);
 
         return ToDto(thread, replies);
+    }
+
+    /// <summary>
+    /// Thread erişim kuralı — <see cref="GetThreadsAsync"/> ile TEK kaynak olmalı:
+    /// öğrenci yalnız kendi sorusunu, öğretmen yalnız kendisine yöneltilen soruyu,
+    /// yönetim rolleri hepsini görür. Tanınmayan rol hiçbir şey göremez (fail-closed).
+    /// </summary>
+    private static bool CanAccessThread(StudentQuestionThread thread, string requestorRole, string fullName, string username)
+    {
+        var normalizedRole = requestorRole.Trim();
+
+        if (normalizedRole.Equals("Student", StringComparison.OrdinalIgnoreCase))
+        {
+            return (!string.IsNullOrWhiteSpace(username) && thread.StudentUsername == username)
+                || (!string.IsNullOrWhiteSpace(fullName) && thread.StudentName == fullName);
+        }
+
+        if (normalizedRole.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
+        {
+            return !string.IsNullOrWhiteSpace(fullName) && thread.TeacherName == fullName;
+        }
+
+        // Listeleme tarafında filtre uygulanmayan yönetim rolleri.
+        return normalizedRole.Equals("Admin", StringComparison.OrdinalIgnoreCase)
+            || normalizedRole.Equals("Administrative", StringComparison.OrdinalIgnoreCase)
+            || normalizedRole.Equals("InstitutionAdmin", StringComparison.OrdinalIgnoreCase)
+            || normalizedRole.Equals("Idare", StringComparison.OrdinalIgnoreCase)
+            || normalizedRole.Equals("Developer", StringComparison.OrdinalIgnoreCase);
     }
 
     private static QuestionThreadDto ToDto(StudentQuestionThread thread, IReadOnlyList<StudentQuestionReply> replies)

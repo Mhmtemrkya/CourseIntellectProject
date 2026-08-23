@@ -68,6 +68,7 @@ public sealed class PlatformBrandingSecurityTests : IDisposable
         Assert.Equal(targetTenantId.ToString(), saved.ScopeKey);
     }
 
+
     private PlatformConfigurationService CreateService(Guid userId, string role)
     {
         var accessor = new HttpContextAccessor

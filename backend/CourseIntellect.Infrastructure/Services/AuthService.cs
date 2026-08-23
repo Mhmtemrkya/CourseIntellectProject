@@ -42,6 +42,11 @@ public sealed class AuthService(
     private readonly int _lockoutWindowMinutes =
         int.TryParse(configuration["Auth:Lockout:WindowMinutes"], out var w) ? w : 15;
 
+    // Kurum onayında verilen geçici parolanın ömrü. Yalnız mesajda kullanılır;
+    // asıl tarih kullanıcı satırında durur (PlatformOperationsService yazar).
+    private readonly int _temporaryPasswordValidDays =
+        int.TryParse(configuration["Registration:TemporaryPasswordValidDays"], out var d) ? d : 7;
+
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var login = request.Username.Trim().ToLowerInvariant();
@@ -87,6 +92,16 @@ public sealed class AuthService(
         {
             await RecordLoginAttemptAsync(login, user.Id, user.PrimaryRole.ToString(), false, user.TenantId, cancellationToken);
             return null;
+        }
+
+        // Geçici parolanın ömrü (kurum onayında verilen parola için). Başarısız deneme
+        // olarak KAYDEDİLMEZ: parola doğruydu, kilitleme bütçesini yemesi gerçek bir
+        // kurumu hesabından tamamen kilitlerdi.
+        if (user.MustChangePassword
+            && user.TemporaryPasswordExpiresAtUtc is not null
+            && user.TemporaryPasswordExpiresAtUtc < DateTime.UtcNow)
+        {
+            throw new TemporaryPasswordExpiredException(_temporaryPasswordValidDays);
         }
 
         // Bakım modu açıksa sadece platform admin (Developer + tenantId yok) login olabilir
@@ -264,6 +279,7 @@ public sealed class AuthService(
 
         user.PasswordHash = passwordHasher.Hash(newPassword);
         user.MustChangePassword = false;
+        user.TemporaryPasswordExpiresAtUtc = null;
 
         var activeSessions = await dbContext.RefreshTokenSessions
             .Where(x => x.UserId == user.Id && x.RevokedAtUtc == null)
@@ -445,10 +461,14 @@ public sealed class AuthService(
         var temporaryPassword = PasswordGenerator.Generate(10);
         user.PasswordHash = passwordHasher.Hash(temporaryPassword);
         user.MustChangePassword = true;
+        // Sıfırlamayla verilen yeni parola kendi süresini getirir. Yazılmazsa kurum
+        // onayından kalan ESKİ tarih yürürlükte kalır ve taze parola daha ilk girişte
+        // "süresi doldu" derdi.
 
         resetRequest.Status = PasswordResetApproved;
         resetRequest.TemporaryPasswordCreatedAtUtc = now;
         resetRequest.ExpiresAtUtc = now.AddHours(24);
+        user.TemporaryPasswordExpiresAtUtc = resetRequest.ExpiresAtUtc;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 

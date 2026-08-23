@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Homework;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -14,7 +15,8 @@ public sealed class HomeworkController(IHomeworkService homeworkService) : Contr
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
-        var items = await homeworkService.GetAssignmentsAsync(cancellationToken);
+        var (role, fullName) = GetCurrentUser();
+        var items = await homeworkService.GetAssignmentsAsync(role, fullName, cancellationToken);
         return Ok(items);
     }
 
@@ -41,7 +43,26 @@ public sealed class HomeworkController(IHomeworkService homeworkService) : Contr
     [RequireEntitlement("assignments", "submit")]
     public async Task<IActionResult> Submit(Guid id, [FromBody] CreateHomeworkSubmissionRequest request, CancellationToken cancellationToken)
     {
-        var item = await homeworkService.SubmitAssignmentAsync(id, request, cancellationToken);
-        return item is null ? NotFound() : Ok(item);
+        var (role, fullName) = GetCurrentUser();
+        try
+        {
+            var item = await homeworkService.SubmitAssignmentAsync(id, role, fullName, request, cancellationToken);
+            return item is null ? NotFound() : Ok(item);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Teslim sahipliği ve teslim görünürlüğü OTURUMDAN belirlenir; istek gövdesindeki
+    /// öğrenci adı yetki kararında kullanılmaz.
+    /// </summary>
+    private (string Role, string FullName) GetCurrentUser()
+    {
+        var role = User.FindFirstValue("role") ?? string.Empty;
+        var fullName = User.FindFirstValue("name") ?? string.Empty;
+        return (role, fullName);
     }
 }

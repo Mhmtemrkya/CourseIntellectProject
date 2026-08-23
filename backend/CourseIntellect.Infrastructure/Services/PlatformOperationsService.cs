@@ -1,19 +1,43 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 using CourseIntellect.Application.DTOs.PlatformOperations;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
+using CourseIntellect.Infrastructure.Auth;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class PlatformOperationsService(
     CourseIntellectDbContext dbContext,
-    IPasswordHasher passwordHasher) : IPlatformOperationsService
+    IPasswordHasher passwordHasher,
+    ICaptchaVerificationService captchaVerification,
+    ITenantSetupDocumentService setupDocumentService,
+    IAuditLogService auditLog,
+    IEmailSender emailSender,
+    IHostEnvironment environment,
+    IConfiguration configuration,
+    ILogger<PlatformOperationsService> logger) : IPlatformOperationsService
 {
+    /// <summary>Halka açık kayıt formunda kabul edilen planlar.</summary>
+    private static readonly string[] PublicPlans = ["Starter", "Business", "Enterprise"];
+
+    /// <summary>Onaylanan aydınlatma/açık rıza metninin sürümü. İstemciden ALINMAZ.</summary>
+    private const string CurrentKvkkConsentVersion = "2026-08-kurum-kaydi-v1";
+
+    private static readonly Regex EmailPattern = new(
+        @"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     public async Task<PlatformOverviewDto> GetOverviewAsync(CancellationToken cancellationToken = default)
     {
         var tenants = await GetTenantsAsync(cancellationToken);
@@ -63,9 +87,37 @@ public sealed class PlatformOperationsService(
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
 
+        // Bekleyen/reddedilen başvurular ayrı tabloda durur ama platform yöneticisi
+        // onları aynı listede görür: onay/red akışı ve iki paneldeki mevcut ekranlar
+        // tek liste üzerinden çalışıyor. Onaylananlar burada YOK — onların karşılığı
+        // artık gerçek kurum satırı.
+        var applications = await dbContext.TenantRegistrationApplications
+            .AsNoTracking()
+            .Where(x => x.Status != "approved")
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+
+        // Doğrulama e-postası gönderilmiş ama henüz yanıtlanmamış başvurular kuyruğa
+        // DÜŞMEZ: onay kuyruğunun spam ile dolmasını asıl engelleyen şey bu. E-posta
+        // hiç gönderilemediyse (SMTP yok) başvuru görünür kalır, kanıtlanmamış işaretiyle.
+        var visibleApplications = applications
+            .Where(x => x.VerifiedAtUtc is not null || x.VerificationSentAtUtc is null)
+            .ToList();
+
         if (storedEntities.Count > 0)
         {
-            return await MapTenantDtosAsync(storedEntities, cancellationToken);
+            var mapped = await MapTenantDtosAsync(storedEntities, cancellationToken);
+            return visibleApplications.Count == 0
+                ? mapped
+                : [.. visibleApplications.Select(ToApplicationDto), .. mapped];
+        }
+
+        // Hiç kurum yokken sentetik kampüs satırları üretilir (demo/boş kurulum).
+        // Ölçüt GÖRÜNEN değil, VAR OLAN başvurudur: hepsi doğrulama beklerken sahte
+        // kampüs satırları basmak, boş bir kuyruğu uydurma veriyle doldururdu.
+        if (applications.Count > 0)
+        {
+            return [.. visibleApplications.Select(ToApplicationDto)];
         }
 
         var students = await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken);
@@ -260,39 +312,270 @@ public sealed class PlatformOperationsService(
         return ToTicketDto(entity);
     }
 
-    public async Task<TenantWorkspaceDto> RegisterTenantAsync(RegisterTenantRequest request, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Pazarlama sitesindeki ANONİM kurum kaydı. Kontroller ucuzdan pahalıya sıralıdır:
+    /// biçim doğrulama → e-posta tekilleştirme/cooldown → günlük tavan → captcha → yazma.
+    /// </summary>
+    /// <remarks>
+    /// IP bazlı rate limit (Program.cs "public-form") en iyi çaba düzeyindedir: ters
+    /// vekil <c>X-Forwarded-For</c>'u ÜZERİNE YAZMADIĞI sürece başlık taklit edilebilir.
+    /// Taklide karşı gerçekten ayakta kalan iki kontrol captcha ve e-posta cooldown'ıdır;
+    /// günlük tavan bu yüzden meşru hacmin çok üstünde tutulur, yoksa tek saldırgan
+    /// tavanı bir saniyede yakıp gerçek kurumların kaydını gün boyu engellerdi.
+    /// </remarks>
+    public async Task<RegisterTenantResult> RegisterTenantAsync(
+        RegisterTenantRequest request,
+        TenantRegistrationContext context,
+        CancellationToken cancellationToken = default)
     {
-        var institutionType = ParseInstitutionType(request.InstitutionType);
-        var entity = new TenantWorkspace
+        var validation = ValidateRegistration(request);
+        if (validation.Error is not null)
         {
-            Name = request.InstitutionName.Trim(),
-            Slug = await GenerateUniqueSlugAsync(request.InstitutionName, null, cancellationToken),
-            ContactEmail = request.Email.Trim(),
-            ContactName = request.ContactName.Trim(),
-            ContactPhone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
-            PendingAdminPasswordHash = string.IsNullOrWhiteSpace(request.Password) ? null : passwordHasher.Hash(request.Password),
-            Plan = request.Plan,
+            return new RegisterTenantResult(TenantRegistrationOutcome.Invalid, validation.Error);
+        }
+
+        var normalizedEmail = validation.Email;
+
+        // İstemci IP'si TEK yerde normalize edilir: kara liste karşılaştırması, satıra
+        // yazılan değer ve şüphe sayımı aynı dizeyi kullanmalı. Üç ayrı ifade kullanmak
+        // IPv6'da (büyük/küçük harf) sessiz eşleşmeme üretirdi.
+        var clientIp = Truncate(context.IpAddress?.Trim(), 64)?.ToLowerInvariant();
+
+        // Kara liste: engellenen alan adı/IP sessizce yutulur. Reddedildiğini belli
+        // etmek, saldırgana hangi alan adının engellendiğini deneyerek öğretirdi.
+        var emailDomain = normalizedEmail[(normalizedEmail.IndexOf('@') + 1)..];
+        var blocked = await dbContext.RegistrationBlocklistEntries
+            .AsNoTracking()
+            .AnyAsync(
+                x => (x.Kind == "domain" && x.Value == emailDomain)
+                     || (x.Kind == "ip" && clientIp != null && x.Value == clientIp),
+                cancellationToken);
+
+        if (blocked)
+        {
+            logger.LogInformation(
+                "Kurum kaydı kara liste nedeniyle yutuldu. Alan={Domain} Ip={Ip}",
+                emailDomain,
+                context.IpAddress);
+            return new RegisterTenantResult(TenantRegistrationOutcome.Blocked);
+        }
+
+        var cooldownHours = configuration.GetValue<int?>("Registration:EmailCooldownHours") ?? 24;
+        var cooldownStart = DateTime.UtcNow.AddHours(-Math.Abs(cooldownHours));
+
+        // Aynı e-posta ile bekleyen başvuru ya da etkin kurum varsa sessizce yut.
+        // Çağırana yine 202 döneceğiz; "bu e-posta zaten kayıtlı" demek kayıt
+        // varlığını sızdırırdı.
+        var duplicatePending = await dbContext.TenantRegistrationApplications
+            .AsNoTracking()
+            .AnyAsync(
+                x => x.ContactEmailNormalized == normalizedEmail
+                     && x.Status == "pending"
+                     && x.CreatedAtUtc >= cooldownStart,
+                cancellationToken);
+
+        var duplicateTenant = await dbContext.Set<TenantWorkspace>()
+            .AsNoTracking()
+            .AnyAsync(x => x.ContactEmail.ToLower() == normalizedEmail && x.Status == "active", cancellationToken);
+
+        var duplicate = duplicatePending || duplicateTenant;
+
+        if (duplicate)
+        {
+            logger.LogInformation(
+                "Kurum kaydı yinelenen başvuru olarak yutuldu. Ip={Ip} Ua={UserAgent}",
+                context.IpAddress,
+                context.UserAgent);
+            return new RegisterTenantResult(TenantRegistrationOutcome.Duplicate);
+        }
+
+        var dayStart = DateTime.UtcNow.Date;
+        var todayCount = await dbContext.TenantRegistrationApplications
+            .AsNoTracking()
+            .CountAsync(x => x.CreatedAtUtc >= dayStart, cancellationToken);
+
+        var alertThreshold = configuration.GetValue<int?>("Registration:DailyAlertThreshold") ?? 50;
+        var hardLimit = configuration.GetValue<int?>("Registration:DailyHardLimit") ?? 500;
+
+        if (todayCount >= hardLimit)
+        {
+            logger.LogCritical(
+                "Kurum kaydı günlük sert tavanı aşıldı ({Count}/{Limit}). Başvurular geçici olarak reddediliyor.",
+                todayCount,
+                hardLimit);
+            return new RegisterTenantResult(TenantRegistrationOutcome.Throttled);
+        }
+
+        // Eşit değil, "aşıldı mı": eşzamanlı iki insert sayacı eşik değerinin
+        // üstüne atlatabilir ve uyarı hiç düşmezdi.
+        if (todayCount >= alertThreshold)
+        {
+            logger.LogWarning(
+                "Kurum kaydı günlük uyarı eşiği aşıldı ({Count}/{Threshold}). Kötüye kullanım olabilir, kuyruk gözden geçirilmeli.",
+                todayCount,
+                alertThreshold);
+
+            await NotifyRegistrationBurstAsync(todayCount, alertThreshold, cancellationToken);
+        }
+
+        var captcha = await captchaVerification.VerifyAsync(request.CaptchaToken, context.IpAddress, cancellationToken);
+        if (!captcha.IsAllowed)
+        {
+            logger.LogInformation(
+                "Kurum kaydı captcha nedeniyle reddedildi. Ip={Ip} Detay={Detail}",
+                context.IpAddress,
+                captcha.Detail);
+            return new RegisterTenantResult(
+                TenantRegistrationOutcome.CaptchaFailed,
+                captcha.Detail ?? "Doğrulama başarısız.");
+        }
+
+        // Kurum satırı ONAYDA üretilir. Anonim girdi hiçbir zaman tenant_workspaces'e
+        // yazılmaz: slug ad alanı, platform sayaçları ve kurum sorguları başvurulardan
+        // tamamen izole kalır.
+        var entity = new TenantRegistrationApplication
+        {
+            InstitutionName = validation.InstitutionName,
+            ContactName = validation.ContactName,
+            ContactEmail = validation.Email,
+            ContactEmailNormalized = normalizedEmail,
+            ContactPhone = validation.Phone,
+            Plan = validation.Plan,
+            InstitutionType = validation.InstitutionType,
+            EstimatedStudents = request.EstimatedStudents,
             Status = "pending",
-            UserCount = request.EstimatedStudents,
-            BranchCount = 1,
-            StudentCount = request.EstimatedStudents,
-            StaffCount = 0,
-            MonthlyFee = 0,
-            CollectedAmount = 0,
-            StorageUsedGb = 0,
-            ApiUsage = 0,
-            InstitutionType = institutionType,
-            DrivingSchoolModuleEnabled = institutionType == InstitutionType.DrivingSchool,
+            RegistrationIp = clientIp,
+            RegistrationUserAgent = Truncate(context.UserAgent, 300),
+            RegistrationReferer = Truncate(context.Referer, 300),
+            KvkkConsentVersion = CurrentKvkkConsentVersion,
+            KvkkConsentAtUtc = DateTime.UtcNow,
             CreatedAtUtc = DateTime.UtcNow,
         };
 
-        await dbContext.Set<TenantWorkspace>().AddAsync(entity, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return ToTenantDto(entity);
+        var suspicion = await DetectSuspicionAsync(clientIp, captcha.Status, cancellationToken);
+        entity.IsSuspicious = suspicion is not null;
+        entity.SuspiciousReason = suspicion;
+
+        await dbContext.TenantRegistrationApplications.AddAsync(entity, cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Filtreli benzersiz indeks: iki istek cooldown kontrolünü aynı anda
+            // geçtiğinde ikincisi burada durur. Çağırana yine yinelenen davranışı.
+            dbContext.Entry(entity).State = EntityState.Detached;
+            logger.LogInformation("Kurum kaydı eşzamanlı yinelenen başvuru olarak reddedildi. Ip={Ip}", context.IpAddress);
+            return new RegisterTenantResult(TenantRegistrationOutcome.Duplicate);
+        }
+
+        await StartContactVerificationAsync(entity, cancellationToken);
+
+        logger.LogInformation(
+            "Kurum kaydı başvurusu alındı. Id={Id} Tur={Type} Ip={Ip} Ua={UserAgent} Referer={Referer} Captcha={Captcha}",
+            entity.Id,
+            entity.InstitutionType,
+            context.IpAddress,
+            context.UserAgent,
+            context.Referer,
+            captcha.Status);
+
+        return new RegisterTenantResult(TenantRegistrationOutcome.Accepted);
     }
+
+    private sealed record RegistrationValidation(
+        string? Error,
+        string InstitutionName = "",
+        string ContactName = "",
+        string Email = "",
+        string? Phone = null,
+        string Plan = "",
+        InstitutionType InstitutionType = InstitutionType.PrivateSchool);
+
+    private static RegistrationValidation ValidateRegistration(RegisterTenantRequest request)
+    {
+        if (!request.KvkkAccepted)
+        {
+            return new RegistrationValidation("Devam etmek için aydınlatma metnini onaylamanız gerekir.");
+        }
+
+        var institutionName = Sanitize(request.InstitutionName);
+        if (institutionName.Length is < 3 or > 150)
+        {
+            return new RegistrationValidation("Kurum adı 3-150 karakter olmalıdır.");
+        }
+
+        var contactName = Sanitize(request.ContactName);
+        if (contactName.Length is < 3 or > 150)
+        {
+            return new RegistrationValidation("Yetkili adı 3-150 karakter olmalıdır.");
+        }
+
+        // Küçültme INVARIANT kültürle: tr-TR'de "I" → "ı" olur ve aynı e-posta
+        // istemcinin diline göre farklı normalize edilirdi.
+        var email = Sanitize(request.Email).ToLowerInvariant();
+        if (email.Length is < 6 or > 180 || !EmailPattern.IsMatch(email))
+        {
+            return new RegistrationValidation("Geçerli bir e-posta adresi girin.");
+        }
+
+        string? phone = null;
+        var rawPhone = Sanitize(request.Phone);
+        if (rawPhone.Length > 0)
+        {
+            var digits = new string(rawPhone.Where(char.IsDigit).ToArray());
+            if (digits.Length is < 10 or > 15)
+            {
+                return new RegistrationValidation("Geçerli bir telefon numarası girin.");
+            }
+            phone = rawPhone.Length > 40 ? rawPhone[..40] : rawPhone;
+        }
+
+        var plan = PublicPlans.FirstOrDefault(x => string.Equals(x, Sanitize(request.Plan), StringComparison.OrdinalIgnoreCase));
+        if (plan is null)
+        {
+            return new RegistrationValidation("Geçersiz plan seçimi.");
+        }
+
+        if (request.EstimatedStudents is < 1 or > 100_000)
+        {
+            return new RegistrationValidation("Tahmini öğrenci sayısı 1-100.000 aralığında olmalıdır.");
+        }
+
+        if (!Enum.TryParse<InstitutionType>(request.InstitutionType, true, out var institutionType)
+            || !Enum.IsDefined(institutionType))
+        {
+            return new RegistrationValidation("Geçersiz kurum türü.");
+        }
+
+        return new RegistrationValidation(null, institutionName, contactName, email, phone, plan, institutionType);
+    }
+
+    /// <summary>Kontrol karakterlerini atar, kırpar. Serbest metin alanları için.</summary>
+    private static string Sanitize(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : new string(value.Where(ch => !char.IsControl(ch)).ToArray()).Trim();
+
+    private static string? Truncate(string? value, int maxLength)
+        => string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Length <= maxLength ? value : value[..maxLength];
 
     public async Task<TenantWorkspaceDto?> ApproveTenantAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        // YÖNLENDİRME KURALI: id ile gelen her uç (Approve/Reject/Delete) ÖNCE
+        // başvurulara, sonra kurumlara bakar. Tek liste döndüğümüz için istemci
+        // hangi tabloda olduğunu bilmez; sıra her metotta aynı olmalıdır.
+        var application = await dbContext.TenantRegistrationApplications
+            .SingleOrDefaultAsync(x => x.Id == id && x.Status != "approved", cancellationToken);
+
+        if (application is not null)
+        {
+            return await ApproveApplicationAsync(application, cancellationToken);
+        }
+
         var entity = await dbContext.Set<TenantWorkspace>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
         {
@@ -301,6 +584,12 @@ public sealed class PlatformOperationsService(
 
         entity.Status = "active";
         entity.ApprovedAtUtc ??= DateTime.UtcNow;
+
+        // Eski (P1 öncesi) bekleyen kurum satırları için: okunabilir slug onayda üretilir.
+        if (entity.Slug.StartsWith("pending-", StringComparison.Ordinal))
+        {
+            entity.Slug = await GenerateUniqueSlugAsync(entity.Name, entity.Id, cancellationToken);
+        }
 
         AppUser? adminUser = null;
         if (entity.AdminUserId.HasValue)
@@ -323,8 +612,20 @@ public sealed class PlatformOperationsService(
         return ToTenantDto(entity, adminUser.Username, temporaryPassword);
     }
 
-    public async Task<TenantWorkspaceDto?> RejectTenantAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<TenantWorkspaceDto?> RejectTenantAsync(Guid id, string? reason = null, CancellationToken cancellationToken = default)
     {
+        var application = await dbContext.TenantRegistrationApplications
+            .SingleOrDefaultAsync(x => x.Id == id && x.Status != "approved", cancellationToken);
+
+        if (application is not null)
+        {
+            application.Status = "rejected";
+            application.RejectedAtUtc = DateTime.UtcNow;
+            application.RejectionReason = string.IsNullOrWhiteSpace(reason) ? null : Truncate(reason.Trim(), 500);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return ToApplicationDto(application);
+        }
+
         var entity = await dbContext.Set<TenantWorkspace>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
         {
@@ -339,6 +640,17 @@ public sealed class PlatformOperationsService(
 
     public async Task<bool> DeleteTenantAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var application = await dbContext.TenantRegistrationApplications
+            .SingleOrDefaultAsync(x => x.Id == id && x.Status != "approved", cancellationToken);
+
+        if (application is not null)
+        {
+            // Başvurunun altında hiç veri yok; satırı silmek yeterli.
+            dbContext.TenantRegistrationApplications.Remove(application);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
         var tenant = await dbContext.Set<TenantWorkspace>()
             .AsNoTracking()
             .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -755,10 +1067,484 @@ public sealed class PlatformOperationsService(
         public string Key => $"{Schema}.{Name}.{UserColumn}";
     }
 
+    /// <summary>
+    /// Kurulum belgesini yeniden üretir: yeni geçici parola, eski parola geçersiz.
+    /// </summary>
+    /// <remarks>
+    /// Kurum yöneticisi KENDİ parolasını belirlemişse reddedilir — bu noktadan sonra
+    /// "belge yenilemek" aslında kurumun parolasını habersiz sıfırlamak olurdu. O
+    /// durumun doğru yolu parola sıfırlama akışıdır.
+    /// </remarks>
+    public async Task<SetupDocumentResult> RegenerateSetupDocumentAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        var tenant = await dbContext.Set<TenantWorkspace>()
+            .SingleOrDefaultAsync(x => x.Id == tenantId, cancellationToken);
+
+        if (tenant?.AdminUserId is null)
+        {
+            return new SetupDocumentResult(SetupDocumentOutcome.NotFound);
+        }
+
+        var adminUser = await dbContext.Users
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.Id == tenant.AdminUserId.Value, cancellationToken);
+
+        if (adminUser is null)
+        {
+            return new SetupDocumentResult(SetupDocumentOutcome.NotFound);
+        }
+
+        if (!adminUser.MustChangePassword)
+        {
+            return new SetupDocumentResult(SetupDocumentOutcome.AlreadyActivated);
+        }
+
+        var temporaryPassword = PasswordGenerator.Generate(10);
+        adminUser.PasswordHash = passwordHasher.Hash(temporaryPassword);
+        adminUser.MustChangePassword = true;
+        adminUser.TemporaryPasswordExpiresAtUtc = DateTime.UtcNow.AddDays(
+            configuration.GetValue<int?>("Registration:TemporaryPasswordValidDays") ?? 7);
+
+        // Eski belgeyle açılmış oturumlar da düşsün: parola değişti.
+        var sessions = await dbContext.RefreshTokenSessions
+            .Where(x => x.UserId == adminUser.Id && x.RevokedAtUtc == null)
+            .ToListAsync(cancellationToken);
+        foreach (var session in sessions)
+        {
+            session.RevokedAtUtc = DateTime.UtcNow;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var document = BuildSetupDocument(tenant, adminUser, temporaryPassword);
+
+        await auditLog.LogAsync(
+            "Kurum kurulum belgesi yeniden üretildi",
+            "Platform",
+            nameof(TenantWorkspace),
+            tenant.Id.ToString(),
+            $"{tenant.Name} · {adminUser.Username} · eski parola geçersiz kılındı",
+            cancellationToken);
+
+        return new SetupDocumentResult(
+            SetupDocumentOutcome.Ready,
+            ToTenantDto(
+                tenant,
+                adminUser.Username,
+                temporaryPassword,
+                adminUser.TemporaryPasswordExpiresAtUtc,
+                document.Base64,
+                document.FileName));
+    }
+
+    private (string Base64, string FileName) BuildSetupDocument(
+        TenantWorkspace tenant,
+        AppUser adminUser,
+        string temporaryPassword)
+    {
+        var bytes = setupDocumentService.Generate(new TenantSetupDocumentModel(
+            tenant.Name,
+            tenant.Plan,
+            tenant.InstitutionType.ToString(),
+            configuration["Registration:LoginUrl"] ?? "https://schoolasist.com/giris",
+            adminUser.Username,
+            temporaryPassword,
+            adminUser.TemporaryPasswordExpiresAtUtc,
+            "Platform yönetimi",
+            DateTime.UtcNow));
+
+        return (Convert.ToBase64String(bytes), $"kurulum-belgesi-{tenant.Slug}.pdf");
+    }
+
+    /// <summary>
+    /// İletişim adresine tek kullanımlık doğrulama bağlantısı gönderir.
+    /// </summary>
+    /// <remarks>
+    /// SMTP yoksa davranış ortama göre değişir ve HİÇBİR ZAMAN "doğrulanmış" varsayılmaz
+    /// (üretimde): başvuru kuyrukta <c>unproven</c> olarak görünür, yönetici adresin
+    /// kanıtlanmadığını görür. Gönderilemeyen bir doğrulama gerçek kurumu görünmez
+    /// yapmamalı; eksik yapılandırma da bir kapıyı sessizce kaldırmamalı.
+    /// </remarks>
+    private async Task StartContactVerificationAsync(
+        TenantRegistrationApplication application,
+        CancellationToken cancellationToken)
+    {
+        if (!emailSender.IsConfigured)
+        {
+            if (environment.IsProduction())
+            {
+                logger.LogWarning(
+                    "SMTP yapılandırılmadığı için {Email} adresi doğrulanamadı; başvuru kuyrukta kanıtlanmamış olarak duruyor.",
+                    application.ContactEmail);
+                return;
+            }
+
+            application.VerifiedAtUtc = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        var token = GenerateVerificationToken();
+        application.VerificationTokenHash = HashVerificationToken(token);
+        application.VerificationExpiresAtUtc = DateTime.UtcNow.AddHours(
+            configuration.GetValue<int?>("Registration:VerificationValidHours") ?? 48);
+        application.VerificationSentAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var baseUrl = (configuration["Registration:VerificationUrl"]
+                       ?? "https://schoolasist.com/kurum-kaydi/dogrula").TrimEnd('/');
+        var link = $"{baseUrl}?token={Uri.EscapeDataString(token)}";
+
+        var sent = await emailSender.SendAsync(
+            application.ContactEmail,
+            "Kurum kaydı başvurunuzu doğrulayın",
+            $"""
+            <p>Merhaba {System.Net.WebUtility.HtmlEncode(application.ContactName)},</p>
+            <p><strong>{System.Net.WebUtility.HtmlEncode(application.InstitutionName)}</strong> için
+            kurum kaydı başvurusu aldık. Başvurunun incelemeye alınabilmesi için bu adresin
+            size ait olduğunu doğrulayın:</p>
+            <p><a href="{link}">Başvurumu doğrula</a></p>
+            <p>Bağlantı {configuration.GetValue<int?>("Registration:VerificationValidHours") ?? 48} saat geçerlidir.
+            Bu başvuruyu siz yapmadıysanız bu e-postayı yok sayabilirsiniz.</p>
+            """,
+            cancellationToken);
+
+        if (!sent)
+        {
+            // Gönderilemedi: "yanıt bekleniyor" durumunda bırakırsak başvuru kuyrukta
+            // hiç görünmez ve kimse fark etmez. Kanıtlanmamış duruma geri al.
+            application.VerificationTokenHash = null;
+            application.VerificationExpiresAtUtc = null;
+            application.VerificationSentAtUtc = null;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Doğrulama bağlantısındaki kodu işler. Geçersiz, süresi dolmuş ve bilinmeyen
+    /// kodlar AYNI sonucu verir — aksi hâlde uç bir jeton kâhinine dönüşürdü.
+    /// </summary>
+    public async Task<bool> VerifyRegistrationContactAsync(
+        string? token,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        var hash = HashVerificationToken(token.Trim());
+        var application = await dbContext.TenantRegistrationApplications
+            .SingleOrDefaultAsync(x => x.VerificationTokenHash == hash, cancellationToken);
+
+        if (application is null || application.Status != "pending")
+        {
+            return false;
+        }
+
+        // Bağlantıya ikinci kez tıklamak hata göstermez: jeton zaten yalnız adresin
+        // sahibinde, tekrar doğrulamak yeni bilgi sızdırmaz.
+        if (application.VerifiedAtUtc is not null)
+        {
+            return true;
+        }
+
+        if (application.VerificationExpiresAtUtc is null || application.VerificationExpiresAtUtc < DateTime.UtcNow)
+        {
+            return false;
+        }
+
+        application.VerifiedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Kurum kaydı iletişim adresi doğrulandı. Id={Id}", application.Id);
+        return true;
+    }
+
+    private static string GenerateVerificationToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        return Convert.ToBase64String(bytes).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+    }
+
+    private static string HashVerificationToken(string token)
+        => Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    /// <summary>
+    /// Kuyrukta işaretlenecek başvuruları yakalayan sezgiseller. Hiçbiri kaydı
+    /// ENGELLEMEZ — yanlış pozitif gerçek kurumu kapıda bırakmasın diye yalnız
+    /// platform yöneticisine "önce buna bak" der.
+    /// </summary>
+    private async Task<string?> DetectSuspicionAsync(
+        string? normalizedIp,
+        CaptchaVerificationStatus captchaStatus,
+        CancellationToken cancellationToken)
+    {
+        if (captchaStatus == CaptchaVerificationStatus.SkippedNotConfigured)
+        {
+            // Üretim dışı ortam; işaretlemeye gerek yok.
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(normalizedIp))
+        {
+            return null;
+        }
+
+        var since = DateTime.UtcNow.AddHours(-24);
+        var sameIpCount = await dbContext.TenantRegistrationApplications
+            .AsNoTracking()
+            .CountAsync(x => x.RegistrationIp == normalizedIp && x.CreatedAtUtc >= since, cancellationToken);
+
+        // Eşik "kaçıncı başvuru işaretlensin" demektir: 3 ise aynı IP'den gelen
+        // ÜÇÜNCÜ başvuru işaretlenir (mevcut sayı + bu istek).
+        var threshold = configuration.GetValue<int?>("Registration:SuspiciousIpThreshold") ?? 3;
+        var totalWithCurrent = sameIpCount + 1;
+        return totalWithCurrent >= threshold
+            ? $"Aynı IP'den son 24 saatte {totalWithCurrent} başvuru."
+            : null;
+    }
+
+    /// <summary>
+    /// Günlük eşik aşıldığında platform yöneticilerine bildirim. Günde bir kez
+    /// (dedupe anahtarı tarihli) ve hata durumunda kaydı bloklamadan.
+    /// </summary>
+    private async Task NotifyRegistrationBurstAsync(int todayCount, int threshold, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var dedupeKey = $"registration-burst:{DateTime.UtcNow:yyyy-MM-dd}";
+            var alreadySent = await dbContext.Notifications
+                .IgnoreQueryFilters()
+                .AnyAsync(x => x.DedupeKey == dedupeKey, cancellationToken);
+
+            if (alreadySent)
+            {
+                return;
+            }
+
+            // Platform yöneticisi = kurumu olmayan Developer (bkz. JwtTokenService).
+            var adminIds = await dbContext.Users
+                .IgnoreQueryFilters()
+                .Where(x => x.TenantId == null
+                            && x.PrimaryRole == UserRole.Developer
+                            && x.Status == UserStatus.Active)
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
+
+            if (adminIds.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var adminId in adminIds)
+            {
+                dbContext.Notifications.Add(new NotificationItem
+                {
+                    TenantId = null,
+                    TargetUserId = adminId,
+                    TargetRole = UserRole.Developer.ToString(),
+                    Audience = "User",
+                    Title = "Kurum kaydında olağandışı yoğunluk",
+                    Message = $"Bugün {todayCount} kurum kaydı başvurusu alındı (eşik: {threshold}). Başvuru kuyruğunu gözden geçirin.",
+                    Category = "Security",
+                    TimeLabel = "Az önce",
+                    DedupeKey = dedupeKey,
+                });
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            // Bildirim, kaydın kendisini asla bloklamamalı.
+            logger.LogWarning(exception, "Kurum kaydı yoğunluk bildirimi yazılamadı.");
+        }
+    }
+
+    public async Task<IReadOnlyList<RegistrationBlocklistEntryDto>> GetRegistrationBlocklistAsync(
+        CancellationToken cancellationToken = default)
+        => await dbContext.RegistrationBlocklistEntries
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Select(x => new RegistrationBlocklistEntryDto(
+                x.Id, x.Kind, x.Value, x.Reason, x.CreatedByName, x.CreatedAtUtc))
+            .ToListAsync(cancellationToken);
+
+    public async Task<RegistrationBlocklistEntryDto?> AddRegistrationBlocklistEntryAsync(
+        AddRegistrationBlocklistRequest request,
+        Guid? actorUserId,
+        string actorName,
+        CancellationToken cancellationToken = default)
+    {
+        var kind = request.Kind?.Trim().ToLowerInvariant();
+        if (kind != "domain" && kind != "ip")
+        {
+            return null;
+        }
+
+        var value = Sanitize(request.Value).ToLowerInvariant();
+        // "@ornek.com" ya da "info@ornek.com" yazılırsa alan adına indir.
+        if (kind == "domain")
+        {
+            var atIndex = value.LastIndexOf('@');
+            if (atIndex >= 0) value = value[(atIndex + 1)..];
+        }
+
+        if (value.Length is < 3 or > 180)
+        {
+            return null;
+        }
+
+        var existing = await dbContext.RegistrationBlocklistEntries
+            .SingleOrDefaultAsync(x => x.Kind == kind && x.Value == value, cancellationToken);
+
+        if (existing is not null)
+        {
+            return new RegistrationBlocklistEntryDto(
+                existing.Id, existing.Kind, existing.Value, existing.Reason, existing.CreatedByName, existing.CreatedAtUtc);
+        }
+
+        var entry = new RegistrationBlocklistEntry
+        {
+            Kind = kind,
+            Value = value,
+            Reason = string.IsNullOrWhiteSpace(request.Reason) ? null : Truncate(request.Reason.Trim(), 300),
+            CreatedByUserId = actorUserId,
+            CreatedByName = string.IsNullOrWhiteSpace(actorName) ? "Sistem" : Truncate(actorName.Trim(), 150)!,
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+
+        await dbContext.RegistrationBlocklistEntries.AddAsync(entry, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Kurum kaydı kara listesine eklendi: {Kind}={Value} ({Actor})", kind, value, entry.CreatedByName);
+        return new RegistrationBlocklistEntryDto(
+            entry.Id, entry.Kind, entry.Value, entry.Reason, entry.CreatedByName, entry.CreatedAtUtc);
+    }
+
+    public async Task<bool> RemoveRegistrationBlocklistEntryAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var entry = await dbContext.RegistrationBlocklistEntries
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+        if (entry is null)
+        {
+            return false;
+        }
+
+        dbContext.RegistrationBlocklistEntries.Remove(entry);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<TenantWorkspaceDto?> SetApplicationSuspiciousAsync(
+        Guid id,
+        bool isSuspicious,
+        string? reason = null,
+        CancellationToken cancellationToken = default)
+    {
+        var application = await dbContext.TenantRegistrationApplications
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+        if (application is null)
+        {
+            return null;
+        }
+
+        application.IsSuspicious = isSuspicious;
+        application.SuspiciousReason = isSuspicious
+            ? Truncate(string.IsNullOrWhiteSpace(reason) ? "Platform yöneticisi işaretledi." : reason.Trim(), 300)
+            : null;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToApplicationDto(application);
+    }
+
+    /// <summary>
+    /// Başvuruyu gerçek kuruma çevirir: kurum satırı, okunabilir slug ve yönetici
+    /// hesabı bu anda üretilir. Başvuru satırı silinmez, "approved" olarak iz kalır.
+    /// </summary>
+    private async Task<TenantWorkspaceDto> ApproveApplicationAsync(
+        TenantRegistrationApplication application,
+        CancellationToken cancellationToken)
+    {
+        var tenant = new TenantWorkspace
+        {
+            Name = application.InstitutionName,
+            Slug = await GenerateUniqueSlugAsync(application.InstitutionName, null, cancellationToken),
+            ContactEmail = application.ContactEmail,
+            ContactName = application.ContactName,
+            ContactPhone = application.ContactPhone,
+            Plan = application.Plan,
+            Status = "active",
+            BranchCount = 1,
+            InstitutionType = application.InstitutionType,
+            DrivingSchoolModuleEnabled = application.InstitutionType == InstitutionType.DrivingSchool,
+            RegistrationIp = application.RegistrationIp,
+            RegistrationUserAgent = application.RegistrationUserAgent,
+            RegistrationReferer = application.RegistrationReferer,
+            RegistrationEstimatedStudents = application.EstimatedStudents,
+            KvkkConsentVersion = application.KvkkConsentVersion,
+            KvkkConsentAtUtc = application.KvkkConsentAtUtc,
+            CreatedAtUtc = DateTime.UtcNow,
+            ApprovedAtUtc = DateTime.UtcNow,
+        };
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        // İKİ AŞAMALI KAYIT ŞART: kurum ile yönetici birbirini işaret ediyor
+        // (tenant.AdminUserId → user, user.TenantId → tenant). İkisi tek SaveChanges'te
+        // eklenirse EF dairesel bağımlılık hatası verir. Önce kurum yazılır.
+        await dbContext.Set<TenantWorkspace>().AddAsync(tenant, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var created = await CreateTenantAdminUserAsync(tenant, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        tenant.AdminUserId = created.User.Id;
+        tenant.UserCount = 1;
+
+        application.Status = "approved";
+        application.ApprovedAtUtc = DateTime.UtcNow;
+        application.CreatedTenantId = tenant.Id;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Kurum başvurusu onaylandı. BasvuruId={ApplicationId} KurumId={TenantId} Slug={Slug}",
+            application.Id,
+            tenant.Id,
+            tenant.Slug);
+
+        var document = BuildSetupDocument(tenant, created.User, created.TemporaryPassword);
+
+        await auditLog.LogAsync(
+            "Kurum onaylandı, kurulum belgesi üretildi",
+            "Platform",
+            nameof(TenantWorkspace),
+            tenant.Id.ToString(),
+            $"{tenant.Name} · {created.User.Username}",
+            cancellationToken);
+
+        return ToTenantDto(
+            tenant,
+            created.User.Username,
+            created.TemporaryPassword,
+            created.User.TemporaryPasswordExpiresAtUtc,
+            document.Base64,
+            document.FileName);
+    }
+
     private async Task<(AppUser User, string TemporaryPassword)> CreateTenantAdminUserAsync(TenantWorkspace tenant, CancellationToken cancellationToken)
     {
         var username = await GenerateUniqueTenantAdminUsernameAsync(tenant, cancellationToken);
-        var temporaryPassword = GenerateTemporaryPassword();
+        // Kimlik bilgisi üretimi kriptografik üreteçle olmalı; System.Random değil.
+        // Ortak PasswordGenerator (RandomNumberGenerator) parola sıfırlamada da kullanılıyor.
+        var temporaryPassword = PasswordGenerator.Generate(10);
         var passwordHash = passwordHasher.Hash(temporaryPassword);
         var fullName = string.IsNullOrWhiteSpace(tenant.ContactName)
             ? $"{tenant.Name} Yonetici"
@@ -774,6 +1560,10 @@ public sealed class PlatformOperationsService(
             Status = UserStatus.Active,
             Phone = tenant.ContactPhone,
             IsEmailVerified = false,
+            // Süresiz geçici parola, teslim edilen belge kaybolduğunda aylarca açık
+            // bir kapı bırakırdı. Süre dolarsa yeni belge üretilir.
+            TemporaryPasswordExpiresAtUtc = DateTime.UtcNow.AddDays(
+                configuration.GetValue<int?>("Registration:TemporaryPasswordValidDays") ?? 7),
             Campus = tenant.Name,
             DepartmentOrBranch = "Yonetim",
             CreatedAtUtc = DateTime.UtcNow,
@@ -828,7 +1618,45 @@ public sealed class PlatformOperationsService(
         }
     }
 
-    private static TenantWorkspaceDto ToTenantDto(TenantWorkspace entity, string? adminUsername = null, string? temporaryPassword = null) => new(
+    /// <summary>
+    /// Başvuruyu kurum listesindeki satır biçimine çevirir. Sayaçlar sıfırdır:
+    /// başvurudaki beyan hiçbir toplama girmez. Slug boştur — başvurunun slug'ı yoktur.
+    /// </summary>
+    private static TenantWorkspaceDto ToApplicationDto(TenantRegistrationApplication entity) => new(
+        entity.Id,
+        entity.InstitutionName,
+        entity.ContactEmail,
+        entity.Plan,
+        entity.Status,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        entity.CreatedAtUtc,
+        string.Empty,
+        entity.ContactName,
+        entity.ContactPhone ?? string.Empty,
+        null,
+        null,
+        null,
+        entity.ApprovedAtUtc,
+        entity.InstitutionType.ToString(),
+        entity.InstitutionType == InstitutionType.DrivingSchool,
+        entity.IsSuspicious,
+        entity.SuspiciousReason,
+        entity.VerificationState);
+
+    private static TenantWorkspaceDto ToTenantDto(
+        TenantWorkspace entity,
+        string? adminUsername = null,
+        string? temporaryPassword = null,
+        DateTime? temporaryPasswordExpiresAtUtc = null,
+        string? setupDocumentBase64 = null,
+        string? setupDocumentFileName = null) => new(
         entity.Id,
         entity.Name,
         entity.ContactEmail,
@@ -851,7 +1679,13 @@ public sealed class PlatformOperationsService(
         temporaryPassword,
         entity.ApprovedAtUtc,
         entity.InstitutionType.ToString(),
-        entity.DrivingSchoolModuleEnabled);
+        entity.DrivingSchoolModuleEnabled,
+        false,
+        null,
+        "verified",
+        temporaryPasswordExpiresAtUtc,
+        setupDocumentBase64,
+        setupDocumentFileName);
 
     private static InstitutionType ParseInstitutionType(string? value)
     {
@@ -915,12 +1749,6 @@ public sealed class PlatformOperationsService(
         return threadLogs.Concat(notificationLogs).Take(7).ToList();
     }
 
-    private static string GenerateTemporaryPassword()
-    {
-        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        var random = new Random();
-        return new string(Enumerable.Range(0, 10).Select(_ => chars[random.Next(chars.Length)]).ToArray());
-    }
 
     private static string NormalizeSlug(string value)
     {

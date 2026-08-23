@@ -249,10 +249,31 @@ public sealed class AccountingService(
 
         installment.Amount = ParseAmount(request.Amount);
         installment.DueDateUtc = ParseDueDate(request.Due);
-        if (string.Equals(request.Status.Trim(), "Ödendi", StringComparison.OrdinalIgnoreCase))
+
+        var requestedStatus = request.Status.Trim();
+        if (string.Equals(requestedStatus, "Ödendi", StringComparison.OrdinalIgnoreCase))
         {
             installment.PaidAmount = installment.Amount;
             installment.Status = "Paid";
+        }
+        else if (string.Equals(requestedStatus, "Bekliyor", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(requestedStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            // Geri alma yolu eskiden HİÇ işlenmiyordu: "Ödendi"den "Bekliyor"a
+            // çevrilen taksit PaidAmount ve Status="Paid" ile kalıyor, borç
+            // kapalı görünmeye devam ediyordu.
+            //
+            // Yalnız ELLE işaretlenmiş kısım geri alınır: gerçek tahsilatların
+            // mahsubu (FinancePaymentAllocation) korunur. Aksi hâlde bir durum
+            // düzeltmesi, gerçekten alınmış parayı kayıtlardan silerdi.
+            var allocatedPaid = await dbContext.FinancePaymentAllocations
+                .Where(x => x.FinanceInstallmentId == installment.Id)
+                .SumAsync(x => (decimal?)(x.Amount - x.RefundedAmount), cancellationToken) ?? 0m;
+
+            installment.PaidAmount = Math.Clamp(allocatedPaid, 0, installment.Amount);
+            installment.Status = installment.PaidAmount <= 0
+                ? "Pending"
+                : installment.PaidAmount >= installment.Amount ? "Paid" : "Partial";
         }
 
         await AddNotificationAsync("Taksit güncellendi", $"{installment.StudentName} için taksit planı güncellendi.", cancellationToken);

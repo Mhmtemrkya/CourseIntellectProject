@@ -21,6 +21,7 @@ public sealed class DrivingAppointmentRequestsController(
     IDrivingAvailabilityService availability,
     IDrivingLedgerService ledger,
     IDrivingNotifier notifier,
+    IDrivingPermissionService permissions,
     IAuditLogService audit) : ControllerBase
 {
     private const string AuditCategory = "DrivingSchool";
@@ -87,6 +88,25 @@ public sealed class DrivingAppointmentRequestsController(
         var profileId = await CurrentStudentProfileIdAsync(ct);
         if (profileId is null) return Forbid();
         if (!Enum.TryParse<DrivingAppointmentRequestType>(request.RequestType, true, out var type) || !Enum.IsDefined(type)) return BadRequest(new { message = "Talep türü geçersiz." });
+
+        // [RequireDrivingPermission] birden çok kod verildiğinde HERHANGİ birini
+        // yeterli sayar (görüntüleme uçları için doğru davranış). Burada gerçek
+        // işlemi GÖVDE belirlediği için tek başına yetmez: yalnız "randevu oluştur"
+        // izni olan bir rol, gövdeye Reschedule yazarak yeniden planlama talebi
+        // açabiliyordu. İşleme KARŞILIK GELEN izin ayrıca aranır.
+        var requiredPermission = type == DrivingAppointmentRequestType.Reschedule
+            ? DrivingPermissions.AppointmentReschedule
+            : DrivingPermissions.AppointmentCreate;
+        var granted = await permissions.GetPermissionsAsync(User, ct);
+        if (!granted.Contains(requiredPermission))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Bu talep türü için yetkiniz bulunmuyor.",
+                requiredPermissions = new[] { requiredPermission },
+            });
+        }
+
         var duration = request.EndsAtUtc - request.StartsAtUtc;
         if (request.StartsAtUtc < DateTime.UtcNow.AddMinutes(30) || duration < TimeSpan.FromMinutes(30) || duration > TimeSpan.FromHours(4)) return BadRequest(new { message = "Talep en az 30 dakika sonrası için ve 30-240 dakika aralığında olmalıdır." });
         if ((request.Note?.Trim().Length ?? 0) > 500 || (request.MeetingPoint?.Trim().Length ?? 0) > 300) return BadRequest(new { message = "Not veya buluşma noktası çok uzun." });

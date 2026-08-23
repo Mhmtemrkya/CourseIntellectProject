@@ -156,6 +156,16 @@ public sealed class MessageService(
             throw new InvalidOperationException("Thread bulunamadı.");
         }
 
+        // Yetkilendirme: yalnız thread'in katılımcıları mesaj yazabilir. Okuma
+        // tarafında (GetMessagesAsync) bu kontrol vardı, yazma tarafında yoktu:
+        // aynı kurumdaki bir kullanıcı, bildiği bir thread GUID'ine mesaj
+        // gönderebiliyordu. Bulunamadı ile aynı mesaj döner — yabancı bir
+        // thread'in VAR olduğu bilgisi de sızmamalı.
+        if (!MessageParticipantKey.IsParticipant(currentUserName, thread.ParticipantOneName, thread.ParticipantTwoName))
+        {
+            throw new InvalidOperationException("Thread bulunamadı.");
+        }
+
         var attachments = (request.Attachments ?? Array.Empty<MessageAttachmentDto>())
             .Where(a => !string.IsNullOrWhiteSpace(a.FileUrl))
             .ToList();
@@ -269,20 +279,7 @@ public sealed class MessageService(
         }
     }
 
-    private static string Normalize(string value)
-    {
-        return value.Trim()
-            .Replace('ç', 'c')
-            .Replace('Ç', 'C')
-            .Replace('ğ', 'g')
-            .Replace('Ğ', 'G')
-            .Replace('ı', 'i')
-            .Replace('İ', 'I')
-            .Replace('ö', 'o')
-            .Replace('Ö', 'O')
-            .Replace('ş', 's')
-            .Replace('Ş', 'S')
-            .Replace('ü', 'u')
-            .Replace('Ü', 'U');
-    }
+    // Normalizasyon tek kaynaktan gelir; hub'daki yetki kontrolü ile servisin
+    // katılımcı kontrolü ASLA ayrışmamalı (bkz. MessageParticipantKey).
+    private static string Normalize(string value) => MessageParticipantKey.Normalize(value);
 }

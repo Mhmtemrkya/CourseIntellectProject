@@ -15,6 +15,8 @@ public sealed class TenantWorkspace
     public string ContactEmail { get; set; } = string.Empty;
     public string ContactName { get; set; } = string.Empty;
     public string? ContactPhone { get; set; }
+    /// <summary>Kullanılmıyor. Anonim kayıt artık parola almıyor; yönetici parolası
+    /// onay anında üretilir. Kolon geriye dönük uyum için duruyor.</summary>
     public string? PendingAdminPasswordHash { get; set; }
     public string Plan { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
@@ -29,6 +31,21 @@ public sealed class TenantWorkspace
     public decimal CollectedAmount { get; set; }
     public decimal StorageUsedGb { get; set; }
     public int ApiUsage { get; set; }
+    // --- Halka açık kurum kaydı: kötüye kullanım triyajı ve KVKK kanıtı ---
+
+    /// <summary>Başvurunun geldiği istemci IP'si (yalnız self-signup kayıtlarında dolu).</summary>
+    public string? RegistrationIp { get; set; }
+    public string? RegistrationUserAgent { get; set; }
+    public string? RegistrationReferer { get; set; }
+
+    /// <summary>Formda beyan edilen öğrenci sayısı. Bilgi amaçlıdır; platform
+    /// KPI toplamlarına GİRMEZ (anonim girdi olduğu için).</summary>
+    public int? RegistrationEstimatedStudents { get; set; }
+
+    /// <summary>Onaylanan aydınlatma/açık rıza metninin sürümü.</summary>
+    public string? KvkkConsentVersion { get; set; }
+    public DateTime? KvkkConsentAtUtc { get; set; }
+
     public DateTime? ApprovedAtUtc { get; set; }
     public DateTime? RejectedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

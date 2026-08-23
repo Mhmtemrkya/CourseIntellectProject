@@ -15,17 +15,29 @@ public sealed class LocalFileStorageService(IHostEnvironment environment, IConfi
         string baseUrl,
         CancellationToken cancellationToken = default)
     {
-        var safeFolder = string.IsNullOrWhiteSpace(folder) ? "general" : folder.Trim().ToLowerInvariant();
-        var uploadsRoot = Path.Combine(UploadStoragePathResolver.ResolveUploadsRoot(environment, configuration), safeFolder);
+        // Klasör istemciden gelir: ".." / mutlak yol / ayraç oyunları burada durur.
+        // Geçersizse sessizce "general"a düşürmek yerine hata veririz — dosyanın
+        // beklenmedik bir yere yazılması sessizce yutulmamalıdır.
+        if (!UploadPathSafety.TrySanitizeFolder(folder, out var safeFolder))
+        {
+            throw new InvalidOperationException("Geçersiz yükleme klasörü.");
+        }
+
+        var storageRoot = UploadStoragePathResolver.ResolveUploadsRoot(environment, configuration);
+        var uploadsRoot = Path.GetFullPath(Path.Combine(storageRoot, safeFolder.Replace('/', Path.DirectorySeparatorChar)));
+
+        // Sanitizasyondan sonraki son kapı: hedef gerçekten kökün altında mı?
+        if (!UploadPathSafety.IsWithinRoot(storageRoot, uploadsRoot))
+        {
+            throw new InvalidOperationException("Geçersiz yükleme klasörü.");
+        }
+
         Directory.CreateDirectory(uploadsRoot);
 
-        var extension = Path.GetExtension(fileName);
-        var baseName = Path.GetFileNameWithoutExtension(fileName);
-        var safeName = string.Concat(baseName.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_')).Trim();
-        if (string.IsNullOrWhiteSpace(safeName))
-        {
-            safeName = "asset";
-        }
+        // Uzantı sunucu beyaz listesinden gelir; istemci ".html"/".svg" göndererek
+        // aynı origin altında aktif içerik yayınlayamaz.
+        var extension = UploadPathSafety.ResolveSafeExtension(fileName);
+        var safeName = UploadPathSafety.SanitizeBaseName(fileName);
 
         var finalFileName = $"{safeName}-{Guid.NewGuid():N}{extension}";
         var physicalPath = Path.Combine(uploadsRoot, finalFileName);

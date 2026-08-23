@@ -195,18 +195,28 @@ public sealed class DrivingFinanceController(
             if (!branchOk) return BadRequest(new { message = "Seçilen şube bulunamadı." });
         }
 
-        var payment = await financeService.RecordPaymentAsync(
-            new RecordPaymentRequest(
-                StudentUserId: row.UserId,
-                StudentName: row.FullName,
-                EnrollmentContractId: row.EnrollmentContractId,
-                FinanceInstallmentId: request.FinanceInstallmentId,
-                Amount: request.Amount,
-                Method: request.Method,
-                Note: request.Note,
-                BranchId: request.BranchId),
-            CurrentUserId(),
-            ct);
+        FinancePaymentDto payment;
+        try
+        {
+            payment = await financeService.RecordPaymentAsync(
+                new RecordPaymentRequest(
+                    StudentUserId: row.UserId,
+                    StudentName: row.FullName,
+                    EnrollmentContractId: row.EnrollmentContractId,
+                    FinanceInstallmentId: request.FinanceInstallmentId,
+                    Amount: request.Amount,
+                    Method: request.Method,
+                    Note: request.Note,
+                    BranchId: request.BranchId),
+                CurrentUserId(),
+                ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Ör. ekranda bayatlamış bir taksit seçiliyse ("taksit bu öğrenciye ait
+            // değil"): kullanıcıya anlaşılır hata dönmeli, 500 değil.
+            return BadRequest(new { message = ex.Message });
+        }
 
         await auditLogService.LogChangeAsync("Tahsilat alındı", AuditCategory, "FinancePayment", payment.Id.ToString(),
             $"{row.FullName} — {request.Amount:N2} ₺ ({request.Method ?? "Nakit"}), makbuz {payment.ReceiptNo}.",
@@ -520,43 +530,128 @@ public sealed class DrivingFinanceController(
         var reason = request.Reason?.Trim() ?? string.Empty;
         if (reason.Length is < 5 or > 500) return BadRequest(new { message = "İade nedeni 5-500 karakter olmalıdır." });
 
-        var charge = await dbContext.DrivingCharges.SingleOrDefaultAsync(x => x.Id == chargeId, ct);
-        if (charge is null) return NotFound(new { message = "Ücret kalemi bulunamadı." });
-        if (charge.RefundedAtUtc is not null) return Conflict(new { message = "Bu kalem zaten iade edilmiş." });
-
-        var refund = request.Amount ?? charge.NetAmount;
-        if (refund <= 0 || refund > charge.NetAmount)
-            return BadRequest(new { message = $"İade tutarı 0 ile {charge.NetAmount:N2} ₺ arasında olmalıdır." });
-
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
-        charge.RefundedAmount = refund;
-        charge.RefundReason = reason;
-        charge.RefundedAtUtc = DateTime.UtcNow;
+        var charge = await dbContext.DrivingCharges.SingleOrDefaultAsync(x => x.Id == chargeId, ct);
+        if (charge is null) return NotFound(new { message = "Ücret kalemi bulunamadı." });
 
-        // Borcu düşür: kalemin taksiti iade oranında küçülür.
-        if (charge.FinanceInstallmentId is Guid installmentId)
-        {
-            var installment = await dbContext.FinanceInstallments.SingleOrDefaultAsync(x => x.Id == installmentId, ct);
-            if (installment is not null)
-            {
-                installment.Amount = Math.Max(0, installment.Amount - refund);
-                installment.Status = installment.PaidAmount >= installment.Amount ? "Paid" : installment.Status;
-            }
-        }
+        // KISMİ İADE: kalan tutar üzerinden hesaplanır. Eskiden ilk kısmi iadede
+        // RefundedAtUtc dolduğu için ikinci iade "zaten iade edilmiş" sayılıyor ve
+        // kalan tutar hiç iade edilemiyordu. Kapı artık TUTARA bakar.
+        var alreadyRefunded = Math.Max(0, charge.RefundedAmount);
+        var refundable = charge.NetAmount - alreadyRefunded;
+        if (refundable <= 0)
+            return Conflict(new { message = "Bu kalemin tamamı zaten iade edilmiş." });
 
-        if (charge.EnrollmentContractId is Guid contractId)
-        {
-            var contract = await dbContext.EnrollmentContracts.SingleOrDefaultAsync(x => x.Id == contractId, ct);
-            if (contract is not null) contract.NetAmount = Math.Max(0, contract.NetAmount - refund);
-        }
+        var refund = request.Amount ?? refundable;
+        if (refund <= 0 || refund > refundable)
+            return BadRequest(new { message = $"İade tutarı 0 ile {refundable:N2} ₺ arasında olmalıdır." });
 
-        // Ek ders iadesinde dakikalar da geri alınır — para geri gidiyorsa hak da gitmeli.
-        var minutesTaken = 0;
+        // KULLANILMIŞ EĞİTİM HAKKI: ek ders kaleminde öğrenci dakikaları tükettiyse
+        // o dakikalar geri alınamaz. Tüketilen kısmın parası varsayılan olarak iade
+        // EDİLMEZ — aksi hâlde alınmış eğitim bedelsiz kalırdı. Kurum bilinçli olarak
+        // yine de iade etmek isterse request.AllowConsumedRefund ile açıkça onaylar
+        // ve bu karar audit'e yazılır.
+        var reclaimableMinutes = 0;
+        var consumedMinutes = 0;
         if (charge.Minutes > 0)
         {
             var balance = await ledgerService.GetBalanceAsync(charge.StudentDrivingProfileId, ct);
-            minutesTaken = Math.Min(charge.Minutes, Math.Max(0, balance.AvailableMinutes));
+            reclaimableMinutes = Math.Min(charge.Minutes, Math.Max(0, balance.AvailableMinutes));
+            consumedMinutes = charge.Minutes - reclaimableMinutes;
+        }
+
+        var consumedValue = consumedMinutes > 0 && charge.Minutes > 0
+            ? Math.Round(charge.NetAmount * consumedMinutes / charge.Minutes, 2)
+            : 0m;
+        var allowConsumedRefund = request.AllowConsumedRefund == true;
+        if (consumedValue > 0 && !allowConsumedRefund)
+        {
+            var maxRefund = Math.Max(0, refundable - consumedValue);
+            if (refund > maxRefund)
+            {
+                return BadRequest(new
+                {
+                    message = $"Bu kalemde {consumedMinutes} dakika eğitim kullanılmış ({consumedValue:N2} ₺). "
+                        + $"En fazla {maxRefund:N2} ₺ iade edilebilir. Kullanılan eğitimin bedelini de iade etmek için "
+                        + "işlemi \"kullanılan eğitim dahil\" onayıyla tekrarlayın.",
+                    maxRefundable = maxRefund,
+                    consumedMinutes,
+                    consumedValue,
+                });
+            }
+        }
+
+        charge.RefundedAmount = alreadyRefunded + refund;
+        charge.RefundReason = reason;
+        charge.RefundedAtUtc = DateTime.UtcNow;
+
+        // Borcu düşür ve GERÇEKTEN TAHSİL EDİLMİŞ kısmı ayır: tahsil edilmiş para
+        // kasadan çıkar (negatif tahsilat), tahsil edilmemiş kısım yalnız borç azaltır.
+        var cashOut = 0m;
+        FinanceInstallment? installment = null;
+        if (charge.FinanceInstallmentId is Guid installmentId)
+        {
+            installment = await dbContext.FinanceInstallments.SingleOrDefaultAsync(x => x.Id == installmentId, ct);
+            if (installment is not null)
+            {
+                cashOut = Math.Min(refund, installment.PaidAmount);
+                installment.Amount = Math.Max(0, installment.Amount - refund);
+                installment.PaidAmount = Math.Max(0, installment.PaidAmount - cashOut);
+                installment.Status = installment.PaidAmount <= 0
+                    ? "Pending"
+                    : installment.PaidAmount >= installment.Amount ? "Paid" : "Partial";
+            }
+        }
+
+        EnrollmentContract? contract = null;
+        if (charge.EnrollmentContractId is Guid contractId)
+        {
+            contract = await dbContext.EnrollmentContracts.SingleOrDefaultAsync(x => x.Id == contractId, ct);
+            if (contract is not null) contract.NetAmount = Math.Max(0, contract.NetAmount - refund);
+        }
+
+        // GERÇEK KASA ÇIKIŞI: iade yalnız borcu küçültmekle kalmaz, tahsil edilmiş
+        // para için negatif bir FinancePayment yazılır. Eskiden bu satır hiç
+        // oluşmadığı için kasa ve gelir raporları iadeye rağmen yüksek kalıyordu.
+        // Okul tarafındaki iade ile AYNI kayıt biçimi kullanılır (EntryType="Refund"),
+        // böylece FinanceTotals.NetCollected iadeyi kendiliğinden düşer.
+        string? refundReceiptNo = null;
+        if (cashOut > 0)
+        {
+            var refundPayment = new FinancePayment
+            {
+                EnrollmentContractId = charge.EnrollmentContractId,
+                FinanceInstallmentId = charge.FinanceInstallmentId,
+                StudentUserId = contract?.StudentUserId,
+                StudentName = contract?.StudentName ?? string.Empty,
+                Amount = -cashOut,
+                Method = "İade",
+                ReceiptNo = await financeService.NextReceiptNumberAsync(ct),
+                Currency = contract?.Currency ?? "TRY",
+                Note = $"İade: {DrivingChargeTypes.Label(charge.ChargeType)} — {reason}",
+                CreatedByUserId = actorId,
+                BranchId = charge.BranchId,
+                PaidAtUtc = DateTime.UtcNow,
+                EntryType = "Refund",
+                RefundType = "ContractReduction",
+                RefundStatus = "Completed",
+                RefundReason = reason,
+                RefundChannel = "Nakit",
+            };
+            dbContext.FinancePayments.Add(refundPayment);
+            refundReceiptNo = refundPayment.ReceiptNo;
+        }
+
+        // Ek ders iadesinde kullanılmamış dakikalar geri alınır — para geri gidiyorsa
+        // hak da gitmeli. Tüketilmiş dakikalar geri alınamaz (fiilen kullanıldı).
+        var minutesTaken = 0;
+        if (reclaimableMinutes > 0)
+        {
+            // Kısmi iadede yalnız iade oranı kadar dakika geri alınır.
+            minutesTaken = charge.NetAmount > 0
+                ? Math.Min(reclaimableMinutes, (int)Math.Floor(charge.Minutes * refund / charge.NetAmount))
+                : reclaimableMinutes;
             if (minutesTaken > 0)
             {
                 await ledgerService.AddAsync(charge.StudentDrivingProfileId, DrivingLedgerEntryType.ManualAdjustmentMinutes, -minutesTaken,
@@ -571,21 +666,33 @@ public sealed class DrivingFinanceController(
 
         await auditLogService.LogChangeAsync("Ücret iadesi yapıldı", AuditCategory, "DrivingCharge", charge.Id.ToString(),
             $"{DrivingChargeTypes.Label(charge.ChargeType)} — {refund:N2} ₺ iade edildi. Gerekçe: {reason}."
-                + (minutesTaken > 0 ? $" {minutesTaken} dk ders hakkı geri alındı." : string.Empty),
-            new { charge.NetAmount, refundedAmount = 0m },
-            new { charge.NetAmount, refundedAmount = refund, minutesReclaimed = minutesTaken, reason }, ct);
+                + (cashOut > 0 ? $" Kasadan {cashOut:N2} ₺ çıkışı yazıldı (makbuz {refundReceiptNo})." : " Tahsil edilmemiş borç düşüldü, kasa hareketi yok.")
+                + (minutesTaken > 0 ? $" {minutesTaken} dk ders hakkı geri alındı." : string.Empty)
+                + (consumedValue > 0 && allowConsumedRefund ? $" Kullanılmış {consumedMinutes} dk ({consumedValue:N2} ₺) da iade edildi — yetkili onayı." : string.Empty),
+            new { charge.NetAmount, refundedAmount = alreadyRefunded },
+            new { charge.NetAmount, refundedAmount = charge.RefundedAmount, cashOut, minutesReclaimed = minutesTaken, consumedMinutes, consumedValue, allowConsumedRefund, reason }, ct);
 
         await notifier.NotifyStudentAsync(charge.StudentDrivingProfileId,
             "İade işlendi",
             $"{DrivingChargeTypes.Label(charge.ChargeType)} için {refund:N2} ₺ iade edildi."
                 + (minutesTaken > 0 ? $" {minutesTaken} dakika ders hakkı geri alındı." : string.Empty),
             DrivingNotificationCategories.Finance,
-            dedupeKey: $"charge-refund:{charge.Id}",
+            // Kısmi iadeler ayrı bildirimler: dedupe anahtarı iade sırasını içerir.
+            dedupeKey: $"charge-refund:{charge.Id}:{charge.RefundedAmount:0.##}",
             relatedEntityType: "DrivingCharge",
             relatedEntityId: charge.Id.ToString(),
             cancellationToken: ct);
 
-        return Ok(new { charge.Id, refundedAmount = refund, minutesReclaimed = minutesTaken });
+        return Ok(new
+        {
+            charge.Id,
+            refundedAmount = refund,
+            totalRefunded = charge.RefundedAmount,
+            remainingRefundable = charge.NetAmount - charge.RefundedAmount,
+            cashOut,
+            refundReceiptNo,
+            minutesReclaimed = minutesTaken,
+        });
     }
 
     // ─── Kurs finans özeti ────────────────────────────────────────────────────
@@ -627,10 +734,19 @@ public sealed class DrivingFinanceController(
             .Select(x => new { x.Amount, x.PaidAmount, x.DueDateUtc })
             .ToListAsync(ct);
 
+        // Kalem toplamları iadeyi GÖRMELİ: iade edilmiş bir kalem tür toplamında tam
+        // gelir gibi durursa rapor, net tahsilat ile uzlaşmaz. Brüt ve iade ayrı ayrı
+        // döner; net = brüt − iade.
         var charges = await dbContext.DrivingCharges.AsNoTracking()
             .Where(x => x.CreatedAtUtc >= start && x.CreatedAtUtc < end)
             .GroupBy(x => x.ChargeType)
-            .Select(x => new { ChargeType = x.Key, Count = x.Count(), Total = x.Sum(c => c.NetAmount) })
+            .Select(x => new
+            {
+                ChargeType = x.Key,
+                Count = x.Count(),
+                Total = x.Sum(c => c.NetAmount),
+                Refunded = x.Sum(c => c.RefundedAmount),
+            })
             .ToListAsync(ct);
 
         var refunded = await dbContext.DrivingCharges.AsNoTracking()
@@ -659,7 +775,17 @@ public sealed class DrivingFinanceController(
                 .Select(x => new { method = x.Key, total = x.Sum(p => p.Amount), count = x.Count() })
                 .OrderByDescending(x => x.total),
             chargesByType = charges
-                .Select(x => new { chargeType = x.ChargeType.ToString(), label = DrivingChargeTypes.Label(x.ChargeType), x.Count, x.Total })
+                .Select(x => new
+                {
+                    chargeType = x.ChargeType.ToString(),
+                    label = DrivingChargeTypes.Label(x.ChargeType),
+                    x.Count,
+                    // Total artık NET (iade düşülmüş) — ekranlar bu alanı gelir olarak
+                    // gösteriyor. Brüt ve iade ayrıca verilir ki fark izlenebilsin.
+                    Total = x.Total - x.Refunded,
+                    grossTotal = x.Total,
+                    refundedTotal = x.Refunded,
+                })
                 .OrderByDescending(x => x.Total),
         });
     }
@@ -762,4 +888,9 @@ public sealed record CreateDrivingChargeRequest(
 public sealed record DrivingPaymentRequest(decimal Amount, string? Method, Guid? FinanceInstallmentId, string? Note, Guid? BranchId = null);
 public sealed record CollectDownPaymentBody(string? Method = null);
 
-public sealed record RefundChargeRequest(decimal? Amount, string? Reason);
+/// <param name="AllowConsumedRefund">
+/// Kullanılmış (geri alınamayan) eğitim dakikalarının bedelini de iade etmek için
+/// yetkilinin AÇIK onayı. Varsayılan davranış, tüketilmiş eğitimin bedelini iade
+/// dışında tutmaktır; bu bayrak audit'e yazılır.
+/// </param>
+public sealed record RefundChargeRequest(decimal? Amount, string? Reason, bool? AllowConsumedRefund = null);

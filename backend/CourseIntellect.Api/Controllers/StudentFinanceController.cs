@@ -113,8 +113,16 @@ public sealed class StudentFinanceController(
             return BadRequest(new { message = "Tutar sıfırdan büyük olmalı." });
         }
 
-        var result = await studentFinanceService.RecordPaymentAsync(request, CurrentUserId(), cancellationToken);
-        return Ok(result);
+        try
+        {
+            var result = await studentFinanceService.RecordPaymentAsync(request, CurrentUserId(), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Ör. seçilen taksit ödemeyi yapan öğrenciye ait değilse: anlaşılır hata.
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("summaries")]

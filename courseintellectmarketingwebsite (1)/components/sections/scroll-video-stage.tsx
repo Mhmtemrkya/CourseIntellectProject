@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { CSSProperties } from "react"
 import Link from "next/link"
 import { ArrowRight, Play } from "lucide-react"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
@@ -8,10 +9,14 @@ import { Button } from "@/components/ui/button"
 import { useSectionContent } from "@/context/content-context"
 import { useLanguage } from "@/context/language-context"
 
+// Cinematic chapters behind the sticky stage. Each clip is a seamless
+// forward/reverse loop, so it can hold under a slow scroll without a visible cut.
+// `dim` is per-clip because the footage is not evenly exposed: the daylight
+// interiors need pulling down, the dusk exterior is already dark.
 const STAGE_VISUALS = [
-  { src: "/images/product/vaka-merkezi.png", position: "center center" },
-  { src: "/images/product/kutuphane.png", position: "center center" },
-  { src: "/images/product/giris.png", position: "center center" },
+  { src: "/videos/hero/stage-01.mp4", poster: "/images/hero/stage-01.jpg", position: "center center", dim: 0.74 },
+  { src: "/videos/hero/stage-02.mp4", poster: "/images/hero/stage-02.jpg", position: "center center", dim: 0.72 },
+  { src: "/videos/hero/stage-03.mp4", poster: "/images/hero/stage-03.jpg", position: "center center", dim: 0.92 },
 ] as const
 
 const ANNOTATIONS_BY_LANGUAGE = {
@@ -113,6 +118,10 @@ export function ScrollVideoStage() {
   const [primed, setPrimed] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
   const [stageActive, setStageActive] = useState(true)
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
+  // Only the current chapter and the next one get a `src`, so the homepage does
+  // not pay for three full-screen clips before the first paint.
+  const [maxChapter, setMaxChapter] = useState(0)
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setPrimed(true))
@@ -148,6 +157,24 @@ export function ScrollVideoStage() {
     }
   }, [updateScroll])
 
+  useEffect(() => {
+    const chapter = Math.min(STAGE_VISUALS.length - 1, Math.floor(progress * STAGE_VISUALS.length))
+    setMaxChapter((prev) => (chapter > prev ? chapter : prev))
+  }, [progress])
+
+  // Keep at most one clip decoding: anything faded out or off-screen is paused.
+  useEffect(() => {
+    videoRefs.current.forEach((video, index) => {
+      if (!video) return
+      const shouldPlay = stageActive && !reducedMotion && visualOpacity(index, progress) > 0.02
+      if (shouldPlay) {
+        if (video.paused) void video.play().catch(() => {})
+      } else if (!video.paused) {
+        video.pause()
+      }
+    })
+  }, [progress, stageActive, reducedMotion])
+
   const heroOpacity = fadeRange(progress, 0.0, 0.13, 0.05)
   const ctaStripOpacity = fadeRange(progress, 0.91, 1.0, 0.05)
   const activeChapter = Math.min(STAGE_VISUALS.length - 1, Math.floor(progress * STAGE_VISUALS.length))
@@ -179,23 +206,50 @@ export function ScrollVideoStage() {
             const segment = 1 / STAGE_VISUALS.length
             const localProgress = clamp((progress - index * segment) / segment)
 
+            const layerStyle: CSSProperties = {
+              objectPosition: visual.position,
+              opacity: reducedMotion ? (index === 0 ? 1 : 0) : visualOpacity(index, progress),
+              transform: `scale(${1.02 + localProgress * 0.035}) translate3d(0, ${(localProgress - 0.5) * -1.5}%, 0)`,
+              filter: `brightness(${visual.dim}) saturate(0.95) contrast(1.06)`,
+              transition: "opacity 220ms linear",
+              willChange: "opacity, transform",
+            }
+
+            // Reduced motion: the stage collapses to a single still. The
+            // preference is read in an effect, so the very first render can
+            // still emit one video before this swaps in.
+            if (reducedMotion) {
+              if (index !== 0) return null
+              return (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={visual.src}
+                  src={visual.poster}
+                  alt=""
+                  aria-hidden
+                  className="absolute inset-0 h-full w-full object-cover"
+                  style={layerStyle}
+                />
+              )
+            }
+
             return (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <video
                 key={visual.src}
-                src={visual.src}
-                alt=""
-                aria-hidden
-                loading={index === 0 ? "eager" : "lazy"}
-                className="absolute inset-0 h-full w-full object-cover"
-                style={{
-                  objectPosition: visual.position,
-                  opacity: reducedMotion ? (index === 0 ? 1 : 0) : visualOpacity(index, progress),
-                  transform: `scale(${1.02 + localProgress * 0.035}) translate3d(0, ${(localProgress - 0.5) * -1.5}%, 0)`,
-                  filter: "brightness(0.58) saturate(0.9) contrast(1.04)",
-                  transition: "opacity 220ms linear",
-                  willChange: "opacity, transform",
+                ref={(element) => {
+                  if (element) element.muted = true
+                  videoRefs.current[index] = element
                 }}
+                src={index <= maxChapter + 1 ? visual.src : undefined}
+                poster={visual.poster}
+                muted
+                loop
+                playsInline
+                autoPlay={index === 0}
+                preload={index <= maxChapter + 1 ? "auto" : "none"}
+                aria-hidden
+                className="absolute inset-0 h-full w-full object-cover"
+                style={layerStyle}
               />
             )
           })}

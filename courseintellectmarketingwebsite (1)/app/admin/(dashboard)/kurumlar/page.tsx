@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { CheckCircle, XCircle, Eye, X, Clock, Copy, KeyRound, Trash2 } from "lucide-react"
+import { CheckCircle, XCircle, Eye, X, Clock, Copy, KeyRound, Trash2, ShieldAlert, Flag, MailWarning, FileDown } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { DataTable, type Column, type Action } from "@/components/admin/data-table"
 import { cn } from "@/lib/utils"
 import { apiRequest, ApiRequestError } from "@/lib/api-client"
+import { downloadBase64File } from "@/lib/download-base64"
 
 interface TenantData {
   id: string
@@ -23,12 +25,28 @@ interface TenantData {
   contactPhone?: string
   adminUsername?: string | null
   temporaryPassword?: string | null
+  setupDocumentBase64?: string | null
+  setupDocumentFileName?: string | null
+  isSuspicious?: boolean
+  suspiciousReason?: string | null
+  verificationState?: "verified" | "awaiting" | "unproven"
+}
+
+interface BlocklistEntry {
+  id: string
+  kind: "domain" | "ip"
+  value: string
+  reason?: string | null
+  createdByName: string
+  createdAtUtc: string
 }
 
 interface TenantCredentials {
   tenantName: string
   adminUsername: string
   temporaryPassword: string
+  setupDocumentBase64?: string | null
+  setupDocumentFileName?: string | null
 }
 
 const statusConfig = {
@@ -51,6 +69,65 @@ export default function KurumlarPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [createdCredentials, setCreatedCredentials] = useState<TenantCredentials | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [blocklist, setBlocklist] = useState<BlocklistEntry[]>([])
+  const [blockKind, setBlockKind] = useState<"domain" | "ip">("domain")
+  const [blockValue, setBlockValue] = useState("")
+  const [blockReason, setBlockReason] = useState("")
+  const [blockSaving, setBlockSaving] = useState(false)
+  const [blockError, setBlockError] = useState<string | null>(null)
+
+  const loadBlocklist = async () => {
+    try {
+      setBlocklist(await apiRequest<BlocklistEntry[]>("/api/platformops/registration-blocklist"))
+    } catch {
+      // Kara liste alınamazsa ana ekran çalışmaya devam etsin.
+    }
+  }
+
+  useEffect(() => {
+    void loadBlocklist()
+  }, [])
+
+  const handleAddBlock = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!blockValue.trim()) return
+    setBlockSaving(true)
+    setBlockError(null)
+    try {
+      await apiRequest("/api/platformops/registration-blocklist", {
+        method: "POST",
+        body: { kind: blockKind, value: blockValue.trim(), reason: blockReason.trim() || null },
+      })
+      setBlockValue("")
+      setBlockReason("")
+      await loadBlocklist()
+    } catch (err: unknown) {
+      setBlockError(err instanceof Error ? err.message : "Kara listeye eklenemedi.")
+    } finally {
+      setBlockSaving(false)
+    }
+  }
+
+  const handleRemoveBlock = async (entry: BlocklistEntry) => {
+    try {
+      await apiRequest(`/api/platformops/registration-blocklist/${entry.id}`, { method: "DELETE" })
+      setBlocklist((prev) => prev.filter((x) => x.id !== entry.id))
+    } catch (err: unknown) {
+      setBlockError(err instanceof Error ? err.message : "Kara liste kaydı kaldırılamadı.")
+    }
+  }
+
+  const handleToggleSuspicious = async (tenant: TenantData) => {
+    try {
+      const updated = await apiRequest<TenantData>(
+        `/api/platformops/tenants/${tenant.id}/suspicious`,
+        { method: "PUT", query: { value: !tenant.isSuspicious } },
+      )
+      setTenants((prev) => prev.map((t) => (t.id === tenant.id ? { ...t, ...updated } : t)))
+    } catch (err: unknown) {
+      setLoadError(err instanceof Error ? err.message : "Şüpheli işareti güncellenemedi.")
+    }
+  }
 
   useEffect(() => {
     const loadTenants = async () => {
@@ -82,12 +159,48 @@ export default function KurumlarPage() {
           tenantName: approved.name || tenant.name,
           adminUsername: approved.adminUsername,
           temporaryPassword: approved.temporaryPassword,
+          setupDocumentBase64: approved.setupDocumentBase64,
+          setupDocumentFileName: approved.setupDocumentFileName,
         })
+        // Belge hemen iner: pencere kapandığında parolanın kaybolduğu eski durum
+        // yöneticiyi çaresiz bırakıyordu.
+        downloadBase64File(approved.setupDocumentBase64, approved.setupDocumentFileName)
       } else {
         setLoadError("Kurum onaylandı ancak giriş bilgileri API yanıtında dönmedi.")
       }
     } catch {
       setLoadError("Onay işlemi başarısız.")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleSetupDocument = async (tenant: TenantData) => {
+    setActionLoading(`document:${tenant.id}`)
+    setLoadError(null)
+    try {
+      const updated = await apiRequest<TenantData>(
+        `/api/platformops/tenants/${tenant.id}/setup-document`,
+        { method: "POST" },
+      )
+      downloadBase64File(updated.setupDocumentBase64, updated.setupDocumentFileName)
+      if (updated.adminUsername && updated.temporaryPassword) {
+        setCopySuccess(false)
+        setCreatedCredentials({
+          tenantName: updated.name || tenant.name,
+          adminUsername: updated.adminUsername,
+          temporaryPassword: updated.temporaryPassword,
+          setupDocumentBase64: updated.setupDocumentBase64,
+          setupDocumentFileName: updated.setupDocumentFileName,
+        })
+      }
+    } catch (err: unknown) {
+      // Kurum kendi parolasını belirlemişse yenileme kasıtlı olarak reddedilir.
+      setLoadError(
+        err instanceof ApiRequestError && err.code === "ALREADY_ACTIVATED"
+          ? err.message
+          : "Kurulum belgesi üretilemedi.",
+      )
     } finally {
       setActionLoading(null)
     }
@@ -179,9 +292,29 @@ export default function KurumlarPage() {
       key: "status",
       label: "Durum",
       sortable: true,
-      render: (value) => {
+      render: (value, row) => {
         const cfg = statusConfig[value as TenantData["status"]]
-        return <span className={cn("px-2 py-1 rounded-full text-xs font-medium", cfg.color)}>{cfg.label}</span>
+        return (
+          <div className="flex items-center gap-1">
+            <span className={cn("px-2 py-1 rounded-full text-xs font-medium", cfg.color)}>{cfg.label}</span>
+            {row.verificationState === "unproven" && (
+              <span
+                className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground inline-flex items-center gap-1"
+                title="İletişim adresi doğrulanmadı (doğrulama e-postası gönderilemedi)."
+              >
+                <MailWarning className="w-3 h-3" />Adres doğrulanmadı
+              </span>
+            )}
+            {row.isSuspicious && (
+              <span
+                className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 inline-flex items-center gap-1"
+                title={row.suspiciousReason || "Şüpheli işaretli"}
+              >
+                <ShieldAlert className="w-3 h-3" />Şüpheli
+              </span>
+            )}
+          </div>
+        )
       },
     },
     { key: "users", label: "Kullanıcı", sortable: true },
@@ -218,6 +351,18 @@ export default function KurumlarPage() {
       onClick: (row) => void handleReject(row),
       variant: "destructive",
       hidden: (row) => row.status !== "pending",
+    },
+    {
+      label: "Şüpheli işareti",
+      icon: <Flag className="w-4 h-4" />,
+      onClick: (row) => void handleToggleSuspicious(row),
+      hidden: (row) => row.status !== "pending",
+    },
+    {
+      label: "Kurulum belgesi",
+      icon: <FileDown className="w-4 h-4" />,
+      onClick: (row) => void handleSetupDocument(row),
+      hidden: (row) => row.status !== "active",
     },
   ]
 
@@ -283,6 +428,72 @@ export default function KurumlarPage() {
             pageSize={10}
             emptyMessage="Kurum bulunamadı"
           />
+        </CardContent>
+      </Card>
+
+      {/* Kayıt kara listesi */}
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5" />Kayıt Kara Listesi
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Buradaki alan adı ve IP'lerden gelen kurum kaydı başvuruları sessizce yutulur —
+              başvurana engellendiği söylenmez, aksi hâlde listeyi deneyerek öğrenirdi.
+            </p>
+          </div>
+
+          <form onSubmit={handleAddBlock} className="flex flex-wrap items-center gap-2">
+            <select
+              value={blockKind}
+              onChange={(e) => setBlockKind(e.target.value as "domain" | "ip")}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="domain">Alan adı</option>
+              <option value="ip">IP</option>
+            </select>
+            <Input
+              value={blockValue}
+              onChange={(e) => setBlockValue(e.target.value)}
+              placeholder={blockKind === "domain" ? "ornek.com" : "203.0.113.7"}
+              className="w-56"
+            />
+            <Input
+              value={blockReason}
+              onChange={(e) => setBlockReason(e.target.value)}
+              placeholder="Gerekçe (opsiyonel)"
+              className="w-64"
+            />
+            <Button type="submit" disabled={blockSaving || !blockValue.trim()}>Engelle</Button>
+          </form>
+
+          {blockError && <p className="text-sm text-destructive">{blockError}</p>}
+
+          {blocklist.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Kara listede kayıt yok.</p>
+          ) : (
+            <div className="space-y-2">
+              {blocklist.map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-2">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate text-sm">
+                      <span className="mr-2 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
+                        {entry.kind === "ip" ? "IP" : "Alan adı"}
+                      </span>
+                      {entry.value}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {entry.reason || "Gerekçe belirtilmedi"} · {entry.createdByName}
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => void handleRemoveBlock(entry)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -426,9 +637,26 @@ export default function KurumlarPage() {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Bu şifre sadece onay anında gösterilir. Kuruma iletin; ilk girişte yeni şifre belirlemesi istenecek.
+                Kurulum belgesi (PDF) indirildi. Kuruma teslim edin, teslimden sonra imha edin;
+                ilk girişte kendi şifresini belirleyecek. Belge kaybolursa listeden
+                &quot;Kurulum belgesi&quot; ile yenileyebilirsiniz — eski şifre o anda geçersiz olur.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                {createdCredentials.setupDocumentBase64 && (
+                  <Button
+                    variant="outline"
+                    className="flex-1 gap-2"
+                    onClick={() =>
+                      downloadBase64File(
+                        createdCredentials.setupDocumentBase64,
+                        createdCredentials.setupDocumentFileName,
+                      )
+                    }
+                  >
+                    <FileDown className="w-4 h-4" />
+                    Belgeyi İndir
+                  </Button>
+                )}
                 <Button className="flex-1 gap-2" onClick={() => void copyCredentials()}>
                   <Copy className="w-4 h-4" />
                   {copySuccess ? "Kopyalandı" : "Bilgileri Kopyala"}

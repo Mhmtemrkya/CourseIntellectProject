@@ -54,9 +54,23 @@ public sealed class DrivingPermissionService(CourseIntellectDbContext dbContext,
         var defaults = DrivingPermissionCatalog.DefaultsFor(roleKey);
 
         var customRole = await ResolveCustomRoleAsync(user, cancellationToken);
-        if (customRole is null || customRole.Permissions.Count == 0)
+        if (customRole is null)
         {
+            // Özel rol yok: taban rolün varsayılanları geçerli.
             return defaults;
+        }
+
+        if (customRole.Permissions.Count == 0)
+        {
+            // Boş izin listesinin anlamı ModulesRestricted'a bağlıdır (bkz. CustomRole):
+            //   • false (eski kayıtlar) → "kısıt tanımlanmamış", taban rol geçerli.
+            //   • true  (yetki matrisinden kurulan rol) → liste BAĞLAYICI, hiçbir
+            //     izin verilmemiş demektir.
+            // Eskiden ikisi de taban rol varsayılanına düşüyordu; kurum yöneticisi
+            // matristen hiçbir kutu işaretlemeden rol tanımladığında kullanıcı
+            // tahsilat, mezuniyet, randevu ve MEBBİS gibi geniş sekreter yetkilerini
+            // alıyordu. Bağlayıcı rolde artık fail-closed davranırız.
+            return customRole.ModulesRestricted ? Empty : defaults;
         }
 
         // Özel rol daraltır ve şekillendirir, ama taban rolün tavanını aşamaz.
@@ -123,7 +137,9 @@ public sealed class DrivingPermissionService(CourseIntellectDbContext dbContext,
             .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(x => x.Id == customRoleId)
-            .Select(x => new { x.BaseRole, x.PermissionsSerialized })
+            // ModulesRestricted boş izin listesinin ANLAMINI belirler; okunmazsa
+            // "hiçbir yetki verme" isteği sessizce "taban rolün tamamı"na dönüşür.
+            .Select(x => new { x.BaseRole, x.PermissionsSerialized, x.ModulesRestricted })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (role is null) return null;
@@ -132,7 +148,7 @@ public sealed class DrivingPermissionService(CourseIntellectDbContext dbContext,
             ? []
             : JsonSerializer.Deserialize<List<string>>(role.PermissionsSerialized) ?? [];
 
-        var resolved = new CustomRolePermissions(role.BaseRole.ToString(), permissions);
+        var resolved = new CustomRolePermissions(role.BaseRole.ToString(), permissions, role.ModulesRestricted);
         cache.Set(cacheKey, resolved, CacheTtl);
         return resolved;
     }
@@ -143,5 +159,5 @@ public sealed class DrivingPermissionService(CourseIntellectDbContext dbContext,
         return Guid.TryParse(raw, out var parsed) ? parsed : null;
     }
 
-    private sealed record CustomRolePermissions(string BaseRole, List<string> Permissions);
+    private sealed record CustomRolePermissions(string BaseRole, List<string> Permissions, bool ModulesRestricted);
 }

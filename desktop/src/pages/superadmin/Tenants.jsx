@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Building2, Users, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Search, Building2, Users, CheckCircle, XCircle, Clock, ShieldAlert, Trash2, Flag, MailWarning, FileDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -15,7 +15,12 @@ import {
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { fetchPlatformTenants, approveTenant, rejectTenant, fetchTenantFeatures, saveTenantFeatures } from '../../lib/api/modules';
+import {
+  fetchPlatformTenants, approveTenant, rejectTenant, fetchTenantFeatures, saveTenantFeatures,
+  fetchRegistrationBlocklist, addRegistrationBlocklistEntry, removeRegistrationBlocklistEntry,
+  setApplicationSuspicious, regenerateSetupDocument,
+} from '../../lib/api/modules';
+import { downloadBase64File } from '../../lib/downloadBase64';
 import { Switch } from '../../components/ui/switch';
 import { formatMoney } from '../../lib/format';
 
@@ -78,6 +83,11 @@ export default function Tenants() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(null); // id of tenant being actioned
+  const [blocklist, setBlocklist] = useState([]);
+  const [blockKind, setBlockKind] = useState('domain');
+  const [blockValue, setBlockValue] = useState('');
+  const [blockReason, setBlockReason] = useState('');
+  const [blockSaving, setBlockSaving] = useState(false);
 
   const loadTenants = useCallback(async () => {
     try {
@@ -91,9 +101,75 @@ export default function Tenants() {
     }
   }, []);
 
+  const loadBlocklist = useCallback(async () => {
+    try {
+      setBlocklist(await fetchRegistrationBlocklist());
+    } catch {
+      // Kara liste alınamazsa ana ekran çalışmaya devam etsin.
+    }
+  }, []);
+
   useEffect(() => {
     loadTenants();
-  }, [loadTenants]);
+    loadBlocklist();
+  }, [loadTenants, loadBlocklist]);
+
+  const handleAddBlock = async (event) => {
+    event.preventDefault();
+    if (!blockValue.trim()) return;
+    setBlockSaving(true);
+    try {
+      await addRegistrationBlocklistEntry({ kind: blockKind, value: blockValue.trim(), reason: blockReason.trim() || null });
+      setBlockValue('');
+      setBlockReason('');
+      await loadBlocklist();
+      toast({ title: 'Kara listeye eklendi', description: 'Bu kaynaktan gelen başvurular sessizce yutulacak.' });
+    } catch (err) {
+      toast({ title: 'Eklenemedi', description: err.message || 'Lütfen tekrar deneyin.', variant: 'destructive' });
+    } finally {
+      setBlockSaving(false);
+    }
+  };
+
+  const handleRemoveBlock = async (entry) => {
+    try {
+      await removeRegistrationBlocklistEntry(entry.id);
+      setBlocklist((prev) => prev.filter((x) => x.id !== entry.id));
+    } catch (err) {
+      toast({ title: 'Kaldırılamadı', description: err.message || 'Lütfen tekrar deneyin.', variant: 'destructive' });
+    }
+  };
+
+  const handleSetupDocument = async (tenant) => {
+    setActionLoading(tenant.id);
+    try {
+      const updated = await regenerateSetupDocument(tenant.id);
+      downloadBase64File(updated?.setupDocumentBase64, updated?.setupDocumentFileName);
+      toast({
+        title: 'Yeni kurulum belgesi indirildi',
+        description: 'Eski geçici parola geçersiz oldu. Belgeyi kuruma teslim edin, sonra imha edin.',
+      });
+    } catch (err) {
+      // Kurum kendi parolasını belirlemişse yenileme reddedilir; bu bir hata değil,
+      // kasıtlı koruma — kullanıcıya doğru yolu söyle.
+      toast({
+        title: err.body?.code === 'ALREADY_ACTIVATED' ? 'Belge yenilenmedi' : 'Belge üretilemedi',
+        description: err.message || 'Lütfen tekrar deneyin.',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleToggleSuspicious = async (tenant) => {
+    try {
+      const updated = await setApplicationSuspicious(tenant.id, !tenant.isSuspicious);
+      setTenants((prev) => prev.map((t) => (t.id === tenant.id ? { ...t, ...updated } : t)));
+    } catch (err) {
+      toast({ title: 'İşaret güncellenemedi', description: err.message || 'Lütfen tekrar deneyin.', variant: 'destructive' });
+    }
+  };
 
   const pendingTenants = useMemo(() => tenants.filter((t) => t.status === 'pending'), [tenants]);
 
@@ -116,10 +192,19 @@ export default function Tenants() {
     try {
       const updated = await approveTenant(tenant.id);
       setTenants((prev) => prev.map((t) => (t.id === tenant.id ? { ...t, ...updated, status: 'active' } : t)));
+
+      // Kurulum belgesi otomatik iner: toast kapanınca parolanın kaybolduğu eski
+      // durum, belge kaybolduğunda çaresiz bırakıyordu.
+      const downloaded = downloadBase64File(updated?.setupDocumentBase64, updated?.setupDocumentFileName);
       const credentialsNote = updated?.temporaryPassword
         ? ` Admin: ${updated.adminUsername} / Gecici sifre: ${updated.temporaryPassword}`
         : '';
-      toast({ title: 'Kurum Onaylandi', description: `${tenant.name} aktif olarak isaretlendi.${credentialsNote}` });
+      toast({
+        title: 'Kurum Onaylandi',
+        description: downloaded
+          ? `${tenant.name} aktif. Kurulum belgesi indirildi — kuruma teslim edin, sonra imha edin.`
+          : `${tenant.name} aktif olarak isaretlendi.${credentialsNote}`,
+      });
     } catch (err) {
       toast({ title: 'Onay başarısız', description: err.message || 'Lütfen tekrar deneyin.', variant: 'destructive' });
     } finally {
@@ -260,7 +345,27 @@ export default function Tenants() {
                   <TableCell><div className="flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground" /><span>{tenant.users}</span></div></TableCell>
                   <TableCell>{tenant.branches}</TableCell>
                   <TableCell><span className="font-medium">{formatMoney(Number(tenant.monthlyFee || 0))}</span></TableCell>
-                  <TableCell>{statusBadge(tenant.status)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      {statusBadge(tenant.status)}
+                      {tenant.verificationState === 'unproven' && (
+                        <Badge
+                          className="bg-slate-100 text-slate-700 gap-1"
+                          title="İletişim adresi doğrulanmadı (doğrulama e-postası gönderilemedi)."
+                        >
+                          <MailWarning className="h-3 w-3" />Adres doğrulanmadı
+                        </Badge>
+                      )}
+                      {tenant.isSuspicious && (
+                        <Badge
+                          className="bg-orange-100 text-orange-700 gap-1"
+                          title={tenant.suspiciousReason || 'Şüpheli işaretli'}
+                        >
+                          <ShieldAlert className="h-3 w-3" />Şüpheli
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {tenant.status === 'pending' ? (
                       <div className="flex gap-1">
@@ -281,11 +386,30 @@ export default function Tenants() {
                         >
                           <XCircle className="h-4 w-4" />
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="px-2"
+                          title={tenant.isSuspicious ? 'Şüpheli işaretini kaldır' : 'Şüpheli olarak işaretle'}
+                          onClick={() => handleToggleSuspicious(tenant)}
+                        >
+                          <Flag className={`h-4 w-4 ${tenant.isSuspicious ? 'text-orange-600' : ''}`} />
+                        </Button>
                       </div>
                     ) : (
                       <div className="flex gap-1">
                         <Button variant="outline" size="sm" onClick={() => setSelectedTenant(tenant)}>Detay</Button>
                         <Button variant="outline" size="sm" onClick={() => openFeatures(tenant)}>Özellikler</Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="px-2"
+                          title="Kurulum belgesini yeniden üret (eski geçici parola geçersiz olur)"
+                          disabled={actionLoading === tenant.id}
+                          onClick={() => handleSetupDocument(tenant)}
+                        >
+                          <FileDown className="h-4 w-4" />
+                        </Button>
                       </div>
                     )}
                   </TableCell>
@@ -293,6 +417,65 @@ export default function Tenants() {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5" />Kayıt Kara Listesi
+          </CardTitle>
+          <CardDescription>
+            Buradaki alan adı ve IP'lerden gelen kurum kaydı başvuruları sessizce yutulur —
+            başvurana engellendiği söylenmez, aksi hâlde listeyi deneyerek öğrenirdi.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleAddBlock} className="flex flex-wrap items-end gap-2">
+            <Select value={blockKind} onValueChange={setBlockKind}>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="domain">Alan adı</SelectItem>
+                <SelectItem value="ip">IP</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              value={blockValue}
+              onChange={(e) => setBlockValue(e.target.value)}
+              placeholder={blockKind === 'domain' ? 'ornek.com' : '203.0.113.7'}
+              className="w-56"
+            />
+            <Input
+              value={blockReason}
+              onChange={(e) => setBlockReason(e.target.value)}
+              placeholder="Gerekçe (opsiyonel)"
+              className="w-64"
+            />
+            <Button type="submit" disabled={blockSaving || !blockValue.trim()}>Engelle</Button>
+          </form>
+
+          {blocklist.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Kara listede kayıt yok.</p>
+          ) : (
+            <div className="space-y-2">
+              {blocklist.map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">
+                      <Badge variant="outline" className="mr-2">{entry.kind === 'ip' ? 'IP' : 'Alan adı'}</Badge>
+                      {entry.value}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {entry.reason || 'Gerekçe belirtilmedi'} · {entry.createdByName}
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => handleRemoveBlock(entry)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

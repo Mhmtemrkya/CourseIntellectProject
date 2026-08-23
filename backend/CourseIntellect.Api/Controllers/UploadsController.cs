@@ -1,4 +1,8 @@
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using CourseIntellect.Application.Interfaces;
+using CourseIntellect.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -29,6 +33,11 @@ public sealed class UploadsController(IFileStorageService fileStorageService) : 
             {
                 message = $"Dosya boyutu {MaxUploadSizeLabel} sınırını aşıyor.",
             });
+        }
+
+        if (!UploadPathSafety.TrySanitizeFolder(folder, out _))
+        {
+            return BadRequest(new { message = "Geçersiz yükleme klasörü." });
         }
 
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
@@ -74,6 +83,11 @@ public sealed class UploadsController(IFileStorageService fileStorageService) : 
             {
                 message = $"Dosya boyutu {MaxUploadSizeLabel} sınırını aşıyor.",
             });
+        }
+
+        if (!UploadPathSafety.TrySanitizeFolder(folder, out _))
+        {
+            return BadRequest(new { message = "Geçersiz yükleme klasörü." });
         }
 
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
@@ -149,9 +163,18 @@ public sealed class UploadsController(IFileStorageService fileStorageService) : 
             return BadRequest(new { message = "Dosya parçası toplam dosya boyutunu aşıyor." });
         }
 
+        if (!UploadPathSafety.TrySanitizeFolder(request.Folder, out _))
+        {
+            return BadRequest(new { message = "Geçersiz yükleme klasörü." });
+        }
+
+        // Parça dosyasının adı YALNIZ uploadId'den türetilmez: kiracı ve kullanıcı da
+        // karışıma girer. Böylece başka bir kullanıcı, tahmin ettiği/gördüğü bir
+        // uploadId ile aynı parça dosyasına yazamaz ya da onu finalize edemez —
+        // farklı aktör farklı dosyaya düşer.
         var chunksRoot = Path.Combine(Path.GetTempPath(), "courseintellect-upload-chunks");
         Directory.CreateDirectory(chunksRoot);
-        var tempPath = Path.Combine(chunksRoot, $"{uploadId:N}.part");
+        var tempPath = Path.Combine(chunksRoot, $"{BuildChunkKey(uploadId)}.part");
 
         await using (var tempStream = new FileStream(tempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None))
         {
@@ -200,6 +223,23 @@ public sealed class UploadsController(IFileStorageService fileStorageService) : 
                 System.IO.File.Delete(tempPath);
             }
         }
+    }
+
+    /// <summary>
+    /// Parça dosyası adı = SHA-256(uploadId | kiracı | kullanıcı). Aktör kimliği
+    /// tokendan gelir, gövdeden değil; iki farklı kullanıcı aynı uploadId'yi
+    /// kullansa bile ayrı dosyalara yazarlar.
+    /// </summary>
+    private string BuildChunkKey(Guid uploadId)
+    {
+        var tenantId = User.FindFirstValue("tenant_id") ?? string.Empty;
+        var userId = User.FindFirstValue("user_id")
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub")
+            ?? string.Empty;
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{uploadId:N}|{tenantId}|{userId}"));
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 }
 

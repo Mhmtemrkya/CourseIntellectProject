@@ -1,12 +1,15 @@
 using System.Security.Claims;
 using System.Collections.Concurrent;
+using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 
 namespace CourseIntellect.Api.Hubs;
 
 [Authorize]
-public sealed class MessagesHub : Hub
+public sealed class MessagesHub(CourseIntellectDbContext dbContext) : Hub
 {
     private static readonly ConcurrentDictionary<string, int> PresenceCounts = new(StringComparer.OrdinalIgnoreCase);
 
@@ -56,15 +59,58 @@ public sealed class MessagesHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    public Task JoinThread(string threadId)
+    /// <summary>
+    /// Thread grubuna KATILIMCIYSA katılır. Eskiden herhangi bir kimlik doğrulanmış
+    /// kullanıcı, bildiği bir thread GUID'i ile gruba girip sonraki mesajları ve ek
+    /// dosya URL'lerini dinleyebiliyordu.
+    /// </summary>
+    public async Task JoinThread(string threadId)
     {
-        return Groups.AddToGroupAsync(Context.ConnectionId, BuildThreadGroup(threadId));
+        if (!await IsThreadParticipantAsync(threadId))
+        {
+            // Sessizce yok sayılır: yabancı bir thread'in var olup olmadığı bilgisi
+            // de sızmamalı. İstemci zaten yalnız kendi thread'lerine katılır.
+            return;
+        }
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, BuildThreadGroup(threadId));
     }
 
     public Task LeaveThread(string threadId)
     {
+        // Ayrılmak için yetki aranmaz — gruptan çıkmak zararsızdır.
         return Groups.RemoveFromGroupAsync(Context.ConnectionId, BuildThreadGroup(threadId));
     }
+
+    /// <summary>
+    /// Çağıran, verilen thread'in katılımcılarından biri mi? Kimlik yalnızca
+    /// tokendan okunur. Tenant, SignalR akışında global query filter'a güvenilemediği
+    /// için AÇIKÇA süzülür (hub'da HttpContext güvenilir değildir).
+    /// </summary>
+    private async Task<bool> IsThreadParticipantAsync(string threadId)
+    {
+        if (!Guid.TryParse(threadId?.Trim(), out var parsedThreadId)) return false;
+
+        var tenantId = ResolveTenantId();
+        if (tenantId is null) return false;
+
+        var thread = await dbContext.MessageThreads
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(x => x.Id == parsedThreadId && x.TenantId == tenantId)
+            .Select(x => new { x.ParticipantOneName, x.ParticipantTwoName })
+            .FirstOrDefaultAsync();
+        if (thread is null) return false;
+
+        // Kullanıcının ad/e-posta/kullanıcı adı adaylarından herhangi biri
+        // katılımcı adıyla eşleşmeli. Karşılaştırma servisle AYNI normalizasyonu
+        // kullanır (MessageParticipantKey) — aksi hâlde kapı yanlış yerde açılır.
+        return BuildActorKeys(Context.User).Any(actorKey =>
+            MessageParticipantKey.IsParticipant(actorKey, thread.ParticipantOneName, thread.ParticipantTwoName));
+    }
+
+    private Guid? ResolveTenantId()
+        => Guid.TryParse(Context.User?.FindFirstValue("tenant_id"), out var tenantId) ? tenantId : null;
 
     public async Task SubscribePresence(string actorKey)
     {
@@ -92,26 +138,39 @@ public sealed class MessagesHub : Hub
         return Groups.RemoveFromGroupAsync(Context.ConnectionId, BuildPresenceGroup(actorKey));
     }
 
-    public Task TypingStart(string threadId, string actorName)
+    // actorName parametresi geriye uyumluluk için imzada DURUR ama KULLANILMAZ:
+    // aktör kimliği tokendan türetilir. Eskiden istemci istediği adı yazabildiği
+    // için kullanıcı başkası adına "yazıyor..." yayınlayabiliyordu. Ayrıca artık
+    // yalnız thread'in katılımcısı typing yayınlayabilir.
+    public Task TypingStart(string threadId, string? actorName = null) => PublishTypingAsync(threadId, isTyping: true);
+
+    public Task TypingStop(string threadId, string? actorName = null) => PublishTypingAsync(threadId, isTyping: false);
+
+    private async Task PublishTypingAsync(string threadId, bool isTyping)
     {
-        return Clients.Group(BuildThreadGroup(threadId)).SendAsync("typingChanged", new
+        if (!await IsThreadParticipantAsync(threadId)) return;
+
+        var displayName = ResolveActorDisplayName();
+        if (string.IsNullOrWhiteSpace(displayName)) return;
+
+        await Clients.Group(BuildThreadGroup(threadId)).SendAsync("typingChanged", new
         {
             threadId = NormalizeKey(threadId),
-            actorKey = NormalizeKey(actorName),
-            actorName = actorName.Trim(),
-            isTyping = true,
+            actorKey = NormalizeKey(displayName),
+            actorName = displayName,
+            isTyping,
         });
     }
 
-    public Task TypingStop(string threadId, string actorName)
+    /// <summary>Görünen ad yalnız tokendan okunur; istemciden gelen ada güvenilmez.</summary>
+    private string ResolveActorDisplayName()
     {
-        return Clients.Group(BuildThreadGroup(threadId)).SendAsync("typingChanged", new
-        {
-            threadId = NormalizeKey(threadId),
-            actorKey = NormalizeKey(actorName),
-            actorName = actorName.Trim(),
-            isTyping = false,
-        });
+        var user = Context.User;
+        return (user?.FindFirstValue("name")
+            ?? user?.FindFirstValue(ClaimTypes.Name)
+            ?? user?.FindFirstValue("preferred_username")
+            ?? user?.FindFirstValue("username")
+            ?? string.Empty).Trim();
     }
 
     public static string BuildThreadGroup(Guid threadId) => BuildThreadGroup(threadId.ToString());

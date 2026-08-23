@@ -198,8 +198,8 @@ body {
   overflow-x: clip;
 }
 
-/* Shared public-page hero. Product imagery keeps every route visibly connected
-   to the SchoolAsist application without duplicating markup in each page. */
+/* Shared public-page hero. Cinematic campus imagery keeps every route visually
+   tied to the homepage stage without duplicating markup in each page. */
 main > div.pt-20 > section:first-child {
   position: relative;
   isolation: isolate;
@@ -208,7 +208,7 @@ main > div.pt-20 > section:first-child {
   background-color: #061a27 !important;
   background-image:
     linear-gradient(90deg, rgba(6, 26, 39, 0.97) 0%, rgba(6, 26, 39, 0.9) 45%, rgba(6, 26, 39, 0.58) 100%),
-    url("/images/product/vaka-merkezi.png") !important;
+    url("/images/hero/page-header.jpg") !important;
   background-position: center, center 18%;
   background-size: cover;
 }

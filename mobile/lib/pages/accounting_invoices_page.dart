@@ -437,7 +437,7 @@ class _InvoiceListPageState extends State<_InvoiceListPage> {
                     );
                   }
                 },
-              ),
+              ), 
               TextField(
                 controller: noteController,
                 decoration: const InputDecoration(

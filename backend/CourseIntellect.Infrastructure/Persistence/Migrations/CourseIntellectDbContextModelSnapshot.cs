@@ -635,6 +635,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(11)
                         .HasColumnType("character varying(11)");
 
+                    b.Property<DateTime?>("TemporaryPasswordExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("temporary_password_expires_at_utc");
+
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
@@ -7206,6 +7210,52 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.ToTable("refresh_token_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.RegistrationBlocklistEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("CreatedByName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("created_by_name");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Kind", "Value")
+                        .IsUnique();
+
+                    b.ToTable("registration_blocklist_entries", (string)null);
+                });
+
             modelBuilder.Entity("CourseIntellect.Domain.Entities.ReportRecipient", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9103,6 +9153,150 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.ToTable("tenant_groups", (string)null);
                 });
 
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.TenantRegistrationApplication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ApprovedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at_utc");
+
+                    b.Property<string>("ContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("contact_email");
+
+                    b.Property<string>("ContactEmailNormalized")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("contact_email_normalized");
+
+                    b.Property<string>("ContactName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("contact_name");
+
+                    b.Property<string>("ContactPhone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("contact_phone");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedTenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_tenant_id");
+
+                    b.Property<int>("EstimatedStudents")
+                        .HasColumnType("integer")
+                        .HasColumnName("estimated_students");
+
+                    b.Property<string>("InstitutionName")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("institution_name");
+
+                    b.Property<string>("InstitutionType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("institution_type");
+
+                    b.Property<bool>("IsSuspicious")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_suspicious");
+
+                    b.Property<DateTime?>("KvkkConsentAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("kvkk_consent_at_utc");
+
+                    b.Property<string>("KvkkConsentVersion")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("kvkk_consent_version");
+
+                    b.Property<string>("Plan")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("plan");
+
+                    b.Property<string>("RegistrationIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("registration_ip");
+
+                    b.Property<string>("RegistrationReferer")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("registration_referer");
+
+                    b.Property<string>("RegistrationUserAgent")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("registration_user_agent");
+
+                    b.Property<DateTime?>("RejectedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rejected_at_utc");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("SuspiciousReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("suspicious_reason");
+
+                    b.Property<DateTime?>("VerificationExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verification_expires_at_utc");
+
+                    b.Property<DateTime?>("VerificationSentAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verification_sent_at_utc");
+
+                    b.Property<string>("VerificationTokenHash")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("verification_token_hash");
+
+                    b.Property<DateTime?>("VerifiedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContactEmailNormalized")
+                        .IsUnique()
+                        .HasFilter("status = 'pending'");
+
+                    b.HasIndex("VerificationTokenHash");
+
+                    b.HasIndex("Status", "CreatedAtUtc");
+
+                    b.ToTable("tenant_registration_applications", (string)null);
+                });
+
             modelBuilder.Entity("CourseIntellect.Domain.Entities.TenantWorkspace", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9163,6 +9357,15 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("institution_type");
 
+                    b.Property<DateTime?>("KvkkConsentAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("kvkk_consent_at_utc");
+
+                    b.Property<string>("KvkkConsentVersion")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("kvkk_consent_version");
+
                     b.Property<decimal>("MonthlyFee")
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("monthly_fee");
@@ -9182,6 +9385,25 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)")
                         .HasColumnName("plan");
+
+                    b.Property<int?>("RegistrationEstimatedStudents")
+                        .HasColumnType("integer")
+                        .HasColumnName("registration_estimated_students");
+
+                    b.Property<string>("RegistrationIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("registration_ip");
+
+                    b.Property<string>("RegistrationReferer")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("registration_referer");
+
+                    b.Property<string>("RegistrationUserAgent")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("registration_user_agent");
 
                     b.Property<DateTime?>("RejectedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -9222,6 +9444,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Slug")
                         .IsUnique();
+
+                    b.HasIndex("Status", "CreatedAtUtc");
 
                     b.ToTable("tenant_workspaces", (string)null);
                 });

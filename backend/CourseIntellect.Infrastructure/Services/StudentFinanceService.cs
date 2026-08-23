@@ -673,6 +673,31 @@ public sealed class StudentFinanceService(
         return $"CR-{number:D6}";
     }
 
+    /// <summary>
+    /// Seçilen taksit, ödemeyi yapan öğrenciye mi ait? En güçlü kanıttan zayıfa
+    /// doğru TEK bir ölçüt uygulanır — sözleşme &gt; öğrenci kimliği &gt; ad. Zayıf
+    /// ölçüte yalnız güçlüsü hiç verilmediğinde inilir; hiçbir ölçüt yoksa
+    /// eşleşme sayılmaz (fail-closed).
+    /// </summary>
+    private static bool BelongsToPayer(FinanceInstallment installment, RecordPaymentRequest request, string payerNameLower)
+    {
+        if (request.EnrollmentContractId is Guid requestedContractId)
+        {
+            return installment.EnrollmentContractId == requestedContractId;
+        }
+
+        if (request.StudentUserId is Guid payerUserId)
+        {
+            return installment.StudentUserId == payerUserId;
+        }
+
+        // Sözleşmesiz/kimliksiz açık tahsilat: yalnız ad eşleşmesi kalır. Taksitte
+        // bir öğrenci kimliği varsa ada güvenmek yetmez — o kayıt kimliğe bağlıdır.
+        return installment.StudentUserId is null
+            && !string.IsNullOrWhiteSpace(payerNameLower)
+            && installment.StudentName.Trim().ToLowerInvariant() == payerNameLower;
+    }
+
     public async Task<FinancePaymentDto> RecordPaymentAsync(
         RecordPaymentRequest request,
         Guid? createdByUserId,
@@ -708,11 +733,19 @@ public sealed class StudentFinanceService(
         {
             var installment = await dbContext.FinanceInstallments
                 .FirstOrDefaultAsync(item => item.Id == installmentId, cancellationToken);
-            if (installment != null)
+
+            // SAHİPLİK DOĞRULAMASI: taksit gerçekten ödemeyi yapan öğrenciye mi ait?
+            // Eskiden yalnız Id ile bulunuyordu; bir öğrencinin tahsilat ekranından
+            // gönderilen yabancı bir FinanceInstallmentId, o parayı BAŞKA öğrencinin
+            // taksidine mahsup ediyordu. Eşleşmezse sessizce FIFO'ya düşmek yerine
+            // hata veririz — para sessizce yanlış hesaba gitmemeli (fail-closed).
+            if (installment is null || !BelongsToPayer(installment, request, nameLower))
             {
-                targetInstallments.Add(installment);
-                contractId ??= installment.EnrollmentContractId;
+                throw new InvalidOperationException("Seçilen taksit bu öğrenciye ait değil.");
             }
+
+            targetInstallments.Add(installment);
+            contractId ??= installment.EnrollmentContractId;
         }
         else
         {
@@ -1501,11 +1534,56 @@ public sealed class StudentFinanceService(
         return new ReminderResultDto(notified, upcomingCount, overdueCount);
     }
 
-    private async Task<string> NextReceiptNoAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Sıradaki makbuz numarası (MKB-yyyyAA-NNNNN).
+    ///
+    /// Eskiden <c>COUNT(*) + 1</c> ile üretiliyordu; bu üç şeyi birden bozuyordu:
+    /// sayaç TÜM kiracılar üzerinden ortaktı (başka kurum tahsilat alınca numara
+    /// zıplıyordu), silinen bir kayıt numarayı geri sarıp mükerrer üretiyordu ve
+    /// paralel iki tahsilat aynı numarayı alabiliyordu.
+    ///
+    /// Artık numara kiracının o AYKİ en büyük numarasından türetilir (sıfır dolgulu
+    /// sonek sayesinde sözlük sırası = sayısal sıra) ve alınmışsa bir sonrakine
+    /// geçilir. Bu, pratikteki çakışmaları kapatır; TAM garanti için veritabanı
+    /// tarafında ReceiptNo üzerinde tekil kısıt gerekir (mevcut veride mükerrer
+    /// olabileceğinden ayrı bir temizlik + migration adımı ister).
+    /// </summary>
+    public async Task<string> NextReceiptNumberAsync(CancellationToken cancellationToken = default)
     {
-        var count = await dbContext.FinancePayments.CountAsync(cancellationToken);
-        return $"MKB-{DateTime.UtcNow:yyyyMM}-{count + 1:D5}";
+        var prefix = $"MKB-{DateTime.UtcNow:yyyyMM}-";
+
+        // Global query filter kiracıyı zaten süzer; numara kurum içinde sıralıdır.
+        var lastReceiptNo = await dbContext.FinancePayments
+            .Where(item => item.ReceiptNo != null && item.ReceiptNo.StartsWith(prefix))
+            .OrderByDescending(item => item.ReceiptNo)
+            .Select(item => item.ReceiptNo)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var lastSequence = 0;
+        if (!string.IsNullOrEmpty(lastReceiptNo) && lastReceiptNo.Length > prefix.Length)
+        {
+            _ = int.TryParse(lastReceiptNo[prefix.Length..], NumberStyles.Integer, CultureInfo.InvariantCulture, out lastSequence);
+        }
+
+        for (var attempt = 1; attempt <= 10; attempt++)
+        {
+            var candidate = $"{prefix}{lastSequence + attempt:D5}";
+            var taken = await dbContext.FinancePayments
+                .AnyAsync(item => item.ReceiptNo == candidate, cancellationToken);
+            if (!taken) return candidate;
+        }
+
+        // Sıra kapalıysa numarasız makbuz kesmek yerine çakışmayan bir sonek kullan.
+        // DİKKAT: bu numara bilerek FARKLI bir önek taşır ("...AA" + 'X'). Aynı öneki
+        // kullansaydı, harf içeren sonek sözlük sırasında rakamların ÜSTÜNE çıkar,
+        // yukarıdaki OrderByDescending onu "son numara" sanır, int.TryParse başarısız
+        // olur ve o ayın sayacı kalıcı olarak 1'e düşerdi. Ayrı önek bu kaydı max
+        // sorgusunun dışında tutar.
+        return $"MKB-{DateTime.UtcNow:yyyyMM}X-{Guid.NewGuid():N}"[..24];
     }
+
+    private Task<string> NextReceiptNoAsync(CancellationToken cancellationToken)
+        => NextReceiptNumberAsync(cancellationToken);
 
     /// <summary>
     /// Dağılım tablosundan önce oluşturulmuş tahsilatları, bugün taksitlerde görünen
@@ -1695,7 +1773,10 @@ public sealed class StudentFinanceService(
     {
         var text = reason?.Trim() ?? string.Empty;
         if (scholarshipPercent <= 0) return text;
-        var label = $"%{scholarshipPercent:0.##} burs";
+        // Kültüre bağlı biçimlendirme kalıcı metne sızmasın: sunucu kültürü ne olursa
+        // olsun "%12,5 burs" yazılır (tr-TR). Aksi hâlde aynı sözleşme sunucuya göre
+        // "%12.5" ya da "%12,5" olarak kaydediliyordu.
+        var label = $"%{scholarshipPercent.ToString("0.##", CultureInfo.GetCultureInfo("tr-TR"))} burs";
         return string.IsNullOrEmpty(text) ? label : $"{label} + {text}";
     }
 

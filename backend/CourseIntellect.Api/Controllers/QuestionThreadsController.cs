@@ -44,7 +44,11 @@ public sealed class QuestionThreadsController(IQuestionThreadService questionThr
     {
         var senderName = User.FindFirstValue("name") ?? string.Empty;
         var senderRole = User.FindFirstValue("role") ?? "Student";
-        var item = await questionThreadService.AddReplyAsync(id, senderName, senderRole, request, cancellationToken);
+        // Kullanıcı adı, listelemedeki öğrenci eşleşmesiyle AYNI claim'lerden okunur.
+        var senderUsername = User.FindFirstValue("unique_name")
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? string.Empty;
+        var item = await questionThreadService.AddReplyAsync(id, senderName, senderRole, senderUsername, request, cancellationToken);
         return item is null ? NotFound() : Ok(item);
     }
 }

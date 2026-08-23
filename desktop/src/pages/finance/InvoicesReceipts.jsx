@@ -53,6 +53,16 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
+/**
+ * Öğrenci seçicilerinde kullanılan TEKİL anahtar. Ad tekil değildir: aynı isimli
+ * iki öğrenci varsa ada göre eşleştirme yanlış kişiyi bulur ve makbuz/tahsilat
+ * başkasına yazılabilir. Kullanıcı kimliği varsa o, yoksa kullanıcı adı kullanılır;
+ * ad yalnız son çare.
+ */
+function studentKeyOf(student) {
+  return String(student?.userId || student?.username || student?.fullName || '');
+}
+
 function statusFromInvoice(invoice) {
   const status = normalizeFinanceText(invoice.status);
   if (status === 'paid' || status.includes('odendi') || status.includes('onay')) return 'paid';
@@ -268,8 +278,10 @@ function ReceiptCreateDialog({
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  // Öğrenci ADIYLA değil, TEKİL KİMLİKLE seçilir. Aynı isimli iki öğrenci varsa
+  // ada göre arama yanlış kişiyi buluyor ve makbuz başkasına kesilebiliyordu.
   const [form, setForm] = useState({
-    studentName: '',
+    studentKey: '',
     amount: '',
     method: 'Nakit',
     note: '',
@@ -277,11 +289,14 @@ function ReceiptCreateDialog({
 
   useEffect(() => {
     if (!open) {
-      setForm({ studentName: '', amount: '', method: 'Nakit', note: '' });
+      setForm({ studentKey: '', amount: '', method: 'Nakit', note: '' });
     }
   }, [open]);
 
-  const selectedStudent = useMemo(() => students.find((student) => student.fullName === form.studentName), [students, form.studentName]);
+  const selectedStudent = useMemo(
+    () => students.find((student) => studentKeyOf(student) === form.studentKey),
+    [students, form.studentKey],
+  );
 
   const handleSave = async () => {
     if (!selectedStudent || !form.amount) {
@@ -296,6 +311,8 @@ function ReceiptCreateDialog({
         amount: form.amount,
         method: form.method,
         note: form.note || 'Makbuz ekranindan olusturuldu',
+        // Tahsilat ada göre değil kimliğe göre eşleşsin; ad tek başına tekil değil.
+        studentUserId: selectedStudent.userId || null,
       });
       onCreated(created);
       onOpenChange(false);
@@ -314,11 +331,11 @@ function ReceiptCreateDialog({
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Öğrenci</Label>
-            <Select value={form.studentName} onValueChange={(value) => setForm((prev) => ({ ...prev, studentName: value }))}>
+            <Select value={form.studentKey} onValueChange={(value) => setForm((prev) => ({ ...prev, studentKey: value }))}>
               <SelectTrigger><SelectValue placeholder="Öğrenci seçin" /></SelectTrigger>
               <SelectContent>
                 {students.map((student) => (
-                  <SelectItem key={student.username || student.fullName} value={student.fullName}>
+                  <SelectItem key={studentKeyOf(student)} value={studentKeyOf(student)}>
                     {student.fullName} ({student.className})
                   </SelectItem>
                 ))}

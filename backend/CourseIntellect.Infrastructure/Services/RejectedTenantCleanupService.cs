@@ -47,21 +47,48 @@ public sealed class RejectedTenantCleanupService(
         var dbContext = scope.ServiceProvider.GetRequiredService<CourseIntellectDbContext>();
 
         var threshold = DateTime.UtcNow - RejectionRetention;
-        var expired = await dbContext.Set<TenantWorkspace>()
+
+        // Reddedilen BAŞVURULAR (asıl kaynak, P1 sonrası).
+        var expiredApplications = await dbContext.TenantRegistrationApplications
             .Where(x => x.Status == "rejected"
                 && x.RejectedAtUtc != null
                 && x.RejectedAtUtc < threshold)
             .ToListAsync(cancellationToken);
 
-        if (expired.Count == 0)
+        // P1 öncesinden kalan, kurum tablosuna yazılmış reddedilmiş satırlar.
+        var expiredTenants = await dbContext.Set<TenantWorkspace>()
+            .Where(x => x.Status == "rejected"
+                && x.RejectedAtUtc != null
+                && x.RejectedAtUtc < threshold)
+            .ToListAsync(cancellationToken);
+
+        // Doğrulama e-postası gidip yanıtlanmamış başvurular: kuyrukta hiç görünmedikleri
+        // için birikirler. Bağlantının ömrü 48 saat; 7 gün sonra kalıcı çöp sayılırlar.
+        var staleUnverifiedThreshold = DateTime.UtcNow - TimeSpan.FromDays(7);
+        var staleUnverified = await dbContext.TenantRegistrationApplications
+            .Where(x => x.Status == "pending"
+                && x.VerifiedAtUtc == null
+                && x.VerificationSentAtUtc != null
+                && x.CreatedAtUtc < staleUnverifiedThreshold)
+            .ToListAsync(cancellationToken);
+
+        if (staleUnverified.Count > 0)
+        {
+            dbContext.TenantRegistrationApplications.RemoveRange(staleUnverified);
+        }
+
+        if (expiredApplications.Count == 0 && expiredTenants.Count == 0 && staleUnverified.Count == 0)
         {
             return;
         }
 
-        dbContext.Set<TenantWorkspace>().RemoveRange(expired);
+        dbContext.TenantRegistrationApplications.RemoveRange(expiredApplications);
+        dbContext.Set<TenantWorkspace>().RemoveRange(expiredTenants);
         await dbContext.SaveChangesAsync(cancellationToken);
         logger.LogInformation(
-            "Reddedilen {Count} kurum 30 gunden eski oldugu icin silindi.",
-            expired.Count);
+            "Reddedilen {ApplicationCount} basvuru, {TenantCount} kurum ve dogrulanmamis {StaleCount} basvuru silindi.",
+            expiredApplications.Count,
+            expiredTenants.Count,
+            staleUnverified.Count);
     }
 }

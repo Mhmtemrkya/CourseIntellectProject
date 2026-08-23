@@ -28,6 +28,13 @@ public sealed class AppUser : IBranchScopedEntity
     public string PhotoUrl { get; set; } = string.Empty;
     public bool IsEmailVerified { get; set; }
     public bool MustChangePassword { get; set; }
+
+    /// <summary>
+    /// Geçici parolanın son kullanma anı. <see cref="MustChangePassword"/> true iken
+    /// dolu olur; bu tarihten sonra doğru parola bile girişi geçirmez. Kullanıcı kendi
+    /// parolasını belirlediğinde temizlenir. Null = süresiz (eski kayıtlar).
+    /// </summary>
+    public DateTime? TemporaryPasswordExpiresAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAtUtc { get; set; }
     public string ExtraRolesSerialized { get; set; } = string.Empty;

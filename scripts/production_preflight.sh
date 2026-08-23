@@ -21,6 +21,15 @@ else
   if touch "$probe" 2>/dev/null; then rm -f "$probe"; ok "Persistent uploads path is writable."; else fail "Persistent uploads path is not writable."; fi
 fi
 
+# Kurum kaydı bot koruması. Anahtar yoksa servis üretimde fail-closed davranır ve
+# TÜM kurum kayıtları reddedilir; bunu deploy'dan sonra log'dan öğrenmek yerine
+# burada durduruyoruz.
+if [[ -n "${COURSE_INTELLECT_CAPTCHA_SECRET:-}" ]]; then
+  ok "Captcha secret is configured (public signup form is protected)."
+else
+  fail "COURSE_INTELLECT_CAPTCHA_SECRET is missing. Kurum kaydi ucu uretimde TUM basvurulari reddeder."
+fi
+
 if [[ "${COURSE_INTELLECT_PUBLIC_API_URL:-}" == https://* ]]; then
   status_url="${COURSE_INTELLECT_PUBLIC_API_URL%/}/api/system/status"
   if curl --fail --silent --show-error --max-time 15 "$status_url" >/dev/null; then ok "Production API health endpoint is reachable."; else fail "Production API health endpoint is unreachable: $status_url"; fi

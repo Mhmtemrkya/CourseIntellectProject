@@ -126,6 +126,8 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<NotificationItem> Notifications => Set<NotificationItem>();
     public DbSet<PlatformConfiguration> PlatformConfigurations => Set<PlatformConfiguration>();
     public DbSet<TenantWorkspace> TenantWorkspaces => Set<TenantWorkspace>();
+    public DbSet<TenantRegistrationApplication> TenantRegistrationApplications => Set<TenantRegistrationApplication>();
+    public DbSet<RegistrationBlocklistEntry> RegistrationBlocklistEntries => Set<RegistrationBlocklistEntry>();
     public DbSet<TenantGroup> TenantGroups => Set<TenantGroup>();
     public DbSet<UserScopeGrant> UserScopeGrants => Set<UserScopeGrant>();
     public DbSet<CustomRole> CustomRoles => Set<CustomRole>();
@@ -260,6 +262,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ExtraRolesSerialized).HasColumnName("extra_roles").HasMaxLength(400);
             entity.Property(x => x.RoleHistorySerialized).HasColumnName("role_history").HasMaxLength(4000);
             entity.Property(x => x.MustChangePassword).HasColumnName("must_change_password").HasDefaultValue(false);
+            entity.Property(x => x.TemporaryPasswordExpiresAtUtc).HasColumnName("temporary_password_expires_at_utc");
             entity.Property(x => x.CustomRoleId).HasColumnName("custom_role_id");
             entity.HasIndex(x => x.CustomRoleId);
             entity.HasOne<CustomRole>()
@@ -965,8 +968,16 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ApiUsage).HasColumnName("api_usage");
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
             entity.Property(x => x.GroupId).HasColumnName("group_id");
+            entity.Property(x => x.RegistrationIp).HasColumnName("registration_ip").HasMaxLength(64);
+            entity.Property(x => x.RegistrationUserAgent).HasColumnName("registration_user_agent").HasMaxLength(300);
+            entity.Property(x => x.RegistrationReferer).HasColumnName("registration_referer").HasMaxLength(300);
+            entity.Property(x => x.RegistrationEstimatedStudents).HasColumnName("registration_estimated_students");
+            entity.Property(x => x.KvkkConsentVersion).HasColumnName("kvkk_consent_version").HasMaxLength(40);
+            entity.Property(x => x.KvkkConsentAtUtc).HasColumnName("kvkk_consent_at_utc");
             entity.HasIndex(x => x.Slug).IsUnique();
             entity.HasIndex(x => x.AdminUserId);
+            // Bekleyen başvuruda e-posta tekilleştirmesi ve günlük tavan sayımı bu ikiliyi tarar.
+            entity.HasIndex(x => new { x.Status, x.CreatedAtUtc });
             entity.HasIndex(x => x.GroupId);
             entity.HasOne<AppUser>()
                 .WithMany()
@@ -976,6 +987,61 @@ public sealed class CourseIntellectDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.GroupId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<TenantRegistrationApplication>(entity =>
+        {
+            entity.ToTable("tenant_registration_applications");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.InstitutionName).HasColumnName("institution_name").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.ContactName).HasColumnName("contact_name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.ContactEmail).HasColumnName("contact_email").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.ContactEmailNormalized).HasColumnName("contact_email_normalized").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.ContactPhone).HasColumnName("contact_phone").HasMaxLength(40);
+            entity.Property(x => x.Plan).HasColumnName("plan").HasMaxLength(60).IsRequired();
+            entity.Property(x => x.InstitutionType).HasColumnName("institution_type").HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(x => x.EstimatedStudents).HasColumnName("estimated_students");
+            entity.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
+            entity.Property(x => x.RegistrationIp).HasColumnName("registration_ip").HasMaxLength(64);
+            entity.Property(x => x.RegistrationUserAgent).HasColumnName("registration_user_agent").HasMaxLength(300);
+            entity.Property(x => x.RegistrationReferer).HasColumnName("registration_referer").HasMaxLength(300);
+            entity.Property(x => x.KvkkConsentVersion).HasColumnName("kvkk_consent_version").HasMaxLength(40);
+            entity.Property(x => x.KvkkConsentAtUtc).HasColumnName("kvkk_consent_at_utc");
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.Property(x => x.ApprovedAtUtc).HasColumnName("approved_at_utc");
+            entity.Property(x => x.RejectedAtUtc).HasColumnName("rejected_at_utc");
+            entity.Property(x => x.RejectionReason).HasColumnName("rejection_reason").HasMaxLength(500);
+            entity.Property(x => x.IsSuspicious).HasColumnName("is_suspicious").HasDefaultValue(false);
+            entity.Property(x => x.VerificationTokenHash).HasColumnName("verification_token_hash").HasMaxLength(100);
+            entity.Property(x => x.VerificationExpiresAtUtc).HasColumnName("verification_expires_at_utc");
+            entity.Property(x => x.VerificationSentAtUtc).HasColumnName("verification_sent_at_utc");
+            entity.Property(x => x.VerifiedAtUtc).HasColumnName("verified_at_utc");
+            entity.Ignore(x => x.VerificationState);
+            entity.HasIndex(x => x.VerificationTokenHash);
+            entity.Property(x => x.SuspiciousReason).HasColumnName("suspicious_reason").HasMaxLength(300);
+            entity.Property(x => x.CreatedTenantId).HasColumnName("created_tenant_id");
+            entity.HasIndex(x => new { x.Status, x.CreatedAtUtc });
+            // Aynı e-postadan yalnız BİR bekleyen başvuru. Servisteki cooldown kontrolü
+            // yarış durumunda atlanabilir; asıl kısıt burada. Filtreli indeks hem
+            // Postgres'te hem testlerdeki SQLite'ta geçerlidir.
+            entity.HasIndex(x => x.ContactEmailNormalized)
+                .IsUnique()
+                .HasFilter("status = 'pending'");
+        });
+
+        modelBuilder.Entity<RegistrationBlocklistEntry>(entity =>
+        {
+            entity.ToTable("registration_blocklist_entries");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.Kind).HasColumnName("kind").HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Value).HasColumnName("value").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.Reason).HasColumnName("reason").HasMaxLength(300);
+            entity.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id");
+            entity.Property(x => x.CreatedByName).HasColumnName("created_by_name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.HasIndex(x => new { x.Kind, x.Value }).IsUnique();
         });
 
         modelBuilder.Entity<TenantGroup>(entity =>

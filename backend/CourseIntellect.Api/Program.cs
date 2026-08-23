@@ -134,6 +134,20 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
+    // Halka açık kurum kaydı formu. DİKKAT: ters vekil X-Forwarded-For'u ÜZERİNE
+    // YAZMADIĞI sürece bu bölümleme taklit edilebilir (ForwardedHeaders'ta
+    // KnownProxies/KnownNetworks temizli). Bu yüzden asıl kapı captcha ve
+    // e-posta cooldown'ıdır; buradaki sınır ucuz gürültüyü keser.
+    var publicFormPermit = builder.Configuration.GetValue<int?>("Registration:RateLimit:PermitPerHour") ?? 5;
+    options.AddPolicy("public-form", httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = publicFormPermit,
+                Window = TimeSpan.FromHours(1),
+                QueueLimit = 0,
+            }));
     options.AddPolicy("certificate-verification", httpContext =>
         System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -348,8 +362,15 @@ if (app.Environment.IsProduction())
         throw new InvalidOperationException("Production ortamında CertificateVerification:PublicBaseUrl geçerli bir HTTPS adresi olmalıdır.");
 }
 
-var autoMigrateDatabase = !isEfDesignTime && (builder.Configuration.GetValue<bool?>("Database:AutoMigrate") ?? true);
-var seedDatabase = !isEfDesignTime && (builder.Configuration.GetValue<bool?>("Database:Seed") ?? true);
+// Production'da migration ve seed AÇIKÇA istenmedikçe çalışmaz. Eskiden varsayılan
+// "açık"tı: ayar unutulduğunda canlı veritabanında şema değişikliği ve demo/backfill
+// seed'i (tahmin edilebilir varsayılan hesaplar dâhil) kendiliğinden devreye
+// girebiliyordu. Geliştirme/test ortamlarında varsayılan yine açıktır.
+var isProductionHost = app.Environment.IsProduction();
+var autoMigrateDatabase = !isEfDesignTime
+    && (builder.Configuration.GetValue<bool?>("Database:AutoMigrate") ?? !isProductionHost);
+var seedDatabase = !isEfDesignTime
+    && (builder.Configuration.GetValue<bool?>("Database:Seed") ?? !isProductionHost);
 
 if (autoMigrateDatabase || seedDatabase)
 {
@@ -361,17 +382,41 @@ if (autoMigrateDatabase || seedDatabase)
 
     if (autoMigrateDatabase)
     {
+        // 42P07 (duplicate_table) "zaten var" demektir; bir migration'ın yarısı
+        // uygulanmışken bu hata TÜM migration'ı başarı saymamalı. Eskiden öyleydi:
+        // sonraki kolon/indeksler eksik kalsa bile servis açılıp seed ve job'ları
+        // çalıştırıyor, hata çok sonra ve alakasız bir yerde patlıyordu.
+        // Hata yutulduktan sonra bekleyen migration KALMADIĞI doğrulanır.
+        var duplicateObjectDetected = false;
         try
         {
             await dbContext.Database.MigrateAsync();
         }
         catch (PostgresException ex) when (ex.SqlState == "42P07")
         {
-            logger.LogWarning(ex, "Migration skipped because target schema objects already exist. Continuing with existing database.");
+            duplicateObjectDetected = true;
+            logger.LogWarning(ex, "Migration hit an existing schema object (42P07). Verifying that no migrations remain pending.");
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException postgres && postgres.SqlState == "42P07")
         {
-            logger.LogWarning(ex, "Migration skipped because target schema objects already exist. Continuing with existing database.");
+            duplicateObjectDetected = true;
+            logger.LogWarning(ex, "Migration hit an existing schema object (42P07). Verifying that no migrations remain pending.");
+        }
+
+        if (duplicateObjectDetected)
+        {
+            var pendingMigrations = (await dbContext.Database.GetPendingMigrationsAsync()).ToArray();
+            if (pendingMigrations.Length > 0)
+            {
+                // Sessizce devam etmek şemayı yarım bırakır. Açılışta durmak,
+                // yarım şemayla çalışan bir servisten çok daha az zararlıdır.
+                throw new InvalidOperationException(
+                    "Migration 42P07 ile durdu ve uygulanmamış migration'lar kaldı: "
+                    + string.Join(", ", pendingMigrations)
+                    + ". Şema elle uzlaştırılmalı (bkz. __EFMigrationsHistory).");
+            }
+
+            logger.LogWarning("Schema objects already existed, but no migrations are pending. Continuing with existing database.");
         }
     }
     else
@@ -549,6 +594,21 @@ app.UseStaticFiles(new StaticFileOptions
         context.Context.Response.Headers.TryAdd("Cache-Control", "public, max-age=604800");
         context.Context.Response.Headers.TryAdd("Access-Control-Allow-Headers", "Range, Authorization, Content-Type");
         context.Context.Response.Headers.TryAdd("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+
+        // Yüklenen dosyalar API ile AYNI origin altından sunuluyor. Uzantı beyaz
+        // listesi (UploadPathSafety) aktif içeriğin diske yazılmasını zaten
+        // engelliyor; buradaki başlıklar ikinci savunma hattı:
+        //  • nosniff → tarayıcı içeriğe bakıp HTML'e "terfi" ettiremez,
+        //  • sandbox CSP → dosyaya doğrudan gidilse bile script/form çalışmaz,
+        //  • gömülü gösterimi güvenli olmayan her tür indirilir (belge olarak açılmaz).
+        context.Context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Context.Response.Headers["Content-Security-Policy"] = "default-src 'none'; sandbox";
+
+        var extension = Path.GetExtension(context.File.Name);
+        if (!UploadPathSafety.IsInlineSafeExtension(extension))
+        {
+            context.Context.Response.Headers["Content-Disposition"] = "attachment";
+        }
 
         var origin = request.Headers["Origin"].ToString();
         if (!string.IsNullOrWhiteSpace(origin) && allowedCorsOriginSet.Contains(origin))
