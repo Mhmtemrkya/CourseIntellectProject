@@ -14,11 +14,12 @@ import {
   Phone,
   Twitter,
   Youtube,
+  type LucideIcon,
 } from "lucide-react"
 import { useSectionContent } from "@/context/content-context"
 import { useLanguage } from "@/context/language-context"
 
-const iconMap: Record<string, React.ElementType> = {
+const iconMap: Record<string, LucideIcon> = {
   Twitter,
   Linkedin,
   Instagram,

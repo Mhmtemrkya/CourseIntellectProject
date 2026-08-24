@@ -65,7 +65,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
             // yenisi "pending" kalır, eskiler "rejected" olur ve temizlik görevi 30 gün
             // sonra siler.
             //
-            // NOT: Down() tabloyu düşürür; taşınan satırlar geri gelmez.
+            // Kaynak tenant satırları kasıtlı olarak korunur. Yeni uygulama kuyruğu artık
+            // tenant_registration_applications tablosunu okur; kaynak satırları deploy
+            // sırasında silmek ise geri dönüşü olmayan veri kaybı ve rollback riski
+            // yaratır. Kaynakların denetimli temizliği ancak ayrı, yedeklenmiş ve satır
+            // sayıları doğrulanmış bir bakım işlemiyle yapılmalıdır.
             migrationBuilder.Sql("""
                 INSERT INTO tenant_registration_applications (
                     id, institution_name, contact_name, contact_email, contact_email_normalized,
@@ -104,13 +108,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 ) src;
                 """);
 
-            migrationBuilder.Sql("""
-                DELETE FROM tenant_workspaces tw
-                WHERE tw.status IN ('pending', 'rejected')
-                  AND tw."AdminUserId" IS NULL
-                  AND NOT EXISTS (SELECT 1 FROM users u WHERE u.tenant_id = tw.id)
-                  AND NOT EXISTS (SELECT 1 FROM platform_subscription_invoices i WHERE i.tenant_id = tw.id);
-                """);
         }
 
         /// <inheritdoc />

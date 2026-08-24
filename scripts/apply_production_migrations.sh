@@ -13,12 +13,14 @@ dotnet ef database update \
   --project backend/CourseIntellect.Infrastructure \
   --startup-project backend/CourseIntellect.Infrastructure \
   --context CourseIntellectDbContext \
+  --configuration Release \
   --no-build
 
 dotnet ef migrations list \
   --project backend/CourseIntellect.Infrastructure \
   --startup-project backend/CourseIntellect.Infrastructure \
   --context CourseIntellectDbContext \
+  --configuration Release \
   --no-build
 
 echo "Production migrations applied and listed successfully."

@@ -1,6 +1,7 @@
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,6 +10,7 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class RejectedTenantCleanupService(
     IServiceScopeFactory scopeFactory,
+    IConfiguration configuration,
     ILogger<RejectedTenantCleanupService> logger) : BackgroundService
 {
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(6);
@@ -16,6 +18,12 @@ public sealed class RejectedTenantCleanupService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (!IsEnabled(configuration))
+        {
+            logger.LogInformation("Tenant cleanup is disabled by configuration.");
+            return;
+        }
+
         // İlk çalışmadan önce kısa gecikme — uygulama başlatılırken DB migration'a engel olmasın.
         try { await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); } catch (TaskCanceledException) { return; }
 
@@ -40,6 +48,9 @@ public sealed class RejectedTenantCleanupService(
             }
         }
     }
+
+    public static bool IsEnabled(IConfiguration configuration)
+        => configuration.GetValue("TenantCleanup:Enabled", false);
 
     private async Task RunCleanupAsync(CancellationToken cancellationToken)
     {

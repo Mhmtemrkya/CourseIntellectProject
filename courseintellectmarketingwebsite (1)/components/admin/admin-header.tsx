@@ -73,7 +73,7 @@ export function AdminHeader() {
       <div className="flex items-center gap-4">
         {/* Save Status */}
         {isDirty && (
-          <Button size="sm" onClick={saveContent} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button size="sm" onClick={() => void saveContent()} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             Kaydet
           </Button>
         )}
