@@ -592,6 +592,10 @@ public sealed class TenantSelfRegistrationTests : IDisposable
         Assert.Equal(2, email.Sent.Count);
         Assert.NotEqual(oldToken, newToken);
         Assert.Single(await db.Context.TenantRegistrationApplications.ToListAsync());
+        var rotated = await db.Context.TenantRegistrationApplications.AsNoTracking().SingleAsync();
+        var expectedHash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(newToken)));
+        Assert.Equal(expectedHash, rotated.VerificationTokenHash);
+        Assert.True(rotated.VerificationExpiresAtUtc > DateTime.UtcNow);
         Assert.False(await service.VerifyRegistrationContactAsync(oldToken));
         Assert.True(await service.VerifyRegistrationContactAsync(newToken));
     }

@@ -45,8 +45,33 @@ public sealed class InfrastructureSecurityBoundaryTests
         {
             ["Email:Smtp:Host"] = "smtp.example.test",
             ["Email:Smtp:User"] = "mailer",
+            ["Email:Smtp:Password"] = "not-a-production-secret",
             ["Email:Smtp:UseSsl"] = "false",
             ["Email:From"] = "no-reply@example.test"
+        }).Build();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            new SmtpEmailSender(configuration, new Host("Production"), NullLogger<SmtpEmailSender>.Instance));
+    }
+
+    [Theory]
+    [InlineData(null, null, null, null)]
+    [InlineData(null, "no-reply@example.test", null, null)]
+    [InlineData("smtp.example.test", null, null, null)]
+    [InlineData("smtp.example.test", "no-reply@example.test", "mailer", null)]
+    [InlineData("smtp.example.test", "no-reply@example.test", null, "orphan-password")]
+    public void Production_rejects_incomplete_smtp_configuration(
+        string? host,
+        string? from,
+        string? user,
+        string? password)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Email:Smtp:Host"] = host,
+            ["Email:From"] = from,
+            ["Email:Smtp:User"] = user,
+            ["Email:Smtp:Password"] = password,
         }).Build();
 
         Assert.Throws<InvalidOperationException>(() =>

@@ -51,10 +51,39 @@ public sealed class SmtpEmailSender : IEmailSender
         fromAddress = Normalize(configuration["Email:From"]);
         fromName = Normalize(configuration["Email:FromName"]) ?? "SchoolAsist";
 
-        if (environment.IsProduction() && user is not null && !useSsl)
+        if (environment.IsProduction())
         {
-            throw new InvalidOperationException(
-                "Production ortamında kimlik doğrulamalı SMTP bağlantısı TLS olmadan kullanılamaz.");
+            if (host is null || fromAddress is null)
+            {
+                throw new InvalidOperationException(
+                    "Production ortamında Email:Smtp:Host ve Email:From eksiksiz yapılandırılmalıdır.");
+            }
+
+            if ((user is null) != (password is null))
+            {
+                throw new InvalidOperationException(
+                    "Production ortamında SMTP kullanıcı adı ve parolası birlikte yapılandırılmalıdır.");
+            }
+
+            if (port is < 1 or > 65535)
+            {
+                throw new InvalidOperationException("SMTP portu 1-65535 aralığında olmalıdır.");
+            }
+
+            try
+            {
+                _ = new MailAddress(fromAddress);
+            }
+            catch (FormatException exception)
+            {
+                throw new InvalidOperationException("Email:From geçerli bir e-posta adresi olmalıdır.", exception);
+            }
+
+            if (user is not null && !useSsl)
+            {
+                throw new InvalidOperationException(
+                    "Production ortamında kimlik doğrulamalı SMTP bağlantısı TLS olmadan kullanılamaz.");
+            }
         }
     }
 
