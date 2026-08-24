@@ -125,6 +125,11 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     private static readonly TenantRegistrationContext Context =
         new("203.0.113.7", "Mozilla/5.0", "https://schoolasist.com/kurum-kaydi");
 
+    private static Dictionary<string, string?> ProductionRegistrationEnabled() => new()
+    {
+        ["Registration:Enabled"] = "true",
+    };
+
     [Fact]
     public async Task Kvkk_onayi_yoksa_kayit_yazilmaz()
     {
@@ -186,6 +191,34 @@ public sealed class TenantSelfRegistrationTests : IDisposable
         Assert.Equal(TenantRegistrationOutcome.CaptchaFailed, result.Outcome);
         Assert.Empty(await db.Context.TenantRegistrationApplications.ToListAsync());
         Assert.Empty(await db.Context.TenantWorkspaces.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Production_kurum_kaydi_acikca_etkin_degilse_fail_closed_kalir()
+    {
+        var service = CreateService(environmentName: "Production");
+
+        var result = await service.RegisterTenantAsync(ValidRequest(), Context);
+
+        Assert.Equal(TenantRegistrationOutcome.Disabled, result.Outcome);
+        Assert.Empty(await db.Context.TenantRegistrationApplications.ToListAsync());
+        Assert.Empty(await db.Context.TenantWorkspaces.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Production_kurum_kaydi_yalniz_explicit_true_ile_acilir()
+    {
+        var service = CreateService(
+            environmentName: "Production",
+            settings: new Dictionary<string, string?>
+            {
+                ["Registration:Enabled"] = "true",
+            });
+
+        var result = await service.RegisterTenantAsync(ValidRequest(), Context);
+
+        Assert.Equal(TenantRegistrationOutcome.Accepted, result.Outcome);
+        Assert.Single(await db.Context.TenantRegistrationApplications.ToListAsync());
     }
 
     [Fact]
@@ -498,7 +531,10 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     [Fact]
     public async Task Smtp_yokken_uretimde_basvuru_dogrulanmis_sayilmaz_ama_kuyrukta_kalir()
     {
-        var service = CreateService(email: new StubEmailSender(isConfigured: false), environmentName: "Production");
+        var service = CreateService(
+            email: new StubEmailSender(isConfigured: false),
+            environmentName: "Production",
+            settings: ProductionRegistrationEnabled());
 
         await service.RegisterTenantAsync(ValidRequest(), Context);
 
@@ -516,7 +552,7 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     public async Task Dogrulama_bekleyen_basvuru_kuyrukta_gorunmez_dogrulaninca_girer()
     {
         var email = new StubEmailSender(isConfigured: true);
-        var service = CreateService(email: email, environmentName: "Production");
+        var service = CreateService(email: email, environmentName: "Production", settings: ProductionRegistrationEnabled());
 
         await service.RegisterTenantAsync(ValidRequest(), Context);
 
@@ -539,7 +575,7 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     public async Task Ayni_baglantiya_ikinci_tiklama_hata_vermez()
     {
         var email = new StubEmailSender(isConfigured: true);
-        var service = CreateService(email: email, environmentName: "Production");
+        var service = CreateService(email: email, environmentName: "Production", settings: ProductionRegistrationEnabled());
         await service.RegisterTenantAsync(ValidRequest(), Context);
         var token = email.ExtractToken();
 
@@ -553,7 +589,10 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     [InlineData("uydurma-token")]
     public async Task Gecersiz_kodlar_ayni_sonucu_verir(string? token)
     {
-        var service = CreateService(email: new StubEmailSender(isConfigured: true), environmentName: "Production");
+        var service = CreateService(
+            email: new StubEmailSender(isConfigured: true),
+            environmentName: "Production",
+            settings: ProductionRegistrationEnabled());
         await service.RegisterTenantAsync(ValidRequest(), Context);
 
         Assert.False(await service.VerifyRegistrationContactAsync(token));
@@ -563,7 +602,7 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     public async Task Suresi_dolmus_kod_kabul_edilmez()
     {
         var email = new StubEmailSender(isConfigured: true);
-        var service = CreateService(email: email, environmentName: "Production");
+        var service = CreateService(email: email, environmentName: "Production", settings: ProductionRegistrationEnabled());
         await service.RegisterTenantAsync(ValidRequest(), Context);
         var token = email.ExtractToken();
 
@@ -578,7 +617,7 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     public async Task Expired_verification_can_be_resent_by_reapplying_without_duplicate_record()
     {
         var email = new StubEmailSender(isConfigured: true);
-        var service = CreateService(email: email, environmentName: "Production");
+        var service = CreateService(email: email, environmentName: "Production", settings: ProductionRegistrationEnabled());
         await service.RegisterTenantAsync(ValidRequest(), Context);
         var oldToken = email.ExtractToken();
         var application = await db.Context.TenantRegistrationApplications.SingleAsync();
@@ -604,7 +643,7 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     public async Task Eposta_gonderilemezse_basvuru_kanitlanmamis_olarak_kuyrukta_kalir()
     {
         var email = new StubEmailSender(isConfigured: true, sendSucceeds: false);
-        var service = CreateService(email: email, environmentName: "Production");
+        var service = CreateService(email: email, environmentName: "Production", settings: ProductionRegistrationEnabled());
 
         await service.RegisterTenantAsync(ValidRequest(), Context);
 

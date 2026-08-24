@@ -22,6 +22,7 @@ bash -n "$PREFLIGHT"
 bash -n "$DEPLOY"
 
 assert_contains "$PREFLIGHT" 'COURSE_INTELLECT_CAPTCHA_SECRET'
+assert_contains "$PREFLIGHT" 'Registration__Enabled'
 assert_contains "$PREFLIGHT" 'NEXT_PUBLIC_TURNSTILE_SITE_KEY'
 assert_contains "$PREFLIGHT" 'COURSE_INTELLECT_SMTP_USE_SSL'
 assert_contains "$PREFLIGHT" 'COURSE_INTELLECT_SMTP_PASSWORD'

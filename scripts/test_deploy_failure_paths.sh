@@ -25,7 +25,7 @@ make_fixture() {
   ln -s "$fixture/old/marketing" "$fixture/marketing-current"
   printf 'old security\n' > "$fixture/nginx/schoolasist-security.conf"
   printf 'old headers\n' > "$fixture/nginx/schoolasist-security-headers.conf"
-  printf 'TenantCleanup__Enabled=false\n' > "$fixture/etc/backend.env"
+  printf 'TenantCleanup__Enabled=false\nRegistration__Enabled=false\n' > "$fixture/etc/backend.env"
   printf 'COURSE_INTELLECT_CAPTCHA_SECRET="mock-secret-must-not-appear"\n' > "$fixture/etc/backend-secrets.env"
   chmod 0600 "$fixture/etc/backend.env" "$fixture/etc/backend-secrets.env"
 

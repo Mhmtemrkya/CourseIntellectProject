@@ -23,8 +23,9 @@ Production-layout defaults:
 Required deployment inputs not normally stored in the config files:
   TARGET_SHA, COURSE_INTELLECT_PUBLIC_API_URL, COURSE_INTELLECT_PUBLIC_SITE_URL
 Required production settings include COURSE_INTELLECT_DB,
-COURSE_INTELLECT_UPLOADS_ROOT, COURSE_INTELLECT_CAPTCHA_SECRET,
-NEXT_PUBLIC_TURNSTILE_SITE_KEY, and TenantCleanup__Enabled=false.
+COURSE_INTELLECT_UPLOADS_ROOT, Registration__Enabled, and
+TenantCleanup__Enabled=false. Captcha credentials are required only when
+public registration is explicitly enabled.
 USAGE
 }
 
@@ -91,12 +92,19 @@ done
 
 required=(
   TARGET_SHA COURSE_INTELLECT_PUBLIC_API_URL COURSE_INTELLECT_PUBLIC_SITE_URL
-  COURSE_INTELLECT_DB COURSE_INTELLECT_UPLOADS_ROOT COURSE_INTELLECT_CAPTCHA_SECRET
-  NEXT_PUBLIC_TURNSTILE_SITE_KEY
+  COURSE_INTELLECT_DB COURSE_INTELLECT_UPLOADS_ROOT Registration__Enabled
 )
 for name in "${required[@]}"; do
   [[ -n "${!name:-}" ]] || { printf '%s is required.\n' "$name" >&2; exit 2; }
 done
+if [[ "$Registration__Enabled" == "true" ]]; then
+  for name in COURSE_INTELLECT_CAPTCHA_SECRET NEXT_PUBLIC_TURNSTILE_SITE_KEY; do
+    [[ -n "${!name:-}" ]] || { printf '%s is required when Registration__Enabled=true.\n' "$name" >&2; exit 2; }
+  done
+elif [[ "$Registration__Enabled" != "false" ]]; then
+  echo "Registration__Enabled must be exactly true or false." >&2
+  exit 2
+fi
 [[ "${TenantCleanup__Enabled:-}" == "false" ]] \
   || { echo "TenantCleanup__Enabled=false is required." >&2; exit 2; }
 [[ "${COURSE_INTELLECT_PUBLIC_API_URL%/}" == "https://maydanozasist.schoolasist.com" \

@@ -82,6 +82,12 @@ public sealed class PlatformOperationsController(
 
         return result.Outcome switch
         {
+            TenantRegistrationOutcome.Disabled =>
+                StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    code = "REGISTRATION_DISABLED",
+                    message = "Kurum kaydı geçici olarak kullanılamıyor.",
+                }),
             TenantRegistrationOutcome.Invalid =>
                 BadRequest(new { code = "VALIDATION_FAILED", message = result.Message }),
             TenantRegistrationOutcome.CaptchaFailed =>

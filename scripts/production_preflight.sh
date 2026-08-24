@@ -23,12 +23,19 @@ else
   if touch "$probe" 2>/dev/null; then rm -f "$probe"; ok "Persistent uploads path is writable."; else fail "Persistent uploads path is not writable."; fi
 fi
 
-[[ -n "${COURSE_INTELLECT_CAPTCHA_SECRET:-}" ]] \
-  && ok "Backend captcha secret is configured." \
-  || fail "COURSE_INTELLECT_CAPTCHA_SECRET is required; signup fails closed without it."
-[[ -n "${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}" ]] \
-  && ok "Marketing Turnstile site key is configured for the static build." \
-  || fail "NEXT_PUBLIC_TURNSTILE_SITE_KEY is required for the production marketing build."
+registration_enabled="${Registration__Enabled:-false}"
+if [[ "$registration_enabled" == "true" ]]; then
+  [[ -n "${COURSE_INTELLECT_CAPTCHA_SECRET:-}" ]] \
+    && ok "Public registration is enabled and backend captcha secret is configured." \
+    || fail "Registration__Enabled=true requires COURSE_INTELLECT_CAPTCHA_SECRET."
+  [[ -n "${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}" ]] \
+    && ok "Marketing Turnstile site key is configured for the public registration form." \
+    || fail "Registration__Enabled=true requires NEXT_PUBLIC_TURNSTILE_SITE_KEY."
+elif [[ "$registration_enabled" == "false" ]]; then
+  ok "Public registration is disabled; captcha credentials are not required."
+else
+  fail "Registration__Enabled must be exactly true or false."
+fi
 
 # Rejected-tenant deletion is deliberately opt-in. Production rollout requires it
 # to remain explicitly false rather than relying only on the application default.

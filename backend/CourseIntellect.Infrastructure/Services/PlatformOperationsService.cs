@@ -328,6 +328,14 @@ public sealed class PlatformOperationsService(
         TenantRegistrationContext context,
         CancellationToken cancellationToken = default)
     {
+        var registrationEnabled = configuration.GetValue<bool?>("Registration:Enabled")
+            ?? !environment.IsProduction();
+        if (!registrationEnabled)
+        {
+            logger.LogInformation("Halka açık kurum kaydı yapılandırma gereği kapalı.");
+            return new RegisterTenantResult(TenantRegistrationOutcome.Disabled);
+        }
+
         var validation = ValidateRegistration(request);
         if (validation.Error is not null)
         {
