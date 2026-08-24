@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PREFLIGHT="$ROOT_DIR/scripts/production_preflight.sh"
 DEPLOY="$ROOT_DIR/scripts/deploy_production_fullstack.sh"
+DB_BACKUP="$ROOT_DIR/scripts/courseintellect-db-backup"
 UPLOADS_BACKUP="$ROOT_DIR/scripts/courseintellect-uploads-backup"
 NGINX="$ROOT_DIR/courseintellectmarketingwebsite (1)/deploy/nginx-security.conf"
 HEADERS="$ROOT_DIR/courseintellectmarketingwebsite (1)/deploy/nginx-security-headers.conf"
@@ -25,6 +26,8 @@ assert_not_contains() {
 bash -n "$PREFLIGHT"
 [[ -f "$DEPLOY" ]] || { echo "Missing full-stack production deploy helper" >&2; exit 1; }
 bash -n "$DEPLOY"
+[[ -x "$DB_BACKUP" ]] || { echo "Missing executable database backup helper" >&2; exit 1; }
+bash -n "$DB_BACKUP"
 [[ -x "$UPLOADS_BACKUP" ]] || { echo "Missing executable uploads backup helper" >&2; exit 1; }
 bash -n "$UPLOADS_BACKUP"
 
@@ -74,6 +77,11 @@ assert_contains "$DEPLOY" 'out/REGISTRATION_ENABLED'
 assert_contains "$DEPLOY" 'challenges.cloudflare.com/turnstile'
 assert_contains "$DEPLOY" 'BACKEND_RELEASE="$COURSE_INTELLECT_RELEASES_ROOT/backend/$RELEASE_ID"'
 assert_contains "$DEPLOY" 'MARKETING_RELEASE="$COURSE_INTELLECT_RELEASES_ROOT/marketing/$RELEASE_ID"'
+
+assert_contains "$DB_BACKUP" 'Database backup created: %s'
+assert_contains "$DB_BACKUP" 'pg_restore --list'
+assert_contains "$DB_BACKUP" 'chmod 0700 "$COURSE_INTELLECT_DB_BACKUP_ROOT"'
+assert_contains "$DB_BACKUP" 'chown root:root "$COURSE_INTELLECT_DB_BACKUP_ROOT"'
 
 assert_contains "$UPLOADS_BACKUP" 'rsync --archive --delete --numeric-ids'
 assert_contains "$UPLOADS_BACKUP" 'MANIFEST.sha256'
