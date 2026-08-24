@@ -60,6 +60,12 @@ if [[ "${1:-}" == "run" && "${2:-}" == "build" ]]; then
   printf '%s\n' "$NEXT_PUBLIC_API_URL" > out/kurum-kaydi/index.html
   printf '%s\n' "$NEXT_PUBLIC_TURNSTILE_SITE_KEY" > out/kurum-kaydi/dogrula/index.html
   [[ -z "${MOCK_MUTATE_ENV_FILE:-}" ]] || printf '# changed during build\n' >> "$MOCK_MUTATE_ENV_FILE"
+  if [[ -n "${MOCK_REPLACE_UPLOADS_BACKUP:-}" ]]; then
+    replacement="${MOCK_REPLACE_UPLOADS_BACKUP}.replacement"
+    printf '#!/usr/bin/env bash\ntouch "%s"\n' "$MOCK_TOCTOU_SENTINEL" > "$replacement"
+    chmod 0755 "$replacement"
+    mv -f "$replacement" "$MOCK_REPLACE_UPLOADS_BACKUP"
+  fi
 fi
 MOCK
 
@@ -127,7 +133,25 @@ printf 'backup\n' >> "$MOCK_LOG"
 printf 'safe sql dump\n' | gzip -c > "$MOCK_BACKUP_PATH"
 printf 'Database backup created: %s\n' "$MOCK_BACKUP_PATH"
 MOCK
-  chmod +x "$fixture/bin/"* "$fixture/backup"
+  cat > "$fixture/uploads-backup" <<'MOCK'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'uploads-backup\n' >> "$MOCK_LOG"
+[[ "${MOCK_UPLOADS_BACKUP_FAIL:-0}" != 1 ]] || exit 47
+snapshot="$MOCK_UPLOADS_SNAPSHOT"
+mkdir -p "$snapshot/data"
+printf 'upload-data' > "$snapshot/data/file.bin"
+(
+  cd "$snapshot/data"
+  sha256sum ./file.bin > ../MANIFEST.sha256
+)
+printf 'files=1\nbytes=11\n' > "$snapshot/MANIFEST.meta"
+[[ "${MOCK_UPLOADS_CORRUPT_MANIFEST:-0}" != 1 ]] || printf 'files=9\nbytes=999\n' > "$snapshot/MANIFEST.meta"
+chmod 0700 "$(dirname "$snapshot")" "$snapshot"
+printf 'Uploads backup created: %s\n' "$snapshot"
+[[ "${MOCK_UPLOADS_OUTPUT_INJECTION:-0}" != 1 ]] || printf '/tmp/attacker-controlled\n'
+MOCK
+  chmod +x "$fixture/bin/"* "$fixture/backup" "$fixture/uploads-backup"
   cp "$fixture/bin/dotnet" "$fixture/bin/dotnet-ef"
 }
 
@@ -138,6 +162,7 @@ run_deploy() {
     PATH="$fixture/bin:$PATH" \
     MOCK_LOG="$fixture/actions.log" \
     MOCK_BACKUP_PATH="$fixture/database backup.sql.gz" \
+    MOCK_UPLOADS_SNAPSHOT="$fixture/uploads-snapshots/snapshot" \
     MOCK_OLD_BACKEND="$fixture/old/backend" \
     MOCK_INSTALL_FAILED_MARKER="$fixture/install-failed" \
     TARGET_SHA="$FIXTURE_SHA" \
@@ -148,6 +173,8 @@ run_deploy() {
     COURSE_INTELLECT_ENV_FILE="$fixture/etc/backend.env" \
     COURSE_INTELLECT_SECRETS_ENV_FILE="$fixture/etc/backend-secrets.env" \
     COURSE_INTELLECT_BACKUP_EXECUTABLE="$fixture/backup" \
+    COURSE_INTELLECT_UPLOADS_BACKUP_EXECUTABLE="$fixture/uploads-backup" \
+    COURSE_INTELLECT_UPLOADS_BACKUP_ROOT="$fixture/uploads-snapshots" \
     COURSE_INTELLECT_EF_TOOL="$fixture/bin/dotnet-ef" \
     COURSE_INTELLECT_NGINX_SNIPPET_DIR="$fixture/nginx" \
     COURSE_INTELLECT_PUBLIC_API_URL=https://maydanozasist.schoolasist.com \
@@ -168,8 +195,10 @@ assert_old_state() {
   [[ "$(readlink -f "$fixture/marketing-current")" == "$fixture/old/marketing" ]] || fail "marketing pointer was not restored"
   [[ "$(<"$fixture/nginx/schoolasist-security.conf")" == "old security" ]] || fail "nginx security snippet was not restored"
   [[ "$(<"$fixture/nginx/schoolasist-security-headers.conf")" == "old headers" ]] || fail "nginx header snippet was not restored"
-  [[ -z "$(find "$fixture/releases/backend" "$fixture/releases/marketing" -mindepth 1 -maxdepth 1 -print -quit)" ]] \
-    || fail "failed immutable release directories were not removed"
+  if [[ -d "$fixture/releases/backend" && -d "$fixture/releases/marketing" ]]; then
+    [[ -z "$(find "$fixture/releases/backend" "$fixture/releases/marketing" -mindepth 1 -maxdepth 1 -print -quit)" ]] \
+      || fail "failed immutable release directories were not removed"
+  fi
 }
 
 work="$(mktemp -d)"
@@ -186,9 +215,48 @@ marketing_target="$(readlink -f "$success/marketing-current")"
 [[ "$(<"$backend_target/DEPLOYED_COMMIT")" == "$FIXTURE_SHA" ]] || fail "backend provenance marker mismatch"
 [[ "$(<"$marketing_target/DEPLOYED_COMMIT")" == "$FIXTURE_SHA" ]] || fail "marketing provenance marker mismatch"
 grep -Fq 'npm audit --omit=dev --audit-level=high' "$success/actions.log" || fail "production-only npm audit was not run"
-backup_line="$(grep -n '^backup$' "$success/actions.log" | cut -d: -f1)"
+db_backup_line="$(grep -n '^backup$' "$success/actions.log" | cut -d: -f1)"
+uploads_backup_line="$(grep -n '^uploads-backup$' "$success/actions.log" | cut -d: -f1)"
 migration_line="$(grep -n 'dotnet database update' "$success/actions.log" | cut -d: -f1)"
-(( backup_line < migration_line )) || fail "migration ran before verified backup"
+(( db_backup_line < uploads_backup_line && uploads_backup_line < migration_line )) \
+  || fail "database and uploads backups did not both complete before migration"
+
+uploads_failure="$work/uploads-backup-failure"
+make_fixture "$uploads_failure"
+if run_deploy "$uploads_failure" MOCK_UPLOADS_BACKUP_FAIL=1; then fail "uploads backup failure unexpectedly succeeded"; fi
+assert_old_state "$uploads_failure"
+! grep -Fq 'dotnet database update' "$uploads_failure/actions.log" || fail "migration ran after uploads backup failure"
+
+unsafe_uploads_executable="$work/unsafe-uploads-executable"
+make_fixture "$unsafe_uploads_executable"
+chmod 0775 "$unsafe_uploads_executable/uploads-backup"
+if run_deploy "$unsafe_uploads_executable"; then fail "group-writable uploads backup executable unexpectedly passed validation"; fi
+assert_old_state "$unsafe_uploads_executable"
+! [[ -f "$unsafe_uploads_executable/actions.log" ]] \
+  || ! grep -Fq '^uploads-backup$' "$unsafe_uploads_executable/actions.log" \
+  || fail "unsafe uploads backup executable was invoked"
+
+corrupt_uploads="$work/corrupt-uploads-manifest"
+make_fixture "$corrupt_uploads"
+if run_deploy "$corrupt_uploads" MOCK_UPLOADS_CORRUPT_MANIFEST=1; then fail "corrupt uploads manifest unexpectedly succeeded"; fi
+assert_old_state "$corrupt_uploads"
+! grep -Fq 'dotnet database update' "$corrupt_uploads/actions.log" || fail "migration ran after uploads parity failure"
+
+output_injection="$work/uploads-output-injection"
+make_fixture "$output_injection"
+if run_deploy "$output_injection" MOCK_UPLOADS_OUTPUT_INJECTION=1; then fail "uploads output injection unexpectedly succeeded"; fi
+assert_old_state "$output_injection"
+! grep -Fq 'dotnet database update' "$output_injection/actions.log" || fail "migration ran after uploads output injection"
+
+toctou_executable="$work/uploads-executable-toctou"
+make_fixture "$toctou_executable"
+toctou_sentinel="$toctou_executable/TOCTOU_EXECUTED"
+run_deploy "$toctou_executable" \
+  MOCK_REPLACE_UPLOADS_BACKUP="$toctou_executable/uploads-backup" \
+  MOCK_TOCTOU_SENTINEL="$toctou_sentinel" >/dev/null
+[[ ! -e "$toctou_sentinel" ]] || fail "replacement uploads executable won the validation/execution race"
+[[ -f "$toctou_executable/uploads-snapshots/snapshot/MANIFEST.sha256" ]] \
+  || fail "validated uploads executable descriptor was not invoked"
 
 migration="$work/migration-failure"
 make_fixture "$migration"

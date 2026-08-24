@@ -39,6 +39,8 @@ USAGE
 : "${COURSE_INTELLECT_ENV_FILE:=/etc/courseintellect/backend.env}"
 : "${COURSE_INTELLECT_SECRETS_ENV_FILE:=/etc/courseintellect/backend-secrets.env}"
 : "${COURSE_INTELLECT_BACKUP_EXECUTABLE:=/usr/local/sbin/courseintellect-db-backup}"
+: "${COURSE_INTELLECT_UPLOADS_BACKUP_EXECUTABLE:=/usr/local/sbin/courseintellect-uploads-backup}"
+: "${COURSE_INTELLECT_UPLOADS_BACKUP_ROOT:=/var/backups/courseintellect/uploads}"
 : "${COURSE_INTELLECT_EF_TOOL:=/opt/courseintellect-tools/dotnet-ef}"
 : "${COURSE_INTELLECT_NGINX_SNIPPET_DIR:=/etc/nginx/snippets}"
 
@@ -129,20 +131,32 @@ resolved_releases="$(readlink -m "$COURSE_INTELLECT_RELEASES_ROOT")"
 [[ "$resolved_uploads" != "$ROOT_DIR" && "$resolved_uploads" != "$ROOT_DIR/"* \
    && "$resolved_uploads" != "$resolved_releases" && "$resolved_uploads" != "$resolved_releases/"* ]] \
   || { echo "Persistent uploads must be outside source and release trees." >&2; exit 2; }
-[[ "$COURSE_INTELLECT_BACKUP_EXECUTABLE" == /* && -f "$COURSE_INTELLECT_BACKUP_EXECUTABLE" \
-   && ! -L "$COURSE_INTELLECT_BACKUP_EXECUTABLE" && -x "$COURSE_INTELLECT_BACKUP_EXECUTABLE" ]] \
-  || { echo "Backup executable must be an absolute executable regular file, not a command string." >&2; exit 2; }
+open_trusted_executable() {
+  local path="$1" result_name="$2" label="$3" fd path_identity fd_identity mode
+  [[ "$path" == /* && -f "$path" && ! -L "$path" && -x "$path" ]] \
+    || { printf '%s must be an absolute executable regular file, not a command string.\n' "$label" >&2; return 1; }
+  mode="$(stat -c '%a' -- "$path")"
+  [[ "$(stat -c '%u:%g' -- "$path")" == 0:0 && $((8#$mode & 0022)) -eq 0 ]] \
+    || { printf '%s must be root-owned and not group/world writable.\n' "$label" >&2; return 1; }
+  exec {fd}<"$path"
+  path_identity="$(stat -Lc '%d:%i:%u:%g:%a:%F' -- "$path")"
+  fd_identity="$(stat -Lc '%d:%i:%u:%g:%a:%F' -- "/proc/self/fd/$fd")"
+  [[ "$path_identity" == "$fd_identity" && "$fd_identity" == *':regular file' ]] \
+    || { printf '%s changed while it was being validated.\n' "$label" >&2; eval "exec ${fd}<&-"; return 1; }
+  printf -v "$result_name" '%s' "/proc/self/fd/$fd"
+}
 
-[[ "$(stat -c '%u' "$COURSE_INTELLECT_BACKUP_EXECUTABLE")" == 0 \
-   && $((8#$(stat -c '%a' "$COURSE_INTELLECT_BACKUP_EXECUTABLE") & 0022)) -eq 0 ]] \
-  || { echo "Backup executable must be root-owned and not group/world writable." >&2; exit 2; }
+open_trusted_executable "$COURSE_INTELLECT_BACKUP_EXECUTABLE" DB_BACKUP_COMMAND "Backup executable"
+open_trusted_executable "$COURSE_INTELLECT_UPLOADS_BACKUP_EXECUTABLE" UPLOADS_BACKUP_COMMAND "Uploads backup executable"
 [[ "$COURSE_INTELLECT_EF_TOOL" == /* && -f "$COURSE_INTELLECT_EF_TOOL" \
-   && ! -L "$COURSE_INTELLECT_EF_TOOL" && -x "$COURSE_INTELLECT_EF_TOOL" ]] \
-  || { echo "EF tool must be an absolute executable regular file." >&2; exit 2; }
-
-[[ "$(stat -c '%u' "$COURSE_INTELLECT_EF_TOOL")" == 0 \
-   && $((8#$(stat -c '%a' "$COURSE_INTELLECT_EF_TOOL") & 0022)) -eq 0 ]] \
-  || { echo "EF tool must be root-owned and not group/world writable." >&2; exit 2; }
+   && ! -L "$COURSE_INTELLECT_EF_TOOL" && -x "$COURSE_INTELLECT_EF_TOOL" \
+   && "$(stat -c '%u:%g' -- "$COURSE_INTELLECT_EF_TOOL")" == 0:0 ]] \
+  || { echo "EF tool must be an absolute root-owned executable regular file." >&2; exit 2; }
+ef_mode="$(stat -c '%a' -- "$COURSE_INTELLECT_EF_TOOL")"
+(( (8#$ef_mode & 0022) == 0 )) \
+  || { echo "EF tool must not be group/world writable." >&2; exit 2; }
+[[ "$COURSE_INTELLECT_UPLOADS_BACKUP_ROOT" == /* && "$COURSE_INTELLECT_UPLOADS_BACKUP_ROOT" != / ]] \
+  || { echo "Uploads backup root must be a safe absolute path." >&2; exit 2; }
 
 for command_name in git tar flock dotnet npm npx gzip pg_restore sha256sum nginx systemctl curl; do
   command -v "$command_name" >/dev/null 2>&1 \
@@ -295,6 +309,54 @@ verify_backup() {
   sha256sum "$path"
 }
 
+reported_path() {
+  local output="$1" prefix="$2" result_name="$3" path
+  [[ "$output" != *$'\n'* && "$output" == "$prefix"/* ]] \
+    || { echo "Backup executable output was not one recognized path record." >&2; return 1; }
+  path="${output#"$prefix"}"
+  [[ "$path" == /* && "$path" != *$'\r'* ]] \
+    || { echo "Backup executable reported an unsafe path." >&2; return 1; }
+  printf -v "$result_name" '%s' "$path"
+}
+
+verify_uploads_snapshot() {
+  local path="$1" canonical backup_root snapshot_identity after_identity count=0 bytes=0 file size
+  local generated_manifest="$BUILD_ROOT/uploads-verify.sha256"
+  [[ "$path" == /* && -d "$path" && ! -L "$path" ]] \
+    || { echo "Uploads snapshot must be an absolute non-symlink directory." >&2; return 1; }
+  canonical="$(readlink -f -- "$path")"
+  backup_root="$(readlink -f -- "$COURSE_INTELLECT_UPLOADS_BACKUP_ROOT")"
+  [[ "$canonical" == "$path" && "$canonical" == "$backup_root/"* ]] \
+    || { echo "Uploads snapshot escaped its configured backup root." >&2; return 1; }
+  for directory in "$backup_root" "$canonical"; do
+    [[ ! -L "$directory" && "$(stat -c '%u:%g:%a' -- "$directory")" == 0:0:700 ]] \
+      || { echo "Uploads backup root and snapshot must be 0700 root:root directories." >&2; return 1; }
+  done
+  [[ -d "$canonical/data" && ! -L "$canonical/data" \
+     && -f "$canonical/MANIFEST.sha256" && ! -L "$canonical/MANIFEST.sha256" \
+     && -f "$canonical/MANIFEST.meta" && ! -L "$canonical/MANIFEST.meta" ]] \
+    || { echo "Uploads snapshot manifest artifacts are missing or unsafe." >&2; return 1; }
+  snapshot_identity="$(stat -c '%d:%i' -- "$canonical")"
+  : > "$generated_manifest"
+  while IFS= read -r -d '' file; do
+    size="$(stat -c '%s' -- "$file")"
+    ((count += 1))
+    ((bytes += size))
+  done < <(find -P "$canonical/data" -type f -print0)
+  (
+    cd "$canonical/data"
+    find -P . -type f -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum
+  ) > "$generated_manifest"
+  cmp -s "$generated_manifest" "$canonical/MANIFEST.sha256" \
+    || { echo "Uploads snapshot checksum manifest does not match its files." >&2; return 1; }
+  [[ "$(<"$canonical/MANIFEST.meta")" == $'files='"$count"$'\nbytes='"$bytes" ]] \
+    || { echo "Uploads snapshot count/byte manifest does not match its files." >&2; return 1; }
+  after_identity="$(stat -c '%d:%i' -- "$canonical")"
+  [[ "$snapshot_identity" == "$after_identity" ]] \
+    || { echo "Uploads snapshot changed during verification." >&2; return 1; }
+  sha256sum "$canonical/MANIFEST.sha256" "$canonical/MANIFEST.meta"
+}
+
 # Both artifacts are built from this one immutable exact-SHA archive.
 git -C "$ROOT_DIR" archive --format=tar "$TARGET_SHA" | tar -x -C "$SOURCE_ROOT"
 [[ "$(git -C "$ROOT_DIR" rev-parse "$TARGET_SHA^{commit}")" == "$TARGET_SHA" ]]
@@ -338,18 +400,17 @@ printf '%s\n' "$MARKETING_RELEASE" > "$MARKETING_READY_MARKER"
 [[ "$(<"$MARKETING_RELEASE/DEPLOYED_COMMIT")" == "$TARGET_SHA" ]]
 external_state_unchanged
 
-# The backup executable is invoked directly: no shell reparsing or command injection.
-backup_output="$("$COURSE_INTELLECT_BACKUP_EXECUTABLE")"
-backup_path=""
-while IFS= read -r backup_line; do
-  case "$backup_line" in
-    /*) backup_path="$backup_line" ;;
-    'Database backup created: '/*) backup_path="${backup_line#Database backup created: }" ;;
-  esac
-done <<< "$backup_output"
-[[ -n "$backup_path" ]] \
-  || { echo "Backup executable did not report a recognized absolute backup path." >&2; false; }
+# Backup executables run from already-open descriptors, preventing path replacement
+# between validation and execution. Their output is accepted as one literal record.
+backup_output="$("$DB_BACKUP_COMMAND")"
+reported_path "$backup_output" 'Database backup created: ' backup_path
 verify_backup "$backup_path"
+external_state_unchanged
+
+uploads_backup_output="$("$UPLOADS_BACKUP_COMMAND")"
+reported_path "$uploads_backup_output" 'Uploads backup created: ' uploads_backup_path
+verify_uploads_snapshot "$uploads_backup_path"
+external_state_unchanged
 
 mkdir -p "$COURSE_INTELLECT_NGINX_SNIPPET_DIR"
 for name in schoolasist-security.conf schoolasist-security-headers.conf; do

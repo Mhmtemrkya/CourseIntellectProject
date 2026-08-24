@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PREFLIGHT="$ROOT_DIR/scripts/production_preflight.sh"
 DEPLOY="$ROOT_DIR/scripts/deploy_production_fullstack.sh"
+UPLOADS_BACKUP="$ROOT_DIR/scripts/courseintellect-uploads-backup"
 NGINX="$ROOT_DIR/courseintellectmarketingwebsite (1)/deploy/nginx-security.conf"
 HEADERS="$ROOT_DIR/courseintellectmarketingwebsite (1)/deploy/nginx-security-headers.conf"
 
@@ -20,6 +21,8 @@ assert_not_contains() {
 bash -n "$PREFLIGHT"
 [[ -f "$DEPLOY" ]] || { echo "Missing full-stack production deploy helper" >&2; exit 1; }
 bash -n "$DEPLOY"
+[[ -x "$UPLOADS_BACKUP" ]] || { echo "Missing executable uploads backup helper" >&2; exit 1; }
+bash -n "$UPLOADS_BACKUP"
 
 assert_contains "$PREFLIGHT" 'COURSE_INTELLECT_CAPTCHA_SECRET'
 assert_contains "$PREFLIGHT" 'Registration__Enabled'
@@ -38,6 +41,10 @@ assert_contains "$DEPLOY" 'npm run lint'
 assert_contains "$DEPLOY" 'npm audit --omit=dev --audit-level=high'
 assert_contains "$DEPLOY" 'verify_backup'
 assert_contains "$DEPLOY" 'COURSE_INTELLECT_BACKUP_EXECUTABLE'
+assert_contains "$DEPLOY" 'COURSE_INTELLECT_UPLOADS_BACKUP_EXECUTABLE'
+assert_contains "$DEPLOY" 'verify_uploads_snapshot'
+assert_contains "$DEPLOY" 'UPLOADS_BACKUP_COMMAND'
+assert_contains "$DEPLOY" 'open_trusted_executable'
 assert_contains "$DEPLOY" 'COURSE_INTELLECT_EF_TOOL'
 assert_contains "$DEPLOY" 'env -u COURSE_INTELLECT_UPLOADS_ROOT'
 assert_contains "$DEPLOY" '-u COURSE_INTELLECT_SMTP_PASSWORD'
@@ -59,6 +66,12 @@ assert_contains "$DEPLOY" '/api/system/status'
 assert_contains "$DEPLOY" 'NEXT_PUBLIC_API_URL="$COURSE_INTELLECT_PUBLIC_API_URL"'
 assert_contains "$DEPLOY" 'BACKEND_RELEASE="$COURSE_INTELLECT_RELEASES_ROOT/backend/$RELEASE_ID"'
 assert_contains "$DEPLOY" 'MARKETING_RELEASE="$COURSE_INTELLECT_RELEASES_ROOT/marketing/$RELEASE_ID"'
+
+assert_contains "$UPLOADS_BACKUP" 'rsync --archive --delete --numeric-ids'
+assert_contains "$UPLOADS_BACKUP" 'MANIFEST.sha256'
+assert_contains "$UPLOADS_BACKUP" 'MANIFEST.meta'
+assert_contains "$UPLOADS_BACKUP" 'chmod 0700 "$COURSE_INTELLECT_UPLOADS_BACKUP_ROOT"'
+assert_contains "$UPLOADS_BACKUP" 'chown root:root "$COURSE_INTELLECT_UPLOADS_BACKUP_ROOT"'
 
 # CSP must authorize the Turnstile script, browser connection, and challenge frame.
 assert_contains "$HEADERS" "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://challenges.cloudflare.com"
