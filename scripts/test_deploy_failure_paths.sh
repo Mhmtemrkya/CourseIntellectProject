@@ -40,6 +40,21 @@ make_fixture() {
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'dotnet %s\n' "$*" >> "$MOCK_LOG"
+if [[ -n "${MOCK_PERSISTENT_CHILD_PID_FILE:-}" && ! -e "$MOCK_PERSISTENT_CHILD_PID_FILE" ]]; then
+  /usr/bin/python3 - "$MOCK_PERSISTENT_CHILD_PID_FILE" <<'PY'
+import os, sys, time
+pid = os.fork()
+if pid:
+    with open(sys.argv[1], "w", encoding="ascii") as handle:
+        handle.write(str(pid))
+else:
+    null = os.open(os.devnull, os.O_RDWR)
+    for fd in (0, 1, 2):
+        os.dup2(null, fd)
+    time.sleep(60)
+    os._exit(0)
+PY
+fi
 if [[ "$*" == *"database update"* && "${MOCK_MIGRATION_FAIL:-0}" == 1 ]]; then
   exit 41
 fi
@@ -301,6 +316,22 @@ if run_deploy "$injection" COURSE_INTELLECT_BACKUP_EXECUTABLE="$injection/backup
   fail "backup command string unexpectedly passed validation"
 fi
 [[ ! -e "$sentinel" ]] || fail "backup command string was shell-evaluated"
+
+lock_inheritance="$work/lock-fd-inheritance"
+make_fixture "$lock_inheritance"
+child_pid_file="$lock_inheritance/persistent-child.pid"
+if run_deploy "$lock_inheritance" \
+  MOCK_PERSISTENT_CHILD_PID_FILE="$child_pid_file" \
+  MOCK_UPLOADS_BACKUP_FAIL=1; then
+  fail "lock inheritance failure fixture unexpectedly succeeded"
+fi
+[[ -s "$child_pid_file" ]] || fail "persistent child was not spawned"
+child_pid="$(<"$child_pid_file")"
+lock_released=0
+flock -n "$lock_inheritance/releases/.deploy.lock" true && lock_released=1
+kill "$child_pid" 2>/dev/null || true
+wait "$child_pid" 2>/dev/null || true
+(( lock_released == 1 )) || fail "deploy lock descriptor leaked into a persistent child process"
 
 env_injection="$work/environment-injection"
 make_fixture "$env_injection"

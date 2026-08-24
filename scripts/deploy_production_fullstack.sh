@@ -31,6 +31,8 @@ USAGE
 
 [[ "${1:-}" == "--deploy" && $# -eq 1 ]] || { usage; exit 2; }
 (( EUID == 0 )) || { echo "Production deployment must run as root." >&2; exit 2; }
+deploy_lock_wrapped="${COURSE_INTELLECT_DEPLOY_LOCK_WRAPPED:-0}"
+unset COURSE_INTELLECT_DEPLOY_LOCK_WRAPPED
 
 : "${COURSE_INTELLECT_RELEASES_ROOT:=/opt/courseintellect/releases}"
 : "${COURSE_INTELLECT_BACKEND_CURRENT:=/opt/courseintellect/backend-current}"
@@ -134,6 +136,28 @@ resolved_releases="$(readlink -m "$COURSE_INTELLECT_RELEASES_ROOT")"
 [[ "$resolved_uploads" != "$ROOT_DIR" && "$resolved_uploads" != "$ROOT_DIR/"* \
    && "$resolved_uploads" != "$resolved_releases" && "$resolved_uploads" != "$resolved_releases/"* ]] \
   || { echo "Persistent uploads must be outside source and release trees." >&2; exit 2; }
+
+# Let a dedicated flock parent own the deployment lock while the actual deploy
+# and every compiler/build child run without the lock descriptor. This prevents
+# persistent MSBuild/Roslyn server processes from retaining the lock after exit.
+mkdir -p "$COURSE_INTELLECT_RELEASES_ROOT"
+LOCK_FILE="$COURSE_INTELLECT_RELEASES_ROOT/.deploy.lock"
+touch "$LOCK_FILE"
+chown root:root "$LOCK_FILE"
+chmod 0600 "$LOCK_FILE"
+if [[ "$deploy_lock_wrapped" != 1 ]]; then
+  set +e
+  COURSE_INTELLECT_DEPLOY_LOCK_WRAPPED=1 \
+    flock --nonblock --conflict-exit-code 75 --close "$LOCK_FILE" "$0" "$@"
+  lock_rc=$?
+  set -e
+  if (( lock_rc == 75 )); then
+    echo "Another deployment is in progress." >&2
+    exit 1
+  fi
+  exit "$lock_rc"
+fi
+
 open_trusted_executable() {
   local path="$1" result_name="$2" label="$3" fd path_identity fd_identity mode
   [[ "$path" == /* && -f "$path" && ! -L "$path" && -x "$path" ]] \
@@ -173,10 +197,6 @@ git -C "$ROOT_DIR" cat-file -e "$TARGET_SHA^{commit}"
   || { echo "Source worktree must be clean before deployment." >&2; exit 2; }
 
 uploads_inode_before="$(stat -c '%d:%i' "$COURSE_INTELLECT_UPLOADS_ROOT")"
-mkdir -p "$COURSE_INTELLECT_RELEASES_ROOT"
-LOCK_FILE="$COURSE_INTELLECT_RELEASES_ROOT/.deploy.lock"
-exec 9>"$LOCK_FILE"
-flock -n 9 || { echo "Another deployment is in progress." >&2; exit 1; }
 
 RELEASE_ID="$(date -u +%Y%m%dT%H%M%SZ)-${TARGET_SHA:0:12}"
 BACKEND_RELEASE="$COURSE_INTELLECT_RELEASES_ROOT/backend/$RELEASE_ID"
