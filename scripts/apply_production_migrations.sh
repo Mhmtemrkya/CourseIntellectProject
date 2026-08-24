@@ -9,14 +9,23 @@ if [[ "${COURSE_INTELLECT_BACKUP_CONFIRMED:-}" != "YES" ]]; then echo "Set COURS
 if [[ "${CONFIRM_PRODUCTION_MIGRATION:-}" != "APPLY" ]]; then echo "Set CONFIRM_PRODUCTION_MIGRATION=APPLY to continue." >&2; exit 1; fi
 
 export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
-dotnet ef database update \
+if [[ -n "${COURSE_INTELLECT_EF_TOOL:-}" ]]; then
+  [[ "$COURSE_INTELLECT_EF_TOOL" == /* && -f "$COURSE_INTELLECT_EF_TOOL" \
+     && -x "$COURSE_INTELLECT_EF_TOOL" && ! -L "$COURSE_INTELLECT_EF_TOOL" ]] \
+    || { echo "COURSE_INTELLECT_EF_TOOL must be an absolute executable regular file." >&2; exit 1; }
+  ef=("$COURSE_INTELLECT_EF_TOOL")
+else
+  ef=(dotnet ef)
+fi
+
+"${ef[@]}" database update \
   --project backend/CourseIntellect.Infrastructure \
   --startup-project backend/CourseIntellect.Infrastructure \
   --context CourseIntellectDbContext \
   --configuration Release \
   --no-build
 
-dotnet ef migrations list \
+"${ef[@]}" migrations list \
   --project backend/CourseIntellect.Infrastructure \
   --startup-project backend/CourseIntellect.Infrastructure \
   --context CourseIntellectDbContext \
