@@ -301,6 +301,12 @@ bash "$SOURCE_ROOT/scripts/production_preflight.sh"
 dotnet restore "$SOURCE_ROOT/backend/CourseIntellect.sln" --force --no-cache
 dotnet build "$SOURCE_ROOT/backend/CourseIntellect.sln" --no-restore --no-incremental --configuration Release /p:UseAppHost=false
 env -u COURSE_INTELLECT_UPLOADS_ROOT \
+  -u COURSE_INTELLECT_DB \
+  -u COURSE_INTELLECT_SMTP_PASSWORD \
+  -u COURSE_INTELLECT_CAPTCHA_SECRET \
+  -u Jwt__Key \
+  ASPNETCORE_ENVIRONMENT=Development \
+  DOTNET_ENVIRONMENT=Development \
   dotnet test "$SOURCE_ROOT/backend/CourseIntellect.sln" --no-build --configuration Release --verbosity normal
 dotnet publish "$SOURCE_ROOT/backend/CourseIntellect.Api/CourseIntellect.Api.csproj" --no-build --no-restore --configuration Release --output "$BACKEND_RELEASE" /p:UseAppHost=false
 printf '%s\n' "$TARGET_SHA" > "$BACKEND_RELEASE/DEPLOYED_COMMIT"
