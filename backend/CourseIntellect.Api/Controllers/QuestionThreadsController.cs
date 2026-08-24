@@ -20,7 +20,7 @@ public sealed class QuestionThreadsController(IQuestionThreadService questionThr
         var username = User.FindFirstValue("unique_name")
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? string.Empty;
-        var items = await questionThreadService.GetThreadsAsync(role, fullName, username, cancellationToken);
+        var items = await questionThreadService.GetThreadsAsync(role, CurrentUserId(), fullName, username, cancellationToken);
         return Ok(items);
     }
 
@@ -33,7 +33,7 @@ public sealed class QuestionThreadsController(IQuestionThreadService questionThr
         var username = User.FindFirstValue("unique_name")
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? string.Empty;
-        var item = await questionThreadService.CreateThreadAsync(fullName, username, request, cancellationToken);
+        var item = await questionThreadService.CreateThreadAsync(fullName, CurrentUserId(), username, request, cancellationToken);
         return Ok(item);
     }
 
@@ -48,7 +48,13 @@ public sealed class QuestionThreadsController(IQuestionThreadService questionThr
         var senderUsername = User.FindFirstValue("unique_name")
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? string.Empty;
-        var item = await questionThreadService.AddReplyAsync(id, senderName, senderRole, senderUsername, request, cancellationToken);
+        var item = await questionThreadService.AddReplyAsync(id, CurrentUserId(), senderName, senderRole, senderUsername, request, cancellationToken);
         return item is null ? NotFound() : Ok(item);
+    }
+
+    private Guid CurrentUserId()
+    {
+        var raw = User.FindFirstValue("nameid") ?? User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return Guid.TryParse(raw, out var id) ? id : Guid.Empty;
     }
 }

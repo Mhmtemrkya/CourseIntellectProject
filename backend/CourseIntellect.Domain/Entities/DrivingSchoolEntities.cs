@@ -488,6 +488,9 @@ public sealed class DrivingLessonLedgerEntry : IBranchScopedEntity
     /// <summary>Rezervasyon, iptal ve devamsızlık hareketlerinde ilgili randevu.</summary>
     public Guid? AppointmentId { get; set; }
 
+    /// <summary>Bu dakikaları tanımlayan veya geri alan ücret kalemi.</summary>
+    public Guid? DrivingChargeId { get; set; }
+
     /// <summary>Pozitif hak ekler, negatif hak düşer. Bakiye = tüm hareketlerin toplamı.</summary>
     public int MinutesDelta { get; set; }
 

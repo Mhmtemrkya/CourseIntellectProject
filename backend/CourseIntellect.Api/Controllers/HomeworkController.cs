@@ -15,8 +15,8 @@ public sealed class HomeworkController(IHomeworkService homeworkService) : Contr
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
-        var (role, fullName) = GetCurrentUser();
-        var items = await homeworkService.GetAssignmentsAsync(role, fullName, cancellationToken);
+        var (role, userId, fullName) = GetCurrentUser();
+        var items = await homeworkService.GetAssignmentsAsync(role, userId, fullName, cancellationToken);
         return Ok(items);
     }
 
@@ -43,10 +43,10 @@ public sealed class HomeworkController(IHomeworkService homeworkService) : Contr
     [RequireEntitlement("assignments", "submit")]
     public async Task<IActionResult> Submit(Guid id, [FromBody] CreateHomeworkSubmissionRequest request, CancellationToken cancellationToken)
     {
-        var (role, fullName) = GetCurrentUser();
+        var (role, userId, fullName) = GetCurrentUser();
         try
         {
-            var item = await homeworkService.SubmitAssignmentAsync(id, role, fullName, request, cancellationToken);
+            var item = await homeworkService.SubmitAssignmentAsync(id, role, userId, fullName, request, cancellationToken);
             return item is null ? NotFound() : Ok(item);
         }
         catch (InvalidOperationException ex)
@@ -59,10 +59,11 @@ public sealed class HomeworkController(IHomeworkService homeworkService) : Contr
     /// Teslim sahipliği ve teslim görünürlüğü OTURUMDAN belirlenir; istek gövdesindeki
     /// öğrenci adı yetki kararında kullanılmaz.
     /// </summary>
-    private (string Role, string FullName) GetCurrentUser()
+    private (string Role, Guid UserId, string FullName) GetCurrentUser()
     {
         var role = User.FindFirstValue("role") ?? string.Empty;
         var fullName = User.FindFirstValue("name") ?? string.Empty;
-        return (role, fullName);
+        var rawId = User.FindFirstValue("nameid") ?? User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return (role, Guid.TryParse(rawId, out var userId) ? userId : Guid.Empty, fullName);
     }
 }

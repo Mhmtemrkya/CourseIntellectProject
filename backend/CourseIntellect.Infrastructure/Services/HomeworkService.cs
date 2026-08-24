@@ -26,6 +26,7 @@ public sealed class HomeworkService(
     /// </summary>
     public async Task<IReadOnlyList<HomeworkAssignmentDto>> GetAssignmentsAsync(
         string requestorRole,
+        Guid requestorUserId,
         string requestorName,
         CancellationToken cancellationToken = default)
     {
@@ -48,8 +49,9 @@ public sealed class HomeworkService(
                 var all = submissions.Where(x => x.AssignmentId == item.Id).ToList();
                 var visible = seesEverySubmission
                     ? all
-                    : all.Where(x => !string.IsNullOrWhiteSpace(ownName)
-                        && string.Equals(x.StudentName.Trim(), ownName, StringComparison.OrdinalIgnoreCase)).ToList();
+                    : all.Where(x => x.StudentUserId == requestorUserId
+                        || (x.StudentUserId == null && !string.IsNullOrWhiteSpace(ownName)
+                            && string.Equals(x.StudentName.Trim(), ownName, StringComparison.OrdinalIgnoreCase))).ToList();
                 // Sayaç gerçek toplamdan gelir; görünen liste daraltılmış olabilir.
                 return ToDto(item, visible, all.Count);
             })
@@ -112,6 +114,7 @@ public sealed class HomeworkService(
     public async Task<HomeworkAssignmentDto?> SubmitAssignmentAsync(
         Guid id,
         string requestorRole,
+        Guid requestorUserId,
         string requestorName,
         CreateHomeworkSubmissionRequest request,
         CancellationToken cancellationToken = default)
@@ -126,13 +129,24 @@ public sealed class HomeworkService(
         // Öğretmen/yönetim, öğrenci adına teslim girebilir (kâğıt teslim kaydı).
         var isStaff = IsStaff(requestorRole);
         var studentName = (isStaff ? request.StudentName : requestorName).Trim();
+        var studentUserId = requestorUserId;
+        if (isStaff)
+        {
+            var candidates = await dbContext.Users.AsNoTracking()
+                .Where(x => x.Status == CourseIntellect.Domain.Enums.UserStatus.Active
+                    && x.PrimaryRole == CourseIntellect.Domain.Enums.UserRole.Student
+                    && x.FullName.ToLower() == studentName.ToLower())
+                .Select(x => x.Id).ToListAsync(cancellationToken);
+            if (candidates.Count != 1) throw new InvalidOperationException("Öğrenci bulunamadı veya kurum içinde tekil değil.");
+            studentUserId = candidates[0];
+        }
         if (string.IsNullOrWhiteSpace(studentName))
         {
             throw new InvalidOperationException("Teslim için öğrenci adı belirlenemedi.");
         }
 
         var existing = await dbContext.Set<HomeworkSubmission>()
-            .FirstOrDefaultAsync(x => x.AssignmentId == id && x.StudentName == studentName, cancellationToken);
+            .FirstOrDefaultAsync(x => x.AssignmentId == id && x.StudentUserId == studentUserId, cancellationToken);
 
         if (existing is null)
         {
@@ -140,6 +154,7 @@ public sealed class HomeworkService(
             {
                 TenantId = entity.TenantId,
                 AssignmentId = id,
+                StudentUserId = studentUserId,
                 StudentName = studentName,
             };
             await dbContext.Set<HomeworkSubmission>().AddAsync(existing, cancellationToken);
@@ -159,7 +174,7 @@ public sealed class HomeworkService(
         // kendi teslimini geri alır, başkalarınınkini değil.
         var visible = isStaff
             ? allSubmissions
-            : allSubmissions.Where(x => string.Equals(x.StudentName.Trim(), studentName, StringComparison.OrdinalIgnoreCase)).ToList();
+            : allSubmissions.Where(x => x.StudentUserId == studentUserId).ToList();
         return ToDto(entity, visible, allSubmissions.Count);
     }
 

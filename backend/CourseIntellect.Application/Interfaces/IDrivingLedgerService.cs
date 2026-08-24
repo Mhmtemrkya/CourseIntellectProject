@@ -24,6 +24,7 @@ public interface IDrivingLedgerService
         Guid? appointmentId = null,
         Guid? drivingLessonId = null,
         string? reason = null,
+        Guid? drivingChargeId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>Profildeki önbellek alanlarını (Used/Purchased) defterle eşitler.</summary>

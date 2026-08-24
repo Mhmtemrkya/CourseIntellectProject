@@ -32,6 +32,7 @@ public sealed class DrivingLedgerService(
         Guid? appointmentId = null,
         Guid? drivingLessonId = null,
         string? reason = null,
+        Guid? drivingChargeId = null,
         CancellationToken cancellationToken = default)
     {
         await dbContext.DrivingLessonLedgerEntries.AddAsync(new DrivingLessonLedgerEntry
@@ -42,6 +43,7 @@ public sealed class DrivingLedgerService(
             Description = description.Trim(),
             AppointmentId = appointmentId,
             DrivingLessonId = drivingLessonId,
+            DrivingChargeId = drivingChargeId,
             Reason = reason?.Trim() ?? string.Empty,
             CreatedByUserId = CurrentUserId(),
         }, cancellationToken);

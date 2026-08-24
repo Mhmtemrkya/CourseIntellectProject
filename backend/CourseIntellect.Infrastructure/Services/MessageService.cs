@@ -16,7 +16,9 @@ public sealed class MessageService(
     {
         var normalizedName = Normalize(currentUserName);
         var threads = await dbContext.MessageThreads
-            .Where(x => x.ParticipantOneName == normalizedName || x.ParticipantTwoName == normalizedName)
+            .Where(x => x.ParticipantOneUserId == currentUserId || x.ParticipantTwoUserId == currentUserId
+                || (x.ParticipantOneUserId == null && x.ParticipantTwoUserId == null
+                    && (x.ParticipantOneName == Normalize(currentUserName) || x.ParticipantTwoName == Normalize(currentUserName))))
             .OrderByDescending(x => x.LastMessageAtUtc)
             .ToListAsync(cancellationToken);
 
@@ -54,8 +56,7 @@ public sealed class MessageService(
         // Yetkilendirme: yalnızca thread'in katılımcıları içeriği görebilir.
         // Tenant query filter'ı zaten cross-tenant erişimi engelliyor; bu kontrol
         // aynı tenant içindeki başka kullanıcıların thread içeriğini sızdırmasını önler.
-        if (thread.ParticipantOneName != normalizedCurrentName &&
-            thread.ParticipantTwoName != normalizedCurrentName)
+        if (!IsParticipant(thread, currentUserId, normalizedCurrentName))
         {
             return Array.Empty<MessageItemDto>();
         }
@@ -107,10 +108,17 @@ public sealed class MessageService(
         CancellationToken cancellationToken = default)
     {
         var currentName = Normalize(currentUserName);
-        var contactName = Normalize(request.ContactName);
+        var contacts = await dbContext.Users.AsNoTracking()
+            .Where(x => x.Status == CourseIntellect.Domain.Enums.UserStatus.Active
+                && x.FullName.ToLower() == request.ContactName.Trim().ToLower())
+            .ToListAsync(cancellationToken);
+        var matchingContacts = contacts.Where(x => x.PrimaryRole.ToString().Equals(request.ContactRole.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+        if (matchingContacts.Count != 1) throw new InvalidOperationException("Kişi bulunamadı veya kurum içinde tekil değil.");
+        var contact = matchingContacts[0];
+        var contactName = Normalize(contact.FullName);
         var existing = await dbContext.MessageThreads.FirstOrDefaultAsync(
-            x => (x.ParticipantOneName == currentName && x.ParticipantTwoName == contactName) ||
-                 (x.ParticipantOneName == contactName && x.ParticipantTwoName == currentName),
+            x => (x.ParticipantOneUserId == currentUserId && x.ParticipantTwoUserId == contact.Id) ||
+                 (x.ParticipantOneUserId == contact.Id && x.ParticipantTwoUserId == currentUserId),
             cancellationToken);
 
         if (existing is null)
@@ -118,8 +126,10 @@ public sealed class MessageService(
             existing = new MessageThread
             {
                 ParticipantOneName = currentName,
+                ParticipantOneUserId = currentUserId,
                 ParticipantOneRole = currentUserRole,
                 ParticipantTwoName = contactName,
+                ParticipantTwoUserId = contact.Id,
                 ParticipantTwoRole = request.ContactRole.Trim(),
                 LastMessagePreview = string.IsNullOrWhiteSpace(request.InitialMessage) ? "Yeni sohbet oluşturuldu." : request.InitialMessage!.Trim(),
                 LastMessageAtUtc = DateTime.UtcNow
@@ -161,7 +171,7 @@ public sealed class MessageService(
         // aynı kurumdaki bir kullanıcı, bildiği bir thread GUID'ine mesaj
         // gönderebiliyordu. Bulunamadı ile aynı mesaj döner — yabancı bir
         // thread'in VAR olduğu bilgisi de sızmamalı.
-        if (!MessageParticipantKey.IsParticipant(currentUserName, thread.ParticipantOneName, thread.ParticipantTwoName))
+        if (!IsParticipant(thread, currentUserId, Normalize(currentUserName)))
         {
             throw new InvalidOperationException("Thread bulunamadı.");
         }
@@ -174,6 +184,7 @@ public sealed class MessageService(
         {
             TenantId = thread.TenantId,
             ThreadId = threadId,
+            SenderUserId = currentUserId,
             SenderName = Normalize(currentUserName),
             SenderRole = currentUserRole,
             Text = request.Text.Trim(),
@@ -206,8 +217,8 @@ public sealed class MessageService(
             attachments);
         var participantKeys = new[]
         {
-            thread.ParticipantOneName,
-            thread.ParticipantTwoName,
+            thread.ParticipantOneUserId?.ToString() ?? thread.ParticipantOneName,
+            thread.ParticipantTwoUserId?.ToString() ?? thread.ParticipantTwoName,
         };
 
         await realtimeNotifier.NotifyMessageReceivedAsync(thread.Id, participantKeys, messageDto, cancellationToken);
@@ -224,14 +235,12 @@ public sealed class MessageService(
 
         // Alıcıya (thread'in diğer katılımcısı) telefon push'u — uygulama kapalıyken
         // de mesajı görsün. Gönderenin kendisine gönderilmez.
-        var recipientName = Normalize(currentUserName) == thread.ParticipantOneName
-            ? thread.ParticipantTwoName
-            : thread.ParticipantOneName;
-        if (!string.IsNullOrWhiteSpace(recipientName))
+        var recipientId = currentUserId == thread.ParticipantOneUserId ? thread.ParticipantTwoUserId : thread.ParticipantOneUserId;
+        if (recipientId is Guid targetUserId)
         {
             var pushBody = previewText.Length > 120 ? previewText[..120] + "…" : previewText;
-            await pushNotificationService.SendToUserByNameAsync(
-                recipientName,
+            await pushNotificationService.SendToUserAsync(
+                targetUserId,
                 currentUserName,
                 pushBody,
                 new Dictionary<string, string> { ["category"] = "message", ["threadId"] = thread.Id.ToString() },
@@ -282,4 +291,9 @@ public sealed class MessageService(
     // Normalizasyon tek kaynaktan gelir; hub'daki yetki kontrolü ile servisin
     // katılımcı kontrolü ASLA ayrışmamalı (bkz. MessageParticipantKey).
     private static string Normalize(string value) => MessageParticipantKey.Normalize(value);
+
+    private static bool IsParticipant(MessageThread thread, Guid userId, string normalizedName)
+        => thread.ParticipantOneUserId == userId || thread.ParticipantTwoUserId == userId
+            || (thread.ParticipantOneUserId is null && thread.ParticipantTwoUserId is null
+                && MessageParticipantKey.IsParticipant(normalizedName, thread.ParticipantOneName, thread.ParticipantTwoName));
 }

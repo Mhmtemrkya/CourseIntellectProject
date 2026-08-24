@@ -6,12 +6,14 @@ public interface IQuestionThreadService
 {
     Task<IReadOnlyList<QuestionThreadDto>> GetThreadsAsync(
         string requestorRole,
+        Guid requestorUserId,
         string fullName,
         string username,
         CancellationToken cancellationToken = default);
 
     Task<QuestionThreadDto> CreateThreadAsync(
         string studentName,
+        Guid studentUserId,
         string studentUsername,
         CreateQuestionThreadRequest request,
         CancellationToken cancellationToken = default);
@@ -23,6 +25,7 @@ public interface IQuestionThreadService
     /// </summary>
     Task<QuestionThreadDto?> AddReplyAsync(
         Guid threadId,
+        Guid senderUserId,
         string senderName,
         string senderRole,
         string senderUsername,

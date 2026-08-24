@@ -143,7 +143,8 @@ public sealed class DrivingFinanceController(
         if (charge.Minutes > 0)
         {
             await ledgerService.AddAsync(profileId, DrivingLedgerEntryType.ExtraPurchasedMinutes, charge.Minutes,
-                $"Ek direksiyon dersi satın alındı ({net:N2} ₺)", reason: charge.Description, cancellationToken: ct);
+                $"Ek direksiyon dersi satın alındı ({net:N2} ₺)", reason: charge.Description,
+                drivingChargeId: charge.Id, cancellationToken: ct);
         }
 
         await dbContext.SaveChangesAsync(ct);
@@ -191,8 +192,9 @@ public sealed class DrivingFinanceController(
         // Şube seçildiyse kuruma ait ve aktif olmalı — yanlış şubeye tahsilat yazılmasın.
         if (request.BranchId is Guid branchId)
         {
-            var branchOk = await dbContext.OrgUnits.AsNoTracking().AnyAsync(x => x.Id == branchId, ct);
-            if (!branchOk) return BadRequest(new { message = "Seçilen şube bulunamadı." });
+            var branch = await dbContext.OrgUnits.AsNoTracking().SingleOrDefaultAsync(x => x.Id == branchId, ct);
+            if (branch is null || !CanAttributePaymentToBranch(User, branch))
+                return BadRequest(new { message = "Seçilen şube aktif bir şube değil veya yetki kapsamınız dışında." });
         }
 
         FinancePaymentDto payment;
@@ -552,34 +554,42 @@ public sealed class DrivingFinanceController(
         // EDİLMEZ — aksi hâlde alınmış eğitim bedelsiz kalırdı. Kurum bilinçli olarak
         // yine de iade etmek isterse request.AllowConsumedRefund ile açıkça onaylar
         // ve bu karar audit'e yazılır.
-        var reclaimableMinutes = 0;
-        var consumedMinutes = 0;
+        var sourceGrantedMinutes = 0;
+        var sourceAlreadyClawedBack = 0;
+        var availableMinutes = 0;
         if (charge.Minutes > 0)
         {
             var balance = await ledgerService.GetBalanceAsync(charge.StudentDrivingProfileId, ct);
-            reclaimableMinutes = Math.Min(charge.Minutes, Math.Max(0, balance.AvailableMinutes));
-            consumedMinutes = charge.Minutes - reclaimableMinutes;
+            availableMinutes = Math.Max(0, balance.AvailableMinutes);
+            var provenance = await dbContext.DrivingLessonLedgerEntries.AsNoTracking()
+                .Where(x => x.DrivingChargeId == charge.Id)
+                .Select(x => x.MinutesDelta)
+                .ToListAsync(ct);
+            sourceGrantedMinutes = provenance.Where(x => x > 0).Sum();
+            sourceAlreadyClawedBack = -provenance.Where(x => x < 0).Sum();
+            // Legacy charges predate provenance. Preserve their old bounded behavior;
+            // all new grants are strongly tied to the charge and never claw back a
+            // different sale's entitlement.
+            if (sourceGrantedMinutes == 0) sourceGrantedMinutes = charge.Minutes;
         }
 
-        var consumedValue = consumedMinutes > 0 && charge.Minutes > 0
-            ? Math.Round(charge.NetAmount * consumedMinutes / charge.Minutes, 2)
-            : 0m;
+        var entitlement = CalculateEntitlementClawback(charge.Minutes, charge.NetAmount,
+            alreadyRefunded, refund, sourceGrantedMinutes, sourceAlreadyClawedBack, availableMinutes);
+        var reclaimableMinutes = entitlement.ReclaimableMinutes;
+        var consumedMinutes = entitlement.ConsumedMinutes;
+        var consumedValue = entitlement.ConsumedValue;
         var allowConsumedRefund = request.AllowConsumedRefund == true;
-        if (consumedValue > 0 && !allowConsumedRefund)
+        if (!allowConsumedRefund && refund > entitlement.MaxRefundWithoutConsumed)
         {
-            var maxRefund = Math.Max(0, refundable - consumedValue);
-            if (refund > maxRefund)
+            return BadRequest(new
             {
-                return BadRequest(new
-                {
-                    message = $"Bu kalemde {consumedMinutes} dakika eğitim kullanılmış ({consumedValue:N2} ₺). "
-                        + $"En fazla {maxRefund:N2} ₺ iade edilebilir. Kullanılan eğitimin bedelini de iade etmek için "
-                        + "işlemi \"kullanılan eğitim dahil\" onayıyla tekrarlayın.",
-                    maxRefundable = maxRefund,
-                    consumedMinutes,
-                    consumedValue,
-                });
-            }
+                message = $"Bu kalemde {consumedMinutes} dakika eğitim kullanılmış ({consumedValue:N2} ₺). "
+                    + $"En fazla {entitlement.MaxRefundWithoutConsumed:N2} ₺ iade edilebilir. Kullanılan eğitimin bedelini de iade etmek için "
+                    + "işlemi \"kullanılan eğitim dahil\" onayıyla tekrarlayın.",
+                maxRefundable = entitlement.MaxRefundWithoutConsumed,
+                consumedMinutes,
+                consumedValue,
+            });
         }
 
         charge.RefundedAmount = alreadyRefunded + refund;
@@ -617,9 +627,10 @@ public sealed class DrivingFinanceController(
         // Okul tarafındaki iade ile AYNI kayıt biçimi kullanılır (EntryType="Refund"),
         // böylece FinanceTotals.NetCollected iadeyi kendiliğinden düşer.
         string? refundReceiptNo = null;
+        FinancePayment? refundPayment = null;
         if (cashOut > 0)
         {
-            var refundPayment = new FinancePayment
+            refundPayment = new FinancePayment
             {
                 EnrollmentContractId = charge.EnrollmentContractId,
                 FinanceInstallmentId = charge.FinanceInstallmentId,
@@ -640,7 +651,6 @@ public sealed class DrivingFinanceController(
                 RefundChannel = "Nakit",
             };
             dbContext.FinancePayments.Add(refundPayment);
-            refundReceiptNo = refundPayment.ReceiptNo;
         }
 
         // Ek ders iadesinde kullanılmamış dakikalar geri alınır — para geri gidiyorsa
@@ -649,17 +659,21 @@ public sealed class DrivingFinanceController(
         if (reclaimableMinutes > 0)
         {
             // Kısmi iadede yalnız iade oranı kadar dakika geri alınır.
-            minutesTaken = charge.NetAmount > 0
-                ? Math.Min(reclaimableMinutes, (int)Math.Floor(charge.Minutes * refund / charge.NetAmount))
-                : reclaimableMinutes;
+            minutesTaken = Math.Min(reclaimableMinutes, entitlement.MinutesToClawBack);
             if (minutesTaken > 0)
             {
                 await ledgerService.AddAsync(charge.StudentDrivingProfileId, DrivingLedgerEntryType.ManualAdjustmentMinutes, -minutesTaken,
-                    "Ek ders iadesi", reason: reason, cancellationToken: ct);
+                    "Ek ders iadesi", reason: reason, drivingChargeId: charge.Id, cancellationToken: ct);
             }
         }
 
-        await dbContext.SaveChangesAsync(ct);
+        if (refundPayment is null)
+            await dbContext.SaveChangesAsync(ct);
+        else
+        {
+            await financeService.SavePaymentWithReceiptRetryAsync(refundPayment, ct);
+            refundReceiptNo = refundPayment.ReceiptNo;
+        }
         if (minutesTaken > 0) await ledgerService.SyncProfileCacheAsync(charge.StudentDrivingProfileId, ct);
         await dbContext.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
@@ -852,6 +866,42 @@ public sealed class DrivingFinanceController(
         return await service.HasAsync(User, permission, ct);
     }
 
+    public static bool CanAttributePaymentToBranch(ClaimsPrincipal actor, OrgUnit branch)
+    {
+        if (!branch.IsActive || !string.Equals(branch.UnitType, "Şube", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (actor.IsInRole("BranchManager"))
+            return Guid.TryParse(actor.FindFirstValue("branch_id"), out var actorBranchId)
+                && actorBranchId == branch.Id;
+
+        return actor.IsInRole("Admin") || actor.IsInRole("SuperAdmin") || actor.IsInRole("Developer");
+    }
+
+    public static EntitlementClawback CalculateEntitlementClawback(
+        int originalMinutes,
+        decimal netAmount,
+        decimal alreadyRefunded,
+        decimal requestedRefund,
+        int sourceGrantedMinutes,
+        int sourceAlreadyClawedBack,
+        int availableMinutes)
+    {
+        if (originalMinutes <= 0 || netAmount <= 0)
+            return new(0, 0, 0, 0, requestedRefund);
+
+        var outstandingSource = Math.Max(0, sourceGrantedMinutes - sourceAlreadyClawedBack);
+        var reclaimable = Math.Min(outstandingSource, Math.Max(0, availableMinutes));
+        var consumed = outstandingSource - reclaimable;
+        var consumedValue = Math.Round(netAmount * consumed / originalMinutes, 2, MidpointRounding.AwayFromZero);
+        var cumulativeRefund = Math.Min(netAmount, alreadyRefunded + requestedRefund);
+        var targetCumulativeClawback = (int)Math.Floor(originalMinutes * cumulativeRefund / netAmount);
+        var minutesToClawBack = Math.Max(0, targetCumulativeClawback - sourceAlreadyClawedBack);
+        var refundableCumulative = netAmount * (sourceAlreadyClawedBack + reclaimable) / originalMinutes;
+        var maxAdditional = Math.Max(0, Math.Round(refundableCumulative - alreadyRefunded, 2, MidpointRounding.AwayFromZero));
+        return new(reclaimable, consumed, consumedValue, minutesToClawBack, maxAdditional);
+    }
+
     private Guid? CurrentUserId()
     {
         var raw = User.FindFirstValue("nameid") ?? User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -869,6 +919,13 @@ public sealed class DrivingFinanceController(
             && string.Equals(tenant.Status, "active", StringComparison.OrdinalIgnoreCase);
     }
 }
+
+public sealed record EntitlementClawback(
+    int ReclaimableMinutes,
+    int ConsumedMinutes,
+    decimal ConsumedValue,
+    int MinutesToClawBack,
+    decimal MaxRefundWithoutConsumed);
 
 public sealed record CreateDrivingChargeRequest(
     string ChargeType,

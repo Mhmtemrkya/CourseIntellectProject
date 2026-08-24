@@ -14,9 +14,12 @@ public sealed class ExamSolvingHub(CourseIntellectDbContext dbContext) : Hub
     private static readonly string[] MonitorRoles =
         ["Teacher", "Admin", "Administrative", "InstitutionAdmin", "Idare", "BranchManager", "Developer"];
 
-    public Task JoinExamSession(string sessionId)
+    public async Task JoinExamSession(string sessionId)
     {
-        return Groups.AddToGroupAsync(Context.ConnectionId, $"session-{sessionId}");
+        if (!Guid.TryParse(sessionId, out var id)) return;
+        var session = (await LoadTenantExamSessionsAsync()).SingleOrDefault(x => x.Id == id);
+        if (session is null || !CanJoinExamSession(Context.User!, session)) return;
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"session-{id}");
     }
 
     public Task LeaveExamSession(string sessionId)
@@ -137,6 +140,20 @@ public sealed class ExamSolvingHub(CourseIntellectDbContext dbContext) : Hub
             ?? Context.User?.FindFirstValue("preferred_username")
             ?? Context.User?.FindFirstValue(ClaimTypes.Name)
             ?? string.Empty).Trim();
+
+    public static bool CanJoinExamSession(ClaimsPrincipal user, Controllers.ExamSessionSnapshot session)
+    {
+        if (!session.Status.Equals("Active", StringComparison.OrdinalIgnoreCase)) return false;
+        var username = (user.FindFirstValue("unique_name")
+            ?? user.FindFirstValue("username")
+            ?? user.FindFirstValue("preferred_username")
+            ?? user.FindFirstValue(ClaimTypes.Name)
+            ?? string.Empty).Trim();
+        if (user.IsInRole("Student"))
+            return !string.IsNullOrWhiteSpace(username)
+                && session.StudentUsername.Equals(username, StringComparison.OrdinalIgnoreCase);
+        return MonitorRoles.Any(user.IsInRole);
+    }
 
     private static string MonitorGroup(string examId) => $"exam-monitor-{examId}";
 }

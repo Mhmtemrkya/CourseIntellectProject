@@ -68,6 +68,32 @@ public sealed class ObjectAuthorizationTests : IDisposable
     }
 
     [Fact]
+    public async Task SendMessage_DuplicateDisplayName_DoesNotGrantParticipantAccess()
+    {
+        var ownerId = Guid.NewGuid();
+        var strangerId = Guid.NewGuid();
+        var thread = await SeedThreadAsync();
+        thread.ParticipantOneUserId = ownerId;
+        await db.Context.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Messages.SendMessageAsync(
+            strangerId, "Ada Yilmaz", "Student", thread.Id,
+            new SendMessageRequest("same name, different user", null)));
+
+        Assert.Empty(db.Context.MessageItems);
+    }
+
+    [Fact]
+    public async Task CreateThread_RejectsCallerProvidedContactThatIsNotARealTenantUser()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Messages.CreateOrGetThreadAsync(
+            Guid.NewGuid(), "Ada", "Student",
+            new CreateThreadRequest("Hayali Kisi", "Teacher", null)));
+
+        Assert.Empty(db.Context.MessageThreads);
+    }
+
+    [Fact]
     public async Task SendMessage_MatchesParticipant_AcrossTurkishCharacters()
     {
         // Kayıt "Ada Yilmaz" (katlanmış) tutulur; kullanıcının tokendaki adı
@@ -121,7 +147,7 @@ public sealed class ObjectAuthorizationTests : IDisposable
         var thread = await SeedQuestionThreadAsync();
 
         var result = await Questions.AddReplyAsync(
-            thread.Id, "Ada Yılmaz", "Student", "ada.yilmaz",
+            thread.Id, Guid.Empty, "Ada Yılmaz", "Student", "ada.yilmaz",
             new CreateQuestionThreadReplyRequest("tekrar sorayım", null));
 
         Assert.NotNull(result);
@@ -134,7 +160,7 @@ public sealed class ObjectAuthorizationTests : IDisposable
         var thread = await SeedQuestionThreadAsync();
 
         var result = await Questions.AddReplyAsync(
-            thread.Id, "Mehmet Öğretmen", "Teacher", "mehmet.ogretmen",
+            thread.Id, Guid.Empty, "Mehmet Öğretmen", "Teacher", "mehmet.ogretmen",
             new CreateQuestionThreadReplyRequest("şöyle çözülür", null));
 
         Assert.NotNull(result);
@@ -147,10 +173,33 @@ public sealed class ObjectAuthorizationTests : IDisposable
         var thread = await SeedQuestionThreadAsync();
 
         var result = await Questions.AddReplyAsync(
-            thread.Id, "Yabancı Öğrenci", "Student", "yabanci.ogrenci",
+            thread.Id, Guid.Empty, "Yabancı Öğrenci", "Student", "yabanci.ogrenci",
             new CreateQuestionThreadReplyRequest("ben de göreyim", null));
 
         // null = "bulunamadı": soru metni, öğrenci adı, ekler ve yanıt geçmişi dönmez.
+        Assert.Null(result);
+        Assert.Empty(db.Context.StudentQuestionReplies);
+    }
+
+    [Fact]
+    public async Task GetThreads_UnknownAuthenticatedRole_FailsClosed()
+    {
+        await SeedQuestionThreadAsync();
+
+        var result = await Questions.GetThreadsAsync("Accounting", Guid.Empty, "Muhasebeci", "accounting");
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task Reply_DuplicateStudentDisplayName_DoesNotOverrideImmutableUsername()
+    {
+        var thread = await SeedQuestionThreadAsync();
+
+        var result = await Questions.AddReplyAsync(
+            thread.Id, Guid.Empty, "Ada Yılmaz", "Student", "other.ada",
+            new CreateQuestionThreadReplyRequest("same name", null));
+
         Assert.Null(result);
         Assert.Empty(db.Context.StudentQuestionReplies);
     }
@@ -161,7 +210,7 @@ public sealed class ObjectAuthorizationTests : IDisposable
         var thread = await SeedQuestionThreadAsync();
 
         var result = await Questions.AddReplyAsync(
-            thread.Id, "Başka Öğretmen", "Teacher", "baska.ogretmen",
+            thread.Id, Guid.Empty, "Başka Öğretmen", "Teacher", "baska.ogretmen",
             new CreateQuestionThreadReplyRequest("araya gireyim", null));
 
         Assert.Null(result);
@@ -174,7 +223,7 @@ public sealed class ObjectAuthorizationTests : IDisposable
         var thread = await SeedQuestionThreadAsync();
 
         var result = await Questions.AddReplyAsync(
-            thread.Id, "Yönetici", "Admin", "yonetici",
+            thread.Id, Guid.Empty, "Yönetici", "Admin", "yonetici",
             new CreateQuestionThreadReplyRequest("takip ediyorum", null));
 
         Assert.NotNull(result);
@@ -187,7 +236,7 @@ public sealed class ObjectAuthorizationTests : IDisposable
         var thread = await SeedQuestionThreadAsync();
 
         var result = await Questions.AddReplyAsync(
-            thread.Id, "Biri", "Veli", "biri",
+            thread.Id, Guid.Empty, "Biri", "Veli", "biri",
             new CreateQuestionThreadReplyRequest("merak ettim", null));
 
         Assert.Null(result);
