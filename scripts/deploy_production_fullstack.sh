@@ -24,8 +24,8 @@ Required deployment inputs not normally stored in the config files:
   TARGET_SHA, COURSE_INTELLECT_PUBLIC_API_URL, COURSE_INTELLECT_PUBLIC_SITE_URL
 Required production settings include COURSE_INTELLECT_DB,
 COURSE_INTELLECT_UPLOADS_ROOT, Registration__Enabled, and
-TenantCleanup__Enabled=false. Captcha credentials are required only when
-public registration is explicitly enabled.
+TenantCleanup__Enabled=false. Captcha credentials and a valid SMTP setup are
+required only when public registration is explicitly enabled.
 USAGE
 }
 
@@ -103,6 +103,9 @@ if [[ "$Registration__Enabled" == "true" ]]; then
   for name in COURSE_INTELLECT_CAPTCHA_SECRET NEXT_PUBLIC_TURNSTILE_SITE_KEY; do
     [[ -n "${!name:-}" ]] || { printf '%s is required when Registration__Enabled=true.\n' "$name" >&2; exit 2; }
   done
+  registration_smtp_host="${Email__Smtp__Host:-${COURSE_INTELLECT_SMTP_HOST:-}}"
+  [[ -n "$registration_smtp_host" ]] \
+    || { echo "SMTP configuration is required when Registration__Enabled=true." >&2; exit 2; }
 elif [[ "$Registration__Enabled" != "false" ]]; then
   echo "Registration__Enabled must be exactly true or false." >&2
   exit 2
@@ -382,15 +385,27 @@ npm ci --include=dev --no-audit --no-fund
 npm run lint
 npx tsc --noEmit
 npm audit --omit=dev --audit-level=high
+marketing_turnstile_site_key=""
+if [[ "$Registration__Enabled" == "true" ]]; then
+  marketing_turnstile_site_key="$NEXT_PUBLIC_TURNSTILE_SITE_KEY"
+fi
 NODE_ENV=production \
 NEXT_PUBLIC_API_URL="$COURSE_INTELLECT_PUBLIC_API_URL" \
-NEXT_PUBLIC_TURNSTILE_SITE_KEY="$NEXT_PUBLIC_TURNSTILE_SITE_KEY" \
+NEXT_PUBLIC_REGISTRATION_ENABLED="$Registration__Enabled" \
+NEXT_PUBLIC_TURNSTILE_SITE_KEY="$marketing_turnstile_site_key" \
   npm run build
 [[ -f out/index.html && -f out/kurum-kaydi/index.html && -f out/kurum-kaydi/dogrula/index.html ]]
 ! grep -R -F -q -- "$RETIRED_API_HOST" out
 ! grep -R -F -q -- "https://api.example.invalid" out
 grep -R -F -q -- "$COURSE_INTELLECT_PUBLIC_API_URL" out
-grep -R -F -q -- "$NEXT_PUBLIC_TURNSTILE_SITE_KEY" out
+if [[ "$Registration__Enabled" == "true" ]]; then
+  grep -R -F -q -- "$NEXT_PUBLIC_TURNSTILE_SITE_KEY" out
+else
+  grep -R -F -q -- "Kurum kaydı şu anda geçici olarak kapalıdır." out
+  ! grep -R -F -q -- "challenges.cloudflare.com/turnstile" out
+fi
+printf '%s\n' "$Registration__Enabled" > out/REGISTRATION_ENABLED
+[[ "$(<out/REGISTRATION_ENABLED)" == "$Registration__Enabled" ]]
 popd >/dev/null
 cp -a "$SOURCE_ROOT/$MARKETING_DIR/out/." "$MARKETING_RELEASE/"
 printf '%s\n' "$TARGET_SHA" > "$MARKETING_RELEASE/DEPLOYED_COMMIT"

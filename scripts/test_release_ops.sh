@@ -7,6 +7,10 @@ DEPLOY="$ROOT_DIR/scripts/deploy_production_fullstack.sh"
 UPLOADS_BACKUP="$ROOT_DIR/scripts/courseintellect-uploads-backup"
 NGINX="$ROOT_DIR/courseintellectmarketingwebsite (1)/deploy/nginx-security.conf"
 HEADERS="$ROOT_DIR/courseintellectmarketingwebsite (1)/deploy/nginx-security-headers.conf"
+MARKETING_CONFIG="$ROOT_DIR/courseintellectmarketingwebsite (1)/next.config.mjs"
+REGISTRATION_PAGE="$ROOT_DIR/courseintellectmarketingwebsite (1)/app/kurum-kaydi/page.tsx"
+TURNSTILE="$ROOT_DIR/courseintellectmarketingwebsite (1)/components/turnstile-widget.tsx"
+REGISTRATION_CONTROLLER="$ROOT_DIR/backend/CourseIntellect.Api/Controllers/PlatformOperationsController.cs"
 
 assert_contains() {
   local file="$1" pattern="$2"
@@ -27,6 +31,7 @@ bash -n "$UPLOADS_BACKUP"
 assert_contains "$PREFLIGHT" 'COURSE_INTELLECT_CAPTCHA_SECRET'
 assert_contains "$PREFLIGHT" 'Registration__Enabled'
 assert_contains "$PREFLIGHT" 'NEXT_PUBLIC_TURNSTILE_SITE_KEY'
+assert_contains "$PREFLIGHT" 'Registration__Enabled=true requires SMTP'
 assert_contains "$PREFLIGHT" 'COURSE_INTELLECT_SMTP_USE_SSL'
 assert_contains "$PREFLIGHT" 'COURSE_INTELLECT_SMTP_PASSWORD'
 assert_contains "$PREFLIGHT" 'TenantCleanup__Enabled'
@@ -64,6 +69,9 @@ assert_contains "$DEPLOY" 'nginx -t'
 assert_contains "$DEPLOY" 'systemctl restart'
 assert_contains "$DEPLOY" '/api/system/status'
 assert_contains "$DEPLOY" 'NEXT_PUBLIC_API_URL="$COURSE_INTELLECT_PUBLIC_API_URL"'
+assert_contains "$DEPLOY" 'NEXT_PUBLIC_REGISTRATION_ENABLED="$Registration__Enabled"'
+assert_contains "$DEPLOY" 'out/REGISTRATION_ENABLED'
+assert_contains "$DEPLOY" 'challenges.cloudflare.com/turnstile'
 assert_contains "$DEPLOY" 'BACKEND_RELEASE="$COURSE_INTELLECT_RELEASES_ROOT/backend/$RELEASE_ID"'
 assert_contains "$DEPLOY" 'MARKETING_RELEASE="$COURSE_INTELLECT_RELEASES_ROOT/marketing/$RELEASE_ID"'
 
@@ -83,5 +91,16 @@ assert_contains "$HEADERS" 'frame-src https://challenges.cloudflare.com'
 assert_contains "$NGINX" 'location = /admin {'
 assert_contains "$NGINX" 'location = /giris {'
 assert_contains "$NGINX" 'X-Robots-Tag "noindex, nofollow"'
+
+# Registration has two coherent static-export states. Disabled is the default;
+# enabled builds fail closed unless the public Turnstile key is present.
+assert_contains "$MARKETING_CONFIG" 'NEXT_PUBLIC_REGISTRATION_ENABLED'
+assert_contains "$MARKETING_CONFIG" 'registrationEnabled && !process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()'
+assert_contains "$REGISTRATION_PAGE" 'data-registration-enabled={registrationEnabled}'
+assert_contains "$REGISTRATION_PAGE" 'Kurum kaydı şu anda geçici olarak kapalıdır.'
+assert_contains "$REGISTRATION_PAGE" 'if (!registrationEnabled)'
+assert_contains "$TURNSTILE" 'registrationEnabled && SITE_KEY.length > 0'
+assert_contains "$REGISTRATION_CONTROLLER" 'StatusCodes.Status503ServiceUnavailable'
+assert_contains "$REGISTRATION_CONTROLLER" 'code = "REGISTRATION_DISABLED"'
 
 printf 'Release operations source assertions passed.\n'

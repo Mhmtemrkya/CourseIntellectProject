@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { useLanguage } from "@/context/language-context"
 import { apiRequest, ApiRequestError } from "@/lib/api-client"
-import { TurnstileWidget, turnstileEnabled } from "@/components/turnstile-widget"
+import { registrationEnabled, TurnstileWidget, turnstileEnabled } from "@/components/turnstile-widget"
 
 const plans = [
   { value: "Starter", label: { tr: "Starter — Küçük Kurumlar", en: "Starter — Small Institutions" } },
@@ -109,6 +109,11 @@ export default function KurumKaydiPage() {
     back: { tr: "Geri", en: "Back" },
     privacy: { tr: "Gizlilik", en: "Privacy" },
     terms: { tr: "Şartlar", en: "Terms" },
+    unavailableTitle: { tr: "Kurum Kaydı Geçici Olarak Kapalı", en: "Institution Registration Temporarily Unavailable" },
+    unavailable: {
+      tr: "Kurum kaydı şu anda geçici olarak kapalıdır. Lütfen daha sonra tekrar deneyin.",
+      en: "Institution registration is temporarily unavailable. Please try again later.",
+    },
   }
 
   // Bot koruması: gizli alan doluysa istek gönderilmez, sessizce "başarılı" gösterilir.
@@ -117,6 +122,7 @@ export default function KurumKaydiPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    if (!registrationEnabled) return
     if (website.trim() !== "") {
       setSubmitted(true)
       return
@@ -166,6 +172,28 @@ export default function KurumKaydiPage() {
     }
   }
 
+  if (!registrationEnabled) {
+    return (
+      <main
+        data-registration-enabled={registrationEnabled}
+        className="min-h-screen flex items-center justify-center bg-background p-6"
+      >
+        <Card className="w-full max-w-lg border-0 shadow-lg">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-3 rounded-full bg-muted p-3">
+              <Building2 className="h-7 w-7 text-muted-foreground" />
+            </div>
+            <CardTitle>{t.unavailableTitle[language]}</CardTitle>
+            <CardDescription className="text-base">{t.unavailable[language]}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Button asChild variant="outline"><Link href="/">{t.backHome[language]}</Link></Button>
+          </CardContent>
+        </Card>
+      </main>
+    )
+  }
+
   if (submitted) {
     return (
       <div className="min-h-screen flex">
@@ -208,7 +236,7 @@ export default function KurumKaydiPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div data-registration-enabled={registrationEnabled} className="min-h-screen flex">
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-primary p-12 flex-col justify-between">
         <div>

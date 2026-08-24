@@ -57,7 +57,7 @@ printf 'npm %s\n' "$*" >> "$MOCK_LOG"
 if [[ "${1:-}" == "run" && "${2:-}" == "build" ]]; then
   mkdir -p out/kurum-kaydi/dogrula
   printf '%s %s\n' "$NEXT_PUBLIC_API_URL" "$NEXT_PUBLIC_TURNSTILE_SITE_KEY" > out/index.html
-  printf '%s\n' "$NEXT_PUBLIC_API_URL" > out/kurum-kaydi/index.html
+  printf '%s data-registration-enabled="%s" Kurum kaydı şu anda geçici olarak kapalıdır.\n' "$NEXT_PUBLIC_API_URL" "$NEXT_PUBLIC_REGISTRATION_ENABLED" > out/kurum-kaydi/index.html
   printf '%s\n' "$NEXT_PUBLIC_TURNSTILE_SITE_KEY" > out/kurum-kaydi/dogrula/index.html
   [[ -z "${MOCK_MUTATE_ENV_FILE:-}" ]] || printf '# changed during build\n' >> "$MOCK_MUTATE_ENV_FILE"
   if [[ -n "${MOCK_REPLACE_UPLOADS_BACKUP:-}" ]]; then

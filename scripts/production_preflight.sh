@@ -23,6 +23,12 @@ else
   if touch "$probe" 2>/dev/null; then rm -f "$probe"; ok "Persistent uploads path is writable."; else fail "Persistent uploads path is not writable."; fi
 fi
 
+smtp_host="${Email__Smtp__Host:-${COURSE_INTELLECT_SMTP_HOST:-}}"
+smtp_port="${Email__Smtp__Port:-${COURSE_INTELLECT_SMTP_PORT:-587}}"
+smtp_user="${Email__Smtp__User:-${COURSE_INTELLECT_SMTP_USER:-}}"
+smtp_from="${Email__From:-${COURSE_INTELLECT_SMTP_FROM:-}}"
+smtp_ssl="${Email__Smtp__UseSsl:-${COURSE_INTELLECT_SMTP_USE_SSL:-}}"
+
 registration_enabled="${Registration__Enabled:-false}"
 if [[ "$registration_enabled" == "true" ]]; then
   [[ -n "${COURSE_INTELLECT_CAPTCHA_SECRET:-}" ]] \
@@ -31,6 +37,9 @@ if [[ "$registration_enabled" == "true" ]]; then
   [[ -n "${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}" ]] \
     && ok "Marketing Turnstile site key is configured for the public registration form." \
     || fail "Registration__Enabled=true requires NEXT_PUBLIC_TURNSTILE_SITE_KEY."
+  [[ -n "$smtp_host" ]] \
+    && ok "Public registration is enabled and SMTP is configured." \
+    || fail "Registration__Enabled=true requires SMTP configuration."
 elif [[ "$registration_enabled" == "false" ]]; then
   ok "Public registration is disabled; captcha credentials are not required."
 else
@@ -43,11 +52,6 @@ fi
   && ok "Tenant cleanup is explicitly disabled." \
   || fail "TenantCleanup__Enabled must be exactly false for production deployment."
 
-smtp_host="${Email__Smtp__Host:-${COURSE_INTELLECT_SMTP_HOST:-}}"
-smtp_port="${Email__Smtp__Port:-${COURSE_INTELLECT_SMTP_PORT:-587}}"
-smtp_user="${Email__Smtp__User:-${COURSE_INTELLECT_SMTP_USER:-}}"
-smtp_from="${Email__From:-${COURSE_INTELLECT_SMTP_FROM:-}}"
-smtp_ssl="${Email__Smtp__UseSsl:-${COURSE_INTELLECT_SMTP_USE_SSL:-}}"
 if [[ -n "$smtp_host" ]]; then
   [[ "$smtp_ssl" == "true" ]] && ok "SMTP TLS is enabled." || fail "COURSE_INTELLECT_SMTP_USE_SSL / Email__Smtp__UseSsl must be true when SMTP is configured."
   [[ "$smtp_port" == "465" || "$smtp_port" == "587" ]] && ok "SMTP uses a TLS submission port." || fail "SMTP port must be 465 or 587."

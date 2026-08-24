@@ -5,14 +5,14 @@ import { useEffect, useRef } from "react"
 /**
  * Cloudflare Turnstile widget'ı.
  *
- * Site anahtarı tanımlı değilse (lokal geliştirme) widget hiç render edilmez ve
- * `turnstileEnabled` false döner. Üretimde anahtar zorunludur: backend
- * `Captcha:Secret` olmadan kayıt isteğini reddeder (fail-closed).
+ * Kayıt build-time bayrağı kapalıysa widget ve Cloudflare betiği hiç yüklenmez.
+ * Bayrak açıkken üretim derlemesi site anahtarını zorunlu tutar.
  */
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""
 const SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
 
-export const turnstileEnabled = SITE_KEY.length > 0
+export const registrationEnabled = process.env.NEXT_PUBLIC_REGISTRATION_ENABLED === "true"
+export const turnstileEnabled = registrationEnabled && SITE_KEY.length > 0
 
 type TurnstileApi = {
   render: (el: HTMLElement, options: Record<string, unknown>) => string
