@@ -88,6 +88,12 @@ if [[ "${MOCK_FAIL_NEW_HEALTH:-0}" == 1 ]]; then
   current="$(readlink -f "$COURSE_INTELLECT_BACKEND_CURRENT" 2>/dev/null || true)"
   [[ "$current" == "$MOCK_OLD_BACKEND" ]] || exit 22
 fi
+status="${MOCK_HEALTH_STATUS:-200}"
+if [[ "${MOCK_REDIRECT_NEW_HEALTH:-0}" == 1 ]]; then
+  current="$(readlink -f "$COURSE_INTELLECT_BACKEND_CURRENT" 2>/dev/null || true)"
+  [[ "$current" == "$MOCK_OLD_BACKEND" ]] || status=307
+fi
+printf '%s' "$status"
 MOCK
 
   cat > "$fixture/bin/install" <<'MOCK'
@@ -193,6 +199,11 @@ after_switch="$work/health-failure"
 make_fixture "$after_switch"
 if run_deploy "$after_switch" MOCK_FAIL_NEW_HEALTH=1; then fail "health failure unexpectedly succeeded"; fi
 assert_old_state "$after_switch"
+
+redirect_health="$work/redirect-health-failure"
+make_fixture "$redirect_health"
+if run_deploy "$redirect_health" MOCK_REDIRECT_NEW_HEALTH=1; then fail "HTTP redirect health unexpectedly succeeded"; fi
+assert_old_state "$redirect_health"
 
 first_activation="$work/first-activation-failure"
 make_fixture "$first_activation"

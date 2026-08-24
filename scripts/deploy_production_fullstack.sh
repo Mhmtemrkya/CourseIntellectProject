@@ -207,9 +207,11 @@ external_state_unchanged() {
 }
 
 wait_for_url() {
-  local url="$1" attempts="${2:-12}" delay="${3:-5}" i
+  local url="$1" attempts="${2:-12}" delay="${3:-5}" i status
   for ((i=1; i<=attempts; i++)); do
-    curl --fail --silent --show-error --max-time 20 "$url" >/dev/null 2>&1 && return 0
+    status="$(curl --silent --show-error --max-time 20 --output /dev/null \
+      --write-out '%{http_code}' "$url" 2>/dev/null || true)"
+    [[ "$status" =~ ^2[0-9]{2}$ ]] && return 0
     (( i == attempts )) || sleep "$delay"
   done
   printf 'Health check did not become ready: %s\n' "$url" >&2
