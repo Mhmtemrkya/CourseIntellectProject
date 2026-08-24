@@ -13,7 +13,7 @@ public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService
 {
     /// <summary>
     /// Marketing site checkout: kullanıcı giriş yapmış kurum, paket satın alır.
-    /// Şu an direkt onaylama (autoApprove=true). Ödeme entegrasyonu sonra eklenir.
+    /// Creates a pending invoice. Only the platform approval path can activate it.
     /// </summary>
     [HttpPost("purchase")]
     public async Task<IActionResult> Purchase(
@@ -23,6 +23,17 @@ public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService
         var (actorId, tenantId) = GetClaims();
         if (request.TenantId.HasValue && request.TenantId.Value != Guid.Empty)
         {
+            var isPlatformAdmin = string.Equals(
+                User.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(User.FindFirstValue("tenant_id"));
+            if (tenantId != Guid.Empty && tenantId != request.TenantId.Value)
+            {
+                return Forbid();
+            }
+            if (tenantId == Guid.Empty && !isPlatformAdmin)
+            {
+                return Forbid();
+            }
             tenantId = request.TenantId.Value;
         }
 
@@ -33,7 +44,7 @@ public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService
 
         try
         {
-            var invoice = await service.CreateAsync(actorId, tenantId, request, autoApprove: true, cancellationToken);
+            var invoice = await service.CreateAsync(actorId, tenantId, request, autoApprove: false, cancellationToken);
             return Ok(invoice);
         }
         catch (InvalidOperationException ex)
@@ -61,7 +72,7 @@ public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService
     /// Platform admin: tüm faturalar.
     /// </summary>
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? status,
         [FromQuery] string? search,
@@ -72,7 +83,7 @@ public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var invoice = await service.GetByIdAsync(id, cancellationToken);
@@ -80,7 +91,7 @@ public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService
     }
 
     [HttpPut("{id:guid}/pay")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> MarkPaid(
         Guid id,
         [FromBody] MarkPlatformInvoicePaidRequest request,
@@ -91,7 +102,7 @@ public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService
     }
 
     [HttpPut("{id:guid}/cancel")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> Cancel(
         Guid id,
         [FromBody] MarkPlatformInvoicePaidRequest request,
