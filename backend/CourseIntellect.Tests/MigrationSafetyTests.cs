@@ -29,6 +29,8 @@ public sealed class MigrationSafetyTests
         var sql = string.Join("\n", operations.OfType<SqlOperation>().Select(x => x.Sql));
 
         Assert.Contains("INSERT INTO tenant_registration_applications", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("src.\"RejectedAtUtc\"", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("src.rejected_at_utc", sql, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("DELETE FROM tenant_workspaces", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(operations.OfType<DeleteDataOperation>());
         Assert.Empty(operations.OfType<DropTableOperation>());
