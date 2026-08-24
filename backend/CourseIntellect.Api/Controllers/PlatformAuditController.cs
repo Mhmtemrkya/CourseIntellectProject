@@ -12,23 +12,14 @@ namespace CourseIntellect.Api.Controllers;
 /// (IgnoreQueryFilters) ve erişim yalnızca platform admin kimliğine açıktır.
 /// </summary>
 [ApiController]
-[Authorize]
+[Authorize(Policy = "PlatformAdmin")]
 [Route("api/platformops/audit")]
 public sealed class PlatformAuditController(CourseIntellectDbContext dbContext) : ControllerBase
 {
-    // Fail-closed: yalnızca platform admin bayrağı taşıyan veya Developer rolündeki kimlikler.
-    private bool IsPlatformAdmin()
-    {
-        return string.Equals(User.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase)
-               || User.IsInRole("Developer");
-    }
-
     /// <summary>Kurum bazında log özeti: her kurumun toplam/son 7 gün kayıt sayısı ve son aktivitesi.</summary>
     [HttpGet("overview")]
     public async Task<IActionResult> GetOverview(CancellationToken cancellationToken)
     {
-        if (!IsPlatformAdmin()) return Forbid();
-
         var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
         var grouped = await dbContext.AuditLogEntries
             .IgnoreQueryFilters()
@@ -71,8 +62,6 @@ public sealed class PlatformAuditController(CourseIntellectDbContext dbContext) 
     [HttpGet("tenants/{tenantId:guid}/branches")]
     public async Task<IActionResult> GetTenantBranchBreakdown(Guid tenantId, CancellationToken cancellationToken)
     {
-        if (!IsPlatformAdmin()) return Forbid();
-
         var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
         var grouped = await dbContext.AuditLogEntries
             .IgnoreQueryFilters()
@@ -127,8 +116,6 @@ public sealed class PlatformAuditController(CourseIntellectDbContext dbContext) 
         [FromQuery] int take = 100,
         CancellationToken cancellationToken = default)
     {
-        if (!IsPlatformAdmin()) return Forbid();
-
         var query = dbContext.AuditLogEntries
             .IgnoreQueryFilters()
             .AsNoTracking()

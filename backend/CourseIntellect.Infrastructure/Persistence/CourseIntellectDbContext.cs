@@ -262,6 +262,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ExtraRolesSerialized).HasColumnName("extra_roles").HasMaxLength(400);
             entity.Property(x => x.RoleHistorySerialized).HasColumnName("role_history").HasMaxLength(4000);
             entity.Property(x => x.MustChangePassword).HasColumnName("must_change_password").HasDefaultValue(false);
+            entity.Property(x => x.SecurityVersion).HasColumnName("security_version").HasDefaultValue(1L);
             entity.Property(x => x.TemporaryPasswordExpiresAtUtc).HasColumnName("temporary_password_expires_at_utc");
             entity.Property(x => x.CustomRoleId).HasColumnName("custom_role_id");
             entity.HasIndex(x => x.CustomRoleId);
@@ -1199,6 +1200,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.TokenHash).IsUnique();
             entity.Property(x => x.TokenHash).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.SecurityVersion).HasColumnName("security_version").HasDefaultValue(1L);
         });
 
         modelBuilder.Entity<PasswordResetRequest>(entity =>
@@ -1318,6 +1320,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ClientId).HasMaxLength(80).IsRequired();
             entity.Property(x => x.RedirectUri).HasMaxLength(500).IsRequired();
             entity.Property(x => x.CodeChallengeHash).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.SecurityVersion).HasColumnName("security_version").HasDefaultValue(1L);
         });
 
         modelBuilder.Entity<PushDeviceRegistration>(entity =>

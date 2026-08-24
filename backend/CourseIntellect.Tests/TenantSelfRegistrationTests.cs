@@ -92,7 +92,8 @@ public sealed class TenantSelfRegistrationTests : IDisposable
         CaptchaVerificationStatus captcha = CaptchaVerificationStatus.Success,
         Dictionary<string, string?>? settings = null,
         IEmailSender? email = null,
-        string environmentName = "Development")
+        string environmentName = "Development",
+        ITenantSetupDocumentService? setupDocument = null)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(settings ?? [])
@@ -102,7 +103,7 @@ public sealed class TenantSelfRegistrationTests : IDisposable
             db.Context,
             new StubHasher(),
             new StubCaptcha(captcha),
-            new TenantSetupDocumentPdfService(),
+            setupDocument ?? new TenantSetupDocumentPdfService(),
             new StubAudit(),
             email ?? new StubEmailSender(isConfigured: false),
             new StubEnvironment(environmentName),
@@ -417,6 +418,37 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     }
 
     [Fact]
+    public async Task Pdf_failure_does_not_commit_approval_or_credentials()
+    {
+        var service = CreateService(setupDocument: new ThrowingSetupDocument());
+        await service.RegisterTenantAsync(ValidRequest(), Context);
+        var application = await db.Context.TenantRegistrationApplications.SingleAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ApproveTenantAsync(application.Id));
+
+        db.Context.ChangeTracker.Clear();
+        Assert.Empty(await db.Context.TenantWorkspaces.ToListAsync());
+        Assert.Empty(await db.Context.Users.ToListAsync());
+        Assert.Equal("pending", (await db.Context.TenantRegistrationApplications.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task Approval_response_loss_can_be_retried_to_deliver_fresh_credentials_without_duplicate_tenant()
+    {
+        var service = CreateService();
+        await service.RegisterTenantAsync(ValidRequest(), Context);
+        var application = await db.Context.TenantRegistrationApplications.SingleAsync();
+        var first = await service.ApproveTenantAsync(application.Id);
+
+        var recovered = await service.ApproveTenantAsync(application.Id);
+
+        Assert.NotNull(recovered?.SetupDocumentBase64);
+        Assert.NotEqual(first!.TemporaryPassword, recovered!.TemporaryPassword);
+        Assert.Single(await db.Context.TenantWorkspaces.ToListAsync());
+        Assert.Single(await db.Context.Users.ToListAsync());
+    }
+
+    [Fact]
     public async Task Belge_yenilenince_eski_parola_gecersiz_olur()
     {
         var service = CreateService();
@@ -540,6 +572,28 @@ public sealed class TenantSelfRegistrationTests : IDisposable
         await db.Context.SaveChangesAsync();
 
         Assert.False(await service.VerifyRegistrationContactAsync(token));
+    }
+
+    [Fact]
+    public async Task Expired_verification_can_be_resent_by_reapplying_without_duplicate_record()
+    {
+        var email = new StubEmailSender(isConfigured: true);
+        var service = CreateService(email: email, environmentName: "Production");
+        await service.RegisterTenantAsync(ValidRequest(), Context);
+        var oldToken = email.ExtractToken();
+        var application = await db.Context.TenantRegistrationApplications.SingleAsync();
+        application.VerificationExpiresAtUtc = DateTime.UtcNow.AddMinutes(-1);
+        await db.Context.SaveChangesAsync();
+
+        var reapplied = await service.RegisterTenantAsync(ValidRequest(), Context);
+        var newToken = email.ExtractToken();
+
+        Assert.Equal(TenantRegistrationOutcome.Duplicate, reapplied.Outcome);
+        Assert.Equal(2, email.Sent.Count);
+        Assert.NotEqual(oldToken, newToken);
+        Assert.Single(await db.Context.TenantRegistrationApplications.ToListAsync());
+        Assert.False(await service.VerifyRegistrationContactAsync(oldToken));
+        Assert.True(await service.VerifyRegistrationContactAsync(newToken));
     }
 
     [Fact]
@@ -785,6 +839,31 @@ public sealed class TenantSelfRegistrationTests : IDisposable
         var captchaFailed = await CreateController(CaptchaVerificationStatus.Failed)
             .RegisterTenant(ValidRequest(), CancellationToken.None);
         Assert.Equal(StatusCodes.Status400BadRequest, Assert.IsType<BadRequestObjectResult>(captchaFailed).StatusCode);
+    }
+
+    [Fact]
+    public async Task Platformops_requires_explicit_platform_admin_claim_and_absent_tenant()
+    {
+        var controller = CreateController();
+        controller.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity([
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Admin"),
+                new System.Security.Claims.Claim("platform_admin", "false")
+            ], "test", "name", System.Security.Claims.ClaimTypes.Role));
+        Assert.IsType<ForbidResult>(await controller.GetOverview(CancellationToken.None));
+
+        controller.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity([
+                new System.Security.Claims.Claim("platform_admin", "true"),
+                new System.Security.Claims.Claim("tenant_id", Guid.NewGuid().ToString())
+            ], "test"));
+        Assert.IsType<ForbidResult>(await controller.GetOverview(CancellationToken.None));
+    }
+
+    private sealed class ThrowingSetupDocument : ITenantSetupDocumentService
+    {
+        public byte[] Generate(TenantSetupDocumentModel model)
+            => throw new InvalidOperationException("pdf failed");
     }
 
     public void Dispose() => db.Dispose();

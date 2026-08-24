@@ -16,7 +16,7 @@ namespace CourseIntellect.Api.Controllers;
 /// içeren dev bir dosya diskte artık kalmaz ve temizlik işi gerekmez.
 /// </summary>
 [ApiController]
-[Authorize(Roles = "Admin,Developer")]
+[Authorize(Roles = "Admin")]
 [Route("api/tenant-backup")]
 public sealed class TenantBackupController(
     ITenantBackupService backupService,

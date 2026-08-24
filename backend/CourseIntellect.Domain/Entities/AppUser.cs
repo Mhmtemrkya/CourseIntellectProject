@@ -28,6 +28,8 @@ public sealed class AppUser : IBranchScopedEntity
     public string PhotoUrl { get; set; } = string.Empty;
     public bool IsEmailVerified { get; set; }
     public bool MustChangePassword { get; set; }
+    /// <summary>Security-sensitive mutation version; embedded in every access credential.</summary>
+    public long SecurityVersion { get; set; } = 1;
 
     /// <summary>
     /// Geçici parolanın son kullanma anı. <see cref="MustChangePassword"/> true iken

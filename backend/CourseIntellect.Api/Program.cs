@@ -214,10 +214,7 @@ var allowedCorsOriginSet = new HashSet<string>(allowedCorsOrigins, StringCompare
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
-    // The API is exposed only through local Nginx/Cloudflare; allow forwarded headers from the reverse proxy path.
-    options.KnownNetworks.Clear();
-    options.KnownProxies.Clear();
+    CourseIntellect.Api.ForwardedHeadersConfiguration.Apply(options, builder.Configuration, builder.Environment);
 });
 
 builder.Services.AddCors(options =>
@@ -300,12 +297,33 @@ builder.Services
 
                 return Task.CompletedTask;
             },
-            OnTokenValidated = context =>
+            OnTokenValidated = async context =>
             {
-                if (!jwtDiagnosticsVerbose)
+                var subject = context.Principal?.FindFirstValue("sub")
+                    ?? context.Principal?.FindFirstValue("nameid");
+                var versionClaim = context.Principal?.FindFirstValue("security_version");
+                if (!Guid.TryParse(subject, out var userId)
+                    || !long.TryParse(versionClaim, out var securityVersion))
                 {
-                    return Task.CompletedTask;
+                    context.Fail("Access credential is missing its security binding.");
+                    return;
                 }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<CourseIntellectDbContext>();
+                var user = await db.Users.IgnoreQueryFilters().AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.Id == userId, context.HttpContext.RequestAborted);
+                if (user is null || user.Status != CourseIntellect.Domain.Enums.UserStatus.Active
+                    || user.SecurityVersion != securityVersion
+                    || !string.Equals(
+                        context.Principal?.FindFirstValue("bootstrap_only"),
+                        user.MustChangePassword ? "true" : "false",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Fail("Access credential has been revoked.");
+                    return;
+                }
+
+                if (!jwtDiagnosticsVerbose) return;
 
                 var logger = context.HttpContext
                     .RequestServices
@@ -328,8 +346,6 @@ builder.Services
                             claim.Value);
                     }
                 }
-
-                return Task.CompletedTask;
             },
             OnAuthenticationFailed = context =>
             {
@@ -347,6 +363,13 @@ builder.Services
             }
         };
     });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("PlatformAdmin", policy => policy.RequireAssertion(context =>
+        string.Equals(context.User.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase)
+        && string.IsNullOrWhiteSpace(context.User.FindFirstValue("tenant_id"))));
+});
 
 // dotnet-ef yalnız model/factory kullanır; web host'u kurup başlangıç işleri
 // çalıştırmasına gerek yoktur. Normal çalışmada değişken false olduğu için bu
@@ -619,6 +642,7 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 app.UseAuthentication();
+app.UseMiddleware<BootstrapOnlyMiddleware>();
 
 // ── Claims debug middleware (sadece Development) ─────────────────────────────
 // 403 sorunlarını teşhis etmek için: Authentication sonrası, Authorization

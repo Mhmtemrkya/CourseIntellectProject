@@ -4,6 +4,7 @@ public sealed class RefreshTokenSession
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public long SecurityVersion { get; set; } = 1;
     public string TokenHash { get; set; } = string.Empty;
     public DateTime ExpiresAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

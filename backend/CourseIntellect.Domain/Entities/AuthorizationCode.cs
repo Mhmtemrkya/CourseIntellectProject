@@ -5,6 +5,7 @@ public sealed class AuthorizationCode
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Code { get; set; } = string.Empty;
     public Guid UserId { get; set; }
+    public long SecurityVersion { get; set; } = 1;
     public string ClientId { get; set; } = string.Empty;
     public string RedirectUri { get; set; } = string.Empty;
     public string CodeChallengeHash { get; set; } = string.Empty;

@@ -367,8 +367,7 @@ public sealed class PlatformOperationsService(
         // Çağırana yine 202 döneceğiz; "bu e-posta zaten kayıtlı" demek kayıt
         // varlığını sızdırırdı.
         var duplicatePending = await dbContext.TenantRegistrationApplications
-            .AsNoTracking()
-            .AnyAsync(
+            .FirstOrDefaultAsync(
                 x => x.ContactEmailNormalized == normalizedEmail
                      && x.Status == "pending"
                      && x.CreatedAtUtc >= cooldownStart,
@@ -378,10 +377,18 @@ public sealed class PlatformOperationsService(
             .AsNoTracking()
             .AnyAsync(x => x.ContactEmail.ToLower() == normalizedEmail && x.Status == "active", cancellationToken);
 
-        var duplicate = duplicatePending || duplicateTenant;
+        var duplicate = duplicatePending is not null || duplicateTenant;
 
         if (duplicate)
         {
+            if (duplicatePending is not null
+                && duplicatePending.VerifiedAtUtc is null
+                && (duplicatePending.VerificationSentAtUtc is null
+                    || duplicatePending.VerificationExpiresAtUtc <= DateTime.UtcNow))
+            {
+                await StartContactVerificationAsync(duplicatePending, cancellationToken);
+            }
+
             logger.LogInformation(
                 "Kurum kaydı yinelenen başvuru olarak yutuldu. Ip={Ip} Ua={UserAgent}",
                 context.IpAddress,
@@ -565,14 +572,20 @@ public sealed class PlatformOperationsService(
 
     public async Task<TenantWorkspaceDto?> ApproveTenantAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        // YÖNLENDİRME KURALI: id ile gelen her uç (Approve/Reject/Delete) ÖNCE
-        // başvurulara, sonra kurumlara bakar. Tek liste döndüğümüz için istemci
-        // hangi tabloda olduğunu bilmez; sıra her metotta aynı olmalıdır.
+        // Approved applications are deliberately retained. A retry after a lost
+        // approval response rotates and redelivers bootstrap credentials without
+        // creating a second tenant.
         var application = await dbContext.TenantRegistrationApplications
-            .SingleOrDefaultAsync(x => x.Id == id && x.Status != "approved", cancellationToken);
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (application is not null)
         {
+            if (application.Status == "approved" && application.CreatedTenantId is Guid createdTenantId)
+            {
+                var recovered = await RegenerateSetupDocumentAsync(createdTenantId, cancellationToken);
+                return recovered.Outcome == SetupDocumentOutcome.Ready ? recovered.Tenant : null;
+            }
+
             return await ApproveApplicationAsync(application, cancellationToken);
         }
 
@@ -1104,6 +1117,7 @@ public sealed class PlatformOperationsService(
         var temporaryPassword = PasswordGenerator.Generate(10);
         adminUser.PasswordHash = passwordHasher.Hash(temporaryPassword);
         adminUser.MustChangePassword = true;
+        adminUser.SecurityVersion++;
         adminUser.TemporaryPasswordExpiresAtUtc = DateTime.UtcNow.AddDays(
             configuration.GetValue<int?>("Registration:TemporaryPasswordValidDays") ?? 7);
 
@@ -1116,9 +1130,9 @@ public sealed class PlatformOperationsService(
             session.RevokedAtUtc = DateTime.UtcNow;
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-
         var document = BuildSetupDocument(tenant, adminUser, temporaryPassword);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         await auditLog.LogAsync(
             "Kurum kurulum belgesi yeniden üretildi",
@@ -1511,6 +1525,10 @@ public sealed class PlatformOperationsService(
         application.ApprovedAtUtc = DateTime.UtcNow;
         application.CreatedTenantId = tenant.Id;
 
+        // Render before commit. If rendering fails, disposal rolls the transaction
+        // back and no unusable bootstrap password is persisted.
+        var document = BuildSetupDocument(tenant, created.User, created.TemporaryPassword);
+
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -1519,8 +1537,6 @@ public sealed class PlatformOperationsService(
             application.Id,
             tenant.Id,
             tenant.Slug);
-
-        var document = BuildSetupDocument(tenant, created.User, created.TemporaryPassword);
 
         await auditLog.LogAsync(
             "Kurum onaylandı, kurulum belgesi üretildi",
