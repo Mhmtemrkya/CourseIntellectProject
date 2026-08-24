@@ -176,7 +176,7 @@ export default function LoginAttemptsPage() {
 
       setLoginAttempts(mapped)
       setStats(statsResponse)
-    } catch (error) {
+    } catch {
       setLoadError("Giriş denemeleri yüklenemedi.")
     } finally {
       setIsLoading(false)

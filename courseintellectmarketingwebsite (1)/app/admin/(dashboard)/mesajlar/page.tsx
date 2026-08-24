@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Mail, MailOpen, Trash2, X, Reply, Star, StarOff, Archive, Clock } from "lucide-react"
+import { Mail, Trash2, X, Reply, Star, StarOff, Archive, Clock } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -50,10 +50,10 @@ interface PagedResponse<T> {
 }
 
 const statusConfig = {
-  unread: { label: "Okunmamış", color: "bg-blue-100 text-blue-700", icon: Mail },
-  read: { label: "Okundu", color: "bg-gray-100 text-gray-700", icon: MailOpen },
-  replied: { label: "Yanıtlandı", color: "bg-green-100 text-green-700", icon: Reply },
-  archived: { label: "Arşivde", color: "bg-yellow-100 text-yellow-700", icon: Archive },
+  unread: { label: "Okunmamış", color: "bg-blue-100 text-blue-700" },
+  read: { label: "Okundu", color: "bg-gray-100 text-gray-700" },
+  replied: { label: "Yanıtlandı", color: "bg-green-100 text-green-700" },
+  archived: { label: "Arşivde", color: "bg-yellow-100 text-yellow-700" },
 }
 
 export default function MessagesPage() {
@@ -95,7 +95,7 @@ export default function MessagesPage() {
           query: { page: 1, pageSize: 100 },
         })
         setMessages(response.items.map(mapMessage))
-      } catch (error) {
+      } catch {
         setLoadError("Mesajlar yüklenemedi.")
       } finally {
         setIsLoading(false)
@@ -133,7 +133,7 @@ export default function MessagesPage() {
       const mapped = mapMessageDetail(detail)
       setSelectedMessage(mapped)
       setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, ...mapped } : m)))
-    } catch (error) {
+    } catch {
       setLoadError("Mesaj yüklenemedi.")
     }
   }
@@ -155,7 +155,7 @@ export default function MessagesPage() {
       if (selectedMessage?.id === id) {
         setSelectedMessage(mapped)
       }
-    } catch (error) {
+    } catch {
       setLoadError("Mesaj güncellenemedi.")
     }
   }
@@ -168,7 +168,7 @@ export default function MessagesPage() {
       const mapped = mapMessageDetail(updated)
       setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...mapped } : m)))
       setSelectedMessage(null)
-    } catch (error) {
+    } catch {
       setLoadError("Mesaj güncellenemedi.")
     }
   }
@@ -181,7 +181,7 @@ export default function MessagesPage() {
       const mapped = mapMessageDetail(updated)
       setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...mapped } : m)))
       setSelectedMessage(null)
-    } catch (error) {
+    } catch {
       setLoadError("Mesaj güncellenemedi.")
     }
   }
@@ -197,7 +197,7 @@ export default function MessagesPage() {
       })
       setMessages((prev) => prev.filter((m) => m.id !== id))
       setSelectedMessage((prev) => (prev?.id === id ? null : prev))
-    } catch (error) {
+    } catch {
       setLoadError("Mesaj silinemedi.")
     }
   }
@@ -274,7 +274,6 @@ export default function MessagesPage() {
           <AnimatePresence mode="popLayout">
             {filteredMessages.length > 0 ? (
               filteredMessages.map((msg, index) => {
-                const StatusIcon = statusConfig[msg.status].icon
                 return (
                   <motion.div
                     key={msg.id}

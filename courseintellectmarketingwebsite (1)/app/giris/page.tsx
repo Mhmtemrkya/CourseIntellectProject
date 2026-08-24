@@ -107,7 +107,7 @@ export default function LoginPage() {
           return
         }
 
-        const result = await register(email, password, name, selectedRole, phone)
+        const result = await register(email, password, name, selectedRole)
         if (result.success) {
           setError("Site sahibi onayı bekleniyor.")
           setIsRegister(false)
@@ -123,7 +123,7 @@ export default function LoginPage() {
           setError(result.error || "Giriş başarısız")
         }
       }
-    } catch (err) {
+    } catch {
       setError("Bir hata oluştu")
     } finally {
       setIsLoading(false)

@@ -41,7 +41,7 @@ export default function ContactPage() {
 
       // Reset success message after 5 seconds
       setTimeout(() => setIsSubmitted(false), 5000)
-    } catch (error) {
+    } catch {
       setSubmitError("Message could not be sent.")
     } finally {
       setIsSubmitting(false)

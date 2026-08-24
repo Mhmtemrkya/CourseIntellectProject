@@ -37,8 +37,6 @@ export function AdminHeader() {
   const { isDirty, saveContent, lastSaved } = useContent()
   const [showSearch, setShowSearch] = useState(false)
 
-  const currentPageName = pathNames[pathname] || "Dashboard"
-
   const getBreadcrumbs = () => {
     const parts = pathname.split("/").filter(Boolean)
     const breadcrumbs: { label: string; href: string }[] = []

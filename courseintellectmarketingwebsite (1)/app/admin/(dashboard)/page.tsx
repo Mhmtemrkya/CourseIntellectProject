@@ -56,7 +56,7 @@ export default function AdminDashboard() {
 
         setStatsData(statsResponse)
         setActivities(activityResponse)
-      } catch (error) {
+      } catch {
         setLoadError("Kontrol paneli verileri yüklenemedi.")
       } finally {
         setIsLoading(false)

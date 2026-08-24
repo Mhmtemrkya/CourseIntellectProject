@@ -45,7 +45,7 @@ function getTranslationSection(source: Partial<Translations>, category: keyof Tr
 }
 
 export default function TranslationsPage() {
-  const { language, customTranslations, saveCustomTranslations } = useLanguage()
+  const { customTranslations, saveCustomTranslations } = useLanguage()
   const { toast } = useToast()
   const [selectedCategory, setSelectedCategory] = useState("navbar")
   const [searchQuery, setSearchQuery] = useState("")
@@ -95,7 +95,7 @@ export default function TranslationsPage() {
         title: "Kaydedildi",
         description: "Çeviriler başarıyla kaydedildi.",
       })
-    } catch (error) {
+    } catch {
       toast({
         title: "Hata",
         description: "Çeviriler kaydedilemedi.",

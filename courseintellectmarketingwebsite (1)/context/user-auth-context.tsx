@@ -23,7 +23,6 @@ interface UserAuthContextValue {
     password: string,
     name: string,
     role: UserRole,
-    phone?: string,
   ) => Promise<{ success: boolean; error?: string; pendingApproval?: boolean }>
   addLoginAttempt: (attempt: Omit<LoginAttempt, "id" | "timestamp">) => void
   addRegistration: (registration: Omit<UserRegistration, "id" | "registeredAt">) => void
@@ -162,7 +161,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
             expiresAt: refreshed.expiresAtUtc,
           }),
         )
-      } catch (error) {
+      } catch {
         localStorage.removeItem(USER_AUTH_KEY)
         setUser(null)
       } finally {
@@ -293,7 +292,6 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
       password: string,
       name: string,
       role: UserRole,
-      phone?: string,
     ): Promise<{ success: boolean; error?: string; pendingApproval?: boolean }> => {
       try {
         await apiRequest<AuthResponse>("/api/auth/register", {

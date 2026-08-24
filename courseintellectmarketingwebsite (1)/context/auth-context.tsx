@@ -186,7 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
           storage,
         )
-      } catch (error) {
+      } catch {
         clearStoredAuth()
         setUser(null)
         setAccessToken(null)
@@ -249,7 +249,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       )
 
       return { success: true }
-    } catch (error) {
+    } catch {
       return { success: false, error: "Kullanıcı adı veya şifre hatalı." }
     }
   }, [])

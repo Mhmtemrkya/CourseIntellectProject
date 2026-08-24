@@ -27,6 +27,20 @@ export type ApiRequestOptions = {
   headers?: Record<string, string>
 }
 
+type ApiErrorPayload = {
+  traceId?: string
+  message?: string
+  action?: string
+  reason?: string
+  code?: string
+  details?: unknown
+  error?: {
+    message?: string
+    code?: string
+    details?: unknown
+  }
+}
+
 // İki ayrı auth context var: admin paneli ve kurum kullanıcı.
 // Token hangi context oturum açtıysa orada — sırayla bak.
 const AUTH_STORAGE_KEYS = ["courseintellect_user_auth", "courseintellect_auth"] as const
@@ -38,7 +52,7 @@ const DEFAULT_API_URL =
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/$/, "")
 
-function friendlyApiError(status: number, payload: any): string {
+function friendlyApiError(status: number, payload: ApiErrorPayload | null): string {
   const trace = payload?.traceId ? ` Takip kodu: ${payload.traceId}.` : ""
   if (status >= 500) {
     return `İşlem şu anda tamamlanamadı. Sunucuda beklenmeyen bir sorun oluştu. Kısa bir süre sonra tekrar deneyin; sorun devam ederse destek ekibine başvurun.${trace}`
@@ -138,7 +152,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   const isJson = contentType.includes("application/json")
 
   if (!response.ok) {
-    const errorPayload = isJson ? await response.json() : null
+    const errorPayload: ApiErrorPayload | null = isJson ? await response.json() : null
     const error = new ApiRequestError(friendlyApiError(response.status, errorPayload))
     error.code = errorPayload?.code || errorPayload?.error?.code
     error.details = errorPayload?.details || errorPayload?.error?.details

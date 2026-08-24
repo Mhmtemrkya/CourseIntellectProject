@@ -22,7 +22,7 @@ interface PageLoaderProps {
   className?: string
 }
 
-export function PageLoader({ variant = "home", title, subtitle, className }: PageLoaderProps) {
+export function PageLoader({ title, className }: PageLoaderProps) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
