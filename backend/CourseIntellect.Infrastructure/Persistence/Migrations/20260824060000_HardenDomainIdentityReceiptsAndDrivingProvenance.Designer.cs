@@ -630,6 +630,12 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(4000)")
                         .HasColumnName("role_history");
 
+                    b.Property<long>("SecurityVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(1L)
+                        .HasColumnName("security_version");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -1115,6 +1121,12 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<long>("SecurityVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(1L)
+                        .HasColumnName("security_version");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -7253,6 +7265,12 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime?>("RevokedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("SecurityVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(1L)
+                        .HasColumnName("security_version");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
