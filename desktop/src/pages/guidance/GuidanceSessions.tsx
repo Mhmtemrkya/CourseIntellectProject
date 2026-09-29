@@ -7,8 +7,13 @@ import { Input } from '../../components/ui/input';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchGuidanceOverview, fetchGuidanceStudentFile } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { GuidanceStudentFile } from '../../lib/api/guidance';
+import type { GuidanceSessionRecord } from '../../types/api/generated';
 
-const TOPIC_LABELS = {
+type SessionRow = GuidanceSessionRecord & { className: string };
+
+const TOPIC_LABELS: Partial<Record<string, string>> = {
   motivasyon: 'Motivasyon',
   'sinav-kaygisi': 'Sınav Kaygısı',
   aile: 'Aile',
@@ -17,7 +22,7 @@ const TOPIC_LABELS = {
   diger: 'Diğer',
 };
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -26,7 +31,7 @@ function formatDate(value) {
 // Tüm öğrencilerin görüşme kayıtlarını dosyalarından toplayıp tek listede sunar.
 export default function GuidanceSessions() {
   const navigate = useNavigate();
-  const [sessions, setSessions] = useState([]);
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -41,19 +46,19 @@ export default function GuidanceSessions() {
       const files = await Promise.all(
         withSessions.slice(0, 40).map((s) => fetchGuidanceStudentFile(s.studentName).catch(() => null)),
       );
-      const all = files
-        .filter(Boolean)
+      const all: SessionRow[] = files
+        .filter((file): file is GuidanceStudentFile => file !== null)
         .flatMap((file) => (file.sessions || []).map((session) => ({ ...session, className: file.profile?.className || session.className })));
-      all.sort((a, b) => new Date(b.sessionAtUtc) - new Date(a.sessionAtUtc));
+      all.sort((a, b) => new Date(b.sessionAtUtc).getTime() - new Date(a.sessionAtUtc).getTime());
       setSessions(all);
     } catch (err) {
-      setError(err?.message || 'Görüşmeler alınamadı.');
+      setError(errorMessage(err, 'Görüşmeler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const filtered = useMemo(() => sessions.filter((s) => !search
     || s.studentName.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR'))

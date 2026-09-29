@@ -39,6 +39,44 @@ import {
   saveGuidanceGoal,
   updateGuidanceSession,
 } from '../../lib/api/modules';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { GuidanceStudentFile as StudentFileData } from '../../lib/api/guidance';
+import type { GuidanceSessionRecord } from '../../types/api/generated';
+
+type AttendanceEntry = StudentFileData['attendance'][number];
+
+interface InventoryAnswer {
+  q: string;
+  a: string;
+}
+
+interface SessionForm {
+  sessionType: string;
+  topic: string;
+  note: string;
+  visibility: string;
+  followUpAt: string;
+}
+
+interface GoalForm {
+  targetSchool: string;
+  targetField: string;
+  targetScore: string;
+  progress: number | string;
+  note: string;
+}
+
+/** Envanter yanıtları {"q","a"} dizisi olarak saklanır; bozuk kayıt boş liste döner. */
+function parseAnswers(raw: string | null | undefined): InventoryAnswer[] {
+  try {
+    const parsed: unknown = JSON.parse(raw || '[]');
+    return Array.isArray(parsed)
+      ? parsed.filter(isRecord).map((item) => ({ q: String(item.q ?? ''), a: String(item.a ?? '') }))
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 const TABS = [
   { id: 'summary', label: 'Özet', icon: ClipboardList },
@@ -49,7 +87,7 @@ const TABS = [
   { id: 'inventories', label: 'Envanterler', icon: BookOpenCheck },
 ];
 
-const TOPIC_LABELS = {
+const TOPIC_LABELS: Partial<Record<string, string>> = {
   motivasyon: 'Motivasyon',
   'sinav-kaygisi': 'Sınav Kaygısı',
   aile: 'Aile',
@@ -58,19 +96,19 @@ const TOPIC_LABELS = {
   diger: 'Diğer',
 };
 
-const VISIBILITY_LABELS = {
+const VISIBILITY_LABELS: Partial<Record<string, string>> = {
   private: 'Sadece Ben',
   guidance: 'Rehberlik Servisi',
   admin: 'İdareyle Paylaşılabilir',
 };
 
-const INVENTORY_TYPES = {
+const INVENTORY_TYPES: Partial<Record<string, string>> = {
   'ogrenme-stili': 'Öğrenme Stili',
   'sinav-kaygisi': 'Sınav Kaygısı Ölçeği',
   'ilgi-envanteri': 'İlgi Envanteri',
 };
 
-function formatDateTime(value) {
+function formatDateTime(value: string | null | undefined): string {
   if (!value) return '—';
   const d = new Date(value);
   return Number.isNaN(d.getTime())
@@ -79,9 +117,9 @@ function formatDateTime(value) {
 }
 
 // Devamsızlık ısı takvimi: son 12 haftayı hafta sütunları halinde çizer.
-function AttendanceHeatmap({ entries }) {
+function AttendanceHeatmap({ entries }: { entries: readonly AttendanceEntry[] }) {
   const cells = useMemo(() => {
-    const byDay = new Map();
+    const byDay = new Map<string, { total: number; absent: number; late: number }>();
     entries.forEach((entry) => {
       const key = String(entry.lessonDate).slice(0, 10);
       const status = String(entry.status || '').toLocaleLowerCase('tr-TR');
@@ -94,10 +132,10 @@ function AttendanceHeatmap({ entries }) {
       byDay.set(key, current);
     });
 
-    const weeks = [];
+    const weeks: Array<Array<{ key: string; info: { total: number; absent: number; late: number } | undefined }>> = [];
     const today = new Date();
     for (let w = 11; w >= 0; w -= 1) {
-      const week = [];
+      const week: Array<{ key: string; info: { total: number; absent: number; late: number } | undefined }> = [];
       for (let d = 0; d < 7; d += 1) {
         const date = new Date(today);
         date.setDate(today.getDate() - today.getDay() - w * 7 + d + 1);
@@ -136,7 +174,7 @@ function AttendanceHeatmap({ entries }) {
   );
 }
 
-const EMPTY_SESSION = {
+const EMPTY_SESSION: SessionForm = {
   sessionType: 'bireysel', topic: 'akademik', note: '', visibility: 'guidance', followUpAt: '',
 };
 
@@ -146,14 +184,14 @@ export default function GuidanceStudentFile() {
   const { toast } = useToast();
   const decodedName = decodeURIComponent(studentName || '');
 
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState<StudentFileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('summary');
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
-  const [sessionForm, setSessionForm] = useState(EMPTY_SESSION);
+  const [sessionForm, setSessionForm] = useState<SessionForm>(EMPTY_SESSION);
   const [savingSession, setSavingSession] = useState(false);
-  const [goalForm, setGoalForm] = useState({ targetSchool: '', targetField: '', targetScore: '', progress: 0, note: '' });
+  const [goalForm, setGoalForm] = useState<GoalForm>({ targetSchool: '', targetField: '', targetScore: '', progress: 0, note: '' });
   const [savingGoal, setSavingGoal] = useState(false);
 
   const load = useCallback(async () => {
@@ -172,19 +210,19 @@ export default function GuidanceStudentFile() {
         });
       }
     } catch (err) {
-      setError(err?.message || 'Öğrenci dosyası alınamadı.');
+      setError(errorMessage(err, 'Öğrenci dosyası alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [decodedName]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const examTrend = useMemo(() => {
     if (!file?.exams) return [];
     const classAvg = new Map((file.classExamAverages || []).map((e) => [e.examTitle, e.average]));
     return file.exams.map((exam) => ({
-      name: exam.examTitle?.length > 18 ? `${exam.examTitle.slice(0, 18)}…` : exam.examTitle,
+      name: (exam.examTitle?.length ?? 0) > 18 ? `${exam.examTitle.slice(0, 18)}…` : exam.examTitle,
       Puan: exam.score,
       'Sınıf Ort.': classAvg.get(exam.examTitle) ?? null,
     }));
@@ -192,7 +230,7 @@ export default function GuidanceStudentFile() {
 
   const subjectTrends = useMemo(() => {
     if (!file?.exams) return [];
-    const bySubject = new Map();
+    const bySubject = new Map<string, number[]>();
     file.exams.forEach((exam) => {
       const list = bySubject.get(exam.subject) || [];
       list.push(exam.score);
@@ -212,9 +250,10 @@ export default function GuidanceStudentFile() {
   }, [file]);
 
   const studyPlanStats = useMemo(() => {
-    let items = [];
+    let items: Array<Record<string, unknown>> = [];
     try {
-      items = JSON.parse(file?.studyPlan?.planItemsSerialized || '[]');
+      const parsed: unknown = JSON.parse(file?.studyPlan?.planItemsSerialized || '[]');
+      items = Array.isArray(parsed) ? parsed.filter(isRecord) : [];
     } catch { items = []; }
     const tasks = items.filter((i) => i && (i.type === 'task' || i.type == null));
     const done = tasks.filter((i) => i.status === 'done' || i.done === true).length;
@@ -240,30 +279,30 @@ export default function GuidanceStudentFile() {
       toast({ title: 'Görüşme kaydedildi' });
       setSessionDialogOpen(false);
       setSessionForm(EMPTY_SESSION);
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSavingSession(false);
     }
   };
 
-  const removeSession = async (id) => {
+  const removeSession = async (id: string) => {
     try {
       await deleteGuidanceSession(id);
       toast({ title: 'Görüşme silindi' });
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Silinemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Silinemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
-  const markFollowUpDone = async (session) => {
+  const markFollowUpDone = async (session: GuidanceSessionRecord) => {
     try {
       await updateGuidanceSession(session.id, { ...session, followUpDone: true });
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Güncellenemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Güncellenemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
@@ -275,21 +314,21 @@ export default function GuidanceStudentFile() {
         progress: Number(goalForm.progress) || 0,
       });
       toast({ title: 'Hedef güncellendi' });
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSavingGoal(false);
     }
   };
 
-  const assignInventory = async (inventoryType) => {
+  const assignInventory = async (inventoryType: string) => {
     try {
       await assignGuidanceInventory({ studentName: decodedName, inventoryType });
       toast({ title: 'Envanter atandı', description: INVENTORY_TYPES[inventoryType] });
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Atanamadı', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Atanamadı', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
@@ -572,9 +611,8 @@ export default function GuidanceStudentFile() {
             <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground shadow-sm">
               Atanmış envanter yok.
             </div>
-          ) : file.inventories.map((item) => {
-            let answers = [];
-            try { answers = JSON.parse(item.answersJson || '[]'); } catch { answers = []; }
+          ) : (file.inventories || []).map((item) => {
+            const answers = parseAnswers(item.answersJson);
             return (
               <div key={item.id} className="rounded-2xl border bg-card p-5 shadow-sm">
                 <div className="flex flex-wrap items-center gap-2">

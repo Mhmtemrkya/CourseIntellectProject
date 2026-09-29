@@ -15,7 +15,6 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../hooks/use-toast';
-import { api } from '../../lib/api/client';
 import {
   completeGuidanceInventory,
   createGuidanceAppointment,
@@ -25,8 +24,16 @@ import {
   fetchGuidanceInventories,
   fetchStudents,
 } from '../../lib/api/modules';
+import { fetchGuidanceParentChildSummary, type GuidanceParentChildSummary } from '../../lib/api/guidance';
+import { errorMessage } from '../../lib/errors';
+import type { GuidanceAppointment, GuidanceInventoryAssignment, StudentSummaryDto } from '../../types/api/generated';
 
-const STATUS_STYLES = {
+interface InventoryAnswer {
+  q: string;
+  a: string;
+}
+
+const STATUS_STYLES: Partial<Record<string, string>> = {
   Bekliyor: 'border-amber-500/30 text-amber-500',
   'Onaylandı': 'border-emerald-500/30 text-emerald-600',
   Reddedildi: 'border-red-500/30 text-red-500',
@@ -34,7 +41,7 @@ const STATUS_STYLES = {
 };
 
 // Envanter soruları istemcide tanımlıdır; yanıtlar {"q","a"} olarak saklanır.
-const INVENTORY_QUESTIONS = {
+const INVENTORY_QUESTIONS: Partial<Record<string, { label: string; questions: string[] }>> = {
   'ogrenme-stili': {
     label: 'Öğrenme Stili',
     questions: [
@@ -74,18 +81,18 @@ export default function GuidanceRequest() {
   const { toast } = useToast();
   const isParent = user?.role === 'parent';
 
-  const [counselors, setCounselors] = useState([]);
-  const [slots, setSlots] = useState([]);
-  const [appointments, setAppointments] = useState([]);
-  const [inventories, setInventories] = useState([]);
-  const [children, setChildren] = useState([]);
-  const [childSummary, setChildSummary] = useState([]);
+  const [counselors, setCounselors] = useState<Array<{ fullName: string }>>([]);
+  const [slots, setSlots] = useState<Array<{ id: string; slot: string; available: boolean }>>([]);
+  const [appointments, setAppointments] = useState<GuidanceAppointment[]>([]);
+  const [inventories, setInventories] = useState<GuidanceInventoryAssignment[]>([]);
+  const [children, setChildren] = useState<StudentSummaryDto[]>([]);
+  const [childSummary, setChildSummary] = useState<GuidanceParentChildSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ counselor: '', slot: '', topic: '', note: '', studentName: '' });
   const [saving, setSaving] = useState(false);
-  const [activeInventory, setActiveInventory] = useState(null);
-  const [inventoryAnswers, setInventoryAnswers] = useState([]);
+  const [activeInventory, setActiveInventory] = useState<GuidanceInventoryAssignment | null>(null);
+  const [inventoryAnswers, setInventoryAnswers] = useState<InventoryAnswer[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,7 +100,7 @@ export default function GuidanceRequest() {
     try {
       const [counselorList, myAppointments] = await Promise.all([
         fetchGuidanceCounselors(),
-        fetchGuidanceAppointments(true).catch(() => []),
+        fetchGuidanceAppointments(true).catch((): GuidanceAppointment[] => []),
       ]);
       setCounselors(counselorList);
       setAppointments(myAppointments);
@@ -101,13 +108,13 @@ export default function GuidanceRequest() {
 
       if (isParent) {
         const [summary, students] = await Promise.all([
-          api.get('/api/guidance/parent/child-summary').catch(() => []),
-          fetchStudents().catch(() => []),
+          fetchGuidanceParentChildSummary().catch((): GuidanceParentChildSummary[] => []),
+          fetchStudents().catch(() => null),
         ]);
-        setChildSummary(Array.isArray(summary) ? summary : []);
+        setChildSummary(summary);
         const userName = (user?.name || '').toLowerCase();
         const username = (user?.username || '').toLowerCase();
-        const linked = students.filter((item) => {
+        const linked = (students ?? []).filter((item) => {
           const parentName = (item.parentName || '').toLowerCase();
           const parentEmail = (item.parentEmail || '').toLowerCase();
           return parentName.includes(userName) || (username && parentEmail.includes(username));
@@ -115,17 +122,17 @@ export default function GuidanceRequest() {
         setChildren(linked);
         setForm((prev) => ({ ...prev, studentName: prev.studentName || linked[0]?.fullName || '' }));
       } else {
-        const myInventories = await fetchGuidanceInventories().catch(() => []);
+        const myInventories = await fetchGuidanceInventories().catch((): GuidanceInventoryAssignment[] => []);
         setInventories(myInventories);
       }
     } catch (err) {
-      setError(err?.message || 'Rehberlik bilgileri alınamadı.');
+      setError(errorMessage(err, 'Rehberlik bilgileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [isParent, user]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   useEffect(() => {
     if (!form.counselor) { setSlots([]); return; }
@@ -155,28 +162,29 @@ export default function GuidanceRequest() {
       });
       toast({ title: 'Randevu talebi gönderildi', description: `${form.counselor} • ${form.slot}` });
       setForm((prev) => ({ ...prev, slot: '', topic: '', note: '' }));
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Talep gönderilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Talep gönderilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const openInventory = (item) => {
+  const openInventory = (item: GuidanceInventoryAssignment) => {
     const meta = INVENTORY_QUESTIONS[item.inventoryType];
     setActiveInventory(item);
     setInventoryAnswers((meta?.questions || []).map((q) => ({ q, a: '' })));
   };
 
   const submitInventory = async () => {
+    if (!activeInventory) return;
     try {
       await completeGuidanceInventory(activeInventory.id, JSON.stringify(inventoryAnswers));
       toast({ title: 'Envanter tamamlandı', description: 'Yanıtların rehberlik servisine iletildi.' });
       setActiveInventory(null);
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Gönderilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Gönderilemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 

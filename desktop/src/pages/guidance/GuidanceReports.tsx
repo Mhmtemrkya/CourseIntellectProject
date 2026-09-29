@@ -10,8 +10,10 @@ import {
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchGuidanceClassReport, fetchGuidanceOverview } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { GuidanceClassReport } from '../../lib/api/guidance';
 
-const TOPIC_LABELS = {
+const TOPIC_LABELS: Partial<Record<string, string>> = {
   motivasyon: 'Motivasyon',
   'sinav-kaygisi': 'Sınav Kaygısı',
   aile: 'Aile',
@@ -22,30 +24,30 @@ const TOPIC_LABELS = {
 
 // İdareye sunulabilir özet: yalnız SAYILAR — not içerikleri asla yer almaz.
 export default function GuidanceReports() {
-  const [report, setReport] = useState(null);
-  const [classes, setClasses] = useState([]);
+  const [report, setReport] = useState<GuidanceClassReport | null>(null);
+  const [classes, setClasses] = useState<string[]>([]);
   const [classFilter, setClassFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = useCallback(async (className) => {
+  const load = useCallback(async (className: string) => {
     setLoading(true);
     setError('');
     try {
       const [data, overview] = await Promise.all([
         fetchGuidanceClassReport(className === 'all' ? undefined : className),
-        fetchGuidanceOverview().catch(() => []),
+        fetchGuidanceOverview().catch(() => null),
       ]);
       setReport(data);
-      setClasses([...new Set(overview.map((s) => s.className).filter(Boolean))].sort());
+      setClasses([...new Set((overview ?? []).map((s) => s.className).filter(Boolean))].sort());
     } catch (err) {
-      setError(err?.message || 'Rapor alınamadı.');
+      setError(errorMessage(err, 'Rapor alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(classFilter); }, [classFilter, load]);
+  useEffect(() => { void load(classFilter); }, [classFilter, load]);
 
   if (loading) {
     return <div className="flex h-96 items-center justify-center"><LoadingDots /></div>;
@@ -59,7 +61,7 @@ export default function GuidanceReports() {
     name: item.month,
     Görüşme: item.count,
   }));
-  const appointmentStats = report?.appointments || {};
+  const appointmentStats = report?.appointments;
 
   return (
     <div className="space-y-6" data-testid="guidance-reports">
@@ -79,15 +81,15 @@ export default function GuidanceReports() {
         </Select>
       </div>
 
-      {error ? <ErrorBanner title="Hata" message={error} onRetry={() => load(classFilter)} /> : null}
+      {error ? <ErrorBanner title="Hata" message={error} onRetry={() => { void load(classFilter); }} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {[
           { label: 'Toplam Görüşme', value: report?.totalSessions ?? 0 },
-          { label: 'Toplam Randevu', value: appointmentStats.total ?? 0 },
-          { label: 'Onaylanan', value: appointmentStats.approved ?? 0 },
-          { label: 'Tamamlanan', value: appointmentStats.completed ?? 0 },
-          { label: 'Bekleyen', value: appointmentStats.pending ?? 0 },
+          { label: 'Toplam Randevu', value: appointmentStats?.total ?? 0 },
+          { label: 'Onaylanan', value: appointmentStats?.approved ?? 0 },
+          { label: 'Tamamlanan', value: appointmentStats?.completed ?? 0 },
+          { label: 'Bekleyen', value: appointmentStats?.pending ?? 0 },
         ].map((stat) => (
           <div key={stat.label} className="rounded-2xl border bg-card p-5 shadow-sm">
             <p className="text-3xl font-black">{stat.value}</p>
@@ -141,7 +143,7 @@ export default function GuidanceReports() {
           <div className="mt-4 space-y-2">
             {(report?.sessionsByType || []).length === 0 ? (
               <p className="text-sm text-muted-foreground">Kayıt yok.</p>
-            ) : report.sessionsByType.map((item) => (
+            ) : (report?.sessionsByType || []).map((item) => (
               <div key={item.type} className="flex items-center justify-between rounded-xl border p-3 text-sm">
                 <span className="font-semibold capitalize">{item.type}</span>
                 <span className="font-black">{item.count}</span>
@@ -153,10 +155,10 @@ export default function GuidanceReports() {
           <h2 className="font-black">Randevu Özeti</h2>
           <div className="mt-4 space-y-2 text-sm">
             {[
-              ['Onaylanan', appointmentStats.approved],
-              ['Reddedilen', appointmentStats.rejected],
-              ['Tamamlanan', appointmentStats.completed],
-              ['Bekleyen', appointmentStats.pending],
+              ['Onaylanan', appointmentStats?.approved],
+              ['Reddedilen', appointmentStats?.rejected],
+              ['Tamamlanan', appointmentStats?.completed],
+              ['Bekleyen', appointmentStats?.pending],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between rounded-xl border p-3">
                 <span className="font-semibold">{label}</span>

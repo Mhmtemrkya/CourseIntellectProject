@@ -70,6 +70,15 @@ export interface GuidanceClassReport {
   };
 }
 
+/** GET /api/guidance/parent/child-summary satırı (GuidanceController.GetParentChildSummary). */
+export interface GuidanceParentChildSummary {
+  studentName: string;
+  className: string;
+  compliance: { total: number; done: number; rate: number | null };
+  goal: { targetSchool: string; targetField: string; progress: number } | null;
+  appointments: Array<{ slot: string; status: string; counselorName: string }>;
+}
+
 // --- Rehberlik (Guidance) ---
 
 export async function fetchGuidanceOverview(): Promise<GuidanceOverviewRow[]> {
@@ -162,6 +171,11 @@ export async function fetchGuidanceStudyPlan(student: string): Promise<StudyPlan
 
 export async function updateGuidanceStudyPlan(payload: UpdateStudyPlanStateRequest): Promise<StudyPlanStateDto | null> {
   return api.put<StudyPlanStateDto>('/api/guidance/study-plan', payload);
+}
+
+export async function fetchGuidanceParentChildSummary(): Promise<GuidanceParentChildSummary[]> {
+  const response = await api.get<GuidanceParentChildSummary[]>('/api/guidance/parent/child-summary');
+  return Array.isArray(response) ? response : [];
 }
 
 export async function fetchGuidanceClassReport(className?: string | null): Promise<GuidanceClassReport | null> {

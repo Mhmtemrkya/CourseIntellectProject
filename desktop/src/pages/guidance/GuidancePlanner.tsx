@@ -20,12 +20,36 @@ import {
   fetchGuidanceOverview,
   updateGuidanceStudyPlan,
 } from '../../lib/api/modules';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { GuidanceOverviewRow } from '../../lib/api/guidance';
+import type { StudyPlanStateDto } from '../../types/api/generated';
+
+/**
+ * Çalışma planı öğesi. JSON'dan okunur ve aynen geri yazılır; öğrencinin kendi
+ * eklediği öğelerdeki bilinmeyen alanlar kaybolmasın diye serbest kayıt tutulur.
+ */
+type PlanItem = Record<string, unknown>;
+
+interface TemplateItem {
+  day: number;
+  startTime: string;
+  durationMinutes: number;
+  subject: string;
+  title: string;
+}
+
+interface TaskForm {
+  title: string;
+  subject: string;
+  startTime: string;
+  durationMinutes: number | string;
+}
 
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const SUBJECTS = ['Matematik', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji', 'Tarih', 'Coğrafya', 'İngilizce', 'Fen Bilimleri', 'Sosyal Bilgiler', 'Genel'];
 
 // Hazır program şablonları: gün indeksi (0=Pazartesi) + saat + ders + başlık.
-const TEMPLATES = {
+const TEMPLATES: Record<string, { label: string; items: TemplateItem[] }> = {
   'tyt-sprint': {
     label: 'TYT Sprint (yoğun hafta)',
     items: [
@@ -63,7 +87,7 @@ const TEMPLATES = {
   },
 };
 
-function startOfWeek(date) {
+function startOfWeek(date: Date): Date {
   const d = new Date(date);
   const day = (d.getDay() + 6) % 7; // Pazartesi=0
   d.setDate(d.getDate() - day);
@@ -71,58 +95,61 @@ function startOfWeek(date) {
   return d;
 }
 
-function toIso(date) {
+function toIso(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-function parseItems(raw) {
+function parseItems(raw: string | null | undefined): PlanItem[] {
   try {
-    const parsed = JSON.parse(raw || '[]');
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed: unknown = JSON.parse(raw || '[]');
+    return Array.isArray(parsed) ? parsed.filter(isRecord) : [];
   } catch {
     return [];
   }
 }
 
-const EMPTY_TASK = { title: '', subject: 'Matematik', startTime: '17:00', durationMinutes: 45 };
+const EMPTY_TASK: TaskForm = { title: '', subject: 'Matematik', startTime: '17:00', durationMinutes: 45 };
 
 export default function GuidancePlanner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
-  const [students, setStudents] = useState([]);
+  const [students, setStudents] = useState<GuidanceOverviewRow[]>([]);
   const [student, setStudent] = useState(searchParams.get('student') || '');
-  const [planItems, setPlanItems] = useState([]);
+  const [planItems, setPlanItems] = useState<PlanItem[]>([]);
+  // Seri/XP planla aynı kayıtta tutulur; kaydederken korunmazsa sunucu sıfırlar.
+  const [planState, setPlanState] = useState<StudyPlanStateDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
-  const [dialog, setDialog] = useState(null); // { dayIndex }
-  const [taskForm, setTaskForm] = useState(EMPTY_TASK);
+  const [dialog, setDialog] = useState<{ dayIndex: number } | null>(null);
+  const [taskForm, setTaskForm] = useState<TaskForm>(EMPTY_TASK);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     fetchGuidanceOverview()
       .then((list) => setStudents(list))
-      .catch((err) => setError(err?.message || 'Öğrenciler alınamadı.'));
+      .catch((err) => setError(errorMessage(err, 'Öğrenciler alınamadı.')));
   }, []);
 
-  const loadPlan = useCallback(async (name) => {
+  const loadPlan = useCallback(async (name: string) => {
     if (!name) return;
     setLoading(true);
     setError('');
     try {
       const plan = await fetchGuidanceStudyPlan(name);
+      setPlanState(plan);
       setPlanItems(parseItems(plan?.planItemsSerialized));
       setDirty(false);
     } catch (err) {
-      setError(err?.message || 'Program alınamadı.');
+      setError(errorMessage(err, 'Program alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadPlan(student); }, [student, loadPlan]);
+  useEffect(() => { void loadPlan(student); }, [student, loadPlan]);
 
   const weekDates = useMemo(
     () => DAYS.map((_, index) => {
@@ -145,26 +172,33 @@ export default function GuidancePlanner() {
       .sort((a, b) => String(a.startTime || '').localeCompare(String(b.startTime || '')));
   }), [weekTasks, weekDates]);
 
-  const persist = async (nextItems) => {
+  const persist = async (nextItems: PlanItem[]) => {
     setSaving(true);
     try {
-      await updateGuidanceStudyPlan({
+      // Sunucu seri/XP/son tamamlama alanlarını gövdeden aynen yazar; eskiden
+      // gönderilmediği için rehber her kaydettiğinde öğrencinin XP'si sıfırlanıyordu.
+      const saved = await updateGuidanceStudyPlan({
         studentName: student,
         planItemsSerialized: JSON.stringify(nextItems),
+        streakCount: planState?.streakCount ?? 0,
+        xpPoints: planState?.xpPoints ?? 0,
+        lastCompletedAt: planState?.lastCompletedAt ?? null,
       });
+      if (saved) setPlanState(saved);
       setPlanItems(nextItems);
       setDirty(false);
       toast({ title: 'Program kaydedildi', description: student });
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
   const addTask = () => {
-    const date = weekDates[dialog.dayIndex];
-    const item = {
+    const date = dialog ? weekDates[dialog.dayIndex] : undefined;
+    if (!date) return;
+    const item: PlanItem = {
       id: `g-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       type: 'task',
       title: taskForm.title.trim() || 'Çalışma bloğu',
@@ -184,34 +218,37 @@ export default function GuidancePlanner() {
     setTaskForm(EMPTY_TASK);
   };
 
-  const removeTask = (id) => {
+  const removeTask = (id: unknown) => {
     setPlanItems((prev) => prev.filter((item) => item.id !== id));
     setDirty(true);
   };
 
-  const applyTemplate = (key) => {
+  const applyTemplate = (key: string) => {
     const template = TEMPLATES[key];
     if (!template) return;
-    const additions = template.items.map((item, index) => ({
+    const additions: PlanItem[] = template.items.flatMap((item, index) => {
+      const date = weekDates[item.day];
+      return date ? [{
       id: `g-${Date.now()}-${index}`,
       type: 'task',
       title: item.title,
       subject: item.subject,
       topic: '',
-      date: toIso(weekDates[item.day]),
+      date: toIso(date),
       startTime: item.startTime,
       endTime: '',
       durationMinutes: item.durationMinutes,
       status: 'pending',
       source: 'counselor',
       createdAt: new Date().toISOString(),
-    }));
+    }] : [];
+    });
     setPlanItems((prev) => [...prev, ...additions]);
     setDirty(true);
     toast({ title: 'Şablon uygulandı', description: `${template.label} — kaydetmeyi unutmayın.` });
   };
 
-  const shiftWeek = (delta) => {
+  const shiftWeek = (delta: number) => {
     const next = new Date(weekStart);
     next.setDate(weekStart.getDate() + delta * 7);
     setWeekStart(next);
@@ -256,7 +293,7 @@ export default function GuidancePlanner() {
         </div>
       </div>
 
-      {error ? <ErrorBanner title="Hata" message={error} onRetry={() => loadPlan(student)} /> : null}
+      {error ? <ErrorBanner title="Hata" message={error} onRetry={() => { void loadPlan(student); }} /> : null}
 
       {!student ? (
         <div className="rounded-2xl border bg-card p-10 text-center text-sm text-muted-foreground shadow-sm">
@@ -271,7 +308,7 @@ export default function GuidancePlanner() {
             <Button variant="outline" className="rounded-xl" onClick={() => shiftWeek(-1)}>← Önceki</Button>
             <span className="flex items-center gap-2 font-bold">
               <CalendarRange className="h-4 w-4 text-brand-accent" />
-              {weekDates[0].toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })} – {weekDates[6].toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })}
+              {weekDates[0]?.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })} – {weekDates[6]?.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' })}
             </span>
             <Button variant="outline" className="rounded-xl" onClick={() => shiftWeek(1)}>Sonraki →</Button>
             <Badge variant="outline" className="rounded-lg">
@@ -280,7 +317,7 @@ export default function GuidancePlanner() {
             </Badge>
             <Button
               className="ml-auto rounded-xl"
-              onClick={() => persist(planItems)}
+              onClick={() => { void persist(planItems); }}
               disabled={saving || !dirty}
               data-testid="planner-save"
             >
@@ -294,21 +331,21 @@ export default function GuidancePlanner() {
               <div key={day} className="flex min-h-[220px] flex-col rounded-2xl border bg-card shadow-sm">
                 <div className="border-b p-3">
                   <p className="text-sm font-black">{day}</p>
-                  <p className="text-xs text-muted-foreground">{weekDates[index].toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}</p>
+                  <p className="text-xs text-muted-foreground">{weekDates[index]?.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' })}</p>
                 </div>
                 <div className="flex-1 space-y-2 p-2">
-                  {tasksByDay[index].map((task) => (
+                  {(tasksByDay[index] ?? []).map((task, taskIndex) => (
                     <div
-                      key={task.id}
+                      key={String(task.id ?? taskIndex)}
                       className={`group rounded-xl border p-2.5 text-xs ${task.status === 'done' ? 'border-emerald-500/30 bg-emerald-500/10' : 'bg-foreground/[0.03]'}`}
                     >
                       <div className="flex items-start justify-between gap-1">
-                        <p className="font-bold leading-tight">{task.title}</p>
+                        <p className="font-bold leading-tight">{String(task.title ?? '')}</p>
                         <button type="button" className="opacity-0 transition-opacity group-hover:opacity-100" onClick={() => removeTask(task.id)}>
                           <Trash2 className="h-3.5 w-3.5 text-red-500" />
                         </button>
                       </div>
-                      <p className="mt-1 text-muted-foreground">{task.subject} • {task.startTime || '—'} • {task.durationMinutes} dk</p>
+                      <p className="mt-1 text-muted-foreground">{String(task.subject ?? '')} • {String(task.startTime || '—')} • {String(task.durationMinutes ?? '')} dk</p>
                       {task.status === 'done' && <p className="mt-1 font-semibold text-emerald-600">✓ Tamamlandı</p>}
                     </div>
                   ))}

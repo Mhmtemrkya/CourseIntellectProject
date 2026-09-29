@@ -22,7 +22,7 @@ import {
 } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import RoleDashboardColumns from '../../components/dashboard/RoleDashboardColumns';
+import RoleDashboardColumns, { type RoleDashboardGroup } from '../../components/dashboard/RoleDashboardColumns';
 import { useToast } from '../../hooks/use-toast';
 import {
   createGuidanceRiskReview,
@@ -30,14 +30,21 @@ import {
   fetchGuidanceFollowUps,
   fetchGuidanceOverview,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { GuidanceOverviewRow } from '../../lib/api/guidance';
+import type { GuidanceAppointment, GuidanceSessionRecord } from '../../types/api/generated';
 
-const RISK_META = {
+type RiskLevel = GuidanceOverviewRow['riskLevel'];
+
+const RISK_LEVELS: readonly RiskLevel[] = ['high', 'medium', 'low'];
+
+const RISK_META: Record<RiskLevel, { label: string; badge: string; color: string }> = {
   high: { label: 'Yüksek', badge: 'bg-red-500/15 text-red-500 border-red-500/30', color: '#ef4444' },
   medium: { label: 'Orta', badge: 'bg-amber-500/15 text-amber-500 border-amber-500/30', color: '#f59e0b' },
   low: { label: 'Düşük', badge: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30', color: '#22c55e' },
 };
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
@@ -46,8 +53,8 @@ function formatDate(value) {
 export default function GuidanceDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [students, setStudents] = useState([]);
-  const [followUps, setFollowUps] = useState([]);
+  const [students, setStudents] = useState<GuidanceOverviewRow[]>([]);
+  const [followUps, setFollowUps] = useState<GuidanceSessionRecord[]>([]);
   const [pendingAppointments, setPendingAppointments] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -61,20 +68,20 @@ export default function GuidanceDashboard() {
     try {
       const [overview, follows, appointments] = await Promise.all([
         fetchGuidanceOverview(),
-        fetchGuidanceFollowUps().catch(() => []),
-        fetchGuidanceAppointments().catch(() => []),
+        fetchGuidanceFollowUps().catch((): GuidanceSessionRecord[] => []),
+        fetchGuidanceAppointments().catch((): GuidanceAppointment[] => []),
       ]);
       setStudents(overview);
       setFollowUps(follows);
       setPendingAppointments(appointments.filter((a) => a.status === 'Bekliyor').length);
     } catch (err) {
-      setError(err?.message || 'Rehberlik verileri alınamadı.');
+      setError(errorMessage(err, 'Rehberlik verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const classes = useMemo(
     () => [...new Set(students.map((s) => s.className).filter(Boolean))].sort(),
@@ -90,7 +97,7 @@ export default function GuidanceDashboard() {
 
   const attention = useMemo(() => students.filter((s) => s.needsAttention), [students]);
 
-  const riskDistribution = useMemo(() => ['high', 'medium', 'low']
+  const riskDistribution = useMemo(() => RISK_LEVELS
     .map((level) => ({
       name: RISK_META[level].label,
       value: students.filter((s) => s.riskLevel === level).length,
@@ -98,7 +105,7 @@ export default function GuidanceDashboard() {
     }))
     .filter((item) => item.value > 0), [students]);
 
-  const dashboardGroups = [
+  const dashboardGroups: RoleDashboardGroup[] = [
     {
       key: 'risk', title: 'Risk Takibi', description: 'Öncelikli incelenmesi gereken öğrenci durumu',
       cards: [
@@ -122,7 +129,7 @@ export default function GuidanceDashboard() {
     },
   ];
 
-  const markReviewed = async (student) => {
+  const markReviewed = async (student: GuidanceOverviewRow) => {
     try {
       await createGuidanceRiskReview({
         studentName: student.studentName,
@@ -132,7 +139,7 @@ export default function GuidanceDashboard() {
       toast({ title: 'İncelendi olarak işaretlendi', description: student.studentName });
       load();
     } catch (err) {
-      toast({ title: 'İşaretlenemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'İşaretlenemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 

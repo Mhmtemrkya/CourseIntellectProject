@@ -18,14 +18,17 @@ import {
   fetchGuidanceInventories,
   fetchGuidanceOverview,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { GuidanceOverviewRow } from '../../lib/api/guidance';
+import type { GuidanceInventoryAssignment } from '../../types/api/generated';
 
-const INVENTORY_TYPES = {
+const INVENTORY_TYPES: Partial<Record<string, string>> = {
   'ogrenme-stili': 'Öğrenme Stili',
   'sinav-kaygisi': 'Sınav Kaygısı Ölçeği',
   'ilgi-envanteri': 'İlgi Envanteri',
 };
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -34,8 +37,8 @@ function formatDate(value) {
 export default function GuidanceInventories() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [items, setItems] = useState([]);
-  const [students, setStudents] = useState([]);
+  const [items, setItems] = useState<GuidanceInventoryAssignment[]>([]);
+  const [students, setStudents] = useState<GuidanceOverviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -48,18 +51,18 @@ export default function GuidanceInventories() {
     try {
       const [inventories, overview] = await Promise.all([
         fetchGuidanceInventories(),
-        fetchGuidanceOverview().catch(() => []),
+        fetchGuidanceOverview().catch((): GuidanceOverviewRow[] => []),
       ]);
       setItems(inventories);
       setStudents(overview);
     } catch (err) {
-      setError(err?.message || 'Envanterler alınamadı.');
+      setError(errorMessage(err, 'Envanterler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const stats = useMemo(() => ({
     total: items.length,
@@ -73,9 +76,9 @@ export default function GuidanceInventories() {
       await assignGuidanceInventory(form);
       toast({ title: 'Envanter atandı', description: `${form.studentName} • ${INVENTORY_TYPES[form.inventoryType]}` });
       setDialogOpen(false);
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Atanamadı', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Atanamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }

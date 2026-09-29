@@ -13,9 +13,11 @@ import {
   fetchGuidanceAvailability,
   saveGuidanceAvailability,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { GuidanceAppointment } from '../../types/api/generated';
 
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
-const STATUS_STYLES = {
+const STATUS_STYLES: Partial<Record<string, string>> = {
   Bekliyor: 'border-amber-500/30 text-amber-500',
   'Onaylandı': 'border-emerald-500/30 text-emerald-600',
   Reddedildi: 'border-red-500/30 text-red-500',
@@ -24,8 +26,8 @@ const STATUS_STYLES = {
 
 export default function GuidanceAppointments() {
   const { toast } = useToast();
-  const [appointments, setAppointments] = useState([]);
-  const [slots, setSlots] = useState([]);
+  const [appointments, setAppointments] = useState<GuidanceAppointment[]>([]);
+  const [slots, setSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [newSlotDay, setNewSlotDay] = useState('Pazartesi');
@@ -38,27 +40,27 @@ export default function GuidanceAppointments() {
     try {
       const [appointmentList, availability] = await Promise.all([
         fetchGuidanceAppointments(),
-        fetchGuidanceAvailability().catch(() => ({ slots: [] })),
+        fetchGuidanceAvailability().catch(() => null),
       ]);
       setAppointments(appointmentList);
       setSlots((availability?.slots || []).map((s) => s.slot));
     } catch (err) {
-      setError(err?.message || 'Randevular alınamadı.');
+      setError(errorMessage(err, 'Randevular alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const persistSlots = async (next) => {
+  const persistSlots = async (next: string[]) => {
     setSavingSlots(true);
     try {
       await saveGuidanceAvailability(next);
       setSlots(next);
       toast({ title: 'Müsaitlik güncellendi' });
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSavingSlots(false);
     }
@@ -70,28 +72,28 @@ export default function GuidanceAppointments() {
       toast({ title: 'Bu slot zaten var', variant: 'destructive' });
       return;
     }
-    persistSlots([...slots, slot].sort());
+    void persistSlots([...slots, slot].sort());
   };
 
-  const decide = async (appointment, approved) => {
+  const decide = async (appointment: GuidanceAppointment, approved: boolean) => {
     try {
       await decideGuidanceAppointment(appointment.id, { approved });
       toast({
         title: approved ? 'Randevu onaylandı' : 'Randevu reddedildi',
         description: `${appointment.requesterName} • ${appointment.slot} — talep sahibine bildirim gönderildi.`,
       });
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'İşlem yapılamadı', description: err?.message, variant: 'destructive' });
+      toast({ title: 'İşlem yapılamadı', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
-  const complete = async (appointment) => {
+  const complete = async (appointment: GuidanceAppointment) => {
     try {
       await completeGuidanceAppointment(appointment.id);
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'İşlem yapılamadı', description: err?.message, variant: 'destructive' });
+      toast({ title: 'İşlem yapılamadı', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
