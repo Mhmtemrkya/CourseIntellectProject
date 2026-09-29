@@ -52,3 +52,10 @@ export async function saveContentExtras(contentId: string, payload: SaveContentE
 export async function addContentComment(contentId: string, message: string): Promise<ContentCommentDto[] | null> {
   return await api.post<ContentCommentDto[]>(`/api/contents/${contentId}/engagement/comments`, { message });
 }
+
+// --- Content (update) ---
+
+export async function updateContent(id: string, payload: CreateContentRequest): Promise<ContentDto | null> {
+  const response = await api.put<ContentDto>(`/api/contents/${id}`, payload);
+  return response;
+}

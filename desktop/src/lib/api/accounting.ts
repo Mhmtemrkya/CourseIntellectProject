@@ -6,12 +6,15 @@ import type {
   AccountingInstallmentDto,
   AccountingInvoiceDto,
   AccountingNotificationDto,
+  AccountingSalaryDto,
   CreateAccountingBenefitRequest,
   CreateAccountingNotificationRequest,
   CreateCollectionRequest,
   CreateInstallmentRequest,
   CreateInvoiceRequest,
+  CreateSalaryRequest,
   MarkInvoicePaidRequest,
+  UpdateInstallmentRequest,
 } from '../../types/api/generated';
 
 /** AccountingController.MapBenefit çıktısı (tutarlar metin olarak saklanır). */
@@ -98,5 +101,22 @@ export async function createAccountingNotification(payload: CreateAccountingNoti
 
 export async function sendBulkAccountingReminders(): Promise<{ sentCount: number; message: string } | null> {
   const response = await api.post<{ sentCount: number; message: string }>('/api/accounting/bulk-reminders');
+  return response;
+}
+
+// --- Accounting (extra) ---
+
+export async function createSalary(payload: CreateSalaryRequest): Promise<AccountingSalaryDto | null> {
+  const response = await api.post<AccountingSalaryDto>('/api/accounting/salaries', payload);
+  return response;
+}
+
+export async function updateInstallment(id: string, payload: UpdateInstallmentRequest): Promise<AccountingInstallmentDto | null> {
+  const response = await api.put<AccountingInstallmentDto>(`/api/accounting/installments/${id}`, payload);
+  return response;
+}
+
+export async function markAllAccountingNotificationsRead(): Promise<null> {
+  const response = await api.put<null>('/api/accounting/notifications/read-all');
   return response;
 }
