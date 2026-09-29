@@ -33,41 +33,56 @@ import {
   normalizeText,
   pageMotion,
   safeNumber,
+  type PillTone,
 } from './parentPremiumUi';
+import { errorMessage } from '../../lib/errors';
+import type { ExamResultDto } from '../../types/api/generated';
 
-function examTitle(exam) {
-  return decodeText(exam.examTitle || exam.title || 'Sınav');
+interface LinkedChild {
+  id: string;
+  fullName: string;
+  className: string;
 }
 
-function examDate(exam) {
-  if (exam.dateLabel) return decodeText(exam.dateLabel);
-  const value = exam.createdAt || exam.date;
-  if (!value) return '-';
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? decodeText(value) : formatDate(parsed);
+type ExamTypeFilter = 'all' | 'yaz' | 'deneme' | 'kisa';
+
+const EXAM_TYPE_FILTERS: ReadonlyArray<readonly [ExamTypeFilter, string]> = [
+  ['all', 'Tümü'],
+  ['yaz', 'Yazılı Sınavlar'],
+  ['deneme', 'Deneme Sınavları'],
+  ['kisa', 'Kısa Sınavlar'],
+];
+
+function examTitle(exam: ExamResultDto): string {
+  return decodeText(exam.examTitle || 'Sınav');
 }
 
-function resultStatus(score) {
+// Sonuç kaydında yalnız dateLabel vardır (createdAt/date alanı yok).
+function examDate(exam: ExamResultDto): string {
+  return exam.dateLabel ? decodeText(exam.dateLabel) : '-';
+}
+
+function resultStatus(score: number): readonly [string, PillTone] {
   if (score >= 70) return ['Başarılı', 'green'];
   if (score >= 55) return ['Geliştirilmeli', 'orange'];
   return ['Riskli', 'red'];
 }
 
-function formatNet(value) {
+function formatNet(value: unknown): string {
   const number = Number(value || 0);
   return Number.isFinite(number) ? number.toLocaleString('tr-TR', { maximumFractionDigits: 2 }) : '0';
 }
 
 export default function ParentExams() {
   const { user } = useApp();
-  const [children, setChildren] = useState([]);
+  const [children, setChildren] = useState<LinkedChild[]>([]);
   const [selectedChild, setSelectedChild] = useState('');
-  const [results, setResults] = useState([]);
-  const [activeType, setActiveType] = useState('all');
+  const [results, setResults] = useState<ExamResultDto[]>([]);
+  const [activeType, setActiveType] = useState<ExamTypeFilter>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadForChild = useCallback(async (childName) => {
+  const loadForChild = useCallback(async (childName: string) => {
     if (!childName) {
       setResults([]);
       return;
@@ -81,7 +96,7 @@ export default function ParentExams() {
       setLoading(true);
       setError('');
       const academicChildren = await fetchParentAcademic().catch(() => []);
-      const linkedChildren = (Array.isArray(academicChildren) ? academicChildren : []).map((child) => ({
+      const linkedChildren: LinkedChild[] = (Array.isArray(academicChildren) ? academicChildren : []).map((child) => ({
         id: child.studentName,
         fullName: child.studentName,
         className: child.className || '',
@@ -96,7 +111,7 @@ export default function ParentExams() {
         setResults(Array.isArray(examList) ? examList : []);
       }
     } catch (err) {
-      setError(err.message || 'Sınav sonuçları alınamadı.');
+      setError(errorMessage(err, 'Sınav sonuçları alınamadı.'));
       setResults([]);
     } finally {
       setLoading(false);
@@ -104,7 +119,7 @@ export default function ParentExams() {
   }, [loadForChild, selectedChild, user]);
 
   useEffect(() => {
-    loadExams();
+    void loadExams();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.name, user?.username, user?.email]);
 
@@ -148,10 +163,11 @@ export default function ParentExams() {
   }, [normalizedResults]);
 
   const subjectStats = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, number[]>();
     normalizedResults.forEach((item) => {
-      if (!map.has(item._subject)) map.set(item._subject, []);
-      map.get(item._subject).push(item._score);
+      const scores = map.get(item._subject) ?? [];
+      scores.push(item._score);
+      map.set(item._subject, scores);
     });
     return Array.from(map.entries()).map(([subject, scores]) => {
       const average = scores.reduce((sum, value) => sum + value, 0) / Math.max(scores.length, 1);
@@ -170,7 +186,7 @@ export default function ParentExams() {
 
   const trendValues = normalizedResults.slice().reverse().slice(-6).map((item) => item._score);
   const trendLabels = trendValues.map((_, index) => `${index + 1}. Sınav`);
-  const trendDelta = trendValues.length > 1 ? Math.round((trendValues.at(-1) - trendValues[0]) * 10) / 10 : 0;
+  const trendDelta = trendValues.length > 1 ? Math.round(((trendValues.at(-1) ?? 0) - (trendValues[0] ?? 0)) * 10) / 10 : 0;
 
   if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><LoadingDots /></div>;
 
@@ -228,12 +244,7 @@ export default function ParentExams() {
       <div className="grid gap-4 xl:grid-cols-[1.8fr_1fr]">
         <Panel title="Sınav Geçmişi">
           <div className="mb-4 flex flex-wrap gap-3 border-b border-foreground/[0.08] pb-3">
-            {[
-              ['all', 'Tümü'],
-              ['yaz', 'Yazılı Sınavlar'],
-              ['deneme', 'Deneme Sınavları'],
-              ['kisa', 'Kısa Sınavlar'],
-            ].map(([value, label]) => (
+            {EXAM_TYPE_FILTERS.map(([value, label]) => (
               <button key={value} type="button" onClick={() => setActiveType(value)} className={`rounded-[10px] px-4 py-2 text-sm font-bold transition ${activeType === value ? 'bg-purple-500/20 text-purple-200 shadow-[inset_0_-2px_0_#a855f7]' : 'text-slate-400 hover:bg-foreground/[0.04] hover:text-white'}`}>
                 {label}
               </button>

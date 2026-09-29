@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   User, Mail, Phone, MapPin, Shield, Bell, Users,
 } from 'lucide-react';
@@ -14,22 +14,35 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { LegalDocumentsPanel } from '../../components/legal/LegalDocumentsPanel';
 import { fetchStudents } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { StudentSummaryDto } from '../../types/api/generated';
 
-const containerVariants = {
+type NotificationPrefKey = 'email' | 'sms' | 'push' | 'payments' | 'attendance' | 'exams';
+
+const NOTIFICATION_PREFS: ReadonlyArray<readonly [NotificationPrefKey, string]> = [
+  ['email', 'E-posta Bildirimleri'],
+  ['sms', 'SMS Bildirimleri'],
+  ['payments', 'Ödeme Hatırlatmaları'],
+  ['attendance', 'Devamsızlık Bildirimleri'],
+  ['exams', 'Sınav Sonuçları'],
+  ['push', 'Masaüstü Bildirimleri'],
+];
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-function normalizeText(value = '') {
+function normalizeText(value: unknown = ''): string {
   return String(value).trim().toLowerCase();
 }
 
 export default function ParentProfile() {
   const { user } = useApp();
-  const [children, setChildren] = useState([]);
+  const [children, setChildren] = useState<StudentSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [notifications, setNotifications] = useState({
+  const [notifications, setNotifications] = useState<Record<NotificationPrefKey, boolean>>({
     email: true,
     sms: true,
     push: true,
@@ -42,7 +55,7 @@ export default function ParentProfile() {
     try {
       setLoading(true);
       setError('');
-      const students = await fetchStudents();
+      const students = (await fetchStudents()) ?? [];
       const linked = students.filter((student) => {
         const parentName = normalizeText(student.parentName);
         const profileName = normalizeText(user?.name);
@@ -52,14 +65,14 @@ export default function ParentProfile() {
       });
       setChildren(linked);
     } catch (err) {
-      setError(err.message || 'Veli profili alınamadı.');
+      setError(errorMessage(err, 'Veli profili alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    loadProfile();
+    void loadProfile();
   }, [loadProfile]);
 
   const profile = useMemo(() => ({
@@ -140,14 +153,7 @@ export default function ParentProfile() {
               <CardDescription>Tercihlerinizi bu cihaz için yönetin</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
-                ['email', 'E-posta Bildirimleri'],
-                ['sms', 'SMS Bildirimleri'],
-                ['payments', 'Ödeme Hatırlatmaları'],
-                ['attendance', 'Devamsızlık Bildirimleri'],
-                ['exams', 'Sınav Sonuçları'],
-                ['push', 'Masaüstü Bildirimleri'],
-              ].map(([key, label]) => (
+              {NOTIFICATION_PREFS.map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between">
                   <div><p className="font-medium">{label}</p></div>
                   <Switch checked={notifications[key]} onCheckedChange={(value) => setNotifications((prev) => ({ ...prev, [key]: value }))} />

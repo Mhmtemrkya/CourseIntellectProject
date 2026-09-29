@@ -37,9 +37,24 @@ import {
   normalizeText,
   pageMotion,
   safeNumber,
+  type ParentTone,
 } from './parentPremiumUi';
+import { errorMessage } from '../../lib/errors';
+import type { FinancePaymentDto, StudentFinanceAccountDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-function downloadText(name, content, type = 'text/plain;charset=utf-8') {
+/** Makbuz satırı: ödeme kaydı + çocuk/sözleşme bağlamı. */
+type ReceiptRow = FinancePaymentDto & {
+  key: string;
+  studentName: string;
+  className: string;
+  academicYear: string;
+  year: string;
+  period: string;
+  paymentType: string;
+};
+
+function downloadText(name: string, content: string, type = 'text/plain;charset=utf-8') {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -49,11 +64,11 @@ function downloadText(name, content, type = 'text/plain;charset=utf-8') {
   URL.revokeObjectURL(url);
 }
 
-function paymentMethodIcon(method = '') {
+function paymentMethodIcon(method: string = ''): IconComponent {
   return normalizeText(method).includes('havale') ? Building2 : CreditCard;
 }
 
-function buildReceiptText(receipt) {
+function buildReceiptText(receipt: ReceiptRow): string {
   return [
     'SchoolAsist Makbuz',
     `Makbuz No: ${receipt.receiptNo || receipt.id}`,
@@ -67,11 +82,13 @@ function buildReceiptText(receipt) {
   ].join('\n');
 }
 
+const RANGE_DAYS: Partial<Record<string, number>> = { '30': 30, '90': 90, '180': 180, '365': 365 };
+
 export default function ParentReceipts() {
   const { user } = useApp();
   const { toast } = useToast();
-  const [accounts, setAccounts] = useState([]);
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [accounts, setAccounts] = useState<StudentFinanceAccountDto[]>([]);
+  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptRow | null>(null);
   const [periodFilter, setPeriodFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
   const [childFilter, setChildFilter] = useState('all');
@@ -88,37 +105,37 @@ export default function ParentReceipts() {
       const payload = await fetchParentChildrenFinance();
       setAccounts(Array.isArray(payload) ? payload : []);
     } catch (err) {
-      setError(err.message || 'Makbuz arşivi alınamadı.');
+      setError(errorMessage(err, 'Makbuz arşivi alınamadı.'));
       setAccounts([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadReceipts(); }, [loadReceipts]);
+  useEffect(() => { void loadReceipts(); }, [loadReceipts]);
 
-  const receipts = useMemo(() => {
+  const receipts = useMemo((): ReceiptRow[] => {
     return accounts.flatMap((account) => {
-      const contract = account.contracts?.[0] || {};
+      const contract = account.contracts?.[0];
       return (account.payments || []).map((payment, index) => {
         const installment = (account.installments || []).find((item) => item.id === payment.financeInstallmentId);
-        const paidAt = payment.paidAtUtc || payment.date || payment.createdAt;
+        const paidAt = payment.paidAtUtc;
         const calendarYear = paidAt ? String(new Date(paidAt).getFullYear()) : '';
         return {
           ...payment,
           key: payment.id || `${account.studentName}-${index}`,
           studentName: account.studentName,
-          className: contract.className || installment?.className || '',
-          academicYear: contract.academicYear || '',
+          className: contract?.className || '',
+          academicYear: contract?.academicYear || '',
           currency: payment.currency || account.currency || 'TRY',
           paidAtUtc: paidAt,
-          year: calendarYear || contract.academicYear || '',
+          year: calendarYear || contract?.academicYear || '',
           // Dönem = akademik yıl (varsa), yoksa takvim yılı. Sayfanın genel filtresi.
-          period: contract.academicYear || calendarYear || '',
+          period: contract?.academicYear || calendarYear || '',
           paymentType: installment?.label || (payment.amount < 0 ? 'İade' : 'Taksit Ödemesi'),
         };
       });
-    }).sort((a, b) => new Date(b.paidAtUtc || 0) - new Date(a.paidAtUtc || 0));
+    }).sort((a, b) => new Date(b.paidAtUtc || 0).getTime() - new Date(a.paidAtUtc || 0).getTime());
   }, [accounts]);
 
   // Dönem (akademik yıl/takvim yılı) listesi — sayfanın genel kapsam filtresi.
@@ -135,7 +152,7 @@ export default function ParentReceipts() {
 
   const filteredReceipts = useMemo(() => {
     const now = Date.now();
-    const rangeDays = { '30': 30, '90': 90, '180': 180, '365': 365 }[rangeFilter];
+    const rangeDays = RANGE_DAYS[rangeFilter];
     const rangeFromMs = rangeDays ? now - rangeDays * 24 * 60 * 60 * 1000 : null;
     return scopedReceipts.filter((item) => {
       const yearOk = yearFilter === 'all' || item.year === yearFilter || item.academicYear === yearFilter;
@@ -351,11 +368,11 @@ export default function ParentReceipts() {
 
           <Panel title="Hızlı İşlemler">
             <div className="grid grid-cols-3 gap-3">
-              {[
+              {([
                 ['Makbuz Ara', Search, 'blue', () => toast({ title: 'Makbuz arama', description: 'Filtre alanları ile makbuz listesi canlı süzülür.' })],
                 ['E-posta Gönder', Mail, 'purple', () => selectedReceipt ? toast({ title: 'E-posta hazır', description: `${selectedReceipt.receiptNo || 'Makbuz'} seçili.` }) : toast({ title: 'Önce bir makbuz seçin.' })],
                 ['Toplu İndir', Download, 'green', exportFiltered],
-              ].map(([label, Icon, tone, action]) => (
+              ] satisfies ReadonlyArray<readonly [string, IconComponent, ParentTone, () => void]>).map(([label, Icon, tone, action]) => (
                 <button key={label} type="button" onClick={action} className="rounded-[12px] border border-foreground/[0.08] bg-foreground/[0.035] p-4 text-center transition hover:bg-foreground/[0.07]">
                   <IconTile icon={Icon} tone={tone} className="mx-auto" />
                   <span className="mt-3 block text-xs font-black text-white">{label}</span>

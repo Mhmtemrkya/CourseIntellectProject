@@ -463,10 +463,9 @@ export async function fetchAdminDashboardData(): Promise<AdminDashboardData> {
 }
 
 // ─── Öğrenci / öğretmen / veli panoları ──────────────────────────────────────
-// NOT: Bu üç toplayıcı şu an hiçbir ekrandan çağrılmıyor (panolar kendi
-// uçlarını kullanıyor). Tipleme sırasında okudukları alanlar DTO'lara
-// indirildi; DTO'da hiç bulunmayan alan okumaları (ör. ödev teslim zaman
-// damgası, içerik oluşturma tarihi) her zaman boş döndüğü için kaldırıldı.
+// Tipleme sırasında okunan alanlar üretilmiş DTO'lara indirildi; DTO'da (ve
+// canlı yanıtta) hiç bulunmayan alan okumaları (ör. ödev teslim zaman damgası,
+// içerik oluşturma tarihi, teslim notu) her zaman boş döndüğü için kaldırıldı.
 
 interface StudyBucket {
   start: Date;
@@ -1188,3 +1187,7 @@ export async function fetchParentDashboardData(user: UserLike | null | undefined
     activities,
   };
 }
+
+export type StudentDashboardData = Awaited<ReturnType<typeof fetchStudentDashboardData>>;
+export type TeacherDashboardData = Awaited<ReturnType<typeof fetchTeacherDashboardData>>;
+export type ParentDashboardData = Awaited<ReturnType<typeof fetchParentDashboardData>>;

@@ -8,21 +8,23 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchCafeteriaWeek } from '../../lib/api/modules';
 import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { CafeteriaMealEntry, CafeteriaWeekSnapshot } from '../../types/api/generated';
 
-const MEAL_LABEL = { Breakfast: 'Kahvaltı', Lunch: 'Öğle Yemeği', Dinner: 'Akşam Yemeği', Snack: 'İkindi' };
+const MEAL_LABEL: Partial<Record<string, string>> = { Breakfast: 'Kahvaltı', Lunch: 'Öğle Yemeği', Dinner: 'Akşam Yemeği', Snack: 'İkindi' };
 const DAY_NAMES = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
-function mondayOf(date) {
+function mondayOf(date: Date | string): Date {
   const d = new Date(date);
   const offset = (d.getDay() + 6) % 7;
   d.setDate(d.getDate() - offset);
   return d;
 }
-function iso(d) { return d.toISOString().slice(0, 10); }
+function iso(d: Date): string { return d.toISOString().slice(0, 10); }
 
 export default function ParentCafeteria() {
   const [weekStart, setWeekStart] = useState(() => iso(mondayOf(new Date())));
-  const [week, setWeek] = useState(null);
+  const [week, setWeek] = useState<CafeteriaWeekSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -32,15 +34,15 @@ export default function ParentCafeteria() {
       setError('');
       setWeek(await fetchCafeteriaWeek(weekStart));
     } catch (err) {
-      setError(err.message || 'Yemek menüsü alınamadı.');
+      setError(errorMessage(err, 'Yemek menüsü alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [weekStart]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const shiftWeek = (days) => {
+  const shiftWeek = (days: number) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + days);
     setWeekStart(iso(mondayOf(d)));
@@ -48,12 +50,14 @@ export default function ParentCafeteria() {
 
   const days = useMemo(() => {
     const meals = week?.meals || [];
-    const byDate = {};
+    const byDate = new Map<string, CafeteriaMealEntry[]>();
     meals.forEach((m) => {
       const key = String(m.date).slice(0, 10);
-      (byDate[key] = byDate[key] || []).push(m);
+      const list = byDate.get(key) ?? [];
+      list.push(m);
+      byDate.set(key, list);
     });
-    return Object.keys(byDate).sort().map((date) => ({ date, meals: byDate[date] }));
+    return [...byDate.keys()].sort().map((date) => ({ date, meals: byDate.get(date) ?? [] }));
   }, [week]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
@@ -93,13 +97,13 @@ export default function ParentCafeteria() {
                       </div>
                       {(m.items || []).length > 0 ? (
                         <ul className="mt-2 list-disc pl-5 text-sm">
-                          {m.items.map((it, i) => <li key={i}>{it}</li>)}
+                          {(m.items || []).map((it, i) => <li key={i}>{it}</li>)}
                         </ul>
                       ) : null}
                       {m.description ? <p className="mt-1 text-xs text-muted-foreground">{m.description}</p> : null}
                       {(m.allergens || []).length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-1">
-                          {m.allergens.map((a, i) => <Badge key={i} variant="outline" className="text-[10px]">{a}</Badge>)}
+                          {(m.allergens || []).map((a, i) => <Badge key={i} variant="outline" className="text-[10px]">{a}</Badge>)}
                         </div>
                       ) : null}
                     </div>

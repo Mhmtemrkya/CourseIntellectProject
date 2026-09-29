@@ -1,13 +1,31 @@
-import { useId } from 'react';
-import { motion } from 'framer-motion';
+import { useId, type ComponentProps, type ReactNode } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import { Button } from '../../components/ui/button';
+import type { IconComponent } from '../../types/ui';
 
-export const pageMotion = {
+export type ParentTone = 'blue' | 'green' | 'orange' | 'purple' | 'cyan' | 'red';
+export type PillTone = 'green' | 'orange' | 'red' | 'blue' | 'purple' | 'slate';
+
+interface ChartPoint {
+  x: number;
+  y: number;
+  value: number;
+}
+
+export interface ChartItem {
+  label: string;
+  value: number;
+  color?: string;
+  display?: ReactNode;
+  reference?: number;
+}
+
+export const pageMotion: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
 
-export const itemMotion = {
+export const itemMotion: Variants = {
   hidden: { opacity: 0, y: 14 },
   visible: { opacity: 1, y: 0 },
 };
@@ -15,7 +33,7 @@ export const itemMotion = {
 export const panelClass =
   'ci-dashboard-panel rounded-[14px] border border-foreground/[0.08] shadow-[0_18px_52px_rgba(0,0,0,0.16)] backdrop-blur-2xl';
 
-export const toneMap = {
+export const toneMap: Record<ParentTone, string> = {
   blue: 'from-blue-500/30 to-blue-600/10 text-blue-300 shadow-blue-500/20',
   green: 'from-emerald-500/30 to-emerald-600/10 text-emerald-300 shadow-emerald-500/20',
   orange: 'from-orange-500/30 to-orange-600/10 text-orange-300 shadow-orange-500/20',
@@ -24,7 +42,7 @@ export const toneMap = {
   red: 'from-red-500/30 to-red-600/10 text-red-300 shadow-red-500/20',
 };
 
-export function decodeText(value = '') {
+export function decodeText(value: unknown = ''): string {
   return String(value)
     .replaceAll('&#xFC;', 'ü')
     .replaceAll('&#xDC;', 'Ü')
@@ -40,7 +58,7 @@ export function decodeText(value = '') {
     .replaceAll('&#x11E;', 'Ğ');
 }
 
-export function normalizeText(value = '') {
+export function normalizeText(value: unknown = ''): string {
   return decodeText(value)
     .toLowerCase()
     .replaceAll('ç', 'c')
@@ -52,18 +70,20 @@ export function normalizeText(value = '') {
     .trim();
 }
 
-export function safeNumber(value) {
+export function safeNumber(value: unknown): number {
   const number = Number(value || 0);
   return Number.isFinite(number) ? number : 0;
 }
 
-function buildSmoothPath(points) {
-  if (points.length < 2) return '';
-  const path = [`M ${points[0].x} ${points[0].y}`];
+function buildSmoothPath(points: readonly ChartPoint[]): string {
+  const first = points[0];
+  if (points.length < 2 || !first) return '';
+  const path = [`M ${first.x} ${first.y}`];
   for (let index = 0; index < points.length - 1; index += 1) {
-    const p0 = points[index - 1] || points[index];
     const p1 = points[index];
     const p2 = points[index + 1];
+    if (!p1 || !p2) continue;
+    const p0 = points[index - 1] || p1;
     const p3 = points[index + 2] || p2;
     const cp1x = p1.x + (p2.x - p0.x) / 6;
     const cp1y = p1.y + (p2.y - p0.y) / 6;
@@ -74,7 +94,7 @@ function buildSmoothPath(points) {
   return path.join(' ');
 }
 
-export function formatMoney(value, currency = 'TRY') {
+export function formatMoney(value: unknown, currency = 'TRY'): string {
   return new Intl.NumberFormat('tr-TR', {
     style: currency === 'TRY' ? 'currency' : 'decimal',
     currency: currency === 'TRY' ? 'TRY' : undefined,
@@ -83,14 +103,14 @@ export function formatMoney(value, currency = 'TRY') {
   }).format(safeNumber(value));
 }
 
-export function formatDate(value, fallback = '-') {
+export function formatDate(value: string | number | Date | null | undefined, fallback = '-'): string {
   if (!value) return fallback;
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return decodeText(value);
   return parsed.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
-export function initials(name = '') {
+export function initials(name: unknown = ''): string {
   return decodeText(name)
     .split(' ')
     .filter(Boolean)
@@ -100,7 +120,7 @@ export function initials(name = '') {
     .toUpperCase() || 'V';
 }
 
-export function IconTile({ icon: Icon, tone = 'purple', className = '' }) {
+export function IconTile({ icon: Icon, tone = 'purple', className = '' }: { icon: IconComponent; tone?: ParentTone; className?: string }) {
   return (
     <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-[12px] bg-gradient-to-br shadow-[0_0_26px] ${toneMap[tone] || toneMap.purple} ${className}`}>
       <Icon className="h-6 w-6" />
@@ -108,7 +128,15 @@ export function IconTile({ icon: Icon, tone = 'purple', className = '' }) {
   );
 }
 
-export function PageHeader({ icon, title, description, userName, actions }) {
+export interface ParentPageHeaderProps {
+  icon?: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  userName?: string | null;
+  actions?: ReactNode;
+}
+
+export function PageHeader({ icon, title, description, userName, actions }: ParentPageHeaderProps) {
   return (
     <motion.div variants={itemMotion} className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
       <div>
@@ -126,7 +154,7 @@ export function PageHeader({ icon, title, description, userName, actions }) {
   );
 }
 
-export function Panel({ title, action, children, className = '' }) {
+export function Panel({ title, action, children, className = '' }: { title?: ReactNode; action?: ReactNode; children?: ReactNode; className?: string }) {
   return (
     <motion.section variants={itemMotion} className={`${panelClass} p-5 ${className}`}>
       {(title || action) ? (
@@ -140,7 +168,16 @@ export function Panel({ title, action, children, className = '' }) {
   );
 }
 
-export function StatCard({ icon, tone = 'purple', label, value, sub, className = '' }) {
+export interface ParentStatCardProps {
+  icon: IconComponent;
+  tone?: ParentTone;
+  label: ReactNode;
+  value: ReactNode;
+  sub?: ReactNode;
+  className?: string;
+}
+
+export function StatCard({ icon, tone = 'purple', label, value, sub, className = '' }: ParentStatCardProps) {
   return (
     <motion.div variants={itemMotion} className={`${panelClass} flex min-h-[110px] items-center gap-4 p-5 ${className}`}>
       <IconTile icon={icon} tone={tone} />
@@ -153,8 +190,8 @@ export function StatCard({ icon, tone = 'purple', label, value, sub, className =
   );
 }
 
-export function StatusPill({ children, tone = 'green' }) {
-  const styles = {
+export function StatusPill({ children, tone = 'green' }: { children?: ReactNode; tone?: PillTone }) {
+  const styles: Record<PillTone, string> = {
     green: 'bg-emerald-500/12 text-emerald-300',
     orange: 'bg-orange-500/12 text-orange-300',
     red: 'bg-red-500/12 text-red-300',
@@ -165,7 +202,7 @@ export function StatusPill({ children, tone = 'green' }) {
   return <span className={`inline-flex rounded-[8px] px-3 py-1 text-xs font-black ${styles[tone] || styles.slate}`}>{children}</span>;
 }
 
-export function EmptyPanel({ title = 'Kayıt bulunamadı', description = 'Bu bölüm için henüz canlı veri gelmedi.' }) {
+export function EmptyPanel({ title = 'Kayıt bulunamadı', description = 'Bu bölüm için henüz canlı veri gelmedi.' }: { title?: ReactNode; description?: ReactNode }) {
   return (
     <div className="rounded-[12px] border border-foreground/[0.08] bg-foreground/[0.03] p-8 text-center">
       <p className="text-base font-black text-white">{title}</p>
@@ -174,7 +211,7 @@ export function EmptyPanel({ title = 'Kayıt bulunamadı', description = 'Bu bö
   );
 }
 
-export function SmallButton({ children, className = '', ...props }) {
+export function SmallButton({ children, className = '', ...props }: ComponentProps<typeof Button>) {
   return (
     <Button
       type="button"
@@ -187,7 +224,7 @@ export function SmallButton({ children, className = '', ...props }) {
   );
 }
 
-export function DonutChart({ items, center, size = 168 }) {
+export function DonutChart({ items, center, size = 168 }: { items: readonly ChartItem[]; center?: ReactNode; size?: number }) {
   const total = items.reduce((sum, item) => sum + Math.max(0, safeNumber(item.value)), 0);
   let offset = 0;
   const gradient = total > 0
@@ -208,7 +245,7 @@ export function DonutChart({ items, center, size = 168 }) {
   );
 }
 
-export function LineChart({ values, labels = [], color = '#a855f7', className = 'h-56' }) {
+export function LineChart({ values, labels = [], color = '#a855f7', className = 'h-56' }: { values: readonly unknown[]; labels?: readonly string[]; color?: string; className?: string }) {
   const gid = useId();
   const clean = values.map(safeNumber).filter((value) => Number.isFinite(value));
   if (!clean.length) return <EmptyPanel title="Grafik verisi yok" description="Bu grafik canlı veri geldiğinde oluşacak." />;
@@ -216,7 +253,7 @@ export function LineChart({ values, labels = [], color = '#a855f7', className = 
   const max = Math.max(100, ...clean, 1);
   const width = 520;
   const height = 220;
-  const points = clean.length
+  const points: ChartPoint[] = clean.length
     ? clean.map((value, index) => {
       const x = clean.length === 1 ? width / 2 : (index / (clean.length - 1)) * width;
       const y = height - (value / max) * (height - 26) - 12;
@@ -224,7 +261,9 @@ export function LineChart({ values, labels = [], color = '#a855f7', className = 
     })
     : [];
   const path = buildSmoothPath(points);
-  const area = path ? `${path} L ${points.at(-1).x} ${height} L ${points[0].x} ${height} Z` : '';
+  const firstPoint = points[0];
+  const lastPoint = points.at(-1);
+  const area = path && firstPoint && lastPoint ? `${path} L ${lastPoint.x} ${height} L ${firstPoint.x} ${height} Z` : '';
 
   return (
     <div className={`w-full overflow-hidden ${className}`}>
@@ -278,7 +317,7 @@ export function LineChart({ values, labels = [], color = '#a855f7', className = 
   );
 }
 
-export function BarChart({ items, color = '#7c3aed', className = 'h-56' }) {
+export function BarChart({ items, color = '#7c3aed', className = 'h-56' }: { items: readonly ChartItem[]; color?: string; className?: string }) {
   const max = Math.max(...items.map((item) => safeNumber(item.value)), 1);
   return (
     <div className={`flex items-end gap-5 ${className}`}>
@@ -298,12 +337,12 @@ export function BarChart({ items, color = '#7c3aed', className = 'h-56' }) {
   );
 }
 
-export function RadarChart({ items, className = 'h-[330px]' }) {
+export function RadarChart({ items, className = 'h-[330px]' }: { items: readonly ChartItem[]; className?: string }) {
   const values = items.slice(0, 6);
   const size = 320;
   const center = size / 2;
   const radius = 118;
-  const toPoint = (value, index, scale = 1) => {
+  const toPoint = (value: number | undefined, index: number, scale = 1): [number, number] => {
     const angle = (Math.PI * 2 * index) / Math.max(values.length, 1) - Math.PI / 2;
     const distance = radius * scale * (safeNumber(value) / 100);
     return [center + Math.cos(angle) * distance, center + Math.sin(angle) * distance];

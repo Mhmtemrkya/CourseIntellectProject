@@ -9,13 +9,16 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchStudents, fetchTeacherWeeklyReportsForParent } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { TeacherWeeklyReport } from '../../lib/api/reports';
+import type { StudentSummaryDto } from '../../types/api/generated';
 
 // /p/feedback: gerçek öğretmen geri bildirimi.
 // Önceden bu sayfa fetchMeetingRequests + fetchQuestionThreads gösteriyordu;
 // teacher weekly report endpoint'i yerine toplantı/soru akışları geliyordu.
 // Şimdi /api/reports/teacher-weekly/parent kaynağına bağlandı.
 
-function dateLabel(value) {
+function dateLabel(value: string | null | undefined): string {
   if (!value) return '';
   try {
     return new Date(value).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -27,8 +30,8 @@ function dateLabel(value) {
 export default function ParentFeedback() {
   const { user } = useApp();
   const navigate = useNavigate();
-  const [reports, setReports] = useState([]);
-  const [children, setChildren] = useState([]);
+  const [reports, setReports] = useState<TeacherWeeklyReport[]>([]);
+  const [children, setChildren] = useState<StudentSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -37,36 +40,36 @@ export default function ParentFeedback() {
       setLoading(true);
       setError('');
       const [reportList, studentList] = await Promise.all([
-        fetchTeacherWeeklyReportsForParent({
-          parentName: user?.name || user?.fullName,
-          parentUsername: user?.username,
-        }).catch(() => []),
-        fetchStudents().catch(() => []),
+        // Sunucu parentUsername okumaz; süzme parentName ile yapılır.
+        fetchTeacherWeeklyReportsForParent({ parentName: user?.name }).catch(() => null),
+        fetchStudents().catch(() => null),
       ]);
       setReports(Array.isArray(reportList) ? reportList : []);
       setChildren(Array.isArray(studentList) ? studentList : []);
     } catch (err) {
-      setError(err.message || 'Öğretmen geri bildirimleri alınamadı.');
+      setError(errorMessage(err, 'Öğretmen geri bildirimleri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    loadFeedback();
+    void loadFeedback();
   }, [loadFeedback]);
 
   const items = useMemo(() => {
     return (reports || []).map((report) => ({
-      id: report.id || `${report.studentName}-${report.weekLabel}`,
+      id: report.id || `${report.studentName}-${report.weeklyPeriodLabel}`,
       studentName: report.studentName || '',
-      teacherName: report.teacherName || report.author || 'Öğretmen',
-      subject: report.subject || report.branch || '',
-      summary: report.summary || report.note || report.detail || '',
-      weekLabel: report.weekLabel || dateLabel(report.weekStart || report.createdAtUtc),
-      strengths: report.strengths || report.positive || '',
-      improvements: report.improvements || report.improvementAreas || '',
-      attendanceRate: report.attendanceRate ?? null,
+      teacherName: report.teacherName || 'Öğretmen',
+      subject: report.subject || '',
+      summary: report.summary || '',
+      // Eskiden var olmayan weekLabel/strengths/improvements okunuyordu; bu
+      // bölümler hiç görünmüyordu. Rapor alanları: weeklyPeriodLabel,
+      // highlights (güçlü yönler), supportNotes (gelişim alanları).
+      weekLabel: report.weeklyPeriodLabel || dateLabel(report.createdAtUtc),
+      strengths: report.highlights || '',
+      improvements: report.supportNotes || '',
     }));
   }, [reports]);
 
@@ -116,9 +119,6 @@ export default function ParentFeedback() {
                   {item.teacherName}
                 </Badge>
                 {item.weekLabel ? <Badge variant="outline">{item.weekLabel}</Badge> : null}
-                {item.attendanceRate !== null ? (
-                  <Badge variant="outline">Devam: %{item.attendanceRate}</Badge>
-                ) : null}
               </div>
               {item.summary ? (
                 <p className="text-sm">{item.summary}</p>

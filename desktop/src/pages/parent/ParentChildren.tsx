@@ -6,11 +6,12 @@ import { Badge } from '../../components/ui/badge';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
-import { fetchParentDashboardData } from '../../lib/api/dashboardData';
+import { fetchParentDashboardData, type ParentDashboardData } from '../../lib/api/dashboardData';
+import { errorMessage } from '../../lib/errors';
 
 export default function ParentChildren() {
   const { user } = useApp();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<ParentDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -20,14 +21,14 @@ export default function ParentChildren() {
       setError('');
       setData(await fetchParentDashboardData(user));
     } catch (err) {
-      setError(err.message || 'Çocuklar görünümü alınamadı.');
+      setError(errorMessage(err, 'Çocuklar görünümü alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    loadChildren();
+    void loadChildren();
   }, [loadChildren]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;

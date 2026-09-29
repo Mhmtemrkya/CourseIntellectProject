@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, GraduationCap, CalendarCheck, ClipboardList, CalendarClock, Megaphone, Wallet, CreditCard, AlertCircle, ArrowRight,
@@ -7,15 +7,16 @@ import {
 import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import RoleDashboardColumns from '../../components/dashboard/RoleDashboardColumns';
+import RoleDashboardColumns, { type RoleDashboardGroup } from '../../components/dashboard/RoleDashboardColumns';
 import { PremiumPanel, PremiumProgressRow, PremiumStatusPill } from '../../components/ui/premium-dashboard';
 import { useApp } from '../../context/AppContext';
-import { fetchParentDashboardData } from '../../lib/api/dashboardData';
+import { fetchParentDashboardData, type ParentDashboardData } from '../../lib/api/dashboardData';
+import { errorMessage } from '../../lib/errors';
 
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
-const itemVariants = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } };
+const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
+const itemVariants: Variants = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } };
 
-function formatMoney(value, currency = 'TRY') {
+function formatMoney(value: unknown, currency = 'TRY'): string {
   try {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency || 'TRY', maximumFractionDigits: 0 }).format(Number(value) || 0);
   } catch {
@@ -23,7 +24,7 @@ function formatMoney(value, currency = 'TRY') {
   }
 }
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   if (!value) return '';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
@@ -32,7 +33,7 @@ function formatDate(value) {
 export default function ParentDashboard() {
   const { user } = useApp();
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<ParentDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -42,29 +43,29 @@ export default function ParentDashboard() {
       setError('');
       setData(await fetchParentDashboardData(user));
     } catch (err) {
-      setError(err.message || 'Veli paneli alınamadı.');
+      setError(errorMessage(err, 'Veli paneli alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+  useEffect(() => { void loadDashboard(); }, [loadDashboard]);
 
   const children = data?.children || [];
   const selectedChild = data?.selectedChild || children[0] || null;
   const selectedSummary = data?.selectedChildSummary || null;
-  const finance = data?.finance || {};
+  const finance = data?.finance;
   const pendingHomework = data?.pendingHomework || [];
   const upcomingExams = data?.upcomingExams || [];
   const announcements = data?.announcements || [];
 
   const childSummaries = useMemo(() => children.map((child) => ({
     child,
-    summary: data?.childSummaries?.[child.fullName] || (child.fullName === selectedChild?.fullName ? selectedSummary : null) || {},
+    summary: data?.childSummaries?.[child.fullName] || (child.fullName === selectedChild?.fullName ? selectedSummary : null),
   })), [children, data?.childSummaries, selectedChild?.fullName, selectedSummary]);
 
   const averageAttendance = childSummaries.length
-    ? Math.round(childSummaries.reduce((sum, item) => sum + Number(item.summary.attendance || 0), 0) / childSummaries.length)
+    ? Math.round(childSummaries.reduce((sum, item) => sum + Number(item.summary?.attendance || 0), 0) / childSummaries.length)
     : 0;
   const examTrend = Array.isArray(selectedSummary?.examTrend) ? selectedSummary.examTrend : [];
   const averageScore = examTrend.length
@@ -75,7 +76,7 @@ export default function ParentDashboard() {
     return <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4"><LoadingDots /><p className="text-muted-foreground">Veli paneli hazırlanıyor...</p></div>;
   }
 
-  const groups = [
+  const groups: RoleDashboardGroup[] = [
     {
       key: 'children', title: 'Çocuklar ve Akademik', description: 'Bağlı öğrencilerin başarı ve devam özeti',
       cards: [
@@ -95,9 +96,9 @@ export default function ParentDashboard() {
     {
       key: 'finance', title: 'Ödemeler', description: 'Yalnız takip edilmesi gereken güncel finans bilgileri',
       cards: [
-        { key: 'debt', label: 'Kalan Borç', value: formatMoney(finance.totalDebt, finance.currency), caption: 'Güncel toplam bakiye', icon: Wallet, tone: 'rose', path: '/p/payments' },
-        { key: 'installments', label: 'Kalan Taksit', value: finance.remainingInstallments || 0, caption: finance.nextDue ? `Sıradaki: ${formatDate(finance.nextDue)}` : 'Ödenecek taksit', icon: CreditCard, tone: 'amber', path: '/p/payments' },
-        { key: 'overdue', label: 'Geciken Taksit', value: finance.overdueCount || 0, caption: 'Kontrol edilmesi gereken', icon: AlertCircle, tone: 'rose', path: '/p/payments' },
+        { key: 'debt', label: 'Kalan Borç', value: formatMoney(finance?.totalDebt, finance?.currency), caption: 'Güncel toplam bakiye', icon: Wallet, tone: 'rose', path: '/p/payments' },
+        { key: 'installments', label: 'Kalan Taksit', value: finance?.remainingInstallments || 0, caption: finance?.nextDue ? `Sıradaki: ${formatDate(finance.nextDue)}` : 'Ödenecek taksit', icon: CreditCard, tone: 'amber', path: '/p/payments' },
+        { key: 'overdue', label: 'Geciken Taksit', value: finance?.overdueCount || 0, caption: 'Kontrol edilmesi gereken', icon: AlertCircle, tone: 'rose', path: '/p/payments' },
       ],
     },
   ];
@@ -115,7 +116,7 @@ export default function ParentDashboard() {
       <div className="grid gap-5 xl:grid-cols-3">
         <motion.div variants={itemVariants}>
           <PremiumPanel title="Çocuklarım" description="Her çocuk için güncel durum" action={<Button size="sm" variant="ghost" onClick={() => navigate('/p/children')}>Detaylar <ArrowRight className="ml-1 h-4 w-4" /></Button>} contentClassName="space-y-3">
-            {childSummaries.length ? childSummaries.slice(0, 4).map(({ child, summary }) => <button key={child.username || child.fullName} type="button" onClick={() => navigate('/p/children')} className="w-full rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 text-left"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-semibold">{child.fullName}</p><p className="text-xs text-muted-foreground">{child.className || 'Sınıf bilgisi yok'}</p></div><PremiumStatusPill tone="done">Aktif</PremiumStatusPill></div><div className="mt-3"><PremiumProgressRow title="Devam" subtitle="Güncel oran" value={summary.attendance || 0} valueLabel={`%${summary.attendance || 0}`} progress={summary.attendance || 0} tone="emerald" /></div></button>) : <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">Bu hesaba bağlı öğrenci bulunmuyor.</p>}
+            {childSummaries.length ? childSummaries.slice(0, 4).map(({ child, summary }) => <button key={child.username || child.fullName} type="button" onClick={() => navigate('/p/children')} className="w-full rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 text-left"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-semibold">{child.fullName}</p><p className="text-xs text-muted-foreground">{child.className || 'Sınıf bilgisi yok'}</p></div><PremiumStatusPill tone="done">Aktif</PremiumStatusPill></div><div className="mt-3"><PremiumProgressRow title="Devam" subtitle="Güncel oran" value={summary?.attendance || 0} valueLabel={`%${summary?.attendance || 0}`} progress={summary?.attendance || 0} tone="emerald" /></div></button>) : <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">Bu hesaba bağlı öğrenci bulunmuyor.</p>}
           </PremiumPanel>
         </motion.div>
 
@@ -128,7 +129,7 @@ export default function ParentDashboard() {
 
         <motion.div variants={itemVariants}>
           <PremiumPanel title="Önemli Duyurular" description="Okuldan gelen son bilgilendirmeler" action={<Button size="sm" variant="ghost" onClick={() => navigate('/p/announcements')}>Tümü <ArrowRight className="ml-1 h-4 w-4" /></Button>} contentClassName="space-y-2.5">
-            {announcements.length ? announcements.slice(0, 5).map((item, index) => <button key={item.id || `${item.title}-${index}`} type="button" onClick={() => navigate('/p/announcements')} className="w-full rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left"><p className="truncate text-sm font-semibold">{item.title}</p><p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.detail || item.dateLabel || item.date}</p></button>) : <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">Yeni duyuru yok.</p>}
+            {announcements.length ? announcements.slice(0, 5).map((item, index) => <button key={item.id || `${item.title}-${index}`} type="button" onClick={() => navigate('/p/announcements')} className="w-full rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left"><p className="truncate text-sm font-semibold">{item.title}</p><p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.detail || item.dateLabel}</p></button>) : <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">Yeni duyuru yok.</p>}
           </PremiumPanel>
         </motion.div>
       </div>

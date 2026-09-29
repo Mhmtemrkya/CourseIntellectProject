@@ -14,17 +14,26 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { createApproval, fetchMyApprovals } from '../../lib/api/modules';
 import { formatDate } from '../../lib/format';
+import type { ApprovalRequestDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
+import { errorMessage } from '../../lib/errors';
 
 const TYPES = ['Erken Çıkış', 'İzin', 'Gezi Onamı', 'KVKK / Fotoğraf Onamı', 'Kayıt Yenileme', 'Diğer'];
-const STATUS_META = {
+type ApprovalStatusKey = 'Pending' | 'Approved' | 'Rejected';
+
+const STATUS_META: Record<ApprovalStatusKey, readonly [string, string, IconComponent]> = {
   Pending: ['İncelemede', 'text-amber-600', Clock3],
   Approved: ['Onaylandı', 'text-emerald-600', CheckCircle2],
   Rejected: ['Reddedildi', 'text-red-600', XCircle],
 };
 
+function isApprovalStatusKey(value: string): value is ApprovalStatusKey {
+  return Object.prototype.hasOwnProperty.call(STATUS_META, value);
+}
+
 export default function ParentRequests() {
   const { toast } = useToast();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState<ApprovalRequestDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -36,13 +45,13 @@ export default function ParentRequests() {
       setError('');
       setItems(await fetchMyApprovals());
     } catch (err) {
-      setError(err.message || 'Talepler alınamadı.');
+      setError(errorMessage(err, 'Talepler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const submit = async () => {
     if (!form.child.trim()) { toast({ title: 'Öğrenci adı zorunlu.', variant: 'destructive' }); return; }
@@ -62,7 +71,7 @@ export default function ParentRequests() {
       setForm({ type: 'Erken Çıkış', child: '', date: '', description: '' });
       await load();
     } catch (err) {
-      toast({ title: 'Talep gönderilemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Talep gönderilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 
@@ -97,7 +106,7 @@ export default function ParentRequests() {
       <div className="grid gap-3">
         {items.length === 0 ? <Card><CardContent className="p-6 text-sm text-muted-foreground">Henüz talebiniz yok.</CardContent></Card>
           : items.map((item) => {
-            const [label, tone, Icon] = STATUS_META[item.status] || STATUS_META.Pending;
+            const [label, tone, Icon] = isApprovalStatusKey(item.status) ? STATUS_META[item.status] : STATUS_META.Pending;
             return (
               <Card key={item.id}>
                 <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">

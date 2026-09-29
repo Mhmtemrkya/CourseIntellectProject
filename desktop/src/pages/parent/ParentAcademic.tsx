@@ -8,9 +8,12 @@ import { Badge } from '../../components/ui/badge';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchParentAcademic } from '../../lib/api/modules';
+import type { ParentChildAcademic } from '../../lib/api/parentPortal';
+import type { IconComponent } from '../../types/ui';
+import { errorMessage } from '../../lib/errors';
 
 export default function ParentAcademic() {
-  const [children, setChildren] = useState([]);
+  const [children, setChildren] = useState<ParentChildAcademic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -20,13 +23,13 @@ export default function ParentAcademic() {
       setError('');
       setChildren(await fetchParentAcademic());
     } catch (err) {
-      setError(err.message || 'Akademik özet alınamadı.');
+      setError(errorMessage(err, 'Akademik özet alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
@@ -43,17 +46,18 @@ export default function ParentAcademic() {
       ) : children.map((child) => {
         const Trend = child.netTrend > 0 ? TrendingUp : child.netTrend < 0 ? TrendingDown : Minus;
         const trendTone = child.netTrend > 0 ? 'text-emerald-600' : child.netTrend < 0 ? 'text-red-600' : 'text-muted-foreground';
+        const metrics: ReadonlyArray<readonly [string, number | string, IconComponent, string?]> = [
+          ['Sınav Ort.', child.averageScore, Target],
+          ['Net Ort.', child.averageNet, Target],
+          ['Devam', `%${child.attendanceRate}`, CalendarCheck],
+          ['Net Trend', `${child.netTrend > 0 ? '+' : ''}${child.netTrend}`, Trend, trendTone],
+        ];
         return (
           <Card key={child.studentName}>
             <CardHeader><CardTitle>{child.studentName}</CardTitle></CardHeader>
             <CardContent className="space-y-5">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {[
-                  ['Sınav Ort.', child.averageScore, Target],
-                  ['Net Ort.', child.averageNet, Target],
-                  ['Devam', `%${child.attendanceRate}`, CalendarCheck],
-                  ['Net Trend', `${child.netTrend > 0 ? '+' : ''}${child.netTrend}`, Trend, trendTone],
-                ].map(([label, value, Icon, tone]) => (
+                {metrics.map(([label, value, Icon, tone]) => (
                   <div key={label} className="rounded-xl border bg-muted/20 p-4">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground"><Icon className={`h-4 w-4 ${tone || ''}`} />{label}</div>
                     <p className={`mt-1 text-2xl font-bold ${tone || ''}`}>{value}</p>
@@ -66,7 +70,7 @@ export default function ParentAcademic() {
                 {(child.recentExams || []).length === 0 ? <p className="text-sm text-muted-foreground">Sınav kaydı yok.</p>
                   : (
                     <div className="space-y-2">
-                      {child.recentExams.map((exam, idx) => (
+                      {(child.recentExams || []).map((exam, idx) => (
                         <div key={`${exam.title}-${idx}`} className="flex items-center justify-between rounded-lg border bg-card p-3 text-sm">
                           <div>
                             <span className="font-semibold">{exam.title || exam.subject}</span>

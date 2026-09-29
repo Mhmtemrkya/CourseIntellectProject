@@ -8,13 +8,15 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { Badge } from '../../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { useApp } from '../../context/AppContext';
-import { fetchParentDashboardData } from '../../lib/api/dashboardData';
+import { fetchParentDashboardData, type ParentDashboardData } from '../../lib/api/dashboardData';
 import { fetchTeacherWeeklyReportsForParent } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { openExternalUrl } from '../../lib/tauri';
 import { formatMoney } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { TeacherWeeklyReport } from '../../lib/api/reports';
 
-function decodeHtmlEntities(value) {
+function decodeHtmlEntities(value: unknown): string {
   return String(value || '')
     .replaceAll('&#xFC;', 'ü')
     .replaceAll('&#xDC;', 'Ü')
@@ -33,7 +35,7 @@ function decodeHtmlEntities(value) {
     .replaceAll('&#39;', "'");
 }
 
-function downloadText(name, content) {
+function downloadText(name: string, content: string) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -43,7 +45,7 @@ function downloadText(name, content) {
   URL.revokeObjectURL(url);
 }
 
-function resolveAssetUrl(value) {
+function resolveAssetUrl(value: unknown): string {
   const raw = String(value || '').trim();
   if (!raw) return '';
   if (/^https?:\/\//i.test(raw)) return raw;
@@ -52,9 +54,9 @@ function resolveAssetUrl(value) {
 
 export default function ParentWeeklyReport() {
   const { user } = useApp();
-  const [data, setData] = useState(null);
-  const [teacherReports, setTeacherReports] = useState([]);
-  const [selectedTeacherReport, setSelectedTeacherReport] = useState(null);
+  const [data, setData] = useState<ParentDashboardData | null>(null);
+  const [teacherReports, setTeacherReports] = useState<TeacherWeeklyReport[]>([]);
+  const [selectedTeacherReport, setSelectedTeacherReport] = useState<TeacherWeeklyReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -71,8 +73,8 @@ export default function ParentWeeklyReport() {
           studentUsername: child.username || '',
           parentName: child.parentName || user?.name || '',
           parentEmail: child.parentEmail || user?.email || '',
-        }).catch(() => []);
-        setTeacherReports(reports.map((item) => ({
+        }).catch(() => null);
+        setTeacherReports((reports ?? []).map((item) => ({
           ...item,
           teacherName: decodeHtmlEntities(item.teacherName),
           studentName: decodeHtmlEntities(item.studentName),
@@ -94,14 +96,14 @@ export default function ParentWeeklyReport() {
         setTeacherReports([]);
       }
     } catch (err) {
-      setError(err.message || 'Haftalık rapor alınamadı.');
+      setError(errorMessage(err, 'Haftalık rapor alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    loadReport();
+    void loadReport();
   }, [loadReport]);
 
   const reportText = useMemo(() => {

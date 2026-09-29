@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertTriangle, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight,
@@ -10,8 +10,13 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchAttendance, fetchStudents } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { AttendanceEntryDto, StudentSummaryDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-function normalize(value = '') {
+type MetricTone = 'green' | 'orange' | 'blue' | 'purple';
+
+function normalize(value: unknown = ''): string {
   return String(value)
     .trim()
     .toLowerCase()
@@ -23,7 +28,7 @@ function normalize(value = '') {
     .replaceAll('ü', 'u');
 }
 
-function toStatus(status = '') {
+function toStatus(status: string = ''): 'present' | 'late' | 'excuse' | 'absent' {
   const key = normalize(status);
   if (key.includes('katildi')) return 'present';
   if (key.includes('gec')) return 'late';
@@ -31,13 +36,13 @@ function toStatus(status = '') {
   return 'absent';
 }
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   const date = value ? new Date(value) : new Date();
   if (Number.isNaN(date.getTime())) return value || '-';
   return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' }).format(date);
 }
 
-function downloadCsv(records) {
+function downloadCsv(records: readonly AttendanceEntryDto[]) {
   const rows = [
     ['Ders', 'Sınıf', 'Tarih', 'Durum'],
     ...records.map((item) => [item.lesson, item.className, item.lessonDate, item.status]),
@@ -52,8 +57,8 @@ function downloadCsv(records) {
   URL.revokeObjectURL(url);
 }
 
-function Metric({ icon: Icon, label, value, hint, tone }) {
-  const tones = {
+function Metric({ icon: Icon, label, value, hint, tone }: { icon: IconComponent; label: string; value: ReactNode; hint?: string; tone: MetricTone }) {
+  const tones: Record<MetricTone, string> = {
     green: 'from-emerald-500/20 to-emerald-500/5 text-emerald-300 border-emerald-500/15',
     orange: 'from-orange-500/20 to-orange-500/5 text-orange-300 border-orange-500/15',
     blue: 'from-blue-500/20 to-blue-500/5 text-blue-300 border-blue-500/15',
@@ -71,9 +76,9 @@ function Metric({ icon: Icon, label, value, hint, tone }) {
 
 export default function ParentAttendance() {
   const { user } = useApp();
-  const [children, setChildren] = useState([]);
+  const [children, setChildren] = useState<StudentSummaryDto[]>([]);
   const [selectedChildKey, setSelectedChildKey] = useState('');
-  const [attendance, setAttendance] = useState([]);
+  const [attendance, setAttendance] = useState<AttendanceEntryDto[]>([]);
   const [period, setPeriod] = useState('2024 - 2025 / 2. Dönem');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -83,32 +88,31 @@ export default function ParentAttendance() {
       setLoading(true);
       setError('');
       const students = await fetchStudents();
-      const linkedChildren = (students || []).filter((item) => (
-        normalize(item.parentName) === normalize(user?.name)
-        || normalize(item.parentEmail).includes(normalize(user?.username))
-        || normalize(item.parentPhone).includes(normalize(user?.phone))
-      ));
+      // /api/students veli oturumunda zaten yalnız o velinin çocuklarını döner.
+      // Eskiden burada bir istemci süzmesi vardı ama oturumda olmayan `phone`
+      // alanı yüzünden her kayıt için doğru dönüyordu (etkisizdi).
+      const linkedChildren = students || [];
       setChildren(linkedChildren);
       const current = linkedChildren[0] || null;
       setSelectedChildKey(current?.username || current?.fullName || '');
-      setAttendance(current ? await fetchAttendance({ studentName: current.fullName }) : []);
+      setAttendance(current ? ((await fetchAttendance({ studentName: current.fullName })) ?? []) : []);
     } catch (err) {
-      setError(err.message || 'Devamsızlık verileri alınamadı.');
+      setError(errorMessage(err, 'Devamsızlık verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    loadAttendance();
+    void loadAttendance();
   }, [loadAttendance]);
 
   const selectedChild = useMemo(() => children.find((child) => (child.username || child.fullName) === selectedChildKey) || children[0] || null, [children, selectedChildKey]);
 
-  const handleChildChange = async (value) => {
+  const handleChildChange = async (value: string) => {
     setSelectedChildKey(value);
     const child = children.find((item) => (item.username || item.fullName) === value);
-    setAttendance(child ? await fetchAttendance({ studentName: child.fullName }) : []);
+    setAttendance(child ? ((await fetchAttendance({ studentName: child.fullName })) ?? []) : []);
   };
 
   const stats = useMemo(() => {
@@ -123,7 +127,7 @@ export default function ParentAttendance() {
   }, [attendance]);
 
   const subjectRows = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, { subject: string; present: number; absent: number; total: number }>();
     attendance.forEach((item) => {
       const subject = item.lesson || 'Ders';
       const next = map.get(subject) || { subject, present: 0, absent: 0, total: 0 };
@@ -137,7 +141,7 @@ export default function ParentAttendance() {
 
   const latestAbsences = useMemo(() => attendance
     .filter((item) => toStatus(item.status) === 'absent')
-    .sort((a, b) => new Date(b.lessonDate) - new Date(a.lessonDate))
+    .sort((a, b) => new Date(b.lessonDate).getTime() - new Date(a.lessonDate).getTime())
     .slice(0, 5), [attendance]);
 
   const calendarDays = useMemo(() => {
@@ -287,7 +291,7 @@ export default function ParentAttendance() {
   );
 }
 
-function Legend({ label, value, color }) {
+function Legend({ label, value, color }: { label: string; value: ReactNode; color: string }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-xl border p-3">
       <span className="flex items-center gap-2 text-sm"><i className={`h-3 w-3 rounded-full ${color}`} />{label}</span>

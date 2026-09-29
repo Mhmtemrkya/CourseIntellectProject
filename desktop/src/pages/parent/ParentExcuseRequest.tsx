@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import {
   FileText, Plus, Calendar, CheckCircle, Clock, XCircle, Upload, Send,
 } from 'lucide-react';
@@ -25,13 +25,25 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createExcuseRequest, fetchAttendance, fetchMyExcuseRequests, fetchStudents, uploadFile } from '../../lib/api/modules';
 import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { AttendanceEntryDto, StudentSummaryDto } from '../../types/api/generated';
 
-const containerVariants = {
+/** Listede gösterilen mazeret satırı (sunucu kaydı ya da yeni gönderilen). */
+interface ExcuseRow {
+  id: string | number;
+  childName: string;
+  date: string;
+  reason: string;
+  status: string;
+  attachmentName: string;
+}
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
@@ -39,9 +51,9 @@ const itemVariants = {
 export default function ParentExcuseRequest() {
   const { user } = useApp();
   const { toast } = useToast();
-  const [excuses, setExcuses] = useState([]);
-  const [absences, setAbsences] = useState([]);
-  const [children, setChildren] = useState([]);
+  const [excuses, setExcuses] = useState<ExcuseRow[]>([]);
+  const [absences, setAbsences] = useState<AttendanceEntryDto[]>([]);
+  const [children, setChildren] = useState<StudentSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
@@ -63,9 +75,9 @@ export default function ParentExcuseRequest() {
       setLoading(true);
       setError('');
       const [attendanceData, studentData, myExcuses] = await Promise.all([
-        fetchAttendance().catch(() => []),
-        fetchStudents().catch(() => []),
-        fetchMyExcuseRequests().catch(() => []),
+        fetchAttendance().catch(() => null),
+        fetchStudents().catch(() => null),
+        fetchMyExcuseRequests().catch(() => null),
       ]);
       const att = Array.isArray(attendanceData) ? attendanceData : [];
       const absenceList = att.filter((a) => a.status === 'Absent' || a.status === 'Devamsiz');
@@ -77,7 +89,7 @@ export default function ParentExcuseRequest() {
         setForm((prev) => ({ ...prev, childName: kids[0]?.fullName || '' }));
       }
 
-      const remoteExcuses = Array.isArray(myExcuses) ? myExcuses.map((item) => ({
+      const remoteExcuses: ExcuseRow[] = Array.isArray(myExcuses) ? myExcuses.map((item) => ({
         id: item.id,
         childName: item.childName,
         date: item.date,
@@ -87,13 +99,13 @@ export default function ParentExcuseRequest() {
       })) : [];
       setExcuses(remoteExcuses);
     } catch (err) {
-      setError(err.message || 'Veriler yuklenemedi.');
+      setError(errorMessage(err, 'Veriler yuklenemedi.'));
     } finally {
       setLoading(false);
     }
   }, [form.childName]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   const handleSubmit = async () => {
     if (!form.childName || !form.date || !form.reason) {
@@ -133,7 +145,7 @@ export default function ParentExcuseRequest() {
         attachmentType: '',
       });
     } catch (err) {
-      toast({ title: err?.response?.data?.message || err?.message || 'Gonderilemedi.', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Gonderilemedi.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -156,7 +168,7 @@ export default function ParentExcuseRequest() {
     }
   }, [form.attachmentType]);
 
-  const handleAttachmentPick = async (event) => {
+  const handleAttachmentPick = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
@@ -174,20 +186,20 @@ export default function ParentExcuseRequest() {
             : 'document';
       setForm((prev) => ({
         ...prev,
-        attachmentName: uploaded?.originalFileName || file.name,
-        attachmentUrl: uploaded?.fileUrl || uploaded?.url || uploaded?.fileName || '',
+        attachmentName: file.name,
+        attachmentUrl: uploaded?.fileUrl || uploaded?.fileName || '',
         attachmentType,
       }));
       toast({ title: 'Ek dosya hazirlandi.' });
     } catch (err) {
-      toast({ title: err.message || 'Ek dosya yuklenemedi.', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Ek dosya yuklenemedi.'), variant: 'destructive' });
     } finally {
       setUploadingAttachment(false);
       event.target.value = '';
     }
   };
 
-  function statusBadge(status) {
+  function statusBadge(status: unknown) {
     const s = String(status || '').toLowerCase();
     if (s.includes('onay') || s.includes('approved')) return <Badge className="bg-green-100 text-green-700">Onaylandi</Badge>;
     if (s.includes('red') || s.includes('rejected')) return <Badge className="bg-red-100 text-red-700">Reddedildi</Badge>;

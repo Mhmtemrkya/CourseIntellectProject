@@ -17,6 +17,9 @@ export interface RoleDashboardCard {
 
 export interface RoleDashboardGroup {
   key: string;
+  /** Veri düzeni için; ızgara başlık çizmez. */
+  title?: string;
+  description?: string;
   cards?: RoleDashboardCard[];
 }
 

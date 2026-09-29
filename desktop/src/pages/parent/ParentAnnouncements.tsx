@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Bell, Calendar, AlertCircle, Info, ChevronRight, Search,
 } from 'lucide-react';
@@ -11,37 +11,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { fetchAnnouncements, fetchStudents } from '../../lib/api/modules';
-import { useApp } from '../../context/AppContext';
+import { fetchAnnouncements } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { AnnouncementDto } from '../../types/api/generated';
 
-function normalizeText(value = '') {
-  return String(value)
-    .trim()
-    .toLowerCase()
-    .replaceAll('ç', 'c')
-    .replaceAll('ğ', 'g')
-    .replaceAll('ı', 'i')
-    .replaceAll('ö', 'o')
-    .replaceAll('ş', 's')
-    .replaceAll('ü', 'u');
-}
-
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
 export default function ParentAnnouncements() {
-  const { user } = useApp();
-  const [announcements, setAnnouncements] = useState([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementDto[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -49,40 +37,19 @@ export default function ParentAnnouncements() {
     try {
       setLoading(true);
       setError('');
-      const students = await fetchStudents().catch(() => []);
-      const linkedChildren = students.filter((student) => {
-        const parentName = normalizeText(student.parentName);
-        const parentEmail = normalizeText(student.parentEmail);
-        const username = normalizeText(user?.username);
-        const name = normalizeText(user?.name);
-        const email = normalizeText(user?.email);
-        return (
-          parentName === name ||
-          (name && parentName.includes(name)) ||
-          (username && parentEmail.includes(username)) ||
-          (email && parentEmail === email)
-        );
-      });
-
-      const payload = await fetchAnnouncements({
-        audience: 'Veli',
-        viewerRole: 'Veli',
-        viewerUsername: user?.username || '',
-        viewerName: user?.name || '',
-        viewerEmail: user?.email || '',
-        viewerLinkedStudentUsernames: linkedChildren.map((child) => child.username).filter(Boolean).join(','),
-        viewerClassName: linkedChildren[0]?.className || '',
-      });
-      setAnnouncements(payload);
+      // Sunucu yalnız audience/className/teacherName okur; eskiden gönderilen
+      // viewer* alanları (ve onları doldurmak için çekilen öğrenci listesi) yok sayılıyordu.
+      const payload = await fetchAnnouncements({ audience: 'Veli' });
+      setAnnouncements(payload ?? []);
     } catch (err) {
-      setError(err.message || 'Duyurular alınamadı.');
+      setError(errorMessage(err, 'Duyurular alınamadı.'));
     } finally {
       setLoading(false);
     }
-  }, [user?.email, user?.name, user?.username]);
+  }, []);
 
   useEffect(() => {
-    loadAnnouncements();
+    void loadAnnouncements();
   }, [loadAnnouncements]);
 
   const filteredAnnouncements = useMemo(() => announcements.filter((item) => {
@@ -95,7 +62,7 @@ export default function ParentAnnouncements() {
 
   const unreadCount = announcements.filter((item) => /sinav|toplanti|acil|odeme/i.test(`${item.title} ${item.detail || ''}`)).length;
 
-  const renderTypeIcon = (item) => {
+  const renderTypeIcon = (item: AnnouncementDto) => {
     const text = `${item.title} ${item.detail || ''}`.toLowerCase();
     if (text.includes('toplanti') || text.includes('tarih')) return <Calendar className="h-5 w-5 text-green-600" />;
     if (text.includes('odeme') || text.includes('acil')) return <AlertCircle className="h-5 w-5 text-yellow-600" />;
@@ -168,7 +135,7 @@ export default function ParentAnnouncements() {
                     <h3 className="font-semibold text-lg">{announcement.title}</h3>
                     <p className="text-muted-foreground mt-2 line-clamp-2">{announcement.detail}</p>
                     <div className="flex items-center justify-between mt-4">
-                      <span className="text-sm text-muted-foreground">{announcement.dateLabel || announcement.date || 'Bugün'}</span>
+                      <span className="text-sm text-muted-foreground">{announcement.dateLabel || 'Bugün'}</span>
                       <Button variant="ghost" size="sm" className="text-brand-accent" onClick={() => setSelectedAnnouncement(announcement)}>
                         Detayı Gör <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
@@ -187,7 +154,7 @@ export default function ParentAnnouncements() {
             <DialogTitle>{selectedAnnouncement?.title}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-sm">
-            <Badge variant="outline">{selectedAnnouncement?.dateLabel || selectedAnnouncement?.date}</Badge>
+            <Badge variant="outline">{selectedAnnouncement?.dateLabel}</Badge>
             <p className="leading-6">{selectedAnnouncement?.detail}</p>
           </div>
         </DialogContent>

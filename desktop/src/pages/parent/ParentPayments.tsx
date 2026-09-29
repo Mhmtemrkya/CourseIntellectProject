@@ -38,16 +38,30 @@ import {
   itemMotion,
   pageMotion,
   safeNumber,
+  type ParentTone,
+  type PillTone,
 } from './parentPremiumUi';
+import { errorMessage } from '../../lib/errors';
+import type { FinanceInstallmentDto, StudentFinanceAccountDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const STATUS = {
+type InstallmentStatusMeta = readonly [label: string, tone: PillTone];
+
+interface PayTarget {
+  account: StudentFinanceAccountDto;
+  installment: FinanceInstallmentDto | null;
+}
+
+const PENDING_STATUS: InstallmentStatusMeta = ['Bekliyor', 'orange'];
+
+const STATUS: Partial<Record<string, InstallmentStatusMeta>> = {
   Paid: ['Ödendi', 'green'],
   Partial: ['Kısmi', 'orange'],
   Overdue: ['Vadesi Geçti', 'red'],
-  Pending: ['Bekliyor', 'orange'],
+  Pending: PENDING_STATUS,
 };
 
-function downloadReceiptLike(name, content) {
+function downloadReceiptLike(name: string, content: string) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -61,9 +75,9 @@ export default function ParentPayments() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useApp();
-  const [accounts, setAccounts] = useState([]);
+  const [accounts, setAccounts] = useState<StudentFinanceAccountDto[]>([]);
   const [selectedStudent, setSelectedStudent] = useState('');
-  const [payFor, setPayFor] = useState(null);
+  const [payFor, setPayFor] = useState<PayTarget | null>(null);
   const [amount, setAmount] = useState('');
   const [paying, setPaying] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -78,14 +92,14 @@ export default function ParentPayments() {
       setAccounts(list);
       setSelectedStudent((prev) => prev || list[0]?.studentName || '');
     } catch (err) {
-      setError(err.message || 'Ödeme verileri alınamadı.');
+      setError(errorMessage(err, 'Ödeme verileri alınamadı.'));
       setAccounts([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const selectedAccount = useMemo(() => {
     return accounts.find((account) => account.studentName === selectedStudent) || accounts[0] || null;
@@ -100,11 +114,11 @@ export default function ParentPayments() {
     const nextDue = accounts
       .flatMap((account) => account.installments || [])
       .filter((item) => item.status !== 'Paid')
-      .sort((a, b) => new Date(a.dueDateUtc || 0) - new Date(b.dueDateUtc || 0))[0]?.dueDateUtc;
+      .sort((a, b) => new Date(a.dueDateUtc || 0).getTime() - new Date(b.dueDateUtc || 0).getTime())[0]?.dueDateUtc;
     return { currency, netTotal, paidTotal, balance, overdue, nextDue };
   }, [accounts, selectedAccount?.currency]);
 
-  const openPay = (account, installment = null) => {
+  const openPay = (account: StudentFinanceAccountDto, installment: FinanceInstallmentDto | null = null) => {
     const value = installment ? safeNumber(installment.remaining || installment.amount) : safeNumber(account?.balance);
     setPayFor({ account, installment });
     setAmount(value > 0 ? String(value) : '');
@@ -118,11 +132,10 @@ export default function ParentPayments() {
     }
     try {
       setPaying(true);
+      // Sunucu (ParentPaymentRequest) yalnız öğrenci adı + tutar + yöntem okur;
+      // taksit/sözleşme seçimi gönderilse de yok sayılıyordu, tahsilatı sunucu dağıtır.
       const result = await parentPay({
-        studentUserId: payFor.account.studentUserId,
         studentName: payFor.account.studentName,
-        enrollmentContractId: payFor.installment?.enrollmentContractId || payFor.account.contracts?.[0]?.id,
-        financeInstallmentId: payFor.installment?.id,
         amount: value,
         method: 'Online',
       });
@@ -131,7 +144,7 @@ export default function ParentPayments() {
       setAmount('');
       await load();
     } catch (err) {
-      toast({ title: 'Ödeme yapılamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Ödeme yapılamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setPaying(false);
     }
@@ -199,13 +212,13 @@ export default function ParentPayments() {
                   </thead>
                   <tbody>
                     {(selectedAccount?.installments || []).map((item) => {
-                      const [label, tone] = STATUS[item.status] || STATUS.Pending;
+                      const [label, tone] = STATUS[item.status] || PENDING_STATUS;
                       const isPaid = item.status === 'Paid';
                       return (
                         <tr key={item.id} className="border-b border-foreground/[0.06] text-slate-200">
                           <td className="py-4 font-semibold">{item.label || `${item.seqNo}. Taksit`}</td>
                           <td className="py-4">{formatDate(item.dueDateUtc)}</td>
-                          <td className="py-4">{formatMoney(item.amount, item.currency || selectedAccount.currency)}</td>
+                          <td className="py-4">{formatMoney(item.amount, item.currency || selectedAccount?.currency)}</td>
                           <td className="py-4"><StatusPill tone={tone}>{label}</StatusPill></td>
                           <td className="py-4 text-right">
                             {isPaid ? (
@@ -213,7 +226,7 @@ export default function ParentPayments() {
                                 <Download className="h-4 w-4" />
                               </Button>
                             ) : (
-                              <Button className="h-9 rounded-[10px] bg-purple-600 px-5 font-black text-white hover:bg-purple-500" onClick={() => openPay(selectedAccount, item)}>Öde</Button>
+                              <Button className="h-9 rounded-[10px] bg-purple-600 px-5 font-black text-white hover:bg-purple-500" onClick={() => { if (selectedAccount) openPay(selectedAccount, item); }}>Öde</Button>
                             )}
                           </td>
                         </tr>
@@ -228,11 +241,11 @@ export default function ParentPayments() {
             <Panel title="Ödeme Yöntemleri">
               <p className="mb-4 text-sm text-slate-400">Güvenli ödeme seçeneklerimizle kolayca ödeme yapın.</p>
               <div className="grid gap-4 md:grid-cols-3">
-                {[
+                {([
                   ['Kredi / Banka Kartı', 'Kredi veya banka kartınız ile peşin veya taksitli ödeme yapın.', CreditCard, 'purple', 'Ödeme Yap', () => selectedAccount && openPay(selectedAccount)],
                   ['Banka Havalesi', 'Banka hesabımıza havale/EFT ile ödeme yapabilirsiniz.', Building2, 'blue', 'Havale Bilgileri', () => toast({ title: 'Havale bilgileri', description: 'Kurum banka bilgileri finans birimi tarafından paylaşılır.' })],
                   ['Kayıtlı Kartlarım', 'Kayıtlı kartlarınızla hızlı ve güvenli ödeme yapın.', Wallet, 'green', 'Kartlarımı Yönet', () => toast({ title: 'Kart yönetimi', description: 'Kart saklama sağlayıcısı yapılandırıldığında aktif olur.' })],
-                ].map(([title, text, Icon, tone, button, action]) => (
+                ] satisfies ReadonlyArray<readonly [string, string, IconComponent, ParentTone, string, () => unknown]>).map(([title, text, Icon, tone, button, action]) => (
                   <motion.div variants={itemMotion} key={title} className="rounded-[12px] border border-foreground/[0.08] bg-foreground/[0.035] p-4">
                     <IconTile icon={Icon} tone={tone} />
                     <p className="mt-4 font-black text-white">{title}</p>

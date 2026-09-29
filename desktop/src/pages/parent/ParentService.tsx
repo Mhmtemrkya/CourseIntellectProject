@@ -6,20 +6,28 @@ import { Badge } from '../../components/ui/badge';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { getParentChildrenTransportStatus } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { ParentServiceStatusDto } from '../../types/api/generated';
 
-const ATT = {
+type AttendanceMeta = readonly [label: string, tone: string];
+
+const PENDING_ATTENDANCE: AttendanceMeta = ['Bekliyor', 'bg-muted text-muted-foreground'];
+
+const ATT: Partial<Record<string, AttendanceMeta>> = {
   Boarded: ['Bindi', 'bg-emerald-100 text-emerald-700'],
   Dropped: ['İndi', 'bg-sky-100 text-sky-700'],
   Absent: ['Gelmedi', 'bg-red-100 text-red-700'],
-  Pending: ['Bekliyor', 'bg-muted text-muted-foreground'],
+  Pending: PENDING_ATTENDANCE,
 };
 
-function tripLabel(s) {
-  return { NotStarted: 'Başlamadı', InProgress: 'Yolda', Completed: 'Tamamlandı', ArrivedSchool: 'Okula vardı' }[s] || s || '—';
+const TRIP_LABELS: Partial<Record<string, string>> = { NotStarted: 'Başlamadı', InProgress: 'Yolda', Completed: 'Tamamlandı', ArrivedSchool: 'Okula vardı' };
+
+function tripLabel(s: string | null | undefined): string {
+  return (s ? TRIP_LABELS[s] : undefined) || s || '—';
 }
 
 export default function ParentService() {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState<ParentServiceStatusDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -29,15 +37,15 @@ export default function ParentService() {
       setError('');
       setItems(await getParentChildrenTransportStatus());
     } catch (err) {
-      setError(err.message || 'Servis durumu alınamadı.');
+      setError(errorMessage(err, 'Servis durumu alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
-    const t = window.setInterval(load, 30000); // 30 sn'de bir canlı yenile
+    void load();
+    const t = window.setInterval(() => { void load(); }, 30000); // 30 sn'de bir canlı yenile
     return () => window.clearInterval(t);
   }, [load]);
 
@@ -54,7 +62,7 @@ export default function ParentService() {
       {items.length === 0 ? (
         <Card><CardContent className="p-10 text-center text-muted-foreground">Tanımlı servis bilgisi bulunamadı.</CardContent></Card>
       ) : items.map((item, idx) => {
-        const [attLabel, attTone] = ATT[item.attendanceStatus] || ATT.Pending;
+        const [attLabel, attTone] = ATT[item.attendanceStatus] || PENDING_ATTENDANCE;
         const hasVehicle = item.vehicleLatitude != null && item.vehicleLongitude != null;
         const mapUrl = hasVehicle ? `https://www.google.com/maps?q=${item.vehicleLatitude},${item.vehicleLongitude}` : null;
         return (

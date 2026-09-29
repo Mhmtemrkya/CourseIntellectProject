@@ -13,8 +13,34 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createMeetingRequest, fetchMeetingAdvisors, fetchMeetingRequests, fetchMeetingSlots, fetchStaff, fetchStudents } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { MeetingSlot } from '../../lib/api/meetings';
+import type { MeetingRequestDto, StudentSummaryDto } from '../../types/api/generated';
 
-function parseSlot(slotValue) {
+interface SlotInfo {
+  raw: string;
+  dateKey: string;
+  dayLabel: string;
+  fullLabel: string;
+  timeLabel: string;
+  sortable: number;
+}
+
+type ParsedSlot = MeetingSlot & { slotInfo: SlotInfo };
+
+interface SlotDay {
+  dateKey: string;
+  dayLabel: string;
+  fullLabel: string;
+  slots: ParsedSlot[];
+}
+
+interface TeacherOption {
+  id: string;
+  fullName: string;
+}
+
+function parseSlot(slotValue: string | null | undefined): SlotInfo {
   const raw = String(slotValue || '').trim();
   const parsed = new Date(raw.replace(' ', 'T'));
   if (!Number.isNaN(parsed.getTime())) {
@@ -33,10 +59,10 @@ function parseSlot(slotValue) {
 export default function ParentMeetings() {
   const { toast } = useToast();
   const { user } = useApp();
-  const [meetings, setMeetings] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [children, setChildren] = useState([]);
-  const [slots, setSlots] = useState([]);
+  const [meetings, setMeetings] = useState<MeetingRequestDto[]>([]);
+  const [teachers, setTeachers] = useState<TeacherOption[]>([]);
+  const [children, setChildren] = useState<StudentSummaryDto[]>([]);
+  const [slots, setSlots] = useState<ParsedSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
@@ -55,20 +81,20 @@ export default function ParentMeetings() {
       setLoading(true);
       setError('');
       const [meetingPayload, teacherPayload, advisorPayload, studentPayload] = await Promise.all([
-        fetchMeetingRequests().catch(() => []),
-        fetchStaff('Teacher').catch(() => []),
-        fetchMeetingAdvisors().catch(() => []),
-        fetchStudents().catch(() => []),
+        fetchMeetingRequests().catch(() => null),
+        fetchStaff('Teacher').catch(() => null),
+        fetchMeetingAdvisors().catch(() => null),
+        fetchStudents().catch(() => null),
       ]);
       const userName = (user?.name || '').toLowerCase();
       const userUsername = (user?.username || '').toLowerCase();
-      const linkedChildren = studentPayload.filter((item) => {
+      const linkedChildren = (studentPayload ?? []).filter((item) => {
         const parentName = (item.parentName || '').toLowerCase();
         const parentEmail = (item.parentEmail || '').toLowerCase();
         return parentName.includes(userName) || (userUsername && parentEmail.includes(userUsername));
       });
       const backendAdvisors = Array.isArray(advisorPayload) ? advisorPayload.filter(Boolean) : [];
-      const mappedTeachers = backendAdvisors.length > 0
+      const mappedTeachers: TeacherOption[] = backendAdvisors.length > 0
         ? backendAdvisors.map((fullName, index) => ({ id: `advisor-${index}`, fullName }))
         : (Array.isArray(teacherPayload) ? teacherPayload : []);
       setMeetings(Array.isArray(meetingPayload) ? meetingPayload : []);
@@ -80,14 +106,14 @@ export default function ParentMeetings() {
         studentName: prev.studentName || linkedChildren[0]?.fullName || '',
       }));
     } catch (err) {
-      setError(err.message || 'Görüşmeler alınamadı.');
+      setError(errorMessage(err, 'Görüşmeler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user?.name, user?.username]);
 
   useEffect(() => {
-    loadMeetings();
+    void loadMeetings();
   }, [loadMeetings]);
 
   const loadSlots = useCallback(async () => {
@@ -100,7 +126,7 @@ export default function ParentMeetings() {
         advisor: form.teacherName,
         onlineMeeting: form.meetingType === 'online',
       });
-      const normalized = Array.isArray(payload) ? payload.map((item) => ({ ...item, slotInfo: parseSlot(item.slot) })) : [];
+      const normalized: ParsedSlot[] = Array.isArray(payload) ? payload.map((item) => ({ ...item, slotInfo: parseSlot(item.slot) })) : [];
       setSlots(normalized);
       const firstDay = normalized[0]?.slotInfo?.dateKey || '';
       setForm((prev) => ({
@@ -115,11 +141,11 @@ export default function ParentMeetings() {
   }, [form.teacherName, form.meetingType]);
 
   useEffect(() => {
-    if (open) loadSlots();
+    if (open) void loadSlots();
   }, [open, loadSlots]);
 
   const groupedSlots = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, SlotDay>();
     slots.forEach((item) => {
       const existing = map.get(item.slotInfo.dateKey) || {
         dateKey: item.slotInfo.dateKey,
@@ -152,12 +178,12 @@ export default function ParentMeetings() {
         onlineMeeting: form.meetingType === 'online',
         note: `${form.meetingType === 'online' ? 'Online' : 'Yüz yüze'} veli görüşme talebi`,
       });
-      setMeetings((prev) => [created, ...prev]);
+      if (created) setMeetings((prev) => [created, ...prev]);
       setOpen(false);
       setForm((prev) => ({ ...prev, topic: '', slot: '', dayKey: '' }));
       toast({ title: 'Görüşme talebi gönderildi' });
     } catch (err) {
-      toast({ title: 'Görüşme talebi oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Görüşme talebi oluşturulamadı', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -246,7 +272,7 @@ export default function ParentMeetings() {
 
       <div className="grid gap-4">
         {meetings.map((item) => {
-          const slotInfo = parseSlot(item.slot || item.requestedDate || item.meetingDate);
+          const slotInfo = parseSlot(item.slot);
           return (
             <Card key={item.id} className="border-slate-200 shadow-sm">
               <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
@@ -257,7 +283,7 @@ export default function ParentMeetings() {
                     </div>
                     <div>
                       <p className="font-semibold text-slate-900">{item.topic || 'Görüşme talebi'}</p>
-                      <p className="text-sm text-slate-500">{item.teacherName || item.assignedTeacher || 'Öğretmen'} • {item.studentName || '-'}</p>
+                      <p className="text-sm text-slate-500">{item.advisor || 'Öğretmen'} • {item.studentName || '-'}</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
