@@ -1,19 +1,34 @@
 import * as signalR from '@microsoft/signalr';
 import { desktopApiBaseUrl, loadDesktopSession } from '../auth';
 
-class MessageRealtimeClient {
-  constructor() {
-    this.connection = null;
-    this.threadHandlers = new Set();
-    this.messageHandlers = new Set();
-    this.messageStatusHandlers = new Set();
-    this.presenceHandlers = new Set();
-    this.typingHandlers = new Set();
-    this.joinedThreads = new Set();
-    this.presenceKeys = new Set();
-  }
+import type {
+  MessageItem,
+  MessageStatusChanged,
+  MessageThread,
+  PresenceChanged,
+  TypingChanged,
+} from '../../types/api/messages';
 
-  async ensureConnected() {
+type Handler<T> = (payload: T) => void;
+
+class MessageRealtimeClient {
+  private connection: signalR.HubConnection | null = null;
+
+  private readonly threadHandlers = new Set<Handler<MessageThread>>();
+
+  private readonly messageHandlers = new Set<Handler<MessageItem>>();
+
+  private readonly messageStatusHandlers = new Set<Handler<MessageStatusChanged>>();
+
+  private readonly presenceHandlers = new Set<Handler<PresenceChanged>>();
+
+  private readonly typingHandlers = new Set<Handler<TypingChanged>>();
+
+  private readonly joinedThreads = new Set<string>();
+
+  private readonly presenceKeys = new Set<string>();
+
+  async ensureConnected(): Promise<signalR.HubConnection | null> {
     const session = loadDesktopSession();
     if (!session?.accessToken) return null;
 
@@ -22,39 +37,40 @@ class MessageRealtimeClient {
     }
 
     if (!this.connection) {
-      this.connection = new signalR.HubConnectionBuilder()
+      const connection = new signalR.HubConnectionBuilder()
         .withUrl(`${desktopApiBaseUrl}/hubs/messages`, {
           accessTokenFactory: () => loadDesktopSession()?.accessToken || '',
         })
         .withAutomaticReconnect()
         .build();
+      this.connection = connection;
 
-      this.connection.onreconnected(async () => {
+      connection.onreconnected(async () => {
         await Promise.allSettled(
-          Array.from(this.joinedThreads).map((threadId) => this.connection.invoke('JoinThread', threadId).catch(() => {})),
+          Array.from(this.joinedThreads).map((threadId) => connection.invoke('JoinThread', threadId).catch(() => {})),
         );
         await Promise.allSettled(
-          Array.from(this.presenceKeys).map((actorKey) => this.connection.invoke('SubscribePresence', actorKey).catch(() => {})),
+          Array.from(this.presenceKeys).map((actorKey) => connection.invoke('SubscribePresence', actorKey).catch(() => {})),
         );
       });
 
-      this.connection.on('threadUpdated', (payload) => {
+      connection.on('threadUpdated', (payload: MessageThread) => {
         this.threadHandlers.forEach((handler) => handler(payload));
       });
 
-      this.connection.on('messageReceived', (payload) => {
+      connection.on('messageReceived', (payload: MessageItem) => {
         this.messageHandlers.forEach((handler) => handler(payload));
       });
 
-      this.connection.on('messageStatusChanged', (payload) => {
+      connection.on('messageStatusChanged', (payload: MessageStatusChanged) => {
         this.messageStatusHandlers.forEach((handler) => handler(payload));
       });
 
-      this.connection.on('presenceChanged', (payload) => {
+      connection.on('presenceChanged', (payload: PresenceChanged) => {
         this.presenceHandlers.forEach((handler) => handler(payload));
       });
 
-      this.connection.on('typingChanged', (payload) => {
+      connection.on('typingChanged', (payload: TypingChanged) => {
         this.typingHandlers.forEach((handler) => handler(payload));
       });
     }
@@ -66,77 +82,87 @@ class MessageRealtimeClient {
     return this.connection;
   }
 
-  async joinThread(threadId) {
+  async joinThread(threadId: string | null | undefined): Promise<void> {
     const connection = await this.ensureConnected();
     if (!connection || !threadId) return;
     this.joinedThreads.add(threadId);
     try {
       await connection.invoke('JoinThread', threadId);
-    } catch (_) {}
+    } catch {
+      // Katılım bir sonraki yeniden bağlanmada tekrarlanır.
+    }
   }
 
-  async leaveThread(threadId) {
+  async leaveThread(threadId: string | null | undefined): Promise<void> {
     const connection = this.connection;
     if (!connection || connection.state !== signalR.HubConnectionState.Connected || !threadId) return;
     this.joinedThreads.delete(threadId);
     try {
       await connection.invoke('LeaveThread', threadId);
-    } catch (_) {}
+    } catch {
+      // Sunucu grubu bağlantı kapanınca zaten temizlenir.
+    }
   }
 
-  async subscribePresence(actorKey) {
+  async subscribePresence(actorKey: string | null | undefined): Promise<void> {
     const connection = await this.ensureConnected();
     if (!connection || !actorKey) return;
     const normalized = String(actorKey).trim().toLowerCase();
     this.presenceKeys.add(normalized);
     try {
       await connection.invoke('SubscribePresence', normalized);
-    } catch (_) {}
+    } catch {
+      // Abonelik yeniden bağlanmada tekrarlanır.
+    }
   }
 
-  async unsubscribePresence(actorKey) {
+  async unsubscribePresence(actorKey: string | null | undefined): Promise<void> {
     const connection = this.connection;
     if (!connection || connection.state !== signalR.HubConnectionState.Connected || !actorKey) return;
     const normalized = String(actorKey).trim().toLowerCase();
     this.presenceKeys.delete(normalized);
     try {
       await connection.invoke('UnsubscribePresence', normalized);
-    } catch (_) {}
+    } catch {
+      // Sunucu grubu bağlantı kapanınca zaten temizlenir.
+    }
   }
 
-  async setTyping(threadId, actorName, isTyping) {
+  async setTyping(threadId: string | null | undefined, actorName: string | null | undefined, isTyping: boolean): Promise<void> {
     const connection = await this.ensureConnected();
     if (!connection || !threadId || !actorName) return;
     try {
       await connection.invoke(isTyping ? 'TypingStart' : 'TypingStop', threadId, actorName);
-    } catch (_) {}
+    } catch {
+      // "Yazıyor" göstergesi kritik değil; hata yutulur.
+    }
   }
 
-  isConnected() {
+  isConnected(): boolean {
     return this.connection?.state === signalR.HubConnectionState.Connected;
   }
 
-  onThreadUpdated(handler) {
+  onThreadUpdated(handler: Handler<MessageThread>): () => boolean {
     this.threadHandlers.add(handler);
     return () => this.threadHandlers.delete(handler);
   }
 
-  onMessageReceived(handler) {
+  onMessageReceived(handler: Handler<MessageItem>): () => boolean {
     this.messageHandlers.add(handler);
     return () => this.messageHandlers.delete(handler);
   }
 
-  onMessageStatusChanged(handler) {
+  onMessageStatusChanged(handler: Handler<MessageStatusChanged>): () => boolean {
     this.messageStatusHandlers.add(handler);
     return () => this.messageStatusHandlers.delete(handler);
   }
 
-  onPresenceChanged(handler) {
+  onPresenceChanged(handler: Handler<PresenceChanged>): () => boolean {
     this.presenceHandlers.add(handler);
     return () => this.presenceHandlers.delete(handler);
   }
 
-  onTypingChanged(handler) {
+  onTypingChanged(handler: Handler<TypingChanged>): () => boolean {
     this.typingHandlers.add(handler);
     return () => this.typingHandlers.delete(handler);
   }

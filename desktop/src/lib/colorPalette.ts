@@ -6,7 +6,17 @@
 
 // ─── Hex ↔ HSL dönüşümleri ────────────────────────────────────────────
 
-export function hexToHSL(hex) {
+export interface HSL {
+  h: number;
+  s: number;
+  l: number;
+}
+
+export type Shade = 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950;
+export type Palette = Record<Shade, string>;
+export type BrandCSSVariables = Record<string, string>;
+
+export function hexToHSL(hex: string): HSL {
   hex = hex.replace('#', '');
   if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
 
@@ -38,11 +48,11 @@ export function hexToHSL(hex) {
   };
 }
 
-export function hslToHex(h, s, l) {
+export function hslToHex(h: number, s: number, l: number): string {
   s /= 100;
   l /= 100;
   const a = s * Math.min(l, 1 - l);
-  const f = (n) => {
+  const f = (n: number): string => {
     const k = (n + h / 30) % 12;
     const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
     return Math.round(255 * color).toString(16).padStart(2, '0');
@@ -53,7 +63,7 @@ export function hslToHex(h, s, l) {
 // ─── Palet üretimi ────────────────────────────────────────────────────
 
 // Tailwind tarzı lightness dağılımı
-const SHADE_LIGHTNESS = {
+const SHADE_LIGHTNESS: Record<Shade, number> = {
   50: 97, 100: 93, 200: 85, 300: 75, 400: 62,
   500: 48, 600: 40, 700: 32, 800: 24, 900: 17, 950: 10,
 };
@@ -63,26 +73,24 @@ const SHADE_LIGHTNESS = {
  * @param {string} hex - Ana renk (#RRGGBB)
  * @returns {Object} shade → hex eşleşmeleri { 50: '#...', 100: '#...', ... }
  */
-export function generatePalette(hex) {
-  const { h, s } = hexToHSL(hex);
-  const palette = {};
+const SHADES: Shade[] = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
 
-  for (const [shade, lightness] of Object.entries(SHADE_LIGHTNESS)) {
+export function generatePalette(hex: string): Palette {
+  const { h, s } = hexToHSL(hex);
+  const shadeHex = (shade: Shade): string => {
     // Çok açık/koyu tonlarda saturation azalt → daha doğal görünüm
     let adjS = s;
-    const shadeNum = Number(shade);
-    if (shadeNum <= 100) adjS = Math.max(s - 20, 30);
-    else if (shadeNum >= 900) adjS = Math.max(s - 10, 25);
-
-    palette[shade] = hslToHex(h, adjS, lightness);
-  }
-  return palette;
+    if (shade <= 100) adjS = Math.max(s - 20, 30);
+    else if (shade >= 900) adjS = Math.max(s - 10, 25);
+    return hslToHex(h, adjS, SHADE_LIGHTNESS[shade]);
+  };
+  return Object.fromEntries(SHADES.map((shade) => [shade, shadeHex(shade)])) as Palette;
 }
 
 /**
  * Hex renkten HSL string üretir (CSS custom property formatı: "H S% L%")
  */
-export function hexToHSLString(hex) {
+export function hexToHSLString(hex: string): string {
   const { h, s, l } = hexToHSL(hex);
   return `${h} ${s}% ${l}%`;
 }
@@ -96,11 +104,11 @@ export function hexToHSLString(hex) {
  * @param {string} theme      - 'dark' | 'light' (çözülmüş tema)
  * @returns {Object} CSS variable adı → değer eşleşmeleri
  */
-export function generateBrandCSSVariables(primaryHex, accentHex, theme = 'dark') {
+export function generateBrandCSSVariables(primaryHex: string, accentHex: string, theme = 'dark'): BrandCSSVariables {
   const primaryPalette = generatePalette(primaryHex);
   const accentPalette = generatePalette(accentHex);
   const light = theme === 'light';
-  const vars = {};
+  const vars: BrandCSSVariables = {};
 
   // Ana renk paleti
   for (const [shade, hex] of Object.entries(primaryPalette)) {
@@ -164,7 +172,7 @@ export function generateBrandCSSVariables(primaryHex, accentHex, theme = 'dark')
     const { h, s } = hexToHSL(primaryHex);
     const surfaceS = Math.min(s, 70);           // yüzeyler için yumuşatılmış doygunluk
     const borderS = Math.min(s, 45);
-    const hslStr = (sat, l) => `${h} ${sat}% ${l}%`;
+    const hslStr = (sat: number, l: number): string => `${h} ${sat}% ${l}%`;
 
     if (light) {
       vars['--ci-background'] = hslStr(Math.min(s, 40), 97);
@@ -215,7 +223,7 @@ export function generateBrandCSSVariables(primaryHex, accentHex, theme = 'dark')
 /**
  * CSS değişkenlerini document root'a uygular.
  */
-export function applyBrandVariables(vars) {
+export function applyBrandVariables(vars: BrandCSSVariables): void {
   const root = document.documentElement;
   for (const [prop, value] of Object.entries(vars)) {
     root.style.setProperty(prop, value);
@@ -225,7 +233,7 @@ export function applyBrandVariables(vars) {
 /**
  * CSS değişkenlerini document root'tan kaldırır.
  */
-export function removeBrandVariables(vars) {
+export function removeBrandVariables(vars: BrandCSSVariables): void {
   const root = document.documentElement;
   for (const prop of Object.keys(vars)) {
     root.style.removeProperty(prop);

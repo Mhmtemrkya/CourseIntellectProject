@@ -3,31 +3,36 @@ import { fetchMyTenantFeatures } from './api/modules';
 // Kurum bazlı özellik anahtarları. Platform yöneticisi kapattığı modüller
 // bu kurumun menülerinden gizlenir. Bayraklar oturum boyunca önbelleğe alınır;
 // okunamazsa güvenli varsayılan "tümü açık"tır.
-let cachedDisabled = null;
-let pending = null;
+interface TenantFeatureFlag {
+  key: string;
+  enabled?: boolean;
+}
 
-export async function getDisabledFeatureKeys() {
+let cachedDisabled: Set<string> | null = null;
+let pending: Promise<Set<string>> | null = null;
+
+export async function getDisabledFeatureKeys(): Promise<Set<string>> {
   if (cachedDisabled) return cachedDisabled;
   if (!pending) {
     pending = fetchMyTenantFeatures()
-      .then((payload) => new Set(
-        (Array.isArray(payload?.features) ? payload.features : [])
+      .then((payload: { features?: unknown } | null | undefined) => new Set<string>(
+        (Array.isArray(payload?.features) ? (payload.features as TenantFeatureFlag[]) : [])
           .filter((feature) => feature.enabled === false)
           .map((feature) => feature.key),
       ))
-      .catch(() => new Set());
+      .catch(() => new Set<string>());
   }
   cachedDisabled = await pending;
   return cachedDisabled;
 }
 
-export function resetTenantFeatureCache() {
+export function resetTenantFeatureCache(): void {
   cachedDisabled = null;
   pending = null;
 }
 
 // Özellik anahtarı → menü yolu önekleri.
-const FEATURE_PATHS = {
+const FEATURE_PATHS: Record<string, string[]> = {
   attendance: ['/attendance', '/t/attendance', '/s/attendance', '/p/attendance', '/kiosk-qr', '/s/attendance-qr'],
   exams: ['/exams', '/t/exams', '/s/exams', '/s/mock-exams', '/t/mock-exams', '/t/grade-entry', '/s/exam-results', '/t/student-exams', '/s/solve', '/t/exam-workbench', '/p/exams'],
   questionBank: ['/questions', '/t/question-bank', '/s/questions', '/t/question-studio', '/s/question-practice', '/s/wrong-answers'],
@@ -45,7 +50,7 @@ const FEATURE_PATHS = {
   ai: ['/s/ai', '/ai'],
 };
 
-export function isPathDisabled(path, disabledKeys) {
+export function isPathDisabled(path: string | null | undefined, disabledKeys: ReadonlySet<string> | null | undefined): boolean {
   if (!path || !disabledKeys || disabledKeys.size === 0) return false;
   for (const key of disabledKeys) {
     const prefixes = FEATURE_PATHS[key];

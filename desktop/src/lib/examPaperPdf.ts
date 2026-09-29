@@ -5,6 +5,47 @@ import html2canvas from 'html2canvas';
 const PAGE_W = 794;
 const PAGE_H = 1123;
 
+/** Öğrencinin bir soruya verdiği cevap. */
+export interface ExamPaperAnswer {
+  isCorrect?: boolean | null;
+  selectedOptionIndex?: number | null;
+  openAnswer?: string | null;
+}
+
+export interface ExamPaperQuestion {
+  questionText?: string | null;
+  options?: string[] | null;
+  correctOptionIndex?: number | null;
+  sortOrder?: number | null;
+  answer?: ExamPaperAnswer | null;
+}
+
+/** Çözülmüş sınav oturumu (öğrenci cevap kağıdı). */
+export interface ExamPaperSession {
+  title?: string | null;
+  subject?: string | null;
+  className?: string | null;
+  studentName?: string | null;
+  studentUsername?: string | null;
+  completedAtUtc?: string | null;
+  questions?: ExamPaperQuestion[] | null;
+}
+
+export interface ExamPaperBrand {
+  name?: string | null;
+  logoUrl?: string | null;
+}
+
+interface PaperStats {
+  total: number;
+  correct: number;
+  wrong: number;
+  empty: number;
+  success: number;
+}
+
+type OptionMarker = 'check' | 'cross' | 'none';
+
 const C = {
   violet: '#6D28D9',
   violetSoft: '#7C3AED',
@@ -19,17 +60,18 @@ const C = {
   cardBorder: '#E2E8F0',
 };
 
-function mixHex(hex, target, ratio) {
-  const parse = (h) => h.replace('#', '').match(/.{2}/g).map((c) => parseInt(c, 16));
-  const [r1, g1, b1] = parse(hex);
-  const [r2, g2, b2] = parse(target);
-  const mix = (a, b) => Math.round(a + (b - a) * ratio).toString(16).padStart(2, '0');
+function mixHex(hex: string, target: string, ratio: number): string {
+  // Yalnız doğrulanmış #RRGGBB değerleriyle çağrılır; ?? 0 indeks tipini daraltır.
+  const parse = (h: string): number[] => (h.replace('#', '').match(/.{2}/g) ?? []).map((c) => parseInt(c, 16));
+  const [r1 = 0, g1 = 0, b1 = 0] = parse(hex);
+  const [r2 = 0, g2 = 0, b2 = 0] = parse(target);
+  const mix = (a: number, b: number): string => Math.round(a + (b - a) * ratio).toString(16).padStart(2, '0');
   return `#${mix(r1, r2)}${mix(g1, g2)}${mix(b1, b2)}`;
 }
 
 // Tema/vurgu rengi geliştirici panelinden değiştirildiyse PDF de onu kullanır;
 // ana ton + açık tint/border türevleri accent'ten hesaplanır.
-function applyBrandColors() {
+function applyBrandColors(): void {
   if (typeof document === 'undefined') return;
   const accent = document.documentElement.style.getPropertyValue('--brand-accent-hex').trim();
   if (!/^#[0-9a-fA-F]{6}$/.test(accent)) return;
@@ -39,7 +81,7 @@ function applyBrandColors() {
   C.violetBorder = mixHex(accent, '#ffffff', 0.82);
 }
 
-function escapeHtml(value) {
+function escapeHtml(value: unknown): string {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -48,19 +90,19 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function checkSvg() {
+function checkSvg(): string {
   return `<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="11" fill="${C.green}"/><path d="M7 12.5l3 3 7-7" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
-function crossSvg() {
+function crossSvg(): string {
   return `<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="11" fill="${C.red}"/><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>`;
 }
-function ringSvg() {
+function ringSvg(): string {
   return `<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="10" fill="none" stroke="${C.grayRing}" stroke-width="2"/></svg>`;
 }
-function brainSvg() {
+function brainSvg(): string {
   return `<svg viewBox="0 0 40 40" width="40" height="40"><rect x="2" y="2" width="36" height="36" rx="11" fill="#fff"/><path d="M14 11c-3 0-5 2-5 5 0 1-1 2-1 4s1 3 3 3c0 2 2 3 4 3M26 11c3 0 5 2 5 5 0 1 1 2 1 4s-1 3-3 3c0 2-2 3-4 3M20 9v22" stroke="${C.violet}" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
 }
-function cornerWave(position) {
+function cornerWave(position: 'tr' | 'bl'): string {
   // Dekoratif mor dalga (köşe). position: 'tr' | 'bl'
   const transform = position === 'tr'
     ? 'top:-40px;right:-40px;transform:rotate(12deg);'
@@ -68,18 +110,19 @@ function cornerWave(position) {
   return `<svg style="position:absolute;${transform}width:280px;height:170px;opacity:0.9" viewBox="0 0 280 170"><path d="M0,0 C90,40 150,10 280,70 L280,0 Z" fill="${C.violetSoft}"/><path d="M0,0 C110,60 170,30 280,95 L280,0 Z" fill="${C.violet}" opacity="0.55"/></svg>`;
 }
 
-function computeStats(session) {
+// Not: `Number(x) >= 0`, JS'in `x >= 0` karşılaştırmasıyla birebir aynıdır (null → 0).
+function computeStats(session: ExamPaperSession): PaperStats {
   const questions = session.questions || [];
   const total = questions.length;
   const correct = questions.filter((q) => q.answer?.isCorrect === true).length;
-  const answered = questions.filter((q) => q.answer && (q.answer.selectedOptionIndex >= 0 || (q.answer.openAnswer || '').trim() !== '')).length;
+  const answered = questions.filter((q) => q.answer && (Number(q.answer.selectedOptionIndex) >= 0 || (q.answer.openAnswer || '').trim() !== '')).length;
   const empty = Math.max(0, total - answered);
   const wrong = Math.max(0, answered - correct);
   const success = total === 0 ? 0 : Math.round((correct / total) * 100);
   return { total, correct, wrong, empty, success };
 }
 
-function optionRowHtml(letter, text, marker) {
+function optionRowHtml(letter: string, text: string, marker: OptionMarker): string {
   const markerHtml = marker === 'check' ? checkSvg() : marker === 'cross' ? crossSvg() : '';
   return `
     <div style="display:flex;align-items:flex-start;gap:8px;margin:4px 0;">
@@ -89,7 +132,7 @@ function optionRowHtml(letter, text, marker) {
     </div>`;
 }
 
-function questionHtml(q, number) {
+function questionHtml(q: ExamPaperQuestion, number: number): string {
   const options = Array.isArray(q.options) ? q.options : [];
   const selected = q.answer?.selectedOptionIndex ?? -1;
   const correctIndex = q.correctOptionIndex ?? -1;
@@ -106,7 +149,7 @@ function questionHtml(q, number) {
   }
 
   const optionsHtml = options.map((text, i) => {
-    const marker = i === selected ? (i === correctIndex ? 'check' : 'cross') : 'none';
+    const marker: OptionMarker = i === selected ? (i === correctIndex ? 'check' : 'cross') : 'none';
     return optionRowHtml(String.fromCharCode(65 + i), text, marker);
   }).join('');
 
@@ -123,7 +166,7 @@ function questionHtml(q, number) {
     </div>`;
 }
 
-function pageShell(innerHtml, withWaves = true) {
+function pageShell(innerHtml: string, withWaves = true): HTMLDivElement {
   const page = document.createElement('div');
   page.setAttribute('data-exam-page', '');
   page.style.cssText = `position:relative;width:${PAGE_W}px;height:${PAGE_H}px;background:#fff;overflow:hidden;font-family:Inter,Poppins,'Segoe UI',Arial,sans-serif;box-sizing:border-box;`;
@@ -133,24 +176,24 @@ function pageShell(innerHtml, withWaves = true) {
 
 // PDF'in üzerindeki kurum kimliği. Çağıran (rapor merkezi) oturumdaki kurumun
 // adını ve logosunu verir; verilmezse ürün adına düşeriz.
-let brand = { name: '', logoUrl: '' };
+let brand: { name: string; logoUrl: string } = { name: '', logoUrl: '' };
 
-export function setExamPaperBrand(next) {
+export function setExamPaperBrand(next: ExamPaperBrand | null | undefined): void {
   brand = { name: (next?.name || '').trim(), logoUrl: next?.logoUrl || '' };
 }
 
-function brandName() {
+function brandName(): string {
   return escapeHtml(brand.name || 'SchoolAsist');
 }
 
-function brandMarkHtml() {
+function brandMarkHtml(): string {
   if (brand.logoUrl) {
     return `<img src="${escapeHtml(brand.logoUrl)}" crossorigin="anonymous" style="width:42px;height:42px;object-fit:contain;border-radius:10px;" />`;
   }
   return brainSvg();
 }
 
-function brandedHeaderHtml() {
+function brandedHeaderHtml(): string {
   return `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:28px 40px 0;">
       <div style="display:flex;align-items:center;gap:12px;">
@@ -164,7 +207,7 @@ function brandedHeaderHtml() {
     </div>`;
 }
 
-function titleHtml() {
+function titleHtml(): string {
   return `
     <div style="text-align:center;margin-top:18px;">
       <div style="font-size:34px;font-weight:800;color:${C.navy};letter-spacing:0.5px;">SINAV KAĞIDI</div>
@@ -172,11 +215,11 @@ function titleHtml() {
     </div>`;
 }
 
-function studentCardHtml(session, stats) {
+function studentCardHtml(session: ExamPaperSession, stats: PaperStats): string {
   const finished = session.completedAtUtc ? new Date(session.completedAtUtc) : new Date();
   const date = finished.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
   const time = finished.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  const cell = (label, value) => `
+  const cell = (label: string, value: string): string => `
     <div style="flex:1;text-align:center;">
       <div style="font-size:10px;font-weight:700;letter-spacing:0.5px;color:${C.slate};">${label}</div>
       <div style="margin-top:5px;font-size:13px;font-weight:600;color:${C.navy};white-space:pre-line;">${value}</div>
@@ -196,7 +239,7 @@ function studentCardHtml(session, stats) {
     </div>`;
 }
 
-function infoBannerHtml(stats) {
+function infoBannerHtml(stats: PaperStats): string {
   return `
     <div style="margin:14px 40px 0;border:1px solid ${C.violetBorder};background:${C.violetTint};border-radius:14px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;">
       <div style="font-size:13px;color:${C.slate};">Bu sınavda <b style="color:${C.violet};">${stats.total}</b> soru yer almaktadır.</div>
@@ -208,7 +251,7 @@ function infoBannerHtml(stats) {
     </div>`;
 }
 
-function legendHtml() {
+function legendHtml(): string {
   return `
     <div style="margin:16px 40px 0;border:1px solid ${C.cardBorder};border-radius:14px;padding:10px;display:flex;justify-content:center;gap:40px;align-items:center;">
       <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:${C.slate};">${checkSvg()} Doğru</span>
@@ -217,7 +260,7 @@ function legendHtml() {
     </div>`;
 }
 
-function footerHtml(pageNo, totalPages) {
+function footerHtml(pageNo: number, totalPages: number): string {
   return `
     <div style="position:absolute;left:0;right:0;bottom:24px;display:flex;align-items:center;justify-content:center;padding:0 40px;">
       <div style="text-align:center;">
@@ -228,13 +271,13 @@ function footerHtml(pageNo, totalPages) {
 }
 
 // Soruları ölçüm-bazlı olarak sabit A4 sayfalara dağıtır (2 sütun, taşma yok).
-function buildPages(session, stats, host) {
+function buildPages(session: ExamPaperSession, stats: PaperStats, host: HTMLElement): HTMLDivElement[] {
   const questionsHtml = (session.questions || [])
     .slice()
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     .map((q, i) => questionHtml(q, i + 1));
 
-  const pages = [];
+  const pages: HTMLDivElement[] = [];
   let index = 0;
   let isFirst = true;
 
@@ -251,12 +294,13 @@ function buildPages(session, stats, host) {
     const page = pageShell(headerBlocks + colWrap);
     host.appendChild(page);
     const col = page.querySelector('[data-q-col]');
+    if (!col) throw new Error('Sınav kağıdı sütun alanı oluşturulamadı.');
 
     let added = 0;
     while (index < questionsHtml.length) {
-      col.insertAdjacentHTML('beforeend', questionsHtml[index]);
+      col.insertAdjacentHTML('beforeend', questionsHtml[index] ?? '');
       if (col.scrollHeight > contentMaxHeight && added > 0) {
-        col.lastElementChild.remove();
+        col.lastElementChild?.remove();
         break;
       }
       if (col.scrollHeight > contentMaxHeight && added === 0) {
@@ -286,7 +330,7 @@ function buildPages(session, stats, host) {
   return pages;
 }
 
-export async function generateExamPaperBlob(session) {
+export async function generateExamPaperBlob(session: ExamPaperSession): Promise<Blob> {
   applyBrandColors();
   const stats = computeStats(session);
   const host = document.createElement('div');
@@ -302,8 +346,10 @@ export async function generateExamPaperBlob(session) {
 
     const pdf = new jsPDF({ unit: 'px', format: [PAGE_W, PAGE_H], orientation: 'portrait', compress: true });
     for (let i = 0; i < pages.length; i += 1) {
+      const page = pages[i];
+      if (!page) continue;
       // eslint-disable-next-line no-await-in-loop
-      const canvas = await html2canvas(pages[i], {
+      const canvas = await html2canvas(page, {
         scale: 2,
         width: PAGE_W,
         height: PAGE_H,
@@ -322,11 +368,11 @@ export async function generateExamPaperBlob(session) {
   }
 }
 
-function sanitizeFileName(value) {
+function sanitizeFileName(value: unknown): string {
   return String(value || 'sinav-kagidi').replace(/[^\w\-]+/g, '-').replace(/-+/g, '-').slice(0, 80);
 }
 
-export async function downloadExamPaperPdf(session, fileName) {
+export async function downloadExamPaperPdf(session: ExamPaperSession, fileName?: string | null): Promise<void> {
   const blob = await generateExamPaperBlob(session);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -338,7 +384,7 @@ export async function downloadExamPaperPdf(session, fileName) {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
-export async function previewExamPaperPdf(session) {
+export async function previewExamPaperPdf(session: ExamPaperSession): Promise<void> {
   const blob = await generateExamPaperBlob(session);
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank', 'noopener,noreferrer');

@@ -6,8 +6,24 @@
  * dershane kurumlarına hizmet verir.
  */
 
+import type { UserLike } from '../types/session';
+
+export type ChargeType = 'ExtraLesson' | 'ExamFee' | 'FileFee' | 'ExtraService' | 'PackageDifference' | 'Other';
+type ChargeLabels = Readonly<Record<ChargeType, string>>;
+
+export interface FinanceVocabulary {
+  person: string;
+  personPlural: string;
+  personSearchHint: string;
+  fee: string;
+  netFee: string;
+  feeDebt: string;
+  additionalChargeDebt: string;
+  chargeLabels: ChargeLabels;
+}
+
 // Ek ücret kalemlerinin okul karşılıkları (backend kalem kodlarıyla birebir).
-const SCHOOL_CHARGE_LABELS = {
+const SCHOOL_CHARGE_LABELS: ChargeLabels = {
   ExtraLesson: 'Ek ders / etüt ücreti',
   ExamFee: 'Sınav / deneme ücreti',
   FileFee: 'Kayıt ve evrak bedeli',
@@ -16,7 +32,7 @@ const SCHOOL_CHARGE_LABELS = {
   Other: 'Diğer ücret',
 };
 
-const SCHOOL_VOCABULARY = Object.freeze({
+const SCHOOL_VOCABULARY: Readonly<FinanceVocabulary> = Object.freeze({
   // Muhatap
   person: 'Öğrenci',
   personPlural: 'Öğrenci',
@@ -33,11 +49,16 @@ const SCHOOL_VOCABULARY = Object.freeze({
 /**
  * Finans sözlüğü. Parametre, çağıran ekranların imzası değişmesin diye korunur.
  */
-// eslint-disable-next-line no-unused-vars
-export function getFinanceVocabulary(user) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function getFinanceVocabulary(user?: UserLike | null): Readonly<FinanceVocabulary> {
   return SCHOOL_VOCABULARY;
 }
 
-export function chargeLabel(vocabulary, type) {
-  return vocabulary.chargeLabels[type] || vocabulary.chargeLabels.Other;
+function isChargeType(labels: ChargeLabels, type: string): type is ChargeType {
+  return Object.prototype.hasOwnProperty.call(labels, type);
+}
+
+export function chargeLabel(vocabulary: Readonly<FinanceVocabulary>, type: string | null | undefined): string {
+  const key = String(type ?? '');
+  return (isChargeType(vocabulary.chargeLabels, key) ? vocabulary.chargeLabels[key] : '') || vocabulary.chargeLabels.Other;
 }

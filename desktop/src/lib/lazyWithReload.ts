@@ -1,4 +1,4 @@
-import { lazy } from 'react';
+import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 
 // Code-split edilmiş route chunk'larının "Loading chunk N failed" ile çökmesini
 // önler. Bu hata, çalışan build (paketlenmiş Tauri app ya da açık sekme) ile
@@ -12,8 +12,8 @@ import { lazy } from 'react';
 const RELOAD_KEY = 'ci:chunk-reload-at';
 const RELOAD_COOLDOWN_MS = 10000;
 
-function isChunkLoadError(error) {
-  if (!error) return false;
+function isChunkLoadError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
   if (error.name === 'ChunkLoadError') return true;
   const message = String(error.message || '');
   return (
@@ -27,15 +27,19 @@ function isChunkLoadError(error) {
   );
 }
 
-export function lazyWithReload(factory) {
-  return lazy(() => factory().catch((error) => {
+type LazyModule<P> = { default: ComponentType<P> };
+
+export function lazyWithReload<P extends object>(
+  factory: () => Promise<LazyModule<P>>,
+): LazyExoticComponent<ComponentType<P>> {
+  return lazy(() => factory().catch((error: unknown): Promise<LazyModule<P>> => {
     if (isChunkLoadError(error) && typeof window !== 'undefined') {
       const lastReload = Number(window.sessionStorage.getItem(RELOAD_KEY) || 0);
       if (Date.now() - lastReload > RELOAD_COOLDOWN_MS) {
         window.sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
         window.location.reload();
         // Reload tetiklendi; render'ı askıda tutmak için çözülmeyen promise döner.
-        return new Promise(() => {});
+        return new Promise<LazyModule<P>>(() => {});
       }
     }
     throw error;

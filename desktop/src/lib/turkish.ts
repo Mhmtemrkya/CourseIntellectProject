@@ -1,6 +1,6 @@
 // Türkçe karakter katlamalı normalize — proje genelinde TEK kopya.
 // Eşleştirme/karşılaştırma yapan her yer bunu kullanmalı.
-export function foldTr(value = '') {
+export function foldTr(value: unknown = ''): string {
   return String(value)
     .trim()
     .toLowerCase()

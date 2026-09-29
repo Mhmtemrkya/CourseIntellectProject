@@ -6,7 +6,7 @@
 // gönderdiği için WebView içerikten tahmin de edemiyor). Çözüm: dosya adının
 // uzantısından doğru MIME'i belirleyip blob'u açık türle yeniden sarmak.
 
-const EXT_MIME = {
+const EXT_MIME: Record<string, string> = {
   pdf: 'application/pdf',
   png: 'image/png',
   jpg: 'image/jpeg',
@@ -17,14 +17,16 @@ const EXT_MIME = {
 };
 
 /** Dosya adı + mevcut blob türünden en güvenilir MIME'i döndürür. */
-export function resolveDocumentMime(fileName, blobType) {
+export type DocumentKind = 'image' | 'pdf' | 'other';
+
+export function resolveDocumentMime(fileName: string | null | undefined, blobType: string | null | undefined): string {
   if (blobType && blobType !== 'application/octet-stream') return blobType;
   const ext = (fileName || '').toLowerCase().split('.').pop();
-  return EXT_MIME[ext] || blobType || '';
+  return (ext ? EXT_MIME[ext] : undefined) || blobType || '';
 }
 
 /** image | pdf | other — modal hangi görüntüleyiciyi kullanacağını buna göre seçer. */
-export function documentKind(mime) {
+export function documentKind(mime: string): DocumentKind {
   if (mime.startsWith('image/')) return 'image';
   if (mime === 'application/pdf') return 'pdf';
   return 'other';
@@ -35,7 +37,13 @@ export function documentKind(mime) {
  * Bytes'ı arrayBuffer ile yeniden okuruz — Tauri blob'unun türsüz gelmesi durumunda
  * yeni Blob'a açık tür yazmak WebView'in belgeyi tanıması için şarttır.
  */
-export async function createTypedDocumentUrl(rawBlob, fileName) {
+export interface TypedDocumentUrl {
+  url: string;
+  mime: string;
+  kind: DocumentKind;
+}
+
+export async function createTypedDocumentUrl(rawBlob: Blob, fileName: string | null | undefined): Promise<TypedDocumentUrl> {
   const mime = resolveDocumentMime(fileName, rawBlob?.type || '');
   const typed = mime ? new Blob([await rawBlob.arrayBuffer()], { type: mime }) : rawBlob;
   return { url: URL.createObjectURL(typed), mime, kind: documentKind(mime) };

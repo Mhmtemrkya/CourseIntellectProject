@@ -1,3 +1,5 @@
+import type { LoginPayload } from "../../types/session";
+
 /**
  * PKCE (Proof Key for Code Exchange) utilities for OAuth flow.
  * Used when the desktop app authenticates via system browser.
@@ -6,7 +8,14 @@
 /**
  * Generate a random code verifier (43-128 chars, URL-safe).
  */
-export function generateCodeVerifier() {
+export interface PkceLoginResult {
+  code: string;
+  codeVerifier: string;
+  clientId: string;
+  redirectUri: string;
+}
+
+export function generateCodeVerifier(): string {
   const array = new Uint8Array(48);
   crypto.getRandomValues(array);
   return base64UrlEncode(array);
@@ -15,7 +24,7 @@ export function generateCodeVerifier() {
 /**
  * Derive the S256 code challenge from a code verifier.
  */
-export async function generateCodeChallenge(verifier) {
+export async function generateCodeChallenge(verifier: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
   const digest = await crypto.subtle.digest("SHA-256", data);
@@ -26,7 +35,7 @@ export async function generateCodeChallenge(verifier) {
  * Open system browser for PKCE login, return a Promise that resolves
  * with the authorization code when the deep link callback arrives.
  */
-export async function startPkceLogin(apiBaseUrl) {
+export async function startPkceLogin(apiBaseUrl: string): Promise<PkceLoginResult> {
   const { open } = await import("@tauri-apps/plugin-shell");
   const { onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
 
@@ -47,7 +56,7 @@ export async function startPkceLogin(apiBaseUrl) {
 
   const loginUrl = `${apiBaseUrl.replace(/\/$/, "")}/auth/pkce?${params.toString()}`;
 
-  return new Promise((resolve, reject) => {
+  return new Promise<PkceLoginResult>((resolve, reject) => {
     let settled = false;
     const timeout = setTimeout(() => {
       if (!settled) {
@@ -57,7 +66,7 @@ export async function startPkceLogin(apiBaseUrl) {
     }, 5 * 60 * 1000);
 
     // Listen for the deep link callback
-    onOpenUrl((urls) => {
+    void onOpenUrl((urls) => {
       if (settled) return;
       for (const url of urls) {
         if (url.startsWith("courseintellect://callback")) {
@@ -77,7 +86,7 @@ export async function startPkceLogin(apiBaseUrl) {
     });
 
     // Open system browser
-    open(loginUrl).catch((err) => {
+    open(loginUrl).catch((err: unknown) => {
       if (!settled) {
         settled = true;
         clearTimeout(timeout);
@@ -90,7 +99,10 @@ export async function startPkceLogin(apiBaseUrl) {
 /**
  * Exchange authorization code + code_verifier for tokens.
  */
-export async function exchangePkceCode(apiBaseUrl, { code, codeVerifier, clientId, redirectUri }) {
+export async function exchangePkceCode<T = LoginPayload>(
+  apiBaseUrl: string,
+  { code, codeVerifier, clientId, redirectUri }: PkceLoginResult,
+): Promise<T> {
   const response = await fetch(`${apiBaseUrl}/api/auth/pkce/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -103,14 +115,14 @@ export async function exchangePkceCode(apiBaseUrl, { code, codeVerifier, clientI
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
+    const body = (await response.json().catch(() => null)) as { message?: string } | null;
     throw new Error(body?.message || `Token exchange failed (${response.status})`);
   }
 
-  return response.json();
+  return (await response.json()) as T;
 }
 
-function base64UrlEncode(bytes) {
+function base64UrlEncode(bytes: Uint8Array): string {
   const str = btoa(String.fromCharCode(...bytes));
   return str.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }

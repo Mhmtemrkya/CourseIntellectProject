@@ -1,6 +1,6 @@
 // Kullanıcı/API verisinden gelen linkler yalnız http(s) şemasıyla açılır —
 // javascript:, file:, özel şema gibi vektörler burada kesilir.
-export function isHttpUrl(value) {
+export function isHttpUrl(value: unknown): value is string {
   if (!value || typeof value !== 'string') return false;
   try {
     const url = new URL(value);
@@ -10,7 +10,7 @@ export function isHttpUrl(value) {
   }
 }
 
-export function openHttpUrl(value) {
+export function openHttpUrl(value: unknown): boolean {
   if (!isHttpUrl(value)) return false;
   window.open(value, '_blank', 'noopener,noreferrer');
   return true;

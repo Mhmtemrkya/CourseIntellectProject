@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 
 // QR kodlar cihazda üretilir — yoklama oturum token'ı gibi hassas veriler
 // üçüncü taraf servislere (ör. api.qrserver.com) gönderilmez.
-export async function qrDataUrl(data, size = 320) {
+export async function qrDataUrl(data: unknown, size = 320): Promise<string> {
   return QRCode.toDataURL(String(data), {
     width: size,
     margin: 1,
@@ -11,7 +11,7 @@ export async function qrDataUrl(data, size = 320) {
   });
 }
 
-export function useQrDataUrl(data, size = 320) {
+export function useQrDataUrl(data: unknown, size = 320): string {
   const [url, setUrl] = useState('');
   useEffect(() => {
     let cancelled = false;
@@ -24,7 +24,7 @@ export function useQrDataUrl(data, size = 320) {
   return url;
 }
 
-export async function downloadQrPng(data, fileName = 'qr.png', size = 768) {
+export async function downloadQrPng(data: unknown, fileName = 'qr.png', size = 768): Promise<void> {
   const href = await qrDataUrl(data, size);
   const anchor = document.createElement('a');
   anchor.href = href;

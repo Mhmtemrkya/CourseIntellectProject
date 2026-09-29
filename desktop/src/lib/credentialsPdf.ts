@@ -1,15 +1,15 @@
 import { jsPDF } from 'jspdf';
 import logoUrl from '../assets/brand/logo.png';
 
-let cachedFontBase64 = null;
+let cachedFontBase64: string | null = null;
 
-async function loadLogoDataUrl() {
+async function loadLogoDataUrl(): Promise<string | null> {
   try {
     const response = await fetch(logoUrl);
     const blob = await response.blob();
-    return await new Promise((resolve, reject) => {
+    return await new Promise<string | null>((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
@@ -18,17 +18,17 @@ async function loadLogoDataUrl() {
   }
 }
 
-function arrayBufferToBase64(buffer) {
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   const chunkSize = 0x8000;
   let binary = '';
   for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
   }
   return window.btoa(binary);
 }
 
-async function ensureUnicodeFont(doc) {
+async function ensureUnicodeFont(doc: jsPDF): Promise<boolean> {
   try {
     if (!cachedFontBase64) {
       const response = await fetch('/fonts/Roboto-Regular.ttf');
@@ -47,6 +47,22 @@ async function ensureUnicodeFont(doc) {
   }
 }
 
+export interface CredentialsPdfOptions {
+  tenantName?: string | null;
+  fullName?: string | null;
+  role?: string | null;
+  username?: string | null;
+  temporaryPassword?: string | null;
+  className?: string | null;
+  extra?: string | null;
+  savePdf?: boolean;
+}
+
+export interface GeneratedPdf {
+  doc: jsPDF;
+  fileName: string;
+}
+
 export async function downloadCredentialsPdf({
   tenantName,
   fullName,
@@ -56,7 +72,7 @@ export async function downloadCredentialsPdf({
   className,
   extra,
   savePdf = true,
-}) {
+}: CredentialsPdfOptions): Promise<GeneratedPdf> {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -102,7 +118,7 @@ export async function downloadCredentialsPdf({
 
   // Body card
   let y = 220;
-  const drawRow = (label, value) => {
+  const drawRow = (label: string, value: unknown): void => {
     doc.setFont(fontFamily, 'bold');
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);

@@ -7,7 +7,16 @@ const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temm
 const MONTHS_TR_SHORT = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
 // "dd.MM.yyyy[ HH:mm]" / ISO / Date → Date | null
-export function parseTrDateTime(value) {
+export type FinancePeriod = 'day' | 'week' | 'month' | 'year';
+
+export interface DateRange {
+  start: Date;
+  end: Date;
+}
+
+export type DateInput = Date | string | number;
+
+export function parseTrDateTime(value: unknown): Date | null {
   if (!value) return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
   const raw = String(value).replace(' • ', ' ').trim();
@@ -32,12 +41,12 @@ export function parseTrDateTime(value) {
   return Number.isNaN(iso.getTime()) ? null : iso;
 }
 
-function startOfDay(date) {
+function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
 }
 
 // period ∈ 'day' | 'week' (Pzt–Paz) | 'month' | 'year'
-export function periodRange(period, anchor = new Date()) {
+export function periodRange(period: FinancePeriod, anchor: DateInput = new Date()): DateRange {
   const a = anchor instanceof Date ? anchor : new Date(anchor);
   if (period === 'day') {
     const start = startOfDay(a);
@@ -60,21 +69,26 @@ export function periodRange(period, anchor = new Date()) {
   };
 }
 
-export function inRange(date, range) {
+export function inRange(date: Date | null | undefined, range: DateRange | null | undefined): boolean {
   if (!date || !range) return false;
   const t = date.getTime();
   return t >= range.start.getTime() && t <= range.end.getTime();
 }
 
 // items: kayıt listesi; getDate: kalemden tarih (string/Date) döndüren fn
-export function filterByPeriod(items, getDate, period, anchor = new Date()) {
+export function filterByPeriod<T>(
+  items: readonly T[] | null | undefined,
+  getDate: (item: T) => unknown,
+  period: FinancePeriod,
+  anchor: DateInput = new Date(),
+): T[] {
   if (!Array.isArray(items)) return [];
   const range = periodRange(period, anchor);
   return items.filter((item) => inRange(parseTrDateTime(getDate(item)), range));
 }
 
 // anchor'ı bir dönem ileri/geri kaydır (delta = +1 / -1)
-export function shiftAnchor(period, anchor, delta) {
+export function shiftAnchor(period: FinancePeriod, anchor: DateInput, delta: number): Date {
   const a = anchor instanceof Date ? new Date(anchor) : new Date(anchor);
   if (period === 'day') a.setDate(a.getDate() + delta);
   else if (period === 'week') a.setDate(a.getDate() + delta * 7);
@@ -83,7 +97,7 @@ export function shiftAnchor(period, anchor, delta) {
   return a;
 }
 
-export function periodLabel(period, anchor = new Date()) {
+export function periodLabel(period: FinancePeriod, anchor: DateInput = new Date()): string {
   const a = anchor instanceof Date ? anchor : new Date(anchor);
   if (period === 'day') {
     return `${String(a.getDate()).padStart(2, '0')}.${String(a.getMonth() + 1).padStart(2, '0')}.${a.getFullYear()}`;

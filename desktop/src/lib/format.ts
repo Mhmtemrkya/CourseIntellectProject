@@ -15,7 +15,7 @@
 const LOCALE = 'tr-TR';
 
 /** Para birimi kodu → ekranda gösterilen kısaltma. */
-export const CURRENCY_LABELS = {
+export const CURRENCY_LABELS: Record<string, string> = {
   TRY: 'TL',
   TL: 'TL',
   USD: 'USD',
@@ -24,7 +24,7 @@ export const CURRENCY_LABELS = {
 };
 
 /** "12.500,50", "12,500.50", "₺12.500" gibi girdileri sayıya çevirir. */
-export function parseMoney(value) {
+export function parseMoney(value: unknown): number {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
   if (value === null || value === undefined) return 0;
 
@@ -52,7 +52,18 @@ export function parseMoney(value) {
 }
 
 /** Ondalıksız/ondalıklı sayı: 1.234 · 1.234,5 */
-export function formatNumber(value, { decimals } = {}) {
+export interface NumberFormatOptions {
+  decimals?: number | undefined;
+}
+
+export interface MoneyFormatOptions extends NumberFormatOptions {
+  currency?: string | null | undefined;
+  showCurrency?: boolean | undefined;
+}
+
+export type DateLike = Date | string | number | null | undefined;
+
+export function formatNumber(value: unknown, { decimals }: NumberFormatOptions = {}): string {
   const amount = typeof value === 'number' ? value : parseMoney(value);
   const digits = decimals ?? (Number.isInteger(amount) ? 0 : 2);
   return amount.toLocaleString(LOCALE, {
@@ -65,7 +76,7 @@ export function formatNumber(value, { decimals } = {}) {
  * Para: "12.500 TL". Tam sayıda kuruş yazılmaz (tablolar okunaklı kalsın),
  * küsuratlı tutarda iki hane gösterilir.
  */
-export function formatMoney(value, { currency = 'TRY', showCurrency = true, decimals } = {}) {
+export function formatMoney(value: unknown, { currency = 'TRY', showCurrency = true, decimals }: MoneyFormatOptions = {}): string {
   const text = formatNumber(value, { decimals });
   if (!showCurrency) return text;
   const label = CURRENCY_LABELS[String(currency || 'TRY').toUpperCase()] || currency;
@@ -73,7 +84,7 @@ export function formatMoney(value, { currency = 'TRY', showCurrency = true, deci
 }
 
 /** İşaretli para: gelir/gider ayrımı olan yerlerde (+1.000 TL / -250 TL). */
-export function formatMoneySigned(value, options) {
+export function formatMoneySigned(value: unknown, options?: MoneyFormatOptions): string {
   const amount = typeof value === 'number' ? value : parseMoney(value);
   const text = formatMoney(Math.abs(amount), options);
   if (amount === 0) return text;
@@ -81,7 +92,7 @@ export function formatMoneySigned(value, options) {
 }
 
 /** Girdi ne olursa olsun geçerli bir Date ya da null. */
-export function toDate(value) {
+export function toDate(value: unknown): Date | null {
   if (!value && value !== 0) return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
   // Epoch (Date.now(), getTime()) değerleri metne çevrilirse geçersiz tarih olur.
@@ -98,35 +109,35 @@ export function toDate(value) {
 }
 
 /** 02.08.2026 (çözülemeyen değerde "—") */
-export function formatDate(value, fallback = '—') {
+export function formatDate(value: unknown, fallback = '—'): string {
   const date = toDate(value);
   if (!date) return fallback;
   return date.toLocaleDateString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 /** 02.08.2026 14:35 */
-export function formatDateTime(value, fallback = '—') {
+export function formatDateTime(value: unknown, fallback = '—'): string {
   const date = toDate(value);
   if (!date) return fallback;
   return `${formatDate(date)} ${formatTime(date)}`;
 }
 
 /** 14:35 */
-export function formatTime(value, fallback = '—') {
+export function formatTime(value: unknown, fallback = '—'): string {
   const date = toDate(value);
   if (!date) return fallback;
   return date.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
 }
 
 /** 2 Ağustos 2026 */
-export function formatDateLong(value, fallback = '—') {
+export function formatDateLong(value: unknown, fallback = '—'): string {
   const date = toDate(value);
   if (!date) return fallback;
   return date.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 /** Ağustos 2026 */
-export function formatMonthYear(value, fallback = '—') {
+export function formatMonthYear(value: unknown, fallback = '—'): string {
   const date = toDate(value);
   if (!date) return fallback;
   return date.toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' });
@@ -137,7 +148,7 @@ export function formatMonthYear(value, fallback = '—') {
  * Intl bu alan birleşimini "02/08 Paz" olarak verdiğinden parçalar elle
  * birleştirilir; uygulamanın her yerinde ayırıcı nokta.
  */
-export function formatDayShort(value, fallback = '—') {
+export function formatDayShort(value: unknown, fallback = '—'): string {
   const date = toDate(value);
   if (!date) return fallback;
   const day = String(date.getDate()).padStart(2, '0');

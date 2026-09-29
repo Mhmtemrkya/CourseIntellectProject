@@ -1,26 +1,41 @@
 export const STAFF_BRANCH_CONFIGURATION_TYPE = 'staff-branches';
 export const STAFF_BRANCH_SCOPE_KEY = 'teacher-branches';
 
-export function readSavedStaffBranches(configurations) {
-  const item = (Array.isArray(configurations) ? configurations : [])
-    .find((entry) => entry.scopeKey === STAFF_BRANCH_SCOPE_KEY);
+export interface ScopedConfiguration {
+  scopeKey?: string | null;
+  payloadJson?: string | null;
+}
+
+export interface StaffBranchConfigurationPayload {
+  configurationType: string;
+  scopeKey: string;
+  displayName: string;
+  payloadJson: string;
+}
+
+export function readSavedStaffBranches(configurations: unknown): string[] {
+  const list: ScopedConfiguration[] = Array.isArray(configurations) ? configurations : [];
+  const item = list.find((entry) => entry.scopeKey === STAFF_BRANCH_SCOPE_KEY);
   if (!item?.payloadJson) return [];
   try {
-    const parsed = JSON.parse(item.payloadJson);
+    const parsed = JSON.parse(item.payloadJson) as { branches?: unknown };
     return Array.isArray(parsed.branches)
-      ? parsed.branches.map((value) => String(value || '').trim()).filter(Boolean)
+      ? parsed.branches.map((value: unknown) => String(value || '').trim()).filter(Boolean)
       : [];
   } catch {
     return [];
   }
 }
 
-export function mergeBranches(defaults, saved) {
+export function mergeBranches(
+  defaults: readonly string[] | null | undefined,
+  saved: readonly string[] | null | undefined,
+): string[] {
   return [...new Set([...(defaults || []), ...(saved || [])])]
     .sort((left, right) => left.localeCompare(right, 'tr'));
 }
 
-export function staffBranchConfigurationPayload(branches) {
+export function staffBranchConfigurationPayload(branches: readonly string[]): StaffBranchConfigurationPayload {
   return {
     configurationType: STAFF_BRANCH_CONFIGURATION_TYPE,
     scopeKey: STAFF_BRANCH_SCOPE_KEY,

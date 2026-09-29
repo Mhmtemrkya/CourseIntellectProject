@@ -9,7 +9,7 @@ export const desktopAppEnv = {
   allowDemoCredentials: env !== 'production',
 };
 
-export function getDesktopApiBaseUrl() {
+export function getDesktopApiBaseUrl(): string {
   const explicit = process.env.REACT_APP_COURSE_INTELLECT_API_URL?.trim();
 
   if (explicit) {
@@ -19,11 +19,11 @@ export function getDesktopApiBaseUrl() {
   return PRODUCTION_API_URL;
 }
 
-function normalizeApiBaseUrl(value) {
+function normalizeApiBaseUrl(value: string | null | undefined): string {
   return String(value || '').trim().replace(/\/+$/, '');
 }
 
-export function getDesktopApiCandidates() {
+export function getDesktopApiCandidates(): string[] {
   return [
     getDesktopApiBaseUrl(),
     PRODUCTION_API_URL,
@@ -34,11 +34,11 @@ export function getDesktopApiCandidates() {
 
 let activeDesktopApiBaseUrl = getDesktopApiBaseUrl();
 
-export function getActiveDesktopApiBaseUrl() {
+export function getActiveDesktopApiBaseUrl(): string {
   return activeDesktopApiBaseUrl;
 }
 
-export function setActiveDesktopApiBaseUrl(value) {
+export function setActiveDesktopApiBaseUrl(value: string | null | undefined): string {
   const normalized = normalizeApiBaseUrl(value);
   if (normalized && getDesktopApiCandidates().includes(normalized)) {
     activeDesktopApiBaseUrl = normalized;
@@ -46,7 +46,7 @@ export function setActiveDesktopApiBaseUrl(value) {
   return activeDesktopApiBaseUrl;
 }
 
-export function getOrderedDesktopApiCandidates() {
+export function getOrderedDesktopApiCandidates(): string[] {
   const active = getActiveDesktopApiBaseUrl();
   return [active, ...getDesktopApiCandidates()]
     .filter((value, index, values) => value && values.indexOf(value) === index);

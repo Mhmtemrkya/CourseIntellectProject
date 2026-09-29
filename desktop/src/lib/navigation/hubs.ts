@@ -33,7 +33,37 @@ import {
   UserX,
   Users,
   Wallet,
+  type LucideIcon,
 } from 'lucide-react';
+
+export interface HubTab {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+export interface MenuHub {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  color: string;
+  tabs: HubTab[];
+}
+
+/** Menü girişinin hub katlaması için okunan alanları. */
+export interface HubMenuItem {
+  path: string;
+}
+
+/** Katlanmış hub girişi — ilk görünür sekmenin yolunu taşır. */
+export interface CollapsedHubEntry {
+  path: string;
+  icon: LucideIcon;
+  label: string;
+  color: string;
+  hubId: string;
+  covers: string[];
+}
 
 /**
  * Konu hub'ları: bir işi bitirmek için gereken ekranlar tek menü girişinde
@@ -44,7 +74,7 @@ import {
  * Menüde ayrı satırı olan ekranlar (Muhasebe Özet, Cari Hesaplar) hub'a
  * girmez: biri panodur, diğeri muhasebecinin gün boyu açık tuttuğu ekrandır.
  */
-export const FINANCE_HUBS = [
+export const FINANCE_HUBS: MenuHub[] = [
   {
     id: 'finance-collections',
     label: 'Tahsilat',
@@ -100,7 +130,7 @@ export const FINANCE_HUBS = [
  * aynı işi bitiren ekranlar tek girişte toplanır. Günlük ekranlar (Öğrenciler,
  * Ders Programı gibi) hub'ın İLK sekmesidir — tek tıkla yine açılır.
  */
-export const ADMIN_HUBS = [
+export const ADMIN_HUBS: MenuHub[] = [
   {
     id: 'admin-directory',
     label: 'Kişiler',
@@ -213,7 +243,7 @@ export const ADMIN_HUBS = [
   },
 ];
 
-export const ALL_HUBS = [...FINANCE_HUBS, ...ADMIN_HUBS];
+export const ALL_HUBS: MenuHub[] = [...FINANCE_HUBS, ...ADMIN_HUBS];
 
 /**
  * Menüdeki görünür girişleri hub'lara katlar. Filtrelerden (rol, modül, paket,
@@ -222,18 +252,21 @@ export const ALL_HUBS = [...FINANCE_HUBS, ...ADMIN_HUBS];
  * Katlanan girişin yolu ilk görünür sekmedir; sıra, hub'ın ilk üyesinin
  * menüdeki yerini korur (grup yapısı bozulmaz).
  */
-export function collapseMenuHubs(items) {
-  const list = Array.isArray(items) ? items : [];
+export function collapseMenuHubs<T extends HubMenuItem>(
+  items: readonly T[] | null | undefined,
+): Array<T | CollapsedHubEntry> {
+  const list: readonly T[] = Array.isArray(items) ? items : [];
   const byPath = new Map(list.map((item) => [item.path, item]));
-  const consumed = new Set();
-  const hubForFirstPath = new Map();
+  const consumed = new Set<string>();
+  const hubForFirstPath = new Map<string, CollapsedHubEntry>();
 
   for (const hub of ALL_HUBS) {
     const visibleTabs = hub.tabs.filter((tab) => byPath.has(tab.path));
-    if (visibleTabs.length < 2) continue;
+    const firstTab = visibleTabs[0];
+    if (visibleTabs.length < 2 || !firstTab) continue;
     visibleTabs.forEach((tab) => consumed.add(tab.path));
-    hubForFirstPath.set(visibleTabs[0].path, {
-      path: visibleTabs[0].path,
+    hubForFirstPath.set(firstTab.path, {
+      path: firstTab.path,
       icon: hub.icon,
       label: hub.label,
       color: hub.color,
@@ -242,7 +275,7 @@ export function collapseMenuHubs(items) {
     });
   }
 
-  const result = [];
+  const result: Array<T | CollapsedHubEntry> = [];
   for (const item of list) {
     const hubEntry = hubForFirstPath.get(item.path);
     if (hubEntry) {
@@ -255,7 +288,7 @@ export function collapseMenuHubs(items) {
 }
 
 /** Bir adres hangi hub'a ait? (bilinmeyen adreste null) */
-export function findHubByPath(pathname) {
+export function findHubByPath(pathname: string): MenuHub | null {
   return (
     ALL_HUBS.find((hub) =>
       hub.tabs.some((tab) => pathname === tab.path || pathname.startsWith(`${tab.path}/`)),

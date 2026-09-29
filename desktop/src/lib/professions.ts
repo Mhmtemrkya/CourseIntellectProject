@@ -5,7 +5,7 @@
 
 export const OTHER_PROFESSION = 'Diğer';
 
-const RAW_PROFESSIONS = [
+const RAW_PROFESSIONS: string[] = [
   'Öğrenci', 'Öğretmen', 'Akademisyen', 'Doktor', 'Hemşire', 'Ebe', 'Sağlık teknisyeni',
   'Fizyoterapist', 'Diyetisyen', 'Psikolog', 'Eczacı', 'Diş hekimi', 'Veteriner',
   'Mühendis', 'Makine mühendisi', 'Elektrik-elektronik mühendisi', 'İnşaat mühendisi',
@@ -31,6 +31,6 @@ const RAW_PROFESSIONS = [
 ];
 
 // Türkçe alfabetik sırala; "Öğrenci" listede kalır, "Diğer" her zaman en sonda gösterilir.
-export const PROFESSIONS = [...new Set(RAW_PROFESSIONS)]
+export const PROFESSIONS: string[] = [...new Set(RAW_PROFESSIONS)]
   .sort((a, b) => a.localeCompare(b, 'tr'))
   .concat(OTHER_PROFESSION);

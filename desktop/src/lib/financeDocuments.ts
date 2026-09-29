@@ -5,7 +5,7 @@ import { formatMoney, parseMoney } from './format';
  * Çözüm ortak `lib/format.js`'tedir; virgülsüz "5.000" değerini ÜÇ BİN sayar
  * (eski sürüm 5 okuyordu).
  */
-export function parseFinanceMoney(value) {
+export function parseFinanceMoney(value: unknown): number {
   return parseMoney(value);
 }
 
@@ -13,11 +13,11 @@ export function parseFinanceMoney(value) {
  * Finans ekranlarının para biçimi. Gövde ortak `lib/format.js`'e taşındı;
  * bu isim eski çağrı yerleri için korunur — yeni kodda `formatMoney` kullan.
  */
-export function formatCurrency(value) {
+export function formatCurrency(value: unknown): string {
   return formatMoney(parseFinanceMoney(value));
 }
 
-export function normalizeFinanceText(value) {
+export function normalizeFinanceText(value: unknown): string {
   return String(value || '')
     .trim()
     .toLocaleLowerCase('tr-TR')
@@ -26,7 +26,7 @@ export function normalizeFinanceText(value) {
     .replaceAll('ı', 'i');
 }
 
-function escapeHtml(value) {
+function escapeHtml(value: unknown): string {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -35,7 +35,7 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-export function downloadBlob(filename, content, type = 'text/plain;charset=utf-8') {
+export function downloadBlob(filename: string, content: BlobPart, type = 'text/plain;charset=utf-8'): void {
   const needsBom = /charset=utf-8/i.test(type) || /csv/i.test(type);
   const payload = needsBom ? ['\uFEFF', content] : [content];
   const blob = new Blob(payload, { type });
@@ -51,7 +51,7 @@ export function downloadBlob(filename, content, type = 'text/plain;charset=utf-8
  * Sunucudan hazır gelen dosyayı (PDF, xlsx…) olduğu gibi indirir. downloadBlob
  * metin içeriği için BOM eklediğinden ikili dosyalarda bu yardımcı kullanılır.
  */
-export function downloadFileBlob(filename, blob) {
+export function downloadFileBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -60,7 +60,7 @@ export function downloadFileBlob(filename, blob) {
   URL.revokeObjectURL(url);
 }
 
-export function downloadCsvRows(filename, rows) {
+export function downloadCsvRows(filename: string, rows: ReadonlyArray<ReadonlyArray<unknown>>): void {
   const csv = rows
     .map((row) => row.map((value) => `"${String(value ?? '').replaceAll('"', '""')}"`).join(','))
     .join('\n');
@@ -72,10 +72,36 @@ export function downloadCsvRows(filename, rows) {
  * ThemeContext bunu root'a --brand-accent-hex olarak yazar; PDF/yazdırma
  * çıktıları da böylece geliştirici panelinden seçilen renkle üretilir.
  */
-export function getBrandAccentHex(fallback = '#0f4c81') {
+export function getBrandAccentHex(fallback = '#0f4c81'): string {
   if (typeof document === 'undefined') return fallback;
   const value = document.documentElement.style.getPropertyValue('--brand-accent-hex').trim();
   return /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
+}
+
+export interface LabelValue {
+  label: unknown;
+  value: unknown;
+}
+
+export interface FinanceDocumentSection {
+  title: unknown;
+  description?: unknown;
+  rows?: LabelValue[] | null;
+  table?: {
+    headers: unknown[];
+    rows: unknown[][];
+  } | null;
+}
+
+export interface FinanceDocumentOptions {
+  title?: unknown;
+  subtitle?: unknown;
+  code?: unknown;
+  accent?: string | null;
+  badge?: unknown;
+  summary?: LabelValue[];
+  sections?: FinanceDocumentSection[];
+  footerNote?: string | null;
 }
 
 export function buildFinanceDocumentHtml({
@@ -87,7 +113,7 @@ export function buildFinanceDocumentHtml({
   summary = [],
   sections = [],
   footerNote,
-}) {
+}: FinanceDocumentOptions): string {
   accent = accent || getBrandAccentHex();
   const summaryHtml = summary.map((item) => `
     <div class="summary-card">
@@ -330,11 +356,11 @@ export function buildFinanceDocumentHtml({
   `;
 }
 
-export function downloadFinanceHtml(filename, html) {
+export function downloadFinanceHtml(filename: string, html: string): void {
   downloadBlob(filename, html, 'text/html;charset=utf-8');
 }
 
-export function printFinanceHtml(title, html) {
+export function printFinanceHtml(title: string, html: string): void {
   const printWindow = window.open('', '_blank', 'width=1140,height=900');
   if (!printWindow) {
     downloadFinanceHtml(`${title}.html`, html);

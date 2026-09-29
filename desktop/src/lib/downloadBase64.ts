@@ -1,6 +1,10 @@
 // Sunucuda üretilen belgeleri (base64) tarayıcıda indirtir.
 // Sunucudan gelen PDF'i istemcide yeniden üretmeyiz: şablon tek yerde kalsın.
-export function downloadBase64File(base64, fileName, mimeType = 'application/pdf') {
+export function downloadBase64File(
+  base64: string | null | undefined,
+  fileName?: string | null,
+  mimeType = 'application/pdf',
+): boolean {
   if (!base64) return false;
 
   const binary = atob(base64);

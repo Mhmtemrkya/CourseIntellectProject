@@ -11,7 +11,20 @@
  */
 
 // ─── Modül kütüphanesi: modül → etiket + sayfa içi işlemler ───────────────────
-export const MODULE_LIBRARY = {
+import type { RoleEntitlement } from './entitlements';
+
+export interface ModuleDefinition {
+  label: string;
+  actions: Record<string, string>;
+}
+
+export interface RoleModuleOption {
+  key: string;
+  label: string;
+  actions: Record<string, string>;
+}
+
+export const MODULE_LIBRARY: Record<string, ModuleDefinition> = {
   dashboard: { label: 'Ana Panel', actions: {} },
   kpi: { label: 'Kurum Özeti (KPI)', actions: { export: 'Rapor dışa aktar' } },
   operations: { label: 'Operasyon Paneli', actions: {} },
@@ -116,7 +129,7 @@ export const PACKAGE_ROLES = [
   { key: 'cafeteria', label: 'Yemekhaneci' },
 ];
 
-export const ROLE_MODULES = {
+export const ROLE_MODULES: Record<string, string[]> = {
   admin: [
     'dashboard',
     'kpi', 'operations', 'global-search', 'tasks',
@@ -162,7 +175,7 @@ export const ROLE_MODULES = {
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 
 /** Bir rolün seçilebilir modüllerini { key, label, actions } listesi olarak döner. */
-export function getRoleModuleOptions(roleKey) {
+export function getRoleModuleOptions(roleKey: string): RoleModuleOption[] {
   return (ROLE_MODULES[roleKey] || []).map((moduleKey) => ({
     key: moduleKey,
     label: MODULE_LIBRARY[moduleKey]?.label || moduleKey,
@@ -174,11 +187,11 @@ export function getRoleModuleOptions(roleKey) {
  * Paket yetki tanımından pazarlama sitesine yazılacak özellik listesi üretir.
  * Roller arasında tekrar eden modüller tek satır olur.
  */
-export function buildMarketingFeatureList(rolesPayload) {
-  const seen = new Set();
-  const features = [];
+export function buildMarketingFeatureList(rolesPayload: Record<string, RoleEntitlement | null | undefined> | null | undefined): string[] {
+  const seen = new Set<string>();
+  const features: string[] = [];
   for (const roleKey of Object.keys(rolesPayload || {})) {
-    const modules = rolesPayload[roleKey]?.modules || {};
+    const modules = rolesPayload?.[roleKey]?.modules || {};
     for (const [moduleKey, moduleValue] of Object.entries(modules)) {
       if (!moduleValue?.enabled || seen.has(moduleKey)) continue;
       seen.add(moduleKey);
@@ -191,12 +204,12 @@ export function buildMarketingFeatureList(rolesPayload) {
 /**
  * Yeni paket için tüm rollerin tüm modül ve aksiyonları açık başlangıç tanımı.
  */
-export function buildFullAccessRoles() {
-  const roles = {};
+export function buildFullAccessRoles(): Record<string, Required<RoleEntitlement>> {
+  const roles: Record<string, Required<RoleEntitlement>> = {};
   for (const { key: roleKey } of PACKAGE_ROLES) {
-    const modules = {};
+    const modules: NonNullable<RoleEntitlement['modules']> = {};
     for (const moduleKey of ROLE_MODULES[roleKey] || []) {
-      const actions = {};
+      const actions: Record<string, boolean> = {};
       for (const actionKey of Object.keys(MODULE_LIBRARY[moduleKey]?.actions || {})) {
         actions[actionKey] = true;
       }

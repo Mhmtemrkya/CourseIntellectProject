@@ -2,20 +2,20 @@
 // TC kimlik: yalnızca rakam, en fazla 11 hane.
 // Telefon: +90 5xx xxx xx xx biçiminde maskelenir (10 hane).
 
-export function maskTcKimlik(value) {
+export function maskTcKimlik(value: unknown): string {
   return String(value || '').replace(/\D/g, '').slice(0, 11);
 }
 
-export function maskDigits(value, maxLength) {
+export function maskDigits(value: unknown, maxLength?: number): string {
   const digits = String(value || '').replace(/\D/g, '');
   return maxLength ? digits.slice(0, maxLength) : digits;
 }
 
-export function maskPositiveInteger(value, maxLength = 3) {
+export function maskPositiveInteger(value: unknown, maxLength = 3): string {
   return maskDigits(value, maxLength);
 }
 
-export function maskTrPhone(value) {
+export function maskTrPhone(value: unknown): string {
   let digits = String(value || '').replace(/\D/g, '');
   if (digits.startsWith('90')) digits = digits.slice(2);
   if (digits.startsWith('0')) digits = digits.slice(1);
@@ -30,18 +30,18 @@ export function maskTrPhone(value) {
   return `+90 ${parts.join(' ')}`;
 }
 
-export function maskEmail(value) {
+export function maskEmail(value: unknown): string {
   return String(value || '').replace(/\s/g, '').slice(0, 254);
 }
 
-export function maskVehicleNumber(value) {
+export function maskVehicleNumber(value: unknown): string {
   return String(value || '')
     .toLocaleUpperCase('tr-TR')
     .replace(/[^A-Z0-9-]/g, '')
     .slice(0, 12);
 }
 
-export function maskTrPlate(value) {
+export function maskTrPlate(value: unknown): string {
   const compact = String(value || '')
     .toLocaleUpperCase('tr-TR')
     .replace(/[^A-Z0-9]/g, '')
@@ -55,28 +55,30 @@ export function maskTrPlate(value) {
   return [province, letters, numbers].filter(Boolean).join(' ');
 }
 
-export function isValidTcKimlik(value) {
+export function isValidTcKimlik(value: unknown): boolean {
   const digits = maskTcKimlik(value);
   if (digits.length !== 11 || digits.startsWith('0')) return false;
-  const d = digits.split('').map(Number);
-  const oddSum = d[0] + d[2] + d[4] + d[6] + d[8];   // 1, 3, 5, 7, 9. haneler
-  const evenSum = d[1] + d[3] + d[5] + d[7];          // 2, 4, 6, 8. haneler
+  // Uzunluk 11 olarak doğrulandı; ?? 0 yalnız indeks tipini daraltır.
+  const n = digits.split('').map(Number);
+  const d = (i: number): number => n[i] ?? 0;
+  const oddSum = d(0) + d(2) + d(4) + d(6) + d(8);   // 1, 3, 5, 7, 9. haneler
+  const evenSum = d(1) + d(3) + d(5) + d(7);          // 2, 4, 6, 8. haneler
   const tenth = ((oddSum * 7 - evenSum) % 10 + 10) % 10;
-  if (tenth !== d[9]) return false;
-  const eleventh = (oddSum + evenSum + d[9]) % 10;
-  return eleventh === d[10];
+  if (tenth !== d(9)) return false;
+  const eleventh = (oddSum + evenSum + d(9)) % 10;
+  return eleventh === d(10);
 }
 
-export function isValidTrPhone(value) {
+export function isValidTrPhone(value: unknown): boolean {
   const digits = String(value || '').replace(/\D/g, '').replace(/^90/, '').replace(/^0/, '');
   return digits.length === 10 && digits.startsWith('5');
 }
 
-export function isValidEmail(value) {
+export function isValidEmail(value: unknown): boolean {
   const email = String(value || '').trim();
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export function isValidTrPlate(value) {
+export function isValidTrPlate(value: unknown): boolean {
   return /^\d{2} [A-Z]{1,3} \d{2,4}$/.test(maskTrPlate(value));
 }

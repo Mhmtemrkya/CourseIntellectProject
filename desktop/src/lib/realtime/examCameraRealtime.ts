@@ -5,14 +5,27 @@ import { desktopApiBaseUrl, loadDesktopSession } from '../auth';
 // (küçük JPEG data URL) gönderir; aynı planlı sınavı izleyen öğretmen(ler)
 // "cameraFrame" olayıyla anında alır. Kareler sunucuda saklanmaz, yalnızca
 // /hubs/exam-solving üzerinden gerçek zamanlı iletilir.
-class ExamCameraRealtimeClient {
-  constructor() {
-    this.connection = null;
-    this.handlers = new Set();
-    this.starting = null;
-  }
+/** ExamSolvingHub `cameraFrame` olayı. */
+export interface CameraFramePayload {
+  examId: string;
+  studentUsername: string;
+  studentName: string;
+  frame: string;
+  atUtc: string;
+}
 
-  async ensureConnected() {
+export type CameraFrameHandler = (payload: CameraFramePayload) => void;
+
+type ExamId = string | number | null | undefined;
+
+class ExamCameraRealtimeClient {
+  private connection: signalR.HubConnection | null = null;
+
+  private readonly handlers = new Set<CameraFrameHandler>();
+
+  private starting: Promise<void | null> | null = null;
+
+  async ensureConnected(): Promise<signalR.HubConnection | null> {
     const session = loadDesktopSession();
     if (!session?.accessToken) return null;
 
@@ -29,7 +42,7 @@ class ExamCameraRealtimeClient {
         .configureLogging(signalR.LogLevel.Warning)
         .build();
 
-      this.connection.on('cameraFrame', (payload) => {
+      this.connection.on('cameraFrame', (payload: CameraFramePayload) => {
         this.handlers.forEach((handler) => {
           try {
             handler(payload);
@@ -45,15 +58,20 @@ class ExamCameraRealtimeClient {
         this.starting = this.connection.start().catch(() => null).finally(() => { this.starting = null; });
       }
       await this.starting;
-      if (this.connection.state !== signalR.HubConnectionState.Connected) return null;
+      // start() sonrası durum değişmiş olabilir; daraltılmış tipi değil canlı değeri oku.
+      if (this.currentState() !== signalR.HubConnectionState.Connected) return null;
     } else if (this.connection.state === signalR.HubConnectionState.Connecting && this.starting) {
       await this.starting;
     }
     return this.connection;
   }
 
+  private currentState(): signalR.HubConnectionState | undefined {
+    return this.connection?.state;
+  }
+
   // Öğretmen: bir planlı sınavın canlı kamera akışına abone olur.
-  async joinMonitor(examId, handler) {
+  async joinMonitor(examId: ExamId, handler?: CameraFrameHandler | null): Promise<() => Promise<void>> {
     if (handler) this.handlers.add(handler);
     const connection = await this.ensureConnected();
     if (!connection || !examId) return () => this.leaveMonitor(examId, handler);
@@ -65,7 +83,7 @@ class ExamCameraRealtimeClient {
     return () => this.leaveMonitor(examId, handler);
   }
 
-  async leaveMonitor(examId, handler) {
+  async leaveMonitor(examId: ExamId, handler?: CameraFrameHandler | null): Promise<void> {
     if (handler) this.handlers.delete(handler);
     if (this.connection?.state === signalR.HubConnectionState.Connected && examId) {
       try {
@@ -77,7 +95,12 @@ class ExamCameraRealtimeClient {
   }
 
   // Öğrenci: tek bir kamera karesini yayınlar.
-  async publishFrame(examId, studentUsername, studentName, frame) {
+  async publishFrame(
+    examId: ExamId,
+    studentUsername: string | null | undefined,
+    studentName: string | null | undefined,
+    frame: string | null | undefined,
+  ): Promise<void> {
     if (!examId || !frame) return;
     const connection = await this.ensureConnected();
     if (!connection) return;

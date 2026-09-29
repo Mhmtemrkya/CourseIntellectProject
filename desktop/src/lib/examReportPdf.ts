@@ -10,19 +10,74 @@ const PAGE_H = 1123;
 const ROWS_FIRST_PAGE = 18;
 const ROWS_PER_PAGE = 26;
 
-const escapeHtml = (value) => String(value ?? '')
+/** Rapor başlığındaki sınav künyesi. */
+export interface ExamReportInfo {
+  title?: string | null;
+  subject?: string | null;
+  className?: string | null;
+  type?: string | null;
+  dateLabel?: string | null;
+  startTime?: string | null;
+  duration?: string | number | null;
+  questionCount?: number | null;
+}
+
+/** Tek öğrencinin sonuç satırı. */
+export interface ExamResultRow {
+  studentName?: string | null;
+  className?: string | null;
+  score?: number | string | null;
+  net?: number | string | null;
+}
+
+/** Belge künyesi (Ayarlar > Kurum Künyesi). */
+export interface InstitutionInfo {
+  name?: string | null;
+  institutionName?: string | null;
+  address?: string | null;
+  phone?: string | null;
+}
+
+interface ScoreBucket {
+  label: string;
+  color: string;
+  min: number;
+  max: number;
+  count: number;
+}
+
+export interface ExamStats {
+  count: number;
+  average: number;
+  highest: number;
+  lowest: number;
+  passed: number;
+  failed: number;
+  distribution: ScoreBucket[];
+}
+
+interface ResolvedInstitution {
+  name: string;
+  address: string;
+  phone: string;
+}
+
+const escapeHtml = (value: unknown): string => String(value ?? '')
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;');
 
-function scoreColor(score) {
+function scoreColor(score: number): string {
   if (score >= 85) return '#16A34A';
   if (score >= 70) return '#2563EB';
   if (score >= 50) return '#D97706';
   return '#DC2626';
 }
 
-function pageShell(inner, { pageNo, pageCount, institutionName }) {
+function pageShell(
+  inner: string,
+  { pageNo, pageCount, institutionName }: { pageNo: number; pageCount: number; institutionName: string },
+): string {
   return `
     <div style="width:${PAGE_W}px;height:${PAGE_H}px;background:#fff;color:#0F172A;
                 font-family:'Inter','Helvetica Neue',Arial,sans-serif;position:relative;
@@ -37,15 +92,16 @@ function pageShell(inner, { pageNo, pageCount, institutionName }) {
     </div>`;
 }
 
-function headerBlock(exam, institution, accent) {
-  const meta = [
+function headerBlock(exam: ExamReportInfo, institution: ResolvedInstitution, accent: string): string {
+  const allMeta: Array<[string, unknown]> = [
     ['Ders', exam.subject],
     ['Sınıf', exam.className],
     ['Tür', exam.type],
     ['Tarih', [exam.dateLabel, exam.startTime].filter(Boolean).join(' ')],
     ['Süre', exam.duration],
     ['Soru', exam.questionCount ? `${exam.questionCount} soru` : '—'],
-  ].filter(([, value]) => value);
+  ];
+  const meta = allMeta.filter(([, value]) => value);
 
   return `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;">
@@ -72,7 +128,7 @@ function headerBlock(exam, institution, accent) {
     </div>`;
 }
 
-function statsBlock(stats, accent) {
+function statsBlock(stats: ExamStats, accent: string): string {
   const cards = [
     ['Katılım', `${stats.count} öğrenci`],
     ['Ortalama', `${stats.average}`],
@@ -106,7 +162,7 @@ function statsBlock(stats, accent) {
     </div>`;
 }
 
-function tableBlock(rows, startIndex) {
+function tableBlock(rows: readonly ExamResultRow[], startIndex: number): string {
   return `
     <div style="margin-top:18px;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
       <div style="display:grid;grid-template-columns:36px 1fr 110px 90px 80px;background:#F1F5F9;
@@ -126,7 +182,7 @@ function tableBlock(rows, startIndex) {
     </div>`;
 }
 
-export function computeExamStats(rows) {
+export function computeExamStats(rows: readonly ExamResultRow[]): ExamStats {
   const scores = rows.map((row) => Number(row.score) || 0);
   const count = scores.length;
   const average = count ? Math.round((scores.reduce((sum, value) => sum + value, 0) / count) * 10) / 10 : 0;
@@ -150,7 +206,7 @@ export function computeExamStats(rows) {
   };
 }
 
-function sanitizeFileName(value) {
+function sanitizeFileName(value: unknown): string {
   return String(value || 'sinav-raporu')
     .replace(/[^\w\-ğüşöçıİĞÜŞÖÇ ]+/g, '')
     .trim()
@@ -159,23 +215,22 @@ function sanitizeFileName(value) {
     .slice(0, 80);
 }
 
-/**
- * Sınav sonuç raporunu PDF blob'u olarak üretir.
- * @param {object} exam sınav künyesi (title, subject, className, type, dateLabel, ...)
- * @param {Array} rows sonuç satırları ({ studentName, className, score, net })
- * @param {object} institution belge künyesi (name, address, phone)
- */
-export async function generateExamReportBlob(exam, rows, institution = {}) {
+/** Sınav sonuç raporunu PDF blob'u olarak üretir. */
+export async function generateExamReportBlob(
+  exam: ExamReportInfo,
+  rows: readonly ExamResultRow[],
+  institution: InstitutionInfo = {},
+): Promise<Blob> {
   const accent = getBrandAccentHex('#2563EB');
   const stats = computeExamStats(rows);
-  const meta = {
+  const meta: ResolvedInstitution = {
     name: institution.name || institution.institutionName || 'Kurum',
     address: institution.address || '',
     phone: institution.phone || '',
   };
 
   const sorted = [...rows].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
-  const chunks = [];
+  const chunks: ExamResultRow[][] = [];
   chunks.push(sorted.slice(0, ROWS_FIRST_PAGE));
   for (let index = ROWS_FIRST_PAGE; index < sorted.length; index += ROWS_PER_PAGE) {
     chunks.push(sorted.slice(index, index + ROWS_PER_PAGE));
@@ -199,10 +254,12 @@ export async function generateExamReportBlob(exam, rows, institution = {}) {
     }
 
     const pdf = new jsPDF({ unit: 'px', format: [PAGE_W, PAGE_H], orientation: 'portrait', compress: true });
-    const pages = Array.from(host.children);
+    const pages = Array.from(host.children).filter((page): page is HTMLElement => page instanceof HTMLElement);
     for (let index = 0; index < pages.length; index += 1) {
+      const page = pages[index];
+      if (!page) continue;
       // eslint-disable-next-line no-await-in-loop
-      const canvas = await html2canvas(pages[index], {
+      const canvas = await html2canvas(page, {
         scale: 2,
         width: PAGE_W,
         height: PAGE_H,
@@ -221,7 +278,11 @@ export async function generateExamReportBlob(exam, rows, institution = {}) {
   }
 }
 
-export async function downloadExamReportPdf(exam, rows, institution) {
+export async function downloadExamReportPdf(
+  exam: ExamReportInfo,
+  rows: readonly ExamResultRow[],
+  institution?: InstitutionInfo,
+): Promise<void> {
   const blob = await generateExamReportBlob(exam, rows, institution);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

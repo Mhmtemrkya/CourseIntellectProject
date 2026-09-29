@@ -9,7 +9,29 @@
 export const BADGE_TOTAL = 300;
 export const BADGES_PER_CATEGORY = 30;
 
-export const BADGE_CATEGORIES = [
+export type BadgeCategoryId =
+  | 'akademik' | 'odev' | 'sureklilik' | 'performans' | 'kesif'
+  | 'sosyal' | 'ozel' | 'etkinlik' | 'genel' | 'zirve';
+
+export interface BadgeCategory {
+  id: BadgeCategoryId;
+  name: string;
+  color: string;
+  icon: string;
+}
+
+export interface Badge {
+  id: number;
+  code: string;
+  name: string;
+  category: BadgeCategory;
+  tier: number;
+  xpThreshold: number;
+}
+
+type BadgeOwner = { username?: string; email?: string; name?: string } | null | undefined;
+
+export const BADGE_CATEGORIES: BadgeCategory[] = [
   { id: 'akademik', name: 'Akademik', color: '#3B82F6', icon: 'GraduationCap' },
   { id: 'odev', name: 'Ödev', color: '#22C55E', icon: 'ClipboardCheck' },
   { id: 'sureklilik', name: 'Süreklilik', color: '#F59E0B', icon: 'Flame' },
@@ -22,7 +44,7 @@ export const BADGE_CATEGORIES = [
   { id: 'zirve', name: 'Zirve', color: '#EAB308', icon: 'Medal' },
 ];
 
-const BADGE_NAMES = {
+const BADGE_NAMES: Record<BadgeCategoryId, string[]> = {
   akademik: [
     'İlk Adım', 'Meraklı', 'Öğrenmeye Aç', 'Keşifçi', 'Dikkatli',
     'Planlı', 'Düzenli', 'Disiplinli', 'Azimli', 'Kararlı',
@@ -128,23 +150,24 @@ const BADGE_NAMES = {
 };
 
 // n. rozetin XP eşiği (5'e yuvarlanmış `25n + 0.75n²`).
-export function badgeXpThreshold(n) {
+export function badgeXpThreshold(n: number): number {
   return Math.round((25 * n + 0.75 * n * n) / 5) * 5;
 }
 
-let cachedBadges = null;
+let cachedBadges: Badge[] | null = null;
 
 // XP eşiğine göre artan sırada 300 rozetin tamamı.
-export function getAllBadges() {
+export function getAllBadges(): Badge[] {
   if (cachedBadges) return cachedBadges;
-  const list = [];
+  const list: Badge[] = [];
   for (let n = 1; n <= BADGE_TOTAL; n += 1) {
     const category = BADGE_CATEGORIES[Math.floor((n - 1) / BADGES_PER_CATEGORY)];
     const tier = (n - 1) % BADGES_PER_CATEGORY;
+    if (!category) continue;
     list.push({
       id: n,
       code: String(n).padStart(3, '0'),
-      name: BADGE_NAMES[category.id][tier],
+      name: BADGE_NAMES[category.id][tier] ?? '',
       category,
       tier,
       xpThreshold: badgeXpThreshold(n),
@@ -155,7 +178,7 @@ export function getAllBadges() {
 }
 
 // Verilen XP ile açılmış rozet sayısı (rozetler sıralı açılır).
-export function unlockedBadgeCount(xp) {
+export function unlockedBadgeCount(xp: unknown): number {
   const value = Number(xp) || 0;
   let low = 0;
   let high = BADGE_TOTAL;
@@ -171,19 +194,19 @@ export function unlockedBadgeCount(xp) {
 }
 
 // Açılacak bir sonraki rozet; hepsi açıldıysa null.
-export function nextBadge(xp) {
+export function nextBadge(xp: unknown): Badge | null {
   const count = unlockedBadgeCount(xp);
-  return count >= BADGE_TOTAL ? null : getAllBadges()[count];
+  return count >= BADGE_TOTAL ? null : getAllBadges()[count] ?? null;
 }
 
-function seenKey(user) {
+function seenKey(user: BadgeOwner): string {
   const id = (user?.username || user?.email || user?.name || 'ogrenci')
     .toString()
     .toLowerCase();
   return `badgeSeenCount:${id}`;
 }
 
-export function getSeenBadgeCount(user) {
+export function getSeenBadgeCount(user: BadgeOwner): number {
   try {
     return Number(localStorage.getItem(seenKey(user))) || 0;
   } catch {
@@ -191,7 +214,7 @@ export function getSeenBadgeCount(user) {
   }
 }
 
-export function setSeenBadgeCount(user, count) {
+export function setSeenBadgeCount(user: BadgeOwner, count: number): void {
   try {
     localStorage.setItem(seenKey(user), String(count));
   } catch {
@@ -201,7 +224,7 @@ export function setSeenBadgeCount(user, count) {
 
 // XP değiştiğinde yeni açılan rozetleri döndürür ve görüldü sayacını günceller.
 // Kutlaması gösterilecek rozet yoksa boş dizi döner.
-export function collectNewBadges(xp, user) {
+export function collectNewBadges(xp: unknown, user: BadgeOwner): Badge[] {
   const unlocked = unlockedBadgeCount(xp);
   const seen = getSeenBadgeCount(user);
   if (unlocked <= seen) return [];

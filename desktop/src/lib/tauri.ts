@@ -1,14 +1,14 @@
 // src/lib/tauri.js
 // Tauri window control helpers
 
-export async function closeApp() {
-  if (typeof window === "undefined") return;
+export async function closeApp(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
 
   try {
     const { isTauri } = await import("@tauri-apps/api/core");
-    if (!isTauri()) return;
+    if (!isTauri()) return false;
   } catch {
-    return;
+    return false;
   }
 
   try {
@@ -22,7 +22,7 @@ export async function closeApp() {
   return true;
 }
 
-export async function setAppFullscreen(value) {
+export async function setAppFullscreen(value: boolean): Promise<boolean> {
   if (typeof window === "undefined") return false;
 
   try {
@@ -42,7 +42,7 @@ export async function setAppFullscreen(value) {
   }
 }
 
-export async function openExternalUrl(url) {
+export async function openExternalUrl(url: string | null | undefined): Promise<boolean> {
   if (typeof window === "undefined" || !url) return false;
 
   const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;

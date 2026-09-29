@@ -10,19 +10,34 @@ export const DEFAULT_TIME_SLOTS = [
   '14:50-15:35',
 ];
 
-export const scheduleDayIndex = (day) => {
+export interface ScheduleGridLesson {
+  day?: string | null;
+  dateKey?: string | null;
+  time?: string | null;
+}
+
+export interface ScheduleGrid {
+  days: string[];
+  timeSlots: string[];
+}
+
+export const scheduleDayIndex = (day: string): number => {
   const idx = ALL_SCHEDULE_DAYS.indexOf(day);
   return idx === -1 ? 99 : idx;
 };
 
-export const normalizeTimeSlot = (value) => String(value || '').trim().replace(/\s+/g, '');
+export const normalizeTimeSlot = (value: unknown): string => String(value || '').trim().replace(/\s+/g, '');
 
-export const sortDays = (days) => [...new Set(days.filter(Boolean))].sort((a, b) => scheduleDayIndex(a) - scheduleDayIndex(b));
+export const sortDays = (days: ReadonlyArray<string | null | undefined>): string[] => [...new Set(days.filter((day): day is string => Boolean(day)))].sort((a, b) => scheduleDayIndex(a) - scheduleDayIndex(b));
 
-export const sortTimeSlots = (slots) => [...new Set(slots.map(normalizeTimeSlot).filter(Boolean))]
+export const sortTimeSlots = (slots: readonly unknown[]): string[] => [...new Set(slots.map(normalizeTimeSlot).filter(Boolean))]
   .sort((a, b) => a.localeCompare(b, 'tr-TR', { numeric: true }));
 
-export function deriveScheduleGrid(lessons, fallbackDays = DEFAULT_SCHEDULE_DAYS, fallbackTimeSlots = DEFAULT_TIME_SLOTS) {
+export function deriveScheduleGrid(
+  lessons: readonly ScheduleGridLesson[],
+  fallbackDays: readonly string[] = DEFAULT_SCHEDULE_DAYS,
+  fallbackTimeSlots: readonly string[] = DEFAULT_TIME_SLOTS,
+): ScheduleGrid {
   const lessonDays = lessons.map((item) => item.day || item.dateKey).filter(Boolean);
   const lessonTimes = lessons.map((item) => item.time).filter(Boolean);
   return {

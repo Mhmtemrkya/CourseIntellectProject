@@ -4,18 +4,35 @@ import {
   getOrderedDesktopApiCandidates,
   setActiveDesktopApiBaseUrl,
 } from "./appEnv";
+import { createCodedError } from "./errors";
+import type {
+  BackendCurrentUser,
+  DesktopRole,
+  DesktopUser,
+  InstitutionType,
+  LoginPayload,
+  UserLike,
+} from "../types/session";
 
 export const desktopApiBaseUrl = getDesktopApiBaseUrl();
 
-function unwrapBackendPayload(payload) {
-  if (payload && typeof payload === "object" && payload.data && typeof payload.data === "object") {
+/** Backend yanıtı doğrudan ya da `{ data: ... }` zarfıyla gelebilir. */
+type Envelope<T> = T | { data: T };
+
+/** Kullanıcı üretmek için yeterli olan en küçük yanıt (eski API'ler yalnız `user` döner). */
+export interface UserPayload {
+  user?: BackendCurrentUser | null;
+}
+
+function unwrapBackendPayload<T extends object>(payload: Envelope<T>): T {
+  if ("data" in payload && payload.data && typeof payload.data === "object") {
     return payload.data;
   }
 
-  return payload;
+  return payload as T;
 }
 
-export function mapBackendRoleToDesktopRole(role) {
+export function mapBackendRoleToDesktopRole(role: string | null | undefined): DesktopRole {
   const normalizedRole = String(role || "")
     .trim()
     .toLocaleLowerCase("tr-TR")
@@ -50,11 +67,15 @@ export function mapBackendRoleToDesktopRole(role) {
   }
 }
 
-export function getRoleHomePath(role) {
+export function getRoleHomePath(role: string | null | undefined): string {
   return getHomePathForRole(role);
 }
 
-export function getHomePathForRole(role, options = {}) {
+export interface HomePathOptions {
+  isPlatformAdmin?: boolean | undefined;
+}
+
+export function getHomePathForRole(role: string | null | undefined, options: HomePathOptions = {}): string {
   switch (role) {
     case "admin":
       return options?.isPlatformAdmin ? "/sa/dashboard" : "/dashboard";
@@ -77,7 +98,7 @@ export function getHomePathForRole(role, options = {}) {
   }
 }
 
-export function getUserHomePath(user) {
+export function getUserHomePath(user: UserLike | null | undefined): string {
   if (user?.mustChangePassword) {
     return "/change-password-required";
   }
@@ -104,7 +125,7 @@ export function getUserHomePath(user) {
 // Backend e-posta döndürmüyorsa kullanıcı adından türetilir. Kullanıcı adı zaten
 // bir e-posta ise (ör. test@surucukursu.local) domain EKLENMEZ — aksi halde
 // Ayarlar ekranında "test@surucukursu.local@courseintellect.local" görünüyordu.
-export function resolveUserEmail(user) {
+export function resolveUserEmail(user: Pick<BackendCurrentUser, "email" | "username"> | null | undefined): string {
   const explicit = (user?.email || "").trim();
   if (explicit) return explicit;
   const username = (user?.username || "").trim();
@@ -112,7 +133,7 @@ export function resolveUserEmail(user) {
   return username.includes("@") ? username : `${username}@courseintellect.local`;
 }
 
-function getProfilePathForRole(role) {
+function getProfilePathForRole(role: string | null | undefined): string {
   switch (role) {
     case "teacher":
       return "/t/profile";
@@ -129,8 +150,8 @@ function getProfilePathForRole(role) {
   }
 }
 
-function getHomePathForModule(role, moduleKey, options = {}) {
-  const byRole = {
+function getHomePathForModule(role: string | null | undefined, moduleKey: string, options: HomePathOptions = {}): string {
+  const byRole: Record<string, string> = {
     dashboard: getHomePathForRole(role, options),
     students: "/students",
     teachers: "/teachers",
@@ -193,16 +214,16 @@ function getHomePathForModule(role, moduleKey, options = {}) {
 
 // Rehberlik: backend'de ayrı rol yok; branşı "Rehberlik" olan öğretmen
 // masaüstünde counselor rolüyle çalışır (backend uçları da aynı kuralı uygular).
-function isCounselorBranch(departmentOrBranch) {
+function isCounselorBranch(departmentOrBranch: string | null | undefined): boolean {
   return String(departmentOrBranch || "")
     .toLocaleLowerCase("tr-TR")
     .includes("rehberlik");
 }
 
-export function createDesktopUser(payload) {
+export function createDesktopUser(payload: Envelope<UserPayload>): DesktopUser {
   const data = unwrapBackendPayload(payload);
   const backendRole = data?.user?.primaryRole || data?.user?.role || "";
-  let role = mapBackendRoleToDesktopRole(backendRole);
+  let role: DesktopRole = mapBackendRoleToDesktopRole(backendRole);
   if (role === "teacher" && isCounselorBranch(data?.user?.departmentOrBranch)) {
     role = "counselor";
   }
@@ -253,18 +274,32 @@ export {
 } from './secureSession';
 
 // Lazy singleton: import'u ilk kullanımda await eder, sonraki çağrılarda cache'den döner
-let _tauriFetchPromise = null;
-async function getTauriFetch() {
+type FetchFn = typeof fetch;
+let _tauriFetchPromise: Promise<FetchFn | null> | null = null;
+async function getTauriFetch(): Promise<FetchFn | null> {
   if (typeof window === 'undefined' || !(window.__TAURI__ || window.__TAURI_INTERNALS__)) return null;
   if (!_tauriFetchPromise) {
     _tauriFetchPromise = import('@tauri-apps/plugin-http')
-      .then((mod) => mod.fetch)
+      .then((mod): FetchFn => mod.fetch)
       .catch(() => null);
   }
   return _tauriFetchPromise;
 }
 
-export async function loginWithBackend(username, password) {
+interface LoginErrorBody {
+  code?: string;
+  message?: string;
+}
+
+async function readErrorBody(response: Response): Promise<LoginErrorBody | null> {
+  try {
+    return (await response.json()) as LoginErrorBody;
+  } catch {
+    return null;
+  }
+}
+
+export async function loginWithBackend(username: string, password: string): Promise<LoginPayload> {
   if (!desktopApiBaseUrl) {
     throw new Error(
       desktopAppEnv.isProduction || desktopAppEnv.isStaging
@@ -276,8 +311,7 @@ export async function loginWithBackend(username, password) {
   const tauriFetch = await getTauriFetch();
   const fetchFn = tauriFetch || fetch;
   const candidates = getOrderedDesktopApiCandidates();
-  let response = null;
-  let lastConnectionError = null;
+  let response: Response | null = null;
 
   for (const baseUrl of candidates) {
     try {
@@ -293,8 +327,8 @@ export async function loginWithBackend(username, password) {
         setActiveDesktopApiBaseUrl(baseUrl);
         break;
       }
-    } catch (error) {
-      lastConnectionError = error;
+    } catch {
+      // Sıradaki aday adres denenir.
     }
   }
 
@@ -305,68 +339,57 @@ export async function loginWithBackend(username, password) {
   if (response.status === 401) {
     // Geçici parolanın süresi dolduysa backend ayırt edilebilir bir kod döner.
     // Genel "şifre yanlış" mesajı kurumu bulunmayan bir sorunun peşine düşürürdü.
-    let body = null;
-    try { body = await response.json(); } catch {}
+    const body = await readErrorBody(response);
     if (body?.code === "TEMPORARY_PASSWORD_EXPIRED") {
-      const err = new Error(body.message || "Geçici parolanızın süresi doldu.");
-      err.code = "TEMPORARY_PASSWORD_EXPIRED";
-      throw err;
+      throw createCodedError(body.message || "Geçici parolanızın süresi doldu.", "TEMPORARY_PASSWORD_EXPIRED");
     }
     throw new Error("Kullanıcı adı veya şifre yanlış.");
   }
 
   // Sürücü kursu kurumları DrivingAsist'e taşındı — 403 + code INSTITUTION_MOVED
   if (response.status === 403) {
-    let body = null;
-    try { body = await response.json(); } catch {}
+    const body = await readErrorBody(response);
     if (body?.code === "INSTITUTION_MOVED") {
-      const err = new Error(body.message || "Kurumunuz artık DrivingAsist uygulamasını kullanıyor.");
-      err.code = "INSTITUTION_MOVED";
-      throw err;
+      throw createCodedError(body.message || "Kurumunuz artık DrivingAsist uygulamasını kullanıyor.", "INSTITUTION_MOVED");
     }
   }
 
   // Bakım modu — 503 + code MAINTENANCE_MODE
   if (response.status === 503) {
-    let body = null;
-    try { body = await response.json(); } catch {}
+    const body = await readErrorBody(response);
     if (body?.code === "MAINTENANCE_MODE") {
-      const err = new Error(
-        body.message || "Sistem şu anda bakımda. Lütfen daha sonra tekrar deneyin."
+      throw createCodedError(
+        body.message || "Sistem şu anda bakımda. Lütfen daha sonra tekrar deneyin.",
+        "MAINTENANCE_MODE",
       );
-      err.code = "MAINTENANCE_MODE";
-      throw err;
     }
     throw new Error(body?.message || "Servis geçici olarak ulaşılamıyor.");
   }
 
   // Çok fazla deneme — 429: hesap kilitleme (ACCOUNT_LOCKED) veya hız sınırı (RATE_LIMITED)
   if (response.status === 429) {
-    let body = null;
-    try { body = await response.json(); } catch {}
-    const err = new Error(
-      body?.message || "Çok fazla giriş denemesi yapıldı. Lütfen bir süre sonra tekrar deneyin."
+    const body = await readErrorBody(response);
+    throw createCodedError(
+      body?.message || "Çok fazla giriş denemesi yapıldı. Lütfen bir süre sonra tekrar deneyin.",
+      body?.code || "RATE_LIMITED",
     );
-    err.code = body?.code || "RATE_LIMITED";
-    throw err;
   }
 
   if (!response.ok) {
     throw new Error("Giriş işlemi şu anda tamamlanamadı. Kısa bir süre sonra tekrar deneyin; sorun devam ederse destek ekibine başvurun.");
   }
 
-  const payload = await response.json();
+  const payload = (await response.json()) as Envelope<LoginPayload>;
   const data = unwrapBackendPayload(payload);
 
   // Kurum üyesi ama abonelik ödemesi yapılmamış → desktop'a giriş reddedilir.
   // Platform admin (kendi platformumuzun yöneticisi) bu kontrolden muaftır.
   const user = data?.user;
   if (user && user.subscriptionRequired === true && user.isPlatformAdmin !== true) {
-    const err = new Error(
-      "Kurum aboneliğiniz aktif değil. Lütfen kurum yöneticinizle iletişime geçin ve ödemeyi tamamlayın."
+    throw createCodedError(
+      "Kurum aboneliğiniz aktif değil. Lütfen kurum yöneticinizle iletişime geçin ve ödemeyi tamamlayın.",
+      "SUBSCRIPTION_REQUIRED",
     );
-    err.code = "SUBSCRIPTION_REQUIRED";
-    throw err;
   }
 
   return data;

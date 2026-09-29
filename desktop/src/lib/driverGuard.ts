@@ -2,9 +2,11 @@ import { fetchServiceDriverSelf } from './api/modules';
 
 // Şoför kontrolü kullanıcı başına bir kez yapılır; DashboardLayout her
 // gezinmede çağırdığı için sonuç oturum boyunca önbelleğe alınır.
-let cache = { key: null, value: false };
+import type { UserLike } from '../types/session';
 
-export async function checkIsServiceDriver(user) {
+let cache: { key: string | null; value: boolean } = { key: null, value: false };
+
+export async function checkIsServiceDriver(user: (UserLike & { email?: string }) | null | undefined): Promise<boolean> {
   const role = String(user?.role || '').toLowerCase();
   // Şoförler personel kaydında Administrative rolüyle açılır; diğer roller
   // (Admin dahil) kendi panellerini korur.
@@ -15,7 +17,7 @@ export async function checkIsServiceDriver(user) {
 
   let value = false;
   try {
-    const self = await fetchServiceDriverSelf();
+    const self: { isDriver?: boolean } | null | undefined = await fetchServiceDriverSelf();
     value = self?.isDriver === true;
   } catch {
     value = false;
@@ -24,6 +26,6 @@ export async function checkIsServiceDriver(user) {
   return value;
 }
 
-export function resetDriverGuardCache() {
+export function resetDriverGuardCache(): void {
   cache = { key: null, value: false };
 }

@@ -5,13 +5,15 @@ import { desktopApiBaseUrl, loadDesktopSession } from '../auth';
 // kurum grubuna ekler; araç konumu, sefer durumu ve biniş güncellemeleri
 // "VehicleLocationUpdated" / "TripStatusUpdated" / "StudentAttendanceUpdated"
 // olaylarıyla gelir.
-class ServiceTrackingRealtimeClient {
-  constructor() {
-    this.connection = null;
-    this.handlers = new Set();
-  }
+export type ServiceTrackingEventType = 'location' | 'trip' | 'attendance' | 'absence';
+export type ServiceTrackingHandler = (type: ServiceTrackingEventType, payload: unknown) => void;
 
-  emit(type, payload) {
+class ServiceTrackingRealtimeClient {
+  private connection: signalR.HubConnection | null = null;
+
+  private readonly handlers = new Set<ServiceTrackingHandler>();
+
+  emit(type: ServiceTrackingEventType, payload: unknown): void {
     this.handlers.forEach((handler) => {
       try {
         handler(type, payload);
@@ -21,7 +23,7 @@ class ServiceTrackingRealtimeClient {
     });
   }
 
-  async ensureConnected() {
+  async ensureConnected(): Promise<signalR.HubConnection | null> {
     const session = loadDesktopSession();
     if (!session?.accessToken) return null;
 
@@ -38,10 +40,10 @@ class ServiceTrackingRealtimeClient {
         .configureLogging(signalR.LogLevel.Warning)
         .build();
 
-      this.connection.on('VehicleLocationUpdated', (payload) => this.emit('location', payload));
-      this.connection.on('TripStatusUpdated', (payload) => this.emit('trip', payload));
-      this.connection.on('StudentAttendanceUpdated', (payload) => this.emit('attendance', payload));
-      this.connection.on('AbsenceRequestCreated', (payload) => this.emit('absence', payload));
+      this.connection.on('VehicleLocationUpdated', (payload: unknown) => this.emit('location', payload));
+      this.connection.on('TripStatusUpdated', (payload: unknown) => this.emit('trip', payload));
+      this.connection.on('StudentAttendanceUpdated', (payload: unknown) => this.emit('attendance', payload));
+      this.connection.on('AbsenceRequestCreated', (payload: unknown) => this.emit('absence', payload));
     }
 
     if (this.connection.state === signalR.HubConnectionState.Disconnected) {
@@ -55,9 +57,9 @@ class ServiceTrackingRealtimeClient {
   }
 
   // Servis olaylarına abone olur; geri dönen fonksiyon aboneliği iptal eder.
-  subscribe(handler) {
+  subscribe(handler: ServiceTrackingHandler): () => void {
     this.handlers.add(handler);
-    this.ensureConnected();
+    void this.ensureConnected();
     return () => {
       this.handlers.delete(handler);
     };

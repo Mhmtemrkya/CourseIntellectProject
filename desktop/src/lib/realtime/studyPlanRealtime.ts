@@ -4,13 +4,16 @@ import { desktopApiBaseUrl, loadDesktopSession } from '../auth';
 // Çalışma planı canlı senkronizasyonu: backend her plan mutasyonunda
 // "studyPlanUpdated" olayını öğrencinin grubuna yayınlar; mobil ve desktop
 // aynı anda açıkken değişiklikler anında yansır.
-class StudyPlanRealtimeClient {
-  constructor() {
-    this.connection = null;
-    this.handlers = new Set();
-  }
+/** Hub'ın yayınladığı plan durumu; şekli çalışma planı ekranı yorumlar. */
+export type StudyPlanState = unknown;
+export type StudyPlanHandler = (state: StudyPlanState) => void;
 
-  async ensureConnected() {
+class StudyPlanRealtimeClient {
+  private connection: signalR.HubConnection | null = null;
+
+  private readonly handlers = new Set<StudyPlanHandler>();
+
+  async ensureConnected(): Promise<signalR.HubConnection | null> {
     const session = loadDesktopSession();
     if (!session?.accessToken) return null;
 
@@ -27,7 +30,7 @@ class StudyPlanRealtimeClient {
         .configureLogging(signalR.LogLevel.Warning)
         .build();
 
-      this.connection.on('studyPlanUpdated', (state) => {
+      this.connection.on('studyPlanUpdated', (state: StudyPlanState) => {
         this.handlers.forEach((handler) => {
           try {
             handler(state);
@@ -49,9 +52,9 @@ class StudyPlanRealtimeClient {
   }
 
   // Plan güncellemelerine abone olur; geri dönen fonksiyon aboneliği iptal eder.
-  subscribe(handler) {
+  subscribe(handler: StudyPlanHandler): () => void {
     this.handlers.add(handler);
-    this.ensureConnected();
+    void this.ensureConnected();
     return () => {
       this.handlers.delete(handler);
     };

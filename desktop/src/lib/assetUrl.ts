@@ -5,7 +5,7 @@ import { desktopApiBaseUrl } from './auth';
 // (tauri://localhost) göre çözülür, backend'e değil — bu yüzden görsel yüklenmez.
 // Bu yardımcı göreli yolları API tabanına bağlar; mutlak/veri/blob linklerine
 // dokunmaz. Fotoğraf/logo/imza gibi tüm statik varlık gösterimlerinde kullanın.
-export function assetUrl(path) {
+export function assetUrl(path: string | null | undefined): string {
   if (!path) return '';
   const value = String(path).trim();
   if (!value) return '';

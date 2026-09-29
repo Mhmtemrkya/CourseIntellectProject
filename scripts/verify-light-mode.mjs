@@ -54,11 +54,16 @@ const routes = [
 ];
 
 // Marka değişkenlerini uygulamanın kendi üreticisiyle hesapla. src/lib altındaki
-// dosya ESM ama .js uzantılı (desktop paketi CJS) — geçici .mjs kopyasından import et.
+// dosya TypeScript — desktop'un typescript paketiyle ESM'e çevrilip geçici .mjs
+// kopyasından import edilir.
 import os from 'node:os';
-const paletteSrc = path.join(repoRoot, 'desktop', 'src', 'lib', 'colorPalette.js');
+const ts = requireFromDesktop('typescript');
+const paletteSrc = path.join(repoRoot, 'desktop', 'src', 'lib', 'colorPalette.ts');
 const paletteTmp = path.join(os.tmpdir(), `ci-colorPalette-${Date.now()}.mjs`);
-await fs.copyFile(paletteSrc, paletteTmp);
+const paletteJs = ts.transpileModule(await fs.readFile(paletteSrc, 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
+}).outputText;
+await fs.writeFile(paletteTmp, paletteJs);
 const { generateBrandCSSVariables } = await import(paletteTmp);
 await fs.rm(paletteTmp, { force: true });
 

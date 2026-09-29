@@ -49,18 +49,14 @@ describe('production API resilience', () => {
       .rejects.toThrow('Giriş sunucusuna bağlantı kurulamadı');
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://maydanozasist.schoolasist.com/api/auth/login');
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://maydanozasist.schoolasist.com/api/auth/login');
   });
 
   it('tells a moved driving-school user to use DrivingAsist', async () => {
-    jest.spyOn(global, 'fetch').mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-      json: async () => ({
-        code: 'INSTITUTION_MOVED',
-        message: 'Kurumunuz artık DrivingAsist uygulamasını kullanıyor.',
-      }),
-    });
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({
+      code: 'INSTITUTION_MOVED',
+      message: 'Kurumunuz artık DrivingAsist uygulamasını kullanıyor.',
+    }), { status: 403 }));
 
     await expect(loginWithBackend('kurs.admin', 'Parola123')).rejects.toMatchObject({
       code: 'INSTITUTION_MOVED',

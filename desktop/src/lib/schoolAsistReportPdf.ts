@@ -1,7 +1,47 @@
 import { jsPDF } from 'jspdf';
 import logoUrl from '../assets/brand/logo.png';
+import type { GeneratedPdf } from './credentialsPdf';
 
-const COLORS = {
+type RGB = [number, number, number];
+type ColumnAlign = 'left' | 'center' | 'right';
+
+interface ReportColumn {
+  label: string;
+  key: string;
+  width: number;
+  align?: ColumnAlign;
+  suffix?: string;
+}
+
+export type ReportRow = Record<string, unknown>;
+
+interface ReportDefinition {
+  columns: ReportColumn[];
+  rows: readonly ReportRow[];
+}
+
+export interface SchoolReportInfo {
+  id: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface SchoolReportStats {
+  totalStudents?: number | string | null;
+  attendanceRate?: number | string | null;
+  averageScore?: number | string | null;
+  activeExams?: number | string | null;
+}
+
+export interface SchoolReportPdfOptions {
+  report: SchoolReportInfo;
+  classFilter: string;
+  periodFilter: string;
+  stats: SchoolReportStats;
+  rows: readonly ReportRow[];
+}
+
+const COLORS: Record<'navy' | 'orange' | 'slate' | 'light' | 'border' | 'white', RGB> = {
   navy: [15, 23, 42],
   orange: [245, 158, 11],
   slate: [71, 85, 105],
@@ -10,27 +50,27 @@ const COLORS = {
   white: [255, 255, 255],
 };
 
-const PERIOD_LABELS = {
+const PERIOD_LABELS: Record<string, string> = {
   week: 'Bu Hafta',
   month: 'Bu Ay',
   semester: 'Bu Dönem',
   year: 'Bu Yıl',
 };
 
-let cachedFontBase64 = null;
-let cachedLogoDataUrl = null;
+let cachedFontBase64: string | null = null;
+let cachedLogoDataUrl: string | null = null;
 
-function arrayBufferToBase64(buffer) {
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   const chunkSize = 0x8000;
   let binary = '';
   for (let index = 0; index < bytes.length; index += chunkSize) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(index, index + chunkSize));
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
   }
   return window.btoa(binary);
 }
 
-async function ensureAssets(doc) {
+async function ensureAssets(doc: jsPDF): Promise<{ fontFamily: string; logoDataUrl: string | null }> {
   let fontFamily = 'helvetica';
 
   try {
@@ -52,7 +92,7 @@ async function ensureAssets(doc) {
       const response = await fetch(logoUrl);
       if (!response.ok) throw new Error('logo fetch failed');
       const blob = await response.blob();
-      cachedLogoDataUrl = await new Promise((resolve, reject) => {
+      cachedLogoDataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result || ''));
         reader.onerror = reject;
@@ -66,7 +106,7 @@ async function ensureAssets(doc) {
   return { fontFamily, logoDataUrl: cachedLogoDataUrl };
 }
 
-function safeFileName(value) {
+function safeFileName(value: unknown): string {
   return String(value || 'rapor')
     .toLocaleLowerCase('tr-TR')
     .normalize('NFD')
@@ -76,7 +116,7 @@ function safeFileName(value) {
     .replace(/^-+|-+$/g, '') || 'rapor';
 }
 
-function reportDefinition(reportId, rows) {
+function reportDefinition(reportId: string, rows: readonly ReportRow[]): ReportDefinition {
   if (reportId === 'teachers') {
     return {
       columns: [
@@ -112,7 +152,7 @@ function reportDefinition(reportId, rows) {
   };
 }
 
-function drawHeader(doc, fontFamily, logoDataUrl, title, pageNumber) {
+function drawHeader(doc: jsPDF, fontFamily: string, logoDataUrl: string | null, title: string, pageNumber: number): void {
   const pageWidth = doc.internal.pageSize.getWidth();
   doc.setFillColor(...COLORS.navy);
   doc.rect(0, 0, pageWidth, 94, 'F');
@@ -146,7 +186,7 @@ function drawHeader(doc, fontFamily, logoDataUrl, title, pageNumber) {
   doc.text(`Sayfa ${pageNumber}`, pageWidth - 34, 64, { align: 'right' });
 }
 
-function drawFooter(doc, fontFamily) {
+function drawFooter(doc: jsPDF, fontFamily: string): void {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   doc.setDrawColor(...COLORS.border);
@@ -158,7 +198,7 @@ function drawFooter(doc, fontFamily) {
   doc.text('schoolasist.com', pageWidth - 34, pageHeight - 25, { align: 'right' });
 }
 
-function drawTableHeader(doc, fontFamily, columns, y) {
+function drawTableHeader(doc: jsPDF, fontFamily: string, columns: readonly ReportColumn[], y: number): number {
   const left = 34;
   doc.setFillColor(...COLORS.navy);
   doc.roundedRect(left, y, 527, 28, 5, 5, 'F');
@@ -174,7 +214,14 @@ function drawTableHeader(doc, fontFamily, columns, y) {
   return y + 32;
 }
 
-function drawTableRow(doc, fontFamily, columns, row, y, index) {
+function drawTableRow(
+  doc: jsPDF,
+  fontFamily: string,
+  columns: readonly ReportColumn[],
+  row: ReportRow | null | undefined,
+  y: number,
+  index: number,
+): number {
   const left = 34;
   const rowHeight = 30;
   doc.setFillColor(...(index % 2 === 0 ? COLORS.light : COLORS.white));
@@ -206,7 +253,7 @@ export async function createSchoolAsistReportPdf({
   periodFilter,
   stats,
   rows,
-}) {
+}: SchoolReportPdfOptions): Promise<GeneratedPdf> {
   const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait', compress: true });
   const { fontFamily, logoDataUrl } = await ensureAssets(doc);
   const definition = reportDefinition(report.id, rows);
@@ -214,7 +261,7 @@ export async function createSchoolAsistReportPdf({
   let pageNumber = 1;
   let y = 0;
 
-  const startPage = (withSummary) => {
+  const startPage = (withSummary: boolean): void => {
     drawHeader(doc, fontFamily, logoDataUrl, report.name, pageNumber);
     drawFooter(doc, fontFamily);
     y = 120;
@@ -232,7 +279,7 @@ export async function createSchoolAsistReportPdf({
       doc.text(`Sınıf: ${classFilter === 'all' ? 'Tüm Sınıflar' : classFilter} | Dönem: ${PERIOD_LABELS[periodFilter] || periodFilter}`, 561, y + 18, { align: 'right' });
 
       y += 50;
-      const cards = [
+      const cards: Array<[string, unknown]> = [
         ['Toplam Öğrenci', stats.totalStudents],
         ['Devam Oranı', `${stats.attendanceRate}%`],
         ['Ortalama Puan', stats.averageScore],
@@ -283,7 +330,7 @@ export async function createSchoolAsistReportPdf({
   };
 }
 
-export async function downloadSchoolAsistReportPdf(options) {
+export async function downloadSchoolAsistReportPdf(options: SchoolReportPdfOptions): Promise<GeneratedPdf> {
   const result = await createSchoolAsistReportPdf(options);
   result.doc.save(result.fileName);
   return result;

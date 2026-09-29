@@ -4,75 +4,82 @@
 // Tarayıcı (dev) ortamında ve keychain erişilemeyen platformlarda eski düz
 // localStorage davranışına düşülür, işlev kaybı olmaz.
 
+import type { DesktopSession } from '../types/session';
+
 const LEGACY_STORAGE_KEY = 'courseintellect-desktop-session';
 const ENCRYPTED_STORAGE_KEY = 'courseintellect-desktop-session-v2';
 const KEYCHAIN_ACCOUNT = 'session-encryption-key';
 
-let sessionCache = null;
+let sessionCache: DesktopSession | null = null;
 let secureMode = false;
-let cryptoKey = null;
-let initPromise = null;
+let cryptoKey: CryptoKey | null = null;
+let initPromise: Promise<void> | null = null;
 // Şifreli yazmalar sıralanır; hızlı persist/clear ardışıklığında eski bir
 // yazmanın temizlenmiş oturumu geri getirmesi engellenir.
-let pendingWrite = Promise.resolve();
+let pendingWrite: Promise<void> = Promise.resolve();
 
-function isTauriRuntime() {
+function isTauriRuntime(): boolean {
   return typeof window !== 'undefined' && Boolean(window.__TAURI__ || window.__TAURI_INTERNALS__);
 }
 
-async function invokeTauri(command, args) {
+async function invokeTauri<T>(command: string, args: Record<string, unknown>): Promise<T> {
   const { invoke } = await import('@tauri-apps/api/core');
-  return invoke(command, args);
+  return invoke<T>(command, args);
 }
 
-function toBase64(bytes) {
+function toBase64(bytes: Uint8Array): string {
   let binary = '';
   bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
   return btoa(binary);
 }
 
-function fromBase64(value) {
+function fromBase64(value: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
 }
 
-function readPlainLocal() {
+function readPlainLocal(): DesktopSession | null {
   const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw);
+    return JSON.parse(raw) as DesktopSession;
   } catch {
     localStorage.removeItem(LEGACY_STORAGE_KEY);
     return null;
   }
 }
 
-async function getOrCreateCryptoKey() {
-  let encoded = await invokeTauri('keychain_get', { account: KEYCHAIN_ACCOUNT });
+async function getOrCreateCryptoKey(): Promise<CryptoKey> {
+  let encoded = await invokeTauri<string | null>('keychain_get', { account: KEYCHAIN_ACCOUNT });
   if (!encoded) {
     encoded = toBase64(crypto.getRandomValues(new Uint8Array(32)));
-    await invokeTauri('keychain_set', { account: KEYCHAIN_ACCOUNT, value: encoded });
+    await invokeTauri<void>('keychain_set', { account: KEYCHAIN_ACCOUNT, value: encoded });
   }
   return crypto.subtle.importKey('raw', fromBase64(encoded), 'AES-GCM', false, ['encrypt', 'decrypt']);
 }
 
-async function encryptToStorage(session) {
+function requireCryptoKey(): CryptoKey {
+  if (!cryptoKey) throw new Error('Oturum şifreleme anahtarı hazır değil.');
+  return cryptoKey;
+}
+
+async function encryptToStorage(session: DesktopSession | null): Promise<void> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const plaintext = new TextEncoder().encode(JSON.stringify(session));
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, plaintext);
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, requireCryptoKey(), plaintext);
   localStorage.setItem(ENCRYPTED_STORAGE_KEY, `${toBase64(iv)}.${toBase64(new Uint8Array(ciphertext))}`);
 }
 
-async function decryptFromStorage() {
+async function decryptFromStorage(): Promise<DesktopSession | null> {
   const stored = localStorage.getItem(ENCRYPTED_STORAGE_KEY);
   if (!stored) return null;
   try {
-    const [ivPart, dataPart] = stored.split('.');
+    const [ivPart = '', dataPart = ''] = stored.split('.');
     const plaintext = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: fromBase64(ivPart) },
-      cryptoKey,
+      requireCryptoKey(),
       fromBase64(dataPart),
     );
-    return JSON.parse(new TextDecoder().decode(plaintext));
+    return JSON.parse(new TextDecoder().decode(plaintext)) as DesktopSession;
   } catch {
     // Anahtar değişmiş veya kayıt bozulmuş: oturum düşer, yeniden giriş istenir.
     localStorage.removeItem(ENCRYPTED_STORAGE_KEY);
@@ -81,7 +88,7 @@ async function decryptFromStorage() {
 }
 
 // Uygulama açılışında bir kez await edilmelidir; idempotenttir.
-export function initDesktopSessionStore() {
+export function initDesktopSessionStore(): Promise<void> {
   if (!initPromise) {
     initPromise = (async () => {
       if (!isTauriRuntime() || !globalThis.crypto?.subtle) {
@@ -114,7 +121,7 @@ export function initDesktopSessionStore() {
   return initPromise;
 }
 
-export function persistDesktopSession(session) {
+export function persistDesktopSession(session: DesktopSession): void {
   sessionCache = session;
   if (secureMode) {
     pendingWrite = pendingWrite
@@ -127,7 +134,7 @@ export function persistDesktopSession(session) {
   localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(session));
 }
 
-export function loadDesktopSession() {
+export function loadDesktopSession(): DesktopSession | null {
   if (sessionCache) return sessionCache;
   // Tauri'de init sonrası cache doludur; tarayıcı (dev) ortamında eski
   // senkron localStorage davranışı korunur.
@@ -135,7 +142,7 @@ export function loadDesktopSession() {
   return readPlainLocal();
 }
 
-export function clearDesktopSession() {
+export function clearDesktopSession(): void {
   sessionCache = null;
   localStorage.removeItem(LEGACY_STORAGE_KEY);
   if (secureMode) {

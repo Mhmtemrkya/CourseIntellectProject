@@ -3,7 +3,19 @@
 // "şu user/teacher/student programdaki şu kayıt ile aynı mı?" mantığını
 // tek yerde toplar.
 
-export function normalizeText(value = '') {
+import type { UserLike } from '../types/session';
+
+export interface NamedPerson {
+  fullName?: string | null;
+  username?: string | null;
+}
+
+export interface ScheduleEntryLike {
+  teacher?: string | null;
+  className?: string | null;
+}
+
+export function normalizeText(value: unknown = ''): string {
   return String(value)
     .trim()
     .toLowerCase()
@@ -19,7 +31,10 @@ export function normalizeText(value = '') {
  * Mevcut giriş yapan kullanıcının student listesindeki kaydını bulur.
  * Eşleştirme: fullName, username veya name üzerinden case/accent-insensitive.
  */
-export function resolveCurrentStudent(user, students) {
+export function resolveCurrentStudent<T extends NamedPerson>(
+  user: UserLike | null | undefined,
+  students: readonly T[] | null | undefined,
+): T | null {
   if (!user || !Array.isArray(students) || students.length === 0) return null;
   const candidates = [user.name, user.fullName, user.username].map(normalizeText).filter(Boolean);
   if (candidates.length === 0) return null;
@@ -36,7 +51,10 @@ export function resolveCurrentStudent(user, students) {
  * Schedule entry shape: { className, day, time, subject, teacher, ... }
  * Öğretmen kullanıcısı için, kendi adına eşleşen schedule kayıtlarını döner.
  */
-export function filterScheduleForTeacher(scheduleEntries, user) {
+export function filterScheduleForTeacher<T extends ScheduleEntryLike>(
+  scheduleEntries: readonly T[] | null | undefined,
+  user: UserLike | null | undefined,
+): T[] {
   if (!Array.isArray(scheduleEntries)) return [];
   const teacherKey = normalizeText(user?.name || user?.fullName || user?.username || '');
   if (!teacherKey) return [];
@@ -47,7 +65,10 @@ export function filterScheduleForTeacher(scheduleEntries, user) {
  * Öğrenci için kendi sınıfına eşleşen schedule kayıtlarını döner.
  * className parametresi opsiyonel; verilmezse boş döner.
  */
-export function filterScheduleForStudent(scheduleEntries, className) {
+export function filterScheduleForStudent<T extends ScheduleEntryLike>(
+  scheduleEntries: readonly T[] | null | undefined,
+  className: string | null | undefined,
+): T[] {
   if (!Array.isArray(scheduleEntries) || !className) return [];
   const key = normalizeText(className);
   return scheduleEntries.filter((entry) => normalizeText(entry?.className) === key);

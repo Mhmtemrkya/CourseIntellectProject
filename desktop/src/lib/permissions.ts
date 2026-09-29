@@ -11,9 +11,25 @@
 // Bu modül tüm bu varyasyonları **lower-case** bir Set'e indirger ve
 // menü/route component'lerinin tek pencereden bakmasını sağlar.
 
-const TURKISH_MAP = { 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ı': 'i', 'ö': 'o', 'ç': 'c' };
+import type { UserLike } from '../types/session';
 
-function normalizeRoleKey(value) {
+/** Erişim kararında okunan kullanıcı alanları (oturum kullanıcısı + opsiyonel features). */
+export type AccessUser = UserLike & { features?: string[] };
+
+/** Menü/route öğesinin erişim kısıtları; tüm alanlar opsiyonel. */
+export interface NavAccessItem {
+  path?: string;
+  id?: string;
+  label?: string;
+  allowedRoles?: string[];
+  requiredPermissions?: string[];
+  requiredFeatures?: string[];
+  sourceRole?: string;
+}
+
+const TURKISH_MAP: Record<string, string> = { 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ı': 'i', 'ö': 'o', 'ç': 'c' };
+
+function normalizeRoleKey(value: unknown): string {
   if (!value) return '';
   return String(value)
     .toLowerCase()
@@ -23,7 +39,7 @@ function normalizeRoleKey(value) {
 
 // Backend rol adlarını desktop menü key'lerine eşler.
 // Aynı backend rolü için birden fazla alias kabul edilir.
-const ROLE_ALIASES = {
+const ROLE_ALIASES: Record<string, string> = {
   admin: 'admin',
   yonetici: 'admin',
   developer: 'superadmin',
@@ -47,7 +63,7 @@ const ROLE_ALIASES = {
   yemekhaneci: 'cafeteria',
 };
 
-export function aliasRole(value) {
+export function aliasRole(value: unknown): string {
   const normalized = normalizeRoleKey(value).replace(/[\s_-]/g, '');
   return ROLE_ALIASES[normalized] || normalized;
 }
@@ -56,9 +72,9 @@ export function aliasRole(value) {
  * Kullanıcının sahip olduğu tüm rol anahtarlarını döner — primary + extraRoles birleştirilir,
  * desktop menü key'lerine alias edilir, dedupe edilir.
  */
-export function getUserRoles(user) {
+export function getUserRoles(user: AccessUser | null | undefined): string[] {
   if (!user) return [];
-  const collected = new Set();
+  const collected = new Set<string>();
   // Desktop'a önceden mapped primary key
   if (user.role) collected.add(aliasRole(user.role));
   // Backend orijinal primary. Rehberlik, teacher rolünün özelleşmiş halidir;
@@ -94,21 +110,21 @@ export const ADMIN_ONLY_PATHS = new Set([
  * Verilen yol, kullanıcının rolleri için sidebar'da görünebilir mi?
  * ADMIN_ONLY_PATHS yalnız admin/superadmin için görünür.
  */
-export function isPathVisibleForRoles(path, roles) {
+export function isPathVisibleForRoles(path: string | null | undefined, roles: readonly string[] | null | undefined): boolean {
   if (!path || !ADMIN_ONLY_PATHS.has(path)) return true;
   const roleList = Array.isArray(roles) ? roles : [];
   return roleList.includes('admin') || roleList.includes('superadmin');
 }
 
-export function getUserPermissions(user) {
+export function getUserPermissions(user: AccessUser | null | undefined): string[] {
   if (!user) return [];
   const list = Array.isArray(user.permissions) ? user.permissions : [];
   return list.map((p) => String(p).toLowerCase());
 }
 
-export function getUserFeatures(user) {
+export function getUserFeatures(user: AccessUser | null | undefined): string[] {
   if (!user) return [];
-  const collected = new Set();
+  const collected = new Set<string>();
   const features = Array.isArray(user.features) ? user.features : [];
   features.forEach((f) => collected.add(String(f).toLowerCase()));
   const modules = Array.isArray(user.modules) ? user.modules : [];
@@ -128,7 +144,7 @@ export function getUserFeatures(user) {
  *   - eğer requiredFeatures tanımlı ve kullanıcı bunlardan birine sahipse → ✅
  *   - hiçbir kısıt tanımlı değilse → ✅ (public item)
  */
-export function canAccessNavItem(user, item) {
+export function canAccessNavItem(user: AccessUser | null | undefined, item: NavAccessItem | null | undefined): boolean {
   if (!item) return false;
   const rolesNeeded = (item.allowedRoles || []).map(aliasRole).filter(Boolean);
   const permsNeeded = (item.requiredPermissions || []).map((p) => String(p).toLowerCase());
@@ -158,12 +174,16 @@ export function canAccessNavItem(user, item) {
  * Bu yaklaşım mevcut menuConfigs yapısını korur: ek rol verildiğinde
  * o rolün tüm menü item'ları sidebar'a otomatik eklenir.
  */
-export function mergeMenuItemsForRoles(menuConfigs, roles) {
+export function mergeMenuItemsForRoles<T extends NavAccessItem>(
+  menuConfigs: Partial<Record<string, readonly T[]>> | null | undefined,
+  roles: readonly string[] | null | undefined,
+): Array<T & { sourceRole: string }> {
   if (!menuConfigs) return [];
-  const seenPaths = new Set();
-  const merged = [];
+  const seenPaths = new Set<string>();
+  const merged: Array<T & { sourceRole: string }> = [];
   for (const role of roles || []) {
-    const items = Array.isArray(menuConfigs[role]) ? menuConfigs[role] : [];
+    const roleItems = menuConfigs[role];
+    const items: readonly T[] = Array.isArray(roleItems) ? roleItems : [];
     for (const item of items) {
       const key = item.path || item.id || item.label;
       if (!key || seenPaths.has(key)) continue;
@@ -179,7 +199,7 @@ export function mergeMenuItemsForRoles(menuConfigs, roles) {
  * her item'ın allowedRoles/requiredPermissions/requiredFeatures alanlarına
  * göre filtreler.
  */
-export function getVisibleNavItems(user, registry) {
+export function getVisibleNavItems<T extends NavAccessItem>(user: AccessUser | null | undefined, registry: readonly T[] | null | undefined): T[] {
   if (!Array.isArray(registry)) return [];
   return registry.filter((item) => canAccessNavItem(user, item));
 }

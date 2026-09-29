@@ -5,9 +5,16 @@ jest.mock('react-router-dom', () => ({
   useLocation: () => ({ pathname: '/' }),
 }));
 
-import { ADMIN_HUBS, FINANCE_HUBS, collapseMenuHubs, findHubByPath } from './hubs';
+import { ADMIN_HUBS, FINANCE_HUBS, collapseMenuHubs, findHubByPath, type CollapsedHubEntry } from './hubs';
 
-const item = (path, label) => ({ path, label, icon: null, color: '#000' });
+const item = (path: string, label: string) => ({ path, label, icon: null, color: '#000' });
+
+/** Listedeki girişin katlanmış hub olduğunu doğrular ve onu döner. */
+function hubAt(list: ReadonlyArray<object>, index: number): CollapsedHubEntry {
+  const entry = list[index];
+  if (!entry || !('covers' in entry)) throw new Error(`${index}. giriş hub değil`);
+  return entry as CollapsedHubEntry;
+}
 
 describe('collapseMenuHubs', () => {
   it('aynı hub üyelerini tek girişe katlar ve ilk üyenin sırasını korur', () => {
@@ -23,7 +30,7 @@ describe('collapseMenuHubs', () => {
     const result = collapseMenuHubs(menu);
 
     expect(result.map((entry) => entry.label)).toEqual(['Dashboard', 'Kişiler', 'Ayarlar']);
-    const hub = result[1];
+    const hub = hubAt(result, 1);
     expect(hub.path).toBe('/students');
     expect(hub.covers).toEqual(['/students', '/teachers', '/parents', '/admin/staff']);
   });
@@ -34,8 +41,8 @@ describe('collapseMenuHubs', () => {
     const result = collapseMenuHubs([item('/parents', 'Veliler'), item('/admin/staff', 'Personeller')]);
 
     expect(result).toHaveLength(1);
-    expect(result[0].path).toBe('/parents');
-    expect(result[0].covers).toEqual(['/parents', '/admin/staff']);
+    expect(hubAt(result, 0).path).toBe('/parents');
+    expect(hubAt(result, 0).covers).toEqual(['/parents', '/admin/staff']);
   });
 
   it("tek sekmesi kalan hub'u katlamaz — ekran kendi adıyla görünür", () => {
@@ -102,13 +109,13 @@ describe('hub tanımları', () => {
 describe('yönetici menüsü boyutu', () => {
   it('kurum yöneticisinin menüsünü belirgin şekilde kısaltır', () => {
     // eslint-disable-next-line global-require
-    const { menuConfigs } = require('../../components/layout/ModernSidebar');
+    const { menuConfigs } = require('../../components/layout/ModernSidebar') as typeof import('../../components/layout/ModernSidebar');
     const admin = menuConfigs.admin;
     const collapsed = collapseMenuHubs(admin);
 
     // Katlama hiçbir ekranı kaybetmemeli: her giriş ya menüde ya bir hub'ın içinde.
     const reachable = new Set(
-      collapsed.flatMap((entry) => (entry.covers?.length ? entry.covers : [entry.path])),
+      collapsed.flatMap((entry) => ('covers' in entry && entry.covers.length ? entry.covers : [entry.path])),
     );
     admin.forEach((entry) => expect(reachable.has(entry.path)).toBe(true));
 
