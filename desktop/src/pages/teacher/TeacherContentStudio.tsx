@@ -9,11 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchContents } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { ContentDto } from '../../types/api/generated';
 
 export default function TeacherContentStudio() {
   const navigate = useNavigate();
-  const [contents, setContents] = useState([]);
-  const [selectedContent, setSelectedContent] = useState(null);
+  const [contents, setContents] = useState<ContentDto[]>([]);
+  const [selectedContent, setSelectedContent] = useState<ContentDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -21,15 +23,15 @@ export default function TeacherContentStudio() {
     try {
       setLoading(true);
       setError('');
-      setContents(await fetchContents(false));
+      setContents((await fetchContents(false)) ?? []);
     } catch (err) {
-      setError(err.message || 'İçerik stüdyosu alınamadı.');
+      setError(errorMessage(err, 'İçerik stüdyosu alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadStudio(); }, [loadStudio]);
+  useEffect(() => { void loadStudio(); }, [loadStudio]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 

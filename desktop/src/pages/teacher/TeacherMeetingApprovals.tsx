@@ -18,8 +18,27 @@ import {
   fetchMeetingRequests,
   updateMeetingRequestStatus,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { MeetingAvailabilitySlot } from '../../lib/api/meetings';
+import type { MeetingRequestDto } from '../../types/api/generated';
 
-function parseSlot(slotValue) {
+interface SlotInfo {
+  raw: string;
+  dateKey: string;
+  dayLabel: string;
+  timeLabel: string;
+  sortable: number;
+}
+
+type MeetingTone = 'success' | 'danger' | 'warning';
+
+interface AvailabilityGroup {
+  dateKey: string;
+  dayLabel: string;
+  slots: Array<MeetingAvailabilitySlot & SlotInfo>;
+}
+
+function parseSlot(slotValue: string | null | undefined): SlotInfo {
   const raw = String(slotValue || '').trim();
   const isoCandidate = raw.replace(' ', 'T');
   const parsed = new Date(isoCandidate);
@@ -43,16 +62,16 @@ function parseSlot(slotValue) {
   };
 }
 
-function statusTone(status) {
+function statusTone(status: string): MeetingTone {
   const value = String(status || '').toLowerCase();
   if (value.includes('onay')) return 'success';
   if (value.includes('red')) return 'danger';
   return 'warning';
 }
 
-function statusBadge(status) {
+function statusBadge(status: string) {
   const tone = statusTone(status);
-  const styles = {
+  const styles: Record<MeetingTone, string> = {
     success: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     danger: 'bg-rose-100 text-rose-700 border-rose-200',
     warning: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -63,8 +82,8 @@ function statusBadge(status) {
 export default function TeacherMeetingApprovals() {
   const { user } = useApp();
   const { toast } = useToast();
-  const [requests, setRequests] = useState([]);
-  const [availability, setAvailability] = useState([]);
+  const [requests, setRequests] = useState<MeetingRequestDto[]>([]);
+  const [availability, setAvailability] = useState<MeetingAvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
@@ -72,7 +91,7 @@ export default function TeacherMeetingApprovals() {
   const [onlineMeeting, setOnlineMeeting] = useState(true);
 
   const timeOptions = useMemo(() => {
-    const values = [];
+    const values: string[] = [];
     for (let hour = 8; hour <= 20; hour += 1) {
       for (let minute = 0; minute < 60; minute += 15) {
         const label = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
@@ -96,18 +115,18 @@ export default function TeacherMeetingApprovals() {
       setRequests(Array.isArray(requestData) ? requestData : []);
       setAvailability(Array.isArray(availabilityData) ? availabilityData : []);
     } catch (err) {
-      setError(err.message || 'Görüşme talepleri yüklenemedi.');
+      setError(errorMessage(err, 'Görüşme talepleri yüklenemedi.'));
     } finally {
       setLoading(false);
     }
   }, [user?.name]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const groupedAvailability = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, AvailabilityGroup>();
     availability.forEach((item) => {
       const info = parseSlot(item.slot);
       const existing = map.get(info.dateKey) || {
@@ -128,7 +147,7 @@ export default function TeacherMeetingApprovals() {
 
   const requestCards = useMemo(() => {
     return [...requests]
-      .map((item) => ({ ...item, slotInfo: parseSlot(item.slot || item.requestedDate) }))
+      .map((item) => ({ ...item, slotInfo: parseSlot(item.slot) }))
       .sort((a, b) => b.slotInfo.sortable - a.slotInfo.sortable);
   }, [requests]);
 
@@ -143,32 +162,32 @@ export default function TeacherMeetingApprovals() {
     try {
       const slot = `${selectedDate} ${selectedTime}`;
       const created = await createMeetingAvailability({
-        advisor: user?.name,
+        advisor: user?.name || '',
         slot,
         onlineMeeting,
       });
-      setAvailability((prev) => [...prev, created]);
+      if (created) setAvailability((prev) => [...prev, created]);
       setSelectedDate('');
       setSelectedTime('');
       toast({ title: 'Görüşme saati eklendi' });
     } catch (err) {
-      toast({ title: err.message || 'Slot eklenemedi', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Slot eklenemedi'), variant: 'destructive' });
     }
   };
 
-  const removeSlot = async (id) => {
+  const removeSlot = async (id: string) => {
     try {
       await deleteMeetingAvailability(id);
       setAvailability((prev) => prev.filter((item) => item.id !== id));
       toast({ title: 'Saat kaldırıldı' });
     } catch (err) {
-      toast({ title: err.message || 'Saat silinemedi', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Saat silinemedi'), variant: 'destructive' });
     }
   };
 
-  const updateStatus = async (item, status) => {
+  const updateStatus = async (item: MeetingRequestDto, status: string) => {
     try {
-      let meetingLink = null;
+      let meetingLink: string | null = null;
       // Online görüşme onaylanıyorsa canlı bağlantı linki iste (veli bu linke katılır).
       if (status === 'Onaylandı' && item.onlineMeeting) {
         // eslint-disable-next-line no-alert
@@ -179,7 +198,7 @@ export default function TeacherMeetingApprovals() {
       setRequests((prev) => prev.map((entry) => (entry.id === item.id ? { ...entry, status, meetingLink: updated?.meetingLink ?? meetingLink ?? entry.meetingLink } : entry)));
       toast({ title: status === 'Onaylandı' ? 'Talep onaylandı' : 'Talep reddedildi' });
     } catch (err) {
-      toast({ title: err.message || 'Durum güncellenemedi', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Durum güncellenemedi'), variant: 'destructive' });
     }
   };
 

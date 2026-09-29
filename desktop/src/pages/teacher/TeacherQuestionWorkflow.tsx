@@ -9,30 +9,32 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchQuestionThreads, replyQuestionThread } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { QuestionThreadDto } from '../../types/api/generated';
 
 export default function TeacherQuestionWorkflow() {
   const { toast } = useToast();
-  const [threads, setThreads] = useState([]);
+  const [threads, setThreads] = useState<QuestionThreadDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [replyText, setReplyText] = useState({});
+  const [replyText, setReplyText] = useState<Partial<Record<string, string>>>({});
   const [sendingId, setSendingId] = useState('');
 
   const loadWorkflow = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      setThreads(await fetchQuestionThreads().catch(() => []));
+      setThreads((await fetchQuestionThreads().catch(() => null)) ?? []);
     } catch (err) {
-      setError(err.message || 'Soru iş akışı alınamadı.');
+      setError(errorMessage(err, 'Soru iş akışı alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadWorkflow(); }, [loadWorkflow]);
+  useEffect(() => { void loadWorkflow(); }, [loadWorkflow]);
 
-  const handleReply = async (thread) => {
+  const handleReply = async (thread: QuestionThreadDto) => {
     const text = replyText[thread.id]?.trim();
     if (!text) {
       toast({ title: 'Yanıt bekleniyor', description: 'Lütfen yanıt metni girin.', variant: 'destructive' });
@@ -41,12 +43,14 @@ export default function TeacherQuestionWorkflow() {
 
     try {
       setSendingId(thread.id);
-      const updated = await replyQuestionThread(thread.id, { message: text });
-      setThreads((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      // Sunucu yanıt metnini `messageText` alanında bekler; eskiden `message`
+      // gönderildiği için metin null gidiyor ve her yanıt başarısız oluyordu.
+      const updated = await replyQuestionThread(thread.id, { messageText: text });
+      if (updated) setThreads((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       setReplyText((prev) => ({ ...prev, [thread.id]: '' }));
       toast({ title: 'Yanıt gönderildi', description: 'Soru akışı backend üzerinde güncellendi.' });
     } catch (err) {
-      toast({ title: 'Yanıt gönderilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Yanıt gönderilemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSendingId('');
     }
@@ -68,8 +72,8 @@ export default function TeacherQuestionWorkflow() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">{item.questionText || item.lastReplyPreview || 'Detay yok'}</p>
-                  <p className="text-sm text-muted-foreground">{item.studentName || item.createdBy || 'Öğrenci'}</p>
+                  <p className="text-sm text-muted-foreground">{item.questionText || item.replies[item.replies.length - 1]?.messageText || 'Detay yok'}</p>
+                  <p className="text-sm text-muted-foreground">{item.studentName || 'Öğrenci'}</p>
                 </div>
                 <Badge variant="outline">{item.status || 'Açık'}</Badge>
               </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   FileText, Plus, Search, Calendar, CheckCircle, AlertCircle, Eye, Trash2,
 } from 'lucide-react';
@@ -20,32 +20,44 @@ import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createHomework, deleteHomework, fetchHomework, fetchStudents, uploadFile } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { HomeworkAssignmentDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const containerVariants = {
+interface AssignmentForm {
+  title: string;
+  description: string;
+  className: string;
+  subject: string;
+  deadline: string;
+  materialFiles: File[];
+}
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
-const fallbackClasses = [];
+const fallbackClasses: string[] = [];
 const defaultSubjects = ['Matematik', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji', 'İngilizce', 'Tarih', 'Coğrafya'];
 
 export default function TeacherAssignments() {
   const { toast } = useToast();
   const { user } = useApp();
-  const [assignments, setAssignments] = useState([]);
-  const [classes, setClasses] = useState([]);
+  const [assignments, setAssignments] = useState<HomeworkAssignmentDto[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [form, setForm] = useState({
+  const [selectedAssignment, setSelectedAssignment] = useState<HomeworkAssignmentDto | null>(null);
+  const [form, setForm] = useState<AssignmentForm>({
     title: '',
     description: '',
     className: '',
@@ -62,28 +74,27 @@ export default function TeacherAssignments() {
         fetchHomework(),
         fetchStudents().catch(() => []),
       ]);
-      setAssignments(homework);
-      setClasses([...new Set(students.map((item) => item.className).filter(Boolean))]);
+      setAssignments(homework ?? []);
+      setClasses([...new Set((students ?? []).map((item) => item.className).filter(Boolean))]);
     } catch (err) {
-      setError(err.message || 'Ödevler alınamadı.');
+      setError(errorMessage(err, 'Ödevler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadAssignments();
+    void loadAssignments();
   }, [loadAssignments]);
 
   const classOptions = useMemo(() => {
     const merged = [
       ...classes,
       ...assignments.map((item) => item.className).filter(Boolean),
-      ...(Array.isArray(user?.assignedClasses) ? user.assignedClasses : []),
     ];
     const unique = [...new Set(merged.filter(Boolean))];
     return unique.length > 0 ? unique : fallbackClasses;
-  }, [assignments, classes, user?.assignedClasses]);
+  }, [assignments, classes]);
 
   const filteredAssignments = useMemo(() => assignments.filter((item) => (
     `${item.title} ${item.subject} ${item.className}`.toLowerCase().includes(searchQuery.toLowerCase())
@@ -106,13 +117,13 @@ export default function TeacherAssignments() {
   const handleCreate = async () => {
     try {
       setSaving(true);
-      const uploadedMaterials = [];
+      const uploadedMaterials: string[] = [];
       for (const file of form.materialFiles) {
         const data = new FormData();
         data.append('file', file);
         const uploaded = await uploadFile(data, 'homework-materials');
-        const fileName = uploaded.fileName || file.name;
-        const fileUrl = uploaded.fileUrl || uploaded.fileName || file.name;
+        const fileName = uploaded?.fileName || file.name;
+        const fileUrl = uploaded?.fileUrl || uploaded?.fileName || file.name;
         uploadedMaterials.push(`${fileName}::${fileUrl}`);
       }
       const created = await createHomework({
@@ -124,7 +135,7 @@ export default function TeacherAssignments() {
         description: form.description.trim(),
         materials: uploadedMaterials,
       });
-      setAssignments((prev) => [created, ...prev]);
+      if (created) setAssignments((prev) => [created, ...prev]);
       setCreateOpen(false);
       setForm({
         title: '',
@@ -136,19 +147,19 @@ export default function TeacherAssignments() {
       });
       toast({
         title: 'Ödev oluşturuldu',
-        description: `${created.title} backend’e kaydedildi.`,
+        description: `${created?.title ?? form.title.trim()} backend’e kaydedildi.`,
       });
     } catch (err) {
       toast({
         title: 'Ödev oluşturulamadı',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
       });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     try {
       await deleteHomework(id);
       setAssignments((prev) => prev.filter((item) => item.id !== id));
@@ -159,7 +170,7 @@ export default function TeacherAssignments() {
     } catch (err) {
       toast({
         title: 'Ödev silinemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
       });
     }
   };
@@ -259,11 +270,11 @@ export default function TeacherAssignments() {
       {error ? <ErrorBanner title="Ödevler alınamadı" message={error} onRetry={loadAssignments} /> : null}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
+        {([
           [stats.total, 'Toplam Ödev', FileText, 'text-brand-primary'],
           [stats.active, 'Aktif', CheckCircle, 'text-green-600'],
           [stats.pendingGrade, 'Değerlendirme Bekleyen', AlertCircle, 'text-yellow-600'],
-        ].map(([value, label, Icon, color]) => (
+        ] satisfies ReadonlyArray<readonly [number, string, IconComponent, string]>).map(([value, label, Icon, color]) => (
           <motion.div variants={itemVariants} key={label}>
             <Card>
               <CardContent className="p-4">
@@ -410,16 +421,16 @@ export default function TeacherAssignments() {
   );
 }
 
-function describeSelectedMaterial(file) {
-  const name = String(file?.name || '').toLowerCase();
+function describeSelectedMaterial(file: File): string {
+  const name = String(file.name || '').toLowerCase();
   if (/\.(png|jpg|jpeg|webp|gif)$/.test(name)) return 'Görsel eklendi';
   if (name.endsWith('.pdf')) return 'PDF eklendi';
   if (/\.(mp4|mov|avi|m4v|webm)$/.test(name)) return 'Video eklendi';
   return 'Ek materyal eklendi';
 }
 
-function materialTag(file) {
-  const name = String(file?.name || '').toLowerCase();
+function materialTag(file: File): string {
+  const name = String(file.name || '').toLowerCase();
   if (/\.(png|jpg|jpeg|webp|gif)$/.test(name)) return 'IMG';
   if (name.endsWith('.pdf')) return 'PDF';
   if (/\.(mp4|mov|avi|m4v|webm)$/.test(name)) return 'VID';

@@ -12,8 +12,11 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../hooks/use-toast';
 import { deletePlannedExam, fetchPlannedExams } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { PlannedExam } from '../../lib/api/plannedExams';
+import type { IconComponent } from '../../types/ui';
 
-function isMockExam(exam) {
+function isMockExam(exam: PlannedExam): boolean {
   const type = String(exam.type || '').trim().toLowerCase();
   return type === 'mockexam' || type.includes('deneme');
 }
@@ -22,7 +25,7 @@ export default function TeacherMockExams() {
   const navigate = useNavigate();
   const { user } = useApp();
   const { toast } = useToast();
-  const [records, setRecords] = useState([]);
+  const [records, setRecords] = useState<PlannedExam[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState('');
   const [error, setError] = useState('');
@@ -34,14 +37,14 @@ export default function TeacherMockExams() {
       const response = await fetchPlannedExams({ teacherName: user?.name });
       setRecords((Array.isArray(response) ? response : []).filter(isMockExam));
     } catch (requestError) {
-      setError(requestError.message || 'Deneme sınavları alınamadı.');
+      setError(errorMessage(requestError, 'Deneme sınavları alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user?.name]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const stats = useMemo(() => ({
@@ -50,14 +53,14 @@ export default function TeacherMockExams() {
     upcoming: records.filter((record) => String(record.status || '').toLowerCase() !== 'tamamlandi').length,
   }), [records]);
 
-  const remove = async (record) => {
+  const remove = async (record: PlannedExam) => {
     try {
       setDeletingId(record.id);
       await deletePlannedExam(record.id);
       setRecords((current) => current.filter((item) => item.id !== record.id));
       toast({ title: 'Deneme sınavı silindi', description: record.title });
     } catch (requestError) {
-      toast({ title: 'Deneme silinemedi', description: requestError.message, variant: 'destructive' });
+      toast({ title: 'Deneme silinemedi', description: errorMessage(requestError), variant: 'destructive' });
     } finally {
       setDeletingId('');
     }
@@ -79,11 +82,11 @@ export default function TeacherMockExams() {
       </header>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        {[
+        {([
           ['Toplam Deneme', stats.total, FileQuestion],
           ['Yaklaşan', stats.upcoming, CalendarDays],
           ['Toplam Soru', stats.questions, Clock3],
-        ].map(([label, value, Icon]) => (
+        ] satisfies ReadonlyArray<readonly [string, number, IconComponent]>).map(([label, value, Icon]) => (
           <Card key={label} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground">
             <CardContent className="flex items-center justify-between p-5">
               <div><p className="text-sm text-slate-400">{label}</p><p className="mt-2 text-3xl font-black">{value}</p></div>
@@ -93,7 +96,7 @@ export default function TeacherMockExams() {
         ))}
       </div>
 
-      {error && <ErrorBanner variant="error" title="Deneme sınavları yüklenemedi" message={error} onRetry={load} />}
+      {error && <ErrorBanner title="Deneme sınavları yüklenemedi" message={error} onRetry={load} />}
 
       {loading ? (
         <div className="flex min-h-[280px] flex-col items-center justify-center gap-4 text-slate-400"><LoadingDots /><p>Canlı deneme kayıtları yükleniyor...</p></div>

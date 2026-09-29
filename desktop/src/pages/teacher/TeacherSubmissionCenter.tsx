@@ -9,11 +9,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchHomework } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { HomeworkAssignmentDto, HomeworkSubmissionDto } from '../../types/api/generated';
+
+// Ödev notlandırma backend'de yok (HomeworkSubmissionDto not taşımaz); not alanı
+// bu yüzden sabit "Henüz yok" gösterir.
+const NO_GRADE_LABEL = 'Henüz yok';
+
+/** Teslim dosyası "ad::url" biçiminde saklanır; görünen ad ilk parçadır. */
+function submissionFileName(value: string): string {
+  return value.split('::')[0] || value;
+}
 
 export default function TeacherSubmissionCenter() {
-  const [homework, setHomework] = useState([]);
+  const [homework, setHomework] = useState<HomeworkAssignmentDto[]>([]);
   const [selectedId, setSelectedId] = useState('');
-  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [selectedSubmission, setSelectedSubmission] = useState<HomeworkSubmissionDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -21,18 +32,18 @@ export default function TeacherSubmissionCenter() {
     try {
       setLoading(true);
       setError('');
-      const payload = await fetchHomework();
+      const payload = (await fetchHomework()) ?? [];
       setHomework(payload);
       setSelectedId(payload[0]?.id || '');
     } catch (err) {
-      setError(err.message || 'Teslim merkezi alınamadı.');
+      setError(errorMessage(err, 'Teslim merkezi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadSubmissions();
+    void loadSubmissions();
   }, [loadSubmissions]);
 
   const selectedHomework = useMemo(() => homework.find((item) => item.id === selectedId) || homework[0], [homework, selectedId]);
@@ -65,7 +76,7 @@ export default function TeacherSubmissionCenter() {
             <CardContent className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">{item.note || 'Açıklama yok'}</p>
-                <p className="text-sm text-muted-foreground">Not: {item.grade ?? 'Henüz yok'}</p>
+                <p className="text-sm text-muted-foreground">Not: {NO_GRADE_LABEL}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline"><FileCheck2 className="h-3 w-3 mr-1" />Teslim</Badge>
@@ -92,15 +103,15 @@ export default function TeacherSubmissionCenter() {
               </div>
               <div>
                 <p className="font-medium">Not</p>
-                <p className="text-muted-foreground">{selectedSubmission.grade ?? 'Henüz yok'}</p>
+                <p className="text-muted-foreground">{NO_GRADE_LABEL}</p>
               </div>
               <div>
                 <p className="font-medium">Ekler</p>
                 <div className="space-y-2">
-                  {(selectedSubmission.attachments || selectedSubmission.files || []).length > 0 ? (
-                    (selectedSubmission.attachments || selectedSubmission.files || []).map((file, index) => (
-                      <div key={`${file.name || file.fileName || file}-${index}`} className="rounded-lg border p-3 text-muted-foreground">
-                        {file.name || file.fileName || file.url || String(file)}
+                  {(selectedSubmission.files || []).length > 0 ? (
+                    (selectedSubmission.files || []).map((file, index) => (
+                      <div key={`${file}-${index}`} className="rounded-lg border p-3 text-muted-foreground">
+                        {submissionFileName(file)}
                       </div>
                     ))
                   ) : (

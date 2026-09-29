@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Video, Clock, Plus, Trash2, Play,
@@ -29,13 +29,20 @@ import {
 } from '../../lib/api/modules';
 import { openExternalUrl } from '../../lib/tauri';
 import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { LiveRoomSession } from '../../lib/api/liveRoom';
+import type { IconComponent } from '../../types/ui';
 
-const containerVariants = {
+type LessonStatus = 'live' | 'completed' | 'scheduled';
+type LessonTab = 'upcoming' | 'past';
+type LiveLesson = ReturnType<typeof mapSessionToLesson>;
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
@@ -46,13 +53,13 @@ const fallbackClasses = ['Tüm Sınıflar'];
 // LIVE_LESSON parse ediyordu; participants/status/duration alanları text
 // metaverisinden çıkarılıyordu — artık backend session modelinden geliyor.
 
-function mapSessionToLesson(session) {
+function mapSessionToLesson(session: LiveRoomSession) {
   const startedAt = session.startedAtUtc ? new Date(session.startedAtUtc) : null;
   const endedAt = session.endedAtUtc ? new Date(session.endedAtUtc) : null;
   // Status: backend "Active" / "Completed" — frontend ile uyumlu olsun diye
   // küçük harfe map ediyoruz.
   const rawStatus = String(session.status || '').toLowerCase();
-  const status = rawStatus === 'active' ? 'live' : rawStatus === 'completed' ? 'completed' : 'scheduled';
+  const status: LessonStatus = rawStatus === 'active' ? 'live' : rawStatus === 'completed' ? 'completed' : 'scheduled';
   const duration = startedAt && endedAt
     ? Math.max(1, Math.round((endedAt.getTime() - startedAt.getTime()) / 60000))
     : 60;
@@ -70,7 +77,7 @@ function mapSessionToLesson(session) {
   };
 }
 
-const statusConfig = {
+const statusConfig: Record<LessonStatus, { label: string; color: string }> = {
   scheduled: { label: 'Planlandı', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
   live: { label: 'Canlı', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
   completed: { label: 'Tamamlandı', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
@@ -81,15 +88,15 @@ export default function TeacherLive() {
   const { user } = useApp();
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
-  const [copiedId, setCopiedId] = useState(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [detailLesson, setDetailLesson] = useState(null);
-  const [activeTab, setActiveTab] = useState('upcoming');
-  const [studentCounts, setStudentCounts] = useState({});
+  const [detailLesson, setDetailLesson] = useState<LiveLesson | null>(null);
+  const [activeTab, setActiveTab] = useState<LessonTab>('upcoming');
+  const [studentCounts, setStudentCounts] = useState<Partial<Record<string, number>>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [lessons, setLessons] = useState([]);
-  const [availableClasses, setAvailableClasses] = useState([]);
+  const [lessons, setLessons] = useState<LiveLesson[]>([]);
+  const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: '',
     date: new Date().toISOString().slice(0, 10),
@@ -104,15 +111,16 @@ export default function TeacherLive() {
       setLoading(true);
       setError('');
       // Öğretmenin kendi canlı dersleri (backend teacherName filtre uygular).
-      const [sessions, students] = await Promise.all([
+      const [sessions, studentList] = await Promise.all([
         fetchLiveRoomSessions({ teacherName: user?.name }).catch(() => []),
         fetchStudents().catch(() => []),
       ]);
       const items = (Array.isArray(sessions) ? sessions : [])
         .map(mapSessionToLesson)
         .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`).getTime() - new Date(`${b.date}T${b.time || '00:00'}`).getTime());
+      const students = studentList ?? [];
       const classes = [...new Set(students.map((item) => item.className).filter(Boolean))];
-      const counts = students.reduce((acc, student) => {
+      const counts = students.reduce<Partial<Record<string, number>>>((acc, student) => {
         if (student.className) acc[student.className] = (acc[student.className] || 0) + 1;
         return acc;
       }, {});
@@ -121,14 +129,14 @@ export default function TeacherLive() {
       setAvailableClasses(classes);
       setForm((prev) => ({ ...prev, className: prev.className || classes[0] || 'Tüm Sınıflar' }));
     } catch (err) {
-      setError(err.message || 'Canlı dersler alınamadı.');
+      setError(errorMessage(err, 'Canlı dersler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user?.name]);
 
   useEffect(() => {
-    loadLessons();
+    void loadLessons();
   }, [loadLessons]);
 
   const classOptions = useMemo(() => {
@@ -136,13 +144,12 @@ export default function TeacherLive() {
       'Tüm Sınıflar',
       ...availableClasses,
       ...lessons.map((item) => item.class).filter(Boolean),
-      ...(Array.isArray(user?.assignedClasses) ? user.assignedClasses : []),
     ];
     const unique = [...new Set(merged.filter(Boolean))];
     return unique.length > 0 ? unique : fallbackClasses;
-  }, [availableClasses, lessons, user?.assignedClasses]);
+  }, [availableClasses, lessons]);
 
-  const handleOpenLesson = async (link) => {
+  const handleOpenLesson = async (link: string) => {
     if (!link) {
       toast({
         title: 'Canlı ders linki bulunamadı',
@@ -162,8 +169,8 @@ export default function TeacherLive() {
     }
   };
 
-  const handleDeleteLesson = async (lesson) => {
-    if (!lesson?.id) return;
+  const handleDeleteLesson = async (lesson: LiveLesson) => {
+    if (!lesson.id) return;
     // Session modelinde "silme" yerine "bitirme" semantiği var; backend
     // oturum kaydını tutuyor, status='Completed' yapıyor.
     const confirmed = window.confirm(`"${lesson.title}" canli dersi bitirilsin mi?`);
@@ -184,13 +191,13 @@ export default function TeacherLive() {
     } catch (err) {
       toast({
         title: 'Canlı ders bitirilemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
       });
     }
   };
 
-  const copyLink = (id, link) => {
-    navigator.clipboard.writeText(link);
+  const copyLink = (id: string, link: string) => {
+    void navigator.clipboard.writeText(link);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
     toast({
@@ -215,7 +222,11 @@ export default function TeacherLive() {
         teacherName: user?.name || 'Öğretmen',
         className: form.className || 'Tüm Sınıflar',
         timeLabel: `${form.date} ${form.time}`,
+        // Formdaki toplantı bağlantısı eskiden gönderilmiyordu; sunucu kendi varsayılan
+        // bağlantısını üretiyordu.
+        meetingLink: form.meetingUrl.trim() || null,
       });
+      if (!created) return;
       const mapped = mapSessionToLesson(created);
       setLessons((prev) => [...prev, mapped].sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`).getTime() - new Date(`${b.date}T${b.time || '00:00'}`).getTime()));
       toast({
@@ -226,7 +237,7 @@ export default function TeacherLive() {
     } catch (err) {
       toast({
         title: 'Canlı ders oluşturulamadı',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     }
@@ -237,19 +248,19 @@ export default function TeacherLive() {
   const pastLessons = lessons.filter((lesson) => lesson.status === 'completed');
   const nextLesson = liveLesson || upcomingLessons[0] || null;
   const startableId = nextLesson?.id;
-  const attendanceOf = (lesson) => {
-    const total = studentCounts[lesson?.class] || lesson?.participants || 0;
+  const attendanceOf = (lesson: LiveLesson | null | undefined) => {
+    const total = (lesson ? studentCounts[lesson.class] : 0) || lesson?.participants || 0;
     const attended = lesson?.participants || 0;
     return { total, attended, absent: Math.max(0, total - attended), rate: total ? Math.round((attended / total) * 100) : 0 };
   };
-  const liveTools = [
+  const liveTools: ReadonlyArray<readonly [string, IconComponent, () => void]> = [
     ['Ders Planla', CalendarPlus, () => setCreateOpen(true)],
     ['Toplantı Oluştur', Video, () => setCreateOpen(true)],
-    ['Beyaz Tahta', PenTool, () => openExternalUrl('https://excalidraw.com')],
+    ['Beyaz Tahta', PenTool, () => { void openExternalUrl('https://excalidraw.com'); }],
     ['Anket Oluştur', BarChart3, () => toast({ title: 'Anket aracı yakında' })],
     ['Dosya Paylaş', FolderOpen, () => navigate('/t/content')],
   ];
-  const openDetail = (lesson) => { setDetailLesson(lesson); setSettingsOpen(true); };
+  const openDetail = (lesson: LiveLesson) => { setDetailLesson(lesson); setSettingsOpen(true); };
   const activeList = activeTab === 'upcoming' ? upcomingLessons : pastLessons;
   const detailOrLive = detailLesson || liveLesson;
 
@@ -391,7 +402,7 @@ export default function TeacherLive() {
           description={`${upcomingLessons.length} yaklaşan · ${pastLessons.length} geçmiş`}
           action={(
             <div className="flex rounded-full border border-foreground/10 bg-foreground/[0.04] p-0.5">
-              {[['upcoming', 'Yaklaşan'], ['past', 'Geçmiş']].map(([value, label]) => (
+              {([['upcoming', 'Yaklaşan'], ['past', 'Geçmiş']] satisfies ReadonlyArray<readonly [LessonTab, string]>).map(([value, label]) => (
                 <button key={value} onClick={() => setActiveTab(value)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${activeTab === value ? 'bg-[hsl(var(--brand-accent))] text-white' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>
               ))}
             </div>

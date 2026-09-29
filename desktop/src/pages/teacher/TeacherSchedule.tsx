@@ -10,8 +10,20 @@ import { useApp } from '../../context/AppContext';
 import { fetchScheduleEntries, fetchStudents } from '../../lib/api/modules';
 import { filterScheduleForTeacher } from '../../lib/userMatching';
 import { deriveScheduleGrid, scheduleDayIndex, ALL_SCHEDULE_DAYS } from '../../lib/scheduleGrid';
+import { errorMessage } from '../../lib/errors';
 
-const LEGEND = [
+interface TeacherLesson {
+  id: string;
+  subject: string;
+  title: string;
+  time: string;
+  day: string;
+  className: string;
+  room: string;
+  studentCount: number;
+}
+
+const LEGEND: ReadonlyArray<readonly [string, string]> = [
   ['Zorunlu Ders', 'bg-sky-400'],
   ['Seçmeli Ders', 'bg-emerald-400'],
   ['Laboratuvar', 'bg-cyan-400'],
@@ -20,7 +32,7 @@ const LEGEND = [
 
 const DAY_NAMES = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
-function startOfWeek(date) {
+function startOfWeek(date: Date): Date {
   const d = new Date(date);
   const offset = (d.getDay() + 6) % 7;
   d.setDate(d.getDate() - offset);
@@ -28,11 +40,11 @@ function startOfWeek(date) {
   return d;
 }
 
-function formatDay(date) {
+function formatDay(date: Date): string {
   return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'long' }).format(date);
 }
 
-function lessonMinutes(time) {
+function lessonMinutes(time: string): number {
   const match = String(time || '').match(/(\d{1,2}):(\d{2}).*?(\d{1,2}):(\d{2})/);
   if (match) {
     const minutes = (Number(match[3]) * 60 + Number(match[4])) - (Number(match[1]) * 60 + Number(match[2]));
@@ -45,7 +57,7 @@ export default function TeacherSchedule() {
   const { user } = useApp();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [lessons, setLessons] = useState([]);
+  const [lessons, setLessons] = useState<TeacherLesson[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
   const [classFilter, setClassFilter] = useState('all');
 
@@ -57,29 +69,29 @@ export default function TeacherSchedule() {
         fetchScheduleEntries().catch(() => []),
         fetchStudents().catch(() => []),
       ]);
-      const counts = students.reduce((acc, student) => {
+      const counts = (students ?? []).reduce<Partial<Record<string, number>>>((acc, student) => {
         if (student.className) acc[student.className] = (acc[student.className] || 0) + 1;
         return acc;
       }, {});
-      const items = filterScheduleForTeacher(schedule, user).map((entry) => ({
+      const items = filterScheduleForTeacher(schedule ?? [], user).map((entry): TeacherLesson => ({
         id: entry.id,
         subject: entry.subject || 'Ders',
         title: `${entry.className || ''} ${entry.subject || 'Ders'}`.trim(),
         time: entry.time || '08:30',
         day: entry.day || 'Pazartesi',
         className: entry.className || '-',
-        room: entry.room || entry.derslik || entry.className || '-',
+        room: entry.room || entry.className || '-',
         studentCount: counts[entry.className] || 0,
       }));
       setLessons(items);
     } catch (err) {
-      setError(err.message || 'Öğretmen ders programı alınamadı.');
+      setError(errorMessage(err, 'Öğretmen ders programı alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  useEffect(() => { loadSchedule(); }, [loadSchedule]);
+  useEffect(() => { void loadSchedule(); }, [loadSchedule]);
 
   const classes = useMemo(() => Array.from(new Set(lessons.map((item) => item.className).filter((c) => c && c !== '-'))), [lessons]);
   const scopedLessons = useMemo(() => (classFilter === 'all' ? lessons : lessons.filter((item) => item.className === classFilter)), [lessons, classFilter]);
@@ -88,7 +100,7 @@ export default function TeacherSchedule() {
   const week = useMemo(() => {
     const start = startOfWeek(new Date());
     start.setDate(start.getDate() + weekOffset * 7);
-    const dates = {};
+    const dates: Record<string, string> = {};
     ALL_SCHEDULE_DAYS.forEach((dayName, index) => {
       const date = new Date(start);
       date.setDate(start.getDate() + index);
@@ -97,7 +109,7 @@ export default function TeacherSchedule() {
     const end = new Date(start);
     end.setDate(start.getDate() + 4);
     const rangeLabel = `${formatDay(start)} - ${formatDay(end)} ${end.getFullYear()}`;
-    const todayName = weekOffset === 0 ? DAY_NAMES[new Date().getDay()] : null;
+    const todayName = weekOffset === 0 ? DAY_NAMES[new Date().getDay()] ?? null : null;
     return { dates, rangeLabel, todayName };
   }, [weekOffset]);
 

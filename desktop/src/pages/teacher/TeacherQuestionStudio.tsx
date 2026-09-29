@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -23,7 +23,7 @@ import {
 } from '../../components/ui/accordion';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { DrawingCanvas } from '../../features/solving/canvas/DrawingCanvas';
+import { DrawingCanvas, type CanvasStroke } from '../../features/solving/canvas/DrawingCanvas';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import {
   createPlannedExam,
@@ -34,6 +34,52 @@ import {
   saveQuestionStudioDraft,
   uploadFile,
 } from '../../lib/api/modules';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { CreateQuestionBankItemRequest, QuestionBankItemDto } from '../../types/api/generated';
+
+interface StudioOption {
+  id: string;
+  text: string;
+  imagePath: string;
+  correct: boolean;
+}
+
+/** Soru ayarları; `hint` yalnız "İpucu" açıkken yazılır. */
+type StudioSettings = ReturnType<typeof freshSettings> & { hint?: string };
+
+interface StudioVisual {
+  align: string;
+  width: number;
+  rotation: number;
+  caption: string;
+}
+
+interface ExamForm {
+  title: string;
+  className: string;
+  dateLabel: string;
+  startTime: string;
+  endTime: string;
+  duration: string;
+  lateEntryLimitMinutes: string;
+  totalPoint: string;
+  liveLinkUrl: string;
+  requireCamera: boolean;
+  requireFullscreen: boolean;
+  blockTabChange: boolean;
+  blockCopyPaste: boolean;
+  type: string;
+}
+
+type ExamToggleKey = 'requireCamera' | 'requireFullscreen' | 'blockTabChange' | 'blockCopyPaste';
+type SettingToggleKey = 'addSolution' | 'addHint' | 'addVisual';
+
+interface StudioQuestionSet {
+  key: string;
+  title: string;
+  subject: string;
+  questions: QuestionBankItemDto[];
+}
 
 const QUESTION_TYPES = [
   'Çoktan Seçmeli', 'Açık Uçlu', 'Doğru / Yanlış', 'Boşluk Doldurma',
@@ -50,7 +96,7 @@ const LATE_ENTRY_LIMIT_OPTIONS = [
   { value: '30', label: '30 dk' },
 ];
 
-const freshOptions = () => Array.from({ length: 4 }, (_, index) => ({
+const freshOptions = (): StudioOption[] => Array.from({ length: 4 }, (_, index) => ({
   id: `option-${Date.now()}-${index}`,
   text: '',
   imagePath: '',
@@ -73,40 +119,42 @@ const freshSettings = () => ({
   addVisual: true,
 });
 
-function plainText(html) {
+function plainText(html: string | null | undefined): string {
   const element = document.createElement('div');
   element.innerHTML = html || '';
   return (element.textContent || element.innerText || '').trim();
 }
 
-function assetUrl(path) {
+function assetUrl(path: string | null | undefined): string {
   if (!path) return '';
   if (/^(https?:|data:|blob:)/i.test(path)) return path;
   return new URL(path, desktopApiBaseUrl).toString();
 }
 
-function optionLetter(index) {
+function optionLetter(index: number): string {
   return String.fromCharCode(65 + index);
 }
 
-function createQuestionSetKey(prefix = 'set') {
+function createQuestionSetKey(prefix = 'set'): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function isExamOnlyQuestion(item) {
+function isExamOnlyQuestion(item: QuestionBankItemDto): boolean {
   try {
-    return JSON.parse(item?.editorMetadataJson || '{}')?.visibility === 'ExamOnly';
+    const metadata: unknown = JSON.parse(item.editorMetadataJson || '{}');
+    return isRecord(metadata) && metadata.visibility === 'ExamOnly';
   } catch {
     return false;
   }
 }
 
-function groupQuestionSets(items) {
-  const groups = new Map();
+function groupQuestionSets(items: readonly QuestionBankItemDto[]): StudioQuestionSet[] {
+  const groups = new Map<string, QuestionBankItemDto[]>();
   items.forEach((item) => {
     const key = item.questionSetKey || `${item.subject}|${item.topic}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(item);
+    const bucket = groups.get(key) ?? [];
+    bucket.push(item);
+    groups.set(key, bucket);
   });
   return Array.from(groups.entries()).map(([key, questions]) => ({
     key,
@@ -128,40 +176,40 @@ export default function TeacherQuestionStudio() {
   const isInstitutionExamMode = location.pathname === '/exams/create';
   const examKind = searchParams.get('type') === 'MockExam' ? 'deneme' : 'sınav';
   const examKindTitle = examKind === 'deneme' ? 'Deneme Sınavı' : 'Sınav';
-  const editorRef = useRef(null);
-  const solutionRef = useRef(null);
-  const imageInputRef = useRef(null);
-  const solutionFileRef = useRef(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const solutionRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const solutionFileRef = useRef<HTMLInputElement>(null);
   const canvasSnapshotRef = useRef('');
-  const draggedOptionRef = useRef(null);
-  const autosaveTimerRef = useRef(null);
+  const draggedOptionRef = useRef<string | null>(null);
+  const autosaveTimerRef = useRef<number | undefined>(undefined);
   const [activeType, setActiveType] = useState('Çoktan Seçmeli');
   const [questionHtml, setQuestionHtml] = useState('');
   const [solutionHtml, setSolutionHtml] = useState('');
   const [expectedAnswer, setExpectedAnswer] = useState('');
-  const [options, setOptions] = useState(freshOptions);
-  const [settings, setSettings] = useState(freshSettings);
-  const [visual, setVisual] = useState({ align: 'center', width: 65, rotation: 0, caption: '' });
+  const [options, setOptions] = useState<StudioOption[]>(freshOptions);
+  const [settings, setSettings] = useState<StudioSettings>(freshSettings);
+  const [visual, setVisual] = useState<StudioVisual>({ align: 'center', width: 65, rotation: 0, caption: '' });
   const [assetPath, setAssetPath] = useState('');
   const [solutionAssetPath, setSolutionAssetPath] = useState('');
-  const [canvasStrokes, setCanvasStrokes] = useState([]);
-  const [draftId, setDraftId] = useState(null);
+  const [canvasStrokes, setCanvasStrokes] = useState<CanvasStroke[]>([]);
+  const [draftId, setDraftId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [autosave, setAutosave] = useState('Kayda hazır');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [canvasOpen, setCanvasOpen] = useState(false);
-  const [savedQuestions, setSavedQuestions] = useState([]);
-  const [examQuestions, setExamQuestions] = useState([]);
+  const [savedQuestions, setSavedQuestions] = useState<QuestionBankItemDto[]>([]);
+  const [examQuestions, setExamQuestions] = useState<QuestionBankItemDto[]>([]);
   const [bankPickerOpen, setBankPickerOpen] = useState(false);
   const [bankPickerLoading, setBankPickerLoading] = useState(false);
-  const [passiveQuestionSets, setPassiveQuestionSets] = useState([]);
-  const [stagedQuestionIds, setStagedQuestionIds] = useState(() => new Set());
-  const [teacherClassOptions, setTeacherClassOptions] = useState([]);
+  const [passiveQuestionSets, setPassiveQuestionSets] = useState<StudioQuestionSet[]>([]);
+  const [stagedQuestionIds, setStagedQuestionIds] = useState<Set<string>>(() => new Set());
+  const [teacherClassOptions, setTeacherClassOptions] = useState<string[]>([]);
   const [classOptionsLoading, setClassOptionsLoading] = useState(false);
   const [questionSetKey] = useState(() => createQuestionSetKey(isExamMode ? 'exam-set' : 'question-set'));
-  const [examForm, setExamForm] = useState({
+  const [examForm, setExamForm] = useState<ExamForm>({
     title: '',
     className: '',
     dateLabel: '',
@@ -186,9 +234,7 @@ export default function TeacherQuestionStudio() {
     let alive = true;
     setClassOptionsLoading(true);
     const classRequest = isInstitutionExamMode
-      ? fetchClasses().then((items) => items.map((item) => (
-        typeof item === 'string' ? item : item?.name || item?.className || item?.title || ''
-      )))
+      ? fetchClasses()
       : fetchTeacherWeeklyReportBootstrap({ teacherUsername: user?.username || '' })
         .then((payload) => (Array.isArray(payload?.classes) ? payload.classes : []));
 
@@ -200,20 +246,21 @@ export default function TeacherQuestionStudio() {
           : [];
         const uniqueClasses = [...new Set(classes)];
         setTeacherClassOptions(uniqueClasses);
-        if (uniqueClasses.length > 0) {
+        const [firstClass] = uniqueClasses;
+        if (firstClass) {
           setExamForm((current) => {
             if (current.className && uniqueClasses.includes(current.className)) return current;
-            const nextClassName = current.className || uniqueClasses[0];
+            const nextClassName = current.className || firstClass;
             return { ...current, className: nextClassName };
           });
           setSettings((current) => {
             if (current.classLevel && current.classLevel !== 'Tüm Sınıflar') return current;
-            return { ...current, classLevel: uniqueClasses[0] };
+            return { ...current, classLevel: firstClass };
           });
         }
       })
       .catch((error) => {
-        if (alive) toast({ title: 'Sınıflar alınamadı', description: error.message, variant: 'destructive' });
+        if (alive) toast({ title: 'Sınıflar alınamadı', description: errorMessage(error), variant: 'destructive' });
       })
       .finally(() => {
         if (alive) setClassOptionsLoading(false);
@@ -250,7 +297,7 @@ export default function TeacherQuestionStudio() {
       mode: isExamMode ? 'MockExam' : 'QuestionBank',
       payloadJson: JSON.stringify(draftPayload()),
     });
-    setDraftId(response.id);
+    if (response) setDraftId(response.id);
     setDirty(false);
     setAutosave('Canlı taslak kaydedildi');
     if (showToast) toast({ title: 'Taslak kaydedildi', description: 'Değişiklikler canlı backend üzerinde saklandı.' });
@@ -260,12 +307,12 @@ export default function TeacherQuestionStudio() {
     if (!dirty || saving) return undefined;
     window.clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = window.setTimeout(() => {
-      persistDraft().catch((error) => setAutosave(`Kaydedilemedi: ${error.message}`));
+      persistDraft().catch((error) => setAutosave(`Kaydedilemedi: ${errorMessage(error)}`));
     }, 1200);
     return () => window.clearTimeout(autosaveTimerRef.current);
   }, [dirty, persistDraft, saving]);
 
-  const command = (name, value = null) => {
+  const command = (name: string, value?: string) => {
     editorRef.current?.focus();
     document.execCommand(name, false, value);
     setQuestionHtml(editorRef.current?.innerHTML || '');
@@ -283,28 +330,28 @@ export default function TeacherQuestionStudio() {
     command('insertHTML', `<span class="rounded bg-orange-500/10 px-2 py-1 font-mono text-orange-200" data-latex="${expression.replaceAll('"', '&quot;')}">\\(${expression}\\)</span>&nbsp;`);
   };
 
-  const updateSetting = (key, value) => {
+  const updateSetting = <K extends keyof StudioSettings>(key: K, value: StudioSettings[K]) => {
     setSettings((current) => ({ ...current, [key]: value }));
     touch();
   };
 
-  const updateExamClassName = (value) => {
+  const updateExamClassName = (value: string) => {
     setExamForm((current) => ({ ...current, className: value }));
     setSettings((current) => ({ ...current, classLevel: value }));
     touch();
   };
 
-  const updateExamDuration = (value) => {
+  const updateExamDuration = (value: string) => {
     setExamForm((current) => ({ ...current, duration: value }));
     touch();
   };
 
-  const updateLateEntryLimit = (value) => {
+  const updateLateEntryLimit = (value: string) => {
     setExamForm((current) => ({ ...current, lateEntryLimitMinutes: value }));
     touch();
   };
 
-  const changeQuestionType = (type) => {
+  const changeQuestionType = (type: string) => {
     setActiveType(type);
     if (type === 'Doğru / Yanlış') {
       setOptions([
@@ -317,14 +364,14 @@ export default function TeacherQuestionStudio() {
     touch();
   };
 
-  const uploadAsset = async (file, folder) => {
+  const uploadAsset = async (file: File, folder: string) => {
     const formData = new FormData();
     formData.append('file', file);
     const uploaded = await uploadFile(formData, folder);
-    return uploaded?.fileUrl || uploaded?.url || uploaded?.path || '';
+    return uploaded?.fileUrl || '';
   };
 
-  const handleQuestionImage = async (file) => {
+  const handleQuestionImage = async (file: File | undefined) => {
     if (!file) return;
     try {
       setUploading(true);
@@ -333,13 +380,13 @@ export default function TeacherQuestionStudio() {
       touch();
       toast({ title: 'Görsel yüklendi', description: 'Görsel canlı depolamaya kaydedildi ve soruya bağlandı.' });
     } catch (error) {
-      toast({ title: 'Görsel yüklenemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Görsel yüklenemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setUploading(false);
     }
   };
 
-  const handleOptionImage = async (id, file) => {
+  const handleOptionImage = async (id: string, file: File | undefined) => {
     if (!file) return;
     try {
       setUploading(true);
@@ -347,13 +394,13 @@ export default function TeacherQuestionStudio() {
       setOptions((current) => current.map((option) => (option.id === id ? { ...option, imagePath: path } : option)));
       touch();
     } catch (error) {
-      toast({ title: 'Şık görseli yüklenemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Şık görseli yüklenemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setUploading(false);
     }
   };
 
-  const handleSolutionFile = async (file) => {
+  const handleSolutionFile = async (file: File | undefined) => {
     if (!file) return;
     try {
       setUploading(true);
@@ -362,7 +409,7 @@ export default function TeacherQuestionStudio() {
       touch();
       toast({ title: 'Çözüm dosyası bağlandı' });
     } catch (error) {
-      toast({ title: 'Çözüm dosyası yüklenemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Çözüm dosyası yüklenemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setUploading(false);
     }
@@ -377,12 +424,12 @@ export default function TeacherQuestionStudio() {
     await handleSolutionFile(new File([blob], `cozum-${Date.now()}.png`, { type: 'image/png' }));
   };
 
-  const updateOption = (id, patch) => {
+  const updateOption = (id: string, patch: Partial<StudioOption>) => {
     setOptions((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
     touch();
   };
 
-  const markCorrect = (id) => {
+  const markCorrect = (id: string) => {
     setOptions((items) => items.map((item) => ({
       ...item,
       correct: item.id === id,
@@ -390,7 +437,7 @@ export default function TeacherQuestionStudio() {
     touch();
   };
 
-  const moveOption = (targetId) => {
+  const moveOption = (targetId: string) => {
     const sourceId = draggedOptionRef.current;
     if (!sourceId || sourceId === targetId) return;
     setOptions((items) => {
@@ -398,7 +445,7 @@ export default function TeacherQuestionStudio() {
       const targetIndex = items.findIndex((item) => item.id === targetId);
       const next = [...items];
       const [source] = next.splice(sourceIndex, 1);
-      next.splice(targetIndex, 0, source);
+      if (source) next.splice(targetIndex, 0, source);
       return next;
     });
     touch();
@@ -419,7 +466,7 @@ export default function TeacherQuestionStudio() {
     setSettings((current) => ({ ...freshSettings(), subject: current.subject, classLevel: current.classLevel }));
   };
 
-  const buildQuestionPayload = () => {
+  const buildQuestionPayload = (): CreateQuestionBankItemRequest => {
     const selectedOptions = choiceType
       ? options
           .map((option, originalIndex) => ({ ...option, originalIndex }))
@@ -484,6 +531,7 @@ export default function TeacherQuestionStudio() {
     try {
       setSaving(true);
       const created = await createQuestionBankItem(buildQuestionPayload());
+      if (!created) return;
       if (isExamMode) {
         setExamQuestions((current) => [...current, created]);
         resetQuestion();
@@ -494,7 +542,7 @@ export default function TeacherQuestionStudio() {
         toast({ title: 'Soru kaydedildi', description: 'Yeni soru için editör temizlendi. Seri şekilde devam edebilirsin.' });
       }
     } catch (error) {
-      toast({ title: 'Soru kaydedilemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Soru kaydedilemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -513,7 +561,7 @@ export default function TeacherQuestionStudio() {
     } catch (error) {
       toast({
         title: 'Pasif testler alınamadı',
-        description: error.message,
+        description: errorMessage(error),
         variant: 'destructive',
       });
       setBankPickerOpen(false);
@@ -522,7 +570,7 @@ export default function TeacherQuestionStudio() {
     }
   };
 
-  const toggleStagedQuestion = (questionId) => {
+  const toggleStagedQuestion = (questionId: string) => {
     setStagedQuestionIds((current) => {
       const next = new Set(current);
       if (next.has(questionId)) next.delete(questionId);
@@ -531,7 +579,7 @@ export default function TeacherQuestionStudio() {
     });
   };
 
-  const toggleStagedSet = (set) => {
+  const toggleStagedSet = (set: StudioQuestionSet) => {
     setStagedQuestionIds((current) => {
       const next = new Set(current);
       const allSelected = set.questions.every((question) => next.has(question.id));
@@ -587,7 +635,7 @@ export default function TeacherQuestionStudio() {
         ? '/exams'
         : examForm.type === 'MockExam' ? '/t/mock-exams' : '/t/exams');
     } catch (error) {
-      toast({ title: 'Sınav oluşturulamadı', description: error.message, variant: 'destructive' });
+      toast({ title: 'Sınav oluşturulamadı', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -663,12 +711,12 @@ export default function TeacherQuestionStudio() {
                   <Field label="Sınav Türü (not girişi etiketi)"><Input value={examForm.type} onChange={(event) => { setExamForm((v) => ({ ...v, type: event.target.value })); touch(); }} placeholder="1. Yazılı" className="border-foreground/15 bg-background/80 text-foreground" /></Field>
                 ) : null}
                 <div className="lg:col-span-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                  {[
+                  {([
                     ['requireCamera', 'Kamera zorunlu'],
                     ['requireFullscreen', 'Tam ekran zorunlu'],
                     ['blockTabChange', 'Sekme değiştirme yasak'],
                     ['blockCopyPaste', 'Kopyala/yapıştır yasak'],
-                  ].map(([key, label]) => (
+                  ] satisfies ReadonlyArray<readonly [ExamToggleKey, string]>).map(([key, label]) => (
                     <div key={key} className="flex items-center justify-between rounded-2xl border border-foreground/10 bg-background/65 px-4 py-3">
                       <span className="text-sm text-foreground/80">{label}</span>
                       <Switch checked={!!examForm[key]} onCheckedChange={(value) => { setExamForm((v) => ({ ...v, [key]: value })); touch(); }} />
@@ -746,12 +794,12 @@ export default function TeacherQuestionStudio() {
             <div className="rounded-[24px] border border-foreground/10 bg-background/75">
               <div className="flex items-center justify-between border-b border-foreground/10 px-4 py-3"><h2 className="font-black">Soru Metni</h2><span className="text-xs text-muted-foreground">Word, görsel ve LaTeX destekli</span></div>
               <div className="flex flex-wrap items-center gap-1 border-b border-foreground/10 px-4 py-3 text-foreground/75">
-                {[
+                {([
                   ['bold', <b key="b">B</b>], ['italic', <Italic key="i" className="h-4 w-4" />], ['underline', <u key="u">U</u>],
                   ['strikeThrough', <span key="s">S</span>], ['insertUnorderedList', <List key="l" className="h-4 w-4" />],
                   ['insertOrderedList', <ListOrdered key="o" className="h-4 w-4" />], ['justifyLeft', <AlignLeft key="al" className="h-4 w-4" />],
                   ['justifyCenter', <AlignCenter key="ac" className="h-4 w-4" />], ['justifyRight', <AlignRight key="ar" className="h-4 w-4" />],
-                ].map(([cmd, icon]) => <button key={cmd} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => command(cmd)} className="rounded-xl p-2 hover:bg-foreground/10">{icon}</button>)}
+                ] satisfies ReadonlyArray<readonly [string, ReactNode]>).map(([cmd, icon]) => <button key={cmd} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => command(cmd)} className="rounded-xl p-2 hover:bg-foreground/10">{icon}</button>)}
                 <span className="mx-2 h-6 w-px bg-foreground/10" />
                 <button type="button" onClick={() => command('formatBlock', 'H3')} className="rounded-xl px-3 py-2 text-sm hover:bg-foreground/10">Başlık</button>
                 <button type="button" onClick={() => command('hiliteColor', '#7c2d12')} className="rounded-xl p-2 hover:bg-foreground/10"><Highlighter className="h-4 w-4" /></button>
@@ -853,7 +901,7 @@ export default function TeacherQuestionStudio() {
             <Field label="Etiketler"><Input value={settings.tags} onChange={(event) => updateSetting('tags', event.target.value)} className="border-foreground/15 bg-background/80 text-foreground" /></Field>
             <Field label="Açıklama"><Textarea value={settings.description} onChange={(event) => updateSetting('description', event.target.value)} className="min-h-[80px] border-foreground/15 bg-background/80 text-foreground" /></Field>
             <Field label="Yayın Durumu"><Select value={settings.publishStatus} onValueChange={(value) => updateSetting('publishStatus', value)}><SelectTrigger className="border-foreground/15 bg-background/80 text-foreground"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Published">Yayında</SelectItem><SelectItem value="Draft">Taslak</SelectItem></SelectContent></Select></Field>
-            {[['addSolution', 'Çözüm Alanı'], ['addHint', 'İpucu'], ['addVisual', 'Görsel']].map(([key, label]) => <div key={key} className="flex items-center justify-between rounded-2xl border border-foreground/10 bg-background/65 px-4 py-3"><span className="text-sm text-foreground/80">{label}</span><Switch checked={!!settings[key]} onCheckedChange={(value) => updateSetting(key, value)} /></div>)}
+            {([['addSolution', 'Çözüm Alanı'], ['addHint', 'İpucu'], ['addVisual', 'Görsel']] satisfies ReadonlyArray<readonly [SettingToggleKey, string]>).map(([key, label]) => <div key={key} className="flex items-center justify-between rounded-2xl border border-foreground/10 bg-background/65 px-4 py-3"><span className="text-sm text-foreground/80">{label}</span><Switch checked={!!settings[key]} onCheckedChange={(value) => updateSetting(key, value)} /></div>)}
             <div className="rounded-2xl border border-foreground/10 bg-background/65 px-4 py-3 text-xs text-muted-foreground">Autosave: <span className="font-bold text-orange-700 dark:text-orange-200">{autosave}</span>{uploading && <span className="ml-2">Dosya yükleniyor...</span>}</div>
           </div>
         </aside>
@@ -970,6 +1018,6 @@ export default function TeacherQuestionStudio() {
   );
 }
 
-function Field({ label, children }) {
+function Field({ label, children }: { label: string; children?: ReactNode }) {
   return <div className="space-y-2"><Label className="text-xs font-bold text-muted-foreground">{label}</Label>{children}</div>;
 }

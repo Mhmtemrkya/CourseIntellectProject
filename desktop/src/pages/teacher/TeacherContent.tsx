@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   FileText, Video, Plus, Search, Eye, Upload, FolderOpen, CheckCircle2, Play, Pause, Download, Maximize2, Rewind, FastForward, Trash2,
   CloudUpload, HardDrive, Sparkles, CalendarClock, Settings2, ImageIcon, X, ClipboardCheck, FileUp, ChevronLeft, ChevronRight,
@@ -23,25 +23,62 @@ import { useApp } from '../../context/AppContext';
 import { createContent, deleteContent, fetchContents, fetchStudents, saveContentExtras, updateContent, updateContentStatus, uploadFile } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { ContentDto, CreateContentRequest } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const containerVariants = {
+interface ContentForm {
+  title: string;
+  description: string;
+  subject: string;
+  grade: string;
+  fileType: string;
+  fileName: string;
+  size: string;
+  playlistMode: string;
+  playlistKey: string;
+  playlistTitle: string;
+  playlistOrder: string;
+}
+
+interface ExerciseDraft {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+}
+
+interface ContentSettings {
+  allowDownload: boolean;
+  allowNotes: boolean;
+  completionCertificate: boolean;
+}
+
+interface TeacherPlaylist {
+  key: string;
+  title: string;
+  nextOrder: number;
+  count: number;
+}
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
-const fallbackClasses = [];
+const fallbackClasses: string[] = [];
 
-function contentTypeIcon(type) {
+function contentTypeIcon(type: string): IconComponent {
   return String(type).toLowerCase().includes('video') ? Video : FileText;
 }
 
-function buildCoverStyle(item) {
-  const palette = {
+function buildCoverStyle(item: ContentDto): string | undefined {
+  const palette: Partial<Record<string, string>> = {
     Matematik: 'from-sky-600 via-blue-600 to-indigo-700',
     Fizik: 'from-violet-600 via-fuchsia-600 to-pink-600',
     Kimya: 'from-emerald-500 via-teal-600 to-cyan-700',
@@ -51,12 +88,12 @@ function buildCoverStyle(item) {
     Cografya: 'from-cyan-500 via-sky-600 to-blue-700',
     İngilizce: 'from-rose-500 via-pink-600 to-fuchsia-700',
   };
-  const subject = Object.keys(palette).find((key) => String(item?.subject || '').toLowerCase().includes(key.toLowerCase()));
+  const subject = Object.keys(palette).find((key) => String(item.subject || '').toLowerCase().includes(key.toLowerCase()));
   return palette[subject || 'Matematik'];
 }
 
-function buildContentFileUrl(contentFile) {
-  const fileUrl = typeof contentFile === 'object' ? String(contentFile?.fileUrl || '').trim() : '';
+function buildContentFileUrl(contentFile: ContentDto | string): string | undefined {
+  const fileUrl = typeof contentFile === 'object' ? String(contentFile.fileUrl || '').trim() : '';
   if (fileUrl) {
     if (/^https?:\/\//i.test(fileUrl)) {
       return fileUrl;
@@ -71,8 +108,8 @@ function buildContentFileUrl(contentFile) {
     }
   }
 
-  const fileName = typeof contentFile === 'object' ? String(contentFile?.fileName || '').trim() : String(contentFile || '').trim();
-  if (!fileName) return null;
+  const fileName = typeof contentFile === 'object' ? String(contentFile.fileName || '').trim() : contentFile.trim();
+  if (!fileName) return undefined;
   if (!desktopApiBaseUrl) {
     return `/uploads/teacher-content/${encodeURIComponent(fileName)}`;
   }
@@ -83,7 +120,7 @@ function buildContentFileUrl(contentFile) {
   }
 }
 
-function formatFileSizeLabel(size) {
+function formatFileSizeLabel(size: unknown): string {
   const bytes = Number(size || 0);
   if (!Number.isFinite(bytes) || bytes <= 0) {
     return '';
@@ -98,7 +135,7 @@ function formatFileSizeLabel(size) {
   return `${kiloBytes.toFixed(kiloBytes >= 10 ? 0 : 1)} KB`;
 }
 
-function inferContentTypeFromFile(fileName = '') {
+function inferContentTypeFromFile(fileName = ''): string {
   const extension = String(fileName).split('.').pop()?.toLowerCase() || '';
   if (['mp4', 'mov', 'm4v', 'webm'].includes(extension)) return 'Video';
   if (extension === 'pdf') return 'PDF';
@@ -110,8 +147,8 @@ function inferContentTypeFromFile(fileName = '') {
 export default function TeacherContent() {
   const { toast } = useToast();
   const { user } = useApp();
-  const [content, setContent] = useState([]);
-  const [classes, setClasses] = useState([]);
+  const [content, setContent] = useState<ContentDto[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
@@ -120,25 +157,25 @@ export default function TeacherContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [selectedContent, setSelectedContent] = useState(null);
+  const [selectedContent, setSelectedContent] = useState<ContentDto | null>(null);
   const [editingContent, setEditingContent] = useState(false);
   const [playInlineVideo, setPlayInlineVideo] = useState(false);
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoSpeed, setVideoSpeed] = useState(1);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [coverFile, setCoverFile] = useState(null);
-  const [exerciseDrafts, setExerciseDrafts] = useState([{ id: 'exercise-1', title: '', description: '', url: '' }]);
-  const [contentSettings, setContentSettings] = useState({
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [exerciseDrafts, setExerciseDrafts] = useState<ExerciseDraft[]>([{ id: 'exercise-1', title: '', description: '', url: '' }]);
+  const [contentSettings, setContentSettings] = useState<ContentSettings>({
     allowDownload: true,
     allowNotes: true,
     completionCertificate: false,
   });
-  const videoRef = useRef(null);
-  const videoContainerRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const coverInputRef = useRef(null);
-  const [form, setForm] = useState({
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState<ContentForm>({
     title: '',
     description: '',
     subject: '',
@@ -160,37 +197,37 @@ export default function TeacherContent() {
         fetchContents(false),
         fetchStudents().catch(() => []),
       ]);
-      setContent(payload);
-      setClasses([...new Set(students.map((item) => item.className).filter(Boolean))]);
+      setContent(payload ?? []);
+      setClasses([...new Set((students ?? []).map((item) => item.className).filter(Boolean))]);
     } catch (err) {
-      setError(err.message || 'İçerikler alınamadı.');
+      setError(errorMessage(err, 'İçerikler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadContent();
+    void loadContent();
   }, [loadContent]);
 
   const classOptions = useMemo(() => {
     const merged = [
       ...classes,
       ...content.map((item) => item.grade).filter(Boolean),
-      ...(Array.isArray(user?.assignedClasses) ? user.assignedClasses : []),
     ];
     const unique = [...new Set(merged.filter(Boolean))];
     return unique.length > 0 ? unique : fallbackClasses;
-  }, [classes, content, user?.assignedClasses]);
+  }, [classes, content]);
 
   useEffect(() => {
-    if (form.grade || classOptions.length === 0) {
+    const [firstClass] = classOptions;
+    if (form.grade || !firstClass) {
       return;
     }
 
     setForm((prev) => ({
       ...prev,
-      grade: classOptions[0],
+      grade: firstClass,
     }));
   }, [classOptions, form.grade]);
 
@@ -205,7 +242,7 @@ export default function TeacherContent() {
     return matchesSearch && matchesType && matchesSubject;
   }), [content, filterType, searchQuery, subjectFilter]);
 
-  const isSunum = (item) => /sunum|ppt|slayt|presentation/.test(String(item.fileType).toLowerCase());
+  const isSunum = (item: ContentDto) => /sunum|ppt|slayt|presentation/.test(String(item.fileType).toLowerCase());
   const stats = {
     total: content.length,
     pdf: content.filter((item) => String(item.fileType).toLowerCase().includes('pdf')).length,
@@ -214,7 +251,7 @@ export default function TeacherContent() {
   };
   const subjectOptions = [...new Set(content.map((item) => item.subject).filter(Boolean))];
   const mostViewed = [...content].sort((a, b) => Number(b.views || 0) - Number(a.views || 0)).slice(0, 3);
-  const recentAdded = [...content].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 3);
+  const recentAdded = content.slice(0, 3);
   const PAGE_SIZE = 6;
   const pageCount = Math.max(1, Math.ceil(filteredContent.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -222,7 +259,7 @@ export default function TeacherContent() {
 
   const teacherPlaylists = useMemo(() => {
     const teacherName = String(user?.name || '').trim().toLowerCase();
-    const playlistMap = new Map();
+    const playlistMap = new Map<string, TeacherPlaylist>();
 
     content
       .filter((item) => String(item.fileType || '').toLowerCase().includes('video'))
@@ -317,6 +354,7 @@ export default function TeacherContent() {
         completionCertificate: contentSettings.completionCertificate,
         publishStatus: 'Aktif',
       });
+      if (!created) throw new Error('İçerik kaydı yanıtı alınamadı.');
       await saveContentExtras(created.id, {
         coverImageUrl,
         exercises: exerciseDrafts
@@ -358,14 +396,14 @@ export default function TeacherContent() {
     } catch (err) {
       toast({
         title: 'İçerik kaydedilemedi',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
       });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleUploadFileSelected = useCallback((file) => {
+  const handleUploadFileSelected = useCallback((file: File | null | undefined) => {
     if (!file) return;
     const detectedType = inferContentTypeFromFile(file.name);
     const nameWithoutExtension = file.name.includes('.')
@@ -379,7 +417,6 @@ export default function TeacherContent() {
       fileName: file.name,
       size: formatFileSizeLabel(file.size),
       title: prev.title || nameWithoutExtension.replace(/[_-]/g, ' '),
-      info: prev.info || formatFileSizeLabel(file.size),
     }));
   }, []);
 
@@ -407,9 +444,10 @@ export default function TeacherContent() {
     });
   }, [classOptions]);
 
-  const handlePublish = async (item, publishStatus) => {
+  const handlePublish = async (item: ContentDto, publishStatus: string) => {
     try {
       const updated = await updateContentStatus(item.id, publishStatus);
+      if (!updated) return;
       setContent((prev) => prev.map((entry) => (entry.id === updated.id ? updated : entry)));
       toast({
         title: 'Durum güncellendi',
@@ -418,16 +456,17 @@ export default function TeacherContent() {
     } catch (err) {
       toast({
         title: 'Durum güncellenemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
       });
     }
   };
 
-  const handleUpdateSelectedContent = async (payload) => {
+  const handleUpdateSelectedContent = async (payload: CreateContentRequest) => {
     if (!selectedContent?.id) return;
     try {
       setSaving(true);
       const updated = await updateContent(selectedContent.id, payload);
+      if (!updated) return;
       setContent((prev) => prev.map((entry) => (entry.id === updated.id ? updated : entry)));
       setSelectedContent(updated);
       setEditingContent(false);
@@ -438,7 +477,7 @@ export default function TeacherContent() {
     } catch (err) {
       toast({
         title: 'İçerik güncellenemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
       });
     } finally {
       setSaving(false);
@@ -462,12 +501,12 @@ export default function TeacherContent() {
     } catch (err) {
       toast({
         title: 'İçerik silinemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
       });
     }
   };
 
-  const handleOpenContentFile = (contentFile, download = false) => {
+  const handleOpenContentFile = (contentFile: ContentDto | string, download = false) => {
     const fileUrl = buildContentFileUrl(contentFile);
     if (!fileUrl) {
       toast({
@@ -480,7 +519,7 @@ export default function TeacherContent() {
     if (download) {
       const link = document.createElement('a');
       link.href = fileUrl;
-      link.download = (typeof contentFile === 'object' ? contentFile?.fileName || contentFile?.title : contentFile) || 'icerik';
+      link.download = (typeof contentFile === 'object' ? contentFile.fileName || contentFile.title : contentFile) || 'icerik';
       link.target = '_blank';
       link.rel = 'noreferrer';
       document.body.appendChild(link);
@@ -492,7 +531,7 @@ export default function TeacherContent() {
     window.open(fileUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const normalizeType = (value = '') => {
+  const normalizeType = (value = ''): 'video' | 'pdf' | 'file' => {
     const text = String(value).toLowerCase();
     if (text.includes('video')) return 'video';
     if (text.includes('pdf')) return 'pdf';
@@ -510,7 +549,7 @@ export default function TeacherContent() {
     setPlayInlineVideo(!video.paused);
   };
 
-  const seekVideoBy = (seconds) => {
+  const seekVideoBy = (seconds: number) => {
     const video = videoRef.current;
     if (!video) return;
     const duration = Number.isFinite(video.duration) ? video.duration : 0;
@@ -519,14 +558,14 @@ export default function TeacherContent() {
     setVideoCurrentTime(nextTime);
   };
 
-  const updateVideoSpeed = (speed) => {
+  const updateVideoSpeed = (speed: number) => {
     const video = videoRef.current;
     if (!video) return;
     video.playbackRate = speed;
     setVideoSpeed(speed);
   };
 
-  const formatDuration = (seconds) => {
+  const formatDuration = (seconds: number) => {
     const totalSeconds = Math.max(0, Math.floor(seconds || 0));
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -543,7 +582,7 @@ export default function TeacherContent() {
     const target = video || container;
     if (!target) return;
 
-    const requestFullscreen =
+    const requestFullscreen: (() => Promise<void> | void) | undefined =
       target.requestFullscreen
       || target.webkitRequestFullscreen
       || container?.requestFullscreen
@@ -642,12 +681,12 @@ export default function TeacherContent() {
                 </button>
 
                 <div className="grid gap-3 md:grid-cols-4">
-                  {[
+                  {([
                     [FolderOpen, 'Dosya Seç', 'Bilgisayarından dosya seç'],
                     [HardDrive, 'Google Drive', 'Harici kaynak hazır alanı'],
                     [CloudUpload, 'OneDrive', 'Dosya aktarım alanı'],
                     [Sparkles, 'Akıllı Önizleme', 'Seçilen dosyayı kontrol et'],
-                  ].map(([Icon, title, subtitle]) => (
+                  ] satisfies ReadonlyArray<readonly [IconComponent, string, string]>).map(([Icon, title, subtitle]) => (
                     <button
                       key={title}
                       type="button"
@@ -792,11 +831,11 @@ export default function TeacherContent() {
                     <p className="mt-1 text-xs text-slate-400">Videoyu tek başına yayınlayabilir veya mevcut bir seriye ekleyebilirsin.</p>
                   </div>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                    {[
+                    {([
                       ['single', 'Tek Video'],
                       ['new', 'Yeni Liste'],
                       ['existing', 'Mevcut Liste'],
-                    ].map(([value, label]) => (
+                    ] satisfies ReadonlyArray<readonly [string, string]>).map(([value, label]) => (
                       <Button
                         key={value}
                         type="button"
@@ -890,11 +929,11 @@ export default function TeacherContent() {
                     İçerik Ayarları
                   </h3>
                   <div className="space-y-3">
-                    {[
+                    {([
                       ['İndirmeye izin ver', 'allowDownload'],
                       ['Öğrenci notu alabilir', 'allowNotes'],
                       ['Tamamlanma sertifikası', 'completionCertificate'],
-                    ].map(([label, key]) => (
+                    ] satisfies ReadonlyArray<readonly [string, keyof ContentSettings]>).map(([label, key]) => (
                       <button
                         key={label}
                         type="button"
@@ -1002,12 +1041,12 @@ export default function TeacherContent() {
 
       {/* 4 stat kartı */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {[
+        {([
           ['Toplam İçerik', stats.total, 'içerik', FolderOpen, 'from-violet-400 to-fuchsia-600'],
           ['Video İçerikler', stats.video, 'video', Video, 'from-sky-400 to-blue-600'],
           ['PDF İçerikler', stats.pdf, 'doküman', FileText, 'from-rose-400 to-red-600'],
           ['Sunumlar', stats.sunum, 'sunum', FolderOpen, 'from-amber-400 to-orange-600'],
-        ].map(([label, value, unit, Icon, gradient]) => (
+        ] satisfies ReadonlyArray<readonly [string, number, string, IconComponent, string]>).map(([label, value, unit, Icon, gradient]) => (
           <motion.div variants={itemVariants} key={label} className="ci-metric-card flex flex-col gap-3 rounded-2xl border border-foreground/10 p-4">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
@@ -1023,7 +1062,7 @@ export default function TeacherContent() {
 
       {/* Sekmeler */}
       <div className="flex flex-wrap gap-1 rounded-full border border-foreground/10 bg-foreground/[0.04] p-1">
-        {[['all', 'Tüm İçerikler'], ['video', 'Videolar'], ['dokuman', 'Dokümanlar'], ['sunum', 'Sunumlar']].map(([value, label]) => (
+        {([['all', 'Tüm İçerikler'], ['video', 'Videolar'], ['dokuman', 'Dokümanlar'], ['sunum', 'Sunumlar']] satisfies ReadonlyArray<readonly [string, string]>).map(([value, label]) => (
           <button key={value} onClick={() => { setFilterType(value); setPage(1); }} className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${filterType === value ? 'bg-[hsl(var(--brand-accent))] text-white' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>
         ))}
       </div>
@@ -1076,7 +1115,7 @@ export default function TeacherContent() {
                       : isSunum(item) ? 'border-violet-500/30 bg-violet-500/12 text-violet-300'
                       : 'border-foreground/10 bg-foreground/5 text-muted-foreground';
                     const TypeIcon = t.includes('video') ? Video : FileText;
-                    const created = item.createdAt && !Number.isNaN(new Date(item.createdAt).getTime()) ? formatDate(item.createdAt) : (item.dateLabel || '-');
+                    const created = '-';
                     return (
                       <tr key={item.id || item.title} className="border-b border-foreground/[0.06] transition-colors hover:bg-foreground/[0.025]">
                         <td className="px-4 py-3">
@@ -1133,7 +1172,7 @@ export default function TeacherContent() {
             {recentAdded.map((item, index) => (
               <button key={item.id || index} onClick={() => { setSelectedContent(item); setPlayInlineVideo(false); }} className="flex w-full items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left transition-colors hover:bg-[hsl(var(--brand-accent)/0.06)]">
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><FileText className="h-4 w-4" /></span>
-                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="truncate text-xs text-muted-foreground">{item.createdAt && !Number.isNaN(new Date(item.createdAt).getTime()) ? formatDate(item.createdAt) : (item.dateLabel || '')}</p></div>
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="truncate text-xs text-muted-foreground">{''}</p></div>
               </button>
             ))}
           </PremiumPanel>
@@ -1300,6 +1339,13 @@ export default function TeacherContent() {
                           size: selectedContent.size || '',
                           description: String(formData.get('description') || '').trim(),
                           fileName: selectedContent.fileName || null,
+                          // Sunucu her alanı gövdeden yazar: bunlar taşınmazsa dosya/kapak
+                          // bağlantısı silinir ve izinler varsayılana döner.
+                          fileUrl: selectedContent.fileUrl,
+                          coverImageUrl: selectedContent.coverImageUrl,
+                          allowDownload: selectedContent.allowDownload,
+                          allowNotes: selectedContent.allowNotes,
+                          completionCertificate: selectedContent.completionCertificate,
                           playlistKey: selectedContent.playlistKey || null,
                           playlistTitle: selectedContent.playlistTitle || null,
                           playlistOrder: selectedContent.playlistOrder || null,
@@ -1382,7 +1428,7 @@ export default function TeacherContent() {
                 <Button
                   variant="outline"
                   className="rounded-full sm:flex-1"
-                  onClick={() => handleOpenContentFile(selectedContent.fileName)}
+                  onClick={() => handleOpenContentFile(selectedContent)}
                 >
                   <Eye className="h-4 w-4 mr-2" />
                   Dosyayi Ac
@@ -1390,7 +1436,7 @@ export default function TeacherContent() {
                 <Button
                   variant="outline"
                   className="rounded-full sm:flex-1"
-                  onClick={() => handleOpenContentFile(selectedContent.fileName, true)}
+                  onClick={() => handleOpenContentFile(selectedContent, true)}
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   İndir

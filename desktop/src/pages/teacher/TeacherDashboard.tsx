@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Users, CalendarDays, ClipboardList, GraduationCap, Megaphone, ArrowRight, Upload,
@@ -7,15 +7,16 @@ import {
 import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import RoleDashboardColumns from '../../components/dashboard/RoleDashboardColumns';
-import { PremiumPanel, PremiumStatusPill } from '../../components/ui/premium-dashboard';
+import RoleDashboardColumns, { type RoleDashboardGroup } from '../../components/dashboard/RoleDashboardColumns';
+import { PremiumPanel, PremiumStatusPill, type StatusPillTone } from '../../components/ui/premium-dashboard';
 import { useApp } from '../../context/AppContext';
-import { fetchTeacherDashboardData } from '../../lib/api/dashboardData';
+import { fetchTeacherDashboardData, type TeacherDashboardData } from '../../lib/api/dashboardData';
+import { errorMessage } from '../../lib/errors';
 
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
-const itemVariants = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } };
+const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
+const itemVariants: Variants = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } };
 
-const LESSON_STATUS = {
+const LESSON_STATUS: Record<string, readonly [StatusPillTone, string]> = {
   done: ['done', 'Tamamlandı'],
   live: ['live', 'Devam Ediyor'],
   next: ['soon', 'Sıradaki'],
@@ -25,7 +26,7 @@ const LESSON_STATUS = {
 export default function TeacherDashboard() {
   const { user } = useApp();
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<TeacherDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -35,42 +36,42 @@ export default function TeacherDashboard() {
       setError('');
       setData(await fetchTeacherDashboardData(user));
     } catch (err) {
-      setError(err.message || 'Öğretmen dashboard verisi alınamadı.');
+      setError(errorMessage(err, 'Öğretmen dashboard verisi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+  useEffect(() => { void loadDashboard(); }, [loadDashboard]);
 
   if (loading) {
     return <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4"><LoadingDots /><p className="text-muted-foreground">Öğretmen paneli hazırlanıyor...</p></div>;
   }
 
-  const stats = data?.stats || {};
-  const examStats = data?.examStats || {};
-  const homework = data?.homeworkDistribution || {};
+  const stats = data?.stats;
+  const examStats = data?.examStats;
+  const homework = data?.homeworkDistribution;
   const todaySchedule = data?.todaySchedule || [];
   const pendingGrading = data?.pendingGrading || [];
   const upcomingExams = data?.upcomingExams || [];
   const announcements = data?.announcementList || [];
   const todayLabel = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: '2-digit', month: 'long' }).format(new Date());
 
-  const groups = [
+  const groups: RoleDashboardGroup[] = [
     {
       key: 'classes', title: 'Ders ve Sınıflar', description: 'Bugünkü öğretim yükünüz ve sorumlu olduğunuz öğrenciler',
       cards: [
-        { key: 'courses', label: 'Aktif Ders', value: stats.totalCourses || 0, caption: 'Sorumlu olduğunuz ders', icon: BookOpen, tone: 'violet', path: '/t/schedule' },
-        { key: 'students', label: 'Öğrenci', value: stats.totalStudents || 0, caption: 'Ders verdiğiniz öğrenci', icon: Users, tone: 'blue', path: '/t/reports' },
-        { key: 'today', label: 'Bugünkü Ders', value: stats.todayLessons || 0, caption: `${stats.completedToday || 0} tamamlandı`, icon: CalendarDays, tone: 'emerald', path: '/t/schedule' },
+        { key: 'courses', label: 'Aktif Ders', value: stats?.totalCourses || 0, caption: 'Sorumlu olduğunuz ders', icon: BookOpen, tone: 'violet', path: '/t/schedule' },
+        { key: 'students', label: 'Öğrenci', value: stats?.totalStudents || 0, caption: 'Ders verdiğiniz öğrenci', icon: Users, tone: 'blue', path: '/t/reports' },
+        { key: 'today', label: 'Bugünkü Ders', value: stats?.todayLessons || 0, caption: `${stats?.completedToday || 0} tamamlandı`, icon: CalendarDays, tone: 'emerald', path: '/t/schedule' },
       ],
     },
     {
       key: 'assessment', title: 'Değerlendirme', description: 'Aksiyon bekleyen ödev ve sınav işlemleri',
       cards: [
-        { key: 'grading', label: 'Bekleyen Değerlendirme', value: stats.pendingGradingCount || 0, caption: 'Notlandırılacak teslim', icon: ClipboardList, tone: 'amber', path: '/t/submissions' },
-        { key: 'plannedExams', label: 'Planlanan Sınav', value: examStats.planned || 0, caption: 'Yaklaşan sınav planı', icon: GraduationCap, tone: 'brand', path: '/t/exams' },
-        { key: 'overdueHomework', label: 'Geciken Ödev', value: homework.overdue || 0, caption: 'Teslim süresi geçen', icon: ClipboardList, tone: 'rose', path: '/t/assignments' },
+        { key: 'grading', label: 'Bekleyen Değerlendirme', value: stats?.pendingGradingCount || 0, caption: 'Notlandırılacak teslim', icon: ClipboardList, tone: 'amber', path: '/t/submissions' },
+        { key: 'plannedExams', label: 'Planlanan Sınav', value: examStats?.planned || 0, caption: 'Yaklaşan sınav planı', icon: GraduationCap, tone: 'brand', path: '/t/exams' },
+        { key: 'overdueHomework', label: 'Geciken Ödev', value: homework?.overdue || 0, caption: 'Teslim süresi geçen', icon: ClipboardList, tone: 'rose', path: '/t/assignments' },
       ],
     },
     {
@@ -78,7 +79,7 @@ export default function TeacherDashboard() {
       cards: [
         { key: 'announcements', label: 'Duyuru', value: announcements.length, caption: 'Son yayınlanan duyurular', icon: Megaphone, tone: 'blue', path: '/t/announcements' },
         { key: 'contents', label: 'Paylaşılan İçerik', value: (data?.recentContents || []).length, caption: 'Son içerikleriniz', icon: Upload, tone: 'emerald', path: '/t/content' },
-        { key: 'views', label: 'İçerik Görüntülenme', value: stats.contentViews ?? data?.contentViews ?? 0, caption: 'Öğrenci etkileşimi', icon: BookOpen, tone: 'cyan', path: '/t/content' },
+        { key: 'views', label: 'İçerik Görüntülenme', value: data?.contentViews ?? 0, caption: 'Öğrenci etkileşimi', icon: BookOpen, tone: 'cyan', path: '/t/content' },
       ],
     },
   ];
@@ -97,7 +98,7 @@ export default function TeacherDashboard() {
         <motion.div variants={itemVariants}>
           <PremiumPanel title="Bugünkü Program" description="Sıradaki derslerinizi takip edin" action={<Button size="sm" variant="ghost" onClick={() => navigate('/t/schedule')}>Program <ArrowRight className="ml-1 h-4 w-4" /></Button>} contentClassName="space-y-2.5">
             {todaySchedule.length ? todaySchedule.slice(0, 5).map((lesson, index) => {
-              const [tone, label] = LESSON_STATUS[lesson.status] || LESSON_STATUS.pending;
+              const [tone, label] = LESSON_STATUS[lesson.status] ?? ['default', 'Bekliyor'];
               return <div key={`${lesson.time}-${index}`} className="flex items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3"><span className="w-14 shrink-0 text-xs font-bold tabular-nums text-muted-foreground">{lesson.time}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{lesson.subject}</p><p className="truncate text-xs text-muted-foreground">{lesson.class}</p></div><PremiumStatusPill tone={tone}>{label}</PremiumStatusPill></div>;
             }) : <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">Bugün dersiniz bulunmuyor.</p>}
           </PremiumPanel>

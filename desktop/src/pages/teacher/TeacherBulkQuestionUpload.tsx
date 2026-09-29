@@ -24,6 +24,49 @@ import {
   updateQuestionImportQuestion,
   uploadQuestionImportFile,
 } from '../../lib/api/modules';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type {
+  QuestionImportHistoryItem,
+  QuestionImportJobSnapshot,
+  QuestionImportOptionSnapshot,
+  QuestionImportQuestionSnapshot,
+} from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
+
+interface EditDraft {
+  questionText: string;
+  subject: string;
+  grade: string;
+  unit: string;
+  topic: string;
+  learningOutcome: string;
+  difficulty: string;
+  type: string;
+  points: number;
+  correctAnswer: string;
+  explanation: string;
+  imageUrl: string;
+  options: QuestionImportOptionSnapshot[];
+}
+type EditTextKey = 'subject' | 'grade' | 'unit' | 'topic' | 'learningOutcome' | 'correctAnswer';
+
+interface BulkDraft {
+  subject: string;
+  grade: string;
+  unit: string;
+  topic: string;
+  learningOutcome: string;
+  difficulty: string;
+  type: string;
+  points: string;
+}
+
+type BulkTextKey = 'subject' | 'grade' | 'unit' | 'topic' | 'learningOutcome' | 'points';
+
+/** SignalR "QuestionImportProgress" yükü doğrulanmamış gelir; iş kaydına daraltır. */
+function isImportJob(value: unknown): value is QuestionImportJobSnapshot {
+  return isRecord(value) && typeof value.id === 'string' && Array.isArray(value.questions);
+}
 
 const steps = [
   { key: 1, title: 'Dosya Yükleme', desc: 'Dosyanızı seçin' },
@@ -38,14 +81,14 @@ const difficultyOptions = ['Kolay', 'Orta', 'Zor'];
 const typeOptions = ['Çoktan Seçmeli', 'Açık Uçlu', 'Doğru / Yanlış'];
 const targetOptions = ['Soru Bankası', 'Deneme Sınavı', 'Online Sınav', 'Ödev', 'Konu Anlatımı Sonu Testi'];
 
-function formatBytes(bytes = 0) {
+function formatBytes(bytes = 0): string {
   if (!bytes) return '0 KB';
   const units = ['B', 'KB', 'MB', 'GB'];
   const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
   return `${(bytes / 1024 ** index).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   if (!value) return '-';
   return new Intl.DateTimeFormat('tr-TR', {
     day: '2-digit',
@@ -56,8 +99,8 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
-function statusLabel(status) {
-  const map = {
+function statusLabel(status: string | null | undefined): string {
+  const map: Partial<Record<string, string>> = {
     Pending: 'Bekliyor',
     Analyzing: 'Analiz Ediliyor',
     Ready: 'Hazır',
@@ -65,16 +108,16 @@ function statusLabel(status) {
     Imported: 'Aktarıldı',
     PartiallyImported: 'Kısmi Aktarım',
   };
-  return map[status] || status || 'Bekliyor';
+  return (status ? map[status] : undefined) || status || 'Bekliyor';
 }
 
-function resolveFileUrl(fileUrl) {
+function resolveFileUrl(fileUrl: string | null | undefined): string {
   if (!fileUrl) return '';
   if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) return fileUrl;
   return `${desktopApiBaseUrl}${fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`}`;
 }
 
-function createEmptyEditDraft() {
+function createEmptyEditDraft(): EditDraft {
   return {
     questionText: '',
     subject: '',
@@ -92,34 +135,34 @@ function createEmptyEditDraft() {
   };
 }
 
-function toEditDraft(question) {
+function toEditDraft(question: QuestionImportQuestionSnapshot): EditDraft {
   return {
     ...createEmptyEditDraft(),
-    questionText: question?.questionText || '',
-    subject: question?.subject || 'Genel',
-    grade: question?.grade || 'Tüm Sınıflar',
-    unit: question?.unit || '',
-    topic: question?.topic || 'Genel',
-    learningOutcome: question?.learningOutcome || '',
-    difficulty: question?.difficulty || 'Orta',
-    type: question?.type || 'Çoktan Seçmeli',
-    points: question?.points || 1,
-    correctAnswer: question?.correctAnswer || '',
-    explanation: question?.explanation || '',
-    imageUrl: question?.imageUrl || '',
-    options: Array.isArray(question?.options) ? question.options : [],
+    questionText: question.questionText || '',
+    subject: question.subject || 'Genel',
+    grade: question.grade || 'Tüm Sınıflar',
+    unit: question.unit || '',
+    topic: question.topic || 'Genel',
+    learningOutcome: question.learningOutcome || '',
+    difficulty: question.difficulty || 'Orta',
+    type: question.type || 'Çoktan Seçmeli',
+    points: question.points || 1,
+    correctAnswer: question.correctAnswer || '',
+    explanation: question.explanation || '',
+    imageUrl: question.imageUrl || '',
+    options: Array.isArray(question.options) ? question.options : [],
   };
 }
 
-function FileTypeIcon({ fileName = '' }) {
-  const extension = fileName.split('.').pop()?.toLowerCase();
+function FileTypeIcon({ fileName = '' }: { fileName?: string }) {
+  const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
   if (extension === 'zip') return <FileArchive className="h-7 w-7 text-purple-300" />;
   if (['xlsx', 'csv', 'tsv'].includes(extension)) return <FileSpreadsheet className="h-7 w-7 text-emerald-300" />;
   if (['png', 'jpg', 'jpeg', 'webp'].includes(extension)) return <ImageIcon className="h-7 w-7 text-sky-300" />;
   return <FileText className="h-7 w-7 text-orange-300" />;
 }
 
-function StepRail({ currentStep }) {
+function StepRail({ currentStep }: { currentStep: number }) {
   return (
     <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-5 shadow-[0_20px_70px_-50px_rgba(15,23,42,0.9)]">
       <div className="grid gap-3 lg:grid-cols-5">
@@ -144,7 +187,7 @@ function StepRail({ currentStep }) {
   );
 }
 
-function MetricCard({ label, value, icon: Icon, color = 'text-orange-300' }) {
+function MetricCard({ label, value, icon: Icon, color = 'text-orange-300' }: { label: string; value: number | string; icon: IconComponent; color?: string }) {
   return (
     <div className="rounded-xl border border-foreground/10 bg-foreground/[0.035] p-4">
       <div className="mb-2 flex items-center gap-2 text-xs text-slate-400">
@@ -159,21 +202,21 @@ function MetricCard({ label, value, icon: Icon, color = 'text-orange-300' }) {
 export default function TeacherBulkQuestionUpload() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const fileInputRef = useRef(null);
-  const pollingRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollingRef = useRef<number | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
-  const [job, setJob] = useState(null);
-  const [history, setHistory] = useState([]);
+  const [job, setJob] = useState<QuestionImportJobSnapshot | null>(null);
+  const [history, setHistory] = useState<QuestionImportHistoryItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [viewMode, setViewMode] = useState('list');
-  const [editingQuestion, setEditingQuestion] = useState(null);
-  const [editDraft, setEditDraft] = useState(createEmptyEditDraft());
-  const [bulkDraft, setBulkDraft] = useState({
+  const [editingQuestion, setEditingQuestion] = useState<QuestionImportQuestionSnapshot | null>(null);
+  const [editDraft, setEditDraft] = useState<EditDraft>(createEmptyEditDraft());
+  const [bulkDraft, setBulkDraft] = useState<BulkDraft>({
     subject: '',
     grade: '',
     unit: '',
@@ -183,7 +226,7 @@ export default function TeacherBulkQuestionUpload() {
     type: '',
     points: '',
   });
-  const [target, setTarget] = useState(targetOptions[0]);
+  const [target, setTarget] = useState(targetOptions[0] ?? 'Soru Bankası');
   const [busyAction, setBusyAction] = useState('');
 
   const questions = useMemo(() => job?.questions || [], [job?.questions]);
@@ -205,31 +248,31 @@ export default function TeacherBulkQuestionUpload() {
     } catch (error) {
       toast({
         title: 'Yükleme geçmişi alınamadı',
-        description: error.message || 'Tekrar deneyin.',
+        description: errorMessage(error, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     }
   }, [toast]);
 
-  const refreshJob = useCallback(async (id = job?.id) => {
+  const refreshJob = useCallback(async (id: string | undefined = job?.id) => {
     if (!id) return;
     try {
       const latest = await fetchQuestionImportJob(id);
       setJob(latest);
       if (latest?.status === 'Ready' || latest?.status === 'NeedsReview') {
-        setCurrentStep((prev) => Math.max(prev, latest.questions?.length > 0 ? 3 : 2));
+        setCurrentStep((prev) => Math.max(prev, latest.questions.length > 0 ? 3 : 2));
       }
     } catch (error) {
       toast({
         title: 'Import durumu alınamadı',
-        description: error.message || 'Tekrar deneyin.',
+        description: errorMessage(error, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     }
   }, [job?.id, toast]);
 
   useEffect(() => {
-    loadHistory();
+    void loadHistory();
   }, [loadHistory]);
 
   useEffect(() => {
@@ -242,25 +285,27 @@ export default function TeacherBulkQuestionUpload() {
       .withAutomaticReconnect()
       .build();
 
-    connection.on('QuestionImportProgress', (payload) => {
-      if (payload?.id === job.id) {
+    const jobId = job.id;
+    connection.on('QuestionImportProgress', (payload: unknown) => {
+      if (isImportJob(payload) && payload.id === jobId) {
         setJob(payload);
       }
     });
 
     connection.start()
-      .then(() => connection.invoke('JoinImport', job.id))
+      .then(() => connection.invoke('JoinImport', jobId))
       .catch(() => {});
 
     return () => {
-      connection.invoke('LeaveImport', job.id).catch(() => {});
+      connection.invoke('LeaveImport', jobId).catch(() => {});
       connection.stop().catch(() => {});
     };
   }, [job?.id]);
 
   useEffect(() => {
     if (!job?.id || !['Pending', 'Analyzing'].includes(job.status)) return undefined;
-    pollingRef.current = window.setInterval(() => refreshJob(job.id), 1500);
+    const jobId = job.id;
+    pollingRef.current = window.setInterval(() => { void refreshJob(jobId); }, 1500);
     return () => {
       if (pollingRef.current) window.clearInterval(pollingRef.current);
     };
@@ -270,7 +315,7 @@ export default function TeacherBulkQuestionUpload() {
     setSelectedIds((prev) => prev.filter((id) => questions.some((question) => question.id === id)));
   }, [questions]);
 
-  const handleFile = async (file) => {
+  const handleFile = async (file: File | undefined) => {
     if (!file) return;
     try {
       setUploading(true);
@@ -278,6 +323,7 @@ export default function TeacherBulkQuestionUpload() {
       const formData = new FormData();
       formData.append('file', file);
       const created = await uploadQuestionImportFile(formData);
+      if (!created) throw new Error('Yükleme yanıtı alınamadı.');
       setJob(created);
       setSelectedIds((created.questions || []).map((question) => question.id));
       setCurrentStep((created.questions || []).length > 0 ? 3 : 2);
@@ -290,7 +336,7 @@ export default function TeacherBulkQuestionUpload() {
       setCurrentStep(1);
       toast({
         title: 'Dosya yüklenemedi',
-        description: error.message || 'Dosya formatını kontrol edin.',
+        description: errorMessage(error, 'Dosya formatını kontrol edin.'),
         variant: 'destructive',
       });
     } finally {
@@ -299,13 +345,13 @@ export default function TeacherBulkQuestionUpload() {
     }
   };
 
-  const openHistoryJob = async (item) => {
+  const openHistoryJob = async (item: QuestionImportHistoryItem) => {
     setHistoryOpen(false);
     setCurrentStep(2);
     await refreshJob(item.id);
   };
 
-  const removeHistoryJob = async (item) => {
+  const removeHistoryJob = async (item: QuestionImportHistoryItem) => {
     try {
       setBusyAction(`history-${item.id}`);
       await deleteQuestionImportJob(item.id);
@@ -315,7 +361,7 @@ export default function TeacherBulkQuestionUpload() {
     } catch (error) {
       toast({
         title: 'Kayıt silinemedi',
-        description: error.message || 'Tekrar deneyin.',
+        description: errorMessage(error, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -323,7 +369,7 @@ export default function TeacherBulkQuestionUpload() {
     }
   };
 
-  const toggleQuestion = (id) => {
+  const toggleQuestion = (id: string) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
 
@@ -333,12 +379,12 @@ export default function TeacherBulkQuestionUpload() {
     setSelectedIds(allSelected ? selectedIds.filter((id) => !visibleIds.includes(id)) : [...new Set([...selectedIds, ...visibleIds])]);
   };
 
-  const openEdit = (question) => {
+  const openEdit = (question: QuestionImportQuestionSnapshot) => {
     setEditingQuestion(question);
     setEditDraft(toEditDraft(question));
   };
 
-  const updateOption = (index, key, value) => {
+  const updateOption = (index: number, key: 'label' | 'text', value: string) => {
     setEditDraft((prev) => ({
       ...prev,
       options: prev.options.map((option, optionIndex) => (
@@ -352,16 +398,18 @@ export default function TeacherBulkQuestionUpload() {
     try {
       setBusyAction('edit');
       const updated = await updateQuestionImportQuestion(job.id, editingQuestion.id, editDraft);
-      setJob((prev) => ({
-        ...prev,
-        questions: prev.questions.map((question) => (question.id === updated.id ? updated : question)),
-      }));
+      if (updated) {
+        setJob((prev) => (prev ? {
+          ...prev,
+          questions: prev.questions.map((question) => (question.id === updated.id ? updated : question)),
+        } : prev));
+      }
       setEditingQuestion(null);
       toast({ title: 'Soru güncellendi' });
     } catch (error) {
       toast({
         title: 'Soru güncellenemedi',
-        description: error.message || 'Tekrar deneyin.',
+        description: errorMessage(error, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -369,7 +417,8 @@ export default function TeacherBulkQuestionUpload() {
     }
   };
 
-  const duplicateQuestion = async (question) => {
+  const duplicateQuestion = async (question: QuestionImportQuestionSnapshot) => {
+    if (!job?.id) return;
     try {
       setBusyAction(`duplicate-${question.id}`);
       await duplicateQuestionImportQuestion(job.id, question.id);
@@ -378,7 +427,7 @@ export default function TeacherBulkQuestionUpload() {
     } catch (error) {
       toast({
         title: 'Soru kopyalanamadı',
-        description: error.message || 'Tekrar deneyin.',
+        description: errorMessage(error, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -386,7 +435,8 @@ export default function TeacherBulkQuestionUpload() {
     }
   };
 
-  const deleteQuestion = async (question) => {
+  const deleteQuestion = async (question: QuestionImportQuestionSnapshot) => {
+    if (!job?.id) return;
     try {
       setBusyAction(`delete-${question.id}`);
       await deleteQuestionImportQuestion(job.id, question.id);
@@ -395,7 +445,7 @@ export default function TeacherBulkQuestionUpload() {
     } catch (error) {
       toast({
         title: 'Soru kaldırılamadı',
-        description: error.message || 'Tekrar deneyin.',
+        description: errorMessage(error, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -413,13 +463,13 @@ export default function TeacherBulkQuestionUpload() {
         points: bulkDraft.points ? Number(bulkDraft.points) : null,
       };
       const updated = await bulkUpdateQuestionImport(job.id, payload);
-      setJob(updated);
+      if (updated) setJob(updated);
       setCurrentStep(5);
       toast({ title: 'Toplu düzenleme uygulandı' });
     } catch (error) {
       toast({
         title: 'Toplu düzenleme başarısız',
-        description: error.message || 'Tekrar deneyin.',
+        description: errorMessage(error, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -439,12 +489,12 @@ export default function TeacherBulkQuestionUpload() {
       await loadHistory();
       toast({
         title: 'Aktarım tamamlandı',
-        description: `${response.importedCount || 0} soru kaydedildi, ${response.failedCount || 0} hata.`,
+        description: `${response?.importedCount || 0} soru kaydedildi, ${response?.failedCount || 0} hata.`,
       });
     } catch (error) {
       toast({
         title: 'Aktarım yapılamadı',
-        description: error.message || 'Tekrar deneyin.',
+        description: errorMessage(error, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -720,14 +770,14 @@ export default function TeacherBulkQuestionUpload() {
             <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.04] p-5">
               <h3 className="font-black text-white">Toplu Düzenleme</h3>
               <div className="mt-4 space-y-3">
-                {[
+                {([
                   ['subject', 'Ders', 'Matematik'],
                   ['grade', 'Sınıf', '7. Sınıf'],
                   ['unit', 'Ünite', 'Üslü Sayılar'],
                   ['topic', 'Konu', 'Üs Alma İşlemi'],
                   ['learningOutcome', 'Kazanım', 'M.7.1.3'],
                   ['points', 'Puan', '1'],
-                ].map(([key, label, placeholder]) => (
+                ] satisfies ReadonlyArray<readonly [BulkTextKey, string, string]>).map(([key, label, placeholder]) => (
                   <label key={key} className="block">
                     <span className="mb-1 block text-xs text-slate-400">{label}</span>
                     <Input value={bulkDraft[key]} onChange={(event) => setBulkDraft((prev) => ({ ...prev, [key]: event.target.value }))} placeholder={placeholder} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground placeholder:text-slate-600" />
@@ -806,7 +856,7 @@ export default function TeacherBulkQuestionUpload() {
                 <span className="mb-1 block text-xs text-slate-400">Soru Metni</span>
                 <Textarea value={editDraft.questionText} onChange={(event) => setEditDraft((prev) => ({ ...prev, questionText: event.target.value }))} className="min-h-[120px] border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" />
               </label>
-              {[
+              {([
                 ['subject', 'Ders'],
                 ['grade', 'Sınıf'],
                 ['unit', 'Ünite'],
@@ -814,7 +864,7 @@ export default function TeacherBulkQuestionUpload() {
                 ['learningOutcome', 'Kazanım'],
                 ['points', 'Puan'],
                 ['correctAnswer', 'Doğru Cevap'],
-              ].map(([key, label]) => (
+              ] satisfies ReadonlyArray<readonly [EditTextKey | 'points', string]>).map(([key, label]) => (
                 <label key={key}>
                   <span className="mb-1 block text-xs text-slate-400">{label}</span>
                   <Input value={editDraft[key]} onChange={(event) => setEditDraft((prev) => ({ ...prev, [key]: key === 'points' ? Number(event.target.value || 0) : event.target.value }))} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" />

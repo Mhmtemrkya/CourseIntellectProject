@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Brain, Search, Plus, Upload, Download, Trash2, BookOpen, Zap, Pencil, PenLine, Wand2, BarChart3, Users, FileText, Lightbulb, Eye, EyeOff,
@@ -31,21 +31,63 @@ import {
   uploadFile,
   updateQuestionBankItem,
 } from '../../lib/api/modules';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { CreateQuestionBankItemRequest, QuestionBankItemDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const containerVariants = {
+/** Soru ekleme/düzenleme penceresindeki tek soru kartı. */
+interface QuestionDraft {
+  id: string;
+  question: string;
+  subject: string;
+  topic: string;
+  difficulty: string;
+  type: string;
+  options: string;
+  correctOptionIndex: string;
+  expectedAnswer: string;
+  classTargets: string[];
+  imagePlacement: string;
+  questionSetKey: string;
+  questionSetTitle: string;
+  questionOrder: number | null;
+  revealCorrectAnswerToStudent: boolean;
+  imageFile: File | null;
+  imagePath: string;
+  solutionFile: File | null;
+  solutionAssetPath: string;
+  solutionAssetType: string;
+}
+
+interface QuestionSetMeta {
+  questionSetKey?: string | null;
+  questionSetTitle?: string | null;
+  questionOrder?: number | null;
+}
+
+interface QuestionSet {
+  key: string;
+  title: string;
+  subject: string;
+  difficulty: string;
+  questions: QuestionBankItemDto[];
+  totalUsage: number;
+}
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
-const createQuestionDraft = () => ({
+const createQuestionDraft = (): QuestionDraft => ({
   id: `draft-${Math.random().toString(36).slice(2, 9)}`,
   question: '',
-  subject: DEFAULT_SUBJECTS[0],
+  subject: DEFAULT_SUBJECTS[0] ?? 'Matematik',
   topic: '',
   difficulty: 'Orta',
   type: 'Açık Uçlu',
@@ -66,9 +108,9 @@ const createQuestionDraft = () => ({
 });
 
 const DEFAULT_SUBJECTS = ['Matematik', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji', 'İngilizce'];
-const FALLBACK_CLASSES = [];
+const FALLBACK_CLASSES: string[] = [];
 
-function normalizeQuestionType(value = '') {
+function normalizeQuestionType(value = ''): string {
   return value
     .toString()
     .trim()
@@ -81,26 +123,26 @@ function normalizeQuestionType(value = '') {
     .replaceAll('ü', 'u');
 }
 
-function isMultipleChoice(type = '') {
+function isMultipleChoice(type = ''): boolean {
   const normalized = normalizeQuestionType(type);
   return normalized.includes('coktan') || normalized.includes('secmeli');
 }
 
-function isTrueFalse(type = '') {
+function isTrueFalse(type = ''): boolean {
   const normalized = normalizeQuestionType(type);
   return normalized.includes('dogru') || normalized.includes('yanlis');
 }
 
-function isExamOnlyQuestion(item) {
+function isExamOnlyQuestion(item: QuestionBankItemDto): boolean {
   try {
-    const metadata = JSON.parse(item?.editorMetadataJson || '{}');
-    return metadata?.visibility === 'ExamOnly';
+    const metadata: unknown = JSON.parse(item.editorMetadataJson || '{}');
+    return isRecord(metadata) && metadata.visibility === 'ExamOnly';
   } catch {
     return false;
   }
 }
 
-function buildQuestionSetKey(item) {
+function buildQuestionSetKey(item: QuestionBankItemDto): string {
   if (item.questionSetKey) return item.questionSetKey;
   const createdAt = item.createdAt ? new Date(item.createdAt) : null;
   const bucket = createdAt && !Number.isNaN(createdAt.getTime())
@@ -110,14 +152,15 @@ function buildQuestionSetKey(item) {
   return `${item.teacher}|${item.subject}|${item.topic}|${bucket}|${classes}`;
 }
 
-function buildQuestionSets(items) {
-  const groups = new Map();
+function buildQuestionSets(items: readonly QuestionBankItemDto[]): QuestionSet[] {
+  const groups = new Map<string, QuestionBankItemDto[]>();
   [...items]
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
     .forEach((item) => {
     const key = buildQuestionSetKey(item);
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(item);
+    const bucket = groups.get(key) ?? [];
+    bucket.push(item);
+    groups.set(key, bucket);
   });
   return Array.from(groups.entries()).map(([key, questions]) => ({
     key,
@@ -128,20 +171,20 @@ function buildQuestionSets(items) {
       const aOrder = a.questionOrder ?? 9999;
       const bOrder = b.questionOrder ?? 9999;
       if (aOrder !== bOrder) return aOrder - bOrder;
-      return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+      return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
     }),
     totalUsage: questions.reduce((sum, question) => sum + Number(question.usageCount || 0), 0),
-  })).sort((a, b) => new Date(b.questions[0]?.createdAt || 0) - new Date(a.questions[0]?.createdAt || 0));
+  })).sort((a, b) => new Date(b.questions[0]?.createdAt || 0).getTime() - new Date(a.questions[0]?.createdAt || 0).getTime());
 }
 
-function resolveQuestionImageUrl(path) {
+function resolveQuestionImageUrl(path: string | null | undefined): string {
   if (!path) return '';
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   if (path.startsWith('/')) return `${desktopApiBaseUrl}${path}`;
   return `${desktopApiBaseUrl}/${path}`;
 }
 
-function getSubjectTheme(subject = '') {
+function getSubjectTheme(subject = ''): { gradient: string; accent: string; soft: string } {
   const normalized = decodeSubject(subject).toLowerCase();
   if (normalized.includes('mat')) return { gradient: 'from-blue-600 to-indigo-700', accent: 'bg-blue-600', soft: 'bg-blue-50 text-blue-700 border-blue-200' };
   if (normalized.includes('fiz')) return { gradient: 'from-violet-600 to-purple-700', accent: 'bg-violet-600', soft: 'bg-violet-50 text-violet-700 border-violet-200' };
@@ -152,7 +195,7 @@ function getSubjectTheme(subject = '') {
   return { gradient: 'from-teal-500 to-cyan-700', accent: 'bg-teal-500', soft: 'bg-slate-100 text-slate-700 border-slate-200' };
 }
 
-function getSubjectMark(subject = '') {
+function getSubjectMark(subject = ''): string {
   const normalized = decodeSubject(subject).toLowerCase();
   if (normalized.includes('mat')) return 'x²';
   if (normalized.includes('fiz')) return 'F';
@@ -163,7 +206,7 @@ function getSubjectMark(subject = '') {
   return 'QB';
 }
 
-function getSubjectTagline(subject = '') {
+function getSubjectTagline(subject = ''): string {
   const normalized = decodeSubject(subject).toLowerCase();
   if (normalized.includes('mat')) return 'FORMÜL • PROBLEM • MANTIK';
   if (normalized.includes('fiz')) return 'HAREKET • ENERJİ • KUVVET';
@@ -174,7 +217,7 @@ function getSubjectTagline(subject = '') {
   return 'SET • PRATİK • TEKRAR';
 }
 
-function decodeSubject(subject = '') {
+function decodeSubject(subject = ''): string {
   return subject
     .replaceAll('&#xFC;', 'ü')
     .replaceAll('&#xDC;', 'Ü')
@@ -200,7 +243,7 @@ function decodeSubject(subject = '') {
     .replaceAll('&amp;', '&');
 }
 
-function EmptyQuestionBankState({ onCreate, onImport }) {
+function EmptyQuestionBankState({ onCreate, onImport }: { onCreate: () => void; onImport: () => void }) {
   const floatingIcons = [
     { Icon: FileText, className: 'left-[16%] top-[76px]', color: 'text-orange-400 border-orange-400/25 shadow-orange-500/10' },
     { Icon: Wand2, className: 'right-[16%] top-[78px]', color: 'text-purple-400 border-purple-400/25 shadow-purple-500/10' },
@@ -262,17 +305,17 @@ export default function TeacherQuestionBank() {
   const { toast } = useToast();
   const { user } = useApp();
   const navigate = useNavigate();
-  const importInputRef = useRef(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [search, setSearch] = useState('');
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState<QuestionBankItemDto[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState(null);
+  const [editingQuestion, setEditingQuestion] = useState<QuestionBankItemDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [questionDrafts, setQuestionDrafts] = useState([createQuestionDraft()]);
-  const [classOptions, setClassOptions] = useState(['Tüm Sınıflar']);
+  const [questionDrafts, setQuestionDrafts] = useState<QuestionDraft[]>([createQuestionDraft()]);
+  const [classOptions, setClassOptions] = useState<string[]>(['Tüm Sınıflar']);
   const availableClassOptions = useMemo(
     () => (classOptions.length > 1 ? classOptions : ['Tüm Sınıflar', ...FALLBACK_CLASSES]),
     [classOptions],
@@ -302,14 +345,14 @@ export default function TeacherQuestionBank() {
       ])].sort((a, b) => a.localeCompare(b, 'tr'));
       setClassOptions(['Tüm Sınıflar', ...(classes.length > 0 ? classes : FALLBACK_CLASSES)]);
     } catch (err) {
-      setError(err.message || 'Soru bankası alınamadı.');
+      setError(errorMessage(err, 'Soru bankası alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadQuestions();
+    void loadQuestions();
   }, [loadQuestions]);
 
   const subjects = useMemo(() => [...new Set(questions.map((item) => item.subject).filter(Boolean))], [questions]);
@@ -333,7 +376,7 @@ export default function TeacherQuestionBank() {
     setEditingQuestion(null);
   };
 
-  const openEditDialog = (question) => {
+  const openEditDialog = (question: QuestionBankItemDto) => {
     setEditingQuestion(question);
     setQuestionDrafts([{
       ...createQuestionDraft(),
@@ -359,10 +402,10 @@ export default function TeacherQuestionBank() {
     setShowAddDialog(true);
   };
 
-  const updateDraft = (id, key, value) => {
-    setQuestionDrafts((prev) => prev.map((item) => {
+  const updateDraft = <K extends keyof QuestionDraft>(id: string, key: K, value: QuestionDraft[K]) => {
+    setQuestionDrafts((prev) => prev.map((item): QuestionDraft => {
       if (item.id !== id) return item;
-      if (key === 'type') {
+      if (key === 'type' && typeof value === 'string') {
         if (value === 'Çoktan Seçmeli') {
           return { ...item, type: value, expectedAnswer: '' };
         }
@@ -386,7 +429,7 @@ export default function TeacherQuestionBank() {
     }));
   };
 
-  const toggleDraftClass = (draftId, className) => {
+  const toggleDraftClass = (draftId: string, className: string) => {
     setQuestionDrafts((prev) => prev.map((item) => {
       if (item.id !== draftId) return item;
       const selected = Array.isArray(item.classTargets) ? item.classTargets : ['Tüm Sınıflar'];
@@ -410,11 +453,11 @@ export default function TeacherQuestionBank() {
     setQuestionDrafts((prev) => [...prev, createQuestionDraft()]);
   };
 
-  const removeDraft = (id) => {
+  const removeDraft = (id: string) => {
     setQuestionDrafts((prev) => (prev.length === 1 ? prev : prev.filter((item) => item.id !== id)));
   };
 
-  const detectAssetType = (file) => {
+  const detectAssetType = (file: File | null) => {
     if (!file) return '';
     const name = file.name.toLowerCase();
     if (name.endsWith('.pdf')) return 'PDF';
@@ -422,7 +465,7 @@ export default function TeacherQuestionBank() {
     return 'Dosya';
   };
 
-  const uploadDraftAssets = async (draft) => {
+  const uploadDraftAssets = async (draft: QuestionDraft) => {
     let imagePath = draft.imagePath || null;
     let solutionAssetPath = draft.solutionAssetPath || null;
     let solutionAssetType = draft.solutionAssetType || null;
@@ -431,14 +474,14 @@ export default function TeacherQuestionBank() {
       const imageForm = new FormData();
       imageForm.append('file', draft.imageFile);
       const uploaded = await uploadFile(imageForm, 'question-images');
-      imagePath = uploaded.fileUrl || uploaded.fileName || draft.imageFile.name;
+      imagePath = uploaded?.fileUrl || uploaded?.fileName || draft.imageFile.name;
     }
 
     if (draft.solutionFile) {
       const solutionForm = new FormData();
       solutionForm.append('file', draft.solutionFile);
       const uploaded = await uploadFile(solutionForm, 'question-solutions');
-      solutionAssetPath = uploaded.fileUrl || uploaded.fileName || draft.solutionFile.name;
+      solutionAssetPath = uploaded?.fileUrl || uploaded?.fileName || draft.solutionFile.name;
       solutionAssetType = detectAssetType(draft.solutionFile);
     }
 
@@ -449,7 +492,7 @@ export default function TeacherQuestionBank() {
     };
   };
 
-  const buildPayload = async (draft, setMeta = {}) => {
+  const buildPayload = async (draft: QuestionDraft, setMeta: QuestionSetMeta = {}): Promise<CreateQuestionBankItemRequest> => {
     const uploadedAssets = await uploadDraftAssets(draft);
     return {
       subject: draft.subject,
@@ -498,18 +541,29 @@ export default function TeacherQuestionBank() {
     try {
       setSaving(true);
       if (editingQuestion) {
-        const updated = await updateQuestionBankItem(editingQuestion.id, await buildPayload(questionDrafts[0], {
+        const [draft] = questionDrafts;
+        if (!draft) return;
+        const payload = await buildPayload(draft, {
           questionSetKey: editingQuestion.questionSetKey,
           questionSetTitle: editingQuestion.questionSetTitle,
           questionOrder: editingQuestion.questionOrder ?? 0,
-        }));
-        setQuestions((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+        });
+        // Sunucu her alanı gövdeden aynen yazar; pencerede düzenlenmeyen alanlar
+        // taşınmazsa pasif soru yeniden yayına girer, editör meta verisi ve çözüm
+        // metni silinirdi. (richTextHtml bilinçli taşınmaz: pencere düz metni düzenler.)
+        const updated = await updateQuestionBankItem(editingQuestion.id, {
+          ...payload,
+          solutionTextHtml: editingQuestion.solutionTextHtml,
+          editorMetadataJson: editingQuestion.editorMetadataJson,
+          publicationStatus: editingQuestion.publicationStatus,
+        });
+        if (updated) setQuestions((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
         toast({
           title: 'Soru güncellendi',
           description: 'Kayıt backend üzerinde güncellendi.',
         });
       } else {
-        const createdItems = [];
+        const createdItems: QuestionBankItemDto[] = [];
         const questionSetKey = `set-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const questionSetTitle = questionDrafts[0]?.topic || 'Soru Seti';
         for (const draft of questionDrafts) {
@@ -518,7 +572,7 @@ export default function TeacherQuestionBank() {
             questionSetTitle,
             questionOrder: questionDrafts.findIndex((item) => item.id === draft.id),
           }));
-          createdItems.push(created);
+          if (created) createdItems.push(created);
         }
         setQuestions((prev) => [...createdItems.reverse(), ...prev]);
         toast({
@@ -531,7 +585,7 @@ export default function TeacherQuestionBank() {
     } catch (err) {
       toast({
         title: editingQuestion ? 'Soru güncellenemedi' : 'Soru eklenemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -539,10 +593,10 @@ export default function TeacherQuestionBank() {
     }
   };
 
-  const isSetPassive = (set) => set.questions.length > 0
+  const isSetPassive = (set: QuestionSet) => set.questions.length > 0
     && set.questions.every((question) => question.publicationStatus === 'Passive');
 
-  const questionToPayload = (question, publicationStatus) => ({
+  const questionToPayload = (question: QuestionBankItemDto, publicationStatus: string): CreateQuestionBankItemRequest => ({
     subject: question.subject,
     topic: question.topic,
     difficulty: question.difficulty,
@@ -569,13 +623,13 @@ export default function TeacherQuestionBank() {
 
   // Pasif sorular öğrenci soru bankasında görünmez; öğretmen sınav
   // oluştururken kaynak olarak kullanmaya devam eder.
-  const handleToggleSetPassive = async (set) => {
+  const handleToggleSetPassive = async (set: QuestionSet) => {
     const nextStatus = isSetPassive(set) ? 'Published' : 'Passive';
     try {
       const updatedItems = await Promise.all(
         set.questions.map((question) => updateQuestionBankItem(question.id, questionToPayload(question, nextStatus))),
       );
-      const updatedById = new Map(updatedItems.map((item) => [item.id, item]));
+      const updatedById = new Map(updatedItems.flatMap((item) => (item ? [[item.id, item] as const] : [])));
       setQuestions((prev) => prev.map((item) => updatedById.get(item.id) || item));
       toast({
         title: nextStatus === 'Passive' ? 'Soru seti pasife alındı' : 'Soru seti aktifleştirildi',
@@ -584,11 +638,11 @@ export default function TeacherQuestionBank() {
           : 'Sorular yeniden öğrenci soru bankasında görünür.',
       });
     } catch (err) {
-      toast({ title: 'Durum değiştirilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Durum değiştirilemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     }
   };
 
-  const handleDeleteQuestionSet = async (set) => {
+  const handleDeleteQuestionSet = async (set: QuestionSet) => {
     try {
       const ids = set.questions.map((item) => item.id);
       await Promise.all(ids.map((id) => deleteQuestionBankItem(id)));
@@ -600,13 +654,13 @@ export default function TeacherQuestionBank() {
     } catch (err) {
       toast({
         title: 'Soru seti silinemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     }
   };
 
-  const handleSolveQuestionSet = (set) => {
+  const handleSolveQuestionSet = (set: QuestionSet) => {
     const questionIds = set.questions.map((question) => question.id).filter(Boolean);
     if (questionIds.length === 0) {
       toast({
@@ -628,7 +682,7 @@ export default function TeacherQuestionBank() {
     navigate(`/t/solve-preview?${params.toString()}`);
   };
 
-  const downloadTextFile = (filename, content, type = 'application/json;charset=utf-8') => {
+  const downloadTextFile = (filename: string, content: string, type = 'application/json;charset=utf-8') => {
     const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -663,36 +717,38 @@ export default function TeacherQuestionBank() {
     navigate('/t/question-bank/import');
   };
 
-  const handleImportFile = async (event) => {
+  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const [file] = event.target.files || [];
     if (!file) return;
     try {
       const raw = await file.text();
-      const parsed = JSON.parse(raw);
+      const parsed: unknown = JSON.parse(raw);
       if (!Array.isArray(parsed) || parsed.length === 0) {
         throw new Error('Dosya içinde soru listesi bulunamadı.');
       }
 
-      const createdQuestions = [];
+      const createdQuestions: QuestionBankItemDto[] = [];
       for (const item of parsed) {
+        if (!isRecord(item)) continue;
+        const text = (value: unknown, fallback: string) => (value ? String(value) : fallback);
         const created = await createQuestionBankItem({
-          subject: item.subject || 'Genel',
-          topic: item.topic || 'Genel',
-          difficulty: item.difficulty || 'Orta',
-          type: item.type || 'Açık Uçlu',
-          questionText: item.questionText || item.question || '',
+          subject: text(item.subject, 'Genel'),
+          topic: text(item.topic, 'Genel'),
+          difficulty: text(item.difficulty, 'Orta'),
+          type: text(item.type, 'Açık Uçlu'),
+          questionText: text(item.questionText || item.question, ''),
           teacher: user?.name || 'Öğretmen',
           imagePath: null,
           imagePlacement: 'Top',
-          options: Array.isArray(item.options) ? item.options : [],
-          correctOptionIndex: item.correctOptionIndex ?? null,
-          classTargets: Array.isArray(item.classTargets) && item.classTargets.length > 0 ? item.classTargets : ['Tüm Sınıflar'],
+          options: Array.isArray(item.options) ? item.options.map((option) => String(option)) : [],
+          correctOptionIndex: typeof item.correctOptionIndex === 'number' ? item.correctOptionIndex : null,
+          classTargets: Array.isArray(item.classTargets) && item.classTargets.length > 0 ? item.classTargets.map((target) => String(target)) : ['Tüm Sınıflar'],
           solutionAssetPath: null,
           solutionAssetType: null,
           revealCorrectAnswerToStudent: !!item.revealCorrectAnswerToStudent,
-          expectedAnswer: item.expectedAnswer || null,
+          expectedAnswer: item.expectedAnswer ? String(item.expectedAnswer) : null,
         });
-        createdQuestions.push(created);
+        if (created) createdQuestions.push(created);
       }
 
       setQuestions((prev) => [...createdQuestions, ...prev]);
@@ -703,7 +759,7 @@ export default function TeacherQuestionBank() {
     } catch (err) {
       toast({
         title: 'İçe aktarma başarısız',
-        description: err.message || 'JSON formatını kontrol edin.',
+        description: errorMessage(err, 'JSON formatını kontrol edin.'),
         variant: 'destructive',
       });
     } finally {
@@ -945,11 +1001,11 @@ export default function TeacherQuestionBank() {
       ) : (
       <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
+        {([
           [stats.total, 'Toplam Soru', BookOpen, 'from-brand-primary to-brand-accent'],
           [stats.activeSubjects, 'Aktif Ders', Brain, 'from-green-500 to-emerald-500'],
           [stats.solvedUsage, 'Toplam Kullanım', Zap, 'from-yellow-500 to-orange-500'],
-        ].map(([value, label, Icon, gradient]) => (
+        ] satisfies ReadonlyArray<readonly [number, string, IconComponent, string]>).map(([value, label, Icon, gradient]) => (
           <motion.div variants={itemVariants} key={label}>
             <Card className="border-0 shadow-lg overflow-hidden">
               <CardContent className="p-5">
@@ -1026,7 +1082,7 @@ export default function TeacherQuestionBank() {
                       onClick={() => handleToggleSetPassive(set)}
                     />
                     <CardIconAction icon={PenLine} title="Öğretmen önizleme çözümü" onClick={() => handleSolveQuestionSet(set)} />
-                    <CardIconAction icon={Pencil} title="Düzenle" onClick={() => openEditDialog(set.questions[0])} />
+                    <CardIconAction icon={Pencil} title="Düzenle" onClick={() => { const [first] = set.questions; if (first) openEditDialog(first); }} />
                     <CardIconAction icon={Trash2} tone="danger" title="Soru setini sil" onClick={() => handleDeleteQuestionSet(set)} />
                   </>
                 )}

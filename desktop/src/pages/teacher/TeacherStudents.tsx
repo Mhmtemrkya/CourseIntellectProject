@@ -25,8 +25,10 @@ import {
   fetchScheduleEntries,
   fetchStudents,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { AttendanceEntryDto, ExamResultDto, ScheduleEntryDto, StudentSummaryDto } from '../../types/api/generated';
 
-const normalize = (value = '') => String(value).trim().toLocaleLowerCase('tr-TR');
+const normalize = (value: string | null | undefined = ''): string => String(value ?? '').trim().toLocaleLowerCase('tr-TR');
 
 /**
  * Öğretmenin KENDİ öğrencileri.
@@ -39,10 +41,10 @@ const normalize = (value = '') => String(value).trim().toLocaleLowerCase('tr-TR'
 export default function TeacherStudents() {
   const navigate = useNavigate();
   const { user } = useApp();
-  const [students, setStudents] = useState([]);
-  const [schedule, setSchedule] = useState([]);
-  const [attendance, setAttendance] = useState([]);
-  const [examResults, setExamResults] = useState([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleEntryDto[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceEntryDto[]>([]);
+  const [examResults, setExamResults] = useState<ExamResultDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -63,13 +65,13 @@ export default function TeacherStudents() {
       setAttendance(Array.isArray(attendanceRows) ? attendanceRows : []);
       setExamResults(Array.isArray(examRows) ? examRows : []);
     } catch (err) {
-      setError(err.message || 'Öğrenci listesi alınamadı.');
+      setError(errorMessage(err, 'Öğrenci listesi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   // Öğretmenin dersine girdiği sınıflar + verdiği dersler.
   const { myClasses, lessonsByClass } = useMemo(() => {
@@ -77,10 +79,10 @@ export default function TeacherStudents() {
     const mine = schedule.filter((row) => normalize(row.teacher) === me);
     const classes = [...new Set(mine.map((row) => row.className).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, 'tr'));
-    const lessons = new Map();
+    const lessons = new Map<string, Set<string>>();
     mine.forEach((row) => {
       if (!row.className) return;
-      const list = lessons.get(row.className) || new Set();
+      const list = lessons.get(row.className) || new Set<string>();
       if (row.subject) list.add(row.subject);
       lessons.set(row.className, list);
     });

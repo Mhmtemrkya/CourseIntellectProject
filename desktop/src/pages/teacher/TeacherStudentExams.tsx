@@ -11,8 +11,10 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchExamResults, fetchStaff } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { ExamResultDto } from '../../types/api/generated';
 
-const normalize = (value = '') => String(value)
+const normalize = (value: string | null | undefined = ''): string => String(value ?? '')
   .trim()
   .toLowerCase()
   .replaceAll('ç', 'c')
@@ -32,7 +34,7 @@ export default function TeacherStudentExams() {
   const [accessMessage, setAccessMessage] = useState('');
   const [fullAccess, setFullAccess] = useState(false);
   const [homeroomClass, setHomeroomClass] = useState('');
-  const [records, setRecords] = useState([]);
+  const [records, setRecords] = useState<ExamResultDto[]>([]);
   const [selectedClass, setSelectedClass] = useState('all');
   const [search, setSearch] = useState('');
 
@@ -70,14 +72,14 @@ export default function TeacherStudentExams() {
       setRecords(Array.isArray(results) ? results : []);
       setSelectedClass(allowAll ? 'all' : homeroom);
     } catch (err) {
-      setError(err.message || 'Sınav sonuçları alınamadı.');
+      setError(errorMessage(err, 'Sınav sonuçları alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const classes = useMemo(

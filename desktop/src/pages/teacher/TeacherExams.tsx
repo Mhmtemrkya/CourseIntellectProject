@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../../components/ui/card';
 import { FeatureGate } from '../../components/FeatureGate';
@@ -9,23 +9,46 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
-import { deletePlannedExam, fetchExamResults, fetchPlannedExams } from '../../lib/api/modules';
-import ExamAttendanceDialog from '../../components/teacher/ExamAttendanceDialog';
+import { fetchExamResults, fetchPlannedExams } from '../../lib/api/modules';
 import ExamLiveCameraDialog from '../../components/teacher/ExamLiveCameraDialog';
-import ExamManagementSheet from '../../components/exams/ExamManagementSheet';
+import ExamManagementSheet, { type ManagedExam } from '../../components/exams/ExamManagementSheet';
+import { errorMessage } from '../../lib/errors';
+import type { PlannedExam } from '../../lib/api/plannedExams';
+import type { ExamResultDto } from '../../types/api/generated';
+
+interface ResultGroup {
+  key: string;
+  title: string;
+  subject: string;
+  className: string;
+  dateLabel: string;
+  type: string;
+  items: ExamResultDto[];
+}
+
+/**
+ * Yönet penceresinde açık olan kayıt; satırın KOPYASI değil anahtarı tutulur ki
+ * pencere işlem sonrası tazelenen listeden güncel veriyi göstersin. Tamamlanan
+ * sonuç grubu planlı sınava bağlı değildir (id yok); künye düzenleme/silme/yoklama
+ * bu yüzden kapalıdır.
+ */
+interface ManagedSelection {
+  kind: 'planned' | 'completed';
+  key: string;
+}
 
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
-function decodeText(value = '') {
+function decodeText(value: string | null | undefined = ''): string {
   return String(value || '')
     .replaceAll('&#xFC;', 'ü')
     .replaceAll('&#xDC;', 'Ü')
@@ -53,34 +76,48 @@ function decodeText(value = '') {
 export default function TeacherExams() {
   const { user } = useApp();
   const navigate = useNavigate();
-  const [examResults, setExamResults] = useState([]);
-  const [plannedExams, setPlannedExams] = useState([]);
+  const [examResults, setExamResults] = useState<ExamResultDto[]>([]);
+  const [plannedExams, setPlannedExams] = useState<PlannedExam[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [attendanceExam, setAttendanceExam] = useState(null);
-  const [liveCameraExam, setLiveCameraExam] = useState(null);
-  const [managedExam, setManagedExam] = useState(null);
+  const [liveCameraExam, setLiveCameraExam] = useState<PlannedExam | null>(null);
+  const [managedExam, setManagedExam] = useState<ManagedSelection | null>(null);
+
+  const fetchAll = useCallback(async () => {
+    const [results, planned] = await Promise.all([
+      fetchExamResults(),
+      fetchPlannedExams({ teacherName: user?.name }).catch(() => []),
+    ]);
+    setExamResults(results ?? []);
+    setPlannedExams(planned ?? []);
+  }, [user?.name]);
 
   const loadExams = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [results, planned] = await Promise.all([
-        fetchExamResults(),
-        fetchPlannedExams({ teacherName: user?.name }).catch(() => []),
-      ]);
-      setExamResults(results);
-      setPlannedExams(planned);
+      await fetchAll();
     } catch (err) {
-      setError(err.message || 'Sınav verileri alınamadı.');
+      setError(errorMessage(err, 'Sınav verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
-  }, [user?.name]);
+  }, [fetchAll]);
+
+  // Yönet penceresindeki işlemlerden sonra: tam sayfa yükleniyor ekranı açılmaz,
+  // yoksa pencere kapanıp menüye döner.
+  const refreshExams = useCallback(async () => {
+    try {
+      setError('');
+      await fetchAll();
+    } catch (err) {
+      setError(errorMessage(err, 'Sınav verileri alınamadı.'));
+    }
+  }, [fetchAll]);
 
   useEffect(() => {
-    loadExams();
+    void loadExams();
   }, [loadExams]);
 
   const filteredExams = useMemo(() => examResults.filter((item) => (
@@ -88,26 +125,25 @@ export default function TeacherExams() {
   )), [examResults, searchQuery]);
 
   const groupedResults = useMemo(() => {
-    const groups = new Map();
+    const groups = new Map<string, ResultGroup>();
     filteredExams.forEach((item) => {
       const key = [
         item.examTitle,
         item.className,
         item.subject,
-        item.dateLabel || item.date,
+        item.dateLabel,
       ].join('|');
-      if (!groups.has(key)) {
-        groups.set(key, {
-          key,
-          title: item.examTitle,
-          subject: item.subject,
-          className: item.className,
-          dateLabel: item.dateLabel || item.date,
-          type: item.type,
-          items: [],
-        });
-      }
-      groups.get(key).items.push(item);
+      const group = groups.get(key) ?? {
+        key,
+        title: item.examTitle,
+        subject: item.subject,
+        className: item.className,
+        dateLabel: item.dateLabel,
+        type: item.type,
+        items: [],
+      };
+      group.items.push(item);
+      groups.set(key, group);
     });
 
     return Array.from(groups.values()).map((group) => {
@@ -123,49 +159,30 @@ export default function TeacherExams() {
     });
   }, [filteredExams]);
 
+  const managedExamInfo = useMemo((): ManagedExam | null => {
+    if (!managedExam) return null;
+    if (managedExam.kind === 'planned') {
+      return plannedExams.find((exam) => exam.id === managedExam.key) ?? null;
+    }
+    const group = groupedResults.find((item) => item.key === managedExam.key);
+    return group
+      ? {
+          id: `result:${group.key}`,
+          title: group.title,
+          subject: group.subject,
+          className: group.className,
+          type: group.type,
+          dateLabel: group.dateLabel,
+        }
+      : null;
+  }, [managedExam, plannedExams, groupedResults]);
+
   const stats = {
     total: examResults.length + plannedExams.length,
     completed: examResults.length,
     scheduled: plannedExams.length,
     avgScore: examResults.length ? Math.round(examResults.reduce((sum, item) => sum + Number(item.score || 0), 0) / examResults.length) : 0,
   };
-
-  const copyExam = async (exam) => {
-    const summary = [
-      exam.title,
-      exam.subject,
-      exam.className,
-      exam.dateLabel || exam.date,
-      exam.duration,
-      exam.questionCount ? `${exam.questionCount} soru` : null,
-    ].filter(Boolean).join(' • ');
-    await navigator.clipboard.writeText(summary);
-  };
-
-  const removeExam = async (exam) => {
-    if (!exam?.id) return;
-    await deletePlannedExam(exam.id);
-    setPlannedExams((prev) => prev.filter((item) => item.id !== exam.id));
-  };
-
-  const managedActions = managedExam?.kind === 'planned'
-    ? [
-        { label: 'Görüntüle', close: false },
-        { label: 'Düzenle', onClick: () => navigate('/t/exam-workbench') },
-        { label: 'Sonuç Gir', onClick: () => navigate('/t/grade-entry') },
-        { label: 'Sonuçları İncele', onClick: () => navigate('/t/exam-workbench') },
-        { label: 'Kamera', onClick: () => setLiveCameraExam(managedExam.exam) },
-        { label: 'Yoklama', onClick: () => setAttendanceExam(managedExam.exam) },
-        { label: 'PDF', onClick: () => window.print() },
-        { label: 'Kopyala', onClick: () => copyExam(managedExam.exam) },
-        { label: 'Sil', destructive: true, onClick: () => removeExam(managedExam.exam) },
-      ]
-    : [
-        { label: 'Görüntüle', close: false },
-        { label: 'Sonuçları İncele', onClick: () => navigate('/t/exam-workbench') },
-        { label: 'PDF', onClick: () => window.print() },
-        { label: 'Kopyala', onClick: () => copyExam(managedExam?.exam || {}) },
-      ];
 
   if (loading) {
     return (
@@ -240,7 +257,10 @@ export default function TeacherExams() {
                           {[exam.className, exam.dateLabel || exam.date, exam.duration, exam.questionCount ? `${exam.questionCount} soru` : null].filter(Boolean).join(' • ')}
                         </p>
                       </div>
-                      <Button className="w-full shrink-0 sm:w-28" onClick={() => setManagedExam({ exam, kind: 'planned' })}>Yönet</Button>
+                      {exam.requireCamera ? (
+                        <Button variant="outline" className="w-full shrink-0 sm:w-28" onClick={() => setLiveCameraExam(exam)}>Kamera</Button>
+                      ) : null}
+                      <Button className="w-full shrink-0 sm:w-28" onClick={() => setManagedExam({ kind: 'planned', key: exam.id })}>Yönet</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -269,7 +289,12 @@ export default function TeacherExams() {
                           {exam.className} • {exam.dateLabel} • {exam.participantCount} katılım • Ortalama {exam.averageScore}
                         </p>
                       </div>
-                      <Button className="w-full shrink-0 sm:w-28" onClick={() => setManagedExam({ exam, kind: 'completed' })}>Yönet</Button>
+                      <Button
+                        className="w-full shrink-0 sm:w-28"
+                        onClick={() => setManagedExam({ kind: 'completed', key: exam.key })}
+                      >
+                        Yönet
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -287,19 +312,20 @@ export default function TeacherExams() {
         </TabsContent>
       </Tabs>
 
-      {attendanceExam ? (
-        <ExamAttendanceDialog exam={attendanceExam} onClose={() => setAttendanceExam(null)} />
-      ) : null}
-
       {liveCameraExam ? (
         <ExamLiveCameraDialog exam={liveCameraExam} onClose={() => setLiveCameraExam(null)} />
       ) : null}
 
+      {/* Pencere kendi menüsünü (detay/künye/sonuç/yoklama/sil) çizer; eskiden
+          verilen `actions` listesi 142f1d2'den beri yok sayılıyordu. */}
       <ExamManagementSheet
-        exam={managedExam?.exam}
-        open={Boolean(managedExam)}
-        onOpenChange={(open) => !open && setManagedExam(null)}
-        actions={managedActions}
+        exam={managedExamInfo}
+        results={examResults}
+        open={Boolean(managedExamInfo)}
+        onOpenChange={(open) => { if (!open) setManagedExam(null); }}
+        onChanged={refreshExams}
+        canEditExam={managedExam?.kind === 'planned'}
+        canDelete={managedExam?.kind === 'planned'}
       />
     </motion.div>
   );

@@ -25,15 +25,31 @@ import {
   saveAttendance,
 } from '../../lib/api/modules';
 import { downloadQrPng, useQrDataUrl } from '../../lib/qr';
+import { errorMessage } from '../../lib/errors';
+import type {
+  AttendanceEntryDto, AttendanceQrSessionSnapshot, ScheduleEntryDto, StudentSummaryDto,
+} from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const statuses = [
+type AttendanceUiStatus = 'present' | 'late' | 'absent';
+type StatTone = 'blue' | 'green' | 'amber' | 'red';
+
+interface AttendanceStatusOption {
+  value: AttendanceUiStatus;
+  api: string;
+  label: string;
+  color: string;
+  icon: IconComponent;
+}
+
+const statuses: readonly AttendanceStatusOption[] = [
   { value: 'present', api: 'present', label: 'Katıldı', color: 'emerald', icon: CheckCircle2 },
   { value: 'late', api: 'late', label: 'Gecikmeli', color: 'amber', icon: Clock3 },
   { value: 'absent', api: 'absent', label: 'Katılmadı', color: 'rose', icon: XCircle },
 ];
 
-function normalize(value = '') {
-  return String(value)
+function normalize(value: string | null | undefined = ''): string {
+  return String(value ?? '')
     .trim()
     .toLowerCase()
     .replaceAll('ç', 'c')
@@ -44,14 +60,14 @@ function normalize(value = '') {
     .replaceAll('ü', 'u');
 }
 
-function toUiStatus(value = '') {
+function toUiStatus(value = ''): AttendanceUiStatus {
   const key = normalize(value);
   if (key.includes('katildi') || key.includes('present')) return 'present';
   if (key.includes('gec') || key.includes('late')) return 'late';
   return 'absent';
 }
 
-function formatDate(value) {
+function formatDate(value: string | Date | null | undefined): string {
   const date = value ? new Date(value) : new Date();
   return new Intl.DateTimeFormat('tr-TR', {
     day: '2-digit',
@@ -61,12 +77,12 @@ function formatDate(value) {
   }).format(date);
 }
 
-function formatTime(value) {
+function formatTime(value: string | Date | null | undefined): string {
   const date = value ? new Date(value) : new Date();
   return new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' }).format(date);
 }
 
-function downloadTextFile(filename, content, type = 'text/csv;charset=utf-8') {
+function downloadTextFile(filename: string, content: string, type = 'text/csv;charset=utf-8') {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -76,8 +92,8 @@ function downloadTextFile(filename, content, type = 'text/csv;charset=utf-8') {
   URL.revokeObjectURL(url);
 }
 
-function StatCard({ icon: Icon, label, value, tone }) {
-  const tones = {
+function StatCard({ icon: Icon, label, value, tone }: { icon: IconComponent; label: string; value: number; tone: StatTone }) {
+  const tones: Record<StatTone, string> = {
     blue: 'from-blue-500/20 to-blue-500/5 text-blue-300 border-blue-400/15',
     green: 'from-emerald-500/20 to-emerald-500/5 text-emerald-300 border-emerald-400/15',
     amber: 'from-amber-500/20 to-amber-500/5 text-amber-300 border-amber-400/15',
@@ -103,15 +119,15 @@ export default function TeacherAttendance() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [students, setStudents] = useState([]);
-  const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [schedule, setSchedule] = useState([]);
-  const [qrSessions, setQrSessions] = useState([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceEntryDto[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleEntryDto[]>([]);
+  const [qrSessions, setQrSessions] = useState<AttendanceQrSessionSnapshot[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedLesson, setSelectedLesson] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [method, setMethod] = useState('qr');
-  const [studentStatuses, setStudentStatuses] = useState({});
+  const [method, setMethod] = useState<'qr' | 'manual'>('qr');
+  const [studentStatuses, setStudentStatuses] = useState<Partial<Record<string, AttendanceUiStatus>>>({});
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [notes, setNotes] = useState('');
@@ -139,14 +155,14 @@ export default function TeacherAttendance() {
       ])][0] || '';
       setSelectedClass((prev) => prev || firstClass);
     } catch (err) {
-      setError(err.message || 'Yoklama verileri alınamadı.');
+      setError(errorMessage(err, 'Yoklama verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const classes = useMemo(() => [...new Set([
@@ -156,21 +172,22 @@ export default function TeacherAttendance() {
   ])].sort((a, b) => a.localeCompare(b, 'tr')), [attendanceRecords, schedule, students]);
 
   const lessons = useMemo(() => [...new Set([
-    ...schedule.filter((item) => item.className === selectedClass).map((item) => item.subject || item.lesson).filter(Boolean),
+    ...schedule.filter((item) => item.className === selectedClass).map((item) => item.subject).filter(Boolean),
     ...attendanceRecords.filter((item) => item.className === selectedClass).map((item) => item.lesson).filter(Boolean),
     'Genel Ders',
   ])], [attendanceRecords, schedule, selectedClass]);
 
   useEffect(() => {
-    if (!selectedLesson && lessons.length > 0) {
-      setSelectedLesson(lessons[0]);
+    const [firstLesson] = lessons;
+    if (!selectedLesson && firstLesson) {
+      setSelectedLesson(firstLesson);
     }
   }, [lessons, selectedLesson]);
 
   const classStudents = useMemo(() => students.filter((item) => item.className === selectedClass), [selectedClass, students]);
 
   useEffect(() => {
-    const next = {};
+    const next: Partial<Record<string, AttendanceUiStatus>> = {};
     classStudents.forEach((student) => {
       const existing = attendanceRecords.find((record) => (
         normalize(record.studentName) === normalize(student.fullName)
@@ -188,14 +205,14 @@ export default function TeacherAttendance() {
       && item.className === selectedClass
       && item.lessonTitle === selectedLesson
       && new Date(item.expiresAtUtc) > new Date())
-    .sort((a, b) => new Date(b.openedAtUtc) - new Date(a.openedAtUtc))[0] || null, [qrSessions, selectedClass, selectedLesson]);
+    .sort((a, b) => new Date(b.openedAtUtc).getTime() - new Date(a.openedAtUtc).getTime())[0] || null, [qrSessions, selectedClass, selectedLesson]);
 
   const qrPayload = useMemo(() => (selectedQrSession
     ? JSON.stringify({ token: selectedQrSession.token, className: selectedClass, lesson: selectedLesson })
     : ''), [selectedQrSession, selectedClass, selectedLesson]);
   const qrImageUrl = useQrDataUrl(qrPayload, 320);
 
-  const counts = useMemo(() => classStudents.reduce((acc, student) => {
+  const counts = useMemo(() => classStudents.reduce<Record<AttendanceUiStatus, number>>((acc, student) => {
     const key = student.id || student.fullName;
     const status = studentStatuses[key] || 'present';
     acc[status] = (acc[status] || 0) + 1;
@@ -223,11 +240,11 @@ export default function TeacherAttendance() {
         lessonTitle: selectedLesson,
         durationMinutes: 30,
       });
-      setQrSessions((prev) => [session, ...prev.filter((item) => item.id !== session.id)]);
+      if (session) setQrSessions((prev) => [session, ...prev.filter((item) => item.id !== session.id)]);
       setMethod('qr');
       toast({ title: 'QR yoklama açıldı', description: 'Öğrenciler mobil uygulamadan katılım işleyebilir.' });
     } catch (err) {
-      toast({ title: 'QR oturumu açılamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'QR oturumu açılamadı', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     }
   };
 
@@ -235,20 +252,20 @@ export default function TeacherAttendance() {
     if (!selectedQrSession) return;
     try {
       const closed = await closeAttendanceQrSession(selectedQrSession.id);
-      setQrSessions((prev) => prev.map((item) => (item.id === closed.id ? closed : item)));
+      if (closed) setQrSessions((prev) => prev.map((item) => (item.id === closed.id ? closed : item)));
       toast({ title: 'QR oturumu kapatıldı' });
     } catch (err) {
-      toast({ title: 'QR kapatılamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'QR kapatılamadı', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     }
   };
 
-  const setStatus = (student, status) => {
+  const setStatus = (student: StudentSummaryDto, status: AttendanceUiStatus) => {
     const key = student.id || student.fullName;
     setStudentStatuses((prev) => ({ ...prev, [key]: status }));
   };
 
-  const setAll = (status) => {
-    const next = {};
+  const setAll = (status: AttendanceUiStatus) => {
+    const next: Partial<Record<string, AttendanceUiStatus>> = {};
     classStudents.forEach((student) => {
       next[student.id || student.fullName] = status;
     });
@@ -259,7 +276,7 @@ export default function TeacherAttendance() {
   const applyQrScansToManual = () => {
     if (!selectedQrSession) return;
     const scanned = selectedQrSession.scannedStudents || [];
-    const next = {};
+    const next: Partial<Record<string, AttendanceUiStatus>> = {};
     classStudents.forEach((student) => {
       const matched = scanned.some((scan) => normalize(scan.studentName) === normalize(student.fullName));
       next[student.id || student.fullName] = matched ? 'present' : (studentStatuses[student.id || student.fullName] || 'absent');
@@ -289,11 +306,11 @@ export default function TeacherAttendance() {
           && normalize(item.lesson) === normalize(selectedLesson)
           && String(item.lessonDate || '').slice(0, 10) === selectedDate
         ));
-        return [...payload, ...filtered];
+        return [...(payload ?? []), ...filtered];
       });
       toast({ title: 'Yoklama kaydedildi', description: `${selectedClass} • ${selectedLesson} backend’e yazıldı.` });
     } catch (err) {
-      toast({ title: 'Yoklama kaydedilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Yoklama kaydedilemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }

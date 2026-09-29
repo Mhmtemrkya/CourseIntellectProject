@@ -12,13 +12,28 @@ import { useToast } from '../../hooks/use-toast';
 import { fetchLiveRoomSessions, fetchStudents } from '../../lib/api/modules';
 import { openExternalUrl } from '../../lib/tauri';
 import { formatDateTime } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { LiveRoomSession } from '../../lib/api/liveRoom';
+import type { StudentSummaryDto } from '../../types/api/generated';
+
+interface RoomSessionView {
+  id: string;
+  title: string;
+  detail: string;
+  className: string;
+  participantCount: number;
+  joinLink: string;
+  startsAt: string;
+  status: string;
+  teacherName: string;
+}
 
 export default function TeacherLiveRoom() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [sessions, setSessions] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [selectedSession, setSelectedSession] = useState(null);
+  const [sessions, setSessions] = useState<LiveRoomSession[]>([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [selectedSession, setSelectedSession] = useState<RoomSessionView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -33,19 +48,19 @@ export default function TeacherLiveRoom() {
         fetchStudents().catch(() => []),
       ]);
       setSessions(Array.isArray(sessionItems) ? sessionItems : []);
-      setStudents(studentItems);
+      setStudents(studentItems ?? []);
     } catch (err) {
-      setError(err.message || 'Canlı ders odası alınamadı.');
+      setError(errorMessage(err, 'Canlı ders odası alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadRoom();
+    void loadRoom();
   }, [loadRoom]);
 
-  const sessionsWithParticipants = useMemo(() => sessions.map((session) => {
+  const sessionsWithParticipants = useMemo(() => sessions.map((session): RoomSessionView => {
     const className = session.className || 'Tüm Sınıflar';
     const participantCount = Array.isArray(session.participants) && session.participants.length > 0
       ? session.participants.length
@@ -66,9 +81,9 @@ export default function TeacherLiveRoom() {
     };
   }), [sessions, students]);
 
-  const handleOpenRoom = (session) => {
+  const handleOpenRoom = (session: RoomSessionView) => {
     if (session.joinLink) {
-      openExternalUrl(session.joinLink).then((opened) => {
+      void openExternalUrl(session.joinLink).then((opened) => {
         if (!opened) {
           toast({
             title: 'Canlı ders açılamadı',
@@ -86,7 +101,7 @@ export default function TeacherLiveRoom() {
     navigate('/t/live-lessons');
   };
 
-  const handleCopyLink = async (link) => {
+  const handleCopyLink = async (link: string) => {
     try {
       await navigator.clipboard.writeText(link);
       toast({
@@ -96,7 +111,7 @@ export default function TeacherLiveRoom() {
     } catch (err) {
       toast({
         title: 'Link kopyalanamadı',
-        description: err.message || 'Lütfen bağlantıyı elle kopyalayın.',
+        description: errorMessage(err, 'Lütfen bağlantıyı elle kopyalayın.'),
         variant: 'destructive',
       });
     }

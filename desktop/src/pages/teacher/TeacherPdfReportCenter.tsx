@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -16,13 +16,51 @@ import { fetchReportStudents, fetchSolutionSession, fetchTeacherPdfReports, fetc
 import { downloadExamPaperPdf, setExamPaperBrand } from '../../lib/examPaperPdf';
 import { useTheme } from '../../context/ThemeContext';
 import { useApp } from '../../context/AppContext';
+import { errorMessage } from '../../lib/errors';
+import type { ReportStudentRow, TeacherClassReport, TeacherReportAnalytics } from '../../lib/api/reports';
+import type { TeacherExamPaperReportResponse } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
+
+/** Rapor kartı / önizleme modeli: canlı öğrenci raporu ya da sunucudaki sınav kağıdı. */
+interface ReportItem {
+  id: string;
+  type: string;
+  name: string;
+  date: string;
+  pages: number | string;
+  subject: string;
+  className: string;
+  student: string;
+  studentNo: string;
+  score: number;
+  ready: boolean;
+  source?: 'student-live' | 'teacher-pdf-report';
+  downloadUrl?: string | null;
+  status?: string;
+  createdAtUtc?: string | null;
+  examTitle?: string;
+  correct?: number;
+  total?: number;
+  examSessionId?: string;
+  attendanceRate?: number;
+  completionRate?: number;
+  // Aşağıdakiler henüz hiçbir kaynaktan üretilmiyor; önizleme "-" gösterir.
+  institution?: string;
+  totalPoint?: number;
+  rank?: string;
+  badgeCount?: number;
+  rankChange?: number;
+}
+
+type ReportViewMode = 'students' | 'pdf';
+type StudentModalTab = 'overview' | 'lessons' | 'exams' | 'attendance' | 'pdf';
 
 const reportTypes = ['Tümü', 'Sınav Raporları', 'Ödev Raporları', 'Gelişim Raporları', 'Devamsızlık Raporları', 'Karne Raporları'];
 const PDF_PAGE_WIDTH = 794;
 const PDF_PAGE_HEIGHT = 1123;
 const PDF_PREVIEW_BASE_WIDTH = 760;
 
-const emptyReport = {
+const emptyReport: ReportItem = {
   id: 'empty',
   type: 'Gelişim Raporları',
   name: 'Öğrenci Başarı Raporu',
@@ -36,7 +74,7 @@ const emptyReport = {
   ready: false,
 };
 
-function FilterSelect({ value, options, onChange, wide = false }) {
+function FilterSelect({ value, options, onChange, wide = false }: { value: string; options: readonly string[]; onChange: (value: string) => void; wide?: boolean }) {
   return (
     <label className={`group relative ${wide ? 'min-w-[180px]' : 'min-w-[150px]'}`}>
       <select
@@ -51,7 +89,7 @@ function FilterSelect({ value, options, onChange, wide = false }) {
   );
 }
 
-function PdfIcon({ active = false }) {
+function PdfIcon({ active = false }: { active?: boolean }) {
   return (
     <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${active ? 'border-orange-400/40 bg-orange-500/20 text-orange-200' : 'border-purple-400/15 bg-purple-500/18 text-purple-200'}`}>
       <FileText className="h-6 w-6" />
@@ -59,7 +97,7 @@ function PdfIcon({ active = false }) {
   );
 }
 
-function ReportCard({ report, active, onSelect, onPreview, onDownload }) {
+function ReportCard({ report, active, onSelect, onPreview, onDownload }: { report: ReportItem; active: boolean; onSelect: () => void; onPreview?: () => void; onDownload?: () => void }) {
   return (
     <button
       type="button"
@@ -127,7 +165,7 @@ function ReportCard({ report, active, onSelect, onPreview, onDownload }) {
   );
 }
 
-function ToolbarButton({ icon: Icon, label, onClick, disabled = false }) {
+function ToolbarButton({ icon: Icon, label, onClick, disabled = false }: { icon: IconComponent; label: string; onClick: () => void; disabled?: boolean }) {
   return (
     <Button
       variant="ghost"
@@ -142,7 +180,7 @@ function ToolbarButton({ icon: Icon, label, onClick, disabled = false }) {
   );
 }
 
-function MiniPage({ index, active, children }) {
+function MiniPage({ index, active, children }: { index: number; active: boolean; children?: ReactNode }) {
   return (
     <button type="button" className="group w-full">
       <div className={`aspect-[0.72] overflow-hidden rounded-xl border p-2 transition ${active ? 'border-orange-500 bg-orange-500/10' : 'border-foreground/10 bg-foreground/[0.04] hover:border-orange-400/40'}`}>
@@ -153,18 +191,18 @@ function MiniPage({ index, active, children }) {
   );
 }
 
-function formatScore(value) {
+function formatScore(value: unknown): string {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) return '-';
   return number % 1 === 0 ? String(number) : number.toFixed(1);
 }
 
-function initials(name = '') {
+function initials(name = ''): string {
   const parts = String(name).trim().split(/\s+/).filter(Boolean);
-  return (parts[0]?.[0] || 'Ö') + (parts.at(-1)?.[0] || '');
+  return (parts[0]?.[0] || 'Ö') + (parts[parts.length - 1]?.[0] || '');
 }
 
-function buildStudentReport(student) {
+function buildStudentReport(student: ReportStudentRow | null): ReportItem {
   if (!student) return emptyReport;
   return {
     id: `student-${student.id || student.username || student.fullName}`,
@@ -185,55 +223,54 @@ function buildStudentReport(student) {
   };
 }
 
-function buildPdfReportFromApi(item) {
-  const createdAt = item?.createdAtUtc || item?.completedAtUtc || item?.readyAtUtc;
-  const examSessionId = item?.examSessionId || '';
+function buildPdfReportFromApi(item: TeacherExamPaperReportResponse): ReportItem {
+  const createdAt = item.createdAtUtc || item.completedAtUtc || item.readyAtUtc;
+  const examSessionId = item.examSessionId || '';
   // Sınav kağıdı PDF'i istemci tarafında (HTML→PDF) examSessionId'den üretilir;
   // sunucu dosyası (downloadUrl) zorunlu değildir. Oturum kimliği varsa hazırdır.
-  const ready = String(item?.status || '').toLowerCase() === 'ready'
-    && (Boolean(item?.downloadUrl) || Boolean(examSessionId));
-  const student = (item?.studentName || '').trim();
-  const className = (item?.className || '').trim();
-  const subject = (item?.subject || item?.title || 'Sınav').trim();
+  const ready = String(item.status || '').toLowerCase() === 'ready'
+    && (Boolean(item.downloadUrl) || Boolean(examSessionId));
+  const student = (item.studentName || '').trim();
+  const className = (item.className || '').trim();
+  const subject = (item.subject || item.title || 'Sınav').trim();
   return {
-    id: item?.id || examSessionId,
+    id: item.id || examSessionId,
     type: 'Sınav Raporları',
     name: student || `Çözüm Kağıdı${examSessionId ? ` • ${String(examSessionId).slice(0, 8)}` : ''}`,
     date: createdAt ? new Intl.DateTimeFormat('tr-TR').format(new Date(createdAt)) : '-',
     pages: '-',
     subject,
-    examTitle: (item?.title || '').trim(),
+    examTitle: (item.title || '').trim(),
     className: className || '-',
     student: student || '-',
     studentNo: '-',
-    score: Number(item?.scorePercent) || 0,
-    correct: Number(item?.correct) || 0,
-    total: Number(item?.total) || 0,
+    score: Number(item.scorePercent) || 0,
+    correct: Number(item.correct) || 0,
+    total: Number(item.total) || 0,
     ready,
-    status: item?.status || 'Unknown',
+    status: item.status || 'Unknown',
     source: 'teacher-pdf-report',
-    downloadUrl: item?.downloadUrl || null,
-    errorMessage: item?.errorMessage || '',
+    downloadUrl: item.downloadUrl || null,
     examSessionId,
     createdAtUtc: createdAt || null,
   };
 }
 
-function openDownloadUrl(url) {
+function openDownloadUrl(url: string | null | undefined): boolean {
   if (!url) return false;
   window.open(url, '_blank', 'noopener,noreferrer');
   return true;
 }
 
-function sanitizeFileName(name) {
+function sanitizeFileName(name: string | null | undefined): string {
   return String(name || 'rapor').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'rapor';
 }
 
-function normalizeFilterValue(value) {
+function normalizeFilterValue(value: string | null | undefined): string {
   return String(value || '').trim();
 }
 
-function saveBlob(blob, fileName) {
+function saveBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -244,31 +281,34 @@ function saveBlob(blob, fileName) {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
-async function fetchReportBlob(url) {
+async function fetchReportBlob(url: string): Promise<Blob> {
   const response = await fetch(url, { credentials: 'include' });
   if (!response.ok) throw new Error(`PDF indirilemedi (${response.status})`);
   return response.blob();
 }
 
-function liveSubjectRows(analytics) {
-  const topics = Array.isArray(analytics?.topics) ? analytics.topics : [];
-  return topics.map((item, index) => [
-    item.name || item.subject || `Konu ${index + 1}`,
-    Number(item.success || item.average || 0),
-    Number(item.classAverage || item.average || 0),
-    ['#FF9D2E', '#30D158', '#4DA3FF', '#7B61FF'][index % 4],
+const SUBJECT_ROW_COLORS = ['#FF9D2E', '#30D158', '#4DA3FF', '#7B61FF'];
+
+function liveSubjectRows(analytics: TeacherReportAnalytics): Array<[string, number, number, string, string]> {
+  const topics = Array.isArray(analytics.topics) ? analytics.topics : [];
+  return topics.map((item, index): [string, number, number, string, string] => [
+    item.name || `Konu ${index + 1}`,
+    Number(item.success || 0),
+    // Konu raporunda sınıf ortalaması yok (eski kod olmayan classAverage/average okuyordu).
+    0,
+    SUBJECT_ROW_COLORS[index % SUBJECT_ROW_COLORS.length] ?? '#FF9D2E',
     item.riskLevel || (Number(item.success || 0) >= 80 ? 'Güçlü' : 'Takip'),
   ]);
 }
 
-function liveTopicRows(analytics) {
-  const topics = Array.isArray(analytics?.topics) ? analytics.topics : [];
-  return topics.map((item, index) => {
-    const questionCount = Number(item.questionCount || item.totalQuestions || 0);
-    const success = Number(item.success || item.average || 0);
+function liveTopicRows(analytics: TeacherReportAnalytics): Array<[string, number, number, number, number]> {
+  const topics = Array.isArray(analytics.topics) ? analytics.topics : [];
+  return topics.map((item, index): [string, number, number, number, number] => {
+    const questionCount = Number(item.questionCount || 0);
+    const success = Number(item.success || 0);
     const correct = questionCount > 0 ? Math.round((questionCount * success) / 100) : 0;
     return [
-      item.name || item.subject || `Konu ${index + 1}`,
+      item.name || `Konu ${index + 1}`,
       success,
       questionCount,
       correct,
@@ -277,7 +317,7 @@ function liveTopicRows(analytics) {
   });
 }
 
-function EmptyPdfSection({ title, detail }) {
+function EmptyPdfSection({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="rounded-3xl border border-dashed border-foreground/12 bg-foreground/[0.045] p-6 text-center">
       <FileText className="mx-auto h-8 w-8 text-slate-500" />
@@ -287,7 +327,7 @@ function EmptyPdfSection({ title, detail }) {
   );
 }
 
-function PdfPageShell({ children, className = '' }) {
+function PdfPageShell({ children, className = '' }: { children?: ReactNode; className?: string }) {
   return (
     <div
       className={`relative overflow-hidden rounded-[4px] border border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground shadow-[0_30px_90px_-50px_rgba(0,0,0,0.9)] ${className}`}
@@ -298,7 +338,7 @@ function PdfPageShell({ children, className = '' }) {
   );
 }
 
-function CoverPage({ selectedReport }) {
+function CoverPage({ selectedReport }: { selectedReport: ReportItem }) {
   const studentInitial = initials(selectedReport.student || selectedReport.name);
   return (
     <PdfPageShell>
@@ -359,7 +399,7 @@ function CoverPage({ selectedReport }) {
   );
 }
 
-function KpiCard({ label, value, icon: Icon, accent }) {
+function KpiCard({ label, value, icon: Icon, accent }: { label: string; value: ReactNode; icon: IconComponent; accent: string }) {
   return (
     <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.055] p-4">
       <div className="flex items-center justify-between">
@@ -372,14 +412,14 @@ function KpiCard({ label, value, icon: Icon, accent }) {
   );
 }
 
-function ResultsPage({ selectedReport, analytics }) {
-  const classAnalytics = Array.isArray(analytics?.classReports)
+function ResultsPage({ selectedReport, analytics }: { selectedReport: ReportItem; analytics: TeacherReportAnalytics }) {
+  const classAnalytics = Array.isArray(analytics.classReports)
     ? analytics.classReports.find((item) => item.className === selectedReport.className)
     : null;
   const score = Number(selectedReport.score || classAnalytics?.average || 0);
   const attendance = Number(classAnalytics?.attendance || 0);
   const completion = Number(classAnalytics?.completion || 0);
-  const kpis = [
+  const kpis: ReadonlyArray<readonly [string, string | number, IconComponent, string]> = [
     ['Toplam Puan', selectedReport.totalPoint ?? '-', BarChart3, '#FF9D2E'],
     ['Ortalama', score ? formatScore(score) : '-', CheckCircle2, '#30D158'],
     ['Devam', attendance ? `%${attendance}` : '-', Calendar, '#4DA3FF'],
@@ -403,12 +443,12 @@ function ResultsPage({ selectedReport, analytics }) {
           <p className="mt-5 text-center text-sm text-slate-300">Donut başarı grafiği</p>
         </div>
         <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.055] p-6">
-          {[
+          {([
             ['Öğrenci', score],
             ['Sınıf Ort.', Number(classAnalytics?.average || 0)],
             ['Devam', attendance],
             ['Ödev', completion],
-          ].map(([label, value]) => (
+          ] satisfies ReadonlyArray<readonly [string, number]>).map(([label, value]) => (
             <div key={label} className="mb-5">
               <div className="mb-2 flex justify-between text-xs text-slate-300"><span>{label}</span><span>{value ? `${value}%` : '-'}</span></div>
               <Progress value={Number(value || 0)} className="h-2 bg-foreground/10 [&>div]:bg-orange-400" />
@@ -420,7 +460,7 @@ function ResultsPage({ selectedReport, analytics }) {
   );
 }
 
-function SubjectPage({ analytics }) {
+function SubjectPage({ analytics }: { analytics: TeacherReportAnalytics }) {
   const subjectRows = liveSubjectRows(analytics);
   return (
     <PdfPageShell className="p-8">
@@ -456,7 +496,7 @@ function SubjectPage({ analytics }) {
   );
 }
 
-function TopicPage({ analytics }) {
+function TopicPage({ analytics }: { analytics: TeacherReportAnalytics }) {
   const rows = liveTopicRows(analytics);
   return (
     <PdfPageShell className="p-8">
@@ -481,7 +521,7 @@ function TopicPage({ analytics }) {
   );
 }
 
-function QuestionDetailsPage({ selectedReport }) {
+function QuestionDetailsPage({ selectedReport }: { selectedReport: ReportItem }) {
   const hasRealPdf = Boolean(selectedReport.downloadUrl);
   return (
     <PdfPageShell className="p-8">
@@ -496,7 +536,7 @@ function QuestionDetailsPage({ selectedReport }) {
   );
 }
 
-function GrowthPage({ selectedReport }) {
+function GrowthPage({ selectedReport }: { selectedReport: ReportItem }) {
   const studentName = selectedReport.student && selectedReport.student !== '-' ? selectedReport.student : 'Öğrenci';
   return (
     <PdfPageShell className="p-8">
@@ -505,14 +545,14 @@ function GrowthPage({ selectedReport }) {
         <EmptyPdfSection title="Gelişim grafiği bekleniyor" detail={`${studentName} için zaman serisi rapor endpointi geldiğinde son sınavlar burada canlı grafik olarak gösterilecek.`} />
       </div>
       <div className="mt-5 grid grid-cols-3 gap-4">
-        {[
+        {([
           ['Devam Oranı', selectedReport.attendanceRate ? `%${selectedReport.attendanceRate}` : '-'],
           ['Ödev Tamamlama', selectedReport.completionRate ? `%${selectedReport.completionRate}` : '-'],
           ['Rozet', selectedReport.badgeCount ?? '-'],
           ['Toplam Puan', selectedReport.totalPoint ?? '-'],
           ['Sıralama Değişimi', selectedReport.rankChange ?? '-'],
           ['Aylık Başarı', selectedReport.score ? `%${Math.round(selectedReport.score)}` : '-'],
-        ].map(([label, value]) => (
+        ] satisfies ReadonlyArray<readonly [string, string | number]>).map(([label, value]) => (
           <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/[0.055] p-4">
             <p className="text-xs text-slate-400">{label}</p>
             <p className="mt-2 text-2xl font-black text-white">{value}</p>
@@ -533,7 +573,7 @@ function GrowthPage({ selectedReport }) {
   );
 }
 
-function ThumbnailContent({ page }) {
+function ThumbnailContent({ page }: { page: number }) {
   if (page === 1) return <div className="h-full rounded-lg bg-[hsl(var(--ci-card))] p-2"><div className="h-4 w-10 rounded bg-orange-400" /><div className="mt-9 h-16 rounded-full bg-slate-400" /><div className="mt-3 h-3 rounded bg-foreground/70" /><div className="mt-1 h-3 w-3/4 rounded bg-orange-400" /></div>;
   if (page === 2) return <div className="h-full rounded-lg bg-[hsl(var(--ci-card))] p-2"><div className="grid grid-cols-2 gap-1">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-5 rounded bg-foreground/10" />)}</div><div className="mt-3 h-12 rounded-full border-8 border-orange-400" /></div>;
   if (page === 3) return <div className="h-full rounded-lg bg-[hsl(var(--ci-card))] p-2"><div className="grid grid-cols-2 gap-1">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-8 rounded bg-foreground/10" />)}</div></div>;
@@ -542,7 +582,7 @@ function ThumbnailContent({ page }) {
   return <div className="h-full rounded-lg bg-[hsl(var(--ci-card))] p-2"><div className="flex h-20 items-end gap-1">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="flex-1 rounded bg-orange-400" style={{ height: `${35 + i * 7}%` }} />)}</div><div className="mt-4 grid grid-cols-2 gap-1">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-5 rounded bg-foreground/10" />)}</div></div>;
 }
 
-function PreviewPage({ page, selectedReport, analytics }) {
+function PreviewPage({ page, selectedReport, analytics }: { page: number; selectedReport: ReportItem; analytics: TeacherReportAnalytics }) {
   if (page === 1) return <CoverPage selectedReport={selectedReport} />;
   if (page === 2) return <ResultsPage selectedReport={selectedReport} analytics={analytics} />;
   if (page === 3) return <SubjectPage analytics={analytics} />;
@@ -551,7 +591,7 @@ function PreviewPage({ page, selectedReport, analytics }) {
   return <GrowthPage selectedReport={selectedReport} />;
 }
 
-function StudentMetric({ icon: Icon, label, value, detail, color = '#FF9D2E' }) {
+function StudentMetric({ icon: Icon, label, value, detail, color = '#FF9D2E' }: { icon: IconComponent; label: string; value: ReactNode; detail?: ReactNode; color?: string }) {
   return (
     <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.055] p-4">
       <div className="flex items-center gap-3">
@@ -574,8 +614,14 @@ function StudentDetailModal({
   rank,
   onClose,
   onOpenPdf,
+}: {
+  student: ReportStudentRow | null;
+  classAnalytics: TeacherClassReport | undefined;
+  rank: string;
+  onClose: () => void;
+  onOpenPdf: () => void;
 }) {
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState<StudentModalTab>('overview');
   if (!student) return null;
 
   const messageStudent = () => {
@@ -593,7 +639,7 @@ function StudentDetailModal({
   const score = formatScore(student.averageScore);
   const attendance = Number(student.attendanceRate || 0);
   const absence = attendance > 0 ? `%${Math.max(0, 100 - attendance)}` : '-';
-  const tabs = [
+  const tabs: ReadonlyArray<readonly [StudentModalTab, string]> = [
     ['overview', 'Genel Bakış'],
     ['lessons', 'Dersler'],
     ['exams', 'Sınavlar'],
@@ -645,7 +691,7 @@ function StudentDetailModal({
             <StudentMetric icon={TrendingUp} label="Genel Başarı" value={score === '-' ? '-' : `${score} / 100`} detail="ExamResults ortalaması" color="#7B61FF" />
             <StudentMetric icon={Calendar} label="Devamsızlık" value={absence} detail={`Katılım: %${attendance || 0}`} color="#FF9D2E" />
             <StudentMetric icon={Trophy} label="Sınıf Sıralaması" value={rank || '-'} detail={classAnalytics?.className || student.className} color="#30D158" />
-            <StudentMetric icon={Sparkles} label="Genel Puan" value={student.totalPoint ?? '-'} detail="Puan verisi gelirse burada görünür" color="#4DA3FF" />
+            <StudentMetric icon={Sparkles} label="Genel Puan" value="-" detail="Puan verisi gelirse burada görünür" color="#4DA3FF" />
           </div>
 
           <div className="mt-5 flex gap-2 overflow-x-auto border-b border-foreground/10">
@@ -679,11 +725,11 @@ function StudentDetailModal({
                   <Badge className="bg-orange-400/12 text-orange-200 hover:bg-orange-400/12">{student.className || '-'}</Badge>
                 </div>
                 <div className="mt-6 space-y-5">
-                  {[
+                  {([
                     ['Sınıf Ortalaması', classAnalytics?.average ?? 0, '#FF9D2E'],
                     ['Devam Oranı', classAnalytics?.attendance ?? 0, '#30D158'],
                     ['Görev Tamamlama', classAnalytics?.completion ?? 0, '#7B61FF'],
-                  ].map(([label, value, color]) => (
+                  ] satisfies ReadonlyArray<readonly [string, number, string]>).map(([label, value, color]) => (
                     <div key={label}>
                       <div className="mb-2 flex justify-between text-sm text-slate-300"><span>{label}</span><span>%{value}</span></div>
                       <Progress value={Number(value)} className="h-2 bg-foreground/10 [&>div]:bg-orange-400" />
@@ -729,6 +775,15 @@ function StudentReportMode({
   onSelectStudent,
   onOpenPdf,
   onReload,
+}: {
+  studentsData: readonly ReportStudentRow[];
+  analytics: TeacherReportAnalytics;
+  loading: boolean;
+  error: string;
+  selectedStudent: ReportStudentRow | null;
+  onSelectStudent: (student: ReportStudentRow | null) => void;
+  onOpenPdf: () => void;
+  onReload: () => void;
 }) {
   const [query, setQuery] = useState('');
   const [classFilter, setClassFilter] = useState('Tüm Sınıflar');
@@ -861,14 +916,14 @@ export default function TeacherPdfReportCenter() {
     setExamPaperBrand({ name: user?.tenant || '', logoUrl: tenantLogo || '' });
   }, [user?.tenant, tenantLogo]);
 
-  const [viewMode, setViewMode] = useState('students');
-  const [studentsData, setStudentsData] = useState([]);
-  const [analytics, setAnalytics] = useState({ classReports: [], topics: [] });
-  const [pdfReports, setPdfReports] = useState([]);
+  const [viewMode, setViewMode] = useState<ReportViewMode>('students');
+  const [studentsData, setStudentsData] = useState<ReportStudentRow[]>([]);
+  const [analytics, setAnalytics] = useState<TeacherReportAnalytics>({ classReports: [], topics: [] });
+  const [pdfReports, setPdfReports] = useState<ReportItem[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
-  const [selectedStudentDetail, setSelectedStudentDetail] = useState(null);
+  const [selectedStudentDetail, setSelectedStudentDetail] = useState<ReportStudentRow | null>(null);
   const [activeType, setActiveType] = useState('Tümü');
   const [subject, setSubject] = useState('Tüm Dersler');
   const [dateFilter, setDateFilter] = useState('Tüm Tarihler');
@@ -878,7 +933,7 @@ export default function TeacherPdfReportCenter() {
   const [activePage, setActivePage] = useState(1);
   const [zoom, setZoom] = useState(100);
   const [exporting, setExporting] = useState(false);
-  const exportRef = useRef(null);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   const loadStudentReports = useCallback(async () => {
     try {
@@ -892,11 +947,11 @@ export default function TeacherPdfReportCenter() {
       setStudentsData(Array.isArray(studentResult) ? studentResult : []);
       setPdfReports(Array.isArray(pdfResult) ? pdfResult.map(buildPdfReportFromApi).filter((item) => item.id) : []);
       setAnalytics({
-        classReports: Array.isArray(analyticsResult?.classReports) ? analyticsResult.classReports : [],
-        topics: Array.isArray(analyticsResult?.topics) ? analyticsResult.topics : [],
+        classReports: Array.isArray(analyticsResult.classReports) ? analyticsResult.classReports : [],
+        topics: Array.isArray(analyticsResult.topics) ? analyticsResult.topics : [],
       });
     } catch (error) {
-      setLoadError(error.message || 'Öğrenci rapor verileri alınamadı.');
+      setLoadError(errorMessage(error, 'Öğrenci rapor verileri alınamadı.'));
       setStudentsData([]);
       setPdfReports([]);
       setAnalytics({ classReports: [], topics: [] });
@@ -906,10 +961,10 @@ export default function TeacherPdfReportCenter() {
   }, []);
 
   useEffect(() => {
-    loadStudentReports();
+    void loadStudentReports();
   }, [loadStudentReports]);
 
-  const selectedStudentReport = useMemo(() => {
+  const selectedStudentReport = useMemo((): ReportItem => {
     const report = buildStudentReport(selectedStudentDetail);
     const classAnalytics = analytics.classReports?.find((item) => item.className === report.className);
     return {
@@ -973,19 +1028,21 @@ export default function TeacherPdfReportCenter() {
     setViewMode('pdf');
   }, [selectedStudentReport]);
 
-  const selectReport = useCallback((report) => {
+  const selectReport = useCallback((report: ReportItem) => {
     setSelectedId(report.id);
     setActivePage(1);
     setActionMessage('');
   }, []);
 
   const generatePdfBlob = useCallback(async () => {
-    const nodes = exportRef.current?.querySelectorAll('[data-export-page]');
+    const nodes = exportRef.current?.querySelectorAll<HTMLElement>('[data-export-page]');
     if (!nodes || nodes.length === 0) throw new Error('Önizleme sayfaları bulunamadı.');
     const pdf = new jsPDF({ unit: 'px', format: [PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT], orientation: 'portrait', compress: true });
     for (let index = 0; index < nodes.length; index += 1) {
       // eslint-disable-next-line no-await-in-loop
-      const canvas = await html2canvas(nodes[index], {
+      const node = nodes[index];
+      if (!node) continue;
+      const canvas = await html2canvas(node, {
         scale: 2,
         width: PDF_PAGE_WIDTH,
         height: PDF_PAGE_HEIGHT,
@@ -1010,13 +1067,13 @@ export default function TeacherPdfReportCenter() {
       saveBlob(blob, `${sanitizeFileName(selectedReport.name)}.pdf`);
       setActionMessage('PDF oluşturuldu ve indirildi.');
     } catch (error) {
-      setActionMessage(error.message || 'PDF oluşturulamadı.');
+      setActionMessage(errorMessage(error, 'PDF oluşturulamadı.'));
     } finally {
       setExporting(false);
     }
   }, [exporting, generatePdfBlob, selectedReport.name]);
 
-  const handleDownloadReport = useCallback(async (report = selectedReport) => {
+  const handleDownloadReport = useCallback(async (report: ReportItem = selectedReport) => {
     // Çözülen sınav kağıtları: canlı oturum verisinden birebir tasarımla üretilir.
     if (report?.source === 'teacher-pdf-report' && report?.examSessionId) {
       try {
@@ -1028,7 +1085,7 @@ export default function TeacherPdfReportCenter() {
         await downloadExamPaperPdf(session, `sinav-kagidi-${session.title || report.examSessionId}`);
         setActionMessage('Sınav kağıdı indirildi.');
       } catch (error) {
-        setActionMessage(error.message || 'Sınav kağıdı oluşturulamadı.');
+        setActionMessage(errorMessage(error, 'Sınav kağıdı oluşturulamadı.'));
       }
       return;
     }
@@ -1056,12 +1113,13 @@ export default function TeacherPdfReportCenter() {
     setActionMessage('Yazdırma penceresi açıldı. Hedef olarak PDF kaydet seçebilirsiniz.');
   }, []);
 
-  const collectReportFiles = useCallback(async (reports) => {
-    const files = [];
+  const collectReportFiles = useCallback(async (reports: readonly ReportItem[]) => {
+    const files: Array<{ name: string; blob: Blob }> = [];
     const readyReports = reports.filter((item) => item.downloadUrl);
     for (const item of readyReports) {
       try {
         // eslint-disable-next-line no-await-in-loop
+        if (!item.downloadUrl) continue;
         const blob = await fetchReportBlob(item.downloadUrl);
         files.push({ name: `${sanitizeFileName(item.name)}.pdf`, blob });
       } catch {
@@ -1092,7 +1150,7 @@ export default function TeacherPdfReportCenter() {
       files.forEach((file) => saveBlob(file.blob, file.name));
       setActionMessage(`${files.length} PDF indirildi.`);
     } catch (error) {
-      setActionMessage(error.message || 'Toplu indirme başarısız oldu.');
+      setActionMessage(errorMessage(error, 'Toplu indirme başarısız oldu.'));
     } finally {
       setExporting(false);
     }
@@ -1114,7 +1172,7 @@ export default function TeacherPdfReportCenter() {
       saveBlob(archive, `pdf-raporlari-${new Date().toISOString().slice(0, 10)}.zip`);
       setActionMessage(`${files.length} PDF içeren ZIP indirildi.`);
     } catch (error) {
-      setActionMessage(error.message || 'ZIP oluşturulamadı.');
+      setActionMessage(errorMessage(error, 'ZIP oluşturulamadı.'));
     } finally {
       setExporting(false);
     }

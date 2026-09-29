@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import {
   User, Mail, MapPin, BookOpen, Award, Calendar, Eye, EyeOff, Lock, ShieldCheck,
 } from 'lucide-react';
@@ -15,18 +15,26 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { fetchStaff, fetchExamResults, fetchHomework, changePassword } from '../../lib/api/modules';
 import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { StaffSummaryDto } from '../../types/api/generated';
 
-const containerVariants = {
+interface PasswordForm {
+  currentPassword: string;
+  newPassword: string;
+  confirm: string;
+}
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
-function evaluateStrength(value) {
+function evaluateStrength(value: string): { score: number; label: string } {
   if (!value) return { score: 0, label: 'Çok zayıf' };
   let score = 0;
   if (value.length >= 8) score += 25;
@@ -45,11 +53,11 @@ function evaluateStrength(value) {
 export default function TeacherProfile() {
   const { user } = useApp();
   const { toast } = useToast();
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState<Partial<StaffSummaryDto> | null>(null);
   const [stats, setStats] = useState({ exams: 0, homework: 0, students: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
+  const [passwordForm, setPasswordForm] = useState<PasswordForm>({ currentPassword: '', newPassword: '', confirm: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
@@ -72,13 +80,13 @@ export default function TeacherProfile() {
         students: 0,
       });
     } catch (err) {
-      setError(err.message || 'Profil yuklenemedi.');
+      setError(errorMessage(err, 'Profil yuklenemedi.'));
     } finally {
       setLoading(false);
     }
   }, [user?.name, user?.username]);
 
-  useEffect(() => { loadProfile(); }, [loadProfile]);
+  useEffect(() => { void loadProfile(); }, [loadProfile]);
 
 
   const strength = useMemo(() => evaluateStrength(passwordForm.newPassword), [passwordForm.newPassword]);
@@ -94,11 +102,11 @@ export default function TeacherProfile() {
 
   const passwordFormValid = Object.values(passwordValidations).every(Boolean);
 
-  const handlePasswordField = (field) => (event) => {
+  const handlePasswordField = (field: keyof PasswordForm) => (event: ChangeEvent<HTMLInputElement>) => {
     setPasswordForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const handleChangePassword = async (event) => {
+  const handleChangePassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!passwordFormValid) {
       toast({ title: 'Şifre kuralları sağlanmadı', description: 'Mevcut şifre ve yeni şifre gereksinimlerini kontrol edin.', variant: 'destructive' });
@@ -110,7 +118,7 @@ export default function TeacherProfile() {
       setPasswordForm({ currentPassword: '', newPassword: '', confirm: '' });
       toast({ title: 'Şifre güncellendi', description: 'Yeni şifreniz sonraki girişlerde geçerli olacak.' });
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Şifre güncellenemedi.';
+      const message = errorMessage(err, 'Şifre güncellenemedi.');
       toast({ title: 'Şifre güncellenemedi', description: message, variant: 'destructive' });
     } finally {
       setChangingPassword(false);
@@ -330,7 +338,7 @@ export default function TeacherProfile() {
 }
 
 
-function ValidationRow({ ok, text }) {
+function ValidationRow({ ok, text }: { ok: boolean; text: string }) {
   return (
     <li className={`flex items-center gap-2 ${ok ? 'text-emerald-600' : 'text-muted-foreground'}`}>
       <span className={`h-2 w-2 rounded-full ${ok ? 'bg-emerald-500' : 'bg-slate-300'}`} />

@@ -13,31 +13,36 @@ import { useApp } from '../../context/AppContext';
 import { fetchMyAdminTasks, fetchMyDuties, fetchMyDutyStats, updateAdminTaskStatus } from '../../lib/api/modules';
 import { useToast } from '../../hooks/use-toast';
 import { formatDateTime } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { AdminTaskDto, DutyResponse, DutyStatsResponse } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
+
+type DutyTab = 'upcoming' | 'past' | 'calendar' | 'stats';
 
 const WEEKDAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const PAGE_SIZE = 5;
 
 // Nöbet türü → takvim noktası rengi (mockup lejantı).
-const TYPE_COLOR = {
+const TYPE_COLOR: Partial<Record<string, string>> = {
   'Sabah Nöbeti': '#f97316',
   'Öğle Arası': '#3b82f6',
   'İdari Nöbet': '#a855f7',
 };
-function typeColor(type) {
+function typeColor(type: string): string {
   return TYPE_COLOR[type] || '#94a3b8';
 }
 
-function parseDate(value) {
+function parseDate(value: string | null | undefined): Date | null {
   if (!value) return null;
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   const d = parseDate(value);
   return d ? d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
 }
 
-function statusBadge(duty) {
+function statusBadge(duty: DutyResponse): { label: string; cls: string } {
   const date = parseDate(duty.dutyDateUtc);
   const status = String(duty.status || '');
   if (status.toLowerCase().includes('iptal')) return { label: 'İptal Edildi', cls: 'border-rose-500/30 bg-rose-500/12 text-rose-300' };
@@ -50,18 +55,18 @@ function statusBadge(duty) {
   return { label: 'Planlandı', cls: 'border-sky-500/25 bg-sky-500/12 text-sky-300' };
 }
 
-function DutyCalendar({ duties }) {
+function DutyCalendar({ duties }: { duties: readonly DutyResponse[] }) {
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
   const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  const cells: Array<number | null> = [...Array.from({ length: firstDay }, () => null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   const monthLabel = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(cursor);
 
   const byDay = useMemo(() => {
-    const map = new Map();
+    const map = new Map<number, DutyResponse[]>();
     duties.forEach((duty) => {
       const d = parseDate(duty.dutyDateUtc);
       if (d && d.getFullYear() === year && d.getMonth() === month) {
@@ -110,7 +115,7 @@ function DutyCalendar({ duties }) {
   );
 }
 
-function DutyTable({ duties, emptyText }) {
+function DutyTable({ duties, emptyText }: { duties: readonly DutyResponse[]; emptyText: string }) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(duties.length / PAGE_SIZE));
   const current = duties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -174,13 +179,13 @@ function DutyTable({ duties, emptyText }) {
 export default function TeacherDuties() {
   const { toast } = useToast();
   useApp();
-  const [tab, setTab] = useState('upcoming');
-  const [all, setAll] = useState([]);
-  const [myTasks, setMyTasks] = useState([]);
-  const [rejectingTask, setRejectingTask] = useState(null);
+  const [tab, setTab] = useState<DutyTab>('upcoming');
+  const [all, setAll] = useState<DutyResponse[]>([]);
+  const [myTasks, setMyTasks] = useState<AdminTaskDto[]>([]);
+  const [rejectingTask, setRejectingTask] = useState<AdminTaskDto | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [taskBusy, setTaskBusy] = useState(false);
-  const [stats, setStats] = useState({ total: 0, completed: 0, planned: 0, cancelled: 0 });
+  const [stats, setStats] = useState<DutyStatsResponse>({ total: 0, completed: 0, planned: 0, cancelled: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -197,27 +202,27 @@ export default function TeacherDuties() {
       setMyTasks(Array.isArray(taskResp) ? taskResp : []);
       if (statResp) setStats(statResp);
     } catch (err) {
-      setError(err.message || 'Nöbetler alınamadı.');
+      setError(errorMessage(err, 'Nöbetler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const upcoming = useMemo(() => all.filter((d) => { const x = parseDate(d.dutyDateUtc); return x && x >= today; }), [all, today]);
   const past = useMemo(() => all.filter((d) => { const x = parseDate(d.dutyDateUtc); return x && x < today; }), [all, today]);
-  const respondTask = async (task, status, reason = null) => {
+  const respondTask = async (task: AdminTaskDto, status: string, reason: string | null = null) => {
     try {
       setTaskBusy(true);
       const updated = await updateAdminTaskStatus(task.id, status, reason);
-      setMyTasks((prev) => prev.map((item) => (item.id === task.id ? { ...item, ...updated } : item)));
+      setMyTasks((prev) => prev.map((item) => (item.id === task.id && updated ? { ...item, ...updated } : item)));
       toast({ title: status === 'Accepted' ? 'Görev kabul edildi' : 'Görev kabul edilmedi' });
       setRejectingTask(null);
       setRejectReason('');
     } catch (err) {
-      toast({ title: 'Görev güncellenemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Görev güncellenemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setTaskBusy(false);
     }
@@ -227,7 +232,7 @@ export default function TeacherDuties() {
     return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4"><LoadingDots /><p className="text-muted-foreground">Nöbetler yükleniyor...</p></div>;
   }
 
-  const summaryCards = [
+  const summaryCards: ReadonlyArray<readonly [string, number, IconComponent, string]> = [
     ['Toplam Nöbet', stats.total, CalendarDays, 'text-sky-400'],
     ['Tamamlanan', stats.completed, CheckCircle2, 'text-emerald-400'],
     ['Planlanan', stats.planned, Clock, 'text-amber-400'],
@@ -281,7 +286,7 @@ export default function TeacherDuties() {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="xl:col-span-2 space-y-4">
           <div className="flex flex-wrap gap-1 rounded-full border border-foreground/10 bg-foreground/[0.04] p-0.5 w-fit">
-            {[['upcoming', 'Gelecek Nöbetlerim'], ['past', 'Geçmiş Nöbetlerim'], ['calendar', 'Aylık Takvim'], ['stats', 'İstatistikler']].map(([value, label]) => (
+            {([['upcoming', 'Gelecek Nöbetlerim'], ['past', 'Geçmiş Nöbetlerim'], ['calendar', 'Aylık Takvim'], ['stats', 'İstatistikler']] satisfies ReadonlyArray<readonly [DutyTab, string]>).map(([value, label]) => (
               <button key={value} onClick={() => setTab(value)} className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${tab === value ? 'bg-[hsl(var(--brand-accent))] text-white' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>
             ))}
           </div>

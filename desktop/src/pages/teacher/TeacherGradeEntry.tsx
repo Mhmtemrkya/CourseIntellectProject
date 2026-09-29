@@ -19,11 +19,31 @@ import {
 } from '../../lib/api/modules';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
+import { errorMessage } from '../../lib/errors';
+import type { PlannedExam } from '../../lib/api/plannedExams';
+import type { ReportStudentRow } from '../../lib/api/reports';
+import type { ExamResultDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
+
+type GradeKey = 'firstGrade' | 'secondGrade' | 'performanceGrade';
+type GradeRow = ReturnType<typeof buildRows>[number];
+type GradeDraft = Partial<Record<GradeKey, string>> & { finalGrade?: number };
+
+interface PendingApproval {
+  sessionId: string;
+  studentName: string;
+  score: number;
+  net: number;
+  examTitle: string;
+  assessmentLabel: string;
+  className: string;
+  subject: string;
+}
 
 const weights = { first: 0.4, second: 0.4, performance: 0.2 };
 
-function decodeText(value = '') {
-  return String(value)
+function decodeText(value: string | null | undefined = ''): string {
+  return String(value ?? '')
     .replaceAll('&#xFC;', 'ü').replaceAll('&#xDC;', 'Ü')
     .replaceAll('&#xE7;', 'ç').replaceAll('&#xC7;', 'Ç')
     .replaceAll('&#x131;', 'ı').replaceAll('&#x130;', 'İ')
@@ -32,30 +52,30 @@ function decodeText(value = '') {
     .replaceAll('&#x11F;', 'ğ').replaceAll('&#x11E;', 'Ğ');
 }
 
-function clampGrade(value) {
+function clampGrade(value: string | null | undefined): string {
   const text = String(value ?? '').replace(/[^\d]/g, '').slice(0, 3);
   if (text === '') return '';
   return String(Math.min(100, Math.max(0, Number(text))));
 }
 
-function initials(name = '') {
+function initials(name = ''): string {
   const parts = decodeText(name).trim().split(/\s+/).filter(Boolean);
-  return `${parts[0]?.[0] || 'Ö'}${parts.at(-1)?.[0] || ''}`;
+  return `${parts[0]?.[0] || 'Ö'}${parts[parts.length - 1]?.[0] || ''}`;
 }
 
-function average(values) {
+function average(values: ReadonlyArray<string | number>): number {
   const safe = values.map(Number).filter((item) => Number.isFinite(item));
   return safe.length ? safe.reduce((sum, item) => sum + item, 0) / safe.length : 0;
 }
 
-function statusFor(value) {
+function statusFor(value: number): { label: string; color: string } {
   if (value >= 85) return { label: 'Başarılı', color: 'emerald' };
   if (value >= 70) return { label: 'İyi', color: 'blue' };
   if (value >= 50) return { label: 'Orta', color: 'amber' };
   return { label: 'Geliştirilmeli', color: 'red' };
 }
 
-function downloadText(filename, content, type = 'text/csv;charset=utf-8') {
+function downloadText(filename: string, content: string, type = 'text/csv;charset=utf-8') {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -65,20 +85,19 @@ function downloadText(filename, content, type = 'text/csv;charset=utf-8') {
   URL.revokeObjectURL(url);
 }
 
-function buildRows(students, records, subjectFilter) {
+function buildRows(students: readonly ReportStudentRow[], records: readonly ExamResultDto[], subjectFilter: string) {
   return students.map((student) => {
-    const name = decodeText(student.fullName || student.studentName || '');
+    const name = decodeText(student.fullName || '');
     const className = decodeText(student.className || '');
     const related = records
       .filter((item) => decodeText(item.studentName) === name)
-      .filter((item) => !subjectFilter || subjectFilter === 'Tüm Dersler' || decodeText(item.subject) === subjectFilter)
-      .sort((a, b) => new Date(b.createdAtUtc || b.date || 0) - new Date(a.createdAtUtc || a.date || 0));
+      .filter((item) => !subjectFilter || subjectFilter === 'Tüm Dersler' || decodeText(item.subject) === subjectFilter);
     const first = related.find((item) => /1|bir/i.test(`${item.examTitle} ${item.type}`)) || related[0];
     const second = related.find((item) => /2|iki/i.test(`${item.examTitle} ${item.type}`)) || related[1];
     const performance = related.find((item) => /performans|performance/i.test(`${item.examTitle} ${item.type}`)) || related[2];
-    const firstGrade = first?.score ?? '';
-    const secondGrade = second?.score ?? '';
-    const performanceGrade = performance?.score ?? '';
+    const firstGrade: number | '' = first?.score ?? '';
+    const secondGrade: number | '' = second?.score ?? '';
+    const performanceGrade: number | '' = performance?.score ?? '';
     const entered = [firstGrade, secondGrade, performanceGrade].filter((item) => item !== '');
     const finalGrade = entered.length === 3
       ? Number(firstGrade) * weights.first + Number(secondGrade) * weights.second + Number(performanceGrade) * weights.performance
@@ -98,7 +117,7 @@ function buildRows(students, records, subjectFilter) {
   });
 }
 
-function SelectBox({ label, value, options, onChange }) {
+function SelectBox({ label, value, options, onChange }: { label: string; value: string; options: readonly string[]; onChange: (value: string) => void }) {
   return (
     <label className="space-y-2">
       <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{label}</span>
@@ -113,11 +132,11 @@ function SelectBox({ label, value, options, onChange }) {
   );
 }
 
-function DetailPanel({ row, rows, subject, onClose }) {
+function DetailPanel({ row, rows, subject, onClose }: { row: GradeRow | null; rows: readonly GradeRow[]; subject: string; onClose: () => void }) {
   if (!row) return null;
   const sorted = [...rows].sort((a, b) => b.finalGrade - a.finalGrade);
   const rank = sorted.findIndex((item) => item.id === row.id) + 1;
-  const distribution = [
+  const distribution: ReadonlyArray<readonly [string, number, string]> = [
     ['90 - 100', rows.filter((item) => item.finalGrade >= 90).length, '#22C55E'],
     ['70 - 89', rows.filter((item) => item.finalGrade >= 70 && item.finalGrade < 90).length, '#3B82F6'],
     ['50 - 69', rows.filter((item) => item.finalGrade >= 50 && item.finalGrade < 70).length, '#F59E0B'],
@@ -192,7 +211,7 @@ function DetailPanel({ row, rows, subject, onClose }) {
         </div>
         <div className="mt-3 space-y-2">
           {row.recent.length === 0 ? <p className="text-sm text-slate-500">Kayıt bulunamadı.</p> : row.recent.map((item) => (
-            <div key={`${item.examTitle}-${item.date}-${item.score}`} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm dark:bg-foreground/[0.04]">
+            <div key={`${item.examTitle}-${item.dateLabel}-${item.score}`} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm dark:bg-foreground/[0.04]">
               <span className="font-bold text-slate-800 dark:text-white">{decodeText(item.examTitle)}</span>
               <span className="text-slate-500 dark:text-slate-400">{item.score}</span>
             </div>
@@ -206,24 +225,24 @@ function DetailPanel({ row, rows, subject, onClose }) {
 export default function TeacherGradeEntry() {
   const { toast } = useToast();
   const { user } = useApp();
-  const fileRef = useRef(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [students, setStudents] = useState([]);
-  const [records, setRecords] = useState([]);
-  const [planned, setPlanned] = useState([]);
-  const [drafts, setDrafts] = useState({});
+  const [students, setStudents] = useState<ReportStudentRow[]>([]);
+  const [records, setRecords] = useState<ExamResultDto[]>([]);
+  const [planned, setPlanned] = useState<PlannedExam[]>([]);
+  const [drafts, setDrafts] = useState<Partial<Record<string, GradeDraft>>>({});
   const [selectedClass, setSelectedClass] = useState('Tüm Sınıflar');
   const [selectedSubject, setSelectedSubject] = useState('Tüm Dersler');
   const [period, setPeriod] = useState('2024 - 2025 / 2. Dönem');
   const [assessment, setAssessment] = useState('2. Yazılı');
   const [search, setSearch] = useState('');
-  const [selectedRowId, setSelectedRowId] = useState(null);
-  const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
   const [approvingId, setApprovingId] = useState('');
 
-  const loadPendingApprovals = useCallback(async (plannedData) => {
+  const loadPendingApprovals = useCallback(async (plannedData: readonly PlannedExam[]) => {
     // Öğretmenin planladığı sınavlarda onay bekleyen öğrenci teslimlerini topla.
     const ownExams = (plannedData || []).filter((item) => !user?.name || decodeText(item.teacherName) === decodeText(user.name));
     const results = await Promise.all(ownExams.slice(0, 30).map(async (exam) => {
@@ -231,7 +250,7 @@ export default function TeacherGradeEntry() {
         const submissions = await fetchPlannedExamSubmissions(exam.id);
         return (Array.isArray(submissions) ? submissions : [])
           .filter((item) => item.approvalStatus === 'Pending' && item.sessionId)
-          .map((item) => ({
+          .map((item): PendingApproval => ({
             sessionId: item.sessionId,
             studentName: decodeText(item.studentName),
             score: item.score,
@@ -262,26 +281,26 @@ export default function TeacherGradeEntry() {
       setPlanned(Array.isArray(plannedData) ? plannedData : []);
       await loadPendingApprovals(Array.isArray(plannedData) ? plannedData : []);
     } catch (err) {
-      setError(err.message || 'Not verileri alınamadı.');
+      setError(errorMessage(err, 'Not verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [loadPendingApprovals]);
 
-  const approveSubmission = async (item) => {
+  const approveSubmission = async (item: PendingApproval) => {
     try {
       setApprovingId(item.sessionId);
       await approveExamSubmission(item.sessionId);
       toast({ title: 'Sonuç onaylandı', description: `${item.studentName} • ${item.assessmentLabel || item.examTitle} notu (${item.score}) not girişine işlendi.` });
       await load();
     } catch (err) {
-      toast({ title: 'Onaylanamadı', description: err.message || 'Tekrar deneyin.' });
+      toast({ title: 'Onaylanamadı', description: errorMessage(err, 'Tekrar deneyin.') });
     } finally {
       setApprovingId('');
     }
   };
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const classOptions = useMemo(() => ['Tüm Sınıflar', ...new Set(students.map((item) => decodeText(item.className)).filter(Boolean))], [students]);
   const subjectOptions = useMemo(() => ['Tüm Dersler', ...new Set([
@@ -299,8 +318,8 @@ export default function TeacherGradeEntry() {
   const selectedRow = rows.find((row) => row.id === selectedRowId) || rows[0] || null;
   const stats = useMemo(() => {
     const finals = rows.map((item) => item.finalGrade).filter((item) => item > 0);
-    const highest = rows.reduce((best, item) => (item.finalGrade > (best?.finalGrade || 0) ? item : best), null);
-    const lowest = rows.filter((item) => item.finalGrade > 0).reduce((best, item) => (!best || item.finalGrade < best.finalGrade ? item : best), null);
+    const highest = rows.reduce<GradeRow | null>((best, item) => (item.finalGrade > (best?.finalGrade || 0) ? item : best), null);
+    const lowest = rows.filter((item) => item.finalGrade > 0).reduce<GradeRow | null>((best, item) => (!best || item.finalGrade < best.finalGrade ? item : best), null);
     return {
       average: average(finals).toFixed(2),
       highest,
@@ -310,20 +329,20 @@ export default function TeacherGradeEntry() {
     };
   }, [rows]);
 
-  const updateDraft = (id, key, value) => {
+  const updateDraft = (id: string, key: GradeKey, value: string) => {
     setDrafts((prev) => {
-      const current = { ...(prev[id] || {}) };
+      const current: GradeDraft = { ...(prev[id] || {}) };
       current[key] = clampGrade(value);
       const first = key === 'firstGrade' ? current[key] : current.firstGrade;
       const second = key === 'secondGrade' ? current[key] : current.secondGrade;
       const perf = key === 'performanceGrade' ? current[key] : current.performanceGrade;
-      const merged = rows.find((item) => item.id === id) || {};
-      const a = first ?? merged.firstGrade;
-      const b = second ?? merged.secondGrade;
-      const c = perf ?? merged.performanceGrade;
+      const merged = rows.find((item) => item.id === id);
+      const a = first ?? merged?.firstGrade;
+      const b = second ?? merged?.secondGrade;
+      const c = perf ?? merged?.performanceGrade;
       current.finalGrade = [a, b, c].every((item) => item !== '' && item != null)
         ? Number((Number(a) * weights.first + Number(b) * weights.second + Number(c) * weights.performance).toFixed(2))
-        : average([a, b, c].filter((item) => item !== '' && item != null));
+        : average([a, b, c].filter((item): item is string => item !== '' && item != null));
       return { ...prev, [id]: current };
     });
   };
@@ -357,17 +376,17 @@ export default function TeacherGradeEntry() {
       await load();
       toast({ title: 'Notlar kaydedildi', description: `${rows.length} öğrencinin not kaydı backend’e işlendi.` });
     } catch (err) {
-      toast({ title: 'Kayıt başarısız', description: err.message || 'Tekrar deneyin.' });
+      toast({ title: 'Kayıt başarısız', description: errorMessage(err, 'Tekrar deneyin.') });
     } finally {
       setSaving(false);
     }
   };
 
-  const importCsv = async (file) => {
+  const importCsv = async (file: File | undefined) => {
     if (!file) return;
     const text = await file.text();
     const lines = text.split(/\r?\n/).slice(1).filter(Boolean);
-    const next = {};
+    const next: Record<string, GradeDraft> = {};
     lines.forEach((line) => {
       const cells = line.split(',').map((item) => item.replace(/^"|"$/g, '').trim());
       const row = rows.find((item) => item.fullName === cells[1]);
@@ -396,7 +415,7 @@ export default function TeacherGradeEntry() {
           <Button variant="outline" onClick={() => downloadText('not-girisi.csv', rowsToCsv())}><FileDown className="mr-2 h-4 w-4" />Dışa Aktar</Button>
           <Button variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" />PDF Rapor</Button>
           <FeatureGate module="grade-entry" action="enter"><Button onClick={saveAll} disabled={saving || loading} className="bg-orange-500 text-white hover:bg-orange-600"><Save className="mr-2 h-4 w-4" />{saving ? 'Kaydediliyor' : 'Kaydet'}</Button></FeatureGate>
-          <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => importCsv(event.target.files?.[0])} />
+          <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => { void importCsv(event.target.files?.[0]); }} />
         </div>
       </div>
 
@@ -487,11 +506,11 @@ export default function TeacherGradeEntry() {
                           <span className="font-black">{row.fullName}</span>
                         </div>
                       </td>
-                      {[
+                      {([
                         ['firstGrade', row.firstGrade],
                         ['secondGrade', row.secondGrade],
                         ['performanceGrade', row.performanceGrade],
-                      ].map(([key, value]) => (
+                      ] satisfies ReadonlyArray<readonly [GradeKey, string]>).map(([key, value]) => (
                         <td key={key} className="px-4 py-3">
                           <input
                             value={value}
@@ -528,13 +547,13 @@ export default function TeacherGradeEntry() {
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-5">
-        {[
+        {([
           [stats.average, 'Sınıf Ortalaması', BarChart3, 'text-blue-500'],
           [stats.highest ? stats.highest.finalGrade.toFixed(2) : '-', 'En Yüksek Not', CheckCircle2, 'text-emerald-500'],
           [stats.lowest ? stats.lowest.finalGrade.toFixed(2) : '-', 'En Düşük Not', AlertCircle, 'text-amber-500'],
           [stats.missing, 'Notu Girilmeyen', FileText, 'text-purple-500'],
           [stats.total, 'Toplam Öğrenci', Users, 'text-cyan-500'],
-        ].map(([value, label, Icon, color]) => (
+        ] satisfies ReadonlyArray<readonly [string | number, string, IconComponent, string]>).map(([value, label, Icon, color]) => (
           <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-foreground/10 dark:bg-[hsl(var(--ci-card))]">
             <Icon className={`h-5 w-5 ${color}`} />
             <p className="mt-3 text-2xl font-black">{value}</p>

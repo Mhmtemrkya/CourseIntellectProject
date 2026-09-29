@@ -10,11 +10,13 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchPlannedExamSubmissions, fetchPlannedExams } from '../../lib/api/modules';
 import { formatDateTime } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { PlannedExam, PlannedExamSubmission } from '../../lib/api/plannedExams';
 
 export default function TeacherExamWorkbench() {
   const { user } = useApp();
-  const [plannedExams, setPlannedExams] = useState([]);
-  const [submissionMap, setSubmissionMap] = useState({});
+  const [plannedExams, setPlannedExams] = useState<PlannedExam[]>([]);
+  const [submissionMap, setSubmissionMap] = useState<Partial<Record<string, PlannedExamSubmission[]>>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -22,20 +24,23 @@ export default function TeacherExamWorkbench() {
     try {
       setLoading(true);
       setError('');
-      const exams = await fetchPlannedExams({ teacherName: user?.name || '' });
+      const exams = (await fetchPlannedExams({ teacherName: user?.name || '' })) ?? [];
       setPlannedExams(exams);
       const entries = await Promise.all(
-        exams.map(async (exam) => [exam.id, await fetchPlannedExamSubmissions(exam.id).catch(() => [])]),
+        exams.map(async (exam): Promise<[string, PlannedExamSubmission[]]> => [
+          exam.id,
+          (await fetchPlannedExamSubmissions(exam.id).catch(() => null)) ?? [],
+        ]),
       );
       setSubmissionMap(Object.fromEntries(entries));
     } catch (err) {
-      setError(err.message || 'Sınav çalışma alanı alınamadı.');
+      setError(errorMessage(err, 'Sınav çalışma alanı alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user?.name]);
 
-  useEffect(() => { loadWorkbench(); }, [loadWorkbench]);
+  useEffect(() => { void loadWorkbench(); }, [loadWorkbench]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 

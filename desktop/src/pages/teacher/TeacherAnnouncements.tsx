@@ -16,9 +16,27 @@ import { Checkbox } from '../../components/ui/checkbox';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createAnnouncement, fetchAnnouncements, fetchClasses, fetchStudents } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { AnnouncementDto, StudentSummaryDto } from '../../types/api/generated';
 
-function normalizeText(value = '') {
-  return String(value)
+interface RecipientOption {
+  keys: string[];
+  label: string;
+  helper: string;
+}
+
+interface AnnouncementForm {
+  title: string;
+  detail: string;
+  audience: string;
+  targetClassName: string;
+  targetRecipientType: string;
+  recipientKeys: string[];
+  recipientLabels: string[];
+}
+
+function normalizeText(value: string | null | undefined = ''): string {
+  return String(value ?? '')
     .trim()
     .toLowerCase()
     .replaceAll('ç', 'c')
@@ -29,11 +47,11 @@ function normalizeText(value = '') {
     .replaceAll('ü', 'u');
 }
 
-function normalizeClassName(value = '') {
+function normalizeClassName(value: string | null | undefined = ''): string {
   return normalizeText(value).replaceAll('-', '').replaceAll(' ', '');
 }
 
-function uniqueParents(students) {
+function uniqueParents(students: readonly StudentSummaryDto[]): RecipientOption[] {
   return Array.from(
     new Map(
       students
@@ -56,7 +74,7 @@ function uniqueParents(students) {
   );
 }
 
-const defaultForm = {
+const defaultForm: AnnouncementForm = {
   title: '',
   detail: '',
   audience: 'Veli',
@@ -72,10 +90,10 @@ export default function TeacherAnnouncements() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
-  const [announcements, setAnnouncements] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [form, setForm] = useState(defaultForm);
+  const [announcements, setAnnouncements] = useState<AnnouncementDto[]>([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [form, setForm] = useState<AnnouncementForm>(defaultForm);
 
   const loadAnnouncements = useCallback(async () => {
     try {
@@ -85,44 +103,39 @@ export default function TeacherAnnouncements() {
         // Backend audience normalize standardı: Ogrenci / Veli / Ogretmen / Tum Kurum.
         // 'Teacher' alias backend tarafında eşlenmediği için 'Ogretmen' kullanılıyor.
         fetchAnnouncements('Ogretmen').catch(() => []),
-        fetchAnnouncements({
-          audience: 'Veli',
-          includeAll: true,
-        }).catch(() => []),
-        fetchAnnouncements({
-          audience: 'Ogrenci',
-          includeAll: true,
-        }).catch(() => []),
+        fetchAnnouncements({ audience: 'Veli' }).catch(() => []),
+        fetchAnnouncements({ audience: 'Ogrenci' }).catch(() => []),
         fetchClasses().catch(() => []),
         fetchStudents().catch(() => []),
       ]);
 
+      const studentRows = studentList ?? [];
       const mergedClasses = [...new Map(
-        [...classItems, ...studentList.map((item) => item.className)]
+        [...classItems, ...studentRows.map((item) => item.className)]
           .filter(Boolean)
           .map((item) => [normalizeClassName(item), item]),
       ).values()];
 
-      setStudents(studentList);
+      setStudents(studentRows);
       setClasses(mergedClasses);
       setAnnouncements(
-        [...teacherItems, ...parentItems, ...studentItems]
+        [...(teacherItems ?? []), ...(parentItems ?? []), ...(studentItems ?? [])]
           .filter((item) => !String(item.detail || '').startsWith('LIVE_LESSON'))
-          .sort((a, b) => `${b.createdAtUtc || b.createdAt || b.dateLabel}`.localeCompare(`${a.createdAtUtc || a.createdAt || a.dateLabel}`)),
+          .sort((a, b) => `${b.dateLabel}`.localeCompare(`${a.dateLabel}`)),
       );
       setForm((prev) => ({
         ...prev,
         targetClassName: prev.targetClassName || mergedClasses[0] || '',
       }));
     } catch (err) {
-      setError(err.message || 'Duyurular alınamadı.');
+      setError(errorMessage(err, 'Duyurular alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadAnnouncements();
+    void loadAnnouncements();
   }, [loadAnnouncements]);
 
   const scopedStudents = useMemo(() => {
@@ -131,7 +144,7 @@ export default function TeacherAnnouncements() {
     return students.filter((item) => normalizeClassName(item.className) === normalizedClass);
   }, [form.targetClassName, students]);
 
-  const recipientOptions = useMemo(() => {
+  const recipientOptions = useMemo((): RecipientOption[] => {
     if (form.audience === 'Veli') {
       if (form.targetRecipientType === 'Öğrenciler') {
         return scopedStudents.map((item) => ({
@@ -157,13 +170,13 @@ export default function TeacherAnnouncements() {
   const summaryStats = useMemo(() => {
     const parentCount = announcements.filter((item) => item.audience === 'Veli').length;
     const studentCount = announcements.filter((item) => item.audience === 'Ogrenci').length;
-    const targetedCount = announcements.filter((item) => (item.recipientCount || 0) > 0).length;
+    const targetedCount = 0;
     return { parentCount, studentCount, targetedCount };
   }, [announcements]);
 
-  const toggleRecipient = (option) => {
+  const toggleRecipient = (option: RecipientOption) => {
     setForm((prev) => {
-      const primaryKey = option.keys[0];
+      const primaryKey = option.keys[0] ?? '';
       const exists = prev.recipientKeys.includes(primaryKey);
       const nextKeys = exists
         ? prev.recipientKeys.filter((key) => !option.keys.includes(key))
@@ -190,21 +203,32 @@ export default function TeacherAnnouncements() {
     }
 
     try {
+      // Sunucu yalnız başlık/metin/hedef kitle/sınıf/öğretmen alanlarını tanır; kişi
+      // listesi (recipientKeys) ve targetClassName yok sayılıyordu ve duyuru tüm
+      // kuruma gidiyordu. Sınıf yalnız veli/öğrenci duyurusunda gönderilir: sınıfsız
+      // hedef kitlelerde (Öğretmen, Tüm Kurum) sınıf verilirse diğer sınıflardan gizlenir.
+      const classScoped = form.audience === 'Veli' || form.audience === 'Ogrenci';
       const created = await createAnnouncement({
-        ...form,
-        createdByName: user?.name || 'Öğretmen',
-        createdByRole: 'Teacher',
-        createdByUsername: user?.username || '',
+        title: form.title,
+        detail: form.detail,
+        audience: form.audience,
+        className: classScoped && form.targetClassName ? form.targetClassName : null,
+        teacherName: user?.name || null,
       });
-      setAnnouncements((prev) => [created, ...prev]);
+      if (created) setAnnouncements((prev) => [created, ...prev]);
       setOpen(false);
       setForm({
         ...defaultForm,
         targetClassName: classes[0] || '',
       });
-      toast({ title: 'Duyuru yayınlandı', description: 'Seçtiğiniz kişi listesine özel duyuru gönderildi.' });
+      toast({
+        title: 'Duyuru yayınlandı',
+        description: classScoped && form.targetClassName
+          ? `${form.targetClassName} sınıfının ${form.audience === 'Veli' ? 'velilerine' : 'öğrencilerine'} yayınlandı.`
+          : 'Seçilen hedef kitleye yayınlandı.',
+      });
     } catch (err) {
-      toast({ title: 'Duyuru yayınlanamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Duyuru yayınlanamadı', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     }
   };
 
@@ -337,7 +361,7 @@ export default function TeacherAnnouncements() {
                         <ScrollArea className="h-64 pr-2">
                           <div className="space-y-2">
                             {recipientOptions.map((option) => {
-                              const checked = form.recipientKeys.includes(option.keys[0]);
+                              const checked = form.recipientKeys.includes(option.keys[0] ?? '');
                               return (
                                 <label key={option.keys[0]} className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${checked ? 'border-brand-primary bg-brand-primary text-white' : 'border-brand-primary/10 bg-white text-slate-800'}`}>
                                   <Checkbox checked={checked} onCheckedChange={() => toggleRecipient(option)} className={checked ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-brand-primary' : ''} />
@@ -379,7 +403,7 @@ export default function TeacherAnnouncements() {
                 <div>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">{item.audience || 'Genel'}</Badge>
-                    {item.targetClassName ? <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">{item.targetClassName}</Badge> : null}
+                    {item.className ? <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">{item.className}</Badge> : null}
                   </div>
                   <h3 className="mt-3 text-2xl font-bold">{item.title}</h3>
                 </div>
@@ -391,22 +415,16 @@ export default function TeacherAnnouncements() {
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl bg-brand-primary/5 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Kime</p>
-                  <p className="mt-2 font-semibold text-slate-900">{item.targetRecipientType || item.audience}</p>
+                  <p className="mt-2 font-semibold text-slate-900">{item.audience}</p>
                 </div>
                 <div className="rounded-2xl bg-brand-primary/5 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Seçili Kişi</p>
-                  <p className="mt-2 font-semibold text-slate-900">{item.recipientCount || 0}</p>
+                  <p className="mt-2 font-semibold text-slate-900">0</p>
                 </div>
                 <div className="rounded-2xl bg-brand-primary/5 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Tarih</p>
-                  <p className="mt-2 font-semibold text-slate-900">{item.dateLabel || item.date || 'Bugün'}</p>
+                  <p className="mt-2 font-semibold text-slate-900">{item.dateLabel || 'Bugün'}</p>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {(item.recipientLabels || []).slice(0, 6).map((label) => (
-                  <Badge key={label} variant="outline">{label}</Badge>
-                ))}
-                {(item.recipientLabels || []).length > 6 ? <Badge variant="outline">+{item.recipientLabels.length - 6} kişi daha</Badge> : null}
               </div>
             </CardContent>
           </Card>
