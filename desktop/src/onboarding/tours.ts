@@ -9,7 +9,32 @@
 // Hedef seçiciler data-testid üzerinden çalışır; hedef bulunamazsa adım
 // otomatik olarak ortalanmış karta düşer (tur asla kırılmaz).
 
-const nav = (path) => `[data-testid="nav-${path.replace(/\//g, '-').slice(1)}"]`;
+export interface TourStep {
+  /** CSS seçici; yoksa ya da bulunamazsa adım ortalanmış karta düşer. */
+  target?: string;
+  title: string;
+  body: string;
+}
+
+export interface Tour {
+  id: string;
+  steps: TourStep[];
+}
+
+interface PageTourConfig {
+  steps: TourStep[];
+}
+
+type AreaKey = 'institution' | 'finance' | 'teacher' | 'student' | 'parent' | 'guidance' | 'platform';
+
+interface AreaGuide {
+  overview: string;
+  workflow: string;
+  controls: string;
+  safety: string;
+}
+
+const nav = (path: string): string => `[data-testid="nav-${path.replace(/\//g, '-').slice(1)}"]`;
 const TOPBAR_SEARCH = '[data-testid="search-button"]';
 const TOPBAR_NOTIFICATIONS = '[data-testid="notifications-button"]';
 const TOPBAR_USER = '[data-testid="user-menu"]';
@@ -20,7 +45,7 @@ const PAGE_TITLE = 'main h1';
 // KARŞILAMA TURLARI (rol bazlı)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const WELCOME_TOURS = {
+export const WELCOME_TOURS: Record<string, Tour> = {
   admin: {
     id: 'welcome:admin',
     steps: [
@@ -422,7 +447,7 @@ export const WELCOME_TOURS = {
 // key: route pathname (tam eşleşme)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const PAGE_TOURS = {
+export const PAGE_TOURS: Record<string, PageTourConfig> = {
   // ── Yönetim ────────────────────────────────────────────────────────────────
   '/dashboard': {
     steps: [
@@ -972,7 +997,7 @@ export const PAGE_TOURS = {
   },
 };
 
-const AREA_GUIDES = {
+const AREA_GUIDES: Record<AreaKey, AreaGuide> = {
   institution: {
     overview: 'Bu ekran kurum sahibinin akademik, idari ve operasyonel kararlarını tek bir iş akışında yürütmesi için hazırlanmıştır. Gösterilen kayıtlar aktif kurum ve seçili şube kapsamına göre sunulur.',
     workflow: 'Önerilen kullanım sırası:\n\n1. Üst bölümdeki özet ve uyarıları kontrol edin.\n2. Tarih, şube, sınıf veya durum filtreleri varsa çalışma kapsamını belirleyin.\n3. Listeden ilgili kaydı açıp ayrıntıları doğrulayın.\n4. Değişiklikten sonra sayaç, durum rozeti ve işlem geçmişini yeniden kontrol edin.',
@@ -1017,7 +1042,7 @@ const AREA_GUIDES = {
   },
 };
 
-const ROLE_PAGE_TIPS = {
+const ROLE_PAGE_TIPS: Record<string, string> = {
   admin: 'Kurum sahibi için öneri: güne Dashboard uyarılarıyla başlayın; şube, personel ve finans değişikliklerinden sonra Kayıt Geçmişi sayfasından işlemin doğru kullanıcı ve kapsamla yazıldığını doğrulayın.',
   branchmanager: 'Şube yöneticisi için öneri: üst bölümde seçili şubeyi kontrol edin. Kurum geneline ait olduğunu düşündüğünüz bir kayıt görünmüyorsa yetki genişletmeye çalışmak yerine kurum sahibiyle kapsam atamasını doğrulayın.',
   administrative: 'İdari personel için öneri: kayıt ve belge işlemlerinde kişi bilgilerini iki kez doğrulayın; yetkiniz dışındaki finans veya rol işlemlerini ilgili birime yönlendirin.',
@@ -1029,7 +1054,7 @@ const ROLE_PAGE_TIPS = {
   superadmin: 'Platform yöneticisi için öneri: hedef kurum, ortam ve etki alanını değişiklikten önce ve sonra doğrulayın.',
 };
 
-const WELCOME_PLAYBOOKS = {
+const WELCOME_PLAYBOOKS: Record<string, TourStep[]> = {
   admin: [
     { title: 'İlk kurulum sırası', body: 'Kurumunuzu güvenli bir veri yapısıyla başlatmak için Dashboard üzerindeki kurulum kartını izleyin:\n\n1. Şubeyi ve sorumlusunu kaydedin.\n2. Sınıfları tanımlayın.\n3. Öğretmen kadrosunu ekleyin.\n4. Haftalık ders programını kurun.\n5. İlk öğrenci kaydıyla ücret sözleşmesi ve taksit planını oluşturun.\n\nHer adım gerçek kurum verisinden otomatik tamamlanır; ayrıca “tamamlandı” işaretlemeniz gerekmez.' },
     { title: 'Kurum sahibinin günlük kontrolü', body: 'Her gün Dashboard dönemini “Günlük” bırakıp devamsızlık, bekleyen tahsilat ve operasyon uyarılarını inceleyin. Ardından görev/onay akışını temizleyin. Haftalık görünümde personel ve akademik eğilimi, aylık görünümde seçtiğiniz ayın tahsilat–gider dengesini kontrol edin.' },
@@ -1037,7 +1062,7 @@ const WELCOME_PLAYBOOKS = {
   ],
 };
 
-function areaFor(pathname) {
+function areaFor(pathname: string): AreaKey {
   if (pathname.startsWith('/finance/')) return 'finance';
   if (pathname.startsWith('/t/')) return 'teacher';
   if (pathname.startsWith('/s/')) return 'student';
@@ -1047,36 +1072,39 @@ function areaFor(pathname) {
   return 'institution';
 }
 
-function readablePageName(pathname, config) {
+function readablePageName(pathname: string, config: PageTourConfig | null): string {
   const configuredTitle = config?.steps?.[0]?.title;
   if (configuredTitle) return configuredTitle;
   const segment = pathname.split('/').filter(Boolean).at(-1) || 'dashboard';
   return segment
     .replace(/[-_]+/g, ' ')
-    .replace(/\b\w/g, (letter) => letter.toLocaleUpperCase('tr-TR'));
+    .replace(/\b\w/g, (letter: string) => letter.toLocaleUpperCase('tr-TR'));
 }
 
-function matchingPageConfig(pathname) {
-  if (PAGE_TOURS[pathname]) return PAGE_TOURS[pathname];
+function matchingPageConfig(pathname: string): PageTourConfig | null {
+  const exact = PAGE_TOURS[pathname];
+  if (exact) return exact;
   const prefix = Object.keys(PAGE_TOURS)
     .filter((path) => pathname.startsWith(`${path}/`))
     .sort((a, b) => b.length - a.length)[0];
-  return prefix ? PAGE_TOURS[prefix] : null;
+  return prefix ? PAGE_TOURS[prefix] ?? null : null;
 }
 
-function roleTip(roles) {
+function roleTip(roles: readonly string[] | null | undefined): string {
   const set = new Set(roles || []);
   const order = ['superadmin', 'admin', 'branchmanager', 'finance', 'administrative', 'counselor', 'teacher', 'student', 'parent'];
-  return ROLE_PAGE_TIPS[order.find((role) => set.has(role))] || 'Bu sayfada yalnız rolünüzün izin verdiği kayıt ve işlemler görünür. Emin olmadığınız kritik işlemlerde kurum yöneticinizle kapsamı doğrulayın.';
+  const role = order.find((candidate) => set.has(candidate));
+  return (role ? ROLE_PAGE_TIPS[role] : undefined) || 'Bu sayfada yalnız rolünüzün izin verdiği kayıt ve işlemler görünür. Emin olmadığınız kritik işlemlerde kurum yöneticinizle kapsamı doğrulayın.';
 }
 
 // Rol anahtarı → karşılama turu. BranchManager admin menüsünü kullanır.
-export function findWelcomeTour(roles) {
+export function findWelcomeTour(roles: readonly string[]): Tour | null {
   const order = ['superadmin', 'admin', 'counselor', 'teacher', 'finance', 'administrative', 'cafeteria', 'student', 'parent'];
   const set = new Set(roles);
   const key = set.has('branchmanager') ? 'admin' : order.find((role) => set.has(role));
   if (!key) return null;
   const tour = WELCOME_TOURS[key];
+  if (!tour) return null;
   const extra = WELCOME_PLAYBOOKS[key] || [
     { title: 'Önerilen günlük çalışma', body: roleTip(roles) },
     { title: 'Güvenli kullanım', body: 'Her işlemden önce seçili kişi, tarih, kurum/şube ve durum bilgisini doğrulayın. Rolünüz dışında kalan bir işlem gerektiğinde hesabı veya kapsamı değiştirmeye çalışmak yerine yetkili birime yönlendirin.' },
@@ -1084,12 +1112,12 @@ export function findWelcomeTour(roles) {
   return { ...tour, id: `${tour.id}:v2`, steps: [...tour.steps, ...extra] };
 }
 
-export function findPageTour(pathname, roles = []) {
+export function findPageTour(pathname: string | null | undefined, roles: readonly string[] = []): Tour | null {
   if (!pathname || pathname === '/') return null;
   const config = matchingPageConfig(pathname);
   const area = AREA_GUIDES[areaFor(pathname)];
   const title = readablePageName(pathname, config);
-  const specificSteps = config?.steps || [
+  const specificSteps: TourStep[] = config?.steps || [
     { title, body: area.overview },
   ];
   const detailSteps = [

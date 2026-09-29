@@ -4,12 +4,72 @@ import { Bot, ChevronLeft, History, Loader2, MessageCircle, Plus, Send, ShieldCh
 import { useNavigate } from 'react-router-dom';
 import { formatMoney } from '../../lib/format';
 import { assistantApi } from './assistantApi';
+import { isRecord } from '../../lib/errors';
+import { isApiError } from '../../lib/api/client';
+import type { AssistantActionDto, AssistantConversationDto, AssistantSuggestionDto } from '../../types/api/generated';
 
-const welcome = { id: 'welcome', sender: 'assistant', type: 'text', text: 'Merhaba! Yetkiniz kapsamındaki okul, dershane ve sürücü kursu bilgilerine güvenli biçimde ulaşmanıza yardımcı olabilirim.' };
-const errorText = (error) => error?.status === 429 ? 'Çok hızlı mesaj gönderdiniz. Lütfen kısa bir süre bekleyin.' : error?.message || 'Asistan servisine ulaşılamıyor.';
+/** Asistan yanıtındaki yapılandırılmış verinin ekranda okunan alanları (niyete göre değişir). */
+interface AssistantDataItem {
+  id?: string;
+  studentId?: string;
+  fullName?: string;
+  title?: string;
+  examTitle?: string;
+  lesson?: string;
+  label?: string;
+  className?: string;
+  subject?: string;
+  status?: string;
+  date?: string;
+  deadline?: string;
+  startsAt?: string;
+  score?: number | null;
+  remaining?: number | null;
+}
 
-function StructuredData({ message, onAction }) {
-  const data = message.data;
+interface AssistantData {
+  items?: AssistantDataItem[];
+  recent?: AssistantDataItem[];
+  fullName?: string;
+  className?: string;
+  remaining?: number;
+  metrics?: Array<{ label: string; value: number | string }>;
+  collectedThisMonth?: number;
+  periodLabel?: string;
+  openDebt?: number;
+  overdueInstallments?: number | null;
+}
+
+/** Ekrandaki sohbet balonu: yerel mesaj, geçmişten gelen mesaj ya da yeni yanıt. */
+interface ChatMessage {
+  id?: string;
+  messageId?: string;
+  sender: string;
+  type: string;
+  text: string;
+  data?: unknown;
+  actions?: AssistantActionDto[];
+}
+
+type ActionHandler = (command: string | null | undefined, studentId?: string | null, route?: string | null) => void;
+
+function asAssistantData(value: unknown): AssistantData | null {
+  // Sunucu sözleşmesi: data ya null ya da niyete özgü bir nesnedir.
+  return isRecord(value) ? (value as AssistantData) : null;
+}
+
+function actionStudentId(item: AssistantActionDto): string | undefined {
+  const parameters = item.parameters;
+  return isRecord(parameters) && typeof parameters.studentId === 'string' ? parameters.studentId : undefined;
+}
+
+const welcome: ChatMessage = { id: 'welcome', sender: 'assistant', type: 'text', text: 'Merhaba! Yetkiniz kapsamındaki okul, dershane ve sürücü kursu bilgilerine güvenli biçimde ulaşmanıza yardımcı olabilirim.' };
+const errorText = (error: unknown): string => (isApiError(error) && error.status === 429)
+  ? 'Çok hızlı mesaj gönderdiniz. Lütfen kısa bir süre bekleyin.'
+  : (error instanceof Error && error.message) || 'Asistan servisine ulaşılamıyor.';
+
+function StructuredData({ message, onAction }: { message: ChatMessage; onAction: ActionHandler }) {
+  const data = asAssistantData(message.data);
   if (!data) return null;
   const items = Array.isArray(data.items) ? data.items : Array.isArray(data.recent) ? data.recent : [];
   return <div className="mt-3 space-y-2">
@@ -22,7 +82,7 @@ function StructuredData({ message, onAction }) {
       <div className="flex gap-2"><div className="flex-1 rounded-xl border bg-background/80 p-3"><div className="text-xs text-muted-foreground">Açık borç</div><div className="text-lg font-bold text-foreground">{formatMoney(data.openDebt)}</div></div><div className="flex-1 rounded-xl border bg-background/80 p-3"><div className="text-xs text-muted-foreground">Gecikmiş taksit</div><div className="text-lg font-bold text-foreground">{data.overdueInstallments ?? 0}</div></div></div>
     </div>}
     {items.slice(0, 15).map((item, index) => <button key={item.id || item.studentId || index} type="button" onClick={() => item.studentId && onAction('get_attendance', item.studentId)} className={`w-full rounded-xl border bg-background/80 p-3 text-left text-xs ${item.studentId ? 'hover:border-[hsl(var(--brand-accent))]' : ''}`}><div className="font-semibold text-foreground">{item.fullName || item.title || item.examTitle || item.lesson || item.label || `Kayıt ${index + 1}`}</div><div className="mt-1 text-muted-foreground">{[item.className, item.subject, item.status, item.date, item.deadline, item.startsAt, item.score != null ? `${item.score} puan` : null, item.remaining != null ? formatMoney(item.remaining) : null].filter(Boolean).join(' · ')}</div></button>)}
-    {message.actions?.length > 0 && <div className="flex flex-wrap gap-2 pt-1">{message.actions.map((item, index) => <ActionButton key={index} item={item} onAction={onAction} />)}</div>}
+    {message.actions && message.actions.length > 0 && <div className="flex flex-wrap gap-2 pt-1">{message.actions.map((item, index) => <ActionButton key={index} item={item} onAction={onAction} />)}</div>}
   </div>;
 }
 
@@ -31,7 +91,7 @@ function StructuredData({ message, onAction }) {
  * olarak ayrılmalı: hepsi aynı görünürse kullanıcı "Onayla ve gönder"e sıradan
  * bir çip sanıp basar. Tür bilgisi backend'den `item.type` ile gelir.
  */
-function ActionButton({ item, onAction }) {
+function ActionButton({ item, onAction }: { item: AssistantActionDto; onAction: ActionHandler }) {
   const base = 'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors';
   const style = item.type === 'confirm_action'
     ? 'bg-red-600 text-white shadow-sm hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2'
@@ -41,46 +101,56 @@ function ActionButton({ item, onAction }) {
 
   return <button
     type="button"
-    onClick={() => onAction(item.command, item.parameters?.studentId, item.route)}
+    onClick={() => onAction(item.command, actionStudentId(item), item.route)}
     className={`${base} ${style}`}
   >{item.label}</button>;
 }
 
-export function AssistantPanel({ onClose, fullPage = false }) {
+export function AssistantPanel({ onClose, fullPage = false }: { onClose?: () => void; fullPage?: boolean }) {
   const navigate = useNavigate();
-  const [conversationId, setConversationId] = useState(null);
-  const [messages, setMessages] = useState([welcome]);
-  const [suggestions, setSuggestions] = useState([]);
-  const [conversations, setConversations] = useState([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([welcome]);
+  const [suggestions, setSuggestions] = useState<AssistantSuggestionDto[]>([]);
+  const [conversations, setConversations] = useState<AssistantConversationDto[]>([]);
   const [history, setHistory] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const endRef = useRef(null);
+  const endRef = useRef<HTMLDivElement | null>(null);
 
-  const refreshHistory = () => assistantApi.conversations().then(setConversations).catch(() => {});
-  useEffect(() => { assistantApi.suggestions().then(setSuggestions).catch(() => setError('Hazır komutlar yüklenemedi. Mesaj yazmaya devam edebilirsiniz.')); refreshHistory(); }, []);
+  const refreshHistory = () => assistantApi.conversations().then((rows) => setConversations(rows ?? [])).catch(() => {});
+  useEffect(() => { assistantApi.suggestions().then((rows) => setSuggestions(rows ?? [])).catch(() => setError('Hazır komutlar yüklenemedi. Mesaj yazmaya devam edebilirsiniz.')); void refreshHistory(); }, []);
   useEffect(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), [messages, loading]);
 
   const newChat = () => { setConversationId(null); setMessages([welcome]); setHistory(false); setError(''); };
-  const openChat = async (id) => { setLoading(true); try { const rows = await assistantApi.messages(id); setConversationId(id); setMessages(rows.length ? rows : [welcome]); setHistory(false); } catch (e) { setError(errorText(e)); } finally { setLoading(false); } };
-  const send = async (preset) => {
+  const openChat = async (id: string) => { setLoading(true); try { const rows = (await assistantApi.messages(id)) ?? []; setConversationId(id); setMessages(rows.length ? rows : [welcome]); setHistory(false); } catch (e) { setError(errorText(e)); } finally { setLoading(false); } };
+  const send = async (preset?: string) => {
     const text = (typeof preset === 'string' ? preset : input).trim();
     if (!text || loading) return;
     setMessages((old) => [...old, { id: `local-${Date.now()}`, sender: 'user', type: 'text', text }]); setInput(''); setLoading(true); setError('');
-    try { const response = await assistantApi.send(conversationId, text); setConversationId(response.conversationId); setMessages((old) => [...old, { ...response, sender: 'assistant' }]); refreshHistory(); }
+    try {
+      const response = await assistantApi.send(conversationId, text);
+      if (response) {
+        setConversationId(response.conversationId);
+        setMessages((old) => [...old, { ...response, sender: 'assistant' }]);
+      }
+      void refreshHistory();
+    }
     catch (e) { setError(errorText(e)); }
     finally { setLoading(false); }
   };
-  const action = async (command, studentId, route) => {
+  const action: ActionHandler = async (command, studentId, route) => {
     if (route) { navigate(route); onClose?.(); return; }
     if (!command || !conversationId || loading) return;
     setLoading(true); setError('');
-    try { const response = await assistantApi.action(conversationId, command, studentId); setMessages((old) => [...old, { ...response, sender: 'assistant' }]); }
+    try {
+      const response = await assistantApi.action(conversationId, command, studentId);
+      if (response) setMessages((old) => [...old, { ...response, sender: 'assistant' }]);
+    }
     catch (e) { setError(errorText(e)); }
     finally { setLoading(false); }
   };
-  const remove = async (id) => { await assistantApi.remove(id); setConversations((old) => old.filter((x) => x.id !== id)); if (id === conversationId) newChat(); };
+  const remove = async (id: string) => { await assistantApi.remove(id); setConversations((old) => old.filter((x) => x.id !== id)); if (id === conversationId) newChat(); };
 
   // Başlıktaki ikon butonları aynı davranışa sahip; sınıfı tek yerde tutuyoruz.
   const headerButton = 'grid h-9 w-9 place-items-center rounded-lg text-white/90 transition-colors hover:bg-white/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60';
@@ -157,7 +227,7 @@ export function AssistantLauncher() {
   // Açıkken Escape kapatsın ve arkadaki sayfa kaymasın.
   useEffect(() => {
     if (!open) return undefined;
-    const onKeyDown = (event) => { if (event.key === 'Escape') setOpen(false); };
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', onKeyDown);

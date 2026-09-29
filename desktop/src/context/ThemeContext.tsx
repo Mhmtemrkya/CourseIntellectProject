@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   generateBrandCSSVariables,
   applyBrandVariables,
@@ -10,7 +10,27 @@ import { initDesktopSessionStore, loadDesktopSession } from '../lib/auth';
 import { getActiveTenantContext } from '../lib/api/client';
 import { assetUrl } from '../lib/assetUrl';
 
-const ThemeContext = createContext({
+/** Kullanıcının seçtiği tema; 'system' işletim sistemini izler. */
+export type ThemeSetting = 'light' | 'dark' | 'system' | (string & {});
+export type ResolvedTheme = 'light' | 'dark';
+
+interface BrandingState {
+  primaryColor: string;
+  accentColor: string;
+  tenantLogo: string | null;
+  tenantFavicon: string | null;
+  tenantName: string;
+}
+
+export interface ThemeContextValue extends BrandingState {
+  theme: ThemeSetting;
+  setTheme: (theme: ThemeSetting) => void;
+  resolvedTheme: ResolvedTheme;
+  isBrandingLoaded: boolean;
+  refreshBranding: () => Promise<void> | void;
+}
+
+const ThemeContext = createContext<ThemeContextValue>({
   // Dark / Light mode
   theme: 'system',
   setTheme: () => {},
@@ -25,22 +45,29 @@ const ThemeContext = createContext({
   refreshBranding: () => {},
 });
 
-export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 'courseintellect-theme' }) {
+export interface ThemeProviderProps {
+  children?: ReactNode;
+  defaultTheme?: ThemeSetting;
+  storageKey?: string;
+}
+
+export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 'courseintellect-theme' }: ThemeProviderProps) {
   // ─── Dark / Light Mode ─────────────────────────────────────────────
-  const [theme, setTheme] = useState(() => {
+  const [theme, setTheme] = useState<ThemeSetting>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem(storageKey) || defaultTheme;
     }
     return defaultTheme;
   });
 
-  const [resolvedTheme, setResolvedTheme] = useState('light');
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
 
-    let effectiveTheme = theme;
+    // Bilinmeyen kayıtlı değer (eski sürüm) ışık teması sayılır.
+    let effectiveTheme: ResolvedTheme = theme === 'dark' ? 'dark' : 'light';
     if (theme === 'system') {
       effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
@@ -52,25 +79,24 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
   }, [theme]);
 
   useEffect(() => {
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = (e) => {
-        const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
-        const newTheme = e.matches ? 'dark' : 'light';
-        root.classList.add(newTheme);
-        root.dataset.theme = newTheme;
-        root.style.colorScheme = newTheme;
-        setResolvedTheme(newTheme);
-      };
+    if (theme !== 'system') return undefined;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      const root = window.document.documentElement;
+      root.classList.remove('light', 'dark');
+      const newTheme: ResolvedTheme = e.matches ? 'dark' : 'light';
+      root.classList.add(newTheme);
+      root.dataset.theme = newTheme;
+      root.style.colorScheme = newTheme;
+      setResolvedTheme(newTheme);
+    };
 
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
 
   // ─── Tenant Branding ───────────────────────────────────────────────
-  const [branding, setBranding] = useState({
+  const [branding, setBranding] = useState<BrandingState>({
     primaryColor: DEFAULT_PRIMARY,
     accentColor: DEFAULT_ACCENT,
     tenantLogo: null,
@@ -105,11 +131,11 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
   }, []);
 
   useEffect(() => {
-    fetchBranding();
+    void fetchBranding();
   }, [fetchBranding]);
 
   useEffect(() => {
-    const handleTenantChange = () => fetchBranding();
+    const handleTenantChange = () => { void fetchBranding(); };
     window.addEventListener('ci:tenant-context-changed', handleTenantChange);
     return () => window.removeEventListener('ci:tenant-context-changed', handleTenantChange);
   }, [fetchBranding]);
@@ -131,7 +157,7 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
   useEffect(() => {
     const head = typeof document !== 'undefined' ? document.head : null;
     if (!head) return;
-    const existing = head.querySelector("link[rel~='icon']");
+    const existing = head.querySelector<HTMLLinkElement>("link[rel~='icon']");
     const originalHref = existing?.dataset?.originalHref ?? existing?.getAttribute('href') ?? null;
     if (existing && !existing.dataset.originalHref && originalHref) {
       existing.dataset.originalHref = originalHref;
@@ -149,11 +175,11 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
   }, [branding.tenantFavicon]);
 
   // ─── Context Value ─────────────────────────────────────────────────
-  const value = useMemo(
+  const value = useMemo<ThemeContextValue>(
     () => ({
       // Dark / Light
       theme,
-      setTheme: (newTheme) => {
+      setTheme: (newTheme: ThemeSetting) => {
         localStorage.setItem(storageKey, newTheme);
         setTheme(newTheme);
       },
@@ -177,7 +203,7 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
   );
 }
 
-export const useTheme = () => {
+export const useTheme = (): ThemeContextValue => {
   const context = useContext(ThemeContext);
   if (context === undefined) {
     throw new Error('useTheme must be used within a ThemeProvider');

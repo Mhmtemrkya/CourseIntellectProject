@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Lightbulb, X } from 'lucide-react';
+import type { Tour } from './tours';
 
 // Spotlight tabanlı sayfa turu motoru.
 // - Hedefi olan adımlar: hedef element vurgulanır (dev box-shadow karartması),
@@ -14,7 +15,7 @@ const SPOT_PADDING = 8;
 const CARD_WIDTH = 380;
 const CARD_MARGIN = 14;
 
-function measureTarget(selector) {
+function measureTarget(selector: string | null | undefined): { el: Element; rect: DOMRect } | null {
   if (!selector) return null;
   try {
     const el = document.querySelector(selector);
@@ -27,10 +28,18 @@ function measureTarget(selector) {
   }
 }
 
-export function TourOverlay({ tour, stepIndex, onStepChange, onClose }) {
+export interface TourOverlayProps {
+  tour: Tour | null;
+  stepIndex: number;
+  onStepChange: (index: number) => void;
+  /** completed: tur sonuna kadar izlendi mi (Bitir/Atla) yoksa kapatıldı mı. */
+  onClose: (completed: boolean) => void;
+}
+
+export function TourOverlay({ tour, stepIndex, onStepChange, onClose }: TourOverlayProps) {
   const step = tour?.steps?.[stepIndex];
-  const [spot, setSpot] = useState(null);
-  const rafRef = useRef(null);
+  const [spot, setSpot] = useState<DOMRect | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   const refresh = useCallback(() => {
     if (!step?.target) {
@@ -77,8 +86,9 @@ export function TourOverlay({ tour, stepIndex, onStepChange, onClose }) {
 
   // Klavye: Esc kapatır, ok tuşları gezdirir.
   useEffect(() => {
-    const handler = (event) => {
+    const handler = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose(false);
+      if (!tour) return;
       if (event.key === 'ArrowRight' && stepIndex < tour.steps.length - 1) onStepChange(stepIndex + 1);
       if (event.key === 'ArrowLeft' && stepIndex > 0) onStepChange(stepIndex - 1);
       if (event.key === 'Enter' && stepIndex === tour.steps.length - 1) onClose(true);
@@ -93,8 +103,8 @@ export function TourOverlay({ tour, stepIndex, onStepChange, onClose }) {
   const hasSpot = Boolean(spot);
 
   // Kart konumu: hedefin altı, sığmazsa üstü; yatayda ekrana sıkıştır.
-  let cardStyle;
-  if (hasSpot) {
+  let cardStyle: CSSProperties;
+  if (spot) {
     const viewportW = window.innerWidth;
     const viewportH = window.innerHeight;
     const spaceBelow = viewportH - (spot.bottom + SPOT_PADDING);
@@ -119,7 +129,7 @@ export function TourOverlay({ tour, stepIndex, onStepChange, onClose }) {
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: OVERLAY_Z }} data-testid="tour-overlay">
       {/* Karartma: spotlight varsa hedef delik bırakılır, yoksa düz karartma. */}
-      {hasSpot ? (
+      {spot ? (
         <motion.div
           initial={false}
           animate={{
@@ -180,7 +190,7 @@ export function TourOverlay({ tour, stepIndex, onStepChange, onClose }) {
 
           <div className="flex items-center justify-between gap-2 border-t border-border/60 p-3">
             <div className="flex items-center gap-1.5">
-              {tour.steps.map((_, i) => (
+              {tour.steps.map((_step, i) => (
                 <button
                   key={i}
                   type="button"

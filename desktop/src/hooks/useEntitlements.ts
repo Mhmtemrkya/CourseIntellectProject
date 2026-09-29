@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
-import { getEntitlements, isActionAllowed, isModuleAllowed } from '../lib/entitlements';
+import { getEntitlements, isActionAllowed, isModuleAllowed, type Entitlements } from '../lib/entitlements';
+
+export interface EntitlementsHook {
+  loaded: boolean;
+  entitlements: Entitlements | null;
+  hasModule: (moduleKey: string) => boolean;
+  can: (moduleKey: string, actionKey: string) => boolean;
+}
 
 /**
  * Kurum paket yetkilerini React tarafında kullanmak için hook.
@@ -8,12 +15,12 @@ import { getEntitlements, isActionAllowed, isModuleAllowed } from '../lib/entitl
  *   const { can, hasModule, loaded } = useEntitlements('teacher');
  *   if (!can('exams', 'create')) return null; // "Sınav Oluştur" butonunu gizle
  */
-export function useEntitlements(roleKey) {
-  const [entitlements, setEntitlements] = useState(null);
+export function useEntitlements(roleKey: string | null | undefined): EntitlementsHook {
+  const [entitlements, setEntitlements] = useState<Entitlements | null>(null);
 
   useEffect(() => {
     let active = true;
-    getEntitlements().then((value) => {
+    void getEntitlements().then((value) => {
       if (active) setEntitlements(value);
     });
     return () => {
@@ -24,7 +31,7 @@ export function useEntitlements(roleKey) {
   return {
     loaded: entitlements !== null,
     entitlements,
-    hasModule: (moduleKey) => isModuleAllowed(entitlements, roleKey, moduleKey),
-    can: (moduleKey, actionKey) => isActionAllowed(entitlements, roleKey, moduleKey, actionKey),
+    hasModule: (moduleKey: string) => isModuleAllowed(entitlements, roleKey, moduleKey),
+    can: (moduleKey: string, actionKey: string) => isActionAllowed(entitlements, roleKey, moduleKey, actionKey),
   };
 }

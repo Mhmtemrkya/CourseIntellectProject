@@ -1,4 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import {
   clearDesktopSession,
   createDesktopUser,
@@ -12,53 +22,80 @@ import { startPkceLogin, exchangePkceCode } from '../lib/auth/pkce';
 import { setActiveBranchFilter, setActiveTenantContext } from '../lib/api/client';
 import { resetEntitlementCache } from '../lib/entitlements';
 import { resetTenantFeatureCache } from '../lib/tenantFeatures';
+import { createCodedError } from '../lib/errors';
+import type { DesktopRole, DesktopSession, DesktopUser, LoginPayload } from '../types/session';
+
+export interface DrawerOptions {
+  size?: 'wide';
+}
+
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export interface AppContextValue {
+  user: DesktopUser | null;
+  session: DesktopSession | null;
+  setUser: Dispatch<SetStateAction<DesktopUser | null>>;
+  setSession: Dispatch<SetStateAction<DesktopSession | null>>;
+  isAuthenticated: boolean;
+  isAuthLoading: boolean;
+  login: (credentials: LoginCredentials) => Promise<DesktopUser>;
+  loginWithBrowser: () => Promise<DesktopUser>;
+  logout: () => void;
+  markPasswordChanged: () => void;
+  setUserRole: (role: DesktopRole) => void;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: Dispatch<SetStateAction<boolean>>;
+  drawerOpen: boolean;
+  drawerContent: ReactNode;
+  drawerOptions: DrawerOptions | null;
+  openDrawer: (content: ReactNode, options?: DrawerOptions | null) => void;
+  closeDrawer: () => void;
+  commandPaletteOpen: boolean;
+  setCommandPaletteOpen: Dispatch<SetStateAction<boolean>>;
+  apiBaseUrl: string;
+}
 
 // Module-level helper: aktif abonelik kontrolü. Component içinde tanımlanırsa
 // her render'da yeni reference oluşur ve login/loginWithBrowser useCallback
 // deps'ini kirletir.
-function enforceActiveSubscription(payload) {
+function enforceActiveSubscription(payload: LoginPayload | null | undefined): void {
   const apiUser = payload?.user;
   if (apiUser && apiUser.subscriptionRequired === true && apiUser.isPlatformAdmin !== true) {
-    const err = new Error(
-      "Kurum aboneliğiniz aktif değil. Lütfen kurum yöneticinizle iletişime geçin ve ödemeyi tamamlayın."
+    throw createCodedError(
+      "Kurum aboneliğiniz aktif değil. Lütfen kurum yöneticinizle iletişime geçin ve ödemeyi tamamlayın.",
+      "SUBSCRIPTION_REQUIRED",
     );
-    err.code = "SUBSCRIPTION_REQUIRED";
-    throw err;
   }
 }
 
-function resetTenantAccessCaches() {
+function buildSession(payload: LoginPayload): DesktopSession {
+  return {
+    accessToken: payload.accessToken,
+    refreshToken: payload.refreshToken,
+    expiresAtUtc: payload.expiresAtUtc,
+    refreshTokenExpiresAtUtc: payload.refreshTokenExpiresAtUtc,
+    user: createDesktopUser(payload),
+  };
+}
+
+function resetTenantAccessCaches(): void {
   resetEntitlementCache();
   resetTenantFeatureCache();
 }
 
-const AppContext = createContext({
-  user: null,
-  session: null,
-  setUser: () => {},
-  setSession: () => {},
-  isAuthenticated: false,
-  isAuthLoading: true,
-  login: () => {},
-  logout: () => {},
-  setUserRole: () => {},
-  sidebarCollapsed: false,
-  setSidebarCollapsed: () => {},
-  drawerOpen: false,
-  drawerContent: null,
-  openDrawer: () => {},
-  closeDrawer: () => {},
-  commandPaletteOpen: false,
-  setCommandPaletteOpen: () => {},
-});
+// Sağlayıcı dışında kullanım hatadır; useApp bunu açık bir hatayla yakalar.
+const AppContext = createContext<AppContextValue | undefined>(undefined);
 
-export function AppProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [session, setSession] = useState(null);
+export function AppProvider({ children }: { children?: ReactNode }) {
+  const [user, setUser] = useState<DesktopUser | null>(null);
+  const [session, setSession] = useState<DesktopSession | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerContent, setDrawerContent] = useState(null);
-  const [drawerOptions, setDrawerOptions] = useState(null);
+  const [drawerContent, setDrawerContent] = useState<ReactNode>(null);
+  const [drawerOptions, setDrawerOptions] = useState<DrawerOptions | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
@@ -66,10 +103,10 @@ export function AppProvider({ children }) {
     let active = true;
     // Şifreli oturum deposu (keychain anahtarı + AES-GCM) async açılır;
     // isAuthLoading kapısı init bitene kadar UI'ı bekletir.
-    (async () => {
+    void (async () => {
       await initDesktopSessionStore();
       if (!active) return;
-      let savedSession = loadDesktopSession();
+      const savedSession = loadDesktopSession();
       if (savedSession?.user) {
         // Açılışta kurum bağlamını ana kuruma sıfırla. Aksi halde önceki bir
         // oturumdan localStorage'da kalan X-Tenant-Context (ör. bir okul kurumu)
@@ -87,7 +124,7 @@ export function AppProvider({ children }) {
     return () => { active = false; };
   }, []);
 
-  const login = useCallback(async ({ username, password }) => {
+  const login = useCallback(async ({ username, password }: LoginCredentials): Promise<DesktopUser> => {
     const payload = await loginWithBackend(username, password);
     enforceActiveSubscription(payload);
     // Taze giriş ana kuruma başlar; önceki oturumdan kalan kurum bağlamı
@@ -96,14 +133,7 @@ export function AppProvider({ children }) {
     setActiveBranchFilter(null);
     if (typeof localStorage !== 'undefined') localStorage.removeItem('ci-branch-selected');
     resetTenantAccessCaches();
-    const desktopUser = createDesktopUser(payload);
-    const nextSession = {
-      accessToken: payload.accessToken,
-      refreshToken: payload.refreshToken,
-      expiresAtUtc: payload.expiresAtUtc,
-      refreshTokenExpiresAtUtc: payload.refreshTokenExpiresAtUtc,
-      user: desktopUser,
-    };
+    const nextSession = buildSession(payload);
 
     persistDesktopSession(nextSession);
     setSession(nextSession);
@@ -111,7 +141,7 @@ export function AppProvider({ children }) {
     return nextSession.user;
   }, []);
 
-  const loginWithBrowser = useCallback(async () => {
+  const loginWithBrowser = useCallback(async (): Promise<DesktopUser> => {
     const pkceResult = await startPkceLogin(desktopApiBaseUrl);
     const payload = await exchangePkceCode(desktopApiBaseUrl, pkceResult);
     enforceActiveSubscription(payload);
@@ -119,14 +149,7 @@ export function AppProvider({ children }) {
     setActiveBranchFilter(null);
     if (typeof localStorage !== 'undefined') localStorage.removeItem('ci-branch-selected');
     resetTenantAccessCaches();
-    const desktopUser = createDesktopUser(payload);
-    const nextSession = {
-      accessToken: payload.accessToken,
-      refreshToken: payload.refreshToken,
-      expiresAtUtc: payload.expiresAtUtc,
-      refreshTokenExpiresAtUtc: payload.refreshTokenExpiresAtUtc,
-      user: desktopUser,
-    };
+    const nextSession = buildSession(payload);
 
     persistDesktopSession(nextSession);
     setSession(nextSession);
@@ -165,19 +188,19 @@ export function AppProvider({ children }) {
     });
   }, []);
 
-  const setUserRole = useCallback((role) => {
+  const setUserRole = useCallback((role: DesktopRole) => {
     if (user) {
       setUser({ ...user, role });
     }
   }, [user]);
 
-  const openDrawer = (content, options = null) => {
+  const openDrawer = (content: ReactNode, options: DrawerOptions | null = null): void => {
     setDrawerContent(content);
     setDrawerOptions(options);
     setDrawerOpen(true);
   };
 
-  const closeDrawer = () => {
+  const closeDrawer = (): void => {
     setDrawerOpen(false);
     setTimeout(() => {
       setDrawerContent(null);
@@ -185,7 +208,7 @@ export function AppProvider({ children }) {
     }, 300);
   };
 
-  const value = useMemo(() => ({
+  const value = useMemo<AppContextValue>(() => ({
     user,
     session,
     setUser,
@@ -230,7 +253,7 @@ export function AppProvider({ children }) {
   );
 }
 
-export const useApp = () => {
+export const useApp = (): AppContextValue => {
   const context = useContext(AppContext);
   if (context === undefined) {
     throw new Error('useApp must be used within an AppProvider');

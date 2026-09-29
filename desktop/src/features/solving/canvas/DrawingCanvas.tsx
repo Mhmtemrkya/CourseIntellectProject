@@ -1,19 +1,49 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import {
   Brush, Eraser, Grid3X3, Highlighter, Maximize2, PenLine, Redo2, RotateCcw, Trash2, Undo2,
 } from 'lucide-react';
 import { useTheme } from '../../../context/ThemeContext';
 
+export type CanvasTool = 'pen' | 'highlighter' | 'eraser';
+export type PaperMode = 'grid' | 'squared' | 'blank';
+
+export interface StrokePoint {
+  x: number;
+  y: number;
+  pressure: number;
+  pointerType: string;
+  t: number;
+}
+
+/** Tamamlanan çizgi; üst bileşen bunu autosave için sunucuya iletir. */
+export interface CanvasStroke {
+  id: string;
+  tool: CanvasTool;
+  color: string;
+  width: number;
+  opacity: number;
+  pressure: number;
+  createdAt: string;
+  points: StrokePoint[];
+}
+
+export interface DrawingCanvasProps {
+  questionAttemptId?: string | null;
+  initialSnapshotUrl?: string | null;
+  onStrokeComplete?: (stroke: CanvasStroke) => void;
+  onSnapshot?: (dataUrl: string) => void;
+}
+
 // Kalem paleti temaya göre: son swatch "mürekkep" — koyuda açık, açıkta koyu ki
 // zeminde her zaman görünür kalsın. Diğer renkler iki temada da okunur.
-const paletteFor = (dark) => ['#f97316', '#2563eb', '#059669', '#7c3aed', dark ? '#f8fafc' : '#0f172a', '#e11d48'];
-const TOOLS = [
+const paletteFor = (dark: boolean): string[] => ['#f97316', '#2563eb', '#059669', '#7c3aed', dark ? '#f8fafc' : '#0f172a', '#e11d48'];
+const TOOLS: Array<{ key: CanvasTool; label: string; icon: typeof PenLine }> = [
   { key: 'pen', label: 'Kalem', icon: PenLine },
   { key: 'highlighter', label: 'Fosfor', icon: Highlighter },
   { key: 'eraser', label: 'Silgi', icon: Eraser },
 ];
 
-function createPoint(event, rect) {
+function createPoint(event: ReactPointerEvent<HTMLCanvasElement>, rect: DOMRect): StrokePoint {
   return {
     x: event.clientX - rect.left,
     y: event.clientY - rect.top,
@@ -23,7 +53,7 @@ function createPoint(event, rect) {
   };
 }
 
-function drawPaper(ctx, width, height, paperMode, dark) {
+function drawPaper(ctx: CanvasRenderingContext2D, width: number, height: number, paperMode: PaperMode, dark: boolean): void {
   ctx.clearRect(0, 0, width, height);
   const gradient = ctx.createLinearGradient(0, 0, width, height);
   if (dark) {
@@ -62,9 +92,11 @@ function drawPaper(ctx, width, height, paperMode, dark) {
   }
 }
 
-function drawStroke(ctx, stroke) {
+function drawStroke(ctx: CanvasRenderingContext2D, stroke: CanvasStroke): void {
   const points = stroke.points || [];
-  if (points.length < 2) return;
+  const first = points[0];
+  const last = points[points.length - 1];
+  if (points.length < 2 || !first || !last) return;
 
   ctx.save();
   ctx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
@@ -75,33 +107,35 @@ function drawStroke(ctx, stroke) {
   ctx.lineJoin = 'round';
 
   ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
+  ctx.moveTo(first.x, first.y);
   for (let index = 1; index < points.length - 1; index += 1) {
-    const midpointX = (points[index].x + points[index + 1].x) / 2;
-    const midpointY = (points[index].y + points[index + 1].y) / 2;
-    ctx.quadraticCurveTo(points[index].x, points[index].y, midpointX, midpointY);
+    const current = points[index];
+    const next = points[index + 1];
+    if (!current || !next) continue;
+    const midpointX = (current.x + next.x) / 2;
+    const midpointY = (current.y + next.y) / 2;
+    ctx.quadraticCurveTo(current.x, current.y, midpointX, midpointY);
   }
-  const last = points[points.length - 1];
   ctx.lineTo(last.x, last.y);
   ctx.stroke();
   ctx.restore();
 }
 
-export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeComplete, onSnapshot }) {
+export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeComplete, onSnapshot }: DrawingCanvasProps) {
   const { resolvedTheme } = useTheme();
   const dark = resolvedTheme !== 'light';
-  const canvasRef = useRef(null);
-  const wrapperRef = useRef(null);
-  const activeStrokeRef = useRef(null);
-  const loadedAttemptRef = useRef(null);
-  const [tool, setTool] = useState('pen');
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const activeStrokeRef = useRef<CanvasStroke | null>(null);
+  const loadedAttemptRef = useRef<string | null | undefined>(null);
+  const [tool, setTool] = useState<CanvasTool>('pen');
   const [color, setColor] = useState('#f97316');
   const [width, setWidth] = useState(4);
-  const [paperMode, setPaperMode] = useState('grid');
-  const [strokes, setStrokes] = useState([]);
-  const [redoStack, setRedoStack] = useState([]);
+  const [paperMode, setPaperMode] = useState<PaperMode>('grid');
+  const [strokes, setStrokes] = useState<CanvasStroke[]>([]);
+  const [, setRedoStack] = useState<CanvasStroke[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [baseImage, setBaseImage] = useState(null);
+  const [baseImage, setBaseImage] = useState<HTMLImageElement | null>(null);
 
   const palette = useMemo(() => paletteFor(dark), [dark]);
   const activeTool = useMemo(() => TOOLS.find((item) => item.key === tool), [tool]);
@@ -110,6 +144,7 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
     drawPaper(ctx, rect.width, rect.height, paperMode, dark);
     if (baseImage) {
@@ -132,6 +167,7 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
     canvas.style.width = `${rect.width}px`;
     canvas.style.height = `${rect.height}px`;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     drawPaper(ctx, rect.width, rect.height, paperMode, dark);
     if (baseImage) {
@@ -171,12 +207,12 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
     window.setTimeout(() => onSnapshot(canvas.toDataURL('image/png')), 50);
   }, [onSnapshot]);
 
-  const beginStroke = (event) => {
+  const beginStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.setPointerCapture?.(event.pointerId);
     const rect = canvas.getBoundingClientRect();
-    const stroke = {
+    const stroke: CanvasStroke = {
       id: `${questionAttemptId || 'local'}-${Date.now()}`,
       tool,
       color,
@@ -190,9 +226,10 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
     setRedoStack([]);
   };
 
-  const appendStroke = (event) => {
+  const appendStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!activeStrokeRef.current) return;
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     activeStrokeRef.current.points.push(createPoint(event, rect));
     redraw();
@@ -211,9 +248,10 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
 
   const undo = () => {
     setStrokes((items) => {
-      if (items.length === 0) return items;
+      const last = items[items.length - 1];
+      if (!last) return items;
       const next = items.slice(0, -1);
-      setRedoStack((redoItems) => [items[items.length - 1], ...redoItems]);
+      setRedoStack((redoItems) => [last, ...redoItems]);
       return next;
     });
     emitSnapshot();
@@ -221,8 +259,8 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
 
   const redo = () => {
     setRedoStack((items) => {
-      if (items.length === 0) return items;
       const [first, ...rest] = items;
+      if (!first) return items;
       setStrokes((strokeItems) => [...strokeItems, first]);
       return rest;
     });

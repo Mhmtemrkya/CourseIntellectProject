@@ -1,5 +1,5 @@
 import "@/App.css";
-import { Suspense } from "react";
+import { Suspense, type ReactElement } from "react";
 import { lazyWithReload } from "./lib/lazyWithReload";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider } from "./context/AppContext";
@@ -239,7 +239,7 @@ function BranchGate() {
 // Personel onayları, finans onayları, rol yönetimi, denetim kayıtları ve yetki
 // matrisi yalnız kurum yöneticisine (admin) ve platform admine açıktır; idari
 // personel doğrudan URL ile de erişemez.
-function AdminOnlyRoute({ children }) {
+function AdminOnlyRoute({ children }: { children: ReactElement }): ReactElement {
   const { user } = useApp();
   const roles = getUserRoles(user);
   if (!roles.includes("admin") && !roles.includes("superadmin")) {

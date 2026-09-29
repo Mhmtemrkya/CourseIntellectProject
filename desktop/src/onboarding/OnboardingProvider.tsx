@@ -1,11 +1,12 @@
 import {
-  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { getUserRoles } from '../lib/permissions';
 import { fetchUserPreferences, saveUserPreferences } from '../lib/api/modules';
-import { findPageTour, findWelcomeTour } from './tours';
+import { findPageTour, findWelcomeTour, type Tour } from './tours';
+import type { DesktopUser } from '../types/session';
 import { TourOverlay } from './TourOverlay';
 
 // Onboarding beyni:
@@ -14,32 +15,48 @@ import { TourOverlay } from './TourOverlay';
 //  - "Görüldü" bilgisi kullanıcı bazında localStorage'da tutulur ve
 //    sunucudaki kullanıcı tercihlerine senkronlanır (cihaz değişse de hatırlanır).
 
-const OnboardingContext = createContext({
+/** Tur kimliği → görülme zamanı (epoch ms). */
+type SeenMap = Record<string, number>;
+
+export interface OnboardingContextValue {
+  startPageTour: () => void;
+  startWelcomeTour: () => void;
+  resetOnboarding: () => void;
+  hasPageTour: boolean;
+}
+
+function asSeenMap(value: unknown): SeenMap | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as SeenMap) : null;
+}
+
+const OnboardingContext = createContext<OnboardingContextValue>({
   startPageTour: () => {},
   startWelcomeTour: () => {},
   resetOnboarding: () => {},
   hasPageTour: false,
 });
 
-export function useOnboarding() {
+export function useOnboarding(): OnboardingContextValue {
   return useContext(OnboardingContext);
 }
 
-function storageKey(user) {
+type SeenOwner = Pick<DesktopUser, 'username' | 'id'> | null;
+
+function storageKey(user: SeenOwner): string {
   return `ci-onboarding:${user?.username || user?.id || 'anon'}`;
 }
 
-function readLocalSeen(user) {
+function readLocalSeen(user: SeenOwner): SeenMap {
   try {
     const raw = localStorage.getItem(storageKey(user));
-    const parsed = raw ? JSON.parse(raw) : null;
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? (parsed as SeenMap) : {};
   } catch {
     return {};
   }
 }
 
-function writeLocalSeen(user, seen) {
+function writeLocalSeen(user: SeenOwner, seen: SeenMap): void {
   try {
     localStorage.setItem(storageKey(user), JSON.stringify(seen));
   } catch {
@@ -47,15 +64,15 @@ function writeLocalSeen(user, seen) {
   }
 }
 
-export function OnboardingProvider({ children }) {
+export function OnboardingProvider({ children }: { children?: ReactNode }) {
   const { user, isAuthenticated } = useApp();
   const location = useLocation();
-  const [seen, setSeen] = useState({});
+  const [seen, setSeen] = useState<SeenMap>({});
   const [hydrated, setHydrated] = useState(false);
-  const [activeTour, setActiveTour] = useState(null);
+  const [activeTour, setActiveTour] = useState<Tour | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
-  const autoStartTimer = useRef(null);
-  const syncTimer = useRef(null);
+  const autoStartTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const roles = useMemo(() => getUserRoles(user), [user]);
 
@@ -65,7 +82,7 @@ export function OnboardingProvider({ children }) {
       setSeen({});
       setHydrated(false);
       setActiveTour(null);
-      return;
+      return undefined;
     }
     const local = readLocalSeen(user);
     setSeen(local);
@@ -74,8 +91,8 @@ export function OnboardingProvider({ children }) {
     fetchUserPreferences()
       .then((prefs) => {
         if (cancelled) return;
-        const remote = prefs?.onboardingSeen;
-        if (remote && typeof remote === 'object') {
+        const remote = asSeenMap(prefs?.onboardingSeen);
+        if (remote) {
           setSeen((prev) => {
             const merged = { ...remote, ...prev };
             writeLocalSeen(user, merged);
@@ -90,7 +107,7 @@ export function OnboardingProvider({ children }) {
   }, [isAuthenticated, user]);
 
   // Görüldü bilgisini kalıcılaştır: local anında, sunucu gecikmeli (debounce).
-  const persistSeen = useCallback((next) => {
+  const persistSeen = useCallback((next: SeenMap) => {
     writeLocalSeen(user, next);
     if (syncTimer.current) clearTimeout(syncTimer.current);
     syncTimer.current = setTimeout(async () => {
@@ -98,7 +115,7 @@ export function OnboardingProvider({ children }) {
         const prefs = await fetchUserPreferences();
         await saveUserPreferences({
           ...(prefs && typeof prefs === 'object' ? prefs : {}),
-          onboardingSeen: { ...(prefs?.onboardingSeen || {}), ...next },
+          onboardingSeen: { ...(asSeenMap(prefs?.onboardingSeen) || {}), ...next },
         });
       } catch {
         // Sunucu senkronu opsiyonel; local kayıt yeterli.
@@ -106,7 +123,7 @@ export function OnboardingProvider({ children }) {
     }, 1200);
   }, [user]);
 
-  const markSeen = useCallback((tourId) => {
+  const markSeen = useCallback((tourId: string) => {
     setSeen((prev) => {
       if (prev[tourId]) return prev;
       const next = { ...prev, [tourId]: Date.now() };
@@ -115,7 +132,7 @@ export function OnboardingProvider({ children }) {
     });
   }, [persistSeen]);
 
-  const startTour = useCallback((tour) => {
+  const startTour = useCallback((tour: Tour | null | undefined) => {
     if (!tour || !Array.isArray(tour.steps) || tour.steps.length === 0) return;
     setActiveTour(tour);
     setStepIndex(0);
@@ -153,13 +170,13 @@ export function OnboardingProvider({ children }) {
     });
   }, [location.pathname]);
 
-  const value = useMemo(() => ({
+  const value = useMemo<OnboardingContextValue>(() => ({
     hasPageTour: Boolean(pageTour),
     startPageTour: () => {
       if (pageTour) startTour(pageTour);
       else if (welcomeTour) startTour(welcomeTour);
     },
-    startWelcomeTour: () => welcomeTour && startTour(welcomeTour),
+    startWelcomeTour: () => { if (welcomeTour) startTour(welcomeTour); },
     resetOnboarding: () => {
       setSeen({});
       writeLocalSeen(user, {});
