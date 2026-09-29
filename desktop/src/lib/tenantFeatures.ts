@@ -3,11 +3,6 @@ import { fetchMyTenantFeatures } from './api/modules';
 // Kurum bazlı özellik anahtarları. Platform yöneticisi kapattığı modüller
 // bu kurumun menülerinden gizlenir. Bayraklar oturum boyunca önbelleğe alınır;
 // okunamazsa güvenli varsayılan "tümü açık"tır.
-interface TenantFeatureFlag {
-  key: string;
-  enabled?: boolean;
-}
-
 let cachedDisabled: Set<string> | null = null;
 let pending: Promise<Set<string>> | null = null;
 
@@ -15,8 +10,8 @@ export async function getDisabledFeatureKeys(): Promise<Set<string>> {
   if (cachedDisabled) return cachedDisabled;
   if (!pending) {
     pending = fetchMyTenantFeatures()
-      .then((payload: { features?: unknown } | null | undefined) => new Set<string>(
-        (Array.isArray(payload?.features) ? (payload.features as TenantFeatureFlag[]) : [])
+      .then((payload) => new Set<string>(
+        (Array.isArray(payload?.features) ? payload.features : [])
           .filter((feature) => feature.enabled === false)
           .map((feature) => feature.key),
       ))

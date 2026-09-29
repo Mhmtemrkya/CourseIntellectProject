@@ -21,11 +21,6 @@ export interface Entitlements {
   roles: Record<string, RoleEntitlement>;
 }
 
-export interface EntitlementsPayload {
-  unrestricted?: boolean;
-  roles?: Record<string, RoleEntitlement> | null;
-}
-
 let cached: Entitlements | null = null;
 let pending: Promise<Entitlements> | null = null;
 
@@ -35,7 +30,7 @@ export async function getEntitlements(): Promise<Entitlements> {
   if (cached) return cached;
   if (!pending) {
     pending = fetchMyEntitlements()
-      .then((payload: EntitlementsPayload | null | undefined): Entitlements => {
+      .then((payload): Entitlements => {
         if (!payload || payload.unrestricted || !payload.roles) return UNRESTRICTED;
         return { unrestricted: false, roles: payload.roles };
       })

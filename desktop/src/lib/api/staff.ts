@@ -3,6 +3,7 @@ import type {
   CreateStaffRequest,
   StaffCredentialsDto,
   StaffSummaryDto,
+  UpdateStaffAssignmentRequest,
   UpdateStaffRequest,
 } from '../../types/api/generated';
 
@@ -26,4 +27,9 @@ export async function deleteStaffUser(userId: string): Promise<void> {
 export async function updateStaff(staffId: string, payload: UpdateStaffRequest): Promise<StaffSummaryDto | null> {
   const response = await api.put<StaffSummaryDto>(`/api/staff/${staffId}`, payload);
   return response;
+}
+
+// Var olan kullanıcının rol/şube/özel rol atamasını günceller (ev grant'ı yenilenir).
+export async function updateStaffAssignment(userId: string, payload: UpdateStaffAssignmentRequest): Promise<{ message: string } | null> {
+  return api.put<{ message: string }>(`/api/staff/users/${userId}/assignment`, payload);
 }
