@@ -12,3 +12,10 @@ export async function createNotification(payload: CreateNotificationRequest): Pr
   const response = await api.post<NotificationDto>('/api/notifications', payload);
   return response;
 }
+
+// --- Notifications (mark read) ---
+
+export async function markNotificationRead(id: string): Promise<null> {
+  const response = await api.put<null>(`/api/notifications/${id}/read`);
+  return response;
+}

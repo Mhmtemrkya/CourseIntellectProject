@@ -1,5 +1,6 @@
 import { api } from './client';
 import type {
+  CreateQuestionBankItemRequest,
   QuestionBankItemDto,
   QuestionImportBulkUpdateRequest,
   QuestionImportCommitRequest,
@@ -9,6 +10,8 @@ import type {
   QuestionImportQuestionSnapshot,
   QuestionImportQuestionUpdateRequest,
   QuestionPracticeAttemptDto,
+  QuestionPracticeStatsDto,
+  SubmitQuestionPracticeAttemptRequest,
 } from '../../types/api/generated';
 
 export async function fetchQuestionBank(className?: string | null): Promise<QuestionBankItemDto[] | null> {
@@ -70,4 +73,75 @@ export async function commitQuestionImport(importId: string, payload: QuestionIm
 
 export async function deleteQuestionImportJob(importId: string): Promise<void> {
   await api.delete(`/api/question-import/${importId}`);
+}
+
+export async function createQuestionBankItem(payload: CreateQuestionBankItemRequest): Promise<QuestionBankItemDto | null> {
+  const response = await api.post<QuestionBankItemDto>('/api/questionbank', payload);
+  return response;
+}
+
+export async function updateQuestionBankItem(id: string, payload: CreateQuestionBankItemRequest): Promise<QuestionBankItemDto | null> {
+  const response = await api.put<QuestionBankItemDto>(`/api/questionbank/${id}`, payload);
+  return response;
+}
+
+export async function deleteQuestionBankItem(id: string): Promise<void> {
+  await api.delete(`/api/questionbank/${id}`);
+}
+
+export async function incrementQuestionUsage(id: string): Promise<QuestionBankItemDto | null> {
+  const response = await api.post<QuestionBankItemDto>(`/api/questionbank/${id}/usage`);
+  return response;
+}
+
+export async function submitQuestionPracticeAttempt(
+  id: string,
+  payload: SubmitQuestionPracticeAttemptRequest,
+): Promise<QuestionPracticeAttemptDto | null> {
+  const response = await api.post<QuestionPracticeAttemptDto>(`/api/questionbank/${id}/attempts`, payload);
+  return response;
+}
+
+export interface PracticeStatsQuery {
+  studentUsername?: string | null;
+  className?: string | null;
+}
+
+export async function fetchQuestionPracticeStats(params?: PracticeStatsQuery): Promise<QuestionPracticeStatsDto | null> {
+  const response = await api.get<QuestionPracticeStatsDto>('/api/questionbank/attempts/stats', { params });
+  return response;
+}
+
+/** GET /api/wronganswers satırı (WrongAnswersController.GetList). */
+export interface WrongAnswerItem {
+  attemptId: string;
+  questionId: string;
+  studentName: string;
+  studentUsername: string;
+  subject: string;
+  topic: string;
+  difficulty: string;
+  questionText: string;
+  yourAnswer: string;
+  correctAnswer: string;
+  note: string;
+  submittedAtUtc: string;
+}
+
+export interface WrongAnswerQuery {
+  studentUsername?: string | null;
+  studentName?: string | null;
+}
+
+export async function fetchWrongAnswers(params?: WrongAnswerQuery): Promise<WrongAnswerItem[] | null> {
+  const response = await api.get<WrongAnswerItem[]>('/api/wronganswers', {
+    params,
+  });
+  return response;
+}
+
+export async function clearWrongAnswers(params?: WrongAnswerQuery): Promise<void> {
+  await api.delete('/api/wronganswers', {
+    params,
+  });
 }

@@ -1,5 +1,6 @@
 import { api } from './client';
 import type {
+  CreateAccountingStaffRequest,
   CreateStaffRequest,
   StaffCredentialsDto,
   StaffSummaryDto,
@@ -32,4 +33,11 @@ export async function updateStaff(staffId: string, payload: UpdateStaffRequest):
 // Var olan kullanıcının rol/şube/özel rol atamasını günceller (ev grant'ı yenilenir).
 export async function updateStaffAssignment(userId: string, payload: UpdateStaffAssignmentRequest): Promise<{ message: string } | null> {
   return api.put<{ message: string }>(`/api/staff/users/${userId}/assignment`, payload);
+}
+
+// --- Staff (Accounting) ---
+
+export async function createStaffAccounting(payload: CreateAccountingStaffRequest): Promise<StaffCredentialsDto | null> {
+  const response = await api.post<StaffCredentialsDto>('/api/staff/accounting', payload);
+  return response;
 }
