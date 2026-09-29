@@ -11,8 +11,11 @@ export type QueryParams = Record<string, QueryValue>;
 
 export interface RequestConfig {
   headers?: Record<string, string>;
-  /** Değeri null/undefined olan parametreler URL'e yazılmaz. */
-  params?: QueryParams | undefined;
+  /**
+   * Sorgu parametreleri (düz nesne). Değeri null/undefined olanlar URL'e yazılmaz,
+   * diğerleri String() ile yazılır. Arayüz tipleri de kabul edilsin diye `object`.
+   */
+  params?: object | undefined;
   responseType?: 'json' | 'blob';
 }
 

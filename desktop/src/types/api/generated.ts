@@ -44,6 +44,22 @@ export interface AccountingAuditLogDto {
   time: string;
 }
 
+// CourseIntellect.Api/Controllers/AccountingController.cs
+export interface AccountingBenefitSnapshot {
+  id: string;
+  studentName: string;
+  studentUsername: string;
+  className: string;
+  benefitType: string;
+  title: string;
+  rate: string;
+  totalAmount: string;
+  netAmount: string;
+  status: string;
+  note: string;
+  createdAtUtc: string;
+}
+
 // CourseIntellect.Application/DTOs/Accounting/AccountingCollectionDto.cs
 export interface AccountingCollectionDto {
   id: string;
@@ -168,7 +184,7 @@ export interface AddContentCommentRequest {
 // CourseIntellect.Application/DTOs/Scope/ScopeAdminDtos.cs
 export interface AddGrantRequest {
   level: string;
-  targetId: string | null;
+  targetId?: string | null;
   accessMode: string;
 }
 
@@ -176,7 +192,7 @@ export interface AddGrantRequest {
 export interface AddRegistrationBlocklistRequest {
   kind: string;
   value: string;
-  reason: string | null;
+  reason?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/StudyPlans/UpdateStudyPlanStateRequest.cs
@@ -327,12 +343,12 @@ export interface AdminTaskDto {
 
 // CourseIntellect.Application/DTOs/Users/AdminUpdateUserRequest.cs
 export interface AdminUpdateUserRequest {
-  name: string | null;
-  email: string | null;
-  password: string | null;
-  role: string | null;
-  isActive: boolean | null;
-  isEmailVerified: boolean | null;
+  name?: string | null;
+  email?: string | null;
+  password?: string | null;
+  role?: string | null;
+  isActive?: boolean | null;
+  isEmailVerified?: boolean | null;
 }
 
 // CourseIntellect.Application/DTOs/Users/AdminUserListItemDto.cs
@@ -410,29 +426,29 @@ export interface AnswerSelectionResponse {
 // CourseIntellect.Application/DTOs/Admin/AdminWorkflowDtos.cs
 export interface ApprovalDecisionRequest {
   status: string;
-  note: string | null;
+  note?: string | null;
 }
 
 // CourseIntellect.Domain/Entities/ApprovalRequest.cs
 export interface ApprovalRequest {
   id: string;
-  tenantId: string | null;
+  tenantId?: string | null;
   category: string;
   title: string;
   description: string;
-  requesterUserId: string | null;
+  requesterUserId?: string | null;
   requesterName: string;
   unit: string;
-  amount: number | null;
+  amount?: number | null;
   priority: string;
   status: string;
   decisionNote: string;
-  decidedByUserId: string | null;
+  decidedByUserId?: string | null;
   decidedByName: string;
   referenceType: string;
   referenceKey: string;
   createdAtUtc: string;
-  decidedAtUtc: string | null;
+  decidedAtUtc?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Admin/AdminWorkflowDtos.cs
@@ -505,11 +521,11 @@ export interface AppUser {
 
 // CourseIntellect.Application/DTOs/Admin/StaffHrDtos.cs
 export interface AssignAssetRequest {
-  staffUserId: string | null;
+  staffUserId?: string | null;
   staffName: string;
   assetName: string;
-  assetCode: string | null;
-  note: string | null;
+  assetCode?: string | null;
+  note?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
@@ -530,7 +546,7 @@ export interface AssignedStudentResponse {
 
 // CourseIntellect.Application/DTOs/Scope/ScopeAdminDtos.cs
 export interface AssignTenantGroupRequest {
-  groupId: string | null;
+  groupId?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
@@ -546,7 +562,7 @@ export interface AssistantActionDto {
 export interface AssistantActionRequest {
   conversationId: string;
   command: string;
-  studentId: string | null;
+  studentId?: string | null;
 }
 
 // CourseIntellect.Domain/Entities/AssistantEntities.cs
@@ -737,6 +753,39 @@ export interface AttendanceEntryDto {
   lesson: string;
 }
 
+// CourseIntellect.Api/Controllers/AttendanceQrSessionsController.cs
+export interface AttendanceQrCheckInRequest {
+  token: string;
+  studentName?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/AttendanceQrSessionsController.cs
+export interface AttendanceQrOpenRequest {
+  className: string;
+  lessonTitle: string;
+  durationMinutes?: number | null;
+}
+
+// CourseIntellect.Api/Controllers/AttendanceQrSessionsController.cs
+export interface AttendanceQrScanEntry {
+  studentName: string;
+  scannedAtUtc: string;
+}
+
+// CourseIntellect.Api/Controllers/AttendanceQrSessionsController.cs
+export interface AttendanceQrSessionSnapshot {
+  id: string;
+  className: string;
+  lessonTitle: string;
+  teacherName: string;
+  token: string;
+  openedAtUtc: string;
+  expiresAtUtc: string;
+  closedAtUtc: string | null;
+  status: string;
+  scannedStudents: AttendanceQrScanEntry[];
+}
+
 // CourseIntellect.Application/DTOs/Admin/AdminWorkflowDtos.cs
 export interface AuditBranchSummaryDto {
   branchId: string | null;
@@ -838,6 +887,56 @@ export interface BulkUpsertTranslationRequest {
   items: UpsertTranslationRequest[];
 }
 
+// CourseIntellect.Api/Controllers/CafeteriaController.cs
+export interface CafeteriaMealEntry {
+  date: string;
+  mealType: string;
+  startTime: string;
+  endTime: string;
+  items: string[];
+  calories: number;
+  proteinGrams: number;
+  carbohydrateGrams: number;
+  fatGrams: number;
+  fiberGrams: number;
+  allergens: string[];
+  description: string;
+}
+
+// CourseIntellect.Api/Controllers/CafeteriaController.cs
+export interface CafeteriaMealEntryRequest {
+  date: string;
+  mealType: string;
+  startTime: string;
+  endTime: string;
+  items: string[];
+  calories: number;
+  proteinGrams: number;
+  carbohydrateGrams: number;
+  fatGrams: number;
+  fiberGrams: number;
+  allergens: string[];
+  description?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/CafeteriaController.cs
+export interface CafeteriaWeekRequest {
+  weekStart: string;
+  note?: string | null;
+  meals: CafeteriaMealEntryRequest[];
+}
+
+// CourseIntellect.Api/Controllers/CafeteriaController.cs
+export interface CafeteriaWeekSnapshot {
+  id: string;
+  weekStart: string;
+  weekEnd: string;
+  note: string;
+  meals: CafeteriaMealEntry[];
+  updatedBy: string;
+  updatedAtUtc: string | null;
+}
+
 // CourseIntellect.Domain/Entities/ExamSolvingEntities.cs
 export interface CanvasSnapshot {
   id: string;
@@ -872,6 +971,7 @@ export interface CanvasStroke {
 export interface CaptchaVerificationResult {
   status: CaptchaVerificationStatus;
   detail: string | null;
+  readonly isAllowed?: boolean;
 }
 
 // CourseIntellect.Application/Interfaces/ICaptchaVerificationService.cs
@@ -884,7 +984,7 @@ export type CaptchaVerificationStatus = (typeof CaptchaVerificationStatus)[keyof
 
 // CourseIntellect.Application/DTOs/Auth/ChangePasswordRequest.cs
 export interface ChangePasswordRequest {
-  currentPassword: string | null;
+  currentPassword?: string | null;
   newPassword: string;
 }
 
@@ -892,13 +992,26 @@ export interface ChangePasswordRequest {
 export interface CheckoutRequest {
   bookId: string;
   studentName: string;
-  className: string | null;
+  className?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/UploadsController.cs
+export interface ChunkedFileUploadRequest {
+  uploadId: string;
+  fileName: string;
+  base64Content: string;
+  contentType?: string | null;
+  folder?: string | null;
+  startByte: number;
+  totalSize: number;
+  chunkIndex: number;
+  totalChunks: number;
 }
 
 // CourseIntellect.Api/Controllers/ClassesController.cs
 export interface ClassCourseAssignmentRequest {
   courseName: string;
-  teacherId: string | null;
+  teacherId?: string | null;
   weeklyHours: number;
   isRequired: boolean;
 }
@@ -923,13 +1036,13 @@ export interface ClassRankingDto {
 
 // CourseIntellect.Api/Controllers/ClassesController.cs
 export interface ClassTeacherAssignmentRequest {
-  teacherId: string | null;
-  role: string | null;
+  teacherId?: string | null;
+  role?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface CollectDownPaymentRequest {
-  method: string | null;
+  method?: string | null;
 }
 
 // CourseIntellect.Infrastructure/Services/TenantBackupService.cs
@@ -947,7 +1060,7 @@ export interface CompleteInventoryRequest {
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface ConfirmPaymentRequest {
   intentId: string;
-  token: string | null;
+  token?: string | null;
 }
 
 // CourseIntellect.Api/Controllers/ConsentController.cs
@@ -1183,6 +1296,7 @@ export interface ConsentResult<T> {
   statusCode: number;
   message: string;
   value: T | null;
+  readonly ok?: boolean;
 }
 
 // CourseIntellect.Domain/Entities/ConsentEntities.cs
@@ -1435,6 +1549,18 @@ export interface CourseItem {
   updatedAtUtc: string;
 }
 
+// CourseIntellect.Api/Controllers/AccountingController.cs
+export interface CreateAccountingBenefitRequest {
+  studentName: string;
+  studentUsername: string;
+  className: string;
+  benefitType: string;
+  title?: string | null;
+  rate: string;
+  totalAmount?: string | null;
+  note?: string | null;
+}
+
 // CourseIntellect.Application/DTOs/Accounting/CreateAccountingNotificationRequest.cs
 export interface CreateAccountingNotificationRequest {
   title: string;
@@ -1453,7 +1579,7 @@ export interface CreateAccountingStaffRequest {
   maritalStatus: string;
   childCount: number;
   note: string;
-  photoUrl: string | null;
+  photoUrl?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Announcements/CreateAnnouncementRequest.cs
@@ -1461,25 +1587,25 @@ export interface CreateAnnouncementRequest {
   title: string;
   detail: string;
   audience: string;
-  className: string | null;
-  teacherName: string | null;
+  className?: string | null;
+  teacherName?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Admin/AdminWorkflowDtos.cs
 export interface CreateApprovalRequest {
   category: string;
   title: string;
-  description: string | null;
-  amount: number | null;
-  priority: string | null;
-  unit: string | null;
-  referenceType: string | null;
-  referenceKey: string | null;
+  description?: string | null;
+  amount?: number | null;
+  priority?: string | null;
+  unit?: string | null;
+  referenceType?: string | null;
+  referenceKey?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
 export interface CreateAssistantConversationRequest {
-  title: string | null;
+  title?: string | null;
 }
 
 // CourseIntellect.Api/Controllers/ClassesController.cs
@@ -1494,22 +1620,22 @@ export interface CreateCollectionRequest {
   amount: string;
   method: string;
   note: string;
-  studentUserId: string | null;
+  studentUserId?: string | null;
 }
 
 // CourseIntellect.Api/Controllers/ClassesController.cs
 export interface CreateCompleteClassRequest {
   name: string;
-  code: string | null;
-  school: string | null;
-  institutionUnit: string | null;
-  grade: string | null;
-  section: string | null;
-  academicYear: string | null;
-  advisorTeacherId: string | null;
-  description: string | null;
-  themeColor: string | null;
-  icon: string | null;
+  code?: string | null;
+  school?: string | null;
+  institutionUnit?: string | null;
+  grade?: string | null;
+  section?: string | null;
+  academicYear?: string | null;
+  advisorTeacherId?: string | null;
+  description?: string | null;
+  themeColor?: string | null;
+  icon?: string | null;
   teachers: ClassTeacherAssignmentRequest[];
   courses: ClassCourseAssignmentRequest[];
   studentIds: string[];
@@ -1521,10 +1647,10 @@ export interface CreateConsentFormRequest {
   templateId: string;
   studentProfileId: string;
   contextKind: ConsentContextKind;
-  contextKey: string | null;
-  contextRefId: string | null;
-  contextLabel: string | null;
-  staffNotes: string | null;
+  contextKey?: string | null;
+  contextRefId?: string | null;
+  contextLabel?: string | null;
+  staffNotes?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/ContactMessages/CreateContactMessageRequest.cs
@@ -1547,16 +1673,16 @@ export interface CreateContentRequest {
   views: string;
   size: string;
   description: string;
-  fileName: string | null;
-  fileUrl: string | null;
+  fileName?: string | null;
+  fileUrl?: string | null;
   publishStatus: string;
-  coverImageUrl: string | null;
-  playlistKey: string | null;
-  playlistTitle: string | null;
-  playlistOrder: number | null;
-  allowDownload: boolean;
-  allowNotes: boolean;
-  completionCertificate: boolean;
+  coverImageUrl?: string | null;
+  playlistKey?: string | null;
+  playlistTitle?: string | null;
+  playlistOrder?: number | null;
+  allowDownload?: boolean;
+  allowNotes?: boolean;
+  completionCertificate?: boolean;
 }
 
 // CourseIntellect.Application/DTOs/Courses/CreateCourseRequest.cs
@@ -1575,12 +1701,12 @@ export interface CreateDocumentRequest {
   title: string;
   category: string;
   direction: string;
-  documentNo: string | null;
-  relatedParty: string | null;
-  fileUrl: string | null;
-  contentType: string | null;
-  expiryDate: string | null;
-  note: string | null;
+  documentNo?: string | null;
+  relatedParty?: string | null;
+  fileUrl?: string | null;
+  contentType?: string | null;
+  expiryDate?: string | null;
+  note?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Duty/DutyDtos.cs
@@ -1591,10 +1717,10 @@ export interface CreateDutyRequest {
   day: string;
   startTime: string;
   endTime: string;
-  description: string | null;
+  description?: string | null;
   teachers: DutyTeacherRef[];
-  repeatWeekly: boolean;
-  repeatWeeks: number;
+  repeatWeekly?: boolean;
+  repeatWeeks?: number;
 }
 
 // CourseIntellect.Application/DTOs/Duty/DutyDtos.cs
@@ -1605,21 +1731,21 @@ export interface CreateDutyResult {
 
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface CreateEnrollmentRequest {
-  studentUserId: string | null;
+  studentUserId?: string | null;
   studentName: string;
   className: string;
   academicYear: string;
   grossAmount: number;
   discountAmount: number;
-  discountReason: string | null;
+  discountReason?: string | null;
   downPayment: number;
   installmentCount: number;
-  firstInstallmentDate: string | null;
-  currency: string | null;
-  note: string | null;
-  downPaymentMethod: string | null;
-  downPaymentPaid: boolean;
-  scholarshipPercent: number;
+  firstInstallmentDate?: string | null;
+  currency?: string | null;
+  note?: string | null;
+  downPaymentMethod?: string | null;
+  downPaymentPaid?: boolean;
+  scholarshipPercent?: number;
 }
 
 // CourseIntellect.Application/DTOs/ExamResults/CreateExamResultRequest.cs
@@ -1632,9 +1758,9 @@ export interface CreateExamResultRequest {
   className: string;
   score: number;
   net: number;
-  correctCount: number | null;
-  wrongCount: number | null;
-  totalQuestions: number | null;
+  correctCount?: number | null;
+  wrongCount?: number | null;
+  totalQuestions?: number | null;
 }
 
 // CourseIntellect.Application/DTOs/Homework/CreateHomeworkAssignmentRequest.cs
@@ -1645,14 +1771,14 @@ export interface CreateHomeworkAssignmentRequest {
   teacher: string;
   deadline: string;
   description: string;
-  materials: string[] | null;
+  materials?: string[] | null;
 }
 
 // CourseIntellect.Application/DTOs/Homework/CreateHomeworkSubmissionRequest.cs
 export interface CreateHomeworkSubmissionRequest {
   studentName: string;
   note: string;
-  files: string[] | null;
+  files?: string[] | null;
 }
 
 // CourseIntellect.Application/DTOs/Accounting/CreateInstallmentRequest.cs
@@ -1670,33 +1796,33 @@ export interface CreateInvoiceRequest {
   amount: string;
   date: string;
   reason: string;
-  isPaid: boolean;
-  paymentMethod: string | null;
-  dueDateUtc: string | null;
-  counterparty: string | null;
-  invoiceNumber: string | null;
+  isPaid?: boolean;
+  paymentMethod?: string | null;
+  dueDateUtc?: string | null;
+  counterparty?: string | null;
+  invoiceNumber?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Admin/StaffHrDtos.cs
 export interface CreateLeaveRequest {
-  staffUserId: string | null;
+  staffUserId?: string | null;
   staffName: string;
   leaveType: string;
   startDate: string;
   endDate: string;
-  reason: string | null;
+  reason?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/LoginAttempts/CreateLoginAttemptRequest.cs
 export interface CreateLoginAttemptRequest {
-  userId: string | null;
+  userId?: string | null;
   email: string;
   role: string;
   success: boolean;
   ipAddress: string;
   userAgent: string;
   deviceId: string;
-  tenantId: string | null;
+  tenantId?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Meetings/CreateMeetingRequestRequest.cs
@@ -1724,10 +1850,10 @@ export interface CreateNotificationRequest {
 export interface CreateOrgUnitRequest {
   name: string;
   unitType: string;
-  parentUnitId: string | null;
-  managerName: string | null;
-  note: string | null;
-  managerUserId: string | null;
+  parentUnitId?: string | null;
+  managerName?: string | null;
+  note?: string | null;
+  managerUserId?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Parents/CreateParentRequest.cs
@@ -1743,9 +1869,9 @@ export interface CreatePlatformSubscriptionInvoiceRequest {
   planName: string;
   amount: number;
   billingPeriod: string;
-  currency: string | null;
-  notes: string | null;
-  tenantId: string | null;
+  currency?: string | null;
+  notes?: string | null;
+  tenantId?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/QuestionBank/CreateQuestionBankItemRequest.cs
@@ -1756,28 +1882,28 @@ export interface CreateQuestionBankItemRequest {
   type: string;
   questionText: string;
   teacher: string;
-  imagePath: string | null;
+  imagePath?: string | null;
   imagePlacement: string;
-  options: string[] | null;
-  correctOptionIndex: number | null;
-  classTargets: string[] | null;
-  solutionAssetPath: string | null;
-  solutionAssetType: string | null;
+  options?: string[] | null;
+  correctOptionIndex?: number | null;
+  classTargets?: string[] | null;
+  solutionAssetPath?: string | null;
+  solutionAssetType?: string | null;
   revealCorrectAnswerToStudent: boolean;
-  expectedAnswer: string | null;
-  richTextHtml: string | null;
-  solutionTextHtml: string | null;
-  editorMetadataJson: string | null;
-  publicationStatus: string | null;
-  questionSetKey: string | null;
-  questionSetTitle: string | null;
-  questionOrder: number | null;
+  expectedAnswer?: string | null;
+  richTextHtml?: string | null;
+  solutionTextHtml?: string | null;
+  editorMetadataJson?: string | null;
+  publicationStatus?: string | null;
+  questionSetKey?: string | null;
+  questionSetTitle?: string | null;
+  questionOrder?: number | null;
 }
 
 // CourseIntellect.Application/DTOs/QuestionThreads/CreateQuestionThreadReplyRequest.cs
 export interface CreateQuestionThreadReplyRequest {
   messageText: string;
-  attachments: QuestionThreadAttachmentDto[] | null;
+  attachments?: QuestionThreadAttachmentDto[] | null;
 }
 
 // CourseIntellect.Application/DTOs/QuestionThreads/CreateQuestionThreadRequest.cs
@@ -1786,7 +1912,7 @@ export interface CreateQuestionThreadRequest {
   subject: string;
   teacherName: string;
   questionText: string;
-  attachments: QuestionThreadAttachmentDto[] | null;
+  attachments?: QuestionThreadAttachmentDto[] | null;
 }
 
 // CourseIntellect.Application/DTOs/Accounting/CreateSalaryRequest.cs
@@ -1801,7 +1927,7 @@ export interface CreateSalaryRequest {
 // CourseIntellect.Application/DTOs/Scope/ScopeAdminDtos.cs
 export interface CreateScopeGroupRequest {
   name: string;
-  parentGroupId: string | null;
+  parentGroupId?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
@@ -1810,7 +1936,7 @@ export interface CreateServiceAbsenceRequestRequest {
   routeId: string;
   date: string;
   tripType: string;
-  reason: string | null;
+  reason?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
@@ -1818,7 +1944,7 @@ export interface CreateServiceDriverRequest {
   userId: string;
   phoneNumber: string;
   licenseNumber: string;
-  isActive: boolean;
+  isActive?: boolean;
 }
 
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
@@ -1847,8 +1973,8 @@ export interface CreateServiceVehicleRequest {
   brand: string;
   model: string;
   capacity: number;
-  isActive: boolean;
-  vehicleNumber: string;
+  isActive?: boolean;
+  vehicleNumber?: string;
 }
 
 // CourseIntellect.Application/DTOs/SiteContent/CreateSiteContentRequest.cs
@@ -1875,9 +2001,9 @@ export interface CreateStaffRequest {
   maritalStatus: string;
   childCount: number;
   note: string;
-  branchId: string | null;
-  customRoleId: string | null;
-  photoUrl: string | null;
+  branchId?: string | null;
+  customRoleId?: string | null;
+  photoUrl?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Students/CreateStudentRequest.cs
@@ -1894,22 +2020,22 @@ export interface CreateStudentRequest {
   parentEmail: string;
   address: string;
   note: string;
-  photoUrl: string | null;
-  enrollmentGrossAmount: number | null;
-  enrollmentDiscountAmount: number | null;
-  enrollmentDiscountReason: string | null;
-  enrollmentDownPayment: number | null;
-  enrollmentInstallmentCount: number | null;
-  academicYear: string | null;
-  enrollmentDownPaymentMethod: string | null;
-  enrollmentDownPaymentPaid: boolean;
-  enrollmentScholarshipPercent: number | null;
+  photoUrl?: string | null;
+  enrollmentGrossAmount?: number | null;
+  enrollmentDiscountAmount?: number | null;
+  enrollmentDiscountReason?: string | null;
+  enrollmentDownPayment?: number | null;
+  enrollmentInstallmentCount?: number | null;
+  academicYear?: string | null;
+  enrollmentDownPaymentMethod?: string | null;
+  enrollmentDownPaymentPaid?: boolean;
+  enrollmentScholarshipPercent?: number | null;
 }
 
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
 export interface CreateStudentServiceAssignmentRequest {
   studentId: string;
-  parentId: string | null;
+  parentId?: string | null;
   routeId: string;
   stopId: string;
 }
@@ -1937,21 +2063,21 @@ export interface CreateSupportTicketRequest {
 // CourseIntellect.Application/DTOs/Admin/AdminTaskDtos.cs
 export interface CreateTaskRequest {
   title: string;
-  description: string | null;
-  category: string | null;
-  assignedToUserId: string | null;
-  assignedToName: string | null;
-  priority: string | null;
-  dueDate: string | null;
-  startDate: string | null;
-  endDate: string | null;
+  description?: string | null;
+  category?: string | null;
+  assignedToUserId?: string | null;
+  assignedToName?: string | null;
+  priority?: string | null;
+  dueDate?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Messages/CreateThreadRequest.cs
 export interface CreateThreadRequest {
   contactName: string;
   contactRole: string;
-  initialMessage: string | null;
+  initialMessage?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Auth/CurrentUserDto.cs
@@ -2036,7 +2162,7 @@ export interface DashboardStatsDto {
 // CourseIntellect.Api/Controllers/GuidanceController.cs
 export interface DecideAppointmentRequest {
   approved: boolean;
-  note: string | null;
+  note?: string | null;
 }
 
 // CourseIntellect.Application/Interfaces/IDocumentIntelligenceService.cs
@@ -2109,22 +2235,22 @@ export interface DrivingAppointment {
 // CourseIntellect.Domain/Entities/DrivingGraduationEntities.cs
 export interface DrivingAppointmentRequest {
   id: string;
-  tenantId: string | null;
-  branchId: string | null;
+  tenantId?: string | null;
+  branchId?: string | null;
   studentDrivingProfileId: string;
   requestType: DrivingAppointmentRequestType;
   status: DrivingAppointmentRequestStatus;
-  sourceAppointmentId: string | null;
-  preferredInstructorProfileId: string | null;
-  preferredVehicleId: string | null;
+  sourceAppointmentId?: string | null;
+  preferredInstructorProfileId?: string | null;
+  preferredVehicleId?: string | null;
   requestedStartsAtUtc: string;
   requestedEndsAtUtc: string;
   meetingPoint: string;
   studentNote: string;
   decisionNote: string;
-  decidedByUserId: string | null;
-  decidedAtUtc: string | null;
-  resultAppointmentId: string | null;
+  decidedByUserId?: string | null;
+  decidedAtUtc?: string | null;
+  resultAppointmentId?: string | null;
   createdAtUtc: string;
 }
 
@@ -2387,24 +2513,24 @@ export type DrivingExperienceLevel = (typeof DrivingExperienceLevel)[keyof typeo
 // CourseIntellect.Domain/Entities/DrivingGraduationEntities.cs
 export interface DrivingGraduationActionRequest {
   id: string;
-  tenantId: string | null;
-  branchId: string | null;
+  tenantId?: string | null;
+  branchId?: string | null;
   studentDrivingProfileId: string;
-  graduationRecordId: string | null;
+  graduationRecordId?: string | null;
   actionType: DrivingGraduationActionType;
   status: DrivingGraduationActionStatus;
   requestedChecklistKeysJson: string;
   reason: string;
   requestedByUserId: string;
   requestedAtUtc: string;
-  firstApprovedByUserId: string | null;
-  firstApprovedAtUtc: string | null;
-  secondApprovedByUserId: string | null;
-  secondApprovedAtUtc: string | null;
-  rejectedByUserId: string | null;
-  rejectedAtUtc: string | null;
+  firstApprovedByUserId?: string | null;
+  firstApprovedAtUtc?: string | null;
+  secondApprovedByUserId?: string | null;
+  secondApprovedAtUtc?: string | null;
+  rejectedByUserId?: string | null;
+  rejectedAtUtc?: string | null;
   decisionNote: string;
-  appliedAtUtc: string | null;
+  appliedAtUtc?: string | null;
 }
 
 // CourseIntellect.Domain/Enums/DrivingGraduationEnums.cs
@@ -3245,7 +3371,7 @@ export interface DutyStatsResponse {
 
 // CourseIntellect.Api/Controllers/DutiesController.cs
 export interface DutyStatusRequest {
-  status: string | null;
+  status?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Duty/DutyDtos.cs
@@ -3385,6 +3511,69 @@ export interface ExamSession {
   completedAtUtc: string | null;
 }
 
+// CourseIntellect.Api/Controllers/ExamSessionsController.cs
+export interface ExamSessionAnswerRequest {
+  questionId: string;
+  selectedOptionIndex: number;
+  openAnswer?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/ExamSessionsController.cs
+export interface ExamSessionAnswerSnapshot {
+  selectedOptionIndex: number;
+  openAnswer: string | null;
+  isCorrect: boolean;
+  requiresManualReview: boolean;
+  answeredAtUtc: string;
+}
+
+// CourseIntellect.Api/Controllers/ExamSessionsController.cs
+export interface ExamSessionQuestionSnapshot {
+  id: string;
+  questionBankItemId: string | null;
+  subject: string;
+  topic: string;
+  questionText: string;
+  imagePath: string | null;
+  imagePlacement: string | null;
+  options: string[];
+  correctOptionIndex: number;
+  sortOrder: number;
+  answer: ExamSessionAnswerSnapshot | null;
+}
+
+// CourseIntellect.Api/Controllers/ExamSessionsController.cs
+export interface ExamSessionSnapshot {
+  id: string;
+  plannedExamId: string | null;
+  examTitle: string;
+  subject: string;
+  studentName: string;
+  studentUsername: string;
+  className: string;
+  durationSeconds: number;
+  status: string;
+  startedAtUtc: string;
+  completedAtUtc: string | null;
+  recordedExamResultId: string | null;
+  teacherName: string;
+  assessmentLabel: string;
+  approvalStatus: string;
+  questions: ExamSessionQuestionSnapshot[];
+}
+
+// CourseIntellect.Api/Controllers/ExamSessionsController.cs
+export interface ExamSessionStartRequest {
+  plannedExamId?: string | null;
+  examTitle?: string | null;
+  subject?: string | null;
+  studentUsername: string;
+  studentName?: string | null;
+  className?: string | null;
+  durationSeconds: number;
+  questionCount: number;
+}
+
 // CourseIntellect.Domain/Enums/ExamType.cs
 export const ExamType = {
   Written: 1,
@@ -3394,16 +3583,55 @@ export const ExamType = {
 } as const;
 export type ExamType = (typeof ExamType)[keyof typeof ExamType];
 
+// CourseIntellect.Api/Controllers/ExcuseRequestsController.cs
+export interface ExcuseRequestCreateRequest {
+  childName: string;
+  date: string;
+  type: string;
+  reason: string;
+  notes?: string | null;
+  attachmentName?: string | null;
+  attachmentUrl?: string | null;
+  attachmentType?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/ExcuseRequestsController.cs
+export interface ExcuseRequestDecisionRequest {
+  decision: string;
+  decisionNote?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/ExcuseRequestsController.cs
+export interface ExcuseRequestSnapshot {
+  id: string;
+  childName: string;
+  parentName: string;
+  parentUsername: string;
+  date: string;
+  type: string;
+  reason: string;
+  notes: string;
+  attachmentName: string;
+  attachmentUrl: string;
+  attachmentType: string;
+  status: string;
+  decisionNote: string;
+  decidedByName: string;
+  decidedAtUtc: string | null;
+  createdAtUtc: string;
+}
+
 // CourseIntellect.Api/Controllers/ExpensesController.cs
 export interface ExpenseRequest {
-  category: string | null;
-  title: string | null;
-  vendorName: string | null;
-  invoiceNo: string | null;
+  category?: string | null;
+  title?: string | null;
+  vendorName?: string | null;
+  invoiceNo?: string | null;
   amount: number;
-  expenseDateUtc: string | null;
-  vehicleId: string | null;
-  note: string | null;
+  expenseDateUtc?: string | null;
+  vehicleId?: string | null;
+  note?: string | null;
+  parsedCategory?: DrivingExpenseCategory | null;
 }
 
 // CourseIntellect.Infrastructure/Services/TenantBackupService.cs
@@ -3732,6 +3960,7 @@ export interface InstitutionProfileDto {
   documentFooterNote: string;
   isConfigured: boolean;
   updatedAtUtc: string | null;
+  readonly location?: string;
 }
 
 // CourseIntellect.Domain/Enums/InstitutionType.cs
@@ -3746,11 +3975,18 @@ export type InstitutionType = (typeof InstitutionType)[keyof typeof InstitutionT
 
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface IssueEInvoiceRequest {
-  studentUserId: string | null;
+  studentUserId?: string | null;
   studentName: string;
   amount: number;
   vatRate: number;
-  description: string | null;
+  description?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/UploadsController.cs
+export interface JsonFileUploadRequest {
+  fileName: string;
+  base64Content: string;
+  contentType?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Admin/StaffHrDtos.cs
@@ -3764,7 +4000,7 @@ export interface LeaveBalanceDto {
 // CourseIntellect.Application/DTOs/Admin/StaffHrDtos.cs
 export interface LeaveDecisionRequest {
   status: string;
-  note: string | null;
+  note?: string | null;
 }
 
 // CourseIntellect.Domain/Entities/LibraryEntities.cs
@@ -3845,6 +4081,68 @@ export interface LiveExamState {
   updatedAtUtc: string;
 }
 
+// CourseIntellect.Api/Controllers/LiveRoomSessionsController.cs
+export interface LiveRoomAssetCreateRequest {
+  fileName: string;
+  fileUrl?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/LiveRoomSessionsController.cs
+export interface LiveRoomAssetSnapshot {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  createdAtUtc: string;
+}
+
+// CourseIntellect.Api/Controllers/LiveRoomSessionsController.cs
+export interface LiveRoomNoteCreateRequest {
+  text: string;
+}
+
+// CourseIntellect.Api/Controllers/LiveRoomSessionsController.cs
+export interface LiveRoomNoteSnapshot {
+  id: string;
+  text: string;
+  createdAtUtc: string;
+}
+
+// CourseIntellect.Api/Controllers/LiveRoomSessionsController.cs
+export interface LiveRoomOpenRequest {
+  lessonTitle: string;
+  teacherName: string;
+  className: string;
+  timeLabel: string;
+  meetingLink?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/LiveRoomSessionsController.cs
+export interface LiveRoomSessionSnapshot {
+  id: string;
+  lessonTitle: string;
+  teacherName: string;
+  className: string;
+  timeLabel: string;
+  meetingLink: string;
+  micOn: boolean;
+  cameraOn: boolean;
+  sharingOn: boolean;
+  recordingOn: boolean;
+  status: string;
+  startedAtUtc: string;
+  endedAtUtc: string | null;
+  assets: LiveRoomAssetSnapshot[];
+  notes: LiveRoomNoteSnapshot[];
+}
+
+// CourseIntellect.Api/Controllers/LiveRoomSessionsController.cs
+export interface LiveRoomStateUpdateRequest {
+  micOn?: boolean | null;
+  cameraOn?: boolean | null;
+  sharingOn?: boolean | null;
+  recordingOn?: boolean | null;
+}
+
 // CourseIntellect.Application/DTOs/LoginAttempts/LoginAttemptDto.cs
 export interface LoginAttemptDto {
   id: string;
@@ -3912,19 +4210,20 @@ export interface MappedTable {
   schema: string;
   name: string;
   tenantColumn: string;
+  readonly key?: string;
 }
 
 // CourseIntellect.Application/DTOs/Accounting/CreateInvoiceRequest.cs
 export interface MarkInvoicePaidRequest {
   paymentMethod: string;
-  paidAtUtc: string | null;
-  note: string | null;
+  paidAtUtc?: string | null;
+  note?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/PlatformSubscriptions/MarkPlatformInvoicePaidRequest.cs
 export interface MarkPlatformInvoicePaidRequest {
-  paidAtUtc: string | null;
-  notes: string | null;
+  paidAtUtc?: string | null;
+  notes?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
@@ -3932,13 +4231,29 @@ export interface MarkServiceAttendanceRequest {
   tripId: string;
   studentId: string;
   status: string;
-  note: string | null;
+  note?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/MeetingRequestsController.cs
+export interface MeetingAvailabilityCreateRequest {
+  advisor: string;
+  slot: string;
+  onlineMeeting: boolean;
+}
+
+// CourseIntellect.Api/Controllers/MeetingRequestsController.cs
+export interface MeetingAvailabilitySlotSnapshot {
+  id: string;
+  advisor: string;
+  slot: string;
+  onlineMeeting: boolean;
+  createdAtUtc: string;
 }
 
 // CourseIntellect.Domain/Entities/MeetingRequest.cs
 export interface MeetingRequest {
   id: string;
-  tenantId: string | null;
+  tenantId?: string | null;
   parentName: string;
   studentName: string;
   advisor: string;
@@ -4145,8 +4460,8 @@ export interface OllamaOptions {
 
 // CourseIntellect.Application/Interfaces/IConsentFormService.cs
 export interface OpenConsentSessionRequest {
-  stationName: string | null;
-  expiresInMinutes: number | null;
+  stationName?: string | null;
+  expiresInMinutes?: number | null;
 }
 
 // CourseIntellect.Domain/Entities/OrgUnit.cs
@@ -4212,7 +4527,7 @@ export interface ParentCredentialsDto {
 export interface ParentPaymentRequest {
   studentName: string;
   amount: number;
-  method: string | null;
+  method?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
@@ -4263,7 +4578,7 @@ export interface PassiveAccountDto {
 // CourseIntellect.Domain/Entities/PasswordResetRequest.cs
 export interface PasswordResetRequest {
   id: string;
-  tenantId: string | null;
+  tenantId?: string | null;
   userId: string;
   requestedEmail: string;
   fullName: string;
@@ -4271,13 +4586,13 @@ export interface PasswordResetRequest {
   primaryRole: string;
   status: string;
   reviewNote: string;
-  reviewedByUserId: string | null;
+  reviewedByUserId?: string | null;
   reviewedByName: string;
   requestedAtUtc: string;
-  reviewedAtUtc: string | null;
-  temporaryPasswordCreatedAtUtc: string | null;
-  expiresAtUtc: string | null;
-  usedAtUtc: string | null;
+  reviewedAtUtc?: string | null;
+  temporaryPasswordCreatedAtUtc?: string | null;
+  expiresAtUtc?: string | null;
+  usedAtUtc?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Auth/PasswordResetDtos.cs
@@ -4317,19 +4632,19 @@ export interface PaymentIntentDto {
 
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface PaymentIntentRequest {
-  studentUserId: string | null;
+  studentUserId?: string | null;
   studentName: string;
-  enrollmentContractId: string | null;
-  financeInstallmentId: string | null;
+  enrollmentContractId?: string | null;
+  financeInstallmentId?: string | null;
   amount: number;
-  returnUrl: string | null;
+  returnUrl?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface PayrollRequest {
   grossSalary: number;
-  employee: string | null;
-  year: number | null;
+  employee?: string | null;
+  year?: number | null;
 }
 
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
@@ -4405,11 +4720,134 @@ export interface PkceTokenRequest {
 }
 
 // CourseIntellect.Api/Controllers/PlannedExamsController.cs
+export interface PlannedExamAttendanceEntry {
+  studentUserId: string | null;
+  studentUsername: string;
+  studentName: string;
+  className: string;
+  joinedLive: boolean;
+  cameraReady: boolean;
+  checkedInAtUtc: string | null;
+  status: string;
+  manualOverride: boolean;
+  updatedAtUtc: string;
+}
+
+// CourseIntellect.Api/Controllers/PlannedExamsController.cs
+export interface PlannedExamAttendanceUpdate {
+  studentUserId: string | null;
+  studentUsername: string | null;
+  studentName: string | null;
+  className: string | null;
+  status: string | null;
+}
+
+// CourseIntellect.Api/Controllers/PlannedExamsController.cs
+export interface PlannedExamCheckInRequest {
+  studentUsername?: string | null;
+  studentName?: string | null;
+  className?: string | null;
+  joinedLive: boolean;
+  cameraReady: boolean;
+}
+
+// CourseIntellect.Api/Controllers/PlannedExamsController.cs
+export interface PlannedExamCreateRequest {
+  title: string;
+  type: string;
+  className: string;
+  subject: string;
+  dateLabel: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  duration: string;
+  lateEntryLimitMinutes: number;
+  liveLinkUrl?: string | null;
+  requireCamera: boolean;
+  requireFullscreen: boolean;
+  blockTabChange: boolean;
+  blockCopyPaste: boolean;
+  totalPoint: number;
+  questionCount: number;
+  teacherName?: string | null;
+  sourceType?: string | null;
+  sources?: PlannedExamSourceRequest[] | null;
+}
+
+// CourseIntellect.Api/Controllers/PlannedExamsController.cs
+export interface PlannedExamSnapshot {
+  id: string;
+  title: string;
+  type: string;
+  className: string;
+  subject: string;
+  dateLabel: string;
+  startTime: string;
+  endTime: string;
+  duration: string;
+  lateEntryLimitMinutes: number;
+  liveLinkUrl: string;
+  requireCamera: boolean;
+  requireFullscreen: boolean;
+  blockTabChange: boolean;
+  blockCopyPaste: boolean;
+  totalPoint: number;
+  questionCount: number;
+  status: string;
+  teacherName: string;
+  sourceType: string;
+  sources: PlannedExamSourceSnapshot[];
+  attendance: PlannedExamAttendanceEntry[];
+  createdAtUtc: string;
+}
+
+// CourseIntellect.Api/Controllers/PlannedExamsController.cs
+export interface PlannedExamSourceRequest {
+  questionId?: string | null;
+  title?: string | null;
+  type?: string | null;
+  subject?: string | null;
+  imagePath?: string | null;
+  imagePlacement?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/PlannedExamsController.cs
+export interface PlannedExamSourceSnapshot {
+  questionId: string | null;
+  title: string;
+  type: string;
+  subject: string | null;
+  imagePath: string | null;
+  imagePlacement: string | null;
+}
+
+// CourseIntellect.Api/Controllers/PlannedExamsController.cs
 export interface PlannedExamSummary {
   present: number;
   total: number;
   resultCount: number;
   average: number | null;
+}
+
+// CourseIntellect.Api/Controllers/PlannedExamsController.cs
+export interface PlannedExamUpdateRequest {
+  title?: string | null;
+  type?: string | null;
+  className?: string | null;
+  subject?: string | null;
+  dateLabel?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  duration?: string | null;
+  status?: string | null;
+  questionCount?: number | null;
+  totalPoint?: number | null;
+  lateEntryLimitMinutes?: number | null;
+  liveLinkUrl?: string | null;
+  requireCamera?: boolean | null;
+  requireFullscreen?: boolean | null;
+  blockTabChange?: boolean | null;
+  blockCopyPaste?: boolean | null;
 }
 
 // CourseIntellect.Application/DTOs/PlatformOperations/PlatformAiLogDto.cs
@@ -4553,6 +4991,16 @@ export interface PushDeviceRegistration {
   lastSeenAtUtc: string;
 }
 
+// CourseIntellect.Api/Controllers/PushController.cs
+export interface PushDeviceRegistrationRequest {
+  token: string;
+  platform?: string | null;
+  username?: string | null;
+  fullName?: string | null;
+  role?: string | null;
+  deviceId?: string | null;
+}
+
 // CourseIntellect.Domain/Entities/ExamSolvingEntities.cs
 export interface QuestionAttempt {
   id: string;
@@ -4630,7 +5078,7 @@ export interface QuestionBankItemDto {
 // CourseIntellect.Api/Controllers/QuestionImportController.cs
 export interface QuestionImportAnalysisResult {
   rawText: string;
-  questions: unknown[];
+  questions: QuestionImportQuestionSnapshot[];
   imageCount: number;
   tableCount: number;
   formulaCount: number;
@@ -4639,21 +5087,21 @@ export interface QuestionImportAnalysisResult {
 
 // CourseIntellect.Api/Controllers/QuestionImportController.cs
 export interface QuestionImportBulkUpdateRequest {
-  questionIds: string[] | null;
-  subject: string | null;
-  grade: string | null;
-  unit: string | null;
-  topic: string | null;
-  learningOutcome: string | null;
-  difficulty: string | null;
-  type: string | null;
-  points: number | null;
+  questionIds?: string[] | null;
+  subject?: string | null;
+  grade?: string | null;
+  unit?: string | null;
+  topic?: string | null;
+  learningOutcome?: string | null;
+  difficulty?: string | null;
+  type?: string | null;
+  points?: number | null;
 }
 
 // CourseIntellect.Api/Controllers/QuestionImportController.cs
 export interface QuestionImportCommitRequest {
-  questionIds: string[] | null;
-  target: string | null;
+  questionIds?: string[] | null;
+  target?: string | null;
 }
 
 // CourseIntellect.Api/Controllers/QuestionImportController.cs
@@ -4680,6 +5128,33 @@ export interface QuestionImportHistoryItem {
 }
 
 // CourseIntellect.Api/Controllers/QuestionImportController.cs
+export interface QuestionImportJobSnapshot {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedAtUtc: string;
+  updatedAtUtc: string | null;
+  completedAtUtc: string | null;
+  importedAtUtc: string | null;
+  uploadedBy: string;
+  uploadedByUsername: string;
+  status: string;
+  progress: number;
+  totalQuestions: number;
+  imageCount: number;
+  tableCount: number;
+  formulaCount: number;
+  estimatedSeconds: number;
+  importedQuestionCount: number;
+  failedQuestionCount: number;
+  rawTextPreview: string | null;
+  questions: QuestionImportQuestionSnapshot[];
+  logs: QuestionImportLogSnapshot[];
+}
+
+// CourseIntellect.Api/Controllers/QuestionImportController.cs
 export interface QuestionImportLogSnapshot {
   createdAtUtc: string;
   type: string;
@@ -4687,27 +5162,56 @@ export interface QuestionImportLogSnapshot {
 }
 
 // CourseIntellect.Api/Controllers/QuestionImportController.cs
-export interface QuestionImportOptionUpdateRequest {
-  label: string | null;
-  text: string | null;
+export interface QuestionImportOptionSnapshot {
+  label: string;
+  text: string;
   isCorrect: boolean;
 }
 
 // CourseIntellect.Api/Controllers/QuestionImportController.cs
-export interface QuestionImportQuestionUpdateRequest {
-  questionText: string | null;
-  subject: string | null;
-  grade: string | null;
-  unit: string | null;
-  topic: string | null;
-  learningOutcome: string | null;
-  difficulty: string | null;
-  type: string | null;
-  points: number | null;
-  correctAnswer: string | null;
+export interface QuestionImportOptionUpdateRequest {
+  label?: string | null;
+  text?: string | null;
+  isCorrect: boolean;
+}
+
+// CourseIntellect.Api/Controllers/QuestionImportController.cs
+export interface QuestionImportQuestionSnapshot {
+  id: string;
+  order: number;
+  questionText: string;
+  subject: string;
+  grade: string;
+  unit: string;
+  topic: string;
+  learningOutcome: string;
+  difficulty: string;
+  type: string;
+  points: number;
+  correctAnswer: string;
   explanation: string | null;
   imageUrl: string | null;
-  options: QuestionImportOptionUpdateRequest[] | null;
+  importStatus: string;
+  importedQuestionBankItemId: string | null;
+  importError: string | null;
+  options: QuestionImportOptionSnapshot[];
+}
+
+// CourseIntellect.Api/Controllers/QuestionImportController.cs
+export interface QuestionImportQuestionUpdateRequest {
+  questionText?: string | null;
+  subject?: string | null;
+  grade?: string | null;
+  unit?: string | null;
+  topic?: string | null;
+  learningOutcome?: string | null;
+  difficulty?: string | null;
+  type?: string | null;
+  points?: number | null;
+  correctAnswer?: string | null;
+  explanation?: string | null;
+  imageUrl?: string | null;
+  options?: QuestionImportOptionUpdateRequest[] | null;
 }
 
 // CourseIntellect.Domain/Entities/QuestionPracticeAttempt.cs
@@ -4741,6 +5245,26 @@ export interface QuestionPracticeStatsDto {
   wrong: number;
   blank: number;
   net: number;
+}
+
+// CourseIntellect.Api/Controllers/QuestionStudioController.cs
+export interface QuestionStudioDraftRequest {
+  id?: string | null;
+  title?: string | null;
+  mode?: string | null;
+  payloadJson?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/QuestionStudioController.cs
+export interface QuestionStudioDraftSnapshot {
+  id: string;
+  ownerUsername: string;
+  ownerName: string;
+  title: string;
+  mode: string;
+  payloadJson: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
 }
 
 // CourseIntellect.Application/DTOs/QuestionThreads/QuestionThreadAttachmentDto.cs
@@ -4805,15 +5329,15 @@ export interface ReconciliationResultDto {
 
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface RecordPaymentRequest {
-  studentUserId: string | null;
+  studentUserId?: string | null;
   studentName: string;
-  enrollmentContractId: string | null;
-  financeInstallmentId: string | null;
+  enrollmentContractId?: string | null;
+  financeInstallmentId?: string | null;
   amount: number;
-  method: string | null;
-  note: string | null;
-  branchId: string | null;
-  clientRequestId: string | null;
+  method?: string | null;
+  note?: string | null;
+  branchId?: string | null;
+  clientRequestId?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Auth/RefreshTokenRequest.cs
@@ -4829,6 +5353,7 @@ export interface RefreshTokenSession {
   expiresAtUtc: string;
   createdAtUtc: string;
   revokedAtUtc: string | null;
+  readonly isActive?: boolean;
 }
 
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
@@ -4838,7 +5363,7 @@ export interface RefundRequest {
   refundType: string;
   reason: string;
   refundChannel: string;
-  externalReference: string | null;
+  externalReference?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/PlatformOperations/RegisterTenantRequest.cs
@@ -4847,11 +5372,11 @@ export interface RegisterTenantRequest {
   contactName: string;
   email: string;
   phone: string;
-  plan: string | null;
+  plan?: string | null;
   estimatedStudents: number;
-  institutionType: string;
-  captchaToken: string | null;
-  kvkkAccepted: boolean;
+  institutionType?: string;
+  captchaToken?: string | null;
+  kvkkAccepted?: boolean;
 }
 
 // CourseIntellect.Application/DTOs/PlatformOperations/RegisterTenantRequest.cs
@@ -4974,7 +5499,7 @@ export interface ResolvedRole {
 // CourseIntellect.Application/DTOs/Auth/PasswordResetDtos.cs
 export interface ReviewPasswordResetRequest {
   approved: boolean;
-  note: string | null;
+  note?: string | null;
 }
 
 // CourseIntellect.Domain/Entities/RolePolicy.cs
@@ -5012,7 +5537,7 @@ export interface RoleSummaryDto {
 export interface SaveAttendanceRequest {
   className: string;
   lesson: string;
-  lessonDate: string | null;
+  lessonDate?: string | null;
   students: SaveAttendanceStudentRequest[];
 }
 
@@ -5040,27 +5565,27 @@ export interface SaveCanvasStrokeRequest {
   color: string;
   width: number;
   opacity: number;
-  pressure: number | null;
+  pressure?: number | null;
   pointsJson: string;
 }
 
 // CourseIntellect.Application/Interfaces/IConsentFormService.cs
 export interface SaveConsentTemplateRequest {
-  title: string | null;
-  body: string | null;
-  checkItems: string[] | null;
+  title?: string | null;
+  body?: string | null;
+  checkItems?: string[] | null;
   requiresSignature: boolean;
   signerRole: ConsentSignerRole;
   isActive: boolean;
   sortOrder: number;
-  bindings: ConsentTemplateBindingDto[] | null;
-  sourceKind: ConsentDocumentSource;
-  documentId: string | null;
+  bindings?: ConsentTemplateBindingDto[] | null;
+  sourceKind?: ConsentDocumentSource;
+  documentId?: string | null;
 }
 
 // CourseIntellect.Api/Controllers/ContentEngagementController.cs
 export interface SaveContentExtrasRequest {
-  coverImageUrl: string | null;
+  coverImageUrl?: string | null;
   exercises: ContentExerciseDto[];
 }
 
@@ -5069,35 +5594,40 @@ export interface SaveContentUserStateRequest {
   progress: number;
   liked: boolean;
   favorite: boolean;
-  note: string | null;
+  note?: string | null;
 }
 
 // CourseIntellect.Application/Interfaces/IInstitutionProfileService.cs
 export interface SaveInstitutionProfileRequest {
-  name: string | null;
-  address: string | null;
-  district: string | null;
-  city: string | null;
-  phone: string | null;
-  email: string | null;
-  website: string | null;
-  taxOffice: string | null;
-  taxNumber: string | null;
-  documentFooterNote: string | null;
+  name?: string | null;
+  address?: string | null;
+  district?: string | null;
+  city?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  taxOffice?: string | null;
+  taxNumber?: string | null;
+  documentFooterNote?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/PlannedExamsController.cs
+export interface SavePlannedExamAttendanceRequest {
+  entries?: PlannedExamAttendanceUpdate[] | null;
 }
 
 // CourseIntellect.Application/DTOs/ExamSolving/ExamSolvingDtos.cs
 export interface SaveQuestionFlagRequest {
   questionAttemptId: string;
   isFlagged: boolean;
-  flagType: string | null;
+  flagType?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/ExamSolving/ExamSolvingDtos.cs
 export interface SaveSolutionAnswerRequest {
   questionAttemptId: string;
   selectedOptionIndex: number;
-  openAnswer: string | null;
+  openAnswer?: string | null;
   timeSpentSeconds: number;
 }
 
@@ -5207,16 +5737,16 @@ export interface ScopeUserDto {
 
 // CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
 export interface SendAssistantMessageRequest {
-  conversationId: string | null;
+  conversationId?: string | null;
   message: string;
   clientMessageId: string;
-  context: AssistantClientContext | null;
+  context?: AssistantClientContext | null;
 }
 
 // CourseIntellect.Application/DTOs/Messages/SendMessageRequest.cs
 export interface SendMessageRequest {
   text: string;
-  attachments: MessageAttachmentDto[] | null;
+  attachments?: MessageAttachmentDto[] | null;
 }
 
 // CourseIntellect.Domain/Entities/ServiceTrackingEntities.cs
@@ -5528,7 +6058,7 @@ export interface SetStudyPlanItemDoneRequest {
 
 // CourseIntellect.Application/DTOs/Timetable/TimetableDtos.cs
 export interface SetTimetableRequest {
-  teacherUserId: string | null;
+  teacherUserId?: string | null;
   teacherName: string;
   slots: TimetableSlotRequest[];
 }
@@ -5561,10 +6091,10 @@ export interface SetupStep {
 
 // CourseIntellect.Application/Interfaces/IConsentFormService.cs
 export interface SignConsentFormRequest {
-  checkedItems: number[] | null;
-  signatureImage: string | null;
-  signerName: string | null;
-  signerRelation: string | null;
+  checkedItems?: number[] | null;
+  signatureImage?: string | null;
+  signerName?: string | null;
+  signerRelation?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/SiteContent/SiteContentDto.cs
@@ -5703,8 +6233,8 @@ export interface StaffLeaveDto {
 // CourseIntellect.Domain/Entities/StaffLeaveRequest.cs
 export interface StaffLeaveRequest {
   id: string;
-  tenantId: string | null;
-  staffUserId: string | null;
+  tenantId?: string | null;
+  staffUserId?: string | null;
   staffName: string;
   leaveType: string;
   startDateUtc: string;
@@ -5712,11 +6242,11 @@ export interface StaffLeaveRequest {
   days: number;
   reason: string;
   status: string;
-  approvalRequestId: string | null;
-  decidedByUserId: string | null;
+  approvalRequestId?: string | null;
+  decidedByUserId?: string | null;
   decidedByName: string;
   createdAtUtc: string;
-  decidedAtUtc: string | null;
+  decidedAtUtc?: string | null;
 }
 
 // CourseIntellect.Domain/Entities/StaffProfile.cs
@@ -5780,13 +6310,13 @@ export interface StartSolutionSessionRequest {
   title: string;
   subject: string;
   studentUsername: string;
-  studentName: string | null;
-  className: string | null;
+  studentName?: string | null;
+  className?: string | null;
   durationSeconds: number;
   isTeacherPreview: boolean;
-  plannedExamId: string | null;
-  questionIds: string[] | null;
-  questionCount: number;
+  plannedExamId?: string | null;
+  questionIds?: string[] | null;
+  questionCount?: number;
 }
 
 // CourseIntellect.Domain/Services/StatementLedger.cs
@@ -5842,6 +6372,33 @@ export interface StoredPayload {
   data: unknown | null;
   actions: AssistantActionDto[];
   suggestions: string[];
+}
+
+// CourseIntellect.Api/Controllers/ReportsController.cs
+export interface StoredTeacherWeeklyReport {
+  id: string;
+  teacherUsername: string;
+  teacherName: string;
+  studentUsername: string;
+  studentName: string;
+  parentName: string;
+  parentEmail: string;
+  className: string;
+  subject: string;
+  title: string;
+  summary: string;
+  highlights: string;
+  supportNotes: string;
+  weeklyPeriodLabel: string;
+  createdAtUtc: string;
+  attachments: StoredTeacherWeeklyReportAttachment[];
+}
+
+// CourseIntellect.Api/Controllers/ReportsController.cs
+export interface StoredTeacherWeeklyReportAttachment {
+  name: string;
+  url: string;
+  fileType: string;
 }
 
 // CourseIntellect.Infrastructure/Services/AssistantService.cs
@@ -6314,7 +6871,7 @@ export interface TableSummary {
 // CourseIntellect.Application/DTOs/Admin/AdminTaskDtos.cs
 export interface TaskStatusRequest {
   status: string;
-  reason: string | null;
+  reason?: string | null;
 }
 
 // CourseIntellect.Domain/Entities/TeacherDuty.cs
@@ -6398,6 +6955,29 @@ export interface TeacherTimetableSlot {
   createdAtUtc: string;
 }
 
+// CourseIntellect.Api/Controllers/ReportsController.cs
+export interface TeacherWeeklyReportAttachmentRequest {
+  name?: string | null;
+  url?: string | null;
+  fileType?: string | null;
+}
+
+// CourseIntellect.Api/Controllers/ReportsController.cs
+export interface TeacherWeeklyReportCreateRequest {
+  teacherUsername?: string | null;
+  teacherName: string;
+  studentUsername?: string | null;
+  studentName: string;
+  className: string;
+  subject: string;
+  title?: string | null;
+  summary: string;
+  highlights?: string | null;
+  supportNotes?: string | null;
+  weeklyPeriodLabel?: string | null;
+  attachments?: TeacherWeeklyReportAttachmentRequest[] | null;
+}
+
 // CourseIntellect.Application/Interfaces/ITenantBackupService.cs
 export interface TenantBackupResult {
   tableCount: number;
@@ -6408,7 +6988,7 @@ export interface TenantBackupResult {
 
 // CourseIntellect.Api/Controllers/PlatformConfigurationsController.cs
 export interface TenantBrandingUpdateRequest {
-  logoUrl: string | null;
+  logoUrl?: string | null;
 }
 
 // CourseIntellect.Api/Controllers/TenantFeaturesController.cs
@@ -6457,6 +7037,7 @@ export interface TenantRegistrationApplication {
   verificationExpiresAtUtc: string | null;
   verificationSentAtUtc: string | null;
   verifiedAtUtc: string | null;
+  readonly verificationState?: string;
 }
 
 // CourseIntellect.Application/DTOs/PlatformOperations/RegisterTenantRequest.cs
@@ -6562,8 +7143,8 @@ export interface TimetableSlotRequest {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
-  className: string | null;
-  lesson: string | null;
+  className?: string | null;
+  lesson?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Timetable/TimetableDtos.cs
@@ -6617,13 +7198,13 @@ export interface UpdateApprovalStatusRequest {
 
 // CourseIntellect.Api/Controllers/ClassesController.cs
 export interface UpdateClassAssignmentsRequest {
-  studentIds: string[] | null;
-  advisorTeacherId: string | null;
+  studentIds?: string[] | null;
+  advisorTeacherId?: string | null;
 }
 
 // CourseIntellect.Application/Interfaces/IConsentFormService.cs
 export interface UpdateConsentFormRequest {
-  staffNotes: string | null;
+  staffNotes?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/ContactMessages/UpdateContactMessageStatusRequest.cs
@@ -6656,7 +7237,7 @@ export interface UpdateDutyRequest {
   day: string;
   startTime: string;
   endTime: string;
-  description: string | null;
+  description?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/ExamResults/UpdateExamResultRequest.cs
@@ -6668,9 +7249,9 @@ export interface UpdateExamResultRequest {
   className: string;
   score: number;
   net: number;
-  correctCount: number | null;
-  wrongCount: number | null;
-  totalQuestions: number | null;
+  correctCount?: number | null;
+  wrongCount?: number | null;
+  totalQuestions?: number | null;
 }
 
 // CourseIntellect.Application/DTOs/Accounting/UpdateInstallmentRequest.cs
@@ -6684,22 +7265,22 @@ export interface UpdateInstallmentRequest {
 // CourseIntellect.Application/DTOs/System/UpdateMaintenanceRequest.cs
 export interface UpdateMaintenanceRequest {
   enabled: boolean;
-  message: string | null;
+  message?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Meetings/UpdateMeetingRequestStatusRequest.cs
 export interface UpdateMeetingRequestStatusRequest {
   status: string;
-  meetingLink: string | null;
+  meetingLink?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Admin/OrgUnitDtos.cs
 export interface UpdateOrgUnitRequest {
   name: string;
   unitType: string;
-  parentUnitId: string | null;
-  managerName: string | null;
-  note: string | null;
+  parentUnitId?: string | null;
+  managerName?: string | null;
+  note?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Auth/UpdateProfileRequest.cs
@@ -6753,7 +7334,7 @@ export interface UpdateServiceVehicleRequest {
   model: string;
   capacity: number;
   isActive: boolean;
-  vehicleNumber: string;
+  vehicleNumber?: string;
 }
 
 // CourseIntellect.Application/DTOs/SiteContent/UpdateSiteContentRequest.cs
@@ -6765,11 +7346,11 @@ export interface UpdateSiteContentRequest {
 
 // CourseIntellect.Application/DTOs/Staff/CreateStaffRequest.cs
 export interface UpdateStaffAssignmentRequest {
-  role: string | null;
-  branchId: string | null;
-  customRoleId: string | null;
-  clearCustomRole: boolean;
-  clearBranch: boolean;
+  role?: string | null;
+  branchId?: string | null;
+  customRoleId?: string | null;
+  clearCustomRole?: boolean;
+  clearBranch?: boolean;
 }
 
 // CourseIntellect.Application/DTOs/Staff/UpdateStaffRequest.cs
@@ -6785,7 +7366,7 @@ export interface UpdateStaffRequest {
   maritalStatus: string;
   childCount: number;
   note: string;
-  photoUrl: string | null;
+  photoUrl?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Students/UpdateStudentRequest.cs
@@ -6802,7 +7383,7 @@ export interface UpdateStudentRequest {
   parentEmail: string;
   address: string;
   note: string;
-  photoUrl: string | null;
+  photoUrl?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
@@ -6818,20 +7399,20 @@ export interface UpdateStudyPlanStateRequest {
   planItemsSerialized: string;
   streakCount: number;
   xpPoints: number;
-  lastCompletedAt: string | null;
+  lastCompletedAt?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/PlatformOperations/UpdateSupportTicketRequest.cs
 export interface UpdateSupportTicketRequest {
-  status: string | null;
-  priority: string | null;
-  lastMessage: string | null;
-  messages: number | null;
+  status?: string | null;
+  priority?: string | null;
+  lastMessage?: string | null;
+  messages?: number | null;
 }
 
 // CourseIntellect.Api/Controllers/TenantFeaturesController.cs
 export interface UpdateTenantFeaturesRequest {
-  features: Record<string, boolean> | null;
+  features?: Record<string, boolean> | null;
 }
 
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
@@ -6839,8 +7420,8 @@ export interface UpdateVehicleLocationRequest {
   tripId: string;
   latitude: number;
   longitude: number;
-  speed: number | null;
-  heading: number | null;
+  speed?: number | null;
+  heading?: number | null;
 }
 
 // CourseIntellect.Application/DTOs/Contents/UploadedAssetDto.cs
@@ -6863,10 +7444,10 @@ export interface UpsertAppSettingRequest {
 // CourseIntellect.Api/Controllers/CustomRolesController.cs
 export interface UpsertCustomRoleRequest {
   name: string;
-  baseRole: string | null;
-  modules: string[] | null;
-  permissions: string[] | null;
-  modulesRestricted: boolean;
+  baseRole?: string | null;
+  modules?: string[] | null;
+  permissions?: string[] | null;
+  modulesRestricted?: boolean;
 }
 
 // CourseIntellect.Application/DTOs/PlatformConfigurations/UpsertPlatformConfigurationRequest.cs
@@ -6890,7 +7471,7 @@ export interface UpsertScheduleEntryRequest {
   time: string;
   subject: string;
   teacher: string;
-  room: string | null;
+  room?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/PlatformOperations/UpsertTenantWorkspaceRequest.cs
@@ -6907,8 +7488,8 @@ export interface UpsertTenantWorkspaceRequest {
   collected: number;
   storage: number;
   api: number;
-  institutionType: string;
-  drivingSchoolModuleEnabled: boolean;
+  institutionType?: string;
+  drivingSchoolModuleEnabled?: boolean;
 }
 
 // CourseIntellect.Application/DTOs/Translations/UpsertTranslationRequest.cs
@@ -6924,6 +7505,7 @@ export interface UserDependency {
   schema: string;
   name: string;
   userColumn: string;
+  readonly key?: string;
 }
 
 // CourseIntellect.Application/DTOs/Common/UserExtraRoleRequest.cs
@@ -7035,5 +7617,5 @@ export interface VehicleLocationDto {
 
 // CourseIntellect.Application/DTOs/PlatformOperations/RegisterTenantRequest.cs
 export interface VerifyRegistrationRequest {
-  token: string | null;
+  token?: string | null;
 }

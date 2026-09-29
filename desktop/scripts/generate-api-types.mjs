@@ -23,7 +23,9 @@ const outFile = path.join(desktopRoot, 'src', 'types', 'api', 'generated.ts');
 
 const SKIP_DIRS = new Set(['bin', 'obj', 'Migrations', 'CourseIntellect.Tests', 'node_modules']);
 // Sınıflar yalnız veri taşıyan klasörlerden alınır; kayıtlar (record) her yerden.
-const CLASS_DIRS = ['CourseIntellect.Application/DTOs', 'CourseIntellect.Domain/Entities'];
+const CLASS_DIRS = ['CourseIntellect.Application/DTOs', 'CourseIntellect.Domain/Entities', 'CourseIntellect.Api'];
+// Api katmanındaki davranış sınıfları (controller, filtre, servis...) veri tipi değildir.
+const NON_DTO_CLASS = /(Controller|Service|Hub|Extensions|Filter|Attribute|Middleware|Provider|Handler|Store|Binder|Factory|Options|Policy|Requirement|Job|Worker|Validator|Helper|Program|Startup|Notifier)$/;
 
 function listCsFiles(dir) {
   const result = [];
@@ -161,7 +163,9 @@ function parseParameters(paramText) {
   }).filter((param) => param.name && param.type);
 }
 
-const PROPERTY_RE = /((?:\[[^\]]*\]\s*)*)public\s+(?:required\s+|virtual\s+|override\s+|new\s+|static\s+|readonly\s+)*([\w<>?,.\[\]\s()]+?)\s+(\w+)\s*\{\s*(?:get|init|set)/g;
+// Otomatik özellik (`{ get; set; }`) ya da ifade gövdeli salt-okunur özellik (`=> ...`);
+// System.Text.Json ikisini de yazar. Metotlar `(` ile ayrışır, eşleşmez.
+const PROPERTY_RE = /((?:\[[^\]]*\]\s*)*)public\s+(?:required\s+|virtual\s+|override\s+|new\s+|static\s+|readonly\s+)*([\w<>?,.\[\]\s()]+?)\s+(\w+)\s*(\{\s*(?:get|init|set)|=>)/g;
 
 function parseBodyProperties(body) {
   // Yalnız doğrudan gövdedeki (iç içe tipler hariç) otomatik özellikler.
@@ -172,7 +176,8 @@ function parseBodyProperties(body) {
   while ((match = PROPERTY_RE.exec(flat))) {
     const attributes = readAttributes(match[1] ?? '').attributes;
     if (/\bstatic\b/.test(match[0])) continue;
-    props.push({ name: match[3], type: match[2].trim(), attributes, hasDefault: false });
+    // Hesaplanan (=>) özellik yanıtta yazılır ama istekte yok sayılır → opsiyonel.
+    props.push({ name: match[3], type: match[2].trim(), attributes, hasDefault: false, computed: match[4] === '=>' });
   }
   return props;
 }
@@ -243,6 +248,7 @@ function parseFile(file) {
     }
 
     if (kind === 'class' && !allowClasses) continue;
+    if (kind === 'class' && rel.startsWith('CourseIntellect.Api') && NON_DTO_CLASS.test(name)) continue;
     // Statik sınıflar yalnız sabit taşır, JSON'a hiç çıkmaz.
     if (/\bstatic\s/.test(match[0])) continue;
 
@@ -352,6 +358,8 @@ function mapType(rawType, generics = []) {
   return nullable ? `${ts} | null` : ts;
 }
 
+const isRequestType = (name) => /(Request|Command|Input)$/.test(name);
+
 const wrap = (ts) => (/[|&]/.test(ts) ? `(${ts})` : ts);
 
 function isNavigation(type) {
@@ -395,7 +403,13 @@ for (const decl of finalDecls.sort((a, b) => a.tsName.localeCompare(b.tsName))) 
     seen.add(key);
     const navigation = decl.isEntity && isNavigation(member.type);
     const tsType = mapType(member.type, decl.generics);
-    lines.push(navigation ? `  ${key}?: ${tsType} | null;` : `  ${key}: ${tsType};`);
+    // İstek tipleri: varsayılan değerli ya da null olabilen alanlar gönderilmeyebilir
+    // (bağlayıcı eksik alanı varsayılana düşürür).
+    const optionalInRequest = isRequestType(decl.name) && (member.hasDefault || /\?\s*$/.test(member.type.trim()));
+    if (navigation) lines.push(`  ${key}?: ${tsType} | null;`);
+    else if (optionalInRequest) lines.push(`  ${key}?: ${tsType};`);
+    else if (member.computed) lines.push(`  readonly ${key}?: ${tsType};`);
+    else lines.push(`  ${key}: ${tsType};`);
   }
   lines.push('}');
   lines.push('');
