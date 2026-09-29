@@ -1,8 +1,13 @@
-import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { motion, type Variants } from 'framer-motion';
+import { useState, type MouseEvent, type ReactNode } from 'react';
+
+interface CardShellProps {
+  children?: ReactNode;
+  className?: string;
+}
 
 // 3D Flip Card
-export function FlipCard({ front, back, className = '' }) {
+export function FlipCard({ front, back, className = '' }: { front: ReactNode; back: ReactNode; className?: string }) {
   const [isFlipped, setIsFlipped] = useState(false);
 
   return (
@@ -35,7 +40,7 @@ export function FlipCard({ front, back, className = '' }) {
 }
 
 // Bouncing Card
-export function BouncingCard({ children, className = '', delay = 0 }) {
+export function BouncingCard({ children, className = '', delay = 0 }: CardShellProps & { delay?: number }) {
   return (
     <motion.div
       className={className}
@@ -60,11 +65,11 @@ export function BouncingCard({ children, className = '', delay = 0 }) {
 }
 
 // Glow Card
-export function GlowCard({ children, className = '', glowColor = '#D9790B' }) {
+export function GlowCard({ children, className = '', glowColor = '#D9790B' }: CardShellProps & { glowColor?: string }) {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setMousePosition({
       x: e.clientX - rect.left,
@@ -101,10 +106,10 @@ export function GlowCard({ children, className = '', glowColor = '#D9790B' }) {
 }
 
 // Tilt Card
-export function TiltCard({ children, className = '', maxTilt = 10 }) {
+export function TiltCard({ children, className = '', maxTilt = 10 }: CardShellProps & { maxTilt?: number }) {
   const [rotation, setRotation] = useState({ x: 0, y: 0 });
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
@@ -139,7 +144,7 @@ export function TiltCard({ children, className = '', maxTilt = 10 }) {
 }
 
 // Staggered List Animation
-export function StaggeredList({ children, className = '', staggerDelay = 0.1 }) {
+export function StaggeredList({ children, className = '', staggerDelay = 0.1 }: CardShellProps & { staggerDelay?: number }) {
   return (
     <motion.div
       className={className}
@@ -159,7 +164,7 @@ export function StaggeredList({ children, className = '', staggerDelay = 0.1 }) 
   );
 }
 
-export const staggeredItemVariants = {
+export const staggeredItemVariants: Variants = {
   hidden: { opacity: 0, y: 20, scale: 0.95 },
   visible: {
     opacity: 1,

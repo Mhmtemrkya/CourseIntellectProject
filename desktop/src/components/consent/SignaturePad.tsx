@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 
@@ -15,16 +15,38 @@ import { cn } from '@/lib/utils';
  *  • Tek dokunuş da nokta bırakır (çok kısa imzalar kaybolmasın).
  *  • Yeniden boyutlanmada mevcut çizim korunur.
  */
-const SignaturePad = forwardRef(function SignaturePad(
+export interface SignaturePadHandle {
+  isEmpty: () => boolean;
+  clear: () => void;
+  /** Beyaz zeminli PNG data URL; imza yoksa null. */
+  toDataUrl: () => string | null;
+}
+
+export interface SignaturePadProps {
+  height?: number;
+  disabled?: boolean;
+  onChange?: (hasInk: boolean) => void;
+  className?: string;
+  hint?: string;
+}
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+type CanvasPointerEvent = ReactPointerEvent<HTMLCanvasElement>;
+
+const SignaturePad = forwardRef<SignaturePadHandle, SignaturePadProps>(function SignaturePad(
   { height = 200, disabled = false, onChange, className, hint = 'Parmağınızla buraya imzalayın' },
   ref,
 ) {
-  const canvasRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
-  const lastPointRef = useRef(null);
+  const lastPointRef = useRef<Point | null>(null);
   const [hasInk, setHasInk] = useState(false);
 
-  const configureContext = useCallback((context, ratio) => {
+  const configureContext = useCallback((context: CanvasRenderingContext2D, ratio: number) => {
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     context.lineCap = 'round';
     context.lineJoin = 'round';
@@ -51,13 +73,14 @@ const SignaturePad = forwardRef(function SignaturePad(
     if (previous) {
       previous.width = canvas.width;
       previous.height = canvas.height;
-      previous.getContext('2d').drawImage(canvas, 0, 0);
+      previous.getContext('2d')?.drawImage(canvas, 0, 0);
     }
 
     canvas.width = nextWidth;
     canvas.height = nextHeight;
 
     const context = canvas.getContext('2d');
+    if (!context) return;
     configureContext(context, ratio);
     if (previous) {
       context.save();
@@ -75,8 +98,8 @@ const SignaturePad = forwardRef(function SignaturePad(
     return () => observer.disconnect();
   }, [resize]);
 
-  const pointOf = (event) => {
-    const rect = canvasRef.current.getBoundingClientRect();
+  const pointOf = (canvas: HTMLCanvasElement, event: CanvasPointerEvent): Point => {
+    const rect = canvas.getBoundingClientRect();
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
 
@@ -87,30 +110,34 @@ const SignaturePad = forwardRef(function SignaturePad(
     });
   };
 
-  const handlePointerDown = (event) => {
-    if (disabled) return;
+  const handlePointerDown = (event: CanvasPointerEvent) => {
+    const canvas = canvasRef.current;
+    if (disabled || !canvas) return;
     event.preventDefault();
-    canvasRef.current.setPointerCapture(event.pointerId);
+    canvas.setPointerCapture(event.pointerId);
     drawingRef.current = true;
 
-    const point = pointOf(event);
+    const point = pointOf(canvas, event);
     lastPointRef.current = point;
 
     // Tek dokunuş = nokta. Basıp bırakan kısa imzalar boş kalmasın.
-    const context = canvasRef.current.getContext('2d');
+    const context = canvas.getContext('2d');
+    if (!context) return;
     context.beginPath();
     context.arc(point.x, point.y, context.lineWidth / 2, 0, Math.PI * 2);
     context.fill();
     markInk();
   };
 
-  const handlePointerMove = (event) => {
-    if (!drawingRef.current || disabled) return;
+  const handlePointerMove = (event: CanvasPointerEvent) => {
+    const canvas = canvasRef.current;
+    if (!drawingRef.current || disabled || !canvas) return;
     event.preventDefault();
 
-    const point = pointOf(event);
-    const previous = lastPointRef.current;
-    const context = canvasRef.current.getContext('2d');
+    const point = pointOf(canvas, event);
+    const previous = lastPointRef.current ?? point;
+    const context = canvas.getContext('2d');
+    if (!context) return;
     context.beginPath();
     context.moveTo(previous.x, previous.y);
     context.lineTo(point.x, point.y);
@@ -119,7 +146,7 @@ const SignaturePad = forwardRef(function SignaturePad(
     markInk();
   };
 
-  const endStroke = (event) => {
+  const endStroke = (event: CanvasPointerEvent) => {
     if (!drawingRef.current) return;
     drawingRef.current = false;
     lastPointRef.current = null;
@@ -134,6 +161,7 @@ const SignaturePad = forwardRef(function SignaturePad(
     const canvas = canvasRef.current;
     if (!canvas) return;
     const context = canvas.getContext('2d');
+    if (!context) return;
     context.save();
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -157,6 +185,7 @@ const SignaturePad = forwardRef(function SignaturePad(
       flattened.width = canvas.width;
       flattened.height = canvas.height;
       const context = flattened.getContext('2d');
+      if (!context) return null;
       context.fillStyle = '#FFFFFF';
       context.fillRect(0, 0, flattened.width, flattened.height);
       context.drawImage(canvas, 0, 0);

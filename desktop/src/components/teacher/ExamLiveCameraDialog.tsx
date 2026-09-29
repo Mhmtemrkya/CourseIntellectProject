@@ -1,25 +1,38 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CameraOff, Radio, Users } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { examCameraRealtime } from '../../lib/realtime/examCameraRealtime';
+import { examCameraRealtime, type CameraFramePayload } from '../../lib/realtime/examCameraRealtime';
+
+interface LiveFrame {
+  name: string;
+  username: string;
+  frame: string;
+  at: number;
+}
+
+export interface ExamLiveCameraDialogProps {
+  exam: { id?: string | number | null; title?: string | null };
+  onClose: () => void;
+}
 
 const STALE_MS = 15000; // 15 sn kare gelmezse "bağlantı bekleniyor" say
 
 // Öğretmenin planlı sınav için canlı kamera izleme ızgarası. Öğrencilerin sınav
 // ekranından gönderdiği periyodik kareleri (snapshot) gerçek zamanlı gösterir.
-export default function ExamLiveCameraDialog({ exam, onClose }) {
-  const [frames, setFrames] = useState({});
+export default function ExamLiveCameraDialog({ exam, onClose }: ExamLiveCameraDialogProps) {
+  const [frames, setFrames] = useState<Record<string, LiveFrame>>({});
   const [now, setNow] = useState(Date.now());
   const framesRef = useRef(frames);
   framesRef.current = frames;
 
   useEffect(() => {
     if (!exam?.id) return undefined;
-    let unsubscribe = () => {};
+    const examId = exam.id;
+    let unsubscribe: () => unknown = () => {};
     let mounted = true;
 
-    const handler = (payload) => {
-      if (!mounted || String(payload?.examId) !== String(exam.id)) return;
+    const handler = (payload: CameraFramePayload) => {
+      if (!mounted || String(payload?.examId) !== String(examId)) return;
       const key = payload.studentUsername || payload.studentName || 'anon';
       setFrames((prev) => ({
         ...prev,
@@ -32,15 +45,15 @@ export default function ExamLiveCameraDialog({ exam, onClose }) {
       }));
     };
 
-    examCameraRealtime.joinMonitor(exam.id, handler).then((off) => {
-      if (mounted) unsubscribe = off; else off?.();
+    void examCameraRealtime.joinMonitor(examId, handler).then((off) => {
+      if (mounted) unsubscribe = off; else void off?.();
     });
 
     const ticker = window.setInterval(() => setNow(Date.now()), 3000);
     return () => {
       mounted = false;
       window.clearInterval(ticker);
-      unsubscribe();
+      void unsubscribe();
     };
   }, [exam?.id]);
 

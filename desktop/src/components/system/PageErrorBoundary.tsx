@@ -1,4 +1,14 @@
-import React from 'react';
+import React, { type ErrorInfo, type ReactNode } from 'react';
+import { isRecord } from '@/lib/errors';
+
+interface PageErrorBoundaryProps {
+  children?: ReactNode;
+}
+
+interface PageErrorBoundaryState {
+  hasError: boolean;
+  error: unknown;
+}
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 /**
@@ -6,22 +16,22 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
  * beyaz ekrana sürüklemek yerine içerik alanında hata kartı gösterir. Route
  * değişince (key=pathname) yeniden monte olup sıfırlanır.
  */
-export class PageErrorBoundary extends React.Component {
-  constructor(props) {
+export class PageErrorBoundary extends React.Component<PageErrorBoundaryProps, PageErrorBoundaryState> {
+  constructor(props: PageErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: unknown): PageErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error, info) {
+  override componentDidCatch(error: unknown, info: ErrorInfo) {
     // eslint-disable-next-line no-console
     console.error('Page runtime error:', error, info);
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="flex min-h-[55vh] flex-col items-center justify-center gap-4 text-center">
@@ -43,7 +53,7 @@ export class PageErrorBoundary extends React.Component {
           </button>
           {this.state.error ? (
             <pre className="mt-1 max-w-lg overflow-auto rounded-lg bg-black/30 p-3 text-left text-[11px] text-rose-200/90">
-              {String(this.state.error?.message || this.state.error)}
+              {String((isRecord(this.state.error) && this.state.error.message) || this.state.error)}
             </pre>
           ) : null}
         </div>

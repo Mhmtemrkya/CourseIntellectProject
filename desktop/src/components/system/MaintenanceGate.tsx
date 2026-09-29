@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useApp } from '../../context/AppContext';
 import { fetchSystemStatus } from '../../lib/api/modules';
 import MaintenancePage from '../../pages/MaintenancePage';
+import type { SystemStatusDto } from '../../types/api/generated';
 
 const POLL_MS = 30_000; // 30 saniyede bir status çek
 const RETRY_BACKOFF_MS = 5_000;
@@ -12,9 +13,9 @@ const RETRY_BACKOFF_MS = 5_000;
  * - Diğer roller (kurum yöneticisi, idari, öğretmen, veli, öğrenci) MaintenancePage görür.
  * - Mevcut oturumlar engellenmez (logout zorunlu değil) ama UI kilitli kalır.
  */
-export function MaintenanceGate({ children }) {
+export function MaintenanceGate({ children }: { children?: ReactNode }) {
   const { user, logout } = useApp();
-  const [status, setStatus] = useState(null);
+  const [status, setStatus] = useState<SystemStatusDto | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
 
   const refresh = useCallback(async () => {

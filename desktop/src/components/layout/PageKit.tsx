@@ -1,15 +1,23 @@
-import { motion } from 'framer-motion';
+import type { MouseEventHandler, ReactNode } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import { Button } from '../ui/button';
 import { LoadingDots } from '../animations/AnimatedIcon';
 import { KPI_TONES, KpiCard } from '../ui/kpi-card';
 import { cn } from '@/lib/utils';
+import type { IconComponent } from '@/types/ui';
 
 // Liste/özet ekranlarının ortak iskeleti: animasyonlu sayfa kabı, başlık,
 // yükleniyor ve boş durum bileşenleri. KPI kartı okul ana paneliyle ortaktır.
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
-const itemVariants = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } };
+const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
+const itemVariants: Variants = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } };
 
-export function Page({ children, testId, className }) {
+export interface PageProps {
+  children?: ReactNode;
+  testId?: string;
+  className?: string;
+}
+
+export function Page({ children, testId, className }: PageProps) {
   return (
     <motion.div
       variants={containerVariants}
@@ -23,7 +31,16 @@ export function Page({ children, testId, className }) {
   );
 }
 
-export function PageHeader({ title, description, icon: Icon, actions, onRefresh, refreshing }) {
+export interface PageHeaderProps {
+  title: ReactNode;
+  description?: ReactNode;
+  icon?: IconComponent;
+  actions?: ReactNode;
+  onRefresh?: MouseEventHandler<HTMLButtonElement>;
+  refreshing?: boolean;
+}
+
+export function PageHeader({ title, description, icon: Icon, actions, onRefresh, refreshing }: PageHeaderProps) {
   return (
     <motion.div variants={itemVariants} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
@@ -49,7 +66,7 @@ export function PageHeader({ title, description, icon: Icon, actions, onRefresh,
   );
 }
 
-function RefreshIcon({ spinning }) {
+function RefreshIcon({ spinning }: { spinning?: boolean }) {
   return (
     <svg
       className={cn('mr-2 h-4 w-4', spinning && 'animate-spin')}
@@ -74,7 +91,14 @@ export function PageLoading() {
 }
 
 // Boş alan bırakmak "sistem bozuk" hissi verir; nedenini söyleyip alanı dolduruyoruz.
-export function PageNotice({ icon: Icon, title, message, action }) {
+export interface PageNoticeProps {
+  icon?: IconComponent;
+  title?: ReactNode;
+  message?: ReactNode;
+  action?: ReactNode;
+}
+
+export function PageNotice({ icon: Icon, title, message, action }: PageNoticeProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-foreground/15 bg-foreground/[0.02] p-8 text-center">
       {Icon ? <Icon className="h-8 w-8 text-muted-foreground" /> : null}

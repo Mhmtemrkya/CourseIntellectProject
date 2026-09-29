@@ -1,8 +1,8 @@
-import { motion, useSpring, useTransform, useMotionValue, animate } from 'framer-motion';
+import { motion, animate } from 'framer-motion';
 import { useEffect, useState, useRef } from 'react';
 
 // Animated Number Counter
-export function AnimatedCounter({ value, duration = 2, className = '' }) {
+export function AnimatedCounter({ value, duration = 2, className = '' }: { value: number; duration?: number; className?: string }) {
   const [displayValue, setDisplayValue] = useState(0);
   const previousValue = useRef(0);
 
@@ -40,6 +40,15 @@ export function CircularProgress({
   showValue = true,
   label = '',
   className = ''
+}: {
+  value: number;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
+  bgColor?: string;
+  showValue?: boolean;
+  label?: string;
+  className?: string;
 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -94,7 +103,7 @@ export function CircularProgress({
 }
 
 // Score Reveal Animation
-export function ScoreReveal({ score, maxScore = 100, className = '' }) {
+export function ScoreReveal({ score, maxScore = 100, className = '' }: { score: number; maxScore?: number; className?: string }) {
   const [revealed, setRevealed] = useState(false);
   const percentage = (score / maxScore) * 100;
 
@@ -141,7 +150,7 @@ export function ScoreReveal({ score, maxScore = 100, className = '' }) {
 }
 
 // Streak Counter
-export function StreakCounter({ streak, className = '' }) {
+export function StreakCounter({ streak, className = '' }: { streak: number; className?: string }) {
   return (
     <motion.div
       className={`flex items-center gap-2 ${className}`}
@@ -168,7 +177,7 @@ export function StreakCounter({ streak, className = '' }) {
 }
 
 // XP Bar
-export function XPBar({ current, max, level, className = '' }) {
+export function XPBar({ current, max, level, className = '' }: { current: number; max: number; level: number | string; className?: string }) {
   const percentage = (current / max) * 100;
 
   return (

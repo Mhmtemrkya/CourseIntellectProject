@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getUserRoles } from '../lib/permissions';
-import { getEntitlements, isModuleAllowed } from '../lib/entitlements';
+import { getEntitlements, isModuleAllowed, type Entitlements } from '../lib/entitlements';
 import { inferModuleKey } from './layout/ModernSidebar';
 import { Button } from './ui/button';
 
@@ -15,7 +15,7 @@ const ALWAYS_ALLOWED = new Set(['', 'profile', 'system', 'data-backup']);
 
 // URL'den modül anahtarını çözer; alt yollar için (/students/123 gibi)
 // üst segmentlere geri düşerek dener.
-function moduleKeyForPath(pathname) {
+function moduleKeyForPath(pathname: string): string {
   const direct = inferModuleKey({ path: pathname });
   if (direct) return direct;
   const segments = pathname.split('/').filter(Boolean);
@@ -27,7 +27,7 @@ function moduleKeyForPath(pathname) {
   return '';
 }
 
-function LockedScreen({ onBack }) {
+function LockedScreen({ onBack }: { onBack: () => void }) {
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-6">
       <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
@@ -50,18 +50,18 @@ function LockedScreen({ onBack }) {
  * kısayoluyla ya da sayfa içi linkle paketin kapsamadığı bir sayfaya giderse
  * sayfa yerine kilit ekranı görür.
  */
-export function EntitlementGuard({ children }) {
+export function EntitlementGuard({ children }: { children?: ReactNode }) {
   const { user } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
-  const [entitlements, setEntitlements] = useState(null);
+  const [entitlements, setEntitlements] = useState<Entitlements | null>(null);
 
   useEffect(() => {
     let active = true;
     if (user?.isPlatformAdmin) {
       setEntitlements({ unrestricted: true, roles: {} });
     } else {
-      getEntitlements().then((value) => {
+      void getEntitlements().then((value) => {
         if (active) setEntitlements(value);
       });
     }

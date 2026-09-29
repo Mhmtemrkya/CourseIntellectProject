@@ -1,6 +1,30 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchAppointmentConsentStatus, fetchConsentStatus } from '../../lib/api/modules';
-import ConsentCenter from './ConsentCenter';
+import ConsentCenter, { buildConsentStatusQuery } from './ConsentCenter';
+import type { ConsentContextKind, ConsentStatusDto } from '../../types/api/generated';
+
+/** Kapının hangi kayda baktığı: randevu ya da öğrenci + bağlam. */
+export interface ConsentGateScope {
+  appointmentId?: string | null;
+  studentProfileId?: string | null;
+  contextKind?: ConsentContextKind | null;
+  contextKey?: string | null;
+  contextRefId?: string | null;
+}
+
+type Proceed = () => Promise<unknown> | unknown;
+
+export interface ConsentCompletionGateProps {
+  status: ConsentStatusDto | null;
+  open: boolean;
+  onClose: () => void;
+  onProceed: () => Promise<void>;
+  recheck: () => Promise<void>;
+  studentProfileId?: string | null;
+  contextKind?: ConsentContextKind | null;
+  contextKey?: string | null;
+  contextRefId?: string | null;
+}
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 
@@ -18,21 +42,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
  *   <ConsentCompletionGate {...gate.props} />
  *   onTamamla={() => gate.run(() => reallyComplete())}
  */
-export function useConsentGate(defaults = {}) {
-  const [pending, setPending] = useState(null);
-  const [status, setStatus] = useState(null);
+export function useConsentGate(defaults: ConsentGateScope = {}) {
+  const [pending, setPending] = useState<Proceed | null>(null);
+  const [status, setStatus] = useState<ConsentStatusDto | null>(null);
   // Liste ekranlarında hedef satır satır değişir; run() çağrısındaki hedef
   // burada tutulur ki "formları görüntüle" ve yeniden değerlendirme aynı kayda baksın.
-  const [target, setTarget] = useState(defaults);
+  const [target, setTarget] = useState<ConsentGateScope>(defaults);
 
-  const check = useCallback(async (scope) => {
+  const check = useCallback(async (scope: ConsentGateScope): Promise<ConsentStatusDto | null> => {
     try {
       if (scope.appointmentId) return await fetchAppointmentConsentStatus(scope.appointmentId);
       if (scope.studentProfileId) {
-        const params = {};
-        if (scope.contextKind) params.contextKind = scope.contextKind;
-        if (scope.contextKey) params.contextKey = scope.contextKey;
-        if (scope.contextRefId) params.contextRefId = scope.contextRefId;
+        const params = buildConsentStatusQuery(scope.contextKind, scope.contextKey, scope.contextRefId);
         return await fetchConsentStatus(scope.studentProfileId, params);
       }
     } catch {
@@ -41,11 +62,11 @@ export function useConsentGate(defaults = {}) {
     return null;
   }, []);
 
-  const run = useCallback(async (proceed, overrides) => {
-    const raw = { ...defaults, ...(overrides || {}) };
+  const run = useCallback(async (proceed: Proceed, overrides?: ConsentGateScope) => {
+    const raw: ConsentGateScope = { ...defaults, ...(overrides || {}) };
     // Randevu kapısında yeni açılacak formlar o randevuya bağlanmalı; aksi hâlde
     // bir sonraki derste aynı form yeniden "imzalı" sayılır.
-    const scope = raw.appointmentId
+    const scope: ConsentGateScope = raw.appointmentId
       ? { ...raw, contextKind: raw.contextKind || 'DrivingLesson', contextRefId: raw.contextRefId || raw.appointmentId }
       : raw;
     const next = await check(scope);
@@ -63,32 +84,31 @@ export function useConsentGate(defaults = {}) {
     setStatus(null);
   }, []);
 
-  return {
-    run,
-    props: {
-      status,
-      open: Boolean(pending),
-      onClose: close,
-      onProceed: async () => {
+  const props: ConsentCompletionGateProps = {
+    status,
+    open: Boolean(pending),
+    onClose: close,
+    onProceed: async () => {
+      const proceed = pending;
+      close();
+      if (proceed) await proceed();
+    },
+    recheck: async () => {
+      const next = await check(target);
+      setStatus(next);
+      if (next?.complete) {
         const proceed = pending;
         close();
         if (proceed) await proceed();
-      },
-      recheck: async () => {
-        const next = await check(target);
-        setStatus(next);
-        if (next?.complete) {
-          const proceed = pending;
-          close();
-          if (proceed) await proceed();
-        }
-      },
-      studentProfileId: target.studentProfileId,
-      contextKind: target.contextKind,
-      contextKey: target.contextKey,
-      contextRefId: target.contextRefId,
+      }
     },
+    studentProfileId: target.studentProfileId,
+    contextKind: target.contextKind,
+    contextKey: target.contextKey,
+    contextRefId: target.contextRefId,
   };
+
+  return { run, props };
 }
 
 export default function ConsentCompletionGate({
@@ -101,7 +121,7 @@ export default function ConsentCompletionGate({
   contextKind,
   contextKey,
   contextRefId,
-}) {
+}: ConsentCompletionGateProps) {
   const [centerOpen, setCenterOpen] = useState(false);
   const missing = (status?.requiredCount || 0) - (status?.signedCount || 0);
 
@@ -133,7 +153,7 @@ export default function ConsentCompletionGate({
           </ul>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="ghost" onClick={onProceed}>
+            <Button variant="ghost" onClick={() => { void onProceed(); }}>
               İmzasız devam et
             </Button>
             <Button onClick={() => setCenterOpen(true)}>Onam formlarını görüntüle</Button>
@@ -143,10 +163,10 @@ export default function ConsentCompletionGate({
 
       <ConsentCenter
         open={centerOpen}
-        onOpenChange={async (next) => {
+        onOpenChange={(next) => {
           setCenterOpen(next);
           // Formlar imzalandıysa kapı kendini yeniden değerlendirip geçer.
-          if (!next) await recheck();
+          if (!next) void recheck();
         }}
         // Randevu üzerinden gelen kapıda öğrenci kimliği durum yanıtından okunur.
         studentProfileId={studentProfileId || status?.studentProfileId}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle, Banknote, CheckCircle2, Loader2, Receipt, Wallet, XCircle,
 } from 'lucide-react';
@@ -11,6 +11,26 @@ import {
 } from '../../lib/api/modules';
 import { useApp } from '../../context/AppContext';
 import { formatDate, formatDateTime, formatMoney } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { FinancePaymentDto, StudentFinanceAccountDto } from '../../types/api/generated';
+
+/** Tahsilatın yapılacağı cari hesap satırı (öğrenci listesi). */
+export interface SchoolCollectAccount {
+  userId?: string | null;
+  name?: string | null;
+  className?: string | null;
+}
+
+/** `silent` — yalnız peşinat alındı, pencere açık kalır; üst ekran veriyi tazeler. */
+export type SchoolCollectResult = { silent: true } | { payment: FinancePaymentDto | null };
+
+export interface SchoolCollectModalProps {
+  account: SchoolCollectAccount | null | undefined;
+  onClose: () => void;
+  onDone?: (result: SchoolCollectResult) => void;
+}
+
+type InstallmentStatusKey = 'Paid' | 'Partial' | 'Overdue' | 'Pending';
 
 /**
  * Okul tahsilat penceresi — sürücü kursundaki "Ödeme Al" penceresinin okul karşılığı.
@@ -30,14 +50,18 @@ import { formatDate, formatDateTime, formatMoney } from '../../lib/format';
 
 const METHODS = ['Nakit', 'Kart', 'Havale', 'EFT/IBAN'];
 
-const INSTALLMENT_STATUS = {
+const INSTALLMENT_STATUS: Record<InstallmentStatusKey, { label: string; cls: string }> = {
   Paid: { label: 'Ödendi', cls: 'bg-emerald-500/15 text-emerald-600' },
   Partial: { label: 'Kısmi', cls: 'bg-amber-500/15 text-amber-600' },
   Overdue: { label: 'Gecikmiş', cls: 'bg-red-500/15 text-red-600' },
   Pending: { label: 'Bekliyor', cls: 'bg-foreground/10 text-muted-foreground' },
 };
 
-function SummaryTile({ label, value, tone = 'default' }) {
+function isInstallmentStatusKey(value: string): value is InstallmentStatusKey {
+  return Object.prototype.hasOwnProperty.call(INSTALLMENT_STATUS, value);
+}
+
+function SummaryTile({ label, value, tone = 'default' }: { label: ReactNode; value: ReactNode; tone?: 'default' | 'danger' | 'ok' }) {
   const toneCls = tone === 'danger' ? 'text-red-600' : tone === 'ok' ? 'text-emerald-600' : 'text-foreground';
   return (
     <div className="rounded-xl border border-foreground/10 bg-foreground/[0.02] p-2.5 text-center">
@@ -47,12 +71,12 @@ function SummaryTile({ label, value, tone = 'default' }) {
   );
 }
 
-export default function SchoolCollectModal({ account, onClose, onDone }) {
+export default function SchoolCollectModal({ account, onClose, onDone }: SchoolCollectModalProps) {
   const { toast } = useToast();
   const { user } = useApp();
   const collectorName = user?.name || user?.username || 'Ben';
 
-  const [detail, setDetail] = useState(null);
+  const [detail, setDetail] = useState<StudentFinanceAccountDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [amount, setAmount] = useState('');
@@ -77,14 +101,14 @@ export default function SchoolCollectModal({ account, onClose, onDone }) {
         : { studentName: account?.name });
       setDetail(data);
     } catch (err) {
-      setLoadError(err.message || 'Cari hesap bilgisi alınamadı.');
+      setLoadError(errorMessage(err, 'Cari hesap bilgisi alınamadı.'));
       setDetail(null);
     } finally {
       setLoading(false);
     }
   }, [account?.userId, account?.name]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const installments = useMemo(() => detail?.installments || [], [detail]);
   const unpaid = useMemo(() => installments.filter((item) => item.remaining > 0), [installments]);
@@ -110,7 +134,7 @@ export default function SchoolCollectModal({ account, onClose, onDone }) {
   const overpaying = validAmount && remaining > 0 && value > remaining + 0.005;
   const noDebt = !loading && !loadError && remaining <= 0 && pendingDownPayment <= 0;
 
-  const pickInstallment = (id) => {
+  const pickInstallment = (id: string) => {
     if (installmentId === id) { setInstallmentId(''); return; } // aynına tekrar tıkla → otomatik
     setInstallmentId(id);
     const chosen = unpaid.find((item) => item.id === id);
@@ -130,7 +154,7 @@ export default function SchoolCollectModal({ account, onClose, onDone }) {
       await load();
       onDone?.({ silent: true });
     } catch (err) {
-      toast({ title: 'Peşinat tahsil edilemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Peşinat tahsil edilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setCollectingDownPayment(false);
     }
@@ -144,8 +168,8 @@ export default function SchoolCollectModal({ account, onClose, onDone }) {
     setSaving(true);
     try {
       const payment = await recordFinancePayment({
-        studentName: detail?.studentName || account.name,
-        studentUserId: detail?.studentUserId || account.userId || undefined,
+        studentName: detail?.studentName || account?.name || '',
+        studentUserId: detail?.studentUserId || account?.userId || undefined,
         enrollmentContractId: detail?.contracts?.[0]?.id || undefined,
         financeInstallmentId: installmentId || undefined,
         amount: value,
@@ -159,7 +183,7 @@ export default function SchoolCollectModal({ account, onClose, onDone }) {
       });
       onDone?.({ payment });
     } catch (err) {
-      toast({ title: 'Tahsilat kaydedilemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Tahsilat kaydedilemedi', description: errorMessage(err), variant: 'destructive' });
       setSaving(false); // pencere açık kalır: kullanıcı düzeltip tekrar dener
     }
   };
@@ -189,7 +213,7 @@ export default function SchoolCollectModal({ account, onClose, onDone }) {
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
             <div>
               <p className="font-semibold text-red-600">{loadError}</p>
-              <Button size="sm" variant="outline" className="mt-2" onClick={load}>Tekrar dene</Button>
+              <Button size="sm" variant="outline" className="mt-2" onClick={() => { void load(); }}>Tekrar dene</Button>
             </div>
           </div>
         ) : (
@@ -215,7 +239,7 @@ export default function SchoolCollectModal({ account, onClose, onDone }) {
                   <XCircle className="h-4 w-4 text-amber-600" />
                   <span>Peşinat bekliyor: <b>{formatMoney(pendingDownPayment)}</b></span>
                 </div>
-                <Button size="sm" variant="outline" onClick={handleCollectDownPayment} disabled={collectingDownPayment || saving}>
+                <Button size="sm" variant="outline" onClick={() => { void handleCollectDownPayment(); }} disabled={collectingDownPayment || saving}>
                   {collectingDownPayment
                     ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                     : <CheckCircle2 className="mr-1.5 h-4 w-4" />}
@@ -246,7 +270,8 @@ export default function SchoolCollectModal({ account, onClose, onDone }) {
                 <div className="max-h-52 space-y-1.5 overflow-y-auto pr-0.5">
                   {installments.map((item) => {
                     const overdue = item.remaining > 0 && new Date(item.dueDateUtc) < new Date();
-                    const status = INSTALLMENT_STATUS[overdue ? 'Overdue' : item.status] || INSTALLMENT_STATUS.Pending;
+                    const statusKey = overdue ? 'Overdue' : item.status;
+                    const status = isInstallmentStatusKey(statusKey) ? INSTALLMENT_STATUS[statusKey] : INSTALLMENT_STATUS.Pending;
                     const selectable = item.remaining > 0;
                     const selected = installmentId === item.id;
                     return (
@@ -351,7 +376,7 @@ export default function SchoolCollectModal({ account, onClose, onDone }) {
             </div>
 
             {/* Tahsilat geçmişi: kim, ne zaman, hangi şubeden almış. */}
-            {(detail?.payments || []).length > 0 ? (
+            {detail && (detail.payments || []).length > 0 ? (
               <div className="rounded-2xl border border-foreground/10 p-3">
                 <label className="text-xs font-bold text-muted-foreground">Son tahsilatlar</label>
                 <div className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-0.5">
@@ -389,7 +414,7 @@ export default function SchoolCollectModal({ account, onClose, onDone }) {
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} disabled={saving}>Vazgeç</Button>
-          <Button onClick={submit} disabled={saving || loading || !!loadError || !validAmount}>
+          <Button onClick={() => { void submit(); }} disabled={saving || loading || !!loadError || !validAmount}>
             {saving
               ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Kaydediliyor…</>
               : <><Banknote className="mr-2 h-4 w-4" />{validAmount ? `${formatMoney(value)} Tahsil Et` : 'Tahsilatı Kaydet'}</>}

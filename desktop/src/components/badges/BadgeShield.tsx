@@ -1,6 +1,7 @@
-import { GraduationCap, ClipboardCheck, Flame, TrendingUp, Compass, Users, Crown, Trophy, Star, Medal, Lock } from 'lucide-react';
+import { GraduationCap, ClipboardCheck, Flame, TrendingUp, Compass, Users, Crown, Trophy, Star, Medal, Lock, type LucideIcon } from 'lucide-react';
+import type { Badge } from '../../lib/badges';
 
-const CATEGORY_ICONS = {
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
   GraduationCap,
   ClipboardCheck,
   Flame,
@@ -13,7 +14,7 @@ const CATEGORY_ICONS = {
   Medal,
 };
 
-function darken(hex, amount = 0.28) {
+function darken(hex: string, amount = 0.28): string {
   const value = hex.replace('#', '');
   const num = parseInt(value, 16);
   const r = Math.max(0, Math.round(((num >> 16) & 255) * (1 - amount)));
@@ -25,7 +26,12 @@ function darken(hex, amount = 0.28) {
 const SHIELD_CLIP =
   'polygon(50% 0%, 96% 12%, 96% 58%, 78% 84%, 50% 100%, 22% 84%, 4% 58%, 4% 12%)';
 
-export default function BadgeShield({ badge, size = 64, locked = false, glow = false }) {
+export default function BadgeShield({ badge, size = 64, locked = false, glow = false }: {
+  badge: Badge;
+  size?: number;
+  locked?: boolean;
+  glow?: boolean;
+}) {
   const Icon = CATEGORY_ICONS[badge.category.icon] || Star;
   const height = size * 1.12;
 

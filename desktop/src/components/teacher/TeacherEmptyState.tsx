@@ -14,9 +14,23 @@ import {
   Users,
   Video,
 } from 'lucide-react';
+import type { MouseEventHandler, ReactNode } from 'react';
 import { Button } from '../ui/button';
+import type { IconComponent } from '../../types/ui';
 
-const iconMap = {
+export type TeacherEmptyStateVariant = 'content' | 'live' | 'question' | 'exam' | 'assignment' | 'start';
+export type TeacherEmptyStateAccent = 'orange' | 'red' | 'purple' | 'green';
+
+interface AccentTone {
+  text: string;
+  bg: string;
+  border: string;
+  glow: string;
+  primary: string;
+  dot: string;
+}
+
+const iconMap: Record<TeacherEmptyStateVariant, IconComponent> = {
   content: BookOpen,
   live: Video,
   question: HelpCircle,
@@ -25,7 +39,7 @@ const iconMap = {
   start: Rocket,
 };
 
-const floatingMap = {
+const floatingMap: Record<TeacherEmptyStateVariant, readonly IconComponent[]> = {
   content: [Play, FileText, Image],
   live: [Play, Users, FileText],
   question: [HelpCircle, FileText, CheckCircle2],
@@ -34,7 +48,7 @@ const floatingMap = {
   start: [BookOpen, Users, BarChart3],
 };
 
-const accentClass = {
+const accentClass: Record<TeacherEmptyStateAccent, AccentTone> = {
   orange: {
     text: 'text-orange-400',
     bg: 'bg-orange-500/10',
@@ -69,6 +83,20 @@ const accentClass = {
   },
 };
 
+export interface TeacherEmptyStateProps {
+  variant?: TeacherEmptyStateVariant;
+  accent?: TeacherEmptyStateAccent;
+  title?: ReactNode;
+  description?: ReactNode;
+  primaryLabel?: ReactNode;
+  onPrimary?: MouseEventHandler<HTMLButtonElement>;
+  secondaryLabel?: ReactNode;
+  onSecondary?: MouseEventHandler<HTMLButtonElement>;
+  tipTitle?: ReactNode;
+  tipDescription?: ReactNode;
+  large?: boolean;
+}
+
 export function TeacherEmptyState({
   variant = 'content',
   accent = 'orange',
@@ -81,7 +109,7 @@ export function TeacherEmptyState({
   tipTitle,
   tipDescription,
   large = false,
-}) {
+}: TeacherEmptyStateProps) {
   const Icon = iconMap[variant] || BookOpen;
   const icons = floatingMap[variant] || floatingMap.content;
   const tone = accentClass[accent] || accentClass.orange;

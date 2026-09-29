@@ -1,7 +1,18 @@
 import { motion } from 'framer-motion';
+import type { ComponentType } from 'react';
+
+/** lucide-react ikonları size/color alır. */
+type SizedIcon = ComponentType<{ size?: number; color?: string }>;
+
+interface AnimatedIconProps {
+  icon: SizedIcon;
+  className?: string;
+  color?: string;
+  size?: number;
+}
 
 // Bouncing Icon
-export function BouncingIcon({ icon: Icon, className = '', color = 'currentColor', size = 24 }) {
+export function BouncingIcon({ icon: Icon, className = '', color = 'currentColor', size = 24 }: AnimatedIconProps) {
   return (
     <motion.div
       animate={{ y: [0, -5, 0] }}
@@ -14,7 +25,7 @@ export function BouncingIcon({ icon: Icon, className = '', color = 'currentColor
 }
 
 // Spinning Icon
-export function SpinningIcon({ icon: Icon, className = '', color = 'currentColor', size = 24, speed = 2 }) {
+export function SpinningIcon({ icon: Icon, className = '', color = 'currentColor', size = 24, speed = 2 }: AnimatedIconProps & { speed?: number }) {
   return (
     <motion.div
       animate={{ rotate: 360 }}
@@ -27,7 +38,7 @@ export function SpinningIcon({ icon: Icon, className = '', color = 'currentColor
 }
 
 // Pulsing Icon
-export function PulsingIcon({ icon: Icon, className = '', color = 'currentColor', size = 24 }) {
+export function PulsingIcon({ icon: Icon, className = '', color = 'currentColor', size = 24 }: AnimatedIconProps) {
   return (
     <motion.div
       animate={{ scale: [1, 1.2, 1], opacity: [1, 0.8, 1] }}
@@ -40,7 +51,7 @@ export function PulsingIcon({ icon: Icon, className = '', color = 'currentColor'
 }
 
 // Wiggle Icon
-export function WiggleIcon({ icon: Icon, className = '', color = 'currentColor', size = 24 }) {
+export function WiggleIcon({ icon: Icon, className = '', color = 'currentColor', size = 24 }: AnimatedIconProps) {
   return (
     <motion.div
       animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
@@ -53,7 +64,7 @@ export function WiggleIcon({ icon: Icon, className = '', color = 'currentColor',
 }
 
 // Floating Icon with Shadow
-export function FloatingIcon({ icon: Icon, className = '', color = 'currentColor', size = 24 }) {
+export function FloatingIcon({ icon: Icon, className = '', color = 'currentColor', size = 24 }: AnimatedIconProps) {
   return (
     <div className="relative">
       <motion.div
@@ -73,7 +84,7 @@ export function FloatingIcon({ icon: Icon, className = '', color = 'currentColor
 }
 
 // Attention Grabbing Icon
-export function AttentionIcon({ icon: Icon, className = '', color = '#D9790B', size = 24 }) {
+export function AttentionIcon({ icon: Icon, className = '', color = '#D9790B', size = 24 }: AnimatedIconProps) {
   return (
     <div className="relative inline-flex items-center justify-center">
       <motion.div
@@ -99,7 +110,7 @@ export function AttentionIcon({ icon: Icon, className = '', color = '#D9790B', s
 }
 
 // Success Check Animation
-export function AnimatedCheck({ size = 24, color = '#22c55e', className = '' }) {
+export function AnimatedCheck({ size = 24, color = '#22c55e', className = '' }: { size?: number; color?: string; className?: string }) {
   return (
     <motion.svg
       width={size}
@@ -136,7 +147,7 @@ export function AnimatedCheck({ size = 24, color = '#22c55e', className = '' }) 
 }
 
 // Loading Spinner with Dots
-export function LoadingDots({ color = '#D9790B', size = 8 }) {
+export function LoadingDots({ color = '#D9790B', size = 8 }: { color?: string; size?: number }) {
   return (
     <div className="flex gap-1">
       {[0, 1, 2].map((i) => (

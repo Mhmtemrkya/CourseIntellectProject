@@ -1,7 +1,22 @@
-import React from "react";
+import React, { type ErrorInfo, type ReactNode } from "react";
+import { isRecord } from "@/lib/errors";
 
-export class ErrorBoundary extends React.Component {
-  constructor(props) {
+interface BoundaryProps {
+  children?: ReactNode;
+}
+
+interface BoundaryState {
+  hasError: boolean;
+  error: unknown;
+}
+
+/** Hata yığını, yoksa mesajı, yoksa değerin kendisi (düz nesne atılmış olabilir). */
+function describeError(error: unknown): unknown {
+  return isRecord(error) ? (error.stack || error.message || error) : error;
+}
+
+export class ErrorBoundary extends React.Component<BoundaryProps, BoundaryState> {
+  constructor(props: BoundaryProps) {
     super(props);
     this.state = {
       hasError: false,
@@ -9,18 +24,18 @@ export class ErrorBoundary extends React.Component {
     };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: unknown): BoundaryState {
     return {
       hasError: true,
       error,
     };
   }
 
-  componentDidCatch(error, errorInfo) {
+  override componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
     console.error("Desktop runtime error:", error, errorInfo);
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div
@@ -65,7 +80,7 @@ export class ErrorBoundary extends React.Component {
                 border: "1px solid rgba(148, 163, 184, 0.15)",
               }}
             >
-              {String(this.state.error?.stack || this.state.error?.message || this.state.error || "Bilinmeyen hata")}
+              {String(describeError(this.state.error) || "Bilinmeyen hata")}
             </pre>
           </div>
         </div>

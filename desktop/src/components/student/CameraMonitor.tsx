@@ -1,16 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, CameraOff, Radio } from 'lucide-react';
 import { examCameraRealtime } from '../../lib/realtime/examCameraRealtime';
+import { errorMessage } from '../../lib/errors';
 
 const FRAME_INTERVAL_MS = 4000; // kameradan ~4 sn'de bir kare gönder
 const FRAME_WIDTH = 320;        // küçük kare = küçük yük
 
 // Sınav boyunca sağ altta sabit duran küçük kamera önizlemesi. publish + examId
 // verilirse görüntüyü periyodik olarak öğretmenin canlı izleme ekranına yayınlar.
-export default function CameraMonitor({ active, examId, studentUsername, studentName, publish = false }) {
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const canvasRef = useRef(null);
+export interface CameraMonitorProps {
+  active: boolean;
+  examId?: string | number | null;
+  studentUsername?: string | null;
+  studentName?: string | null;
+  publish?: boolean;
+}
+
+export default function CameraMonitor({ active, examId, studentUsername, studentName, publish = false }: CameraMonitorProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [error, setError] = useState('');
   const [streaming, setStreaming] = useState(false);
 
@@ -35,7 +44,7 @@ export default function CameraMonitor({ active, examId, studentUsername, student
         }
         setError('');
       } catch (err) {
-        setError(err?.message || 'Kamera açılamadı');
+        setError(errorMessage(err, 'Kamera açılamadı'));
       }
     })();
 
@@ -69,7 +78,7 @@ export default function CameraMonitor({ active, examId, studentUsername, student
         return; // güvenlik kısıtı vb.
       }
       if (dataUrl && dataUrl.length > 64) {
-        examCameraRealtime.publishFrame(examId, studentUsername, studentName, dataUrl);
+        void examCameraRealtime.publishFrame(examId, studentUsername, studentName, dataUrl);
         setStreaming(true);
       }
     };

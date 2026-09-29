@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Loader2, UserCheck, UserX } from 'lucide-react';
-import { Button } from './ui/button';
+import type { MouseEvent } from 'react';
+import { Button, type ButtonProps } from './ui/button';
 
 export function UserStatusButton({
   isPassive,
@@ -11,12 +12,19 @@ export function UserStatusButton({
   // Dizin tablolarında satır daralmasın diye yalnız ikon gösterilir; etiket
   // title/aria-label olarak korunur (erişilebilirlik kaybı yok).
   iconOnly = false,
+}: {
+  isPassive: boolean;
+  onToggle?: () => unknown;
+  size?: ButtonProps['size'];
+  className?: string;
+  disabled?: boolean;
+  iconOnly?: boolean;
 }) {
   const [updating, setUpdating] = useState(false);
   const label = isPassive ? 'Aktifleştir' : 'Pasifleştir';
   const Icon = isPassive ? UserCheck : UserX;
 
-  const handleClick = async (event) => {
+  const handleClick = async (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     if (disabled || updating) return;
 

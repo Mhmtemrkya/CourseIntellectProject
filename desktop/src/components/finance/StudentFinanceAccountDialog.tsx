@@ -14,13 +14,24 @@ import {
   createFinancePaymentIntent,
   confirmFinancePayment,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { IconComponent } from '../../types/ui';
+import type { StudentFinanceAccountDto } from '../../types/api/generated';
 
-function tl(value, currency = 'TRY') {
+type InstallmentStatusKey = 'Paid' | 'Partial' | 'Overdue' | 'Pending';
+
+export interface StudentFinanceAccountDialogProps {
+  studentName?: string | null;
+  studentUserId?: string | null;
+  onClose: () => void;
+}
+
+function tl(value: number | string | null | undefined, currency = 'TRY') {
   const amount = Number(value || 0);
   return `${amount.toLocaleString('tr-TR', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 2 })} ${currency === 'TRY' ? 'TL' : currency}`;
 }
 
-const STATUS_META = {
+const STATUS_META: Record<InstallmentStatusKey, readonly [string, string, IconComponent]> = {
   Paid: ['Ödendi', 'text-emerald-600', CheckCircle2],
   Partial: ['Kısmi', 'text-amber-600', Clock3],
   Overdue: ['Gecikmiş', 'text-red-600', XCircle],
@@ -28,9 +39,13 @@ const STATUS_META = {
 };
 
 // Öğrenci cari ekranı: sözleşme/taksit/ödeme listesi + ödeme kaydet, iade, online ödeme.
-export default function StudentFinanceAccountDialog({ studentName, studentUserId, onClose }) {
+function isInstallmentStatusKey(value: string): value is InstallmentStatusKey {
+  return Object.prototype.hasOwnProperty.call(STATUS_META, value);
+}
+
+export default function StudentFinanceAccountDialog({ studentName, studentUserId, onClose }: StudentFinanceAccountDialogProps) {
   const { toast } = useToast();
-  const [account, setAccount] = useState(null);
+  const [account, setAccount] = useState<StudentFinanceAccountDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -47,13 +62,13 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
       });
       setAccount(data);
     } catch (err) {
-      setError(err.message || 'Cari bilgisi alınamadı.');
+      setError(errorMessage(err, 'Cari bilgisi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [studentName, studentUserId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const recordPayment = async (online = false) => {
     const amount = Number(paymentAmount);
@@ -61,6 +76,7 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
       toast({ title: 'Geçerli bir tutar girin.', variant: 'destructive' });
       return;
     }
+    if (!account) return;
     try {
       setBusy(true);
       const contractId = account?.contracts?.[0]?.id || null;
@@ -71,6 +87,7 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
           enrollmentContractId: contractId,
           amount,
         });
+        if (!intent) throw new Error('Ödeme başlatılamadı.');
         const confirmed = await confirmFinancePayment({ intentId: intent.intentId, token: 'TEST-OK' });
         if (!confirmed?.success) {
           toast({ title: 'Online ödeme onaylanmadı', description: intent.configured ? 'Sağlayıcı reddetti.' : 'Sağlayıcı yapılandırılmadı (test modu).', variant: 'destructive' });
@@ -88,7 +105,7 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
       setPaymentAmount('');
       await load();
     } catch (err) {
-      toast({ title: 'Ödeme kaydedilemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Ödeme kaydedilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
@@ -155,8 +172,8 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
               <div className="space-y-2">
                 {(account.installments || []).length === 0 ? (
                   <p className="text-sm text-muted-foreground">Taksit yok.</p>
-                ) : account.installments.map((item) => {
-                  const [label, tone, Icon] = STATUS_META[item.status] || STATUS_META.Pending;
+                ) : (account.installments || []).map((item) => {
+                  const [label, tone, Icon] = isInstallmentStatusKey(item.status) ? STATUS_META[item.status] : STATUS_META.Pending;
                   return (
                     <div key={item.id} className="flex items-center justify-between rounded-lg border bg-card p-3 text-sm">
                       <div>
@@ -178,7 +195,7 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
               <div className="space-y-2">
                 {(account.payments || []).length === 0 ? (
                   <p className="text-sm text-muted-foreground">Ödeme kaydı yok.</p>
-                ) : account.payments.map((item) => {
+                ) : (account.payments || []).map((item) => {
                   const isRefund = item.entryType === 'Refund' || item.amount < 0;
                   return (
                     <div key={item.id} className={`rounded-lg border p-3 text-sm ${isRefund ? 'border-red-300/50 bg-red-500/5' : 'bg-muted/20'}`}>

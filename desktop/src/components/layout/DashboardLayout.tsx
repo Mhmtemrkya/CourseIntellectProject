@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Transition, type Variants } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import { checkIsServiceDriver } from '../../lib/driverGuard';
 import { EntitlementGuard } from '../EntitlementGuard';
@@ -13,13 +13,13 @@ import { Sheet, SheetContent } from '../ui/sheet';
 import { gsap } from 'gsap';
 import { OnboardingProvider } from '../../onboarding/OnboardingProvider';
 
-const pageVariants = {
+const pageVariants: Variants = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -10 },
 };
 
-const pageTransition = {
+const pageTransition: Transition = {
   duration: 0.25,
   ease: 'easeInOut',
 };
@@ -27,7 +27,7 @@ const pageTransition = {
 export function DashboardLayout() {
   const { isAuthenticated, isAuthLoading, user, drawerOpen, drawerContent, drawerOptions, closeDrawer, sidebarCollapsed } = useApp();
   const location = useLocation();
-  const pageRef = useRef(null);
+  const pageRef = useRef<HTMLDivElement>(null);
   const [isServiceDriver, setIsServiceDriver] = useState(false);
 
   // Aktif şoför kaydı olan kullanıcı panellere giremez; yalnızca
@@ -45,15 +45,16 @@ export function DashboardLayout() {
   }, [isAuthenticated, user]);
 
   useLayoutEffect(() => {
-    if (!pageRef.current) return undefined;
+    const page = pageRef.current;
+    if (!page) return undefined;
     const context = gsap.context(() => {
       gsap.fromTo(
-        pageRef.current,
+        page,
         { autoAlpha: 0, y: 12 },
         { autoAlpha: 1, y: 0, duration: 0.42, ease: 'power2.out', clearProps: 'transform,opacity,visibility' },
       );
       gsap.fromTo(
-        pageRef.current.querySelectorAll('.ci-card, [data-ci-reveal]'),
+        page.querySelectorAll('.ci-card, [data-ci-reveal]'),
         { autoAlpha: 0, y: 14 },
         { autoAlpha: 1, y: 0, duration: 0.38, stagger: 0.035, ease: 'power2.out', delay: 0.05, clearProps: 'transform,opacity,visibility' },
       );

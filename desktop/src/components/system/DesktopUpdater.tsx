@@ -1,16 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
-import { check } from '@tauri-apps/plugin-updater';
+import { check, type DownloadEvent, type Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { Download, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import { Button } from '../ui/button';
+import { errorMessage } from '../../lib/errors';
+
+interface UpdateSummary {
+  version: string;
+  currentVersion: string;
+  notes: string;
+}
+
+type UpdatePhase = 'idle' | 'downloading' | 'installing' | 'restarting' | 'error';
 
 const isDesktopApp = () => Boolean(window.__TAURI_INTERNALS__ || window.__TAURI__);
 
 export function DesktopUpdater() {
   const checked = useRef(false);
-  const updateRef = useRef(null);
-  const [update, setUpdate] = useState(null);
-  const [phase, setPhase] = useState('idle');
+  const updateRef = useRef<Update | null>(null);
+  const [update, setUpdate] = useState<UpdateSummary | null>(null);
+  const [phase, setPhase] = useState<UpdatePhase>('idle');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [dismissed, setDismissed] = useState(false);
@@ -46,7 +55,7 @@ export function DesktopUpdater() {
     let downloaded = 0;
     let total = 0;
     try {
-      await pending.downloadAndInstall((event) => {
+      await pending.downloadAndInstall((event: DownloadEvent) => {
         if (event.event === 'Started') {
           total = event.data.contentLength || 0;
           setPhase('downloading');
@@ -62,7 +71,7 @@ export function DesktopUpdater() {
       await relaunch();
     } catch (installError) {
       setPhase('error');
-      setError(installError?.message || 'Güncelleme kurulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.');
+      setError(errorMessage(installError) || 'Güncelleme kurulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.');
     }
   };
 

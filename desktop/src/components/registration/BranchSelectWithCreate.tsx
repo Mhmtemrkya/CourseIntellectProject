@@ -5,7 +5,17 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
-export function BranchSelectWithCreate({ value, onValueChange, options, onCreate, label = 'Branş *', allowCreate = true }) {
+export interface BranchSelectWithCreateProps {
+  value?: string;
+  onValueChange: (value: string) => void;
+  options: readonly string[];
+  /** `false` dönerse yeni branş seçilmez (kayıt başarısız). */
+  onCreate?: (name: string) => Promise<unknown> | unknown;
+  label?: string;
+  allowCreate?: boolean;
+}
+
+export function BranchSelectWithCreate({ value, onValueChange, options, onCreate, label = 'Branş *', allowCreate = true }: BranchSelectWithCreateProps) {
   const [newBranch, setNewBranch] = useState('');
   const save = async () => {
     const clean = newBranch.trim();
@@ -34,14 +44,14 @@ export function BranchSelectWithCreate({ value, onValueChange, options, onCreate
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
-                save();
+                void save();
               }
             }}
             maxLength={80}
             placeholder="Yeni branş adı"
             aria-label="Yeni branş adı"
           />
-          <Button type="button" variant="outline" onClick={save} disabled={!newBranch.trim()}>
+          <Button type="button" variant="outline" onClick={() => { void save(); }} disabled={!newBranch.trim()}>
             <Plus className="mr-1 h-4 w-4" /> Ekle
           </Button>
         </div>

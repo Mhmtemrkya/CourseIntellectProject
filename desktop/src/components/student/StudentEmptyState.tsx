@@ -1,5 +1,5 @@
-import { TeacherEmptyState } from '../teacher/TeacherEmptyState';
+import { TeacherEmptyState, type TeacherEmptyStateProps } from '../teacher/TeacherEmptyState';
 
-export function StudentEmptyState(props) {
+export function StudentEmptyState(props: TeacherEmptyStateProps) {
   return <TeacherEmptyState {...props} />;
 }

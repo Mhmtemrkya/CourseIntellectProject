@@ -1,9 +1,26 @@
 import { BadgeCheck, Building2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
+import type { ReactNode } from 'react';
 import { assetUrl } from '../../lib/assetUrl';
 
-function initials(name) {
+export interface IdentityCardField {
+  label: string;
+  value?: ReactNode;
+  wide?: boolean;
+}
+
+export interface IdentityCardProps {
+  type: ReactNode;
+  name?: string | null;
+  photoUrl?: string | null;
+  institution?: ReactNode;
+  subtitle?: ReactNode;
+  status?: ReactNode;
+  fields?: ReadonlyArray<IdentityCardField | null | undefined | false>;
+}
+
+function initials(name: string | null | undefined): string {
   return String(name || 'SA').split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 }
 
@@ -15,14 +32,14 @@ export function IdentityCard({
   subtitle,
   status,
   fields = [],
-}) {
+}: IdentityCardProps) {
   return (
     <section className="overflow-hidden rounded-2xl border border-brand-primary/20 bg-gradient-to-br from-brand-primary/[0.10] via-background to-brand-accent/[0.08] shadow-sm">
       <div className="h-2 bg-gradient-to-r from-brand-primary via-brand-accent to-cyan-500" />
       <div className="p-5">
         <div className="flex items-start gap-4">
           <Avatar className="h-24 w-24 shrink-0 border-4 border-background shadow-md">
-            {photoUrl ? <AvatarImage src={assetUrl(photoUrl)} alt={name} className="object-cover" /> : null}
+            {photoUrl ? <AvatarImage src={assetUrl(photoUrl)} alt={name ?? undefined} className="object-cover" /> : null}
             <AvatarFallback className="bg-brand-primary text-xl font-bold text-white">{initials(name)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
@@ -40,7 +57,7 @@ export function IdentityCard({
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-x-5 gap-y-3 border-t pt-4">
-          {fields.filter((field) => field?.label).map((field) => (
+          {fields.filter((field): field is IdentityCardField => Boolean(field && field.label)).map((field) => (
             <div key={field.label} className={field.wide ? 'col-span-2' : ''}>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{field.label}</p>
               <p className="mt-0.5 break-words text-sm font-medium">{field.value || '—'}</p>

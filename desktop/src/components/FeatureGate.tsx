@@ -1,4 +1,4 @@
-import { cloneElement, forwardRef, isValidElement } from 'react';
+import { cloneElement, forwardRef, isValidElement, type HTMLAttributes, type ReactNode } from 'react';
 import { useApp } from '../context/AppContext';
 import { getUserRoles } from '../lib/permissions';
 import { useEntitlements } from '../hooks/useEntitlements';
@@ -19,7 +19,20 @@ import { useEntitlements } from '../hooks/useEntitlements';
  * FeatureGate → Button) buton tıklaması diyaloğu açmıyordu. Artık gelen ekstra
  * prop/ref tek element çocuğa aktarılır; sade (prop'suz) kullanımlar değişmez.
  */
-export const FeatureGate = forwardRef(function FeatureGate(
+/**
+ * asChild sarmalayıcılarının ilettiği olay/erişilebilirlik prop'ları da kabul
+ * edilir (data-* öznitelikleri JSX'te zaten serbesttir). `role` burada ARIA
+ * rolü değil, yetki kontrolünde kullanılacak kullanıcı rolüdür.
+ */
+export interface FeatureGateProps extends Omit<HTMLAttributes<HTMLElement>, 'children' | 'role'> {
+  role?: string;
+  module: string;
+  action?: string;
+  fallback?: ReactNode;
+  children?: ReactNode;
+}
+
+export const FeatureGate = forwardRef<HTMLElement, FeatureGateProps>(function FeatureGate(
   { role, module: moduleKey, action, fallback = null, children, ...rest },
   ref,
 ) {
@@ -29,8 +42,9 @@ export const FeatureGate = forwardRef(function FeatureGate(
   if (!loaded) return null;
   const allowed = user?.isPlatformAdmin || (action ? can(moduleKey, action) : hasModule(moduleKey));
   if (!allowed) return fallback;
-  if (isValidElement(children) && (ref || Object.keys(rest).length > 0)) {
-    return cloneElement(children, { ...rest, ref: ref ?? children.ref });
+  if (isValidElement<Record<string, unknown>>(children) && (ref || Object.keys(rest).length > 0)) {
+    const ownRef = 'ref' in children ? children.ref : undefined;
+    return cloneElement(children, { ...rest, ref: ref ?? ownRef });
   }
   return children;
 });

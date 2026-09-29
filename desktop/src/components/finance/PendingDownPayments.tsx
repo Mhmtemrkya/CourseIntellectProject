@@ -4,8 +4,10 @@ import { Button } from '../ui/button';
 import { useToast } from '../../hooks/use-toast';
 import { collectDownPayment, fetchPendingDownPayments } from '../../lib/api/modules';
 import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { PendingDownPaymentDto } from '../../types/api/generated';
 
-const money = (value, currency = 'TRY') =>
+const money = (value: number | string | null | undefined, currency = 'TRY') =>
   `${Number(value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency === 'TRY' ? 'TL' : currency}`;
 
 /**
@@ -14,12 +16,16 @@ const money = (value, currency = 'TRY') =>
  *
  * onCollected() — bir peşinat tahsil edilince üst ekran kendi verisini tazelesin.
  */
-export default function PendingDownPayments({ onCollected }) {
+export interface PendingDownPaymentsProps {
+  onCollected?: () => void;
+}
+
+export default function PendingDownPayments({ onCollected }: PendingDownPaymentsProps) {
   const { toast } = useToast();
-  const [rows, setRows] = useState([]);
+  const [rows, setRows] = useState<PendingDownPaymentDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [methods, setMethods] = useState({}); // contractId -> seçilen yöntem
-  const [busyId, setBusyId] = useState(null);
+  const [methods, setMethods] = useState<Record<string, string>>({}); // contractId -> seçilen yöntem
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -33,9 +39,9 @@ export default function PendingDownPayments({ onCollected }) {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const collect = async (row) => {
+  const collect = async (row: PendingDownPaymentDto) => {
     setBusyId(row.contractId);
     try {
       await collectDownPayment(row.contractId, methods[row.contractId] || 'Nakit');
@@ -43,7 +49,7 @@ export default function PendingDownPayments({ onCollected }) {
       toast({ title: 'Peşinat tahsil edildi', description: `${row.studentName} • ${money(row.downPayment, row.currency)} • makbuz kesildi.` });
       onCollected?.();
     } catch (error) {
-      toast({ title: 'Peşinat tahsil edilemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Peşinat tahsil edilemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
@@ -101,7 +107,7 @@ export default function PendingDownPayments({ onCollected }) {
                 <option value="Kart">Kart / POS</option>
                 <option value="Havale">Havale / EFT</option>
               </select>
-              <Button type="button" size="sm" onClick={() => collect(row)} disabled={busyId === row.contractId}>
+              <Button type="button" size="sm" onClick={() => { void collect(row); }} disabled={busyId === row.contractId}>
                 {busyId === row.contractId
                   ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Tahsil ediliyor…</>
                   : <><CheckCircle2 className="mr-1.5 h-4 w-4" />Peşinatı Tahsil Et</>}

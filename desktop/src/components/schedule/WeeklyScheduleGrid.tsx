@@ -1,11 +1,29 @@
 import { Badge } from '../ui/badge';
 
-function lessonDay(lesson) {
+export interface WeeklyScheduleLesson {
+  day?: string;
+  dateKey?: string;
+  time: string;
+  title?: string;
+  subject?: string;
+  teacher?: string;
+  className?: string;
+  platform?: string;
+}
+
+export interface WeeklyScheduleGridProps {
+  days: readonly string[];
+  timeSlots: readonly string[];
+  lessons: readonly WeeklyScheduleLesson[];
+  emptyText?: string;
+}
+
+function lessonDay(lesson: WeeklyScheduleLesson): string {
   return lesson.day || lesson.dateKey || '';
 }
 
-export default function WeeklyScheduleGrid({ days, timeSlots, lessons, emptyText = 'Boş slot' }) {
-  const lessonMap = new Map();
+export default function WeeklyScheduleGrid({ days, timeSlots, lessons, emptyText = 'Boş slot' }: WeeklyScheduleGridProps) {
+  const lessonMap = new Map<string, WeeklyScheduleLesson>();
   lessons.forEach((lesson) => {
     lessonMap.set(`${lessonDay(lesson)}-${lesson.time}`, lesson);
   });

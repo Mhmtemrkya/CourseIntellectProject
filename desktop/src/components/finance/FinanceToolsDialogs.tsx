@@ -5,17 +5,23 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { useToast } from '../../hooks/use-toast';
 import { calculatePayroll, reconcileFinance } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { PayrollResultDto, ReconciliationResultDto } from '../../types/api/generated';
 
-function tl(value) {
+interface FinanceToolDialogProps {
+  onClose: () => void;
+}
+
+function tl(value: number | string | null | undefined) {
   const amount = Number(value || 0);
   return `${amount.toLocaleString('tr-TR', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 2 })} TL`;
 }
 
 // ---- Bordro hesaplayıcı (SGK/işsizlik/gelir vergisi/damga) ----
-export function PayrollCalculatorDialog({ onClose }) {
+export function PayrollCalculatorDialog({ onClose }: FinanceToolDialogProps) {
   const { toast } = useToast();
   const [gross, setGross] = useState('');
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<PayrollResultDto | null>(null);
   const [busy, setBusy] = useState(false);
 
   const calc = async () => {
@@ -28,7 +34,7 @@ export function PayrollCalculatorDialog({ onClose }) {
       setBusy(true);
       setResult(await calculatePayroll({ grossSalary: value }));
     } catch (err) {
-      toast({ title: 'Hesaplanamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Hesaplanamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
@@ -40,18 +46,18 @@ export function PayrollCalculatorDialog({ onClose }) {
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" /> Bordro Hesaplama</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <Input type="number" min="0" placeholder="Brüt maaş (TL)" value={gross} onChange={(e) => setGross(e.target.value)} />
-          <Button onClick={calc} disabled={busy} className="w-full">
+          <Button onClick={() => { void calc(); }} disabled={busy} className="w-full">
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Calculator className="mr-2 h-4 w-4" />} Hesapla
           </Button>
           {result ? (
             <div className="rounded-xl border p-4 text-sm space-y-1">
-              {[
+              {([
                 ['Brüt', result.gross],
                 ['SGK İşçi (%14)', -result.sgkEmployee],
                 ['İşsizlik İşçi (%1)', -result.unemploymentEmployee],
                 ['Gelir Vergisi', -result.incomeTax],
                 ['Damga Vergisi', -result.stampTax],
-              ].map(([label, value]) => (
+              ] as const).map(([label, value]) => (
                 <div key={label} className="flex justify-between">
                   <span className="text-muted-foreground">{label}</span>
                   <span className={value < 0 ? 'text-red-600' : ''}>{tl(value)}</span>
@@ -74,10 +80,10 @@ export function PayrollCalculatorDialog({ onClose }) {
 }
 
 // ---- Banka/POS mutabakatı ----
-export function ReconciliationDialog({ onClose }) {
+export function ReconciliationDialog({ onClose }: FinanceToolDialogProps) {
   const { toast } = useToast();
   const [text, setText] = useState('');
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<ReconciliationResultDto | null>(null);
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
@@ -93,7 +99,7 @@ export function ReconciliationDialog({ onClose }) {
       setBusy(true);
       setResult(await reconcileFinance({ rows, dateToleranceDays: 3 }));
     } catch (err) {
-      toast({ title: 'Mutabakat yapılamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Mutabakat yapılamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
@@ -111,7 +117,7 @@ export function ReconciliationDialog({ onClose }) {
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
-          <Button onClick={run} disabled={busy} className="w-full">
+          <Button onClick={() => { void run(); }} disabled={busy} className="w-full">
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileCheck2 className="mr-2 h-4 w-4" />} Eşleştir
           </Button>
           {result ? (

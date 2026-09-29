@@ -132,7 +132,16 @@ export const legalDocuments = [
   },
 ];
 
-export const optionalConsentItems = [
+export type OptionalConsentKey = "marketing" | "push" | "analytics";
+
+export interface OptionalConsentItem {
+  key: OptionalConsentKey;
+  title: string;
+  description: string;
+  icon: typeof Bell;
+}
+
+export const optionalConsentItems: readonly OptionalConsentItem[] = [
   {
     key: "marketing",
     title: "Ticari/etkinlik ileti izni",

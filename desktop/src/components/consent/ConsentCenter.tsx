@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ConsentStatusQuery } from '../../lib/api/consent';
 import {
   cancelConsentForm,
   createConsentForm,
@@ -19,18 +20,58 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useToast } from '../../hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type {
+  ConsentContextKind,
+  ConsentFormDto,
+  ConsentFormStatus,
+  ConsentRequirementDto,
+  ConsentStationDto,
+  ConsentStatusDto,
+} from '../../types/api/generated';
+
+/** Onam akışının bağlamı — öğrenci kartı, randevu, cari hesap vb. */
+export interface ConsentContextProps {
+  studentProfileId: string | null | undefined;
+  studentName?: string | null;
+  contextKind?: ConsentContextKind | null;
+  contextKey?: string | null;
+  contextRefId?: string | null;
+  contextLabel?: string | null;
+}
+
+export interface ConsentCenterProps extends ConsentContextProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onStatusChange?: (status: ConsentStatusDto | null) => void;
+}
+
+/** Oluşturucu bölmesindeki form: bu açılışta mı üretildiği de taşınır. */
+type ComposerForm = ConsentFormDto & { createdHere: boolean };
+
+export function buildConsentStatusQuery(
+  contextKind: ConsentContextKind | null | undefined,
+  contextKey: string | null | undefined,
+  contextRefId: string | null | undefined,
+): ConsentStatusQuery {
+  const params: ConsentStatusQuery = {};
+  if (contextKind) params.contextKind = contextKind;
+  if (contextKey) params.contextKey = contextKey;
+  if (contextRefId) params.contextRefId = contextRefId;
+  return params;
+}
 
 /** İmza bekleyen form varken bu aralıkta yoklanır — imza anında ekrana düşsün. */
 const POLL_INTERVAL_MS = 2500;
 
-const STATUS_LABEL = {
+const STATUS_LABEL: Record<ConsentFormStatus, string> = {
   Draft: 'Hazırlanıyor',
   AwaitingSignature: 'İmza bekleniyor',
   Signed: 'İmzalandı',
   Cancelled: 'İptal',
 };
 
-function StatusBadge({ status }) {
+function StatusBadge({ status }: { status: ConsentFormStatus | null }) {
   if (!status) return <Badge variant="outline">Açılmadı</Badge>;
   if (status === 'Signed') {
     return <Badge className="border-emerald-500/30 bg-emerald-500/15 text-emerald-600">İmzalandı</Badge>;
@@ -41,7 +82,7 @@ function StatusBadge({ status }) {
   return <Badge variant="secondary">{STATUS_LABEL[status] || status}</Badge>;
 }
 
-function saveBlob(blob, fileName) {
+function saveBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -69,29 +110,26 @@ export default function ConsentCenter({
   contextRefId,
   contextLabel,
   onStatusChange,
-}) {
+}: ConsentCenterProps) {
   const { toast } = useToast();
-  const [status, setStatus] = useState(null);
-  const [stations, setStations] = useState([]);
+  const [status, setStatus] = useState<ConsentStatusDto | null>(null);
+  const [stations, setStations] = useState<ConsentStationDto[]>([]);
   const [loading, setLoading] = useState(false);
-  const [busyId, setBusyId] = useState(null);
-  const [composer, setComposer] = useState(null);
-  const [justSigned, setJustSigned] = useState(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [composer, setComposer] = useState<ComposerForm | null>(null);
+  const [justSigned, setJustSigned] = useState<string | null>(null);
 
-  const previousStatusRef = useRef(new Map());
+  const previousStatusRef = useRef(new Map<string, ConsentFormStatus | null>());
 
-  const load = useCallback(async ({ silent = false } = {}) => {
+  const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!studentProfileId) return;
     if (!silent) setLoading(true);
     try {
-      const params = {};
-      if (contextKind) params.contextKind = contextKind;
-      if (contextKey) params.contextKey = contextKey;
-      if (contextRefId) params.contextRefId = contextRefId;
+      const params = buildConsentStatusQuery(contextKind, contextKey, contextRefId);
 
       const [next, stationList] = await Promise.all([
         fetchConsentStatus(studentProfileId, params),
-        fetchConsentStations().catch(() => []),
+        fetchConsentStations().catch((): ConsentStationDto[] => []),
       ]);
 
       // İmza az önce mi geldi? Personel ekranında yeşil şerit bunun için çizilir.
@@ -106,7 +144,7 @@ export default function ConsentCenter({
       setStations(stationList);
       onStatusChange?.(next);
     } catch (error) {
-      if (!silent) toast({ title: 'Onam formları yüklenemedi', description: error.message, variant: 'destructive' });
+      if (!silent) toast({ title: 'Onam formları yüklenemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       if (!silent) setLoading(false);
     }
@@ -114,7 +152,7 @@ export default function ConsentCenter({
 
   useEffect(() => {
     if (!open) return undefined;
-    load();
+    void load();
     return undefined;
   }, [open, load]);
 
@@ -126,7 +164,7 @@ export default function ConsentCenter({
   // Yalnız imza beklenirken yoklanır; boşta ağ trafiği üretilmez.
   useEffect(() => {
     if (!open || !awaiting) return undefined;
-    const timer = setInterval(() => load({ silent: true }), POLL_INTERVAL_MS);
+    const timer = setInterval(() => { void load({ silent: true }); }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [open, awaiting, load]);
 
@@ -136,13 +174,15 @@ export default function ConsentCenter({
     return () => clearTimeout(timer);
   }, [justSigned]);
 
-  const openComposer = async (requirement) => {
+  const openComposer = async (requirement: ConsentRequirementDto) => {
+    if (!studentProfileId) return;
     setBusyId(requirement.templateId);
     try {
       // Var olan taslak açılırken KAYDIN kendi metni okunur, şablonunki değil:
       // yer tutucular kayıt üretilirken dolduruldu; şablonda hâlâ ham hâlde duruyor.
       if (requirement.formId && requirement.status !== 'Cancelled') {
         const existing = await fetchConsentForm(requirement.formId);
+        if (!existing) throw new Error('Form bulunamadı.');
         setComposer({ ...existing, createdHere: false });
       } else {
         const created = await createConsentForm({
@@ -154,17 +194,18 @@ export default function ConsentCenter({
           contextLabel: contextLabel || null,
           staffNotes: null,
         });
+        if (!created) throw new Error('Form oluşturulamadı.');
         setComposer({ ...created, createdHere: true });
       }
       await load({ silent: true });
     } catch (error) {
-      toast({ title: 'Form açılamadı', description: error.message, variant: 'destructive' });
+      toast({ title: 'Form açılamadı', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
   };
 
-  const dispatchForm = async (form, stationName) => {
+  const dispatchForm = async (form: ComposerForm, stationName: string) => {
     if (!stationName?.trim()) {
       toast({ title: 'Tablet adı gerekli', description: 'Formun gideceği tabletin adını yazın veya listeden seçin.', variant: 'destructive' });
       return;
@@ -179,43 +220,47 @@ export default function ConsentCenter({
       setComposer(null);
       await load({ silent: true });
     } catch (error) {
-      toast({ title: 'Form gönderilemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Form gönderilemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
   };
 
-  const revoke = async (formId) => {
+  const revoke = async (formId: string | null) => {
+    if (!formId) return;
     setBusyId(formId);
     try {
       await revokeConsentFormSession(formId);
       await load({ silent: true });
     } catch (error) {
-      toast({ title: 'Gönderim geri alınamadı', description: error.message, variant: 'destructive' });
+      toast({ title: 'Gönderim geri alınamadı', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
   };
 
-  const download = async (formId, title) => {
+  const download = async (formId: string | null, title: string) => {
+    if (!formId) return;
     setBusyId(formId);
     try {
       const blob = await downloadConsentFormPdf(formId);
+      if (!blob) throw new Error('Belge boş döndü.');
       saveBlob(blob, `${studentName || 'ogrenci'}-${title}.pdf`.replace(/\s+/g, '-'));
     } catch (error) {
-      toast({ title: 'Belge indirilemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Belge indirilemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
   };
 
-  const renew = async (requirement) => {
+  const renew = async (requirement: ConsentRequirementDto) => {
     // "Yeniden al": imzalı belge korunur, yerine yeni bir kayıt açılır.
     await openComposer({ ...requirement, formId: null });
   };
 
   const requirements = status?.requirements || [];
   const complete = status?.complete;
+  const otherForms = status?.otherForms ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -252,7 +297,7 @@ export default function ConsentCenter({
                   : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400',
               )}
             >
-              {status.signedCount}/{status.requiredCount} form imzalı
+              {status?.signedCount ?? 0}/{status?.requiredCount ?? 0} form imzalı
               {complete ? ' — tüm onamlar tamam.' : ' — eksik onam formu var.'}
             </div>
 
@@ -275,19 +320,19 @@ export default function ConsentCenter({
                   <div className="flex shrink-0 flex-wrap gap-2">
                     {row.status === 'Signed' ? (
                       <>
-                        <Button size="sm" variant="outline" disabled={busyId === row.formId} onClick={() => download(row.formId, row.title)}>
+                        <Button size="sm" variant="outline" disabled={busyId === row.formId} onClick={() => { void download(row.formId, row.title); }}>
                           PDF indir
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => renew(row)}>
+                        <Button size="sm" variant="ghost" onClick={() => { void renew(row); }}>
                           Yeniden al
                         </Button>
                       </>
                     ) : row.status === 'AwaitingSignature' ? (
-                      <Button size="sm" variant="outline" disabled={busyId === row.formId} onClick={() => revoke(row.formId)}>
+                      <Button size="sm" variant="outline" disabled={busyId === row.formId} onClick={() => { void revoke(row.formId); }}>
                         Geri al
                       </Button>
                     ) : (
-                      <Button size="sm" disabled={busyId === row.templateId} onClick={() => openComposer(row)}>
+                      <Button size="sm" disabled={busyId === row.templateId} onClick={() => { void openComposer(row); }}>
                         Formu doldur
                       </Button>
                     )}
@@ -298,13 +343,13 @@ export default function ConsentCenter({
           </>
         )}
 
-        {(status?.otherForms || []).length > 0 ? (
+        {otherForms.length > 0 ? (
           <div className="space-y-2 pt-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Diğer imzalı formlar</p>
-            {status.otherForms.map((form) => (
+            {otherForms.map((form) => (
               <div key={form.id} className="flex items-center justify-between rounded-lg border border-border/40 px-3 py-2 text-sm">
                 <span className="truncate">{form.title}</span>
-                <Button size="sm" variant="ghost" disabled={busyId === form.id} onClick={() => download(form.id, form.title)}>
+                <Button size="sm" variant="ghost" disabled={busyId === form.id} onClick={() => { void download(form.id, form.title); }}>
                   PDF
                 </Button>
               </div>
@@ -326,7 +371,7 @@ export default function ConsentCenter({
               }
               setComposer(null);
             }}
-            onDispatch={dispatchForm}
+            onDispatch={(form, station) => { void dispatchForm(form, station); }}
           />
         ) : null}
       </DialogContent>
@@ -335,7 +380,15 @@ export default function ConsentCenter({
 }
 
 /** "Formu doldur" bölmesi: metin önizlemesi, uygulama notu, hedef tablet. */
-function ConsentComposer({ form, stations, busy, onCancel, onDispatch }) {
+interface ConsentComposerProps {
+  form: ComposerForm;
+  stations: ConsentStationDto[];
+  busy: boolean;
+  onCancel: () => Promise<void> | void;
+  onDispatch: (form: ComposerForm, station: string) => void;
+}
+
+function ConsentComposer({ form, stations, busy, onCancel, onDispatch }: ConsentComposerProps) {
   const [notes, setNotes] = useState(form.staffNotes || '');
   const [station, setStation] = useState(() => localStorage.getItem('ci-consent-last-station') || '');
 
@@ -348,6 +401,7 @@ function ConsentComposer({ form, stations, busy, onCancel, onDispatch }) {
 
   const openDocument = async () => {
     const blob = await downloadConsentFormDocument(form.id);
+    if (!blob) return;
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
     setTimeout(() => URL.revokeObjectURL(url), 30000);
@@ -363,7 +417,7 @@ function ConsentComposer({ form, stations, busy, onCancel, onDispatch }) {
             <span className="truncate">
               {form.documentFileName || 'Yüklenen belge'} · {form.documentPageCount} sayfa
             </span>
-            <Button size="sm" variant="outline" onClick={openDocument}>Belgeyi aç</Button>
+            <Button size="sm" variant="outline" onClick={() => { void openDocument(); }}>Belgeyi aç</Button>
           </div>
         ) : (
           <div className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border/50 bg-background p-3 text-sm leading-relaxed">
@@ -378,7 +432,7 @@ function ConsentComposer({ form, stations, busy, onCancel, onDispatch }) {
             Tablette işaretlenecek maddeler
           </p>
           <ul className="space-y-1 text-sm text-muted-foreground">
-            {form.checkItems.map((item, index) => (
+            {(form.checkItems || []).map((item, index) => (
               <li key={index} className="flex gap-2">
                 <span>☐</span>
                 <span>{item}</span>
@@ -442,7 +496,7 @@ function ConsentComposer({ form, stations, busy, onCancel, onDispatch }) {
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={onCancel} disabled={busy}>
+        <Button variant="ghost" onClick={() => { void onCancel(); }} disabled={busy}>
           Vazgeç
         </Button>
         <Button onClick={submit} disabled={busy}>

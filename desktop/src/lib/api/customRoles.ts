@@ -8,8 +8,13 @@ export interface RoleModuleCatalogItem {
 }
 
 /** GET /api/custom-roles/module-catalog. */
+export interface RoleModuleCatalogGroup {
+  title: string;
+  items: RoleModuleCatalogItem[];
+}
+
 export interface RoleModuleCatalog {
-  groups: Array<{ title: string; items: RoleModuleCatalogItem[] }>;
+  groups: RoleModuleCatalogGroup[];
 }
 
 /**

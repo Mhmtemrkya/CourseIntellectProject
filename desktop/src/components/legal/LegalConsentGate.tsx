@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { AlertTriangle, FileText } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
@@ -6,13 +6,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { LegalDocumentsPanel } from "@/components/legal/LegalDocumentsPanel";
-import { legalConsentVersion, optionalConsentItems } from "@/legal/legalContent";
+import { legalConsentVersion, optionalConsentItems, type OptionalConsentKey } from "@/legal/legalContent";
+
+type ConsentChoices = Record<OptionalConsentKey, boolean>;
+
+interface ConsentState {
+  accepted: boolean;
+  declined: boolean;
+}
 
 const statusKey = "courseintellect.legalConsent.status";
 const versionKey = "courseintellect.legalConsent.version";
 const decidedAtKey = "courseintellect.legalConsent.decidedAt";
 
-function readState() {
+function readState(): ConsentState {
   if (typeof window === "undefined") return { accepted: true, declined: false };
   const status = window.localStorage.getItem(statusKey);
   const version = window.localStorage.getItem(versionKey);
@@ -22,7 +29,7 @@ function readState() {
   };
 }
 
-function persistDecision(status, choices = {}) {
+function persistDecision(status: "accepted" | "declined", choices: Partial<ConsentChoices> = {}) {
   window.localStorage.setItem(statusKey, status);
   window.localStorage.setItem(versionKey, legalConsentVersion);
   window.localStorage.setItem(decidedAtKey, new Date().toISOString());
@@ -31,13 +38,13 @@ function persistDecision(status, choices = {}) {
   });
 }
 
-export function LegalConsentGate({ children }) {
+export function LegalConsentGate({ children }: { children?: ReactNode }) {
   const { isAuthenticated, isAuthLoading } = useApp();
   const [state, setState] = useState(() => readState());
   const [open, setOpen] = useState(false);
   const [understoodKvkk, setUnderstoodKvkk] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [choices, setChoices] = useState({ marketing: false, push: false, analytics: false });
+  const [choices, setChoices] = useState<ConsentChoices>({ marketing: false, push: false, analytics: false });
 
   useEffect(() => {
     const next = readState();
@@ -114,6 +121,19 @@ export function LegalConsentGate({ children }) {
   );
 }
 
+interface ConsentDialogProps {
+  open: boolean;
+  setOpen: Dispatch<SetStateAction<boolean>>;
+  understoodKvkk: boolean;
+  setUnderstoodKvkk: Dispatch<SetStateAction<boolean>>;
+  acceptedTerms: boolean;
+  setAcceptedTerms: Dispatch<SetStateAction<boolean>>;
+  choices: ConsentChoices;
+  setChoices: Dispatch<SetStateAction<ConsentChoices>>;
+  onAccept: () => void;
+  onDecline: () => void;
+}
+
 function ConsentDialog({
   open,
   setOpen,
@@ -125,7 +145,7 @@ function ConsentDialog({
   setChoices,
   onAccept,
   onDecline,
-}) {
+}: ConsentDialogProps) {
   const canContinue = understoodKvkk && acceptedTerms;
 
   return (

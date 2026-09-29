@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchConsentStatus } from '../../lib/api/modules';
-import ConsentCenter from './ConsentCenter';
+import ConsentCenter, { buildConsentStatusQuery, type ConsentContextProps } from './ConsentCenter';
+import type { ConsentStatusDto } from '../../types/api/generated';
 import { cn } from '@/lib/utils';
 
 /**
@@ -10,6 +11,11 @@ import { cn } from '@/lib/utils';
  * hiçbir şey çizmez. Onam özelliğini kullanmayan kurumun ekranını kirletmez.
  * Tıklanınca Onam Merkezi açılır.
  */
+export interface ConsentAlertBannerProps extends ConsentContextProps {
+  showWhenComplete?: boolean;
+  className?: string;
+}
+
 export default function ConsentAlertBanner({
   studentProfileId,
   studentName,
@@ -19,17 +25,14 @@ export default function ConsentAlertBanner({
   contextLabel,
   showWhenComplete = false,
   className,
-}) {
-  const [status, setStatus] = useState(null);
+}: ConsentAlertBannerProps) {
+  const [status, setStatus] = useState<ConsentStatusDto | null>(null);
   const [open, setOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!studentProfileId) return;
     try {
-      const params = {};
-      if (contextKind) params.contextKind = contextKind;
-      if (contextKey) params.contextKey = contextKey;
-      if (contextRefId) params.contextRefId = contextRefId;
+      const params = buildConsentStatusQuery(contextKind, contextKey, contextRefId);
       setStatus(await fetchConsentStatus(studentProfileId, params));
     } catch {
       // Onam modülü kurulmamış / yetki yok → şerit hiç görünmez.
@@ -38,7 +41,7 @@ export default function ConsentAlertBanner({
   }, [studentProfileId, contextKind, contextKey, contextRefId]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const missing = (status?.requiredCount || 0) - (status?.signedCount || 0);
@@ -66,7 +69,7 @@ export default function ConsentAlertBanner({
             : 'Tüm onam formları imzalı'}
         </span>
         <span className="shrink-0 text-xs opacity-80">
-          {status.signedCount}/{status.requiredCount}
+          {status?.signedCount ?? 0}/{status?.requiredCount ?? 0}
         </span>
       </button>
 
@@ -74,7 +77,7 @@ export default function ConsentAlertBanner({
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
-          if (!next) load();
+          if (!next) void load();
         }}
         studentProfileId={studentProfileId}
         studentName={studentName}

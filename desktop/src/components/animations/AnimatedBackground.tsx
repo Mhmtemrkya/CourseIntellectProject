@@ -1,9 +1,27 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
+interface FloatingParticle {
+  id: number;
+  x: number;
+  y: number;
+  size: number;
+  color: string | undefined;
+  duration: number;
+  delay: number;
+}
+
+interface ConfettiParticle {
+  id: number;
+  x: number;
+  color: string | undefined;
+  rotation: number;
+  size: number;
+}
+
 // Floating particles for background
-export function FloatingParticles({ count = 20, colors = ['#D9790B', '#00354F', '#22c55e'] }) {
-  const [particles, setParticles] = useState([]);
+export function FloatingParticles({ count = 20, colors = ['#D9790B', '#00354F', '#22c55e'] }: { count?: number; colors?: string[] }) {
+  const [particles, setParticles] = useState<FloatingParticle[]>([]);
 
   useEffect(() => {
     const newParticles = Array.from({ length: count }, (_, i) => ({
@@ -101,8 +119,8 @@ export function PulseRing({ color = '#D9790B', size = 100 }) {
 }
 
 // Confetti effect for celebrations
-export function Confetti({ active = false, duration = 3000 }) {
-  const [particles, setParticles] = useState([]);
+export function Confetti({ active = false, duration = 3000 }: { active?: boolean; duration?: number }) {
+  const [particles, setParticles] = useState<ConfettiParticle[]>([]);
 
   useEffect(() => {
     if (active) {

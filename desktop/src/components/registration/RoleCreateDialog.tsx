@@ -8,6 +8,15 @@ import { Checkbox } from '../ui/checkbox';
 import { LoadingDots } from '../animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { createCustomRole, fetchRoleModuleCatalog } from '../../lib/api/modules';
+import type { RoleModuleCatalogGroup } from '../../lib/api/customRoles';
+import { errorMessage } from '../../lib/errors';
+import type { CustomRoleDto } from '../../types/api/generated';
+
+export interface RoleCreateDialogProps {
+  open: boolean;
+  onClose?: () => void;
+  onCreated?: (role: CustomRoleDto) => void;
+}
 
 /**
  * Rol oluşturma penceresi — yetki matrisiyle.
@@ -31,14 +40,14 @@ const BASE_ROLES = [
   { value: 'Cafeteria', label: 'Yemekhane', hint: 'Yemekhane personeli' },
 ];
 
-export default function RoleCreateDialog({ open, onClose, onCreated }) {
+export default function RoleCreateDialog({ open, onClose, onCreated }: RoleCreateDialogProps) {
   const { toast } = useToast();
-  const [catalog, setCatalog] = useState(null);
+  const [catalog, setCatalog] = useState<RoleModuleCatalogGroup[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [name, setName] = useState('');
   const [baseRole, setBaseRole] = useState('Administrative');
-  const [selected, setSelected] = useState(() => new Set());
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -48,7 +57,7 @@ export default function RoleCreateDialog({ open, onClose, onCreated }) {
       const data = await fetchRoleModuleCatalog();
       setCatalog(data?.groups || []);
     } catch (err) {
-      setLoadError(err.message || 'Sayfa kataloğu alınamadı.');
+      setLoadError(errorMessage(err, 'Sayfa kataloğu alınamadı.'));
       setCatalog(null);
     } finally {
       setLoading(false);
@@ -62,7 +71,7 @@ export default function RoleCreateDialog({ open, onClose, onCreated }) {
     setBaseRole('Administrative');
     setSelected(new Set());
     setSaving(false);
-    load();
+    void load();
   }, [open, load]);
 
   const groups = catalog || [];
@@ -71,14 +80,14 @@ export default function RoleCreateDialog({ open, onClose, onCreated }) {
     [groups],
   );
 
-  const toggle = (key) => setSelected((prev) => {
+  const toggle = (key: string) => setSelected((prev) => {
     const next = new Set(prev);
     if (next.has(key)) next.delete(key);
     else next.add(key);
     return next;
   });
 
-  const toggleGroup = (group) => setSelected((prev) => {
+  const toggleGroup = (group: RoleModuleCatalogGroup) => setSelected((prev) => {
     const keys = (group.items || []).map((item) => item.key);
     const allOn = keys.every((key) => prev.has(key));
     const next = new Set(prev);
@@ -101,6 +110,7 @@ export default function RoleCreateDialog({ open, onClose, onCreated }) {
         // Boş liste "hiçbir sayfa" demek; bayrak olmadan sunucu "tam yetki" sayar.
         modulesRestricted: true,
       });
+      if (!role) throw new Error('Sunucu rolü döndürmedi.');
       toast({
         title: 'Rol oluşturuldu',
         description: `${role.name} — ${selected.size === 0 ? 'sayfa yetkisi verilmedi' : `${selected.size} sayfa`}`,
@@ -108,7 +118,7 @@ export default function RoleCreateDialog({ open, onClose, onCreated }) {
       onCreated?.(role);
       onClose?.();
     } catch (err) {
-      toast({ title: 'Rol oluşturulamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Rol oluşturulamadı', description: errorMessage(err), variant: 'destructive' });
       setSaving(false);
     }
   };
@@ -188,7 +198,7 @@ export default function RoleCreateDialog({ open, onClose, onCreated }) {
                   size="sm"
                   variant="outline"
                   disabled={saving || allKeys.length === 0}
-                  onClick={() => setSelected((prev) => (prev.size === allKeys.length ? new Set() : new Set(allKeys)))}
+                  onClick={() => setSelected((prev) => (prev.size === allKeys.length ? new Set<string>() : new Set(allKeys)))}
                 >
                   {selected.size === allKeys.length && allKeys.length > 0 ? 'Tümünü kaldır' : 'Tümünü seç'}
                 </Button>
@@ -202,7 +212,7 @@ export default function RoleCreateDialog({ open, onClose, onCreated }) {
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
                 <div>
                   <p className="font-semibold text-red-600">{loadError}</p>
-                  <Button size="sm" variant="outline" className="mt-2" onClick={load}>Tekrar dene</Button>
+                  <Button size="sm" variant="outline" className="mt-2" onClick={() => { void load(); }}>Tekrar dene</Button>
                 </div>
               </div>
             ) : (
@@ -273,7 +283,7 @@ export default function RoleCreateDialog({ open, onClose, onCreated }) {
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} disabled={saving}>Vazgeç</Button>
-          <Button onClick={submit} disabled={saving || loading || !!loadError}>
+          <Button onClick={() => { void submit(); }} disabled={saving || loading || !!loadError}>
             {saving
               ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Oluşturuluyor…</>
               : <><Check className="mr-2 h-4 w-4" />Rolü Oluştur</>}

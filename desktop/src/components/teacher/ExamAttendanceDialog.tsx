@@ -6,21 +6,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { LoadingDots } from '../animations/AnimatedIcon';
 import { fetchPlannedExamAttendance, savePlannedExamAttendance } from '../../lib/api/modules';
+import type { PlannedExamAttendanceRow } from '../../lib/api/plannedExams';
+import { errorMessage } from '../../lib/errors';
+import type { IconComponent } from '../../types/ui';
 
-const STATUS_OPTIONS = [
+type AttendanceStatus = 'Present' | 'Late' | 'Absent';
+type StatusOption = readonly [AttendanceStatus, string, IconComponent, string];
+
+export interface ExamAttendanceDialogProps {
+  exam: { id: string; title?: string | null };
+  onClose: () => void;
+}
+
+const ABSENT_OPTION: StatusOption = ['Absent', 'Yok', XCircle, 'text-red-600'];
+
+const STATUS_OPTIONS: readonly StatusOption[] = [
   ['Present', 'Var', CheckCircle2, 'text-emerald-600'],
   ['Late', 'Geç', Clock3, 'text-amber-600'],
-  ['Absent', 'Yok', XCircle, 'text-red-600'],
+  ABSENT_OPTION,
 ];
 
-function statusMeta(status) {
-  return STATUS_OPTIONS.find((item) => item[0] === status) || STATUS_OPTIONS[2];
+function statusMeta(status: string): StatusOption {
+  return STATUS_OPTIONS.find((item) => item[0] === status) || ABSENT_OPTION;
 }
 
 // Planlı sınavın yoklama listesi. Canlı yayına/kameraya girenler otomatik
 // "Var" gelir; öğretmen burada Var/Geç/Yok olarak düzeltebilir.
-export default function ExamAttendanceDialog({ exam, onClose }) {
-  const [rows, setRows] = useState([]);
+export default function ExamAttendanceDialog({ exam, onClose }: ExamAttendanceDialogProps) {
+  const [rows, setRows] = useState<PlannedExamAttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -32,17 +45,17 @@ export default function ExamAttendanceDialog({ exam, onClose }) {
       const data = await fetchPlannedExamAttendance(exam.id);
       setRows(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || 'Yoklama alınamadı.');
+      setError(errorMessage(err, 'Yoklama alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [exam.id]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
-  const setStatus = (index, status) => {
+  const setStatus = (index: number, status: AttendanceStatus) => {
     setRows((prev) => prev.map((row, idx) => (idx === index ? { ...row, status, manualOverride: true } : row)));
   };
 
@@ -67,7 +80,7 @@ export default function ExamAttendanceDialog({ exam, onClose }) {
       });
       await load();
     } catch (err) {
-      setError(err.message || 'Yoklama kaydedilemedi.');
+      setError(errorMessage(err, 'Yoklama kaydedilemedi.'));
     } finally {
       setSaving(false);
     }
@@ -81,11 +94,11 @@ export default function ExamAttendanceDialog({ exam, onClose }) {
         </DialogHeader>
 
         <div className="mb-4 grid grid-cols-3 gap-3">
-          {[
+          {([
             ['Var', counts.present, 'text-emerald-600'],
             ['Geç', counts.late, 'text-amber-600'],
             ['Yok', counts.absent, 'text-red-600'],
-          ].map(([label, value, tone]) => (
+          ] as const).map(([label, value, tone]) => (
             <div key={label} className="rounded-2xl border bg-card p-3 text-center">
               <p className={`text-2xl font-black ${tone}`}>{value}</p>
               <p className="text-xs text-muted-foreground">{label}</p>
@@ -134,7 +147,7 @@ export default function ExamAttendanceDialog({ exam, onClose }) {
 
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>Kapat</Button>
-          <Button onClick={save} disabled={saving || loading}>
+          <Button onClick={() => { void save(); }} disabled={saving || loading}>
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Yoklamayı Kaydet
           </Button>

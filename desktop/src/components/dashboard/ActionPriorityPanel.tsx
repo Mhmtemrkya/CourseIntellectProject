@@ -11,7 +11,9 @@ import {
   UserCheck,
   Wallet,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { StatusBadge } from '../ui/status-badge';
+import type { SchoolDashboardAlert } from '../../lib/api/schoolDashboard';
 
 /**
  * Panonun EN ÜSTÜNDEKİ eylem bloğu — "bugün neye müdahale etmeliyim?".
@@ -26,7 +28,7 @@ import { StatusBadge } from '../ui/status-badge';
  */
 
 // Sunucunun uyarı türü → ikon. Bilinmeyen tür genel uyarı ikonunu alır.
-const ALERT_ICONS = {
+const ALERT_ICONS: Record<string, LucideIcon> = {
   Finance: Wallet,
   Approval: UserCheck,
   Consent: FileSignature,
@@ -38,7 +40,7 @@ const ALERT_ICONS = {
   Library: BookOpen,
 };
 
-function AlertCard({ alert, onOpen }) {
+function AlertCard({ alert, onOpen }: { alert: SchoolDashboardAlert; onOpen: (path: string) => void }) {
   const Icon = ALERT_ICONS[alert.type] || AlertTriangle;
   const critical = alert.severity === 'Critical';
   const clickable = Boolean(alert.actionPath);
@@ -93,6 +95,11 @@ export default function ActionPriorityPanel({
   navigate,
   emptyDetail = 'Tüm kontroller güncel.',
   testId = 'action-priority',
+}: {
+  alerts?: SchoolDashboardAlert[];
+  navigate?: (path: string) => void;
+  emptyDetail?: string;
+  testId?: string;
 }) {
   const criticalCount = alerts.filter((item) => item.severity === 'Critical').length;
   const warningCount = alerts.length - criticalCount;

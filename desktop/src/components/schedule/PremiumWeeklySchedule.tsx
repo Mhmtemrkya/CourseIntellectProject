@@ -1,8 +1,36 @@
 import { cn } from '../../lib/utils';
 import { normalizeTimeSlot } from '../../lib/scheduleGrid';
 
-const CELL_TONES = [
-  { dot: 'bg-sky-400', cell: 'border-sky-500/30 bg-sky-500/10' },
+interface CellTone {
+  dot: string;
+  cell: string;
+  live?: boolean;
+}
+
+export interface PremiumScheduleLesson {
+  day?: string | null;
+  dateKey?: string | null;
+  time: string;
+  title?: string | null;
+  subject?: string | null;
+  className?: string | null;
+  room?: string | null;
+  isLive?: boolean;
+}
+
+export interface PremiumWeeklyScheduleProps {
+  days: readonly string[];
+  timeSlots: readonly string[];
+  lessons: readonly PremiumScheduleLesson[];
+  /** Gün adı → tarih etiketi (örn. "Pazartesi" → "12 May"). */
+  weekDates?: Readonly<Record<string, string>>;
+  todayName?: string | null;
+}
+
+const DEFAULT_TONE: CellTone = { dot: 'bg-sky-400', cell: 'border-sky-500/30 bg-sky-500/10' };
+
+const CELL_TONES: readonly CellTone[] = [
+  DEFAULT_TONE,
   { dot: 'bg-emerald-400', cell: 'border-emerald-500/30 bg-emerald-500/10' },
   { dot: 'bg-violet-400', cell: 'border-violet-500/30 bg-violet-500/10' },
   { dot: 'bg-amber-400', cell: 'border-amber-500/30 bg-amber-500/10' },
@@ -10,13 +38,13 @@ const CELL_TONES = [
   { dot: 'bg-blue-400', cell: 'border-blue-500/30 bg-blue-500/10' },
 ];
 
-function hashIndex(value, mod) {
+function hashIndex(value: string | null | undefined, mod: number): number {
   let hash = 0;
   for (const ch of String(value || '')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   return hash % mod;
 }
 
-function toneForLesson(lesson) {
+function toneForLesson(lesson: PremiumScheduleLesson): CellTone {
   if (lesson.isLive) {
     return { dot: 'bg-[hsl(var(--brand-accent))]', cell: 'border-[hsl(var(--brand-accent)/0.45)] bg-[hsl(var(--brand-accent)/0.12)]', live: true };
   }
@@ -24,11 +52,11 @@ function toneForLesson(lesson) {
   if (/lab|laboratuvar/.test(haystack)) {
     return { dot: 'bg-cyan-400', cell: 'border-cyan-500/30 bg-cyan-500/10' };
   }
-  return CELL_TONES[hashIndex(lesson.title, CELL_TONES.length)];
+  return CELL_TONES[hashIndex(lesson.title, CELL_TONES.length)] ?? DEFAULT_TONE;
 }
 
-export default function PremiumWeeklySchedule({ days, timeSlots, lessons, weekDates = {}, todayName }) {
-  const lessonMap = new Map();
+export default function PremiumWeeklySchedule({ days, timeSlots, lessons, weekDates = {}, todayName }: PremiumWeeklyScheduleProps) {
+  const lessonMap = new Map<string, PremiumScheduleLesson>();
   lessons.forEach((lesson) => {
     lessonMap.set(`${lesson.day || lesson.dateKey || ''}-${normalizeTimeSlot(lesson.time)}`, lesson);
   });
@@ -61,7 +89,7 @@ export default function PremiumWeeklySchedule({ days, timeSlots, lessons, weekDa
               </div>
               {days.map((day) => {
                 const lesson = lessonMap.get(`${day}-${normalizeTimeSlot(time)}`);
-                const tone = lesson ? toneForLesson(lesson) : null;
+                const tone = lesson ? toneForLesson(lesson) : DEFAULT_TONE;
                 const today = todayName === day;
                 return (
                   <div key={`${day}-${time}`} className={cn('border-b border-r border-foreground/10 p-1.5 last:border-r-0', today && 'bg-[hsl(var(--brand-accent)/0.04)]')}>

@@ -35,9 +35,16 @@ import {
 import { useApp } from '../../context/AppContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '../../lib/utils';
+import type { IconComponent } from '../../types/ui';
+
+interface SidebarMenuItem {
+  path: string;
+  icon: IconComponent;
+  label: string;
+}
 
 // Menu items for each role
-const menuConfigs = {
+const menuConfigs: Record<string, SidebarMenuItem[]> = {
   admin: [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/students', icon: Users, label: 'Öğrenciler' },
@@ -151,7 +158,7 @@ export function Sidebar() {
 
   // Get menu items based on user role
   const userRole = user?.role || 'admin';
-  const menuItems = menuConfigs[userRole] || menuConfigs.admin;
+  const menuItems = menuConfigs[userRole] ?? menuConfigs.admin ?? [];
 
   return (
     <motion.aside

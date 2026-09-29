@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { Variants } from "framer-motion";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
@@ -73,7 +74,38 @@ import {
 } from "../animations/AnimatedBackground";
 import logoImage from "../../assets/brand/logo.png";
 import { useTheme } from "../../context/ThemeContext";
-import { getUserRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
+import { getUserRoles, mergeMenuItemsForRoles, type NavAccessItem } from "../../lib/permissions";
+import type { DesktopRole } from "../../types/session";
+import type { IconComponent } from "../../types/ui";
+
+/** Sidebar menü girişi (rol menüleri, modül kayıt defteri ve hub girişleri). */
+export interface SidebarMenuItem extends NavAccessItem {
+  path: string;
+  icon: IconComponent;
+  label: string;
+  color: string;
+  special?: boolean;
+  pulse?: boolean;
+  /** "YENİ" rozeti gösterilir. */
+  new?: boolean;
+  /** Hub girişi: sekmelerinin yolları (bkz. lib/navigation/hubs). */
+  covers?: string[];
+  hubId?: string;
+}
+
+interface MenuGroupDefinition {
+  id: string;
+  title: string;
+  modules: string[];
+  paths?: string[];
+}
+
+export interface SidebarMenuGroup<T extends SidebarMenuItem = SidebarMenuItem> extends MenuGroupDefinition {
+  items: Array<T & { moduleKey: string }>;
+}
+
+/** Modül anahtarı → rol bazlı (yoksa `default`) menü girişi. */
+type ModuleRegistryEntry = Partial<Record<DesktopRole | "default", SidebarMenuItem>>;
 
 // Menu items for each role
 // Muhasebe rolündeki tüm finans sayfaları. Kurum yöneticisi (admin) de bu
@@ -82,7 +114,7 @@ import { getUserRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 // üzerinden çalışır. Görünür kalan ekranlar en sonda konu hub'larına katlanır
 // (bkz. lib/navigation/hubs.js + collapseMenuHubs) — böylece bir sekme role
 // kapalıysa hub yine açılır, hub'ın tüm sekmeleri kapalıysa hub hiç görünmez.
-const FINANCE_MENU_ITEMS = [
+const FINANCE_MENU_ITEMS: SidebarMenuItem[] = [
   { path: "/finance/dashboard", icon: LayoutDashboard, label: "Muhasebe Özet", color: "#3b82f6" },
   { path: "/finance/student-accounts", icon: Users, label: "Cari Hesaplar", color: "#8b5cf6" },
   { path: "/finance/collections", icon: CreditCard, label: "Tahsilatlar", color: "#10b981" },
@@ -103,7 +135,7 @@ const FINANCE_MENU_ITEMS = [
   { path: "/finance/export", icon: Download, label: "Dışa Aktar", color: "#84cc16" },
 ];
 
-export const menuConfigs = {
+export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
   admin: [
     {
       path: "/dashboard",
@@ -954,7 +986,8 @@ export const menuConfigs = {
   ],
 };
 
-export const ROLE_LABELS = {
+// Anahtar string: getUserRoles DesktopRole dışında takma adlar da (branchmanager) döndürebilir.
+export const ROLE_LABELS: Partial<Record<string, string>> = {
   admin: "Kurum Yöneticisi",
   counselor: "Rehberlik Öğretmeni",
   administrative: "İdari Personel",
@@ -966,7 +999,7 @@ export const ROLE_LABELS = {
   cafeteria: "Yemekhaneci",
 };
 
-const ROLE_MENU_GROUPS = {
+const ROLE_MENU_GROUPS: Partial<Record<string, MenuGroupDefinition[]>> = {
   admin: [
     { id: "main", title: "Ana Panel", modules: ["dashboard", "kpi", "operations", "global-search", "tasks"] },
     { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses", "duties"], paths: ["/admin/staff"] },
@@ -1036,7 +1069,7 @@ const ROLE_MENU_GROUPS = {
   ],
 };
 
-const MODULE_MENU_REGISTRY = {
+const MODULE_MENU_REGISTRY: Record<string, ModuleRegistryEntry> = {
   dashboard: {
     default: { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "#3b82f6" },
     administrative: { path: "/admin/operations", icon: Activity, label: "Operasyon", color: "#14b8a6" },
@@ -1185,17 +1218,21 @@ const MODULE_MENU_REGISTRY = {
   rbac: { default: { path: "/admin/rbac", icon: Shield, label: "Yetki Matrisi", color: "#a855f7" } },
 };
 
-function getRegistryItem(moduleKey, primaryRole) {
-  const entry = MODULE_MENU_REGISTRY[moduleKey];
-  if (!entry) return null;
-  return entry[primaryRole] || entry.default || null;
+function isRegistryRole(entry: ModuleRegistryEntry, role: string): role is keyof ModuleRegistryEntry {
+  return Object.prototype.hasOwnProperty.call(entry, role);
 }
 
-export function inferModuleKey(item) {
+function getRegistryItem(moduleKey: string, primaryRole: string): SidebarMenuItem | null {
+  const entry = MODULE_MENU_REGISTRY[moduleKey];
+  if (!entry) return null;
+  return (isRegistryRole(entry, primaryRole) ? entry[primaryRole] : undefined) || entry.default || null;
+}
+
+export function inferModuleKey(item: { path?: string | null } | null | undefined): string {
   const path = item?.path || "";
   if (!path) return "";
 
-  const exactPathMap = {
+  const exactPathMap: Record<string, string> = {
     "/dashboard": "dashboard",
     "/t/dashboard": "dashboard",
     "/s/dashboard": "dashboard",
@@ -1338,22 +1375,28 @@ export function inferModuleKey(item) {
     "/sa/system": "system",
   };
 
-  if (exactPathMap[path]) return exactPathMap[path];
+  const exact = exactPathMap[path];
+  if (exact) return exact;
   if (path.includes("/profile")) return "profile";
   if (path.includes("/finance/")) return "finance";
   if (path.startsWith("/sa/")) return "platform";
   return "";
 }
 
-export function getModuleAwareMenuItems(baseItems, enabledModules, primaryRole = "", hasRoleManagementPolicy = false) {
-  if (!hasRoleManagementPolicy) return baseItems;
+export function getModuleAwareMenuItems<T extends SidebarMenuItem>(
+  baseItems: readonly T[],
+  enabledModules: ReadonlySet<string>,
+  primaryRole = "",
+  hasRoleManagementPolicy = false,
+): Array<T | SidebarMenuItem> {
+  if (!hasRoleManagementPolicy) return [...baseItems];
   // Rehberlik kendi sabit menüsünü kullanır; tenant modül yönetimi öğretmen
   // öğelerini (ders programı, yoklama...) bu menüye karıştırmasın.
-  if (primaryRole === "counselor") return baseItems;
+  if (primaryRole === "counselor") return [...baseItems];
 
-  const merged = [];
-  const seenPaths = new Set();
-  const visibleModuleKeys = new Set();
+  const merged: Array<T | SidebarMenuItem> = [];
+  const seenPaths = new Set<string>();
+  const visibleModuleKeys = new Set<string>();
 
   for (const item of baseItems) {
     const moduleKey = inferModuleKey(item);
@@ -1381,10 +1424,10 @@ export function getModuleAwareMenuItems(baseItems, enabledModules, primaryRole =
   return merged;
 }
 
-export function buildGroupedMenuItems(items, primaryRole) {
-  const definitions = ROLE_MENU_GROUPS[primaryRole] || ROLE_MENU_GROUPS.admin;
-  const groups = definitions.map((group) => ({ ...group, items: [] }));
-  const fallback = { id: "other", title: "Diğer", modules: [], items: [] };
+export function buildGroupedMenuItems<T extends SidebarMenuItem>(items: readonly T[], primaryRole: string): SidebarMenuGroup<T>[] {
+  const definitions = ROLE_MENU_GROUPS[primaryRole] || ROLE_MENU_GROUPS.admin || [];
+  const groups: SidebarMenuGroup<T>[] = definitions.map((group) => ({ ...group, items: [] }));
+  const fallback: SidebarMenuGroup<T> = { id: "other", title: "Diğer", modules: [], items: [] };
 
   for (const item of items) {
     const moduleKey = inferModuleKey(item);
@@ -1408,14 +1451,14 @@ export function buildGroupedMenuItems(items, primaryRole) {
   return [...groups, fallback].filter((group) => group.items.length > 0);
 }
 
-function getActiveGroupIds(groups, pathname) {
+function getActiveGroupIds(groups: readonly SidebarMenuGroup[], pathname: string): string[] {
   return groups
     .filter((group) => group.items.some((item) => pathname === item.path || pathname.startsWith(`${item.path}/`)))
     .map((group) => group.id);
 }
 
 // Student stats component for sidebar — fetches real XP data from API
-function StudentStats({ collapsed }) {
+function StudentStats({ collapsed }: { collapsed: boolean }) {
   const [stats, setStats] = useState({
     xp: 0,
     streak: 0,
@@ -1520,13 +1563,13 @@ export function ModernSidebar() {
 
   // Kurum bazlı özellik anahtarları: platform yöneticisinin kapattığı
   // modüller menüden gizlenir (platform admin tüm menüyü görür).
-  const [disabledFeatures, setDisabledFeatures] = useState(null);
+  const [disabledFeatures, setDisabledFeatures] = useState<ReadonlySet<string> | null>(null);
   useEffect(() => {
     let active = true;
     if (user?.isPlatformAdmin) {
-      setDisabledFeatures(new Set());
+      setDisabledFeatures(new Set<string>());
     } else {
-      getDisabledFeatureKeys().then((keys) => {
+      void getDisabledFeatureKeys().then((keys) => {
         if (active) setDisabledFeatures(keys);
       });
     }
@@ -1539,7 +1582,7 @@ export function ModernSidebar() {
     ? moduleAwareItems.filter((item) => !isPathDisabled(item.path, disabledFeatures))
     : moduleAwareItems;
   const groupedMenuItems = buildGroupedMenuItems(menuItems, primaryRole);
-  const [openGroups, setOpenGroups] = useState(() => new Set());
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set());
   const isStudent = userRoles.includes("student");
 
   useEffect(() => {
@@ -1554,7 +1597,7 @@ export function ModernSidebar() {
     });
   }, [location.pathname, primaryRole, groupedMenuItems.length]);
 
-  const toggleGroup = (groupId) => {
+  const toggleGroup = (groupId: string) => {
     setOpenGroups((current) => {
       const next = new Set(current);
       if (next.has(groupId)) {
@@ -1566,7 +1609,7 @@ export function ModernSidebar() {
     });
   };
 
-  const ROLE_TITLES = {
+  const ROLE_TITLES: Partial<Record<string, string>> = {
     admin: "Yönetim Paneli",
     administrative: "İdari Panel",
     finance: "Muhasebe Paneli",
@@ -1577,7 +1620,7 @@ export function ModernSidebar() {
   };
 
   // Normalize string for comparison (lowercase, remove Turkish chars)
-  const normalizeStr = (s) =>
+  const normalizeStr = (s: string | null | undefined) =>
     (s || "")
       .toLowerCase()
       .replace(/ğ/g, "g")
@@ -1616,7 +1659,7 @@ export function ModernSidebar() {
         : ROLE_TITLES[userRole] || "SchoolAsist";
 
   // Sidebar variants for animation
-  const sidebarVariants = {
+  const sidebarVariants: Variants = {
     expanded: {
       width: 280,
       x: 0,

@@ -1,5 +1,6 @@
 import { ArrowRight, Check, Rocket } from 'lucide-react';
 import { Button } from '../ui/button';
+import type { SchoolSetupStatus } from '../../lib/api/schoolDashboard';
 
 /**
  * Yeni kurum kurulum sihirbazı.
@@ -11,7 +12,11 @@ import { Button } from '../ui/button';
  * yerel bir "tamamlandı" işareti tutulmaz. Kurum bir adımı başka ekrandan
  * yaptıysa sihirbaz da bunu görür, hepsi bitince blok hiç çizilmez.
  */
-export default function SetupWizardPanel({ status, navigate, testId = 'setup-wizard' }) {
+export default function SetupWizardPanel({ status, navigate, testId = 'setup-wizard' }: {
+  status: SchoolSetupStatus | null | undefined;
+  navigate?: (path: string) => void;
+  testId?: string;
+}) {
   const steps = status?.steps || [];
   if (!status || status.completed || steps.length === 0) return null;
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   BarChart3,
@@ -40,21 +40,74 @@ import {
   updateExamResult,
   updatePlannedExam,
 } from '../../lib/api/modules';
-import { computeExamStats, downloadExamReportPdf } from '../../lib/examReportPdf';
+import {
+  computeExamStats,
+  downloadExamReportPdf,
+  type ExamReportInfo,
+  type ExamResultRow,
+  type ExamStats,
+} from '../../lib/examReportPdf';
+import type { PlannedExamAttendanceRow } from '../../lib/api/plannedExams';
+import { errorMessage } from '../../lib/errors';
+import type { IconComponent } from '../../types/ui';
+
+/** Yönetilen sınav: planlı sınav kaydı (ya da yalnız sonuçlardan türetilen satır). */
+export interface ManagedExam extends ExamReportInfo {
+  id: string;
+  status?: string | null;
+  totalPoint?: number | null;
+}
+
+/** Sınava ait sonuç satırı (`examTitle` veya eski `title` alanıyla eşleşir). */
+export interface ManagedExamResult extends ExamResultRow {
+  id: string;
+  examTitle?: string | null;
+  title?: string | null;
+}
+
+/** Sonuç girişindeki sınıf listesi öğrencisi. */
+export interface ExamRosterStudent {
+  id?: string | null;
+  fullName: string;
+  className?: string | null;
+}
+
+export interface ExamManagementSheetProps {
+  exam: ManagedExam | null;
+  results?: readonly ManagedExamResult[];
+  students?: readonly ExamRosterStudent[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChanged?: () => Promise<unknown> | unknown;
+  canEditResults?: boolean;
+  canEditExam?: boolean;
+  canDelete?: boolean;
+}
+
+type SheetView = 'menu' | 'detail' | 'edit' | 'scores' | 'attendance';
+type AttendanceStatus = 'Present' | 'Late' | 'Absent';
+
+interface ScoreDraft {
+  score: string;
+  net: string;
+  id: string | null;
+}
+
+const EMPTY_DRAFT: ScoreDraft = { score: '', net: '', id: null };
 import { StatusBadge } from '../ui/status-badge';
 
 export const EXAM_TYPES = ['Yazılı', 'Deneme', 'Ünite', 'Quiz', 'Proje'];
 export const EXAM_STATUSES = ['Taslak', 'Planlandı', 'Tamamlandı', 'İptal'];
 
 // "1-A Sınıfı" ile "1-A" aynı sınıftır: karşılaştırma için ek/boşluk/işaret atılır.
-export function classKey(value) {
+export function classKey(value: string | null | undefined): string {
   return String(value || '')
     .toLocaleLowerCase('tr-TR')
     .replace(/sınıfı|sinifi|sınıf|sinif|şubesi|subesi/g, '')
     .replace(/[^a-z0-9çğıöşü]/g, '');
 }
 
-export function scoreTone(score) {
+export function scoreTone(score: number | string | null | undefined): string {
   const value = Number(score) || 0;
   if (value >= 85) return 'text-emerald-600';
   if (value >= 70) return 'text-sky-600';
@@ -62,7 +115,7 @@ export function scoreTone(score) {
   return 'text-red-600';
 }
 
-function SectionHeader({ title, description, onBack }) {
+function SectionHeader({ title, description, onBack }: { title: ReactNode; description?: ReactNode; onBack: () => void }) {
   return (
     <div className="flex items-start gap-3 border-b border-border/70 px-6 py-4">
       <Button variant="ghost" size="icon" className="mt-0.5 h-8 w-8 shrink-0" onClick={onBack} aria-label="Geri">
@@ -76,7 +129,17 @@ function SectionHeader({ title, description, onBack }) {
   );
 }
 
-function MenuRow({ icon: Icon, label, description, onClick, destructive = false, disabled = false, badge }) {
+interface MenuRowProps {
+  icon: IconComponent;
+  label: ReactNode;
+  description: ReactNode;
+  onClick: () => void;
+  destructive?: boolean;
+  disabled?: boolean;
+  badge?: ReactNode;
+}
+
+function MenuRow({ icon: Icon, label, description, onClick, destructive = false, disabled = false, badge }: MenuRowProps) {
   return (
     <button
       type="button"
@@ -120,9 +183,9 @@ export default function ExamManagementSheet({
   canEditResults = true,
   canEditExam = true,
   canDelete = true,
-}) {
+}: ExamManagementSheetProps) {
   const { toast } = useToast();
-  const [view, setView] = useState('menu');
+  const [view, setView] = useState<SheetView>('menu');
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -184,30 +247,33 @@ export default function ExamManagementSheet({
   const downloadPdf = async () => {
     try {
       setBusy(true);
-      const institution = await fetchInstitutionProfile().catch(() => ({}));
+      if (!exam) return;
+      const institution = await fetchInstitutionProfile().catch(() => null);
       await downloadExamReportPdf(exam, examResults, institution || {});
       toast({ title: 'PDF hazır', description: 'Sınav sonuç raporu indirildi.' });
     } catch (err) {
-      toast({ title: 'PDF oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'PDF oluşturulamadı', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
   };
 
-  const changeStatus = async (status) => {
+  const changeStatus = async (status: string) => {
+    if (!exam) return;
     try {
       setBusy(true);
       await updatePlannedExam(exam.id, { status });
       toast({ title: 'Durum güncellendi', description: `Sınav "${status}" olarak işaretlendi.` });
       await notifyChange();
     } catch (err) {
-      toast({ title: 'Durum değiştirilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Durum değiştirilemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
   };
 
-  const removeExam = async (alsoResults) => {
+  const removeExam = async (alsoResults: boolean) => {
+    if (!exam) return;
     try {
       setBusy(true);
       if (alsoResults) {
@@ -222,7 +288,7 @@ export default function ExamManagementSheet({
       onOpenChange(false);
       await notifyChange();
     } catch (err) {
-      toast({ title: 'Silinemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Silinemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
@@ -278,7 +344,7 @@ export default function ExamManagementSheet({
                   icon={FileText}
                   label="PDF Raporu"
                   description="Kurum künyeli sonuç raporu indir"
-                  onClick={downloadPdf}
+                  onClick={() => { void downloadPdf(); }}
                   disabled={busy}
                 />
                 <MenuRow
@@ -291,7 +357,7 @@ export default function ExamManagementSheet({
                   icon={Copy}
                   label="Özeti Kopyala"
                   description="Sınav künyesi ve ortalamayı panoya al"
-                  onClick={copySummary}
+                  onClick={() => { void copySummary(); }}
                 />
                 <MenuRow
                   icon={Trash2}
@@ -312,7 +378,7 @@ export default function ExamManagementSheet({
                         size="sm"
                         variant={(exam.status || 'Planlandı') === status ? 'default' : 'outline'}
                         disabled={!canEditExam || busy}
-                        onClick={() => changeStatus(status)}
+                        onClick={() => { void changeStatus(status); }}
                       >
                         {status}
                       </Button>
@@ -370,13 +436,13 @@ export default function ExamManagementSheet({
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel disabled={busy}>Vazgeç</AlertDialogCancel>
             {examResults.length > 0 ? (
-              <Button variant="outline" disabled={busy} onClick={() => removeExam(false)}>
+              <Button variant="outline" disabled={busy} onClick={() => { void removeExam(false); }}>
                 Sonuçları koru
               </Button>
             ) : null}
             <AlertDialogAction
               disabled={busy}
-              onClick={(event) => { event.preventDefault(); removeExam(examResults.length > 0); }}
+              onClick={(event) => { event.preventDefault(); void removeExam(examResults.length > 0); }}
               className="bg-red-600 hover:bg-red-600/90"
             >
               {examResults.length > 0 ? 'Sonuçlarla birlikte sil' : 'Sil'}
@@ -388,7 +454,14 @@ export default function ExamManagementSheet({
   );
 }
 
-function ExamDetailView({ exam, rows, stats, onBack }) {
+interface ExamDetailViewProps {
+  exam: ManagedExam;
+  rows: readonly ManagedExamResult[];
+  stats: ExamStats;
+  onBack: () => void;
+}
+
+function ExamDetailView({ exam, rows, stats, onBack }: ExamDetailViewProps) {
   const sorted = useMemo(
     () => [...rows].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0)),
     [rows],
@@ -463,23 +536,42 @@ function ExamDetailView({ exam, rows, stats, onBack }) {
   );
 }
 
-function ExamEditView({ exam, onBack, onSaved }) {
+interface ExamEditViewProps {
+  exam: ManagedExam;
+  onBack: () => void;
+  onSaved?: () => Promise<void> | void;
+}
+
+interface ExamEditForm {
+  title: string;
+  subject: string;
+  className: string;
+  type: string;
+  dateLabel: string;
+  startTime: string;
+  duration: string;
+  questionCount: string;
+  totalPoint: string;
+  status: string;
+}
+
+function ExamEditView({ exam, onBack, onSaved }: ExamEditViewProps) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ExamEditForm>({
     title: exam.title || '',
     subject: exam.subject || '',
     className: exam.className || '',
     type: exam.type || 'Yazılı',
     dateLabel: exam.dateLabel || '',
     startTime: exam.startTime || '',
-    duration: exam.duration || '',
-    questionCount: exam.questionCount ?? '',
-    totalPoint: exam.totalPoint ?? 100,
+    duration: exam.duration ? String(exam.duration) : '',
+    questionCount: exam.questionCount != null ? String(exam.questionCount) : '',
+    totalPoint: String(exam.totalPoint ?? 100),
     status: exam.status || 'Planlandı',
   });
 
-  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const update = <K extends keyof ExamEditForm>(key: K, value: ExamEditForm[K]) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const save = async () => {
     if (!form.title.trim() || !form.subject.trim() || !form.className.trim()) {
@@ -503,7 +595,7 @@ function ExamEditView({ exam, onBack, onSaved }) {
       toast({ title: 'Sınav güncellendi', description: 'Künye bilgileri kaydedildi.' });
       await onSaved?.();
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -567,7 +659,7 @@ function ExamEditView({ exam, onBack, onSaved }) {
         </div>
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={saving}>Vazgeç</Button>
-          <Button className="flex-1" onClick={save} disabled={saving}>
+          <Button className="flex-1" onClick={() => { void save(); }} disabled={saving}>
             {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Kaydediliyor</> : 'Kaydet'}
           </Button>
         </div>
@@ -576,15 +668,23 @@ function ExamEditView({ exam, onBack, onSaved }) {
   );
 }
 
-function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }) {
+interface ExamScoreEntryViewProps {
+  exam: ManagedExam;
+  roster: readonly ExamRosterStudent[];
+  rows: readonly ManagedExamResult[];
+  onBack: () => void;
+  onSaved?: () => Promise<void> | void;
+}
+
+function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }: ExamScoreEntryViewProps) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-  const [draft, setDraft] = useState({});
+  const [draft, setDraft] = useState<Record<string, ScoreDraft>>({});
 
   // Girilmiş sonuçlar forma önceden yüklenir; boş bırakılan öğrenci atlanır.
   useEffect(() => {
-    const initial = {};
+    const initial: Record<string, ScoreDraft> = {};
     roster.forEach((student) => {
       const existing = rows.find((row) => row.studentName === student.fullName);
       initial[student.fullName] = {
@@ -615,7 +715,7 @@ function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }) {
       for (const [studentName, value] of entries) {
         const student = roster.find((item) => item.fullName === studentName);
         const payload = {
-          examTitle: exam.title,
+          examTitle: exam.title || '',
           type: exam.type || 'Yazılı',
           subject: exam.subject || '',
           className: student?.className || exam.className || '',
@@ -640,7 +740,7 @@ function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }) {
       await onSaved?.();
       onBack();
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -676,7 +776,7 @@ function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }) {
                 value={draft[student.fullName]?.score ?? ''}
                 onChange={(e) => setDraft((prev) => ({
                   ...prev,
-                  [student.fullName]: { ...prev[student.fullName], score: e.target.value },
+                  [student.fullName]: { ...(prev[student.fullName] ?? EMPTY_DRAFT), score: e.target.value },
                 }))}
               />
               <Input
@@ -686,7 +786,7 @@ function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }) {
                 value={draft[student.fullName]?.net ?? ''}
                 onChange={(e) => setDraft((prev) => ({
                   ...prev,
-                  [student.fullName]: { ...prev[student.fullName], net: e.target.value },
+                  [student.fullName]: { ...(prev[student.fullName] ?? EMPTY_DRAFT), net: e.target.value },
                 }))}
               />
             </div>
@@ -695,7 +795,7 @@ function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }) {
 
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={saving}>Vazgeç</Button>
-          <Button className="flex-1" onClick={save} disabled={saving}>
+          <Button className="flex-1" onClick={() => { void save(); }} disabled={saving}>
             {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Kaydediliyor</> : 'Sonuçları Kaydet'}
           </Button>
         </div>
@@ -704,9 +804,9 @@ function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }) {
   );
 }
 
-function ExamAttendanceView({ exam, onBack }) {
+function ExamAttendanceView({ exam, onBack }: { exam: ManagedExam; onBack: () => void }) {
   const { toast } = useToast();
-  const [rows, setRows] = useState([]);
+  const [rows, setRows] = useState<PlannedExamAttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -720,7 +820,7 @@ function ExamAttendanceView({ exam, onBack }) {
     return () => { active = false; };
   }, [exam.id]);
 
-  const setStatus = (index, status) => {
+  const setStatus = (index: number, status: AttendanceStatus) => {
     setRows((prev) => prev.map((row, position) => (position === index ? { ...row, status } : row)));
   };
 
@@ -739,13 +839,13 @@ function ExamAttendanceView({ exam, onBack }) {
       toast({ title: 'Yoklama kaydedildi', description: `${rows.length} öğrenci güncellendi.` });
       onBack();
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const statuses = [['Present', 'Var'], ['Late', 'Geç'], ['Absent', 'Yok']];
+  const statuses: ReadonlyArray<readonly [AttendanceStatus, string]> = [['Present', 'Var'], ['Late', 'Geç'], ['Absent', 'Yok']];
 
   return (
     <div>
@@ -783,7 +883,7 @@ function ExamAttendanceView({ exam, onBack }) {
         )}
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1" onClick={onBack} disabled={saving}>Vazgeç</Button>
-          <Button className="flex-1" onClick={save} disabled={saving || loading || rows.length === 0}>
+          <Button className="flex-1" onClick={() => { void save(); }} disabled={saving || loading || rows.length === 0}>
             {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Kaydediliyor</> : 'Yoklamayı Kaydet'}
           </Button>
         </div>

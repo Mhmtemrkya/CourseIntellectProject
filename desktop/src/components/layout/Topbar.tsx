@@ -22,6 +22,9 @@ import { useOnboarding } from "../../onboarding/OnboardingProvider";
 import { useTheme } from "../../context/ThemeContext";
 import { fetchMyScope, fetchNotifications, fetchOrgUnits } from "../../lib/api/modules";
 import { setActiveBranchFilter, setActiveTenantContext } from "../../lib/api/client";
+import type { MyScopeResponse, NotificationDto, OrgUnitDto } from "../../types/api/generated";
+import type { DesktopRole } from "../../types/session";
+import type { IconComponent } from "../../types/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +33,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from "../ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -42,7 +45,7 @@ import {
   BreadcrumbSeparator,
 } from "../ui/breadcrumb";
 
-const pathLabels = {
+const pathLabels: Record<string, string> = {
   dashboard: "Dashboard",
   students: "Öğrenciler",
   parents: "Veliler",
@@ -81,7 +84,8 @@ const pathLabels = {
   p: "Veli",
 };
 
-const roleLabels = {
+// Rehber (counselor) çalışma alanı seçicide listelenmez.
+const roleLabels: Partial<Record<DesktopRole, { label: string; icon: IconComponent; color: string }>> = {
   admin: { label: "Yönetici", icon: Shield, color: "text-brand-primary" },
   administrative: { label: "İdari Birim", icon: Building2, color: "text-teal-600" },
   finance: { label: "Muhasebe", icon: Wallet, color: "text-green-600" },
@@ -103,10 +107,10 @@ export function Topbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const isOwner = (user?.role || "").toLowerCase() === "admin";
-  const [branches, setBranches] = useState([]);
+  const [branches, setBranches] = useState<OrgUnitDto[]>([]);
   const [branchOptionsLoaded, setBranchOptionsLoaded] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState(() => (typeof localStorage !== "undefined" ? localStorage.getItem("ci-branch-filter") || "" : ""));
-  const [scope, setScope] = useState(null);
+  const [scope, setScope] = useState<MyScopeResponse | null>(null);
   const [selectedTenant, setSelectedTenant] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -139,14 +143,14 @@ export function Topbar() {
       .catch(() => setScope(null)), []);
 
   useEffect(() => {
-    loadBranchOptions();
-    loadScope();
+    void loadBranchOptions();
+    void loadScope();
 
     // Şube kayıt ekranında ilk şube eklendiğinde Topbar zaten mount edilmiş olur.
     // Sayfayı kapatıp açmaya gerek kalmadan listeyi ve kapsam bayraklarını yenile.
     const refresh = () => {
-      loadBranchOptions();
-      loadScope();
+      void loadBranchOptions();
+      void loadScope();
     };
     window.addEventListener("ci-org-units-changed", refresh);
     return () => window.removeEventListener("ci-org-units-changed", refresh);
@@ -159,23 +163,23 @@ export function Topbar() {
     setActiveBranchFilter(null);
   }, [branchOptionsLoaded, branches, selectedBranch]);
 
-  const handleBranchChange = (value) => {
+  const handleBranchChange = (value: string) => {
     setSelectedBranch(value);
     setActiveBranchFilter(value || null);
     // Tüm modüllerin yeni şube filtresiyle yeniden yüklenmesi için sayfayı tazele.
     window.location.reload();
   };
 
-  const handleTenantChange = (value) => {
+  const handleTenantChange = (value: string) => {
     setSelectedTenant(value);
     // Kurum değişince şube filtresi client'ta otomatik sıfırlanır; sayfayı tazele.
     setActiveTenantContext(value || null);
     window.location.reload();
   };
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState<NotificationDto[]>([]);
 
   const pathSegments = location.pathname.split("/").filter(Boolean);
-  const backendRoleMap = useMemo(() => ({
+  const backendRoleMap = useMemo((): Partial<Record<DesktopRole, string>> => ({
     admin: "Admin",
     administrative: "Administrative",
     teacher: "Teacher",
@@ -190,29 +194,29 @@ export function Topbar() {
     let mounted = true;
     const loadNotifications = async () => {
       try {
-        const items = await fetchNotifications(backendRoleMap[user?.role] || "Admin");
-        if (mounted) setNotifications(items);
+        const items = await fetchNotifications((user?.role && backendRoleMap[user.role]) || "Admin");
+        if (mounted) setNotifications(items ?? []);
       } catch {
         if (mounted) setNotifications([]);
       }
     };
 
-    loadNotifications();
+    void loadNotifications();
     return () => {
       mounted = false;
     };
   }, [backendRoleMap, user?.role]);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  const handleRoleSwitch = (role) => {
+  const handleRoleSwitch = (role: DesktopRole) => {
     setUserRole(role);
-    const roleHomePaths = {
+    const roleHomePaths: Partial<Record<DesktopRole, string>> = {
       admin: "/dashboard",
       administrative: "/admin/operations",
       finance: "/finance/dashboard",
@@ -351,7 +355,9 @@ export function Topbar() {
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>Çalışma Alanı</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {Object.entries(roleLabels).map(([key, val]) => {
+            {(Object.keys(roleLabels) as DesktopRole[]).map((key) => {
+              const val = roleLabels[key];
+              if (!val) return null;
               const Icon = val.icon;
               return (
                 <DropdownMenuItem
@@ -459,10 +465,10 @@ export function Topbar() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {notification.message || notification.detail}
+                    {notification.message}
                   </p>
                   <span className="text-xs text-muted-foreground mt-1">
-                    {notification.createdAt || notification.timeLabel || "Şimdi"}
+                    {notification.timeLabel || "Şimdi"}
                   </span>
                 </DropdownMenuItem>
               ))}
@@ -483,7 +489,6 @@ export function Topbar() {
               className="flex items-center gap-2 pl-2"
             >
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatar} alt={user?.name} />
                 <AvatarFallback className="bg-brand-primary text-white">
                   {user?.name?.charAt(0) || "U"}
                 </AvatarFallback>

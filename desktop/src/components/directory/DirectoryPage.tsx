@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   ChevronDown,
   ChevronLeft,
@@ -32,16 +32,107 @@ import {
   toggleHiddenColumn,
   visibleColumns,
   writePreferences,
+  type Density,
+  type DirectoryPreferences,
 } from '../../lib/directoryPreferences';
+import { isRecord } from '../../lib/errors';
+import type { IconComponent } from '../../types/ui';
+
+export interface DirectoryColumn<TRow> {
+  key: string;
+  label: ReactNode;
+  render: (row: TRow) => ReactNode;
+  sortable?: boolean;
+  /** Sıralama değeri; verilmezse satırın `key` alanı okunur. */
+  sortValue?: (row: TRow) => unknown;
+  /** CSS grid sütun genişliği (örn. `minmax(0,2fr)`). */
+  width?: string;
+  className?: string;
+}
+
+export interface DirectoryStat {
+  label: string;
+  value: ReactNode;
+  icon?: IconComponent;
+  tint?: string;
+  caption?: ReactNode;
+}
+
+export interface DirectorySearch {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+export type DirectoryFilterOption = string | { value: string; label: ReactNode };
+
+export interface DirectoryFilter {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  options: readonly DirectoryFilterOption[];
+}
+
+export interface DirectorySelection {
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}
+
+export interface DirectoryBlankAction {
+  label: ReactNode;
+  onClick: () => void;
+  icon?: IconComponent;
+}
+
+export interface DirectoryPageProps<TRow> {
+  testId?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+  stats?: readonly DirectoryStat[];
+  search?: DirectorySearch;
+  filters?: readonly DirectoryFilter[];
+  columns?: readonly DirectoryColumn<TRow>[];
+  rows?: readonly TRow[];
+  getRowId?: (row: TRow) => string;
+  onRowClick?: (row: TRow) => void;
+  rowActions?: (row: TRow) => ReactNode;
+  selection?: DirectorySelection;
+  bulkActions?: ReactNode;
+  cardRender?: (row: TRow) => ReactNode;
+  emptyTitle?: ReactNode;
+  emptyDescription?: ReactNode;
+  emptyIcon?: IconComponent;
+  blankTitle?: ReactNode;
+  blankDescription?: ReactNode;
+  blankAction?: DirectoryBlankAction;
+  rangeLabel?: (from: number, to: number, total: number) => ReactNode;
+  banner?: ReactNode;
+  defaultPageSize?: number;
+}
+
+type SortDirection = 'asc' | 'desc';
+
+function defaultRowId(row: unknown): string {
+  return isRecord(row) && row.id != null ? String(row.id) : '';
+}
+
+function filterOptionValue(option: DirectoryFilterOption): string {
+  return typeof option === 'string' ? option : option.value;
+}
+
+function filterOptionLabel(option: DirectoryFilterOption): ReactNode {
+  return typeof option === 'string' ? option : option.label;
+}
 
 // Yoğunluk modunun satır/başlık ölçüleri. "Sık" mod ekrana ~%40 daha fazla satır
 // sığdırır; uzun listelerde kaydırmayı azaltmak için istendi.
-const DENSITY_STYLES = {
+const DENSITY_STYLES: Record<Density, { row: string; head: string; card: string }> = {
   comfortable: { row: 'px-5 py-3.5 text-sm', head: 'px-5 py-3', card: 'gap-4' },
   compact: { row: 'px-4 py-2 text-[13px]', head: 'px-4 py-2', card: 'gap-3' },
 };
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
@@ -55,7 +146,7 @@ export const DIRECTORY_ALL = 'all';
  * arama/filtre/sıralama/sayfalama/seçim ve liste–kart görünümü burada yaşar.
  * Böylece dört ekran birebir aynı davranır ve tasarım tek yerden değişir.
  */
-export default function DirectoryPage({
+export default function DirectoryPage<TRow>({
   testId,
   title,
   subtitle,
@@ -65,7 +156,7 @@ export default function DirectoryPage({
   filters = [],
   columns = [],
   rows = [],
-  getRowId = (row) => row.id,
+  getRowId = defaultRowId,
   onRowClick,
   rowActions,
   selection,
@@ -86,9 +177,9 @@ export default function DirectoryPage({
   rangeLabel = (from, to, total) => `${total} kayıttan ${from}-${to} arası gösteriliyor`,
   banner,
   defaultPageSize = 10,
-}) {
-  const [view, setView] = useState('list');
-  const [sort, setSort] = useState({ key: null, direction: 'asc' });
+}: DirectoryPageProps<TRow>) {
+  const [view, setView] = useState<'list' | 'grid'>('list');
+  const [sort, setSort] = useState<{ key: string | null; direction: SortDirection }>({ key: null, direction: 'asc' });
   const [page, setPage] = useState(1);
 
   // Görünüm tercihleri kullanıcının son bıraktığı hâlden başlar (tablo bazında).
@@ -97,7 +188,7 @@ export default function DirectoryPage({
   const density = preferences.density || DEFAULT_DENSITY;
   const densityStyle = DENSITY_STYLES[density] || DENSITY_STYLES[DEFAULT_DENSITY];
 
-  const updatePreferences = useCallback((patch) => {
+  const updatePreferences = useCallback((patch: Partial<DirectoryPreferences>) => {
     setPreferences((prev) => {
       const next = { ...prev, ...patch };
       writePreferences(testId, next);
@@ -105,7 +196,7 @@ export default function DirectoryPage({
     });
   }, [testId]);
 
-  const setPageSize = useCallback((value) => updatePreferences({ pageSize: value }), [updatePreferences]);
+  const setPageSize = useCallback((value: number) => updatePreferences({ pageSize: value }), [updatePreferences]);
 
   // Gizlenebilir sütunlar: ilki kimlik sütunudur, listede yer almaz.
   const shownColumns = useMemo(
@@ -118,10 +209,11 @@ export default function DirectoryPage({
   useEffect(() => { setPage(1); }, [search?.value, filterSignature, pageSize]);
 
   const sorted = useMemo(() => {
-    if (!sort.key) return rows;
-    const column = columns.find((item) => item.key === sort.key);
+    const sortKey = sort.key;
+    if (!sortKey) return rows;
+    const column = columns.find((item) => item.key === sortKey);
     if (!column) return rows;
-    const value = column.sortValue || ((row) => row[sort.key]);
+    const value = column.sortValue || ((row: TRow) => (isRecord(row) ? row[sortKey] : undefined));
     return [...rows].sort((a, b) => {
       const left = value(a);
       const right = value(b);
@@ -154,14 +246,14 @@ export default function DirectoryPage({
     );
   };
 
-  const toggleRow = (id) => {
+  const toggleRow = (id: string) => {
     if (!selection) return;
     selection.onChange(
       selectedIds.includes(id) ? selectedIds.filter((item) => item !== id) : [...selectedIds, id],
     );
   };
 
-  const toggleSort = (key) => {
+  const toggleSort = (key: string) => {
     setSort((prev) => (prev.key === key
       ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
       : { key, direction: 'asc' }));
@@ -240,8 +332,8 @@ export default function DirectoryPage({
               <SelectContent>
                 <SelectItem value={DIRECTORY_ALL}>{filter.placeholder}</SelectItem>
                 {filter.options.map((option) => (
-                  <SelectItem key={option.value ?? option} value={option.value ?? option}>
-                    {option.label ?? option}
+                  <SelectItem key={filterOptionValue(option)} value={filterOptionValue(option)}>
+                    {filterOptionLabel(option)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -441,7 +533,7 @@ export default function DirectoryPage({
                   .filter((number) => number === 1 || number === pageCount || Math.abs(number - currentPage) <= 1)
                   .map((number, index, list) => (
                     <span key={number} className="flex items-center gap-1">
-                      {index > 0 && number - list[index - 1] > 1 ? <span className="px-1 text-muted-foreground">…</span> : null}
+                      {index > 0 && number - (list[index - 1] ?? number) > 1 ? <span className="px-1 text-muted-foreground">…</span> : null}
                       <Button
                         variant={number === currentPage ? 'default' : 'outline'}
                         size="icon"

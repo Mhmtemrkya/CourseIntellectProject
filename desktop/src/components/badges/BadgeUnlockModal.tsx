@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Check, Zap, Hash } from 'lucide-react';
 import BadgeShield from './BadgeShield';
+import type { Badge } from '../../lib/badges';
 
 const MAX_SHOWN = 6;
 
 // Yeni kazanılan rozet(ler) için animasyonlu kutlama modalı.
 // Birden fazla rozet açıldıysa sırayla gösterir (en fazla 6 tanesi).
-export default function BadgeUnlockModal({ badges, onClose }) {
+export default function BadgeUnlockModal({ badges, onClose }: { badges: Badge[] | null | undefined; onClose: () => void }) {
   const [index, setIndex] = useState(0);
   const shown = (badges || []).slice(0, MAX_SHOWN);
   const extraCount = (badges?.length || 0) - shown.length;
@@ -15,6 +16,7 @@ export default function BadgeUnlockModal({ badges, onClose }) {
   if (!shown.length) return null;
 
   const badge = shown[index];
+  if (!badge) return null;
   const isLast = index >= shown.length - 1;
   const color = badge.category.color;
 

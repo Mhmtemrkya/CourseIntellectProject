@@ -1,4 +1,6 @@
 import { useEffect, useCallback, useMemo } from 'react';
+import type { IconComponent } from '../../types/ui';
+import type { DesktopRole } from '../../types/session';
 import { useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -36,7 +38,20 @@ import {
   CommandSeparator,
 } from '../ui/command';
 
-const navigationByRole = {
+interface PaletteNavItem {
+  path: string;
+  icon: IconComponent;
+  label: string;
+  keywords: string[];
+}
+
+interface PaletteAction {
+  path: string;
+  icon: IconComponent;
+  label: string;
+}
+
+const navigationByRole: Partial<Record<DesktopRole, PaletteNavItem[]>> = {
   admin: [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', keywords: ['ana sayfa', 'home'] },
     { path: '/students', icon: Users, label: 'Öğrenciler', keywords: ['student', 'öğrenci'] },
@@ -142,11 +157,11 @@ export function CommandPalette() {
   const navigate = useNavigate();
 
   const navigationItems = useMemo(() => {
-    const role = user?.role || 'student';
-    return navigationByRole[role] || navigationByRole.student;
+    const role: DesktopRole = user?.role || 'student';
+    return navigationByRole[role] ?? navigationByRole.student ?? [];
   }, [user?.role]);
 
-  const quickActions = useMemo(() => {
+  const quickActions = useMemo((): PaletteAction[] => {
     switch (user?.role) {
       case 'admin':
         return [
@@ -196,7 +211,7 @@ export function CommandPalette() {
   }, [user?.role]);
 
   useEffect(() => {
-    const down = (e) => {
+    const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setCommandPaletteOpen((open) => !open);
@@ -207,7 +222,7 @@ export function CommandPalette() {
     return () => document.removeEventListener('keydown', down);
   }, [setCommandPaletteOpen]);
 
-  const handleSelect = useCallback((path) => {
+  const handleSelect = useCallback((path: string) => {
     setCommandPaletteOpen(false);
     navigate(path);
   }, [navigate, setCommandPaletteOpen]);

@@ -4,7 +4,12 @@
  * role) geriye uyum için opsiyonel tutulur.
  */
 
+/**
+ * `superadmin` backend rolünden eşlenmez; yalnız üst çubuktaki çalışma alanı
+ * seçicisiyle (setUserRole) oturuma yazılabilir.
+ */
 export type DesktopRole =
+  | 'superadmin'
   | 'admin'
   | 'finance'
   | 'teacher'

@@ -1,11 +1,35 @@
-import { KpiCard } from '../ui/kpi-card';
+import type { ReactNode } from 'react';
+import { KpiCard, type KpiTone } from '../ui/kpi-card';
+import type { IconComponent } from '@/types/ui';
+
+export interface RoleDashboardCard {
+  key: string;
+  label: string;
+  value: ReactNode;
+  caption?: ReactNode;
+  icon?: IconComponent | null;
+  /** Eski çağrılar büyük harfli `Icon` anahtarıyla geçer. */
+  Icon?: IconComponent | null;
+  tone?: KpiTone;
+  path?: string;
+  onClick?: () => void;
+}
+
+export interface RoleDashboardGroup {
+  key: string;
+  cards?: RoleDashboardCard[];
+}
 
 /**
  * Okul rollerinin ortak KPI ızgarası.
  * Gruplar veri sırasını korur; görsel başlık çizmez. Böylece her rol yalnız
  * kendisine ait kartları aynı ölçüde, boşluksuz ve tek bir grid içinde görür.
  */
-export default function RoleDashboardColumns({ groups = [], navigate, testId = 'role-dashboard-columns' }) {
+export default function RoleDashboardColumns({ groups = [], navigate, testId = 'role-dashboard-columns' }: {
+  groups?: RoleDashboardGroup[];
+  navigate?: (path: string) => void;
+  testId?: string;
+}) {
   const visibleGroups = groups
     .map((group) => ({
       ...group,
@@ -35,7 +59,7 @@ export default function RoleDashboardColumns({ groups = [], navigate, testId = '
               tone={card.tone}
               containerClassName="h-full min-w-0"
               className="min-h-[150px] justify-between"
-              onClick={card.onClick || (card.path && navigate ? () => navigate(card.path) : undefined)}
+              onClick={card.onClick || (card.path && navigate ? () => navigate(card.path ?? '') : undefined)}
             />
           ))}
         </div>

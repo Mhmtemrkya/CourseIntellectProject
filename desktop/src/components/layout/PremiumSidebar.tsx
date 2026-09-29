@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { Variants } from "framer-motion";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -17,7 +18,7 @@ import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../lib/i18n/LanguageContext";
 import { getDisabledFeatureKeys, isPathDisabled, resetTenantFeatureCache } from "../../lib/tenantFeatures";
-import { getEntitlements, isModuleAllowed, resetEntitlementCache } from "../../lib/entitlements";
+import { getEntitlements, isModuleAllowed, resetEntitlementCache, type Entitlements } from "../../lib/entitlements";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 import { collapseMenuHubs } from "../../lib/navigation/hubs";
 import { fetchMyCustomRole } from "../../lib/api/modules";
@@ -30,7 +31,14 @@ import {
   getModuleAwareMenuItems,
   inferModuleKey,
   menuConfigs,
+  type SidebarMenuItem,
 } from "./ModernSidebar";
+
+/** Özel rol sayfa kısıtı; null = özel rol yok / kısıt yok. */
+interface CustomRoleGate {
+  restricted: boolean;
+  modules: Set<string>;
+}
 import {
   Tooltip,
   TooltipContent,
@@ -39,7 +47,7 @@ import {
 } from "../ui/tooltip";
 
 /** Bir menü yolu mevcut adresi tam olarak veya alt rota olarak karşılıyor mu? */
-function pathIsActive(pathname, path) {
+function pathIsActive(pathname: string, path: string): boolean {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
@@ -48,20 +56,28 @@ function pathIsActive(pathname, path) {
  * sekmelerinin yollarını da (`covers`) taşır; kullanıcı hub'ın herhangi bir
  * sekmesindeyken menüde hub satırı işaretli kalır.
  */
-function itemPaths(item) {
+function itemPaths(item: SidebarMenuItem): string[] {
   return item?.covers?.length ? [item.path, ...item.covers] : [item.path];
 }
 
 /** Menü girişini karşılayan en uzun eşleşme (yoksa null). */
-function matchedPath(pathname, item) {
-  return itemPaths(item).reduce(
+function matchedPath(pathname: string, item: SidebarMenuItem): string | null {
+  return itemPaths(item).reduce<string | null>(
     (best, path) =>
       pathIsActive(pathname, path) && (!best || path.length > best.length) ? path : best,
     null,
   );
 }
 
-function SidebarLink({ item, compact, mobile, onNavigate, activePath }) {
+interface SidebarLinkProps {
+  item: SidebarMenuItem;
+  compact?: boolean;
+  mobile: boolean;
+  onNavigate: () => void;
+  activePath: string | null;
+}
+
+function SidebarLink({ item, compact = false, mobile, onNavigate, activePath }: SidebarLinkProps) {
   const { resolvedTheme } = useTheme();
   const light = resolvedTheme === "light";
   const active = item.path === activePath;
@@ -149,7 +165,14 @@ function SidebarLink({ item, compact, mobile, onNavigate, activePath }) {
  * Logo yüklenemezse (adres bozuk, dosya silinmiş) baş harfe düşülür — kart asla
  * kırık görsel göstermez.
  */
-function InstitutionBadge({ logo, name, fallbackInitial, compact = false }) {
+interface InstitutionBadgeProps {
+  logo?: string | null;
+  name?: string | null;
+  fallbackInitial: string;
+  compact?: boolean;
+}
+
+function InstitutionBadge({ logo, name, fallbackInitial, compact = false }: InstitutionBadgeProps) {
   const [failed, setFailed] = useState(false);
   // ThemeContext logoyu zaten mutlak adrese çevirir; burada tekrar dönüştürülmez.
   const source = logo || "";
@@ -219,16 +242,16 @@ export function PremiumSidebar() {
   const { language, setLanguage } = useLanguage();
   const light = resolvedTheme === "light";
   const [mobile, setMobile] = useState(() => window.innerWidth < 1024);
-  const [disabledFeatures, setDisabledFeatures] = useState(null);
-  const [entitlements, setEntitlements] = useState(null);
+  const [disabledFeatures, setDisabledFeatures] = useState<ReadonlySet<string> | null>(null);
+  const [entitlements, setEntitlements] = useState<Entitlements | null>(null);
   // Kullanıcının özel rolü varsa menü o rolün SAYFA listesiyle daraltılır.
   // null = özel rol yok / kısıt yok. { modules:Set, restricted:bool } = kısıtlı.
-  const [customRoleGate, setCustomRoleGate] = useState(null);
-  const [openGroups, setOpenGroups] = useState(() => new Set());
+  const [customRoleGate, setCustomRoleGate] = useState<CustomRoleGate | null>(null);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1023px)");
-    const syncViewport = (event) => {
+    const syncViewport = (event: MediaQueryListEvent) => {
       setMobile(event.matches);
       if (event.matches) setSidebarCollapsed(true);
     };
@@ -241,17 +264,17 @@ export function PremiumSidebar() {
   useEffect(() => {
     let active = true;
     if (user?.isPlatformAdmin) {
-      setDisabledFeatures(new Set());
+      setDisabledFeatures(new Set<string>());
       setEntitlements({ unrestricted: true, roles: {} });
     } else {
       // Önbellekler kullanıcı/kurum kapsamlıdır. Aynı uygulamada çıkış yapıp
       // başka kuruma girildiğinde önceki kurumun paket ve özellikleri taşınamaz.
       resetTenantFeatureCache();
       resetEntitlementCache();
-      getDisabledFeatureKeys().then((keys) => {
+      void getDisabledFeatureKeys().then((keys) => {
         if (active) setDisabledFeatures(keys);
       });
-      getEntitlements().then((value) => {
+      void getEntitlements().then((value) => {
         if (active) setEntitlements(value);
       });
     }
@@ -308,7 +331,7 @@ export function PremiumSidebar() {
       isPathVisibleForRoles(item.path, roles),
     );
     const featureFilteredItems =
-      disabledFeatures?.size > 0
+      disabledFeatures && disabledFeatures.size > 0
         ? roleFilteredItems.filter(
             (item) => !isPathDisabled(item.path, disabledFeatures),
           )
@@ -325,7 +348,8 @@ export function PremiumSidebar() {
     // Özel rol kısıtı: kurum yöneticisinin yetki matrisinde işaretlemediği sayfa
     // menüde GÖRÜNMEZ. Yalnız daraltır (hiçbir zaman genişletmez); profil gibi
     // temel girişler dışarıda tutulur, yoksa kullanıcı hesabına erişemez.
-    const customRoleItems = customRoleGate?.restricted || customRoleGate?.modules?.size
+    const gate = customRoleGate;
+    const customRoleItems = gate && (gate.restricted || gate.modules.size > 0)
       ? visibleItems.filter((item) => {
         const moduleKey = inferModuleKey(item);
         // Profil daima kalır: kullanıcı kendi hesabına erişemezse uygulama
@@ -335,8 +359,8 @@ export function PremiumSidebar() {
         // Aksi hâlde eşlemesi olmayan ekranlar (ör. /admin/passive-registrations
         // gibi PII taşıyan listeler) hiçbir sayfa seçilmemiş bir rolde bile
         // görünüyordu. Kısıtsız (eski) rollerde davranış değişmez.
-        if (!moduleKey) return !customRoleGate.restricted;
-        return customRoleGate.modules.has(moduleKey.toLowerCase());
+        if (!moduleKey) return !gate.restricted;
+        return gate.modules.has(moduleKey.toLowerCase());
       })
       : visibleItems;
 
@@ -359,7 +383,7 @@ export function PremiumSidebar() {
     );
     setOpenGroups((current) => {
       const next = new Set(current);
-      if (activeGroup?.id !== "main") next.add(activeGroup?.id);
+      if (activeGroup && activeGroup.id !== "main") next.add(activeGroup.id);
       return next;
     });
   }, [groups, location.pathname]);
@@ -369,7 +393,7 @@ export function PremiumSidebar() {
   const allItems = groups.flatMap((group) => group.items);
   // Aktif menü girişi "en uzun eşleşen yol" ile bulunur; hub girişleri sekme
   // yollarını da kapsar (bkz. matchedPath).
-  const activeMatch = allItems.reduce((best, item) => {
+  const activeMatch = allItems.reduce<{ hit: string; path: string } | null>((best, item) => {
     const hit = matchedPath(location.pathname, item);
     if (!hit) return best;
     return !best || hit.length > best.hit.length ? { hit, path: item.path } : best;
@@ -390,10 +414,11 @@ export function PremiumSidebar() {
       ? user.username
       : user?.email || user?.username || "";
 
-  const toggleGroup = (id) => {
+  const toggleGroup = (id: string) => {
     setOpenGroups((current) => {
       const next = new Set(current);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -403,7 +428,7 @@ export function PremiumSidebar() {
     navigate("/login", { replace: true });
   };
 
-  const variants = {
+  const variants: Variants = {
     expanded: {
       width: mobile ? "90vw" : 280,
       x: 0,

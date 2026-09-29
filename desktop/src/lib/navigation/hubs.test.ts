@@ -110,12 +110,13 @@ describe('yönetici menüsü boyutu', () => {
   it('kurum yöneticisinin menüsünü belirgin şekilde kısaltır', () => {
     // eslint-disable-next-line global-require
     const { menuConfigs } = require('../../components/layout/ModernSidebar') as typeof import('../../components/layout/ModernSidebar');
-    const admin = menuConfigs.admin;
+    const admin = menuConfigs.admin ?? [];
+    expect(admin.length).toBeGreaterThan(0);
     const collapsed = collapseMenuHubs(admin);
 
     // Katlama hiçbir ekranı kaybetmemeli: her giriş ya menüde ya bir hub'ın içinde.
     const reachable = new Set(
-      collapsed.flatMap((entry) => ('covers' in entry && entry.covers.length ? entry.covers : [entry.path])),
+      collapsed.flatMap((entry) => (entry.covers?.length ? entry.covers : [entry.path])),
     );
     admin.forEach((entry) => expect(reachable.has(entry.path)).toBe(true));
 

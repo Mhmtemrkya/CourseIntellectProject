@@ -5,15 +5,39 @@ import {
 import { Dialog, DialogContent } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { openHttpUrl } from '../../lib/safeOpen';
+import { errorMessage } from '../../lib/errors';
 
-function parseStart(dateLabel, startTime) {
+/** Kapının okuduğu sınav alanları (öğrenci sınav listesi satırı). */
+export interface ExamEntryGateExam {
+  name?: string | null;
+  title?: string | null;
+  requireCamera?: boolean | null;
+  liveLinkUrl?: string | null;
+  lateEntryLimitMinutes?: number | string | null;
+  dateLabel?: string | null;
+  date?: string | null;
+  startTime?: string | null;
+}
+
+export interface ExamEntryDecision {
+  joinedLive: boolean;
+  cameraReady: boolean;
+}
+
+export interface ExamEntryGateProps {
+  exam: ExamEntryGateExam | null | undefined;
+  onCancel: () => void;
+  onEnter: (decision: ExamEntryDecision) => Promise<unknown> | unknown;
+}
+
+function parseStart(dateLabel: string | null | undefined, startTime: string | null | undefined): { date: Date; hasTime: boolean } | null {
   const raw = String(dateLabel || '').trim();
   if (!raw) return null;
   let base = new Date(raw);
   if (Number.isNaN(base.getTime())) {
     const parts = raw.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
     if (!parts) return null;
-    const [, day, month, year] = parts;
+    const [, day = '', month = '', year = ''] = parts;
     base = new Date(`${year.length === 2 ? `20${year}` : year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`);
     if (Number.isNaN(base.getTime())) return null;
   }
@@ -27,9 +51,9 @@ function parseStart(dateLabel, startTime) {
 
 // Sınav öncesi kapı: kamera + canlı yayın zorunluysa öğrenci ikisini de
 // tamamlamadan sınava giremez. Geç giriş limiti de burada uygulanır.
-export default function ExamEntryGate({ exam, onCancel, onEnter }) {
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
+export default function ExamEntryGate({ exam, onCancel, onEnter }: ExamEntryGateProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [cameraError, setCameraError] = useState('');
@@ -78,7 +102,7 @@ export default function ExamEntryGate({ exam, onCancel, onEnter }) {
       setCameraReady(true);
     } catch (err) {
       setCameraReady(false);
-      setCameraError(err?.message || 'Kameraya erişilemedi. Lütfen izin verip tekrar dene.');
+      setCameraError(errorMessage(err, 'Kameraya erişilemedi. Lütfen izin verip tekrar dene.'));
     } finally {
       setCameraLoading(false);
     }

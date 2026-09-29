@@ -18,7 +18,7 @@ import { findHubByPath } from '../../lib/navigation/hubs';
 export function SectionHubTabs() {
   const location = useLocation();
   const { user } = useApp();
-  const [disabledFeatures, setDisabledFeatures] = useState(null);
+  const [disabledFeatures, setDisabledFeatures] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     let alive = true;
