@@ -89,7 +89,9 @@
     "desktop:build:signed": "bash scripts/build-macos-signed.sh",
     "desktop:version": "node scripts/set-desktop-version.mjs",
     "typecheck": "tsc --noEmit -p .",
-    "ts:gate": "node ./scripts/ts-strict-gate.mjs"
+    "ts:gate": "node ./scripts/ts-strict-gate.mjs",
+    "api:types": "node ./scripts/generate-api-types.mjs",
+    "api:types:check": "node ./scripts/generate-api-types.mjs --check"
   },
   "browserslist": {
     "production": [
