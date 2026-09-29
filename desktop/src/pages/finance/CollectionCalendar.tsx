@@ -12,9 +12,26 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
 import { formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
-import { filterByPeriod, periodLabel, shiftAnchor } from '../../lib/financePeriod';
+import { filterByPeriod, isFinancePeriod, periodLabel, shiftAnchor, type FinancePeriod } from '../../lib/financePeriod';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { IconComponent } from '../../types/ui';
 
-function normalizeDate(value) {
+/** Takvim satırı: işlenmiş tahsilat ya da planlı taksit. */
+interface CalendarEntry {
+  id: string;
+  label: string;
+  detail: string;
+  amountValue: number;
+  entryDate: Date | null;
+  /** Ekranda gösterilen ham tarih metni (tahsilat saati ya da vade). */
+  dateLabel: string;
+  status: string;
+}
+
+const CALENDAR_VIEWS: readonly FinancePeriod[] = ['day', 'week', 'month'];
+
+function normalizeDate(value: string | null | undefined): Date | null {
   if (!value) return null;
   const trMatch = String(value).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
   if (trMatch) {
@@ -26,7 +43,7 @@ function normalizeDate(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function getPeriodKey(date, view) {
+function getPeriodKey(date: Date | null, view: FinancePeriod): string {
   if (!date) return 'Belirsiz';
   if (view === 'day') return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
   if (view === 'week') {
@@ -40,10 +57,10 @@ function getPeriodKey(date, view) {
 }
 
 export default function CollectionCalendar() {
-  const [dashboard, setDashboard] = useState(null);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [view, setView] = useState('month');
+  const [view, setView] = useState<FinancePeriod>('month');
   const [anchor, setAnchor] = useState(() => new Date());
 
   const loadCalendar = useCallback(async () => {
@@ -52,40 +69,42 @@ export default function CollectionCalendar() {
       setError('');
       setDashboard(await fetchAccountingDashboard());
     } catch (err) {
-      setError(err.message || 'Tahsilat takvimi alınamadı.');
+      setError(errorMessage(err, 'Tahsilat takvimi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadCalendar();
+    void loadCalendar();
   }, [loadCalendar]);
 
-  const calendarEntries = useMemo(() => {
+  const calendarEntries = useMemo((): CalendarEntry[] => {
     // İade belgeleri "planlı/işlenmiş tahsilat" değildir; takvim toplamına girerse
     // dönem planı eksiye düşer. Takvim yalnız gerçek tahsilat ve taksitleri gösterir.
     const collectionItems = (dashboard?.collections || [])
       .filter((item) => item.entryType !== 'Refund' && parseFinanceMoney(item.amount) >= 0)
-      .map((item) => {
+      .map((item): CalendarEntry => {
         const date = normalizeDate(String(item.time || '').replace(' • ', ' '));
         return {
-          ...item,
+          id: item.id,
           label: item.name || 'Tahsilat',
           detail: `${item.className || 'Sınıf yok'} • ${item.method || 'Ödeme'}`,
           amountValue: parseFinanceMoney(item.amount),
           entryDate: date,
+          dateLabel: item.time,
           status: 'İşlendi',
         };
       });
-    const installmentItems = (dashboard?.installments || []).map((item) => {
-      const date = normalizeDate(item.dueDate || item.due);
+    const installmentItems = (dashboard?.installments || []).map((item): CalendarEntry => {
+      const date = normalizeDate(item.due);
       return {
-        ...item,
-        label: item.student || item.name || 'Öğrenci',
+        id: item.id,
+        label: item.student || 'Öğrenci',
         detail: item.note || 'Planlı tahsilat',
         amountValue: parseFinanceMoney(item.amount),
         entryDate: date,
+        dateLabel: item.due,
         status: item.status || 'Beklemede',
       };
     });
@@ -98,10 +117,9 @@ export default function CollectionCalendar() {
     [calendarEntries, view, anchor],
   );
 
-  const grouped = useMemo(() => periodEntries.reduce((acc, item) => {
+  const grouped = useMemo(() => periodEntries.reduce<Record<string, CalendarEntry[]>>((acc, item) => {
     const key = getPeriodKey(item.entryDate, view);
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(item);
+    (acc[key] ??= []).push(item);
     return acc;
   }, {}), [periodEntries, view]);
 
@@ -121,11 +139,11 @@ export default function CollectionCalendar() {
           <p className="text-muted-foreground mt-1">Gün, hafta ve ay görünümünde planlanan tahsilatlar</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:w-auto">
-          {[
+          {([
             ['Toplam Plan', formatCurrency(summary.total), Wallet],
             ['Kayıt', String(summary.count), CalendarRange],
             ['Geciken', String(summary.overdue), Landmark],
-          ].map(([label, value, Icon]) => (
+          ] satisfies ReadonlyArray<readonly [string, string, IconComponent]>).map(([label, value, Icon]) => (
             <Card key={label} className="min-w-[170px]">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="rounded-xl bg-muted p-2"><Icon className="h-4 w-4 text-brand-primary" /></div>
@@ -141,7 +159,7 @@ export default function CollectionCalendar() {
 
       {error ? <ErrorBanner title="Tahsilat takvimi alınamadı" message={error} onRetry={loadCalendar} /> : null}
 
-      <Tabs value={view} onValueChange={(v) => { setView(v); setAnchor(new Date()); }}>
+      <Tabs value={view} onValueChange={(v) => { if (isFinancePeriod(v)) { setView(v); setAnchor(new Date()); } }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <TabsList>
             <TabsTrigger value="day">Günlük</TabsTrigger>
@@ -155,7 +173,7 @@ export default function CollectionCalendar() {
           </div>
         </div>
 
-        {['day', 'week', 'month'].map((mode) => (
+        {CALENDAR_VIEWS.map((mode) => (
           <TabsContent key={mode} value={mode} className="mt-6 space-y-4">
             {Object.entries(grouped).map(([period, items]) => (
               <Card key={`${mode}-${period}`} className="overflow-hidden">
@@ -172,7 +190,7 @@ export default function CollectionCalendar() {
                       <div key={item.id} className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
                         <div className="space-y-1">
                           <p className="font-semibold">{item.label}</p>
-                          <p className="text-sm text-muted-foreground">{item.detail} • {item.time || item.dueDate || item.due || 'Tarih yok'}</p>
+                          <p className="text-sm text-muted-foreground">{item.detail} • {item.dateLabel || 'Tarih yok'}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-3">
                           <Badge variant="outline">{item.status || 'Beklemede'}</Badge>

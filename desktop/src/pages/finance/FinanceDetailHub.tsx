@@ -9,10 +9,12 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
 import { formatCurrency } from '../../lib/financeDocuments';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
 
 export default function FinanceDetailHub() {
   const navigate = useNavigate();
-  const [dashboard, setDashboard] = useState(null);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -22,7 +24,7 @@ export default function FinanceDetailHub() {
       setError('');
       setDashboard(await fetchAccountingDashboard());
     } catch (err) {
-      setError(err.message || 'Finans detay merkezi alınamadı.');
+      setError(errorMessage(err, 'Finans detay merkezi alınamadı.'));
     } finally {
       setLoading(false);
     }
@@ -31,8 +33,8 @@ export default function FinanceDetailHub() {
   useEffect(() => { loadDetails(); }, [loadDetails]);
 
   const sections = useMemo(() => ([
-    { title: 'Fatura Detayları', icon: FileBadge2, route: '/finance/invoices-receipts', items: (dashboard?.invoices || []).slice(0, 4).map((item) => ({ id: item.id, name: item.studentName || item.title, value: item.amount, status: item.status })) },
-    { title: 'Taksit Detayları', icon: ReceiptText, route: '/finance/installments', items: (dashboard?.installments || []).slice(0, 4).map((item) => ({ id: item.id, name: item.student || item.name, value: item.amount, status: item.status })) },
+    { title: 'Fatura Detayları', icon: FileBadge2, route: '/finance/invoices-receipts', items: (dashboard?.invoices || []).slice(0, 4).map((item) => ({ id: item.id, name: item.title, value: item.amount, status: item.status })) },
+    { title: 'Taksit Detayları', icon: ReceiptText, route: '/finance/installments', items: (dashboard?.installments || []).slice(0, 4).map((item) => ({ id: item.id, name: item.student, value: item.amount, status: item.status })) },
     { title: 'Tahsilat Detayları', icon: CircleDollarSign, route: '/finance/collections', items: (dashboard?.collections || []).slice(0, 4).map((item) => ({ id: item.id, name: item.name, value: item.amount, status: item.note || 'İşlendi' })) },
   ]), [dashboard]);
 

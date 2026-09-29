@@ -9,14 +9,17 @@ import { reconcileFinance } from '../../lib/api/modules';
 import { formatCurrency } from '../../lib/financeDocuments';
 import { formatDate } from '../../lib/format';
 import { StatusBadge } from '../../components/ui/status-badge';
+import { errorMessage } from '../../lib/errors';
+import type { ReconciliationResultDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
 const PLACEHOLDER = 'HVL123, 5000, 2026-06-01\nPOS987, 2500, 2026-06-02\nEFT456, 1800, 2026-06-03';
 
 export default function Reconciliation() {
   const { toast } = useToast();
   const [text, setText] = useState('');
-  const [tolerance, setTolerance] = useState(3);
-  const [result, setResult] = useState(null);
+  const [tolerance, setTolerance] = useState<number | string>(3);
+  const [result, setResult] = useState<ReconciliationResultDto | null>(null);
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
@@ -33,7 +36,7 @@ export default function Reconciliation() {
       setBusy(true);
       setResult(await reconcileFinance({ rows, dateToleranceDays: Number(tolerance) || 0 }));
     } catch (err) {
-      toast({ title: 'Mutabakat yapılamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Mutabakat yapılamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
@@ -90,11 +93,11 @@ export default function Reconciliation() {
       {result ? (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            {[
+            {([
               ['Toplam Satır', String(result.total), CircleDollarSign, 'text-foreground'],
               ['Eşleşen', `${result.matched} • ${formatCurrency(result.matchedAmount)}`, ShieldCheck, 'text-emerald-600'],
               ['Eşleşmeyen', `${result.unmatched} • ${formatCurrency(result.unmatchedAmount)}`, ArrowRightLeft, 'text-red-600'],
-            ].map(([label, value, Icon, color]) => (
+            ] satisfies ReadonlyArray<readonly [string, string, IconComponent, string]>).map(([label, value, Icon, color]) => (
               <Card key={label}>
                 <CardContent className="flex items-center gap-3 p-4">
                   <div className="rounded-xl bg-muted p-2"><Icon className={`h-5 w-5 ${color}`} /></div>

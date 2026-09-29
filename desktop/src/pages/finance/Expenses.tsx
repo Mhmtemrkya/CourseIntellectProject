@@ -10,6 +10,24 @@ import {
 } from '../../lib/api/modules';
 import { Page, PageHeader, PageLoading, PageNotice, StatCard } from '../../components/layout/PageKit';
 import { formatDate, formatDateTime } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { ExpenseItem, ExpenseListResponse, ExpenseQuery } from '../../lib/api/expenses';
+import type { ExpenseRequest } from '../../types/api/generated';
+
+/** Gider formu: tutar/tarih metin olarak tutulur, kaydederken çevrilir. */
+interface ExpenseForm {
+  id?: string;
+  category: string;
+  title: string;
+  amount: string;
+  expenseDate: string;
+  vendorName: string;
+  invoiceNo: string;
+  vehicleId: string;
+  note: string;
+}
+
+type Vehicle = ExpenseListResponse['vehicles'][number];
 
 // Backend enum'larıyla birebir; personel maaş/primi kasıtlı olarak YOK.
 const CATEGORIES = [
@@ -23,19 +41,26 @@ const CATEGORIES = [
   { value: 'Marketing', label: 'Reklam / Tanıtım' },
   { value: 'Other', label: 'Diğer' },
 ];
-const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map((x) => [x.value, x.label]));
-const money = (v) => `${Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`;
-const dateTime = (v) => (v ? formatDateTime(v) : '—');
-const dateOnly = (v) => (v ? formatDate(v) : '—');
+const CATEGORY_LABEL: Partial<Record<string, string>> = Object.fromEntries(CATEGORIES.map((x) => [x.value, x.label]));
+const money = (v: unknown) => `${Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`;
+const dateTime = (v: string | null | undefined) => (v ? formatDateTime(v) : '—');
+const dateOnly = (v: string | null | undefined) => (v ? formatDate(v) : '—');
 const todayInput = () => new Date().toISOString().slice(0, 10);
 
-const EMPTY_FORM = { category: 'Fuel', title: '', amount: '', expenseDate: todayInput(), vendorName: '', invoiceNo: '', vehicleId: '', note: '' };
+const EMPTY_FORM: ExpenseForm = { category: 'Fuel', title: '', amount: '', expenseDate: todayInput(), vendorName: '', invoiceNo: '', vehicleId: '', note: '' };
 
-function ExpenseModal({ initial, vehicles, onClose, onSaved }) {
+interface ExpenseModalProps {
+  initial: ExpenseForm;
+  vehicles: readonly Vehicle[];
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+function ExpenseModal({ initial, vehicles, onClose, onSaved }: ExpenseModalProps) {
   const { toast } = useToast();
-  const [form, setForm] = useState(initial);
+  const [form, setForm] = useState<ExpenseForm>(initial);
   const [saving, setSaving] = useState(false);
-  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  const set = (patch: Partial<ExpenseForm>) => setForm((f) => ({ ...f, ...patch }));
   const editing = Boolean(initial.id);
   const hasVehicles = vehicles.length > 0;
 
@@ -45,7 +70,7 @@ function ExpenseModal({ initial, vehicles, onClose, onSaved }) {
     if (!amount || amount <= 0) { toast({ title: 'Geçerli bir tutar girin', variant: 'destructive' }); return; }
     setSaving(true);
     try {
-      const payload = {
+      const payload: ExpenseRequest = {
         category: form.category,
         title: form.title.trim(),
         vendorName: form.vendorName.trim(),
@@ -55,12 +80,12 @@ function ExpenseModal({ initial, vehicles, onClose, onSaved }) {
         vehicleId: form.vehicleId || null,
         note: form.note.trim(),
       };
-      if (editing) await updateExpense(initial.id, payload);
+      if (initial.id) await updateExpense(initial.id, payload);
       else await createExpense(payload);
       toast({ title: editing ? 'Gider güncellendi' : 'Gider faturası oluşturuldu' });
       onSaved();
     } catch (e) {
-      toast({ title: 'Gider kaydedilemedi', description: e.message, variant: 'destructive' });
+      toast({ title: 'Gider kaydedilemedi', description: errorMessage(e), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -130,37 +155,37 @@ function ExpenseModal({ initial, vehicles, onClose, onSaved }) {
 
 export default function Expenses() {
   const { toast } = useToast();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<ExpenseListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ category: '', vehicleId: '', from: '', to: '' });
-  const [modal, setModal] = useState(null); // null | form-object
+  const [modal, setModal] = useState<ExpenseForm | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params: ExpenseQuery = {};
       if (filters.category) params.category = filters.category;
       if (filters.vehicleId) params.vehicleId = filters.vehicleId;
       if (filters.from) params.from = new Date(`${filters.from}T00:00:00`).toISOString();
       if (filters.to) params.to = new Date(`${filters.to}T23:59:59.999`).toISOString();
       setData(await fetchExpenses(params));
     } catch (e) {
-      toast({ title: 'Giderler alınamadı', description: e.message, variant: 'destructive' });
+      toast({ title: 'Giderler alınamadı', description: errorMessage(e), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   }, [filters, toast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const remove = async (item) => {
+  const remove = async (item: ExpenseItem) => {
     if (!window.confirm(`"${item.title}" giderini silmek istiyor musunuz?`)) return;
     try {
       await deleteExpense(item.id);
       toast({ title: 'Gider silindi' });
       await load();
     } catch (e) {
-      toast({ title: 'Silinemedi', description: e.message, variant: 'destructive' });
+      toast({ title: 'Silinemedi', description: errorMessage(e), variant: 'destructive' });
     }
   };
 

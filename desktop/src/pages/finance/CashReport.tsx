@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatMoney as formatCurrency } from '../../lib/format';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Receipt, TrendingUp, TrendingDown, CreditCard, Banknote, Building2,
   Calendar, Download, ArrowUpRight, ArrowDownRight,
@@ -20,29 +20,31 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
-import { filterByPeriod, periodLabel, shiftAnchor } from '../../lib/financePeriod';
+import { filterByPeriod, isFinancePeriod, periodLabel, shiftAnchor, type FinancePeriod } from '../../lib/financePeriod';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { AccountingCollectionDto } from '../../types/api/generated';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
 
-function parseAmount(value) {
+function parseAmount(value: unknown): number {
   return parseFinanceMoney(value);
 }
 
 export default function CashReport() {
-  const [dashboard, setDashboard] = useState({});
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [period, setPeriod] = useState('month');
+  const [period, setPeriod] = useState<FinancePeriod>('month');
   const [anchor, setAnchor] = useState(() => new Date());
 
   const loadData = useCallback(async () => {
@@ -50,26 +52,26 @@ export default function CashReport() {
       setLoading(true);
       setError('');
       const data = await fetchAccountingDashboard();
-      setDashboard(data || {});
+      setDashboard(data);
     } catch (err) {
-      setError(err.message || 'Rapor yüklenemedi.');
+      setError(errorMessage(err, 'Rapor yüklenemedi.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   const allEntries = useMemo(() => {
-    const list = dashboard?.recentCollections || dashboard?.collections || [];
+    const list = dashboard?.collections || [];
     const all = Array.isArray(list) ? list : [];
     // Seçili döneme (Günlük/Haftalık/Aylık/Yıllık) göre süz; tarih = kalemin time alanı.
-    return filterByPeriod(all, (c) => c.time || c.date || c.createdAt, period, anchor);
+    return filterByPeriod(all, (c) => c.time, period, anchor);
   }, [dashboard, period, anchor]);
 
   // İade belgeleri negatif tutarlı hareketlerdir; yöntem kırılımına ve "Toplam
   // Tahsilat"a karışırsa kasa eksiye düşer ve yüzdeler negatif çıkar. Ayrı tutulur.
-  const isRefundEntry = (c) => c.entryType === 'Refund' || parseAmount(c.amount) < 0;
+  const isRefundEntry = (c: AccountingCollectionDto) => c.entryType === 'Refund' || parseAmount(c.amount) < 0;
   const collections = useMemo(() => allEntries.filter((c) => !isRefundEntry(c)), [allEntries]);
   const refundTotal = useMemo(
     () => allEntries.filter(isRefundEntry).reduce((s, c) => s + Math.abs(parseAmount(c.amount)), 0),
@@ -77,13 +79,13 @@ export default function CashReport() {
   );
 
   const cashTotal = useMemo(
-    () => collections.filter((c) => normalizeFinanceText(c.method || c.paymentMethod || c.type).includes('nakit')).reduce((s, c) => s + parseAmount(c.amount), 0),
+    () => collections.filter((c) => normalizeFinanceText(c.method).includes('nakit')).reduce((s, c) => s + parseAmount(c.amount), 0),
     [collections],
   );
 
   const cardTotal = useMemo(
     () => collections.filter((c) => {
-      const method = normalizeFinanceText(c.method || c.paymentMethod || c.type);
+      const method = normalizeFinanceText(c.method);
       return method.includes('kart') || method.includes('card') || method.includes('credit') || method.includes('pos');
     }).reduce((s, c) => s + parseAmount(c.amount), 0),
     [collections],
@@ -91,7 +93,7 @@ export default function CashReport() {
 
   const bankTotal = useMemo(
     () => collections.filter((c) => {
-      const method = normalizeFinanceText(c.method || c.paymentMethod || c.type);
+      const method = normalizeFinanceText(c.method);
       return method.includes('havale') || method.includes('eft') || method.includes('bank') || method.includes('banka') || method.includes('transfer');
     }).reduce((s, c) => s + parseAmount(c.amount), 0),
     [collections],
@@ -101,7 +103,7 @@ export default function CashReport() {
   // aksi halde Toplam Tahsilat eksik çıkar ve yüzdeler gerçek toplamı yansıtmaz.
   const otherTotal = useMemo(
     () => collections.filter((c) => {
-      const method = normalizeFinanceText(c.method || c.paymentMethod || c.type);
+      const method = normalizeFinanceText(c.method);
       const isCash = method.includes('nakit');
       const isCard = method.includes('kart') || method.includes('card') || method.includes('credit') || method.includes('pos');
       const isBank = method.includes('havale') || method.includes('eft') || method.includes('bank') || method.includes('banka') || method.includes('transfer');
@@ -135,7 +137,7 @@ export default function CashReport() {
             <span className="min-w-[120px] text-center text-sm font-semibold">{periodLabel(period, anchor)}</span>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAnchor((a) => shiftAnchor(period, a, 1))}><ChevronRight className="h-4 w-4" /></Button>
           </div>
-          <Select value={period} onValueChange={(v) => { setPeriod(v); setAnchor(new Date()); }}>
+          <Select value={period} onValueChange={(v) => { if (isFinancePeriod(v)) { setPeriod(v); setAnchor(new Date()); } }}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="day">Günlük</SelectItem>
@@ -271,12 +273,12 @@ export default function CashReport() {
                 ) : (
                   collections.slice(0, 20).map((c, idx) => (
                     <TableRow key={c.id || idx}>
-                      <TableCell className="font-medium">{c.name || c.studentName || c.description || '-'}</TableCell>
+                      <TableCell className="font-medium">{c.name || '-'}</TableCell>
                       <TableCell className="font-mono">{formatCurrency(parseAmount(c.amount))}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{c.method || c.paymentMethod || c.type || 'Belirtilmemiş'}</Badge>
+                        <Badge variant="outline">{c.method || 'Belirtilmemiş'}</Badge>
                       </TableCell>
-                      <TableCell>{c.time || (c.date ? formatDate(c.date) : '-')}</TableCell>
+                      <TableCell>{c.time || '-'}</TableCell>
                     </TableRow>
                   ))
                 )}

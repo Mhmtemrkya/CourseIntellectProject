@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   FileText, Download, Printer, Search,
   Eye, CheckCircle, XCircle, Plus, CircleDollarSign,
@@ -38,20 +38,48 @@ import {
   parseFinanceMoney,
   printFinanceHtml,
 } from '../../lib/financeDocuments';
-import { filterByPeriod, periodLabel as buildPeriodLabel, shiftAnchor } from '../../lib/financePeriod';
+import { filterByPeriod, periodLabel as buildPeriodLabel, shiftAnchor, type FinancePeriod } from '../../lib/financePeriod';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDate } from '../../lib/format';
 import { StatusBadge } from '../../components/ui/status-badge';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { AccountingCollectionDto, AccountingInvoiceDto, StudentSummaryDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
+
+type InvoiceStatus = 'paid' | 'unpaid' | 'overdue';
+
+/** Detay penceresi ve belge üretimi için türüyle etiketlenmiş kayıt. */
+type SelectedRecord =
+  | (AccountingInvoiceDto & { type: 'invoice' })
+  | (AccountingCollectionDto & { type: 'receipt' });
+
+interface CreateDialogProps<T> {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  students: StudentSummaryDto[];
+  onCreated: (created: T) => void;
+}
+
+interface MarkPaidDialogProps {
+  invoice: AccountingInvoiceDto | null;
+  onOpenChange: (open: boolean) => void;
+  onPaid: (updated: AccountingInvoiceDto) => void;
+}
+
+function sumAmounts(items: ReadonlyArray<{ amount: string }>): number {
+  return items.reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
+}
 
 /**
  * Öğrenci seçicilerinde kullanılan TEKİL anahtar. Ad tekil değildir: aynı isimli
@@ -59,11 +87,11 @@ const itemVariants = {
  * başkasına yazılabilir. Kullanıcı kimliği varsa o, yoksa kullanıcı adı kullanılır;
  * ad yalnız son çare.
  */
-function studentKeyOf(student) {
-  return String(student?.userId || student?.username || student?.fullName || '');
+function studentKeyOf(student: StudentSummaryDto): string {
+  return student.userId || student.username || student.fullName || '';
 }
 
-function statusFromInvoice(invoice) {
+function statusFromInvoice(invoice: AccountingInvoiceDto): InvoiceStatus {
   const status = normalizeFinanceText(invoice.status);
   if (status === 'paid' || status.includes('odendi') || status.includes('onay')) return 'paid';
   if (invoice.dueDateUtc && new Date(invoice.dueDateUtc) < new Date()) return 'overdue';
@@ -74,7 +102,7 @@ function statusFromInvoice(invoice) {
 
 function InvoiceCreateDialog({
   open, onOpenChange, students, onCreated,
-}) {
+}: CreateDialogProps<AccountingInvoiceDto>) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -142,7 +170,7 @@ function InvoiceCreateDialog({
         isPaid: form.paymentStatus === 'paid',
         paymentMethod: form.paymentStatus === 'paid' ? form.paymentMethod : null,
       });
-      onCreated(created);
+      if (created) onCreated(created);
       toast({
         title: 'Fatura oluşturuldu',
         description: `Fatura ${form.paymentStatus === 'paid' ? 'ödendi' : 'ödenmedi'} durumunda kaydedildi.`,
@@ -151,7 +179,7 @@ function InvoiceCreateDialog({
     } catch (err) {
       toast({
         title: 'Fatura oluşturulamadı',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -169,7 +197,7 @@ function InvoiceCreateDialog({
           <div className="space-y-2">
             <Label>Öğrenciden hızlı doldur (isteğe bağlı)</Label>
             <Select value={form.studentKey} onValueChange={(value) => {
-              const student = students.find((item) => (item.username || item.fullName) === value);
+              const student = students.find((item) => studentKeyOf(item) === value);
               setForm((prev) => ({
                 ...prev,
                 studentKey: value,
@@ -181,7 +209,7 @@ function InvoiceCreateDialog({
               <SelectTrigger><SelectValue placeholder="Öğrenci seçmeden manuel giriş yapabilirsiniz" /></SelectTrigger>
               <SelectContent>
                 {students.map((student) => (
-                  <SelectItem key={student.username || student.fullName} value={student.username || student.fullName}>
+                  <SelectItem key={studentKeyOf(student)} value={studentKeyOf(student)}>
                     {student.fullName} ({student.className})
                   </SelectItem>
                 ))}
@@ -275,7 +303,7 @@ function InvoiceCreateDialog({
 
 function ReceiptCreateDialog({
   open, onOpenChange, students, onCreated,
-}) {
+}: CreateDialogProps<AccountingCollectionDto>) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   // Öğrenci ADIYLA değil, TEKİL KİMLİKLE seçilir. Aynı isimli iki öğrenci varsa
@@ -314,11 +342,11 @@ function ReceiptCreateDialog({
         // Tahsilat ada göre değil kimliğe göre eşleşsin; ad tek başına tekil değil.
         studentUserId: selectedStudent.userId || null,
       });
-      onCreated(created);
+      if (created) onCreated(created);
       onOpenChange(false);
       toast({ title: 'Makbuz oluşturuldu', description: 'Tahsilat kaydı işlendi.' });
     } catch (err) {
-      toast({ title: 'Makbuz oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Makbuz oluşturulamadı', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -359,7 +387,7 @@ function ReceiptCreateDialog({
 
 function MarkPaidDialog({
   invoice, onOpenChange, onPaid,
-}) {
+}: MarkPaidDialogProps) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('Nakit');
@@ -383,16 +411,16 @@ function MarkPaidDialog({
         paidAtUtc: new Date(`${paidDate}T12:00:00`).toISOString(),
         note: note.trim() || null,
       });
-      onPaid(updated);
+      if (updated) onPaid(updated);
       onOpenChange(false);
       toast({
         title: 'Fatura ödendi olarak işaretlendi',
-        description: `${updated.invoiceNumber || updated.id} numaralı faturanın ödeme kaydı tamamlandı.`,
+        description: `${invoice.invoiceNumber || invoice.id} numaralı faturanın ödeme kaydı tamamlandı.`,
       });
     } catch (error) {
       toast({
         title: 'Ödeme durumu güncellenemedi',
-        description: error.message,
+        description: errorMessage(error),
         variant: 'destructive',
       });
     } finally {
@@ -451,16 +479,16 @@ export default function InvoicesReceipts() {
   const [activeTab, setActiveTab] = useState('invoices');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [period, setPeriod] = useState('month');
+  const [period, setPeriod] = useState<FinancePeriod>('month');
   const [anchor, setAnchor] = useState(() => new Date());
-  const [dashboard, setDashboard] = useState(null);
-  const [students, setStudents] = useState([]);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState(null);
-  const [invoiceToMarkPaid, setInvoiceToMarkPaid] = useState(null);
+  const [selectedRecord, setSelectedRecord] = useState<SelectedRecord | null>(null);
+  const [invoiceToMarkPaid, setInvoiceToMarkPaid] = useState<AccountingInvoiceDto | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -471,23 +499,23 @@ export default function InvoicesReceipts() {
         fetchStudents().catch(() => []),
       ]);
       setDashboard(accounting);
-      setStudents(studentList);
+      setStudents(studentList ?? []);
     } catch (err) {
-      setError(err.message || 'Fatura ve makbuz verileri alınamadı.');
+      setError(errorMessage(err, 'Fatura ve makbuz verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const invoices = useMemo(() => dashboard?.invoices || [], [dashboard]);
   const receipts = useMemo(() => dashboard?.collections || [], [dashboard]);
 
-  const periodInvoices = useMemo(() => filterByPeriod(invoices, (inv) => inv.subtitle || inv.date, period, anchor), [invoices, period, anchor]);
-  const periodReceipts = useMemo(() => filterByPeriod(receipts, (rec) => rec.time || rec.date, period, anchor), [receipts, period, anchor]);
+  const periodInvoices = useMemo(() => filterByPeriod(invoices, (inv) => (inv.issueDateUtc ? new Date(inv.issueDateUtc) : inv.subtitle), period, anchor), [invoices, period, anchor]);
+  const periodReceipts = useMemo(() => filterByPeriod(receipts, (rec) => rec.time, period, anchor), [receipts, period, anchor]);
 
   const filteredInvoices = useMemo(() => periodInvoices.filter((inv) => {
     const invoiceStatus = statusFromInvoice(inv);
@@ -498,9 +526,9 @@ export default function InvoicesReceipts() {
 
   const filteredReceipts = useMemo(() => periodReceipts.filter((rec) => `${rec.name} ${rec.id} ${rec.note}`.toLowerCase().includes(search.toLowerCase())), [periodReceipts, search]);
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: InvoiceStatus) => {
     // Etiket ve renk ortak durum sözlüğünden gelir.
-    const labels = { paid: 'Ödendi', unpaid: 'Bekliyor', overdue: 'Gecikti' };
+    const labels: Record<InvoiceStatus, string> = { paid: 'Ödendi', unpaid: 'Bekliyor', overdue: 'Gecikti' };
     return <StatusBadge status={labels[status]} />;
   };
 
@@ -511,13 +539,13 @@ export default function InvoicesReceipts() {
     totalReceipts: receipts.length,
   }), [invoices, receipts]);
 
-  const buildRecordHtml = useCallback((record, type) => buildFinanceDocumentHtml({
-    title: type === 'invoice' ? 'Fatura Belgesi' : 'Tahsilat Makbuzu',
-    subtitle: type === 'invoice' ? 'Finans ekibi tarafından üretilen fatura belgesi' : 'Tahsilat işlemi için düzenlenen makbuz',
+  const buildRecordHtml = useCallback((record: SelectedRecord) => buildFinanceDocumentHtml({
+    title: record.type === 'invoice' ? 'Fatura Belgesi' : 'Tahsilat Makbuzu',
+    subtitle: record.type === 'invoice' ? 'Finans ekibi tarafından üretilen fatura belgesi' : 'Tahsilat işlemi için düzenlenen makbuz',
     code: record.id,
-    accent: type === 'invoice' ? getBrandAccentHex() : '#0b8f6f',
-    badge: type === 'invoice' ? statusFromInvoice(record) : record.method,
-    summary: type === 'invoice'
+    accent: record.type === 'invoice' ? getBrandAccentHex() : '#0b8f6f',
+    badge: record.type === 'invoice' ? statusFromInvoice(record) : record.method,
+    summary: record.type === 'invoice'
       ? [
         { label: 'Belge Türü', value: 'Fatura' },
         { label: 'Tutar', value: formatCurrency(record.amount) },
@@ -530,7 +558,7 @@ export default function InvoicesReceipts() {
         { label: 'Ödeme Tipi', value: record.method || '-' },
         { label: 'Kayıt Zamanı', value: record.time || '-' },
       ],
-    sections: type === 'invoice'
+    sections: record.type === 'invoice'
       ? [{
         title: 'Fatura Bilgileri',
         rows: [
@@ -551,26 +579,26 @@ export default function InvoicesReceipts() {
       }],
   }), []);
 
-  const handleCreated = (created) => {
-    setDashboard((prev) => ({
+  const handleCreated = (created: AccountingInvoiceDto) => {
+    setDashboard((prev) => (prev ? {
       ...prev,
-      invoices: [created, ...(prev?.invoices || [])],
-    }));
+      invoices: [created, ...prev.invoices],
+    } : prev));
   };
 
-  const handleReceiptCreated = (created) => {
-    setDashboard((prev) => ({
+  const handleReceiptCreated = (created: AccountingCollectionDto) => {
+    setDashboard((prev) => (prev ? {
       ...prev,
-      collections: [created, ...(prev?.collections || [])],
-    }));
+      collections: [created, ...prev.collections],
+    } : prev));
   };
 
-  const handleInvoicePaid = (updated) => {
-    setDashboard((prev) => ({
+  const handleInvoicePaid = (updated: AccountingInvoiceDto) => {
+    setDashboard((prev) => (prev ? {
       ...prev,
-      invoices: (prev?.invoices || []).map((invoice) => (invoice.id === updated.id ? updated : invoice)),
-    }));
-    setSelectedRecord((current) => (current?.id === updated.id ? { ...updated, type: 'invoice' } : current));
+      invoices: prev.invoices.map((invoice) => (invoice.id === updated.id ? updated : invoice)),
+    } : prev));
+    setSelectedRecord((current) => (current?.type === 'invoice' && current.id === updated.id ? { ...updated, type: 'invoice' } : current));
   };
 
   const handleBulkPrint = () => {
@@ -581,7 +609,7 @@ export default function InvoicesReceipts() {
       accent: activeTab === 'invoices' ? getBrandAccentHex() : '#0b8f6f',
       summary: [
         { label: 'Belge Sayısı', value: String(activeTab === 'invoices' ? filteredInvoices.length : filteredReceipts.length) },
-        { label: 'Toplam Tutar', value: formatCurrency((activeTab === 'invoices' ? filteredInvoices : filteredReceipts).reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0)) },
+        { label: 'Toplam Tutar', value: formatCurrency(sumAmounts(activeTab === 'invoices' ? filteredInvoices : filteredReceipts)) },
       ],
       sections: [{
         title: 'Belge Listesi',
@@ -629,14 +657,14 @@ export default function InvoicesReceipts() {
     });
   };
 
-  const openRecordDetail = (record, type) => setSelectedRecord({ ...record, type });
+  const openRecordDetail = (record: SelectedRecord) => setSelectedRecord(record);
 
-  const handleDownloadRecord = (record, type) => {
-    downloadFinanceHtml(`${type}-${record.id}.html`, buildRecordHtml(record, type));
+  const handleDownloadRecord = (record: SelectedRecord) => {
+    downloadFinanceHtml(`${record.type}-${record.id}.html`, buildRecordHtml(record));
   };
 
-  const handlePrintRecord = (record, type) => {
-    printFinanceHtml(`${type}-${record.id}`, buildRecordHtml(record, type));
+  const handlePrintRecord = (record: SelectedRecord) => {
+    printFinanceHtml(`${record.type}-${record.id}`, buildRecordHtml(record));
   };
 
   if (loading) {
@@ -684,12 +712,12 @@ export default function InvoicesReceipts() {
       {error ? <ErrorBanner title="Fatura ve makbuzlar alınamadı" message={error} onRetry={loadData} /> : null}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[
+        {([
           [stats.totalInvoices, 'Toplam Fatura', FileText, 'text-brand-primary'],
           [stats.paidInvoices, 'Ödenen', CheckCircle, 'text-green-600'],
           [formatCurrency(stats.pendingAmount), 'Bekleyen', XCircle, 'text-yellow-600'],
           [stats.totalReceipts, 'Makbuz', FileText, 'text-brand-accent'],
-        ].map(([value, label, Icon, color]) => (
+        ] satisfies ReadonlyArray<readonly [string | number, string, IconComponent, string]>).map(([value, label, Icon, color]) => (
           <motion.div variants={itemVariants} key={label}>
             <Card>
               <CardContent className="p-4 flex items-center gap-4">
@@ -732,7 +760,7 @@ export default function InvoicesReceipts() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1 rounded-xl border border-foreground/10 bg-foreground/[0.04] p-1">
-          {[['day', 'Günlük'], ['week', 'Haftalık'], ['month', 'Aylık'], ['year', 'Yıllık']].map(([val, label]) => (
+          {([['day', 'Günlük'], ['week', 'Haftalık'], ['month', 'Aylık'], ['year', 'Yıllık']] satisfies ReadonlyArray<readonly [FinancePeriod, string]>).map(([val, label]) => (
             <button
               key={val}
               type="button"
@@ -819,13 +847,13 @@ export default function InvoicesReceipts() {
                               <CircleDollarSign className="mr-1 h-4 w-4" />Ödendi
                             </Button>
                           ) : null}
-                          <Button variant="ghost" size="icon" onClick={() => openRecordDetail(invoice, 'invoice')}>
+                          <Button variant="ghost" size="icon" onClick={() => openRecordDetail({ ...invoice, type: 'invoice' })}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDownloadRecord(invoice, 'invoice')}>
+                          <Button variant="ghost" size="icon" onClick={() => handleDownloadRecord({ ...invoice, type: 'invoice' })}>
                             <Download className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handlePrintRecord(invoice, 'invoice')}>
+                          <Button variant="ghost" size="icon" onClick={() => handlePrintRecord({ ...invoice, type: 'invoice' })}>
                             <Printer className="h-4 w-4" />
                           </Button>
                         </div>
@@ -864,13 +892,13 @@ export default function InvoicesReceipts() {
                       <TableCell>{receipt.time}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openRecordDetail(receipt, 'receipt')}>
+                          <Button variant="ghost" size="icon" onClick={() => openRecordDetail({ ...receipt, type: 'receipt' })}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDownloadRecord(receipt, 'receipt')}>
+                          <Button variant="ghost" size="icon" onClick={() => handleDownloadRecord({ ...receipt, type: 'receipt' })}>
                             <Download className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handlePrintRecord(receipt, 'receipt')}>
+                          <Button variant="ghost" size="icon" onClick={() => handlePrintRecord({ ...receipt, type: 'receipt' })}>
                             <Printer className="h-4 w-4" />
                           </Button>
                         </div>
@@ -926,7 +954,7 @@ export default function InvoicesReceipts() {
                 <Card>
                   <CardContent className="p-4">
                     <p className="text-sm text-muted-foreground">Kayıt No</p>
-                    <p className="mt-1 font-semibold">{selectedRecord.invoiceNumber || selectedRecord.id}</p>
+                    <p className="mt-1 font-semibold">{selectedRecord.type === 'invoice' ? selectedRecord.invoiceNumber || selectedRecord.id : selectedRecord.id}</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -968,8 +996,8 @@ export default function InvoicesReceipts() {
                     <CircleDollarSign className="mr-2 h-4 w-4" />Ödendi Olarak İşaretle
                   </Button>
                 ) : null}
-                <Button variant="outline" onClick={() => handleDownloadRecord(selectedRecord, selectedRecord.type)}>İndir</Button>
-                <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => handlePrintRecord(selectedRecord, selectedRecord.type)}>Yazdır</Button>
+                <Button variant="outline" onClick={() => handleDownloadRecord(selectedRecord)}>İndir</Button>
+                <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => handlePrintRecord(selectedRecord)}>Yazdır</Button>
               </>
             ) : null}
           </DialogFooter>

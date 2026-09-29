@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Bell, Plus, Settings, Clock, Mail, Smartphone, AlertTriangle,
   Edit, Trash2, Save,
@@ -20,24 +20,28 @@ import {
 import { Textarea } from '../../components/ui/textarea';
 import { useToast } from '../../hooks/use-toast';
 import { fetchOverdueRules, saveOverdueRules } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { OverdueRule } from '../../lib/api/overdueRules';
 
-const containerVariants = {
+type RuleForm = Omit<OverdueRule, 'id'>;
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
 
 // Eski kayitlardaki 'sms' kanali artik mobil 'notification' (anlik bildirim)
 // olarak normalize edilir; SMS yerine mobil uygulamadaki bildirim sistemi kullanilir.
-function normalizeChannel(channel) {
+function normalizeChannel(channel: string | null | undefined): string {
   return channel === 'sms' ? 'notification' : (channel || 'notification');
 }
 
-const defaultRules = [
+const defaultRules: OverdueRule[] = [
   {
     id: 1,
     name: 'İlk Hatırlatma',
@@ -66,10 +70,10 @@ const defaultRules = [
 
 export default function OverdueRules() {
   const { toast } = useToast();
-  const [rules, setRules] = useState([]);
+  const [rules, setRules] = useState<OverdueRule[]>([]);
   const [open, setOpen] = useState(false);
-  const [editingRule, setEditingRule] = useState(null);
-  const [form, setForm] = useState({
+  const [editingRule, setEditingRule] = useState<OverdueRule | null>(null);
+  const [form, setForm] = useState<RuleForm>({
     name: '',
     daysAfterDue: 3,
     channel: 'notification',
@@ -92,12 +96,12 @@ export default function OverdueRules() {
     return () => { cancelled = true; };
   }, []);
 
-  const persistRules = async (updated) => {
+  const persistRules = async (updated: OverdueRule[]) => {
     setRules(updated);
     try {
       await saveOverdueRules(updated);
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Kurallar kaydedilemedi.';
+      const message = errorMessage(err, 'Kurallar kaydedilemedi.');
       toast({ title: message, variant: 'destructive' });
     }
   };
@@ -112,7 +116,7 @@ export default function OverdueRules() {
       await persistRules(updated);
       toast({ title: 'Kural guncellendi.' });
     } else {
-      const newRule = { ...form, id: Date.now() };
+      const newRule: OverdueRule = { ...form, id: Date.now() };
       await persistRules([...rules, newRule]);
       toast({ title: 'Yeni kural eklendi.' });
     }
@@ -121,23 +125,23 @@ export default function OverdueRules() {
     setForm({ name: '', daysAfterDue: 3, channel: 'notification', template: '', enabled: true });
   };
 
-  const handleEdit = (rule) => {
+  const handleEdit = (rule: OverdueRule) => {
     setEditingRule(rule);
     setForm({ name: rule.name, daysAfterDue: rule.daysAfterDue, channel: rule.channel, template: rule.template, enabled: rule.enabled });
     setOpen(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: OverdueRule['id']) => {
     await persistRules(rules.filter((r) => r.id !== id));
     toast({ title: 'Kural silindi.' });
   };
 
-  const handleToggle = async (id) => {
+  const handleToggle = async (id: OverdueRule['id']) => {
     const updated = rules.map((r) => r.id === id ? { ...r, enabled: !r.enabled } : r);
     await persistRules(updated);
   };
 
-  const channelLabel = (ch) => {
+  const channelLabel = (ch: string) => {
     if (ch === 'notification' || ch === 'sms') return { label: 'Bildirim', icon: <Smartphone className="h-4 w-4" /> };
     if (ch === 'email') return { label: 'E-posta', icon: <Mail className="h-4 w-4" /> };
     return { label: 'Bildirim + E-posta', icon: <Bell className="h-4 w-4" /> };

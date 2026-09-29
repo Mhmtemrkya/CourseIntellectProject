@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search, Plus, Calendar, CheckCircle, Clock,
@@ -27,19 +27,42 @@ import { useToast } from '../../hooks/use-toast';
 import { createInstallment, fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
 import { formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 import { StatusBadge } from '../../components/ui/status-badge';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { AccountingInstallmentDto, StudentSummaryDto } from '../../types/api/generated';
+import type { StatusTone } from '../../components/ui/status-badge';
+import type { IconComponent } from '../../types/ui';
 
-const containerVariants = {
+type PlanStatus = 'current' | 'overdue' | 'completed';
+type StatusFilter = PlanStatus | 'all';
+
+interface StudentMeta {
+  className: string;
+  branchName: string;
+}
+
+function isPlanStatus(value: string | null): value is PlanStatus {
+  return value === 'current' || value === 'overdue' || value === 'completed';
+}
+
+function toStatusFilter(value: string | null): StatusFilter {
+  return isPlanStatus(value) ? value : 'all';
+}
+
+const EMPTY_META: StudentMeta = { className: '', branchName: '' };
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
 
-function parseMoney(value) {
+function parseMoney(value: unknown): number {
   return parseFinanceMoney(value);
 }
 
 const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
-function parseFinanceDate(value) {
+function parseFinanceDate(value: string | null | undefined): Date | null {
   if (!value) return null;
   const raw = String(value);
   const trMatch = raw.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
@@ -58,7 +81,7 @@ function parseFinanceDate(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function monthMatches(value, monthFilter) {
+function monthMatches(value: string, monthFilter: string): boolean {
   if (monthFilter === 'all') return true;
   const date = parseFinanceDate(value);
   if (!date) return false;
@@ -66,13 +89,13 @@ function monthMatches(value, monthFilter) {
   return date.getFullYear() === year && date.getMonth() + 1 === month;
 }
 
-function rangeMatches(value, range) {
+function rangeMatches(value: string, range: { from: Date; to: Date } | null): boolean {
   if (!range) return true;
   const date = parseFinanceDate(value);
   return Boolean(date && date >= range.from && date < range.to);
 }
 
-function statusKey(status) {
+function statusKey(status: string): PlanStatus {
   const normalized = normalizeFinanceText(status);
   if (normalized.includes('gec')) return 'overdue';
   if (normalized.includes('odendi') || normalized.includes('paid') || normalized.includes('completed')) return 'completed';
@@ -80,19 +103,26 @@ function statusKey(status) {
 }
 
 // Vade tarihi geçmiş ve ödenmemiş taksitleri de gecikmiş sayar.
-function effectiveStatus(plan) {
+function effectiveStatus(plan: AccountingInstallmentDto): PlanStatus {
   const key = statusKey(plan.status);
   if (key === 'completed') return key;
-  const due = parseFinanceDate(plan.dueDate || plan.due);
+  const due = parseFinanceDate(plan.due);
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   if (due) return due.getTime() < todayStart.getTime() ? 'overdue' : 'current';
   return key;
 }
 
+interface CreatePlanDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  students: readonly StudentSummaryDto[];
+  onCreated: (created: AccountingInstallmentDto) => void;
+}
+
 function CreatePlanDialog({
   open, onOpenChange, students, onCreated,
-}) {
+}: CreatePlanDialogProps) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -136,7 +166,7 @@ function CreatePlanDialog({
         due: form.due,
         note: form.note || 'Masaüstü panelden oluşturuldu',
       });
-      onCreated(created);
+      if (created) onCreated(created);
       toast({
         title: 'Taksit oluşturuldu',
         description: 'Yeni kayıt backend’e işlendi.',
@@ -145,7 +175,7 @@ function CreatePlanDialog({
     } catch (err) {
       toast({
         title: 'Taksit oluşturulamadı',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -208,9 +238,7 @@ export default function Installments() {
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState(() => (
-    ['current', 'overdue', 'completed'].includes(incomingStatus) ? incomingStatus : 'all'
-  ));
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => toStatusFilter(incomingStatus));
   const [monthFilter, setMonthFilter] = useState(() => {
     const from = parseFinanceDate(incomingFrom);
     return incomingPeriod === 'month' && from
@@ -218,8 +246,8 @@ export default function Installments() {
       : 'all';
   });
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dashboard, setDashboard] = useState(null);
-  const [students, setStudents] = useState([]);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -234,23 +262,23 @@ export default function Installments() {
         : {};
       const [accounting, studentList] = await Promise.all([
         fetchAccountingDashboard(accountingRange),
-        fetchStudents().catch(() => []),
+        fetchStudents().catch(() => null),
       ]);
       setDashboard(accounting);
-      setStudents(studentList);
+      setStudents(studentList ?? []);
     } catch (err) {
-      setError(err.message || 'Taksit verileri alınamadı.');
+      setError(errorMessage(err, 'Taksit verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [incomingFrom, incomingTo]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   useEffect(() => {
-    setStatusFilter(['current', 'overdue', 'completed'].includes(incomingStatus) ? incomingStatus : 'all');
+    setStatusFilter(toStatusFilter(incomingStatus));
     const from = parseFinanceDate(incomingFrom);
     setMonthFilter(
       incomingPeriod === 'month' && from
@@ -268,7 +296,7 @@ export default function Installments() {
   const monthOptions = useMemo(() => {
     const years = new Set([new Date().getFullYear()]);
     plans.forEach((plan) => {
-      const date = parseFinanceDate(plan.dueDate || plan.due);
+      const date = parseFinanceDate(plan.due);
       if (date) years.add(date.getFullYear());
     });
     return [
@@ -280,33 +308,35 @@ export default function Installments() {
     ];
   }, [plans]);
   // Öğrenci adı → {sınıf, şube} eşlemesi (sınıf/şube filtreleri için).
+  // /api/students özetinde şube alanı yoktur; şube filtresi bu yüzden boş kalır
+  // (eskiden var olmayan branchName/branch okunuyordu).
   const studentMeta = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, StudentMeta>();
     students.forEach((s) => {
-      map.set(String(s.fullName || '').toLowerCase(), { className: s.className || '', branchName: s.branchName || s.branch || '' });
+      map.set(String(s.fullName || '').toLowerCase(), { className: s.className || '', branchName: '' });
     });
     return map;
   }, [students]);
   const classes = useMemo(() => [...new Set(students.map((s) => s.className).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')), [students]);
-  const branches = useMemo(() => [...new Set(students.map((s) => s.branchName || s.branch).filter(Boolean))], [students]);
+  const branches = useMemo(() => [...new Set([...studentMeta.values()].map((meta) => meta.branchName).filter(Boolean))], [studentMeta]);
 
   const filteredPlans = useMemo(() => plans.filter((plan) => {
-    const meta = studentMeta.get(String(plan.student || '').toLowerCase()) || {};
+    const meta = studentMeta.get(String(plan.student || '').toLowerCase()) || EMPTY_META;
     const matchesSearch = String(plan.student || '').toLowerCase().includes(search.toLowerCase());
     const matchesClass = classFilter === 'all' || meta.className === classFilter;
     const matchesBranch = branchFilter === 'all' || meta.branchName === branchFilter;
     const matchesStatus = statusFilter === 'all' || effectiveStatus(plan) === statusFilter;
-    const matchesMonth = monthMatches(plan.dueDate || plan.due, monthFilter);
-    const matchesIncomingRange = rangeMatches(plan.dueDate || plan.due, incomingRange);
+    const matchesMonth = monthMatches(plan.due, monthFilter);
+    const matchesIncomingRange = rangeMatches(plan.due, incomingRange);
     return matchesSearch && matchesClass && matchesBranch && matchesStatus && matchesMonth && matchesIncomingRange;
   }), [monthFilter, plans, search, classFilter, branchFilter, statusFilter, studentMeta, incomingRange]);
 
-  const getStatusBadge = (plan) => {
+  const getStatusBadge = (plan: AccountingInstallmentDto) => {
     const key = effectiveStatus(plan);
     // Etiket ve ton ortak sözlükten gelir; ikon plana özgüdür.
-    const icons = { current: Clock, overdue: AlertCircle, completed: CheckCircle };
-    const labels = { current: 'Güncel', overdue: 'Gecikti', completed: 'Tamamlandı' };
-    const tones = { current: 'warning', overdue: 'danger', completed: 'success' };
+    const icons: Record<PlanStatus, IconComponent> = { current: Clock, overdue: AlertCircle, completed: CheckCircle };
+    const labels: Record<PlanStatus, string> = { current: 'Güncel', overdue: 'Gecikti', completed: 'Tamamlandı' };
+    const tones: Record<PlanStatus, StatusTone> = { current: 'warning', overdue: 'danger', completed: 'success' };
     const Icon = icons[key];
     return (
       <StatusBadge status={labels[key]} tone={tones[key]}>
@@ -322,11 +352,11 @@ export default function Installments() {
     overdue: filteredPlans.filter((item) => effectiveStatus(item) === 'overdue').length,
   }), [filteredPlans]);
 
-  const handleCreated = (created) => {
-    setDashboard((prev) => ({
+  const handleCreated = (created: AccountingInstallmentDto) => {
+    setDashboard((prev) => (prev ? {
       ...prev,
-      installments: [created, ...(prev?.installments || [])],
-    }));
+      installments: [created, ...(prev.installments || [])],
+    } : prev));
   };
 
   if (loading) {
@@ -455,7 +485,7 @@ export default function Installments() {
                 </SelectContent>
               </Select>
             ) : null}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(toStatusFilter(value))}>
               <SelectTrigger className="w-full md:w-40">
                 <SelectValue placeholder="Durum" />
               </SelectTrigger>
@@ -502,7 +532,7 @@ export default function Installments() {
                 </TableRow>
               ) : null}
               {filteredPlans.map((plan) => {
-                const meta = studentMeta.get(String(plan.student || '').toLowerCase()) || {};
+                const meta = studentMeta.get(String(plan.student || '').toLowerCase()) || EMPTY_META;
                 return (
                   <TableRow
                     key={plan.id}
@@ -517,7 +547,7 @@ export default function Installments() {
                     </TableCell>
                     <TableCell>{meta.className ? <Badge variant="outline">{meta.className}</Badge> : <span className="text-xs text-muted-foreground">—</span>}</TableCell>
                     <TableCell>{formatCurrency(parseMoney(plan.amount))}</TableCell>
-                    <TableCell>{plan.due || plan.dueDate}</TableCell>
+                    <TableCell>{plan.due}</TableCell>
                     <TableCell>{getStatusBadge(plan)}</TableCell>
                   </TableRow>
                 );

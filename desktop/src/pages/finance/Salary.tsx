@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatMoney as formatCurrency } from '../../lib/format';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Wallet, Plus, Search, DollarSign, Users, Calendar, Trash2,
 } from 'lucide-react';
@@ -24,13 +24,35 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchStaff, createSalary, fetchAccountingDashboard, calculatePayroll } from '../../lib/api/modules';
 import { parseFinanceMoney } from '../../lib/financeDocuments';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingSalaryDto, PayrollResultDto, StaffSummaryDto } from '../../types/api/generated';
 
-const containerVariants = {
+type PayrollField = keyof PayrollResultDto;
+/** Bordro taslağı: hesaplanan değerler elle düzeltilebilir (girdi metin olabilir). */
+type PayrollDraft = Partial<Record<PayrollField, number | string>>;
+type CustomItemType = 'addition' | 'deduction';
+
+interface CustomPayrollItem {
+  id: string;
+  label: string;
+  type: CustomItemType;
+  amount: string;
+}
+
+interface SalaryForm {
+  staffName: string;
+  amount: string;
+  month: string;
+  year: string;
+  notes: string;
+}
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
@@ -40,20 +62,20 @@ const months = [
   'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik',
 ];
 
-function parseMoney(value) {
+function parseMoney(value: unknown): number {
   return parseFinanceMoney(value);
 }
 
-const deductionFields = [
+const deductionFields: ReadonlyArray<readonly [PayrollField, string]> = [
   ['sgkEmployee', 'SGK İşçi'],
   ['unemploymentEmployee', 'İşsizlik İşçi'],
   ['incomeTax', 'Gelir Vergisi'],
   ['stampTax', 'Damga Vergisi'],
 ];
 
-const numericPayroll = (payroll, key) => Math.max(0, Number(payroll?.[key]) || 0);
+const numericPayroll = (payroll: PayrollDraft | null, key: PayrollField) => Math.max(0, Number(payroll?.[key]) || 0);
 
-function normalizeSalaryStatus(status = '') {
+function normalizeSalaryStatus(status: string = ''): string {
   const normalized = String(status).toLowerCase();
   if (normalized.includes('öd') || normalized.includes('oden') || normalized.includes('paid')) return 'Ödendi';
   if (normalized.includes('redd') || normalized.includes('rejected')) return 'Reddedildi';
@@ -63,19 +85,19 @@ function normalizeSalaryStatus(status = '') {
 
 export default function Salary() {
   const { toast } = useToast();
-  const [staff, setStaff] = useState([]);
-  const [salaries, setSalaries] = useState([]);
+  const [staff, setStaff] = useState<StaffSummaryDto[]>([]);
+  const [salaries, setSalaries] = useState<AccountingSalaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [filterMonth, setFilterMonth] = useState(String(new Date().getMonth()));
-  const [payroll, setPayroll] = useState(null);
-  const [customItems, setCustomItems] = useState([]);
+  const [payroll, setPayroll] = useState<PayrollDraft | null>(null);
+  const [customItems, setCustomItems] = useState<CustomPayrollItem[]>([]);
   const [calculating, setCalculating] = useState(false);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<SalaryForm>({
     staffName: '',
     amount: '',
     month: String(new Date().getMonth()),
@@ -88,22 +110,22 @@ export default function Salary() {
       setLoading(true);
       setError('');
       const [staffData, dashData] = await Promise.all([
-        fetchStaff().catch(() => []),
-        fetchAccountingDashboard().catch(() => ({})),
+        fetchStaff().catch(() => null),
+        fetchAccountingDashboard().catch(() => null),
       ]);
       setStaff(Array.isArray(staffData) ? staffData : []);
 
       // Extract salary data from dashboard if available
-      const salaryList = dashData?.salaries || dashData?.staffSalaries || [];
+      const salaryList = dashData?.salaries || [];
       setSalaries(Array.isArray(salaryList) ? salaryList : []);
     } catch (err) {
-      setError(err.message || 'Veriler yuklenemedi.');
+      setError(errorMessage(err, 'Veriler yuklenemedi.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   const filtered = useMemo(() => {
     let list = salaries;
@@ -137,7 +159,7 @@ export default function Salary() {
       setPayroll(result);
       setCustomItems([]);
     } catch (err) {
-      toast({ title: 'Bordro hesaplanamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Bordro hesaplanamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setCalculating(false);
     }
@@ -161,8 +183,8 @@ export default function Salary() {
     setCustomItems([]);
   };
 
-  const updatePayrollField = (key, value) => {
-    setPayroll((current) => ({ ...current, [key]: value }));
+  const updatePayrollField = (key: PayrollField, value: string) => {
+    setPayroll((current) => (current ? { ...current, [key]: value } : current));
   };
 
   const addCustomItem = () => {
@@ -174,7 +196,7 @@ export default function Salary() {
     }]);
   };
 
-  const updateCustomItem = (id, patch) => {
+  const updateCustomItem = (id: string, patch: Partial<CustomPayrollItem>) => {
     setCustomItems((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   };
 
@@ -224,7 +246,8 @@ export default function Salary() {
         : '';
       await createSalary({
         employee: form.staffName,
-        role: selectedStaff?.primaryRole || 'Personel',
+        // Personel özetinde rol 'role' alanındadır (eskiden olmayan primaryRole okunup hep 'Personel' gidiyordu).
+        role: selectedStaff?.role || 'Personel',
         amount: form.amount,
         payDate,
         reason: [form.notes.trim(), breakdownNote].filter(Boolean).join(' — ')
@@ -233,9 +256,9 @@ export default function Salary() {
       toast({ title: 'Maaş/bordro kaydı oluşturuldu.' });
       setOpen(false);
       resetForm();
-      loadData();
+      void loadData();
     } catch (err) {
-      toast({ title: err.message || 'Maaş kaydı oluşturulamadı.', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Maaş kaydı oluşturulamadı.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -274,7 +297,7 @@ export default function Salary() {
                   <SelectTrigger><SelectValue placeholder="Personel seçin" /></SelectTrigger>
                   <SelectContent>
                     {staff.map((s) => (
-                      <SelectItem key={s.id || s.fullName} value={s.fullName}>{s.fullName} ({s.primaryRole || 'Personel'})</SelectItem>
+                      <SelectItem key={s.id || s.fullName} value={s.fullName}>{s.fullName} ({s.role || 'Personel'})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -371,7 +394,7 @@ export default function Salary() {
                           value={item.label}
                           onChange={(event) => updateCustomItem(item.id, { label: event.target.value })}
                         />
-                        <Select value={item.type} onValueChange={(value) => updateCustomItem(item.id, { type: value })}>
+                        <Select value={item.type} onValueChange={(value) => { if (value === 'addition' || value === 'deduction') updateCustomItem(item.id, { type: value }); }}>
                           <SelectTrigger aria-label="Kalem türü"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="addition">Ek ödeme</SelectItem>

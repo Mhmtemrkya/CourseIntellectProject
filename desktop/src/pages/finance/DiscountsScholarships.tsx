@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Percent, Gift, Users, Search, Plus,
 } from 'lucide-react';
@@ -19,18 +19,22 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { createAccountingBenefit, fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
 import { formatCurrency, parseFinanceMoney } from '../../lib/financeDocuments';
+import { errorMessage } from '../../lib/errors';
+import type { IconComponent } from '../../types/ui';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { StudentSummaryDto } from '../../types/api/generated';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
-function parseMoney(value) {
+function parseMoney(value: unknown): number {
   return parseFinanceMoney(value);
 }
 
@@ -38,8 +42,8 @@ export default function DiscountsScholarships() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('discounts');
   const [search, setSearch] = useState('');
-  const [students, setStudents] = useState([]);
-  const [dashboard, setDashboard] = useState(null);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -55,10 +59,11 @@ export default function DiscountsScholarships() {
     try {
       setLoading(true);
       setError('');
-      const [studentList, accounting] = await Promise.all([
+      const [studentResponse, accounting] = await Promise.all([
         fetchStudents(),
         fetchAccountingDashboard(),
       ]);
+      const studentList = studentResponse ?? [];
       setStudents(studentList);
       setDashboard(accounting);
       setProfileForm((prev) => ({
@@ -66,14 +71,14 @@ export default function DiscountsScholarships() {
         studentId: prev.studentId || (studentList[0] ? String(studentList[0].id) : ''),
       }));
     } catch (err) {
-      setError(err.message || 'İndirim ve burs verileri alınamadı.');
+      setError(errorMessage(err, 'İndirim ve burs verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const benefits = useMemo(() => (dashboard?.benefits || []).map((item) => {
@@ -153,7 +158,7 @@ export default function DiscountsScholarships() {
     } catch (err) {
       toast({
         title: 'Kayıt oluşturulamadı',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     }
@@ -198,12 +203,12 @@ export default function DiscountsScholarships() {
       {error ? <ErrorBanner title="İndirim ve burs verileri alınamadı" message={error} onRetry={loadData} /> : null}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[
+        {([
           [stats.totalDiscounts, 'Aktif İndirim', Percent, 'text-brand-primary'],
           [stats.totalScholarships, 'Aktif Burs', Gift, 'text-brand-accent'],
           [stats.studentsWithDiscount, 'Yararlanan Öğrenci', Users, 'text-green-600'],
           [formatCurrency(stats.totalDiscountAmount), 'Toplam İndirim', Percent, 'text-blue-600'],
-        ].map(([value, label, Icon, color]) => (
+        ] satisfies ReadonlyArray<readonly [number | string, string, IconComponent, string]>).map(([value, label, Icon, color]) => (
           <motion.div variants={itemVariants} key={label}>
             <Card>
               <CardContent className="p-4 flex items-center gap-4">

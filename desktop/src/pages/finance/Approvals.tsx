@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   CheckCircle, XCircle, Clock, AlertTriangle, Search,
   ThumbsUp, ThumbsDown,
@@ -26,25 +26,31 @@ import { useApp } from '../../context/AppContext';
 import { fetchAccountingDashboard, updateApprovalStatus } from '../../lib/api/modules';
 import { formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 import { StatusBadge } from '../../components/ui/status-badge';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { AccountingApprovalDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const containerVariants = {
+type ApprovalStatusKey = 'pending' | 'approved' | 'rejected';
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-function parseMoneyFromTitle(title = '') {
+function parseMoneyFromTitle(title: string = ''): number {
   const match = title.match(/₺?\s*\d[\d.,]*/);
   return match ? parseFinanceMoney(match[0]) : 0;
 }
 
-function approvalStatus(status = '') {
+function approvalStatus(status: string = ''): ApprovalStatusKey {
   const normalized = normalizeFinanceText(status);
   if (normalized.includes('approved') || normalized.includes('onay')) return 'approved';
   if (normalized.includes('rejected') || normalized.includes('red')) return 'rejected';
   return 'pending';
 }
 
-function approvalType(category = '') {
+function approvalType(category: string = '') {
   const normalized = normalizeFinanceText(category);
   if (normalized.includes('iade')) return { key: 'refund', label: 'İade', className: 'bg-blue-100 text-blue-700' };
   if (normalized.includes('iptal')) return { key: 'cancel', label: 'İptal', className: 'bg-red-100 text-red-700' };
@@ -56,10 +62,10 @@ export default function Approvals() {
   const { user } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedApproval, setSelectedApproval] = useState(null);
+  const [selectedApproval, setSelectedApproval] = useState<AccountingApprovalDto | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  const [dashboard, setDashboard] = useState(null);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -72,14 +78,14 @@ export default function Approvals() {
       const payload = await fetchAccountingDashboard();
       setDashboard(payload);
     } catch (err) {
-      setError(err.message || 'Onay kayıtları alınamadı.');
+      setError(errorMessage(err, 'Onay kayıtları alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadApprovals();
+    void loadApprovals();
   }, [loadApprovals]);
 
   const approvals = useMemo(() => dashboard?.approvals || [], [dashboard]);
@@ -99,13 +105,13 @@ export default function Approvals() {
       .reduce((sum, item) => sum + parseMoneyFromTitle(item.title), 0),
   }), [approvals]);
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: string) => {
     const key = approvalStatus(status);
-    const labels = { pending: 'Bekliyor', approved: 'Onaylandı', rejected: 'Reddedildi' };
+    const labels: Record<ApprovalStatusKey, string> = { pending: 'Bekliyor', approved: 'Onaylandı', rejected: 'Reddedildi' };
     return <StatusBadge status={labels[key]} />;
   };
 
-  const handleApprove = async (approval) => {
+  const handleApprove = async (approval: AccountingApprovalDto) => {
     if (!canApprove) {
       toast({
         title: 'Yetki yok',
@@ -117,10 +123,11 @@ export default function Approvals() {
 
     try {
       const updated = await updateApprovalStatus(approval.id, 'Approved');
-      setDashboard((prev) => ({
+      if (!updated) throw new Error('Sunucu güncel kaydı döndürmedi.');
+      setDashboard((prev) => (prev ? {
         ...prev,
-        approvals: (prev?.approvals || []).map((item) => (item.id === updated.id ? updated : item)),
-      }));
+        approvals: (prev.approvals || []).map((item) => (item.id === updated.id ? updated : item)),
+      } : prev));
       toast({
         title: 'Talep onaylandı',
         description: 'Kayıt backend üzerinde güncellendi.',
@@ -128,7 +135,7 @@ export default function Approvals() {
     } catch (err) {
       toast({
         title: 'Onay işlemi başarısız',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     }
@@ -147,10 +154,11 @@ export default function Approvals() {
 
     try {
       const updated = await updateApprovalStatus(selectedApproval.id, 'Rejected');
-      setDashboard((prev) => ({
+      if (!updated) throw new Error('Sunucu güncel kaydı döndürmedi.');
+      setDashboard((prev) => (prev ? {
         ...prev,
-        approvals: (prev?.approvals || []).map((item) => (item.id === updated.id ? updated : item)),
-      }));
+        approvals: (prev.approvals || []).map((item) => (item.id === updated.id ? updated : item)),
+      } : prev));
       toast({
         title: 'Talep reddedildi',
         description: rejectReason || 'Kayıt backend üzerinde reddedildi.',
@@ -160,7 +168,7 @@ export default function Approvals() {
     } catch (err) {
       toast({
         title: 'Reddetme işlemi başarısız',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     }
@@ -207,12 +215,12 @@ export default function Approvals() {
       {error ? <ErrorBanner title="Onay kayıtları alınamadı" message={error} onRetry={loadApprovals} /> : null}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[
+        {([
           [stats.pending, 'Bekleyen', Clock, 'text-yellow-600'],
           [stats.approved, 'Onaylanan', CheckCircle, 'text-green-600'],
           [stats.rejected, 'Reddedilen', XCircle, 'text-red-600'],
           [formatCurrency(stats.totalAmount), 'Bekleyen Tutar', AlertTriangle, 'text-brand-primary'],
-        ].map(([value, label, Icon, color]) => (
+        ] satisfies ReadonlyArray<readonly [number | string, string, IconComponent, string]>).map(([value, label, Icon, color]) => (
           <Card key={label}>
             <CardContent className="p-4 flex items-center gap-4">
               <div className="p-3 rounded-xl bg-muted/70">

@@ -7,16 +7,18 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
 import { formatCurrency, parseFinanceMoney } from '../../lib/financeDocuments';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
 
 // Backend ISO tarih döner; ekranda yerel biçimde gösterilir.
-function formatDateTime(value) {
+function formatDateTime(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return '—';
   return parsed.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 export default function AuditLog() {
-  const [dashboard, setDashboard] = useState(null);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -26,14 +28,14 @@ export default function AuditLog() {
       setError('');
       setDashboard(await fetchAccountingDashboard());
     } catch (err) {
-      setError(err.message || 'Audit log alınamadı.');
+      setError(errorMessage(err, 'Audit log alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadLogs();
+    void loadLogs();
   }, [loadLogs]);
 
   const logs = useMemo(() => ([
@@ -60,12 +62,12 @@ export default function AuditLog() {
       type: 'Fatura',
       icon: Receipt,
       tone: 'sky',
-      time: item.date || item.subtitle || '—',
+      time: item.subtitle || '—',
     })),
     ...(dashboard?.approvals || []).slice(0, 5).map((item) => ({
       id: `approval-${item.id}`,
       title: 'Onay kaydı güncellendi',
-      detail: `${item.referenceNumber || item.id} numaralı kayıt ${item.status || 'bekliyor'} durumuna geçti`,
+      detail: `${item.id} numaralı kayıt ${item.status || 'bekliyor'} durumuna geçti`,
       type: 'Onay',
       icon: ShieldCheck,
       tone: 'amber',

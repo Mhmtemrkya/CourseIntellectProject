@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatMoney as formatCurrency } from '../../lib/format';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   BookOpen, Search, DollarSign, Users, TrendingUp, AlertCircle, Eye, FilePlus2,
 } from 'lucide-react';
@@ -24,8 +24,32 @@ import { useToast } from '../../hooks/use-toast';
 import { fetchStudents, fetchFinanceSummaries, fetchStudentFinanceAccount, createEnrollment } from '../../lib/api/modules';
 import { formatDate } from '../../lib/format';
 import { StatusBadge } from '../../components/ui/status-badge';
+import { errorMessage } from '../../lib/errors';
+import type { StudentFinanceAccountDto, StudentFinanceSummaryDto, StudentSummaryDto } from '../../types/api/generated';
 
-const emptyEnrollForm = {
+/** Hesap defteri satırı: kadro öğrencisi ya da yalnız finans kaydı olan öğrenci. */
+interface LedgerRow {
+  id: string;
+  studentUserId: string | null;
+  name: string;
+  className: string;
+  totalDue: number;
+  totalPaid: number;
+  balance: number;
+  hasOverdue: boolean;
+}
+
+type EnrollForm = {
+  grossAmount: string;
+  discountAmount: string;
+  discountReason: string;
+  downPayment: string;
+  installmentCount: string;
+  academicYear: string;
+  firstInstallmentDate: string;
+};
+
+const emptyEnrollForm: EnrollForm = {
   grossAmount: '',
   discountAmount: '',
   discountReason: '',
@@ -35,17 +59,17 @@ const emptyEnrollForm = {
   firstInstallmentDate: '',
 };
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
 
-function normalizeLedgerKey(value) {
+function normalizeLedgerKey(value: unknown): string {
   return String(value || '')
     .trim()
     .toLowerCase()
@@ -61,20 +85,20 @@ function normalizeLedgerKey(value) {
 
 export default function Ledger() {
   const { toast } = useToast();
-  const [students, setStudents] = useState([]);
-  const [summaries, setSummaries] = useState([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [summaries, setSummaries] = useState<StudentFinanceSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [accountDetail, setAccountDetail] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState<LedgerRow | null>(null);
+  const [accountDetail, setAccountDetail] = useState<StudentFinanceAccountDto | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   // Sonradan sözleşme/ücret ekleme akışı.
-  const [enrollStudent, setEnrollStudent] = useState(null);
+  const [enrollStudent, setEnrollStudent] = useState<LedgerRow | null>(null);
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [enrollSaving, setEnrollSaving] = useState(false);
-  const [enrollForm, setEnrollForm] = useState(emptyEnrollForm);
+  const [enrollForm, setEnrollForm] = useState<EnrollForm>(emptyEnrollForm);
 
   const loadData = useCallback(async () => {
     try {
@@ -87,23 +111,23 @@ export default function Ledger() {
       setStudents(Array.isArray(studentData) ? studentData : []);
       setSummaries(Array.isArray(summaryData) ? summaryData : []);
     } catch (err) {
-      setError(err.message || 'Hesap defteri verileri yuklenemedi.');
+      setError(errorMessage(err, 'Hesap defteri verileri yuklenemedi.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   // Canlı backend ozetlerini (studentUserId / ad ile) hizli erisim icin indeksle.
   const summaryByUserId = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, StudentFinanceSummaryDto>();
     summaries.forEach((item) => { if (item.studentUserId) map.set(String(item.studentUserId), item); });
     return map;
   }, [summaries]);
 
   const summaryByName = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, StudentFinanceSummaryDto>();
     summaries.forEach((item) => {
       const key = normalizeLedgerKey(item.studentName);
       if (key) map.set(key, item);
@@ -114,11 +138,13 @@ export default function Ledger() {
   // Tum ogrenci kadrosu listelenir; finansal degerler backend ozetinden
   // (studentUserId, yoksa ad eslesmesi) birebir alinir. Kadroda olmayip yalnizca
   // sozlesmede gecen ogrenciler de eklenir; boylece hicbir canli kayit dusmez.
-  const ledger = useMemo(() => {
-    const usedSummaryKeys = new Set();
-    const resolveSummary = (student) => {
-      const byId = student.id != null ? summaryByUserId.get(String(student.id)) : undefined;
-      const summary = byId || summaryByName.get(normalizeLedgerKey(student.fullName || student.name || ''))
+  const ledger = useMemo((): LedgerRow[] => {
+    const usedSummaryKeys = new Set<StudentFinanceSummaryDto>();
+    // Finans özetindeki studentUserId KULLANICI kimliğidir (StudentSummaryDto.userId);
+    // eskiden öğrenci profil kimliği (id) ile karşılaştırılıyordu, hiç eşleşmiyordu.
+    const resolveSummary = (student: StudentSummaryDto) => {
+      const byId = student.userId ? summaryByUserId.get(String(student.userId)) : undefined;
+      const summary = byId || summaryByName.get(normalizeLedgerKey(student.fullName || ''))
         || summaryByName.get(normalizeLedgerKey(student.username || ''));
       if (summary) usedSummaryKeys.add(summary);
       return summary;
@@ -129,10 +155,13 @@ export default function Ledger() {
       const totalDue = Number(summary?.netTotal) || 0;
       const totalPaid = Number(summary?.paidTotal) || 0;
       return {
-        id: s.id || normalizeLedgerKey(s.fullName || s.name),
-        studentUserId: summary?.studentUserId || s.id || null,
-        name: s.fullName || s.name || summary?.studentName || '',
-        className: summary?.className || s.className || s.class || '-',
+        id: s.id || normalizeLedgerKey(s.fullName),
+        // Kullanıcı kimliği gönderilir: hesap sorgusu ve yeni sözleşme bu kimliğe bağlanır.
+        // Eskiden profil kimliği (s.id) gidiyordu; özeti olmayan öğrencinin detayı boş
+        // açılıyor, eklenen sözleşme de yanlış kimliğe bağlanıyordu.
+        studentUserId: summary?.studentUserId || s.userId || null,
+        name: s.fullName || summary?.studentName || '',
+        className: summary?.className || s.className || '-',
         totalDue,
         totalPaid,
         balance: summary ? Number(summary.balance) || 0 : totalDue - totalPaid,
@@ -177,7 +206,7 @@ export default function Ledger() {
     overdue: summaries.filter((item) => (item.overdueCount || 0) > 0).length,
   }), [summaries]);
 
-  const openDetail = useCallback(async (row) => {
+  const openDetail = useCallback(async (row: LedgerRow) => {
     setSelectedStudent(row);
     setAccountDetail(null);
     if (!row.studentUserId && !row.name) return;
@@ -193,7 +222,7 @@ export default function Ledger() {
     }
   }, []);
 
-  const openEnroll = (row) => {
+  const openEnroll = (row: LedgerRow | null) => {
     if (!row) return;
     setEnrollStudent(row);
     setEnrollForm(emptyEnrollForm);
@@ -232,7 +261,7 @@ export default function Ledger() {
     } catch (err) {
       toast({
         title: 'Sözleşme oluşturulamadı',
-        description: err?.response?.data?.message || err?.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {

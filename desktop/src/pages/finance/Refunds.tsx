@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, ReceiptText, RotateCcw, Search, UserRound } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { Badge } from '../../components/ui/badge';
@@ -15,9 +15,22 @@ import {
   fetchStudentFinanceAccount,
   refundFinancePayment,
 } from '../../lib/api/modules';
-import { assetUrl } from '../../lib/assetUrl';
+import { errorMessage } from '../../lib/errors';
+import type { IconComponent } from '../../types/ui';
+import type { FinancePaymentDto, StudentFinanceAccountDto, StudentFinanceSummaryDto } from '../../types/api/generated';
 
-const EMPTY_FORM = {
+/** Sol listedeki öğrenci: finans özeti + seçim anahtarı. */
+type RefundStudent = StudentFinanceSummaryDto & { id: string; name: string; secondary: string };
+
+interface RefundForm {
+  amount: string;
+  type: string;
+  channel: string;
+  reference: string;
+  reason: string;
+}
+
+const EMPTY_FORM: RefundForm = {
   amount: '',
   type: 'PaymentReversal',
   channel: 'Nakit',
@@ -25,17 +38,17 @@ const EMPTY_FORM = {
   reason: '',
 };
 
-function money(value, currency = 'TRY') {
+function money(value: unknown, currency = 'TRY'): string {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(Number(value) || 0);
 }
 
-function dateTime(value) {
+function dateTime(value: string | null | undefined): string {
   if (!value) return '-';
   return new Date(value).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-function paymentLabel(item) {
-  return item.receiptNo || item.description || 'Tahsilat';
+function paymentLabel(item: FinancePaymentDto): string {
+  return item.receiptNo || 'Tahsilat';
 }
 
 export default function Refunds() {
@@ -43,16 +56,16 @@ export default function Refunds() {
   const vocabulary = getFinanceVocabulary(user);
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [students, setStudents] = useState([]);
+  const [students, setStudents] = useState<RefundStudent[]>([]);
   const [selectedId, setSelectedId] = useState(searchParams.get('student') || '');
-  const [detail, setDetail] = useState(null);
+  const [detail, setDetail] = useState<StudentFinanceAccountDto | null>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [selectedRecord, setSelectedRecord] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [selectedRecord, setSelectedRecord] = useState<FinancePaymentDto | null>(null);
+  const [form, setForm] = useState<RefundForm>(EMPTY_FORM);
 
   const loadStudents = useCallback(async () => {
     setLoading(true);
@@ -66,13 +79,13 @@ export default function Refunds() {
         secondary: row.className || '',
       })));
     } catch (err) {
-      setError(err.message || 'İade verileri yüklenemedi.');
+      setError(errorMessage(err, 'İade verileri yüklenemedi.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const loadDetail = useCallback(async (studentId) => {
+  const loadDetail = useCallback(async (studentId: string) => {
     if (!studentId) {
       setDetail(null);
       return;
@@ -85,21 +98,21 @@ export default function Refunds() {
       const student = students.find((item) => item.id === String(studentId));
       setDetail(await fetchStudentFinanceAccount({
         studentUserId: student?.studentUserId || undefined,
-        studentName: student?.studentName || student?.name || '',
+        studentName: student?.studentName || '',
       }));
     } catch (err) {
       setDetail(null);
-      setError(err.message || `${vocabulary.person} hesabı yüklenemedi.`);
+      setError(errorMessage(err, `${vocabulary.person} hesabı yüklenemedi.`));
     } finally {
       setDetailLoading(false);
     }
   }, [students]);
 
-  useEffect(() => { loadStudents(); }, [loadStudents]);
+  useEffect(() => { void loadStudents(); }, [loadStudents]);
   useEffect(() => {
     if (selectedId && students.length > 0) {
       const exists = students.some((item) => item.id === String(selectedId));
-      if (exists) loadDetail(selectedId);
+      if (exists) void loadDetail(selectedId);
     }
   }, [loadDetail, selectedId, students.length]);
 
@@ -112,7 +125,7 @@ export default function Refunds() {
 
   const records = useMemo(() => detail?.payments || [], [detail]);
 
-  const recordRefundable = (item) => Number(item.refundableAmount) || 0;
+  const recordRefundable = (item: FinancePaymentDto) => Number(item.refundableAmount) || 0;
   const recordLabel = paymentLabel;
 
   const refundable = records.filter((item) =>
@@ -132,12 +145,12 @@ export default function Refunds() {
         : selectedRecord.refundableAmount || 0)
     : 0;
 
-  function selectStudent(student) {
+  function selectStudent(student: RefundStudent) {
     setSelectedId(student.id);
     setSearchParams({ student: student.id }, { replace: true });
   }
 
-  function startRefund(record) {
+  function startRefund(record: FinancePaymentDto) {
     const normalizedMethod = String(record.method || '').toLocaleLowerCase('tr-TR');
     setSelectedRecord(record);
     setForm({
@@ -151,7 +164,7 @@ export default function Refunds() {
     });
   }
 
-  async function submitRefund(event) {
+  async function submitRefund(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const amount = Number(form.amount);
     if (!selectedRecord || !amount || amount <= 0 || amount > maxAmount) {
@@ -182,7 +195,7 @@ export default function Refunds() {
       setForm(EMPTY_FORM);
       await loadDetail(selectedId);
     } catch (err) {
-      toast({ title: 'İade yapılamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'İade yapılamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
@@ -258,11 +271,11 @@ export default function Refunds() {
       {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600">{error}</div>}
 
       <div className="grid gap-3 sm:grid-cols-3">
-        {[
+        {([
           ['İade Edilebilir', money(refundableTotal, currency), ReceiptText, 'text-emerald-600 bg-emerald-500/10'],
           ['İade Edilen', money(refundedTotal, currency), CheckCircle2, 'text-red-600 bg-red-500/10'],
           [`Seçili ${vocabulary.person}`, selectedStudent?.name || 'Seçilmedi', UserRound, 'text-blue-600 bg-blue-500/10'],
-        ].map(([label, value, Icon, tone]) => (
+        ] satisfies ReadonlyArray<readonly [string, string, IconComponent, string]>).map(([label, value, Icon, tone]) => (
           <Card key={label}><CardContent className="flex items-center gap-3 p-4">
             <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tone}`}><Icon className="h-5 w-5" /></div>
             <div className="min-w-0"><p className="text-xs font-bold text-muted-foreground">{label}</p><p className="mt-1 truncate text-lg font-black">{value}</p></div>
@@ -282,9 +295,8 @@ export default function Refunds() {
               <div className="max-h-[58vh] space-y-2 overflow-y-auto pr-1">
                 {filteredStudents.map((student) => (
                   <button key={student.id} type="button" onClick={() => selectStudent(student)} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${selectedId === student.id ? 'border-red-500/50 bg-red-500/[0.07]' : 'hover:bg-muted/60'}`}>
-                    {student.displayPhotoUrl || student.livePhotoUrl || student.photoUrl
-                      ? <img src={assetUrl(student.displayPhotoUrl || student.livePhotoUrl || student.photoUrl)} alt="" className="h-10 w-10 shrink-0 rounded-xl object-cover" />
-                      : <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted"><UserRound className="h-5 w-5" /></div>}
+                    {/* Finans özetinde fotoğraf alanı yok; eskiden okunan photoUrl alanları hep boştu. */}
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted"><UserRound className="h-5 w-5" /></div>
                     <div className="min-w-0"><p className="truncate text-sm font-black">{student.name}</p><p className="truncate text-xs text-muted-foreground">{student.secondary || 'Finans hesabı'}</p></div>
                   </button>
                 ))}
@@ -308,7 +320,7 @@ export default function Refunds() {
                     <div key={item.id} className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
                         <p className="truncate font-black">{recordLabel(item)}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{dateTime(item.createdAtUtc || item.paidAtUtc)}{item.method ? ` · ${item.method}` : ''}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{dateTime(item.paidAtUtc)}{item.method ? ` · ${item.method}` : ''}</p>
                       </div>
                       <div className="flex items-center justify-between gap-3 sm:justify-end">
                         <div className="text-right"><p className="font-black">{money(recordRefundable(item), currency)}</p><p className="text-[11px] text-muted-foreground">İade edilebilir</p></div>

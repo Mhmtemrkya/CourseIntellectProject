@@ -9,10 +9,12 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard, sendBulkAccountingReminders } from '../../lib/api/modules';
 import { formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
 
 export default function BulkActions() {
   const { toast } = useToast();
-  const [dashboard, setDashboard] = useState(null);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
@@ -23,14 +25,14 @@ export default function BulkActions() {
       setError('');
       setDashboard(await fetchAccountingDashboard());
     } catch (err) {
-      setError(err.message || 'Toplu işlem verisi alınamadı.');
+      setError(errorMessage(err, 'Toplu işlem verisi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadBulk();
+    void loadBulk();
   }, [loadBulk]);
 
   const overdue = useMemo(() => (dashboard?.installments || []).filter((item) => {
@@ -40,7 +42,7 @@ export default function BulkActions() {
 
   const summary = useMemo(() => ({
     totalAmount: overdue.reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0),
-    students: new Set(overdue.map((item) => item.student || item.name)).size,
+    students: new Set(overdue.map((item) => item.student)).size,
   }), [overdue]);
 
   const handleNotify = async () => {
@@ -55,7 +57,7 @@ export default function BulkActions() {
     } catch (err) {
       toast({
         title: 'Toplu bildirim gönderilemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -83,8 +85,8 @@ export default function BulkActions() {
             {overdue.slice(0, 10).map((item) => (
               <div key={item.id} className="flex flex-col gap-4 rounded-2xl border p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <p className="font-semibold">{item.student || item.name || 'Kayıt'}</p>
-                  <p className="text-sm text-muted-foreground">{item.dueDate || item.due || 'Vade yok'} • {item.note || 'Standart taksit kaydı'}</p>
+                  <p className="font-semibold">{item.student || 'Kayıt'}</p>
+                  <p className="text-sm text-muted-foreground">{item.due || 'Vade yok'} • {item.note || 'Standart taksit kaydı'}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700">{formatCurrency(item.amount)}</div>

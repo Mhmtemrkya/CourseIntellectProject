@@ -9,6 +9,13 @@ const MONTHS_TR_SHORT = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu
 // "dd.MM.yyyy[ HH:mm]" / ISO / Date → Date | null
 export type FinancePeriod = 'day' | 'week' | 'month' | 'year';
 
+export const FINANCE_PERIODS: readonly FinancePeriod[] = ['day', 'week', 'month', 'year'];
+
+/** Seçim kutusundan gelen metnin geçerli dönem olup olmadığını daraltır. */
+export function isFinancePeriod(value: string): value is FinancePeriod {
+  return FINANCE_PERIODS.some((period) => period === value);
+}
+
 export interface DateRange {
   start: Date;
   end: Date;

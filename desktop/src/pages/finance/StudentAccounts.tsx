@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Search, Plus, MoreHorizontal, Eye, CreditCard, FileText,
 } from 'lucide-react';
@@ -48,23 +48,52 @@ import {
 } from '../../components/ui/dialog';
 import { Label } from '../../components/ui/label';
 import { StatusBadge } from '../../components/ui/status-badge';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { StatementQuery } from '../../lib/api/studentFinance';
+import type {
+  FinanceInstallmentDto,
+  StudentFinanceAccountDto,
+  StudentFinanceSummaryDto,
+  StudentSummaryDto,
+} from '../../types/api/generated';
 
-const containerVariants = {
+type AccountStatus = 'paid' | 'current' | 'overdue';
+
+interface StatementRange {
+  from: string;
+  to: string;
+}
+
+type StatementHandler = (account: StudentAccount, range?: StatementRange) => Promise<void>;
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0 },
 };
-const FALLBACK_CLASSES = [];
+const FALLBACK_CLASSES: string[] = [];
 
-function parseMoney(value) {
+function parseMoney(value: unknown): number {
   return parseFinanceMoney(value);
 }
 
-function buildAccount(student, dashboard, summary) {
+function summaryStatus(value: string): AccountStatus {
+  const normalized = normalizeFinanceText(value);
+  if (normalized.includes('over')) return 'overdue';
+  if (normalized.includes('paid')) return 'paid';
+  return 'current';
+}
+
+function buildAccount(
+  student: StudentSummaryDto,
+  dashboard: AccountingDashboard | null,
+  summary: StudentFinanceSummaryDto | undefined,
+) {
   const invoices = (dashboard?.invoices || []).filter((item) => String(item.title || '').toLowerCase().includes(String(student.fullName).toLowerCase()));
   const collections = (dashboard?.collections || []).filter((item) => String(item.name || '').toLowerCase() === String(student.fullName).toLowerCase());
   const installments = (dashboard?.installments || []).filter((item) => String(item.student || '').toLowerCase() === String(student.fullName).toLowerCase());
@@ -73,14 +102,15 @@ function buildAccount(student, dashboard, summary) {
   const paid = summary ? Number(summary.paidTotal) || 0 : collections.reduce((sum, item) => sum + parseMoney(item.amount), 0);
   const remaining = summary ? Number(summary.totalPayable) || 0 : Math.max(0, totalFee - paid);
   const overdue = installments.some((item) => normalizeFinanceText(item.status).includes('gec'));
-  const status = totalFee > 0 && paid >= totalFee ? 'paid' : overdue ? 'overdue' : 'current';
+  const status: AccountStatus = totalFee > 0 && paid >= totalFee ? 'paid' : overdue ? 'overdue' : 'current';
   return {
     id: student.id,
     userId: student.userId,
     name: student.fullName,
     username: student.username,
     className: student.className,
-    branchName: student.branchName || student.branch || '',
+    // Öğrenci özetinde şube alanı yok (eskiden var olmayan branchName okunuyordu).
+    branchName: '',
     parent: student.parentName,
     totalFee,
     grossTotal: Number(summary?.grossTotal) || totalFee,
@@ -91,23 +121,32 @@ function buildAccount(student, dashboard, summary) {
     paid,
     remaining,
     installmentCount: installments.length,
-    status: summary?.status ? normalizeFinanceText(summary.status).includes('over') ? 'overdue' : normalizeFinanceText(summary.status).includes('paid') ? 'paid' : 'current' : status,
+    status: summary?.status ? summaryStatus(summary.status) : status,
     collections,
     invoices,
     installments,
   };
 }
 
-function formatDateUtc(value) {
+type StudentAccount = ReturnType<typeof buildAccount>;
+
+function formatDateUtc(value: string | null | undefined): string {
   if (!value) return '-';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }).format(date);
 }
 
-function isInstallmentPaid(item) {
+function isInstallmentPaid(item: FinanceInstallmentDto): boolean {
   const status = normalizeFinanceText(item.status);
   return status.includes('oden') || status.includes('paid') || status.includes('tamam') || (Number(item.remaining) <= 0 && Number(item.paidAmount) > 0);
+}
+
+interface StudentAccountDrawerProps {
+  account: StudentAccount;
+  onCreateCollection?: (account: StudentAccount) => void;
+  onExportStatement?: StatementHandler;
+  onPrintStatement?: StatementHandler;
 }
 
 function StudentAccountDrawer({
@@ -115,19 +154,19 @@ function StudentAccountDrawer({
   onCreateCollection,
   onExportStatement,
   onPrintStatement,
-}) {
+}: StudentAccountDrawerProps) {
   const { user } = useApp();
   const vocabulary = getFinanceVocabulary(user);
-  const [detail, setDetail] = useState(null);
+  const [detail, setDetail] = useState<StudentFinanceAccountDto | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState('');
   // Ekstre tarih aralığı: boş bırakılırsa ilk hareketten taksit planının sonuna
   // kadar tüm geçmiş belgeye girer.
-  const [statementRange, setStatementRange] = useState({ from: '', to: '' });
+  const [statementRange, setStatementRange] = useState<StatementRange>({ from: '', to: '' });
   // Çekmece içeriği açıldığı anda dondurulduğundan meşguliyet burada tutulur.
   const [statementBusy, setStatementBusy] = useState('');
 
-  const runStatementAction = async (kind, handler) => {
+  const runStatementAction = async (kind: 'export' | 'preview', handler: StatementHandler | undefined) => {
     setStatementBusy(kind);
     try {
       await handler?.(account, statementRange);
@@ -144,10 +183,10 @@ function StudentAccountDrawer({
       ? { studentUserId: account.userId }
       : { studentName: account?.name })
       .then((data) => { if (active) setDetail(data); })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (active) {
           setDetail(null);
-          setDetailError(error.message || 'Cari hesap ayrıntıları alınamadı.');
+          setDetailError(errorMessage(error, 'Cari hesap ayrıntıları alınamadı.'));
         }
       })
       .finally(() => { if (active) setDetailLoading(false); });
@@ -160,10 +199,10 @@ function StudentAccountDrawer({
   const installments = detail?.installments || [];
   const paidInstallments = installments
     .filter(isInstallmentPaid)
-    .sort((a, b) => new Date(b.dueDateUtc) - new Date(a.dueDateUtc));
+    .sort((a, b) => new Date(b.dueDateUtc).getTime() - new Date(a.dueDateUtc).getTime());
   const upcomingInstallments = installments
     .filter((item) => !isInstallmentPaid(item))
-    .sort((a, b) => new Date(a.dueDateUtc) - new Date(b.dueDateUtc));
+    .sort((a, b) => new Date(a.dueDateUtc).getTime() - new Date(b.dueDateUtc).getTime());
   const totalFee = detail ? Number(detail.netTotal) || 0 : account.totalFee;
   const paid = detail ? Number(detail.paidTotal) || 0 : account.paid;
   const remaining = detail ? Number(detail.totalPayable) || 0 : account.remaining;
@@ -207,7 +246,7 @@ function StudentAccountDrawer({
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
+        {([
           [grossTotal, vocabulary.fee, 'text-foreground'],
           [discountTotal, 'İndirim', 'text-blue-600'],
           [Math.max(0, grossTotal - discountTotal), vocabulary.netFee, 'text-foreground'],
@@ -215,10 +254,10 @@ function StudentAccountDrawer({
           [paid, 'Toplam Tahsil Edilen', 'text-green-600'],
           [courseRemaining, vocabulary.feeDebt, courseRemaining > 0 ? 'text-red-600' : 'text-green-600'],
           [remaining, 'Toplam Ödenecek', remaining > 0 ? 'text-red-600' : 'text-green-600'],
-        ].map(([value, label, color, isCount]) => (
+        ] satisfies ReadonlyArray<readonly [number, string, string]>).map(([value, label, color]) => (
           <Card key={label}>
             <CardContent className="p-4 text-center">
-              <p className={`text-2xl font-bold ${color}`}>{isCount ? value : formatCurrency(value)}</p>
+              <p className={`text-2xl font-bold ${color}`}>{formatCurrency(value)}</p>
               <p className="text-xs text-muted-foreground">{label}</p>
             </CardContent>
           </Card>
@@ -329,7 +368,7 @@ function StudentAccountDrawer({
           variant="outline"
           className="flex-1"
           disabled={statementBusy !== ''}
-          onClick={() => runStatementAction('export', onExportStatement)}
+          onClick={() => { void runStatementAction('export', onExportStatement); }}
         >
           <FileText className="h-4 w-4 mr-2" />
           {statementBusy === 'export' ? 'Hazırlanıyor…' : 'Ekstre İndir'}
@@ -338,7 +377,7 @@ function StudentAccountDrawer({
           variant="outline"
           className="flex-1"
           disabled={statementBusy !== ''}
-          onClick={() => runStatementAction('preview', onPrintStatement)}
+          onClick={() => { void runStatementAction('preview', onPrintStatement); }}
         >
           <Eye className="h-4 w-4 mr-2" />
           {statementBusy === 'preview' ? 'Açılıyor…' : 'Önizle & Yazdır'}
@@ -351,20 +390,20 @@ function StudentAccountDrawer({
 export default function StudentAccounts() {
   const { openDrawer, user } = useApp();
   const vocabulary = getFinanceVocabulary(user);
-  const [schoolCollectTarget, setSchoolCollectTarget] = useState(null);
+  const [schoolCollectTarget, setSchoolCollectTarget] = useState<StudentAccount | null>(null);
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [students, setStudents] = useState([]);
-  const [dashboard, setDashboard] = useState(null);
-  const [summaries, setSummaries] = useState([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
+  const [summaries, setSummaries] = useState<StudentFinanceSummaryDto[]>([]);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   // Toplu tahsilat onayı: { count, total }
-  const [bulkConfirm, setBulkConfirm] = useState(null);
-  const [statementBusyId, setStatementBusyId] = useState(null);
-  const [statementPreview, setStatementPreview] = useState(null);
+  const [bulkConfirm, setBulkConfirm] = useState<{ count: number; total: number } | null>(null);
+  const [statementBusyId, setStatementBusyId] = useState<string | null>(null);
+  const [statementPreview, setStatementPreview] = useState<{ account: StudentAccount; url: string; loading: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -377,18 +416,18 @@ export default function StudentAccounts() {
         fetchAccountingDashboard(),
         fetchFinanceSummaries(),
       ]);
-      setStudents(studentList);
+      setStudents(studentList ?? []);
       setDashboard(accounting);
       setSummaries(financeSummaries);
     } catch (err) {
-      setError(err.message || 'Cari hesaplar alınamadı.');
+      setError(errorMessage(err, 'Cari hesaplar alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const accounts = useMemo(() => students.map((student) => {
@@ -407,18 +446,18 @@ export default function StudentAccounts() {
 
   // Ekstre sunucuda üretilir: kurum künyesi, cari kodu, yürüyen bakiye ve tutarın
   // yazıyla karşılığı tek kaynaktan gelir; masaüstü yalnız indirir/önizler.
-  const statementParams = useCallback((account, range) => ({
+  const statementParams = useCallback((account: StudentAccount, range?: StatementRange): StatementQuery => ({
     ...(account.userId ? { studentUserId: account.userId } : { studentName: account.name }),
     fromUtc: range?.from || undefined,
     toUtc: range?.to || undefined,
   }), []);
 
-  const statementFileName = useCallback((account) => {
+  const statementFileName = useCallback((account: StudentAccount) => {
     const slug = normalizeFinanceText(account.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     return `cari-hesap-ekstresi-${slug || 'ogrenci'}.pdf`;
   }, []);
 
-  const applyCollectionToDashboard = useCallback((account, collection) => {
+  const applyCollectionToDashboard = useCallback((collection: AccountingDashboard['collections'][number]) => {
     setDashboard((prev) => {
       if (!prev) return prev;
       return {
@@ -428,17 +467,18 @@ export default function StudentAccounts() {
     });
   }, []);
 
-  const handleCreateCollection = useCallback(async (account) => {
+  const handleCreateCollection = useCallback((account: StudentAccount) => {
     // tahsilat penceresi açılır. ÖNCEDEN bu buton hiçbir şey sormadan
     // kalan bakiyenin tamamını "Kart" ile tahsil edilmiş yazıyordu — tahsilat
     // geri alınamaz bir para hareketi, tutar/yöntem/taksit kullanıcıya sorulur.
     setSchoolCollectTarget(account);
   }, []);
 
-  const handleExportStatement = useCallback(async (account, range) => {
+  const handleExportStatement = useCallback(async (account: StudentAccount, range?: StatementRange) => {
     try {
       setStatementBusyId(account.id);
       const blob = await downloadStudentStatementPdf(statementParams(account, range));
+      if (!blob) throw new Error('Ekstre boş döndü.');
       downloadFileBlob(statementFileName(account), blob);
       toast({
         title: 'Ekstre indirildi',
@@ -447,7 +487,7 @@ export default function StudentAccounts() {
     } catch (err) {
       toast({
         title: 'Ekstre hazırlanamadı',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -455,10 +495,11 @@ export default function StudentAccounts() {
     }
   }, [statementFileName, statementParams, toast]);
 
-  const handlePrintStatement = useCallback(async (account, range) => {
+  const handlePrintStatement = useCallback(async (account: StudentAccount, range?: StatementRange) => {
     setStatementPreview({ account, url: '', loading: true });
     try {
       const blob = await downloadStudentStatementPdf(statementParams(account, range));
+      if (!blob) throw new Error('Ekstre boş döndü.');
       // Tauri webview'inde blob türsüz gelebiliyor; MIME uzantıdan zorlanmazsa
       // iframe boş görünür (bkz. lib/fileMime.js).
       const { url } = await createTypedDocumentUrl(blob, statementFileName(account));
@@ -467,7 +508,7 @@ export default function StudentAccounts() {
       setStatementPreview(null);
       toast({
         title: 'Ekstre açılamadı',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     }
@@ -523,11 +564,10 @@ export default function StudentAccounts() {
           method: 'Toplu Tahsilat',
           note: `${account.className} toplu tahsilat`,
         });
-        applyCollectionToDashboard(account, created);
+        if (created) applyCollectionToDashboard(created);
         await createAccountingNotification({
           title: 'Toplu tahsilat işlendi',
           message: `${account.name} icin ${formatCurrency(remaining)} tutarli tahsilat kaydedildi.`,
-          severity: 'Info',
         }).catch(() => null);
       }
       toast({
@@ -537,7 +577,7 @@ export default function StudentAccounts() {
     } catch (err) {
       toast({
         title: 'Toplu tahsilat tamamlanamadı',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -553,8 +593,8 @@ export default function StudentAccounts() {
     return matchesSearch && matchesClass && matchesBranch && matchesStatus;
   }), [accounts, search, classFilter, branchFilter, statusFilter]);
 
-  const getStatusBadge = (status) => {
-    const labels = { paid: 'Ödendi', current: 'Güncel', overdue: 'Gecikti' };
+  const getStatusBadge = (status: AccountStatus) => {
+    const labels: Record<AccountStatus, string> = { paid: 'Ödendi', current: 'Güncel', overdue: 'Gecikti' };
     return <StatusBadge status={labels[status]} />;
   };
 
@@ -736,12 +776,12 @@ export default function StudentAccounts() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={statementBusyId === account.id}
-                          onClick={() => handleExportStatement(account)}
+                          onClick={() => { void handleExportStatement(account); }}
                         >
                           <FileText className="h-4 w-4 mr-2" />
                           {statementBusyId === account.id ? 'Ekstre hazırlanıyor…' : 'Ekstre (PDF)'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handlePrintStatement(account)}>
+                        <DropdownMenuItem onClick={() => { void handlePrintStatement(account); }}>
                           <Eye className="h-4 w-4 mr-2" /> Ekstreyi Önizle
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -814,9 +854,9 @@ export default function StudentAccounts() {
           account={schoolCollectTarget}
           onClose={() => setSchoolCollectTarget(null)}
           onDone={(result) => {
-            if (result?.silent) { loadData(); return; }
+            if ('silent' in result) { void loadData(); return; }
             setSchoolCollectTarget(null);
-            loadData();
+            void loadData();
           }}
         />
       )}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Search, Plus, CreditCard, Banknote, Building2,
   Receipt, Download, Pencil, Trash2,
@@ -38,18 +38,99 @@ import {
   normalizeFinanceText,
   parseFinanceMoney,
 } from '../../lib/financeDocuments';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type {
+  AccountingCollectionDto,
+  AccountingInstallmentDto,
+  CreateCollectionRequest,
+  StudentSummaryDto,
+} from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const containerVariants = {
+type ViewMode = 'received' | 'planned';
+
+/** Tabloda ortak satır: alınan tahsilat ya da planlı taksit (kaynak kayıt korunur). */
+interface CollectionRow {
+  id: string;
+  name: string;
+  className: string;
+  amount: string;
+  method: string;
+  time: string;
+  note: string;
+  status: string;
+  due: string;
+  collectedByName: string | null;
+  branchName: string | null;
+  entryType: string;
+  received: AccountingCollectionDto | null;
+  plan: AccountingInstallmentDto | null;
+}
+
+/** Yeni tahsilat penceresine taşınan ön doldurma bilgisi. */
+interface CollectionPrefill {
+  id?: string;
+  name: string;
+  className: string;
+  amount: string | number;
+  method: string;
+  note: string;
+}
+
+function receivedRow(item: AccountingCollectionDto): CollectionRow {
+  return {
+    id: item.id,
+    name: item.name,
+    className: item.className,
+    amount: item.amount,
+    method: item.method,
+    time: item.time,
+    note: item.note,
+    status: '',
+    due: '',
+    collectedByName: item.collectedByName,
+    branchName: item.branchName,
+    entryType: item.entryType,
+    received: item,
+    plan: null,
+  };
+}
+
+function plannedRow(item: AccountingInstallmentDto): CollectionRow {
+  return {
+    id: item.id,
+    name: item.student,
+    className: '',
+    amount: item.amount,
+    method: '',
+    time: '',
+    note: item.note,
+    status: item.status,
+    due: item.due,
+    collectedByName: null,
+    branchName: null,
+    entryType: '',
+    received: null,
+    plan: item,
+  };
+}
+
+function isViewMode(value: string): value is ViewMode {
+  return value === 'received' || value === 'planned';
+}
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0 },
 };
 
-const paymentTypes = [
+const paymentTypes: ReadonlyArray<{ value: string; label: string; icon: IconComponent }> = [
   { value: 'Nakit', label: 'Nakit', icon: Banknote },
   { value: 'Kredi Karti', label: 'Kredi Kartı', icon: CreditCard },
   { value: 'Havale/EFT', label: 'Havale/EFT', icon: Building2 },
@@ -64,11 +145,11 @@ const monthOptions = [
   })),
 ];
 
-function parseMoney(value) {
+function parseMoney(value: unknown): number {
   return parseFinanceMoney(value);
 }
 
-function parseFinanceDate(value) {
+function parseFinanceDate(value: string | null | undefined): Date | null {
   if (!value) return null;
   const raw = String(value);
   const trMatch = raw.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
@@ -87,16 +168,16 @@ function parseFinanceDate(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function monthMatches(value, monthFilter) {
+function monthMatches(value: string, monthFilter: string): boolean {
   if (monthFilter === 'all') return true;
   const date = parseFinanceDate(value);
   return date ? date.getMonth() + 1 === Number(monthFilter) : false;
 }
 
-function plannedCollectionAmount(plan) {
+function plannedCollectionAmount(plan: { note: string; status: string; amount: string }): number {
   const remainingMatch = String(plan.note || '').match(/Kalan\s+(.+)$/i);
   if (remainingMatch) {
-    return parseMoney(remainingMatch[1]);
+    return parseMoney(remainingMatch[1] ?? '');
   }
   const status = normalizeFinanceText(plan.status);
   if (status.includes('odendi') || status.includes('paid') || status.includes('completed')) {
@@ -105,7 +186,7 @@ function plannedCollectionAmount(plan) {
   return parseMoney(plan.amount);
 }
 
-function normalizePaymentMethod(value) {
+function normalizePaymentMethod(value: string): string {
   const normalized = normalizeFinanceText(value);
 
   if (normalized.includes('nakit') || normalized.includes('cash')) return 'Nakit';
@@ -115,9 +196,18 @@ function normalizePaymentMethod(value) {
   return value || 'Nakit';
 }
 
+interface NewCollectionDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  students: readonly StudentSummaryDto[];
+  onCreated: (created: AccountingCollectionDto) => void;
+  initialCollection?: CollectionPrefill | null;
+  mode?: 'create' | 'edit';
+}
+
 function NewCollectionDialog({
   open, onOpenChange, students, onCreated, initialCollection = null, mode = 'create',
-}) {
+}: NewCollectionDialogProps) {
   const { toast } = useToast();
   const { user } = useApp();
   const collectorName = user?.name || user?.username || 'Ben';
@@ -130,7 +220,7 @@ function NewCollectionDialog({
   });
 
   const selectedStudent = useMemo(
-    () => students.find((student) => student.fullName === form.studentKey)
+    (): { fullName: string; className: string; userId?: string } | null => students.find((student) => student.fullName === form.studentKey)
       || (initialCollection && form.studentKey === initialCollection.name
         ? { fullName: initialCollection.name, className: initialCollection.className }
         : null),
@@ -159,7 +249,7 @@ function NewCollectionDialog({
 
     try {
       setSaving(true);
-      const payload = {
+      const payload: CreateCollectionRequest = {
         name: selectedStudent.fullName,
         className: selectedStudent.className || 'Belirtilmedi',
         amount: form.amount,
@@ -171,7 +261,7 @@ function NewCollectionDialog({
       const created = mode === 'edit' && initialCollection?.id
         ? await updateCollection(initialCollection.id, payload)
         : await createCollection(payload);
-      onCreated(created);
+      if (created) onCreated(created);
       toast({
         title: mode === 'edit' ? 'Tahsilat güncellendi' : 'Tahsilat kaydedildi',
         description: mode === 'edit' ? 'Tahsilat kaydı güncellendi.' : 'Tahsilat backend’e işlendi.',
@@ -180,7 +270,7 @@ function NewCollectionDialog({
     } catch (err) {
       toast({
         title: 'Tahsilat kaydedilemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -258,13 +348,13 @@ export default function Collections() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('received');
+  const [viewMode, setViewMode] = useState<ViewMode>('received');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCollection, setEditingCollection] = useState(null);
-  const [prefillCollection, setPrefillCollection] = useState(null);
-  const [selectedCollection, setSelectedCollection] = useState(null);
-  const [dashboard, setDashboard] = useState(null);
-  const [students, setStudents] = useState([]);
+  const [editingCollection, setEditingCollection] = useState<AccountingCollectionDto | null>(null);
+  const [prefillCollection, setPrefillCollection] = useState<CollectionPrefill | null>(null);
+  const [selectedCollection, setSelectedCollection] = useState<AccountingCollectionDto | null>(null);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -274,40 +364,43 @@ export default function Collections() {
       setError('');
       const [accounting, studentList] = await Promise.all([
         fetchAccountingDashboard(),
-        fetchStudents().catch(() => []),
+        fetchStudents().catch(() => null),
       ]);
       setDashboard(accounting);
-      setStudents(studentList);
+      setStudents(studentList ?? []);
     } catch (err) {
-      setError(err.message || 'Tahsilat verileri alınamadı.');
+      setError(errorMessage(err, 'Tahsilat verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const collections = useMemo(() => dashboard?.collections || [], [dashboard]);
   const plannedCollections = useMemo(() => dashboard?.installments || [], [dashboard]);
-  const displayedRows = viewMode === 'planned' ? plannedCollections : collections;
+  const displayedRows = useMemo(
+    () => (viewMode === 'planned' ? plannedCollections.map(plannedRow) : collections.map(receivedRow)),
+    [collections, plannedCollections, viewMode],
+  );
 
   const filteredCollections = useMemo(() => displayedRows.filter((collection) => {
     const searchValue = search.toLowerCase();
-    const rowName = collection.name || collection.student || '';
+    const rowName = collection.name || '';
     const rowId = collection.id || '';
     const rowNote = collection.note || '';
     const matchesSearch = `${rowName} ${rowId} ${rowNote}`.toLowerCase().includes(searchValue);
     const matchesType = viewMode === 'planned' || typeFilter === 'all' || normalizePaymentMethod(collection.method) === typeFilter;
     const matchesMonth = monthMatches(
-      viewMode === 'planned' ? (collection.dueDate || collection.due) : collection.time,
+      viewMode === 'planned' ? collection.due : collection.time,
       monthFilter,
     );
     return matchesSearch && matchesType && matchesMonth;
   }), [displayedRows, monthFilter, search, typeFilter, viewMode]);
 
-  const getTypeBadge = (type) => {
+  const getTypeBadge = (type: string) => {
     const normalized = normalizePaymentMethod(type);
     const config = normalized === 'İade'
       ? { label: 'İade', className: 'bg-red-100 text-red-700' }
@@ -328,7 +421,7 @@ export default function Collections() {
   })), [collections, monthFilter]);
 
   const plannedTotal = useMemo(() => plannedCollections
-    .filter((item) => monthMatches(item.dueDate || item.due, monthFilter))
+    .filter((item) => monthMatches(item.due, monthFilter))
     .reduce((sum, item) => sum + plannedCollectionAmount(item), 0), [monthFilter, plannedCollections]);
 
   const totalToday = useMemo(() => {
@@ -338,40 +431,40 @@ export default function Collections() {
       .reduce((sum, item) => sum + parseMoney(item.amount), 0);
   }, [collections]);
 
-  const handleCreated = (created) => {
-    setDashboard((prev) => ({
+  const handleCreated = (created: AccountingCollectionDto) => {
+    setDashboard((prev) => (prev ? {
       ...prev,
-      collections: (prev?.collections || []).some((item) => item.id === created.id)
-        ? (prev?.collections || []).map((item) => (item.id === created.id ? created : item))
-        : [created, ...(prev?.collections || [])],
-    }));
+      collections: (prev.collections || []).some((item) => item.id === created.id)
+        ? (prev.collections || []).map((item) => (item.id === created.id ? created : item))
+        : [created, ...(prev.collections || [])],
+    } : prev));
     setEditingCollection(null);
   };
 
   // Finansal kayıt silme geri alınamaz; tek tıkla silinmemesi için onay istenir.
-  const [pendingDelete, setPendingDelete] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState<AccountingCollectionDto | null>(null);
 
-  const handleDelete = async (collection) => {
+  const handleDelete = async (collection: AccountingCollectionDto) => {
     setPendingDelete(null);
     try {
       await deleteCollection(collection.id);
-      setDashboard((prev) => ({
+      setDashboard((prev) => (prev ? {
         ...prev,
-        collections: (prev?.collections || []).filter((item) => item.id !== collection.id),
-      }));
+        collections: (prev.collections || []).filter((item) => item.id !== collection.id),
+      } : prev));
       toast({ title: 'Tahsilat silindi', description: 'Kayıt listeden kaldırıldı.' });
       if (selectedCollection?.id === collection.id) {
         setSelectedCollection(null);
       }
     } catch (err) {
-      toast({ title: 'Tahsilat silinemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Tahsilat silinemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     }
   };
 
-  const openPlannedCollectionDialog = (plan) => {
+  const openPlannedCollectionDialog = (plan: CollectionRow) => {
     setEditingCollection(null);
     setPrefillCollection({
-      name: plan.student || '',
+      name: plan.name || '',
       className: plan.className || '',
       amount: plannedCollectionAmount(plan) || plan.amount || '',
       method: 'Nakit',
@@ -381,7 +474,7 @@ export default function Collections() {
   };
 
   const handleExport = () => {
-    const exportAmount = (collection) => (
+    const exportAmount = (collection: CollectionRow) => (
       viewMode === 'planned' ? plannedCollectionAmount(collection) : parseMoney(collection.amount)
     );
 
@@ -389,7 +482,7 @@ export default function Collections() {
       ['Kayit No', 'Ogrenci', 'Sinif', 'Tutar', 'Tur', 'Zaman', 'Not'],
       ...filteredCollections.map((collection) => [
         collection.id,
-        collection.name || collection.student || '',
+        collection.name || '',
         collection.className,
         exportAmount(collection),
         viewMode === 'planned' ? (collection.status || 'Planlanan') : collection.method,
@@ -414,7 +507,7 @@ export default function Collections() {
           headers: ['Kayıt', 'Öğrenci', 'Tür', 'Tutar', 'Zaman'],
           rows: filteredCollections.slice(0, 18).map((collection) => [
             collection.id,
-            collection.name || collection.student || '',
+            collection.name || '',
             viewMode === 'planned' ? (collection.status || 'Planlanan') : collection.method,
             formatCurrency(exportAmount(collection)),
             viewMode === 'planned' ? (collection.due || '-') : (collection.time || '-'),
@@ -508,7 +601,7 @@ export default function Collections() {
                 className="pl-10"
               />
             </div>
-            <Select value={viewMode} onValueChange={setViewMode}>
+            <Select value={viewMode} onValueChange={(value) => { if (isViewMode(value)) setViewMode(value); }}>
               <SelectTrigger className="w-full md:w-52">
                 <SelectValue placeholder="Görünüm" />
               </SelectTrigger>
@@ -568,7 +661,7 @@ export default function Collections() {
                   <TableCell className="font-mono text-sm">{collection.id}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{collection.name || collection.student}</p>
+                      <p className="font-medium">{collection.name}</p>
                       <p className="text-xs text-muted-foreground">{collection.className || collection.status || 'Plan'} • {collection.note}</p>
                       {(collection.collectedByName || collection.branchName) ? (
                         <p className="text-xs text-muted-foreground">
@@ -587,15 +680,15 @@ export default function Collections() {
                   <TableCell>
                     {viewMode === 'received' ? (
                       <div className="flex items-center">
-                        <Button variant="ghost" size="icon" onClick={() => setSelectedCollection(collection)}>
+                        <Button variant="ghost" size="icon" onClick={() => setSelectedCollection(collection.received)}>
                           <Receipt className="h-4 w-4" />
                         </Button>
                         {collection.entryType !== 'Refund' && parseMoney(collection.amount) >= 0 ? (
                           <>
-                            <Button variant="ghost" size="icon" onClick={() => { setEditingCollection(collection); setDialogOpen(true); }}>
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingCollection(collection.received); setDialogOpen(true); }}>
                               <Pencil className="h-4 w-4 text-blue-600" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setPendingDelete(collection)}>
+                            <Button variant="ghost" size="icon" onClick={() => setPendingDelete(collection.received)}>
                               <Trash2 className="h-4 w-4 text-red-600" />
                             </Button>
                           </>
@@ -681,7 +774,7 @@ export default function Collections() {
             <AlertDialogCancel>Vazgeç</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 text-white hover:bg-red-700"
-              onClick={() => handleDelete(pendingDelete)}
+              onClick={() => { if (pendingDelete) void handleDelete(pendingDelete); }}
             >
               Evet, sil
             </AlertDialogAction>

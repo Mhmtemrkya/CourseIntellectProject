@@ -19,6 +19,19 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
 import { downloadBlob, parseFinanceMoney } from '../../lib/financeDocuments';
 import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+
+type ExportField = 'invoices' | 'collections' | 'installments' | 'approvals' | 'summary';
+
+interface ExportHistoryEntry {
+  id: number;
+  name: string;
+  type: string;
+  date: string;
+  size: string;
+  status: string;
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -30,7 +43,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-function parseMoney(value) {
+function parseMoney(value: unknown): number {
   return parseFinanceMoney(value);
 }
 
@@ -38,17 +51,17 @@ export default function Export() {
   const { toast } = useToast();
   const [exportType, setExportType] = useState('excel');
   const [reportType, setReportType] = useState('general');
-  const [dashboard, setDashboard] = useState(null);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedFields, setSelectedFields] = useState({
+  const [selectedFields, setSelectedFields] = useState<Record<ExportField, boolean>>({
     invoices: true,
     collections: true,
     installments: true,
     approvals: true,
     summary: true,
   });
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState<ExportHistoryEntry[]>([]);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -57,23 +70,23 @@ export default function Export() {
       const payload = await fetchAccountingDashboard();
       setDashboard(payload);
     } catch (err) {
-      setError(err.message || 'Export verileri alınamadı.');
+      setError(errorMessage(err, 'Export verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadDashboard();
+    void loadDashboard();
   }, [loadDashboard]);
 
-  const toggleField = (field) => {
+  const toggleField = (field: ExportField) => {
     setSelectedFields((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
   const exportRows = useMemo(() => {
     if (!dashboard) return [];
-    const rows = [];
+    const rows: Array<Array<string | number>> = [];
 
     if (selectedFields.summary) {
       // Brüt tahsilat ile iadeler ayrı satırlarda verilir; tek toplamda birleşirse
@@ -193,13 +206,13 @@ export default function Export() {
                 <div className="space-y-3">
                   <Label>Dahil Edilecek Alanlar</Label>
                   <div className="grid grid-cols-2 gap-4">
-                    {[
+                    {([
                       ['invoices', 'Faturalar'],
                       ['collections', 'Tahsilatlar'],
                       ['installments', 'Taksitler'],
                       ['approvals', 'Onaylar'],
                       ['summary', 'Özet'],
-                    ].map(([key, label]) => (
+                    ] satisfies ReadonlyArray<readonly [ExportField, string]>).map(([key, label]) => (
                       <div className="flex items-center gap-2" key={key}>
                         <Checkbox
                           id={key}

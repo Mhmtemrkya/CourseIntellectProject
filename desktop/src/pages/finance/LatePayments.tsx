@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, AlertCircle, Bell, Phone, Mail,
@@ -20,22 +20,25 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { createAccountingNotification, fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
 import { downloadCsvRows, formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { StudentSummaryDto } from '../../types/api/generated';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0 },
 };
 
-function parseMoney(value) {
+function parseMoney(value: unknown): number {
   return parseFinanceMoney(value);
 }
 
-function calculateDaysLate(dueValue) {
+function calculateDaysLate(dueValue: string): number {
   const due = new Date(dueValue);
   if (Number.isNaN(due.getTime())) return 0;
   const diff = Date.now() - due.getTime();
@@ -46,9 +49,9 @@ export default function LatePayments() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState([]);
-  const [dashboard, setDashboard] = useState(null);
-  const [students, setStudents] = useState([]);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -61,16 +64,16 @@ export default function LatePayments() {
         fetchStudents(),
       ]);
       setDashboard(accounting);
-      setStudents(studentList);
+      setStudents(studentList ?? []);
     } catch (err) {
-      setError(err.message || 'Geciken tahsilat verileri alınamadı.');
+      setError(errorMessage(err, 'Geciken tahsilat verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const latePayments = useMemo(() => {
@@ -118,7 +121,7 @@ export default function LatePayments() {
     });
   };
 
-  const toggleSelect = (id) => {
+  const toggleSelect = (id: string) => {
     setSelected((prev) => (
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     ));
@@ -132,7 +135,7 @@ export default function LatePayments() {
     }
   };
 
-  const sendReminder = async (type) => {
+  const sendReminder = async (type: 'sms' | 'email') => {
     const selectedPayments = filteredPayments.filter((item) => selected.includes(item.id));
     try {
       await Promise.all(selectedPayments.map((payment) => createAccountingNotification({
@@ -147,13 +150,13 @@ export default function LatePayments() {
     } catch (err) {
       toast({
         title: 'Bildirim gönderilemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     }
   };
 
-  const getSeverityBadge = (days) => {
+  const getSeverityBadge = (days: number) => {
     if (days > 10) return <Badge className="bg-red-100 text-red-700">{days} gün</Badge>;
     if (days > 5) return <Badge className="bg-yellow-100 text-yellow-700">{days} gün</Badge>;
     return <Badge className="bg-orange-100 text-orange-700">{days} gün</Badge>;
