@@ -165,18 +165,6 @@ export interface AddContentCommentRequest {
   message: string;
 }
 
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface AddExamCandidatesRequest {
-  studentProfileIds: string[];
-  feeAmount: number;
-}
-
-// CourseIntellect.Api/Controllers/DrivingAppointmentsController.cs
-export interface AddExtraMinutesRequest {
-  minutes: number;
-  note: string | null;
-}
-
 // CourseIntellect.Application/DTOs/Scope/ScopeAdminDtos.cs
 export interface AddGrantRequest {
   level: string;
@@ -200,13 +188,6 @@ export interface AddStudyPlanXpRequest {
 export interface AddTeacherReviewRequest {
   questionAttemptId: string;
   comment: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingAppointmentsController.cs
-export interface AdjustBalanceRequest {
-  minutesDelta: number;
-  reason: string | null;
-  isRefund: boolean;
 }
 
 // CourseIntellect.Application/DTOs/Analytics/AdminAnalyticsDtos.cs
@@ -426,23 +407,6 @@ export interface AnswerSelectionResponse {
   savedAtUtc: string;
 }
 
-// CourseIntellect.Api/Controllers/DrivingMebbisImportsController.cs
-export interface ApplyMebbisImportRequest {
-  expectedPreviewVersion: number;
-  excludedRowIds: string[] | null;
-  createRetryFees: boolean;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingAvailabilityService.cs
-export interface AppointmentCandidate {
-  studentDrivingProfileId: string;
-  instructorProfileId: string;
-  vehicleId: string;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  excludeAppointmentId: string | null;
-}
-
 // CourseIntellect.Application/DTOs/Admin/AdminWorkflowDtos.cs
 export interface ApprovalDecisionRequest {
   status: string;
@@ -488,12 +452,6 @@ export interface ApprovalRequestDto {
   referenceKey: string;
   createdAtUtc: string;
   decidedAtUtc: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface ApproveDrivingCertificateSettingsRequest {
-  confirmed: boolean;
-  note: string | null;
 }
 
 // CourseIntellect.Domain/Entities/AppSetting.cs
@@ -568,29 +526,6 @@ export interface AssignedStudentResponse {
   routeId: string;
   routeName: string;
   isActive: boolean;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface AssignExamCandidateRequest {
-  vehicleId: string | null;
-  instructorProfileId: string | null;
-}
-
-// CourseIntellect.Domain/Services/DrivingAvailability.cs
-export interface AssignmentWindow {
-  vehicleId: string;
-  type: VehicleAssignmentType;
-  startsOnUtc: string | null;
-  endsOnUtc: string | null;
-  daysOfWeekMask: number;
-  priority: number;
-  isActive: boolean;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface AssignStudentGroupRequest {
-  profileIds: string[];
-  groupId: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Scope/ScopeAdminDtos.cs
@@ -885,59 +820,12 @@ export interface AuthorizationCode {
   isUsed: boolean;
 }
 
-// CourseIntellect.Api/Controllers/DrivingAssignmentsController.cs
-export interface AvailabilityCheckRequest {
-  studentDrivingProfileId: string;
-  instructorProfileId: string;
-  vehicleId: string;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  excludeAppointmentId: string | null;
-}
-
-// CourseIntellect.Domain/Services/DrivingAvailability.cs
-export interface AvailabilityViolation {
-  code: string;
-  message: string;
-  overridableWith: string | null;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingAvailabilityService.cs
-export interface AvailableInstructor {
-  instructorProfileId: string;
-  fullName: string;
-  priority: number;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingAvailabilityService.cs
-export interface AvailableVehicle {
-  vehicleId: string;
-  plateNumber: string;
-  assignmentType: string;
-  priority: number;
-}
-
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface BankStatementRow {
   reference: string;
   amount: number;
   date: string;
   description: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingMebbisExportController.cs
-export interface BaseRow {
-  profile: StudentDrivingProfile;
-  fullName: string;
-  tcNo: string | null;
-  birthDate: string;
-  groupName: string;
-}
-
-// CourseIntellect.Domain/Services/DrivingAvailability.cs
-export interface BookedSlot {
-  startsAtUtc: string;
-  endsAtUtc: string;
 }
 
 // CourseIntellect.Api/Controllers/LibraryController.cs
@@ -948,22 +836,6 @@ export interface BulkBooksRequest {
 // CourseIntellect.Application/DTOs/Translations/BulkUpsertTranslationRequest.cs
 export interface BulkUpsertTranslationRequest {
   items: UpsertTranslationRequest[];
-}
-
-// CourseIntellect.Api/Controllers/DrivingAppointmentsController.cs
-export interface CancelAppointmentRequest {
-  reason: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingTermOpeningController.cs
-export interface CandidateRow {
-  id: string;
-  fullName: string;
-  studentNumber: number;
-  licenseClass: string;
-  status: DrivingStudentStatus;
-  studentGroupId: string | null;
-  missing: string[];
 }
 
 // CourseIntellect.Domain/Entities/ExamSolvingEntities.cs
@@ -1010,84 +882,6 @@ export const CaptchaVerificationStatus = {
 } as const;
 export type CaptchaVerificationStatus = (typeof CaptchaVerificationStatus)[keyof typeof CaptchaVerificationStatus];
 
-// CourseIntellect.Api/Controllers/DrivingMebbisCertificateNumbersController.cs
-export interface CertificateAnalysis {
-  rowId: string;
-  rowNumber: number;
-  classification: string;
-  maskedMatchKey: string;
-  studentNumber: string;
-  name: string;
-  matched: boolean;
-  certificateFound: boolean;
-  documentNumber: string | null;
-  currentMebbisNumber: string;
-  incomingMebbisNumber: string;
-  duplicate: boolean;
-  messages: string[];
-  canApply: boolean;
-}
-
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface CertificateDeliveryRequest {
-  status: string;
-  deliveredTo: string | null;
-  note: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface CertificateDocumentData {
-  institutionName: string;
-  institutionCode: string;
-  institutionCity: string;
-  institutionDistrict: string;
-  studentName: string;
-  identityNumber: string;
-  fatherName: string;
-  motherName: string;
-  birthPlace: string;
-  birthYear: string;
-  licenseClass: string;
-  existingLicenseCity: string;
-  existingLicenseDate: string;
-  existingLicenseNumber: string;
-  existingLicenseClasses: string;
-  courseStartedAtUtc: string | null;
-  examPassedAtUtc: string | null;
-  issuedAtUtc: string | null;
-  directorName: string;
-  directorTitle: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface CertificateMebbisNoRequest {
-  mebbisCertificateNo: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface CertificateReissueRequest {
-  reason: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface CertificateSnapshot {
-  layoutVersion: number;
-  institutionName: string;
-  studentName: string;
-  licenseClass: string;
-  directorName: string;
-  directorTitle: string;
-  documentData: CertificateDocumentData | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingMebbisController.cs
-export interface ChangeMebbisWorkStatusRequest {
-  status: string;
-  reason: string | null;
-  note: string | null;
-  expectedVersion: number;
-}
-
 // CourseIntellect.Application/DTOs/Auth/ChangePasswordRequest.cs
 export interface ChangePasswordRequest {
   currentPassword: string | null;
@@ -1133,11 +927,6 @@ export interface ClassTeacherAssignmentRequest {
   role: string | null;
 }
 
-// CourseIntellect.Api/Controllers/DrivingFinanceController.cs
-export interface CollectDownPaymentBody {
-  method: string | null;
-}
-
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface CollectDownPaymentRequest {
   method: string | null;
@@ -1150,26 +939,9 @@ export interface ColumnAccessor {
   redacted: boolean;
 }
 
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface CompleteDrivingLessonRequest {
-  endKilometer: number;
-  criteria: Record<string, number> | null;
-  instructorNote: string | null;
-}
-
 // CourseIntellect.Api/Controllers/GuidanceController.cs
 export interface CompleteInventoryRequest {
   answersJson: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingMebbisController.cs
-export interface CompleteMebbisEntryAssistantRequest {
-  expectedWorkItemVersion: number;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface CompleteVehicleServiceRecordRequest {
-  resolution: string;
 }
 
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
@@ -1635,11 +1407,6 @@ export interface ContentUserState {
   updatedAtUtc: string | null;
 }
 
-// CourseIntellect.Api/Controllers/DrivingLeadsController.cs
-export interface ConvertDrivingLeadRequest {
-  studentDrivingProfileId: string | null;
-}
-
 // CourseIntellect.Application/DTOs/Courses/CourseDto.cs
 export interface CourseDto {
   id: string;
@@ -1666,13 +1433,6 @@ export interface CourseItem {
   isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingMebbisReconciliationsController.cs
-export interface CourseRecord {
-  profile: StudentDrivingProfile;
-  tcNo: string;
-  fullName: string;
 }
 
 // CourseIntellect.Application/DTOs/Accounting/CreateAccountingNotificationRequest.cs
@@ -1823,17 +1583,6 @@ export interface CreateDocumentRequest {
   note: string | null;
 }
 
-// CourseIntellect.Api/Controllers/DrivingFinanceController.cs
-export interface CreateDrivingChargeRequest {
-  chargeType: string;
-  description: string | null;
-  grossAmount: number;
-  discountAmount: number;
-  discountReason: string | null;
-  minutes: number;
-  dueDateUtc: string | null;
-}
-
 // CourseIntellect.Application/DTOs/Duty/DutyDtos.cs
 export interface CreateDutyRequest {
   dutyType: string;
@@ -1948,12 +1697,6 @@ export interface CreateLoginAttemptRequest {
   userAgent: string;
   deviceId: string;
   tenantId: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingMebbisReconciliationsController.cs
-export interface CreateMebbisReconciliationRequest {
-  studentGroupId: string;
-  candidateImportSessionId: string;
 }
 
 // CourseIntellect.Application/DTOs/Meetings/CreateMeetingRequestRequest.cs
@@ -2211,12 +1954,6 @@ export interface CreateThreadRequest {
   initialMessage: string | null;
 }
 
-// CourseIntellect.Api/Controllers/DrivingMebbisTransferPackagesController.cs
-export interface CreateTransferPackageRequest {
-  packageType: string;
-  studentGroupId: string;
-}
-
 // CourseIntellect.Application/DTOs/Auth/CurrentUserDto.cs
 export interface CurrentUserDto {
   id: string;
@@ -2238,13 +1975,6 @@ export interface CurrentUserDto {
   modules: string[];
   permissions: string[];
   hasRoleManagementPolicy: boolean;
-}
-
-// CourseIntellect.Domain/Services/DrivingCurriculum.cs
-export interface CurriculumSubject {
-  key: string;
-  label: string;
-  requiredHours: number;
 }
 
 // CourseIntellect.Domain/Entities/CustomRole.cs
@@ -2278,13 +2008,6 @@ export interface CustomRoleModuleGate {
   restricted: boolean;
 }
 
-// CourseIntellect.Infrastructure/Services/DrivingPermissionService.cs
-export interface CustomRolePermissions {
-  baseRole: string;
-  permissions: string[];
-  modulesRestricted: boolean;
-}
-
 // CourseIntellect.Application/DTOs/Dashboard/DashboardActivityDto.cs
 export interface DashboardActivityDto {
   id: string;
@@ -2310,10 +2033,10 @@ export interface DashboardStatsDto {
   failedLoginAttempts: number;
 }
 
-// CourseIntellect.Domain/Services/DrivingMebbisEntryFields.cs
-export interface Definition {
-  key: string;
-  label: string;
+// CourseIntellect.Api/Controllers/GuidanceController.cs
+export interface DecideAppointmentRequest {
+  approved: boolean;
+  note: string | null;
 }
 
 // CourseIntellect.Application/Interfaces/IDocumentIntelligenceService.cs
@@ -2405,14 +2128,6 @@ export interface DrivingAppointmentRequest {
   createdAtUtc: string;
 }
 
-// CourseIntellect.Api/Controllers/DrivingAppointmentRequestsController.cs
-export interface DrivingAppointmentRequests_DecideAppointmentRequest {
-  approved: boolean;
-  instructorProfileId: string | null;
-  vehicleId: string | null;
-  note: string | null;
-}
-
 // CourseIntellect.Domain/Enums/DrivingGraduationEnums.cs
 export const DrivingAppointmentRequestStatus = {
   Pending: 1,
@@ -2501,37 +2216,6 @@ export const DrivingCertificateDeliveryStatus = {
 } as const;
 export type DrivingCertificateDeliveryStatus = (typeof DrivingCertificateDeliveryStatus)[keyof typeof DrivingCertificateDeliveryStatus];
 
-// CourseIntellect.Application/Interfaces/IDrivingCertificatePdfService.cs
-export interface DrivingCertificatePdfModel {
-  institutionName: string;
-  institutionCode: string;
-  institutionCity: string;
-  institutionDistrict: string;
-  studentName: string;
-  identityNumber: string;
-  fatherName: string;
-  motherName: string;
-  birthPlace: string;
-  birthYear: string;
-  licenseClass: string;
-  existingLicenseCity: string;
-  existingLicenseDate: string;
-  existingLicenseNumber: string;
-  existingLicenseClasses: string;
-  documentNumber: string;
-  mebbisCertificateNumber: string;
-  certificateTitle: string;
-  courseStartedAtUtc: string | null;
-  examPassedAtUtc: string | null;
-  issuedAtUtc: string | null;
-  directorName: string;
-  directorTitle: string;
-  primaryColor: string;
-  verificationUrl: string;
-  logoBytes: string | null;
-  signatureBytes: string | null;
-}
-
 // CourseIntellect.Domain/Enums/DrivingGraduationEnums.cs
 export const DrivingCertificateStatus = {
   Active: 1,
@@ -2579,79 +2263,6 @@ export const DrivingChargeType = {
   Other: 6,
 } as const;
 export type DrivingChargeType = (typeof DrivingChargeType)[keyof typeof DrivingChargeType];
-
-// CourseIntellect.Application/Interfaces/IDrivingContractFormPdfService.cs
-export interface DrivingContractFormData {
-  fullName: string;
-  identityNumber: string;
-  fatherName: string;
-  motherName: string;
-  birthPlace: string;
-  birthDate: string;
-  educationLevel: string;
-  licenseClass: string;
-  phone: string;
-  homePhone: string;
-  residenceAddress: string;
-  registrationCity: string;
-  registrationDistrict: string;
-  registrationNeighborhood: string;
-  registrationStreet: string;
-  registrationVolumeNo: string;
-  registrationFamilyOrderNo: string;
-  registrationOrderNo: string;
-  identityIssueDate: string;
-  identityIssuePlace: string;
-  existingLicenseCity: string;
-  existingLicenseClasses: string;
-  existingLicenseDate: string;
-  existingLicenseNumber: string;
-  institutionName: string;
-  institutionCity: string;
-  institutionDistrict: string;
-  institutionAddress: string;
-  institutionPhone: string;
-  directorName: string;
-  bankName: string;
-  bankAccountNo: string;
-  jurisdictionCity: string;
-  totalFee: number;
-  theoryHourlyFee: number;
-  drivingHourlyFee: number;
-  theoryExamFee: number;
-  drivingExamFee: number;
-  theoryHours: number;
-  drivingHours: number;
-  failedFourthAttemptFee: number;
-  installments: DrivingContractInstallment[];
-  downPayment: number;
-  registeredAtUtc: string;
-  generatedAtUtc: string;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingContractFormPdfService.cs
-export const DrivingContractFormKind = {
-  Application: 0,
-  SignatureCircular: 1,
-  Contract: 2,
-} as const;
-export type DrivingContractFormKind = (typeof DrivingContractFormKind)[keyof typeof DrivingContractFormKind];
-
-// CourseIntellect.Application/Interfaces/IDrivingContractFormPdfService.cs
-export interface DrivingContractInstallment {
-  label: string;
-  amount: number;
-  dueDateUtc: string | null;
-  paidAtUtc: string | null;
-}
-
-// CourseIntellect.Domain/Services/DrivingEvaluation.cs
-export interface DrivingEvaluationCriterion {
-  key: string;
-  category: string;
-  label: string;
-  manualOnly: boolean;
-}
 
 // CourseIntellect.Domain/Entities/DrivingEducationEntities.cs
 export interface DrivingExamCandidate {
@@ -2814,20 +2425,6 @@ export const DrivingGraduationActionType = {
 } as const;
 export type DrivingGraduationActionType = (typeof DrivingGraduationActionType)[keyof typeof DrivingGraduationActionType];
 
-// CourseIntellect.Domain/Services/DrivingGraduationRules.cs
-export interface DrivingGraduationFacts {
-  documentsComplete: boolean;
-  completedTheoryMinutes: number;
-  requiredTheoryMinutes: number;
-  completedPracticeMinutes: number;
-  requiredPracticeMinutes: number;
-  theoryExamPassed: boolean;
-  drivingExamPassed: boolean;
-  outstandingDebt: number;
-  openAppointments: number;
-  pendingAppointmentRequests: number;
-}
-
 // CourseIntellect.Domain/Entities/DrivingGraduationEntities.cs
 export interface DrivingGraduationRecord {
   id: string;
@@ -2852,12 +2449,6 @@ export const DrivingGraduationStatus = {
   Revoked: 3,
 } as const;
 export type DrivingGraduationStatus = (typeof DrivingGraduationStatus)[keyof typeof DrivingGraduationStatus];
-
-// CourseIntellect.Application/Interfaces/IDrivingImportFileParser.cs
-export interface DrivingImportTable {
-  headers: string[];
-  rows: Record<string, string>[];
-}
 
 // CourseIntellect.Domain/Entities/DrivingAssignmentEntities.cs
 export interface DrivingInstructorLeave {
@@ -2986,17 +2577,6 @@ export interface DrivingLesson {
   createdAtUtc: string;
 }
 
-// CourseIntellect.Domain/Services/DrivingLessonBalance.cs
-export interface DrivingLessonBalanceSummary {
-  purchasedMinutes: number;
-  extraPurchasedMinutes: number;
-  usedMinutes: number;
-  plannedMinutes: number;
-  penaltyMinutes: number;
-  refundedMinutes: number;
-  manualAdjustmentMinutes: number;
-}
-
 // CourseIntellect.Domain/Entities/DrivingSchoolEntities.cs
 export interface DrivingLessonLedgerEntry {
   id: string;
@@ -3058,16 +2638,6 @@ export const DrivingMebbisErrorSeverity = {
   Blocking: 2,
 } as const;
 export type DrivingMebbisErrorSeverity = (typeof DrivingMebbisErrorSeverity)[keyof typeof DrivingMebbisErrorSeverity];
-
-// CourseIntellect.Domain/Services/DrivingMebbisErrorCatalog.cs
-export interface DrivingMebbisErrorTemplate {
-  code: string;
-  title: string;
-  description: string;
-  possibleCause: string;
-  severity: DrivingMebbisErrorSeverity;
-  resolutionSteps: string[];
-}
 
 // CourseIntellect.Domain/Entities/DrivingMebbisFieldProgress.cs
 export interface DrivingMebbisFieldProgress {
@@ -3372,49 +2942,6 @@ export interface DrivingPackage {
   createdAtUtc: string;
 }
 
-// CourseIntellect.Api/Controllers/DrivingFinanceController.cs
-export interface DrivingPaymentRequest {
-  amount: number;
-  method: string | null;
-  financeInstallmentId: string | null;
-  note: string | null;
-  branchId: string | null;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingPermissionService.cs
-export interface DrivingPermissionSnapshot {
-  roleKey: string;
-  permissions: string[];
-  isOwner: boolean;
-  isBranchScoped: boolean;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingPhotoInspectionService.cs
-export interface DrivingPhotoAnalysisResult {
-  overall: string;
-  checks: DrivingPhotoCheckResult[];
-  sourceSha256: string;
-  sourceBytes: number;
-  width: number;
-  height: number;
-  faceCount: number;
-  faceConfidence: number | null;
-  averageBrightness: number;
-  backgroundUniformity: number;
-  mebbisJpeg: string | null;
-  mebbisWidth: number | null;
-  mebbisHeight: number | null;
-  analyzerVersion: string;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingPhotoInspectionService.cs
-export interface DrivingPhotoCheckResult {
-  key: string;
-  title: string;
-  severity: string;
-  message: string;
-}
-
 // CourseIntellect.Domain/Entities/DrivingPhotoInspection.cs
 export interface DrivingPhotoInspection {
   id: string;
@@ -3452,26 +2979,6 @@ export interface DrivingRegistrationDraft {
   payloadJson: string;
   createdAtUtc: string;
   updatedAtUtc: string;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingReportPdfService.cs
-export interface DrivingReportColumn {
-  header: string;
-  numeric: boolean;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingReportPdfService.cs
-export interface DrivingReportDocument {
-  institutionName: string;
-  title: string;
-  description: string;
-  fromUtc: string;
-  toUtc: string;
-  columns: DrivingReportColumn[];
-  rows: string[][];
-  summary: unknown[];
-  primaryColor: string | null;
-  logoBytes: string | null;
 }
 
 // CourseIntellect.Domain/Entities/DrivingSchoolEntities.cs
@@ -3556,114 +3063,6 @@ export const DrivingStudentStatus = {
   GraduationPending: 10,
 } as const;
 export type DrivingStudentStatus = (typeof DrivingStudentStatus)[keyof typeof DrivingStudentStatus];
-
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface DrivingStudentWizardRequest {
-  fullName: string;
-  identityKind: IdentityKind;
-  identityNumber: string;
-  identitySerialNo: string | null;
-  fatherName: string | null;
-  motherName: string | null;
-  birthPlace: string | null;
-  nationality: string | null;
-  birthDate: string | null;
-  gender: string | null;
-  bloodType: string | null;
-  occupation: string | null;
-  educationLevel: string | null;
-  city: string | null;
-  district: string | null;
-  residenceAddress: string | null;
-  registrationCity: string | null;
-  registrationDistrict: string | null;
-  registrationNeighborhood: string | null;
-  registrationStreet: string | null;
-  registrationVolumeNo: string | null;
-  registrationFamilyOrderNo: string | null;
-  registrationOrderNo: string | null;
-  identityIssueDate: string | null;
-  identityIssuePlace: string | null;
-  address: string | null;
-  phone: string | null;
-  email: string | null;
-  whatsAppPhone: string | null;
-  emergencyContactName: string | null;
-  emergencyContactPhone: string | null;
-  photoUrl: string | null;
-  livePhotoUrl: string | null;
-  hasExistingLicense: boolean;
-  existingLicenseNumber: string | null;
-  existingLicenseClasses: string | null;
-  licenseIssueDate: string | null;
-  licenseExpiryDate: string | null;
-  licenseIssuePlace: string | null;
-  theoryExamFee: number;
-  drivingExamFee: number;
-  theoryExamFeePaid: boolean;
-  drivingExamFeePaid: boolean;
-  packageId: string;
-  courseStartsAtUtc: string | null;
-  preferredInstructorProfileId: string | null;
-  preferredVehicleId: string | null;
-  drivingExperience: DrivingExperienceLevel;
-  availableWeekdays: boolean;
-  availableWeekend: boolean;
-  prefersMorning: boolean;
-  prefersMidday: boolean;
-  prefersEvening: boolean;
-  accessibilityNotes: string | null;
-  kvkkConsent: boolean;
-  communicationConsent: boolean;
-  signatureUrl: string | null;
-  note: string | null;
-  finance: DrivingWizardFinance | null;
-  documents: UploadStudentDocumentRequest[] | null;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingTermAlertService.cs
-export interface DrivingTermAlertGroup {
-  groupId: string;
-  name: string;
-  termYear: number | null;
-  termNumber: number | null;
-  mebbisTermCode: string;
-  quota: number;
-  studentCount: number;
-  remainingCapacity: number;
-  capacityExceeded: boolean;
-  registrationDeadlineUtc: string | null;
-  daysToDeadline: number | null;
-  missingMebbisCount: number;
-  healthReportPendingCount: number;
-  readyNotEnteredCount: number;
-  reconciliationMismatchCount: number;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingTermAlertService.cs
-export interface DrivingTermAlertItem {
-  code: string;
-  severity: string;
-  title: string;
-  message: string;
-  count: number;
-  groupId: string | null;
-  actionPath: string;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingTermAlertService.cs
-export interface DrivingTermAlertSnapshot {
-  generatedAtUtc: string;
-  activeTermCount: number;
-  criticalCount: number;
-  warningCount: number;
-  missingMebbisCount: number;
-  healthReportPendingCount: number;
-  readyNotEnteredCount: number;
-  reconciliationMismatchCount: number;
-  alerts: DrivingTermAlertItem[];
-  terms: DrivingTermAlertGroup[];
-}
 
 // CourseIntellect.Domain/Entities/DrivingEducationEntities.cs
 export interface DrivingTheoryAttendance {
@@ -3808,26 +3207,6 @@ export interface DrivingVehicleServiceRecord {
   createdAtUtc: string;
 }
 
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface DrivingWizardFinance {
-  grossAmount: number;
-  discountAmount: number;
-  discountReason: string | null;
-  downPayment: number;
-  installmentCount: number;
-  firstInstallmentDate: string | null;
-  downPaymentMethod: string | null;
-  downPaymentPaid: boolean;
-}
-
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface DrivingWizardProblem {
-  step: number;
-  section: string;
-  field: string;
-  message: string;
-}
-
 // CourseIntellect.Application/DTOs/Duty/DutyDtos.cs
 export interface DutyConflictDto {
   teacherName: string;
@@ -3939,64 +3318,6 @@ export interface EnrollmentContractDto {
   scholarshipAmount: number;
 }
 
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface EnrollTheoryStudentsRequest {
-  studentProfileIds: string[];
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface EnterExamResultRequest {
-  passed: boolean;
-  score: number | null;
-  failureReason: string | null;
-  note: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingMebbisController.cs
-export interface EntrySource {
-  profile: StudentDrivingProfile;
-  student: StudentProfile;
-  healthReport: StudentDrivingDocument | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingMebbisExamResultsController.cs
-export interface ExamAnalysis {
-  rowId: string;
-  rowNumber: number;
-  classification: string;
-  maskedIdentity: string;
-  name: string;
-  matched: boolean;
-  examTitle: string | null;
-  examType: string | null;
-  previousResult: string | null;
-  importedScore: number | null;
-  incomingPassed: boolean | null;
-  resultMismatch: boolean;
-  scoreMismatch: boolean;
-  retryRequired: boolean;
-  attemptNo: number;
-  remainingAttempts: number;
-  outOfAttempts: boolean;
-  feeAmount: number;
-  feeWillBeCreated: boolean;
-  contractMissing: boolean;
-  message: string;
-  previousScore: number | null;
-  candidateId: string | null;
-  studentProfileId: string | null;
-  extraLessonMinutes: number;
-  extraLessonFee: number;
-  totalFinancialImpact: number;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface ExamCommissionRequest {
-  fullName: string;
-  role: string;
-  organization: string | null;
-}
-
 // CourseIntellect.Domain/Entities/ExamSolvingEntities.cs
 export interface ExamQuestion {
   id: string;
@@ -4035,20 +3356,6 @@ export interface ExamResultDto {
   scorePercent: number;
   classRank: number | null;
   overallRank: number | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface ExamResultImportRow {
-  identityNumber: string;
-  result: string | null;
-  score: number | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface ExamResultOutcome {
-  usedAttempts: number;
-  outOfAttempts: boolean;
-  extraLessonChargeId: string | null;
 }
 
 // CourseIntellect.Api/Controllers/PlannedExamsController.cs
@@ -4222,59 +3529,9 @@ export interface FinancePaymentDto {
   branchName: string;
 }
 
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface ForceGraduateStudentRequest {
-  reason: string | null;
-}
-
 // CourseIntellect.Application/DTOs/Auth/PasswordResetDtos.cs
 export interface ForgotPasswordRequest {
   email: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface GenerateScheduleRequest {
-  startDate: string;
-  daysOfWeek: number[];
-  startHourLocal: number;
-  startMinuteLocal: number;
-  lessonsPerDay: number;
-}
-
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface GraduateStudentRequest {
-  note: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface GraduationActionRequest {
-  reason: string | null;
-  checklistKeys: string[] | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface GraduationChecklistItem {
-  key: string;
-  label: string;
-  completed: boolean;
-  detail: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface GraduationChecklistResponse {
-  studentProfileId: string;
-  studentName: string;
-  eligible: boolean;
-  items: GraduationChecklistItem[];
-  checkedAtUtc: string;
-  attendancePercent: number;
-  minimumAttendancePercent: number;
-  excusedAbsencePolicy: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface GraduationDecisionRequest {
-  note: string | null;
 }
 
 // CourseIntellect.Infrastructure/Services/AdminAnalyticsService.cs
@@ -4285,12 +3542,6 @@ export const Granularity = {
   Year: 3,
 } as const;
 export type Granularity = (typeof Granularity)[keyof typeof Granularity];
-
-// CourseIntellect.Api/Controllers/GuidanceController.cs
-export interface Guidance_DecideAppointmentRequest {
-  approved: boolean;
-  note: string | null;
-}
 
 // CourseIntellect.Domain/Entities/GuidanceEntities.cs
 export interface GuidanceAppointment {
@@ -4448,19 +3699,6 @@ export const IdentityVerificationStatus = {
 } as const;
 export type IdentityVerificationStatus = (typeof IdentityVerificationStatus)[keyof typeof IdentityVerificationStatus];
 
-// CourseIntellect.Api/Controllers/DrivingMebbisImportsController.cs
-export interface ImportedExamOutcome {
-  retryRequired: boolean;
-  outOfAttempts: boolean;
-  retryChargeId: string | null;
-  extraLessonCreated: boolean;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface ImportExamResultsRequest {
-  rows: ExamResultImportRow[];
-}
-
 // CourseIntellect.Domain/Entities/InstitutionProfile.cs
 export interface InstitutionProfile {
   id: string;
@@ -4506,12 +3744,6 @@ export const InstitutionType = {
 } as const;
 export type InstitutionType = (typeof InstitutionType)[keyof typeof InstitutionType];
 
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface IssueCertificateRequest {
-  type: string;
-  data: CertificateDocumentData | null;
-}
-
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface IssueEInvoiceRequest {
   studentUserId: string | null;
@@ -4533,26 +3765,6 @@ export interface LeaveBalanceDto {
 export interface LeaveDecisionRequest {
   status: string;
   note: string | null;
-}
-
-// CourseIntellect.Domain/Services/DrivingAvailability.cs
-export interface LeaveWindow {
-  startsAtUtc: string;
-  endsAtUtc: string;
-}
-
-// CourseIntellect.Domain/Services/DrivingLessonBalance.cs
-export interface LedgerMovement {
-  type: DrivingLedgerEntryType;
-  minutesDelta: number;
-}
-
-// CourseIntellect.Application/Interfaces/IDrivingLedgerService.cs
-export interface LedgerReconciliation {
-  studentDrivingProfileId: string;
-  ledgerPlannedMinutes: number;
-  activeAppointmentMinutes: number;
-  isBalanced: boolean;
 }
 
 // CourseIntellect.Domain/Entities/LibraryEntities.cs
@@ -4702,21 +3914,10 @@ export interface MappedTable {
   tenantColumn: string;
 }
 
-// CourseIntellect.Api/Controllers/DrivingAppointmentsController.cs
-export interface MarkAttendanceRequest {
-  attended: boolean;
-  note: string | null;
-}
-
 // CourseIntellect.Application/DTOs/Accounting/CreateInvoiceRequest.cs
 export interface MarkInvoicePaidRequest {
   paymentMethod: string;
   paidAtUtc: string | null;
-  note: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingAppointmentsController.cs
-export interface MarkNoShowRequest {
   note: string | null;
 }
 
@@ -4733,103 +3934,6 @@ export interface MarkServiceAttendanceRequest {
   status: string;
   note: string | null;
 }
-
-// CourseIntellect.Domain/Services/DrivingStudentRules.cs
-export interface MebbisCandidate {
-  hasValidNationalId: boolean;
-  birthDate: string | null;
-  fatherName: string | null;
-  motherName: string | null;
-  birthPlace: string | null;
-  educationLevel: string | null;
-  identitySerialNo: string | null;
-  phone: string | null;
-  hasPhoto: boolean;
-  healthReportApproved: boolean;
-  diplomaApproved: boolean;
-  criminalRecordApproved: boolean;
-}
-
-// CourseIntellect.Application/DTOs/DrivingMebbis/MebbisExportModels.cs
-export interface MebbisExportColumn {
-  header: string;
-  isPhoto: boolean;
-  width: number;
-}
-
-// CourseIntellect.Application/DTOs/DrivingMebbis/MebbisExportModels.cs
-export interface MebbisExportDocument {
-  title: string;
-  subtitle: string;
-  sheetName: string;
-  columns: MebbisExportColumn[];
-  rows: MebbisExportRow[];
-}
-
-// CourseIntellect.Application/DTOs/DrivingMebbis/MebbisExportModels.cs
-export interface MebbisExportRow {
-  cells: string[];
-  photo: string | null;
-}
-
-// CourseIntellect.Domain/Services/DrivingMebbisQualityRules.cs
-export interface MebbisImageInfo {
-  format: string;
-  width: number;
-  height: number;
-}
-
-// CourseIntellect.Api/Controllers/DrivingMebbisController.cs
-export interface MebbisItemDto {
-  workType: DrivingMebbisWorkType;
-  subjectId: string;
-  studentDrivingProfileId: string | null;
-  studentGroupId: string | null;
-  title: string;
-  reference: string;
-  category: string;
-  photoUrl: string;
-  status: DrivingMebbisWorkStatus;
-  missing: string[];
-  errorReason: string;
-  note: string;
-  dueAtUtc: string | null;
-  assignedToUserId: string | null;
-  enteredAtUtc: string | null;
-  verifiedAtUtc: string | null;
-  version: number;
-  updatedAtUtc: string | null;
-}
-
-// CourseIntellect.Domain/Services/DrivingMebbisQualityRules.cs
-export interface MebbisQualityCheck {
-  key: string;
-  title: string;
-  category: string;
-  severity: MebbisQualitySeverity;
-  message: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingMebbisController.cs
-export interface MebbisQualityReport {
-  generatedAtUtc: string;
-  overall: string;
-  blockingCount: number;
-  reviewCount: number;
-  warningCount: number;
-  passedCount: number;
-  ready: boolean;
-  checks: MebbisQualityCheck[];
-}
-
-// CourseIntellect.Domain/Services/DrivingMebbisQualityRules.cs
-export const MebbisQualitySeverity = {
-  Green: 0,
-  Yellow: 1,
-  Orange: 2,
-  Red: 3,
-} as const;
-export type MebbisQualitySeverity = (typeof MebbisQualitySeverity)[keyof typeof MebbisQualitySeverity];
 
 // CourseIntellect.Domain/Entities/MeetingRequest.cs
 export interface MeetingRequest {
@@ -5069,20 +4173,6 @@ export interface OrgUnitDto {
   note: string;
   createdAtUtc: string;
   isActive: boolean;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface OverrideContext {
-  codes: string[];
-  reason: string;
-  error: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingMebbisTransferPackagesController.cs
-export interface PackageData {
-  headers: string[];
-  rows: string[][];
-  studentIds: string[];
 }
 
 // CourseIntellect.Application/DTOs/Common/PagedResult.cs
@@ -5713,21 +4803,6 @@ export interface ReconciliationResultDto {
   items: ReconciliationMatchDto[];
 }
 
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface RecordManualDrivingLessonRequest {
-  appointmentId: string;
-  startedAtUtc: string;
-  completedAtUtc: string;
-  startKilometer: number;
-  endKilometer: number;
-  trafficRulesScore: number;
-  vehicleControlScore: number;
-  maneuversScore: number;
-  safetyScore: number;
-  instructorNote: string | null;
-  reason: string | null;
-}
-
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface RecordPaymentRequest {
   studentUserId: string | null;
@@ -5754,13 +4829,6 @@ export interface RefreshTokenSession {
   expiresAtUtc: string;
   createdAtUtc: string;
   revokedAtUtc: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingFinanceController.cs
-export interface RefundChargeRequest {
-  amount: number | null;
-  reason: string | null;
-  allowConsumedRefund: boolean | null;
 }
 
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
@@ -5835,24 +4903,11 @@ export interface RegistrationValidation {
   institutionType: InstitutionType;
 }
 
-// CourseIntellect.Api/Controllers/DrivingMebbisImportsController.cs
-export interface RejectMebbisImportRequest {
-  expectedPreviewVersion: number;
-  reason: string | null;
-}
-
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface ReminderResultDto {
   notified: number;
   upcomingCount: number;
   overdueCount: number;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface RenewVehicleComplianceRequest {
-  inspectionExpiresAtUtc: string | null;
-  insuranceExpiresAtUtc: string | null;
-  activateWhenCompliant: boolean;
 }
 
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
@@ -5874,15 +4929,6 @@ export interface ReportRecipient {
   userId: string | null;
   role: string;
   createdAtUtc: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingAppointmentsController.cs
-export interface RescheduleAppointmentRequest {
-  startsAtUtc: string;
-  endsAtUtc: string;
-  instructorProfileId: string | null;
-  vehicleId: string | null;
-  reason: string | null;
 }
 
 // CourseIntellect.Api/Controllers/LibraryController.cs
@@ -5931,15 +4977,6 @@ export interface ReviewPasswordResetRequest {
   note: string | null;
 }
 
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface ReviewStudentDocumentRequest {
-  action: string | null;
-  approved: boolean | null;
-  rejectionReason: string | null;
-  note: string | null;
-  expectedVersion: number;
-}
-
 // CourseIntellect.Domain/Entities/RolePolicy.cs
 export interface RolePolicy {
   id: string;
@@ -5969,18 +5006,6 @@ export interface RoleSummaryDto {
   requiresCriticalApproval: boolean;
   messagingScope: string;
   moduleAccess: string[];
-}
-
-// CourseIntellect.Api/Controllers/DrivingAppointmentRequestsController.cs
-export interface SaveAppointmentRequest {
-  requestType: string;
-  sourceAppointmentId: string | null;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  preferredInstructorProfileId: string | null;
-  preferredVehicleId: string | null;
-  meetingPoint: string | null;
-  note: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Attendance/SaveAttendanceRequest.cs
@@ -6047,125 +5072,6 @@ export interface SaveContentUserStateRequest {
   note: string | null;
 }
 
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface SaveDrivingAppointmentRequest {
-  studentDrivingProfileId: string;
-  instructorProfileId: string;
-  vehicleId: string;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  notes: string | null;
-  meetingPoint: string | null;
-  overrides: string[] | null;
-  overrideReason: string | null;
-  branchId: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface SaveDrivingInstructorRequest {
-  staffId: string;
-  licenseClasses: string[];
-  canTeachManual: boolean;
-  canTeachAutomatic: boolean;
-  workingPermitNo: string | null;
-  workingPermitExpiresAtUtc: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingLeadsController.cs
-export interface SaveDrivingLeadRequest {
-  fullName: string;
-  phone: string | null;
-  packageId: string | null;
-  source: string | null;
-  note: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface SaveDrivingPackageRequest {
-  name: string;
-  licenseClass: string;
-  transmissionType: TransmissionType;
-  drivingLessonMinutes: number;
-  theoryLessonMinutes: number;
-  price: number;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface SaveDrivingStudentGroupRequest {
-  name: string;
-  description: string | null;
-  isActive: boolean | null;
-  termYear: number | null;
-  termNumber: number | null;
-  mebbisTermCode: string | null;
-  quota: number;
-  registrationDeadlineUtc: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface SaveDrivingVehicleDocumentRequest {
-  vehicleId: string;
-  documentType: string;
-  documentNumber: string;
-  startsAtUtc: string | null;
-  expiresAtUtc: string;
-  fileUrl: string;
-  reminderDays: number;
-  description: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface SaveDrivingVehicleRequest {
-  plateNumber: string;
-  brand: string;
-  model: string;
-  modelYear: number;
-  licenseClass: string;
-  transmissionType: TransmissionType;
-  currentKilometer: number;
-  inspectionExpiresAtUtc: string | null;
-  insuranceExpiresAtUtc: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface SaveDrivingVehicleServiceRecordRequest {
-  vehicleId: string;
-  recordType: string;
-  title: string;
-  serviceProvider: string | null;
-  description: string | null;
-  priority: string;
-  reportedAtUtc: string | null;
-  kilometer: number;
-  vehicleUsable: boolean;
-  laborCost: number;
-  partsCost: number;
-  nextServiceAtUtc: string | null;
-  nextServiceKilometer: number | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface SaveExamRightRequest {
-  candidateId: string | null;
-  studentProfileId: string;
-  examType: string;
-  attemptNo: number;
-  score: number;
-  passed: boolean;
-  examDateUtc: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface SaveExamSessionRequest {
-  examType: string;
-  title: string;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  location: string;
-  capacity: number;
-  commission: ExamCommissionRequest[];
-}
-
 // CourseIntellect.Application/Interfaces/IInstitutionProfileService.cs
 export interface SaveInstitutionProfileRequest {
   name: string | null;
@@ -6180,29 +5086,11 @@ export interface SaveInstitutionProfileRequest {
   documentFooterNote: string | null;
 }
 
-// CourseIntellect.Api/Controllers/DrivingAssignmentsController.cs
-export interface SaveInstructorLeaveRequest {
-  instructorProfileId: string;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  leaveType: string | null;
-  reason: string | null;
-  forceWithExistingAppointments: boolean;
-}
-
 // CourseIntellect.Application/DTOs/ExamSolving/ExamSolvingDtos.cs
 export interface SaveQuestionFlagRequest {
   questionAttemptId: string;
   isFlagged: boolean;
   flagType: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface SaveRegistrationDraftRequest {
-  id: string | null;
-  displayName: string | null;
-  step: number;
-  payloadJson: string;
 }
 
 // CourseIntellect.Application/DTOs/ExamSolving/ExamSolvingDtos.cs
@@ -6213,57 +5101,10 @@ export interface SaveSolutionAnswerRequest {
   timeSpentSeconds: number;
 }
 
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface SaveStudentDrivingProfileRequest {
-  studentId: string;
-  packageId: string;
-  licenseClass: string;
-  transmissionType: TransmissionType;
-}
-
 // CourseIntellect.Application/DTOs/ExamSolving/ExamSolvingDtos.cs
 export interface SaveStudentNoteRequest {
   questionAttemptId: string;
   note: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface SaveTheoryAttendanceRequest {
-  items: TheoryAttendanceItem[];
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface SaveTheoryClassRequest {
-  name: string;
-  licenseClass: string;
-  instructorStaffId: string;
-  capacity: number;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  room: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface SaveTheorySessionRequest {
-  theoryClassId: string;
-  instructorStaffId: string | null;
-  subject: string;
-  topic: string;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  room: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingAssignmentsController.cs
-export interface SaveVehicleAssignmentRequest {
-  instructorProfileId: string;
-  vehicleId: string;
-  assignmentType: string;
-  startsOnUtc: string | null;
-  endsOnUtc: string | null;
-  daysOfWeekMask: number;
-  priority: number;
-  note: string | null;
 }
 
 // CourseIntellect.Api/Controllers/ScheduleController.cs
@@ -6276,12 +5117,6 @@ export interface ScheduleEntryDto {
   teacher: string;
   room: string;
   isReadOnly: boolean;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface ScheduleExamRetryRequest {
-  examSessionId: string;
-  feeAmount: number;
 }
 
 // CourseIntellect.Domain/Enums/ScopeAccessMode.cs
@@ -6681,11 +5516,6 @@ export interface ServiceVehicleLocation {
   recordedAt: string;
 }
 
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface SetMebbisEnteredRequest {
-  entered: boolean;
-}
-
 // CourseIntellect.Application/DTOs/Admin/OrgUnitDtos.cs
 export interface SetOrgUnitActiveRequest {
   isActive: boolean;
@@ -6727,11 +5557,6 @@ export interface SetupStep {
   countLabel: string;
   actionPath: string;
   actionLabel: string;
-}
-
-// CourseIntellect.Api/Controllers/DrivingAssignmentsController.cs
-export interface SetWorkingHoursRequest {
-  windows: WorkingHourWindow[] | null;
 }
 
 // CourseIntellect.Application/Interfaces/IConsentFormService.cs
@@ -6943,16 +5768,6 @@ export interface StaffSummaryDto {
   photoUrl: string;
   branchId: string | null;
   customRoleId: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface StartDrivingLessonRequest {
-  startKilometer: number;
-  brakesOk: boolean;
-  tiresOk: boolean;
-  lightsOk: boolean;
-  fluidsOk: boolean;
-  preCheckNote: string | null;
 }
 
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
@@ -7742,52 +6557,6 @@ export interface TenantWorkspaceDto {
   setupDocumentFileName: string | null;
 }
 
-// CourseIntellect.Api/Controllers/DrivingTermOpeningController.cs
-export interface TermOpeningRequest {
-  name: string;
-  description: string | null;
-  termYear: number;
-  termNumber: number;
-  mebbisTermCode: string;
-  quota: number;
-  registrationDeadlineUtc: string;
-  licenseClass: string;
-  studentProfileIds: string[];
-  theoryClassName: string;
-  instructorStaffId: string;
-  room: string;
-  theoryStartsAtUtc: string;
-  theoryEndsAtUtc: string;
-  sessions: TermOpeningSessionRequest[];
-}
-
-// CourseIntellect.Api/Controllers/DrivingTermOpeningController.cs
-export interface TermOpeningSessionRequest {
-  instructorStaffId: string | null;
-  subject: string;
-  topic: string;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  room: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingTermOpeningController.cs
-export interface TermOpeningValidation {
-  ready: boolean;
-  errors: string[];
-  warnings: string[];
-  selectedCount: number;
-  mebbisReadyCount: number;
-  sessionCount: number;
-}
-
-// CourseIntellect.Api/Controllers/DrivingEducationController.cs
-export interface TheoryAttendanceItem {
-  studentProfileId: string;
-  status: string;
-  note: string | null;
-}
-
 // CourseIntellect.Application/DTOs/Timetable/TimetableDtos.cs
 export interface TimetableSlotRequest {
   dayOfWeek: number;
@@ -7879,108 +6648,6 @@ export interface UpdateCourseRequest {
   isActive: boolean;
 }
 
-// CourseIntellect.Api/Controllers/DrivingGraduationController.cs
-export interface UpdateDrivingCertificateSettingsRequest {
-  directorName: string | null;
-  directorTitle: string | null;
-  logoUrl: string | null;
-  signatureUrl: string | null;
-  primaryColor: string | null;
-  minimumTheoryAttendancePercent: number;
-  excusedAbsencePolicy: string | null;
-  institutionName: string | null;
-  institutionCode: string | null;
-  institutionCity: string | null;
-  institutionDistrict: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface UpdateDrivingContractFormSettingsRequest {
-  institutionName: string | null;
-  institutionCode: string | null;
-  institutionCity: string | null;
-  institutionDistrict: string | null;
-  institutionAddress: string | null;
-  institutionPhone: string | null;
-  directorName: string | null;
-  bankName: string | null;
-  bankAccountNo: string | null;
-  jurisdictionCity: string | null;
-  theoryHourlyFee: number;
-  drivingHourlyFee: number;
-  theoryExamFee: number;
-  drivingExamFee: number;
-  theoryHours: number;
-  drivingHours: number;
-}
-
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface UpdateDrivingExamFeesRequest {
-  theoryExamFee: number;
-  drivingExamFee: number;
-  theoryExamFeePaid: boolean;
-  drivingExamFeePaid: boolean;
-  drivingExamDate: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingLeadsController.cs
-export interface UpdateDrivingLeadRequest {
-  status: string | null;
-  note: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface UpdateDrivingRegistrationIdentityRequest {
-  registrationCity: string | null;
-  registrationDistrict: string | null;
-  registrationNeighborhood: string | null;
-  registrationStreet: string | null;
-  registrationVolumeNo: string | null;
-  registrationFamilyOrderNo: string | null;
-  registrationOrderNo: string | null;
-  identityIssueDate: string | null;
-  identityIssuePlace: string | null;
-  birthPlace: string | null;
-  fatherName: string | null;
-  motherName: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingAppointmentsController.cs
-export interface UpdateDrivingSettingsRequest {
-  lateCancellationHours: number;
-  lateCancellationDeductPercent: number;
-  noShowDeductPercent: number;
-  requireApprovalForStudentRequests: boolean;
-  minRescheduleHours: number;
-  maxInstructorDailyMinutes: number;
-  maxVehicleDailyMinutes: number;
-  maxStudentDailyLessons: number;
-  preparationMinutes: number;
-  financialHoldEnabled: boolean;
-  financialHoldThreshold: number;
-  minimumTheoryAttendancePercent: number;
-  maxStudentDailyMinutes: number;
-  lessonEarliestHour: number;
-  lessonLatestHour: number;
-  failedPracticeExtraLessonMinutes: number;
-  failedPracticeExtraLessonFee: number;
-  maxVehicleAgeYears: number;
-  excusedAbsencePolicy: string;
-  certificateDirectorName: string | null;
-  certificateDirectorTitle: string | null;
-  certificateLogoUrl: string | null;
-  certificateSignatureUrl: string | null;
-  certificatePrimaryColor: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface UpdateDrivingStudentStatusRequest {
-  status: string;
-  reason: string | null;
-  automaticStatusEnabled: boolean | null;
-  allowIncompleteDocuments: boolean;
-}
-
 // CourseIntellect.Application/DTOs/Duty/DutyDtos.cs
 export interface UpdateDutyRequest {
   dutyType: string;
@@ -8014,24 +6681,10 @@ export interface UpdateInstallmentRequest {
   note: string;
 }
 
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface UpdateInstructorLifecycleRequest {
-  isActive: boolean;
-  automaticStatusEnabled: boolean;
-  allowComplianceOverride: boolean;
-  reason: string | null;
-}
-
 // CourseIntellect.Application/DTOs/System/UpdateMaintenanceRequest.cs
 export interface UpdateMaintenanceRequest {
   enabled: boolean;
   message: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingMebbisController.cs
-export interface UpdateMebbisEntryFieldRequest {
-  completed: boolean;
-  expectedVersion: number;
 }
 
 // CourseIntellect.Application/DTOs/Meetings/UpdateMeetingRequestStatusRequest.cs
@@ -8181,13 +6834,6 @@ export interface UpdateTenantFeaturesRequest {
   features: Record<string, boolean> | null;
 }
 
-// CourseIntellect.Api/Controllers/DrivingMebbisTransferPackagesController.cs
-export interface UpdateTransferPackageStatusRequest {
-  status: string;
-  errorResult: string | null;
-  expectedVersion: number;
-}
-
 // CourseIntellect.Application/DTOs/ServiceTracking/ServiceTrackingDtos.cs
 export interface UpdateVehicleLocationRequest {
   tripId: string;
@@ -8197,31 +6843,12 @@ export interface UpdateVehicleLocationRequest {
   heading: number | null;
 }
 
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface UpdateVehicleStatusRequest {
-  status: string;
-  reason: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingSchoolController.cs
-export interface UpdateWorkingPermitRequest {
-  workingPermitNo: string | null;
-  workingPermitExpiresAtUtc: string | null;
-}
-
 // CourseIntellect.Application/DTOs/Contents/UploadedAssetDto.cs
 export interface UploadedAssetDto {
   fileName: string;
   fileUrl: string;
   contentType: string;
   size: number;
-}
-
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface UploadStudentDocumentRequest {
-  documentType: string;
-  fileUrl: string;
-  fileName: string | null;
 }
 
 // CourseIntellect.Application/DTOs/AppSettings/UpsertAppSettingRequest.cs
@@ -8406,29 +7033,7 @@ export interface VehicleLocationDto {
   recordedAt: string;
 }
 
-// CourseIntellect.Api/Controllers/DrivingStudentsController.cs
-export interface VerifyIdentityRequest {
-  identityNumber: string | null;
-  fullName: string | null;
-  birthDate: string | null;
-  licenseClass: string | null;
-}
-
 // CourseIntellect.Application/DTOs/PlatformOperations/RegisterTenantRequest.cs
 export interface VerifyRegistrationRequest {
   token: string | null;
-}
-
-// CourseIntellect.Api/Controllers/DrivingAssignmentsController.cs
-export interface WorkingHourWindow {
-  dayOfWeek: string;
-  startMinute: number;
-  endMinute: number;
-}
-
-// CourseIntellect.Domain/Services/DrivingAvailability.cs
-export interface WorkingWindow {
-  dayOfWeek: number;
-  startMinute: number;
-  endMinute: number;
 }
