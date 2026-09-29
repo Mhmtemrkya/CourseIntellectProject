@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Building2, Users, CreditCard, Server, AlertTriangle,
   TrendingUp, Activity,
@@ -17,16 +17,20 @@ import {
   PremiumListRow,
   PremiumMetricCard,
   PremiumPanel,
+  type ChartTone,
 } from '../../components/ui/premium-dashboard';
 import { formatMoney } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { PlatformOverviewDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
 export default function SADashboard() {
-  const [platform, setPlatform] = useState(null);
+  const [platform, setPlatform] = useState<PlatformOverviewDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -37,26 +41,26 @@ export default function SADashboard() {
       const data = await fetchPlatformOverview();
       setPlatform(data);
     } catch (err) {
-      setError(err.message || 'Platform verileri alınamadı.');
+      setError(errorMessage(err, 'Platform verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadPlatform();
+    void loadPlatform();
   }, [loadPlatform]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
-  const stats = platform?.stats || {};
+  const stats = platform?.stats;
   const recentTenants = platform?.recentTenants || [];
 
   // Dynamic system status calculations
-  const apiHealthPct   = Math.min(100, Math.round(Number(stats.aiSuccessRate ?? 96)));
+  const apiHealthPct   = Math.min(100, Math.round(Number(stats?.aiSuccessRate ?? 96)));
   const storageMaxGb   = 20; // platform storage ceiling (GB)
-  const storagePct     = Math.min(100, Math.round((Number(stats.storageUsedGb ?? 0) / storageMaxGb) * 100));
-  const dbUsagePct     = Math.min(95, Math.round(Math.min(88, (stats.totalUsers ?? 0) * 0.4 + 35)));
+  const storagePct     = Math.min(100, Math.round((Number(stats?.storageUsedGb ?? 0) / storageMaxGb) * 100));
+  const dbUsagePct     = Math.min(95, Math.round(Math.min(88, (stats?.totalUsers ?? 0) * 0.4 + 35)));
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8" data-testid="sa-dashboard-page">
@@ -68,13 +72,13 @@ export default function SADashboard() {
       {error ? <ErrorBanner title="Platform verileri alınamadı" message={error} onRetry={loadPlatform} /> : null}
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          ['Toplam Kurum', stats.totalTenants, Building2, 'blue'],
-          ['Toplam Kullanıcı', stats.totalUsers, Users, 'violet'],
-          ['Toplam Tahsilat', formatMoney(stats.monthlyRevenue), CreditCard, 'emerald'],
-          ['API Çağrısı', Number(stats.apiCalls || 0).toLocaleString('tr-TR'), Activity, 'amber'],
-        ].map(([label, value, Icon, tone]) => (
-          <PremiumMetricCard key={label} title={label} value={value} icon={Icon} tone={tone} trend="Canlı" />
+        {([
+          ['Toplam Kurum', stats?.totalTenants, Building2, 'blue'],
+          ['Toplam Kullanıcı', stats?.totalUsers, Users, 'violet'],
+          ['Toplam Tahsilat', formatMoney(stats?.monthlyRevenue), CreditCard, 'emerald'],
+          ['API Çağrısı', Number(stats?.apiCalls || 0).toLocaleString('tr-TR'), Activity, 'amber'],
+        ] satisfies ReadonlyArray<readonly [string, number | string | undefined, IconComponent, ChartTone]>).map(([label, value, Icon, tone]) => (
+          <PremiumMetricCard key={label} title={label} value={value} icon={Icon} tone={tone} />
         ))}
       </div>
 
@@ -89,7 +93,7 @@ export default function SADashboard() {
                 </div>
                 <Badge variant="outline">Genel</Badge>
               </div>
-              <MiniLineChart values={[stats.totalTenants || 0, stats.totalUsers || 0, stats.monthlyRevenue || 0, stats.apiCalls || 0, apiHealthPct, storagePct]} className="h-40" />
+              <MiniLineChart values={[stats?.totalTenants || 0, stats?.totalUsers || 0, stats?.monthlyRevenue || 0, stats?.apiCalls || 0, apiHealthPct, storagePct]} className="h-40" />
             </div>
             <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">API Sağlığı</p>
@@ -99,7 +103,7 @@ export default function SADashboard() {
             </div>
             <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Kaynak Dağılımı</p>
-              <MiniBarChart values={[apiHealthPct, storagePct, dbUsagePct, stats.openTickets || 0]} className="mt-5" />
+              <MiniBarChart values={[apiHealthPct, storagePct, dbUsagePct, stats?.openTickets || 0]} className="mt-5" />
             </div>
           </div>
         </PremiumPanel>
@@ -124,7 +128,7 @@ export default function SADashboard() {
                 </Badge>
               </div>
               <Progress value={apiHealthPct} className="h-2" />
-              <p className="text-xs text-muted-foreground mt-1">Başarı oranı — {stats.aiRequestCount ?? 0} istek işlendi</p>
+              <p className="text-xs text-muted-foreground mt-1">Başarı oranı — {stats?.aiRequestCount ?? 0} istek işlendi</p>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-2">
@@ -134,13 +138,13 @@ export default function SADashboard() {
                 </Badge>
               </div>
               <Progress value={dbUsagePct} className="h-2" />
-              <p className="text-xs text-muted-foreground mt-1">{stats.totalUsers ?? 0} kullanıcı — tahmini kayıt yükü</p>
+              <p className="text-xs text-muted-foreground mt-1">{stats?.totalUsers ?? 0} kullanıcı — tahmini kayıt yükü</p>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span>Depolama</span>
                 <Badge className={storagePct < 70 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>
-                  {Number(stats.storageUsedGb ?? 0).toFixed(1)} / {storageMaxGb} GB
+                  {Number(stats?.storageUsedGb ?? 0).toFixed(1)} / {storageMaxGb} GB
                 </Badge>
               </div>
               <Progress value={storagePct} className="h-2" />
@@ -149,23 +153,23 @@ export default function SADashboard() {
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span>Açık Destek Talepleri</span>
-                <Badge className="bg-blue-100 text-blue-700">{stats.openTickets ?? 0} kayıt</Badge>
+                <Badge className="bg-blue-100 text-blue-700">{stats?.openTickets ?? 0} kayıt</Badge>
               </div>
-              {(stats.openTickets ?? 0) > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">{stats.openTickets} bekleyen talep mevcut</p>
+              {(stats?.openTickets ?? 0) > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">{stats?.openTickets} bekleyen talep mevcut</p>
               )}
             </div>
           </div>
         </PremiumPanel>
       </div>
 
-      {(stats.overduePayments || 0) > 0 ? (
+      {(stats?.overduePayments || 0) > 0 ? (
         <Card className="border-yellow-200 bg-yellow-50/50 dark:bg-yellow-900/10">
           <CardContent className="p-4 flex items-center gap-4">
             <AlertTriangle className="h-6 w-6 text-yellow-600" />
             <div>
               <p className="font-medium">Dikkat: gecikmiş platform finans kaydı var</p>
-              <p className="text-sm text-muted-foreground">Toplam gecikmiş tutar {formatMoney(Number(stats.overduePayments || 0))}</p>
+              <p className="text-sm text-muted-foreground">Toplam gecikmiş tutar {formatMoney(Number(stats?.overduePayments || 0))}</p>
             </div>
           </CardContent>
         </Card>

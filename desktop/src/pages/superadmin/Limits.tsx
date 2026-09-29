@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   AlertTriangle, Save,
 } from 'lucide-react';
@@ -18,11 +18,34 @@ import { useToast } from '../../hooks/use-toast';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchPlatformConfigurations, fetchPlatformOverview, fetchPlatformTenants, upsertPlatformConfiguration } from '../../lib/api/modules';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { PlatformConfigurationDto, PlatformOverviewStatsDto, TenantWorkspaceDto } from '../../types/api/generated';
 
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+interface PlanLimit {
+  users: number;
+  storage: number;
+  api: number;
+}
+
+type PlanLimits = Record<string, PlanLimit>;
+
+const EMPTY_LIMIT: PlanLimit = { users: 0, storage: 0, api: 0 };
+
+/** Kayıtlı yapılandırmadaki planLimits nesnesini doğrular; bozuk kayıt null döner. */
+function parsePlanLimits(value: unknown): PlanLimits | null {
+  if (!isRecord(value)) return null;
+  const result: PlanLimits = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (!isRecord(raw)) continue;
+    result[key] = { users: Number(raw.users) || 0, storage: Number(raw.storage) || 0, api: Number(raw.api) || 0 };
+  }
+  return result;
+}
+
+const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const LIMITS_MARKER = 'SA_LIMITS_CONFIG';
 
-const defaultPlanLimits = {
+const defaultPlanLimits: PlanLimits = {
   starter: { users: 100, storage: 5, api: 10000 },
   business: { users: 300, storage: 10, api: 50000 },
   enterprise: { users: 500, storage: 20, api: 100000 },
@@ -30,8 +53,8 @@ const defaultPlanLimits = {
 
 export default function Limits() {
   const { toast } = useToast();
-  const [platform, setPlatform] = useState(null);
-  const [planLimits, setPlanLimits] = useState(defaultPlanLimits);
+  const [platform, setPlatform] = useState<{ stats: PlatformOverviewStatsDto | undefined; tenants: TenantWorkspaceDto[] } | null>(null);
+  const [planLimits, setPlanLimits] = useState<PlanLimits>(defaultPlanLimits);
   const [autoUpgrade, setAutoUpgrade] = useState(false);
   const [alertThreshold, setAlertThreshold] = useState(80);
   const [loading, setLoading] = useState(true);
@@ -44,37 +67,40 @@ export default function Limits() {
       const [overview, tenants, savedConfigs] = await Promise.all([
         fetchPlatformOverview(),
         fetchPlatformTenants(),
-        fetchPlatformConfigurations('platform-limits').catch(() => []),
+        fetchPlatformConfigurations('platform-limits').catch((): PlatformConfigurationDto[] => []),
       ]);
-      setPlatform({ stats: overview.stats, tenants });
-      const savedConfig = savedConfigs
+      setPlatform({ stats: overview?.stats, tenants: tenants ?? [] });
+      const savedConfig = (savedConfigs ?? [])
         .filter((item) => item.scopeKey === 'global')
         .sort((a, b) => new Date(b.updatedAtUtc || 0).getTime() - new Date(a.updatedAtUtc || 0).getTime())[0];
 
       if (savedConfig?.payloadJson) {
         try {
-          const parsed = JSON.parse(savedConfig.payloadJson);
-          if (parsed.planLimits) setPlanLimits(parsed.planLimits);
-          if (typeof parsed.autoUpgrade === 'boolean') setAutoUpgrade(parsed.autoUpgrade);
-          if (typeof parsed.alertThreshold === 'number') setAlertThreshold(parsed.alertThreshold);
+          const parsed: unknown = JSON.parse(savedConfig.payloadJson);
+          if (isRecord(parsed)) {
+            const limits = parsePlanLimits(parsed.planLimits);
+            if (limits) setPlanLimits(limits);
+            if (typeof parsed.autoUpgrade === 'boolean') setAutoUpgrade(parsed.autoUpgrade);
+            if (typeof parsed.alertThreshold === 'number') setAlertThreshold(parsed.alertThreshold);
+          }
         } catch {
           // ignore invalid saved config
         }
       }
     } catch (err) {
-      setError(err.message || 'Limit verileri alınamadı.');
+      setError(errorMessage(err, 'Limit verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadLimits();
+    void loadLimits();
   }, [loadLimits]);
 
   const tenantUsage = useMemo(() => platform?.tenants || [], [platform]);
 
-  const getUsageStatus = (used, limit) => {
+  const getUsageStatus = (used: number, limit: number) => {
     const percentage = limit > 0 ? (used / limit) * 100 : 0;
     if (percentage >= 100) return <Badge className="bg-red-100 text-red-700">Aşıldı</Badge>;
     if (percentage >= alertThreshold) return <Badge className="bg-yellow-100 text-yellow-700">Kritik</Badge>;
@@ -100,7 +126,7 @@ export default function Limits() {
     } catch (err) {
       toast({
         title: 'Limitler kaydedilemedi',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     }
@@ -143,9 +169,9 @@ export default function Limits() {
               <div key={key} className="space-y-3">
                 <h4 className="font-semibold text-sm text-muted-foreground uppercase">{key}</h4>
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2"><Label className="text-xs">Kullanıcı</Label><Input type="number" value={value.users} onChange={(e) => setPlanLimits((prev) => ({ ...prev, [key]: { ...prev[key], users: Number(e.target.value) } }))} /></div>
-                  <div className="space-y-2"><Label className="text-xs">Depolama</Label><Input type="number" value={value.storage} onChange={(e) => setPlanLimits((prev) => ({ ...prev, [key]: { ...prev[key], storage: Number(e.target.value) } }))} /></div>
-                  <div className="space-y-2"><Label className="text-xs">API</Label><Input type="number" value={value.api} onChange={(e) => setPlanLimits((prev) => ({ ...prev, [key]: { ...prev[key], api: Number(e.target.value) } }))} /></div>
+                  <div className="space-y-2"><Label className="text-xs">Kullanıcı</Label><Input type="number" value={value.users} onChange={(e) => setPlanLimits((prev) => ({ ...prev, [key]: { ...(prev[key] ?? EMPTY_LIMIT), users: Number(e.target.value) } }))} /></div>
+                  <div className="space-y-2"><Label className="text-xs">Depolama</Label><Input type="number" value={value.storage} onChange={(e) => setPlanLimits((prev) => ({ ...prev, [key]: { ...(prev[key] ?? EMPTY_LIMIT), storage: Number(e.target.value) } }))} /></div>
+                  <div className="space-y-2"><Label className="text-xs">API</Label><Input type="number" value={value.api} onChange={(e) => setPlanLimits((prev) => ({ ...prev, [key]: { ...(prev[key] ?? EMPTY_LIMIT), api: Number(e.target.value) } }))} /></div>
                 </div>
                 <Separator />
               </div>
@@ -191,10 +217,10 @@ export default function Limits() {
             </TableHeader>
             <TableBody>
               {tenantUsage.map((tenant) => {
-                const limits = planLimits[(tenant.plan || '').toLowerCase()] || {};
-                const userLimit = Number(limits.users) || 0;
-                const storageLimit = Number(limits.storage) || 0;
-                const apiLimit = Number(limits.api) || 0;
+                const limits = planLimits[(tenant.plan || '').toLowerCase()];
+                const userLimit = Number(limits?.users) || 0;
+                const storageLimit = Number(limits?.storage) || 0;
+                const apiLimit = Number(limits?.api) || 0;
                 const userPct = userLimit > 0 ? Math.min(100, (tenant.users / userLimit) * 100) : 0;
                 const storagePct = storageLimit > 0 ? Math.min(100, (tenant.storage / storageLimit) * 100) : 0;
                 const apiPct = apiLimit > 0 ? Math.min(100, (tenant.api / apiLimit) * 100) : 0;

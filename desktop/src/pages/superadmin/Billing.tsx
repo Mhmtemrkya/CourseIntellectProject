@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Download, CreditCard, Calendar,
@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { formatDate, formatMoney } from '../../lib/format';
+import { formatDate, formatMoney, parseMoney } from '../../lib/format';
 import {
   fetchAccountingDashboard,
   fetchPlatformOverview,
@@ -27,10 +27,13 @@ import {
   markPlatformInvoicePaid,
   cancelPlatformInvoice,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { PlatformOverviewDto, PlatformSubscriptionInvoiceDto } from '../../types/api/generated';
 
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 
-function downloadText(name, content) {
+function downloadText(name: string, content: string) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -40,8 +43,21 @@ function downloadText(name, content) {
   URL.revokeObjectURL(url);
 }
 
-function StatusBadge({ status }) {
-  const normalized = String(status || '').toLowerCase();
+/**
+ * Fatura durumunu filtre anahtarına indirger. Platform abonelik faturaları
+ * İngilizce (paid/pending...), kurum muhasebe faturaları Türkçe ("Ödendi") gelir.
+ */
+function invoiceStatusKey(status: string | null | undefined): string {
+  const normalized = String(status || '').toLocaleLowerCase('tr-TR');
+  if (normalized === 'ödendi' || normalized === 'odendi') return 'paid';
+  if (normalized === 'bekliyor') return 'pending';
+  if (normalized === 'gecikmiş' || normalized === 'gecikmis' || normalized === 'gecikti') return 'overdue';
+  if (normalized === 'iptal' || normalized === 'iptal edildi') return 'cancelled';
+  return normalized;
+}
+
+function StatusBadge({ status }: { status: string | null | undefined }) {
+  const normalized = invoiceStatusKey(status);
   if (normalized === 'paid') return <Badge className="bg-green-100 text-green-700 flex items-center gap-1"><CheckCircle className="h-3 w-3" />Ödendi</Badge>;
   if (normalized === 'pending') return <Badge className="bg-yellow-100 text-yellow-700 flex items-center gap-1"><Clock className="h-3 w-3" />Bekliyor</Badge>;
   if (normalized === 'cancelled') return <Badge className="bg-gray-100 text-gray-700 flex items-center gap-1"><XCircle className="h-3 w-3" />İptal</Badge>;
@@ -51,14 +67,14 @@ function StatusBadge({ status }) {
 export default function Billing() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [platform, setPlatform] = useState(null);
-  const [dashboard, setDashboard] = useState(null);
-  const [platformInvoices, setPlatformInvoices] = useState([]);
+  const [platform, setPlatform] = useState<PlatformOverviewDto | null>(null);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
+  const [platformInvoices, setPlatformInvoices] = useState<PlatformSubscriptionInvoiceDto[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [actingId, setActingId] = useState(null);
+  const [actingId, setActingId] = useState<string | null>(null);
 
   const loadBilling = useCallback(async () => {
     try {
@@ -67,27 +83,27 @@ export default function Billing() {
       const [overview, financeDashboard, subscriptionInvoices] = await Promise.all([
         fetchPlatformOverview(),
         fetchAccountingDashboard(),
-        fetchPlatformSubscriptionInvoices().catch(() => []),
+        fetchPlatformSubscriptionInvoices().catch((): PlatformSubscriptionInvoiceDto[] => []),
       ]);
       setPlatform(overview);
       setDashboard(financeDashboard);
       setPlatformInvoices(Array.isArray(subscriptionInvoices) ? subscriptionInvoices : []);
     } catch (err) {
-      setError(err.message || 'Faturalama verileri alınamadı.');
+      setError(errorMessage(err, 'Faturalama verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadBilling();
+    void loadBilling();
   }, [loadBilling]);
 
   const filteredStudentInvoices = useMemo(() => {
     const invoices = dashboard?.invoices || [];
     return invoices.filter((invoice) => {
-      const status = String(invoice.status || '').toLowerCase();
-      const matchesSearch = `${invoice.id} ${invoice.studentName || ''}`.toLowerCase().includes(search.toLowerCase());
+      const status = invoiceStatusKey(invoice.status);
+      const matchesSearch = `${invoice.id} ${invoice.counterparty || ''}`.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'all' || status === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -122,30 +138,32 @@ export default function Billing() {
     };
   }, [platformInvoices]);
 
-  const stats = platform?.stats || {};
+  const stats = platform?.stats;
 
-  const handleMarkPaid = async (invoiceId) => {
+  const handleMarkPaid = async (invoiceId: string) => {
     try {
       setActingId(invoiceId);
       const updated = await markPlatformInvoicePaid(invoiceId);
+      if (!updated) throw new Error('Sunucu güncel faturayı döndürmedi.');
       setPlatformInvoices((prev) => prev.map((i) => (i.id === invoiceId ? updated : i)));
       toast({ title: 'Fatura ödendi olarak işaretlendi', description: `${updated.invoiceNumber} güncellendi.` });
     } catch (err) {
-      toast({ title: 'İşlem başarısız', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'İşlem başarısız', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setActingId(null);
     }
   };
 
-  const handleCancel = async (invoiceId) => {
+  const handleCancel = async (invoiceId: string) => {
     if (!window.confirm('Faturayı iptal etmek istediğinize emin misiniz?')) return;
     try {
       setActingId(invoiceId);
       const updated = await cancelPlatformInvoice(invoiceId);
+      if (!updated) throw new Error('Sunucu güncel faturayı döndürmedi.');
       setPlatformInvoices((prev) => prev.map((i) => (i.id === invoiceId ? updated : i)));
       toast({ title: 'Fatura iptal edildi' });
     } catch (err) {
-      toast({ title: 'İşlem başarısız', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'İşlem başarısız', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setActingId(null);
     }
@@ -349,7 +367,7 @@ export default function Billing() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Toplam Gelir</p>
-                    <p className="text-3xl font-bold mt-2">{formatMoney(Number(stats.monthlyRevenue || 0))}</p>
+                    <p className="text-3xl font-bold mt-2">{formatMoney(Number(stats?.monthlyRevenue || 0))}</p>
                     <div className="flex items-center gap-1 mt-2 text-green-500">
                       <TrendingUp className="h-4 w-4" />
                       <span className="text-sm">Tahsilat toplamı</span>
@@ -366,7 +384,7 @@ export default function Billing() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Bekleyen</p>
-                    <p className="text-3xl font-bold mt-2">{formatMoney(Number(stats.pendingPayments || 0))}</p>
+                    <p className="text-3xl font-bold mt-2">{formatMoney(Number(stats?.pendingPayments || 0))}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-brand-accent/10">
                     <Calendar className="h-6 w-6 text-brand-accent" />
@@ -379,7 +397,7 @@ export default function Billing() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Geciken</p>
-                    <p className="text-3xl font-bold mt-2">{formatMoney(Number(stats.overduePayments || 0))}</p>
+                    <p className="text-3xl font-bold mt-2">{formatMoney(Number(stats?.overduePayments || 0))}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-yellow-100 dark:bg-yellow-900/30">
                     <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
@@ -392,7 +410,7 @@ export default function Billing() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Fatura Adedi</p>
-                    <p className="text-3xl font-bold mt-2">{stats.invoiceCount || dashboard?.invoices?.length || 0}</p>
+                    <p className="text-3xl font-bold mt-2">{stats?.invoiceCount || dashboard?.invoices?.length || 0}</p>
                   </div>
                   <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30">
                     <AlertCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -448,10 +466,10 @@ export default function Billing() {
                   {filteredStudentInvoices.map((invoice) => (
                     <TableRow key={invoice.id} className="hover:bg-muted/50">
                       <TableCell className="font-mono text-sm">{invoice.id}</TableCell>
-                      <TableCell className="font-medium">{invoice.studentName || 'Öğrenci'}</TableCell>
-                      <TableCell>{formatMoney(Number(invoice.amount || 0))}</TableCell>
-                      <TableCell>{formatDate(invoice.createdAt || Date.now())}</TableCell>
-                      <TableCell>{invoice.dueDate ? formatDate(invoice.dueDate) : '-'}</TableCell>
+                      <TableCell className="font-medium">{invoice.counterparty || 'Öğrenci'}</TableCell>
+                      <TableCell>{formatMoney(parseMoney(invoice.amount))}</TableCell>
+                      <TableCell>{formatDate(invoice.issueDateUtc || Date.now())}</TableCell>
+                      <TableCell>{invoice.dueDateUtc ? formatDate(invoice.dueDateUtc) : '-'}</TableCell>
                       <TableCell><StatusBadge status={invoice.status} /></TableCell>
                       <TableCell>
                         <Button variant="outline" size="sm" onClick={() => navigate('/finance/invoices-receipts')}>Detay</Button>

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import {
   Palette, Upload, Eye, Save, Building2, Image, Type, RefreshCw,
   Check, Settings, Paintbrush, Trash2, FileImage,
@@ -24,28 +24,78 @@ import {
   upsertPlatformConfiguration,
 } from '../../lib/api/modules';
 import { applyBrandVariables, generateBrandCSSVariables } from '../../lib/colorPalette';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { PlatformConfigurationDto, TenantWorkspaceDto } from '../../types/api/generated';
+
+interface TenantCustomizationValues {
+  primaryColor: string;
+  accentColor: string;
+  logoUrl: string;
+  faviconUrl: string;
+  appName: string;
+  darkModeDefault: boolean;
+  customFonts: boolean;
+  headerFont: string;
+  bodyFont: string;
+  themeId: string;
+}
+
+type AssetField = 'logoUrl' | 'faviconUrl';
+type ColorField = 'primaryColor' | 'accentColor';
+
+interface PresetTheme {
+  id: string;
+  name: string;
+  primary: string;
+  accent: string;
+}
+
+const STRING_FIELDS = ['primaryColor', 'accentColor', 'logoUrl', 'faviconUrl', 'appName', 'headerFont', 'bodyFont', 'themeId'] as const;
+const BOOLEAN_FIELDS = ['darkModeDefault', 'customFonts'] as const;
+
+/** Kayıtlı özelleştirme JSON'undan yalnız doğru tipteki bilinen alanları alır. */
+function parseSavedCustomization(payloadJson: string): Partial<TenantCustomizationValues> | null {
+  try {
+    const parsed: unknown = JSON.parse(payloadJson);
+    if (!isRecord(parsed)) return null;
+    const result: Partial<TenantCustomizationValues> = {};
+    for (const key of STRING_FIELDS) {
+      const value = parsed[key];
+      if (typeof value === 'string') result[key] = value;
+    }
+    for (const key of BOOLEAN_FIELDS) {
+      const value = parsed[key];
+      if (typeof value === 'boolean') result[key] = value;
+    }
+    return result;
+  } catch {
+    return null;
+  }
+}
 
 // Seçilen primary/accent rengini tüm uygulamaya anında uygular: --brand-accent,
 // --brand-primary vb. kök CSS değişkenlerini günceller; tüm bileşenler
 // hsl(var(--brand-accent)) kullandığından arayüz tek seferde o renge döner.
-function applyBrandColorsGlobally(primaryColor, accentColor) {
+function applyBrandColorsGlobally(primaryColor: string | undefined, accentColor: string | undefined) {
   if (!primaryColor || !accentColor) return;
   const theme = document.documentElement.classList.contains('light') ? 'light' : 'dark';
   applyBrandVariables(generateBrandCSSVariables(primaryColor, accentColor, theme));
 }
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
-const presetThemes = [
-  { id: 'default', name: 'Varsayılan', primary: '#030F24', accent: '#0B2841' },
+const DEFAULT_PRESET: PresetTheme = { id: 'default', name: 'Varsayılan', primary: '#030F24', accent: '#0B2841' };
+
+const presetThemes: PresetTheme[] = [
+  DEFAULT_PRESET,
   { id: 'blue', name: 'Mavi', primary: '#1e40af', accent: '#3b82f6' },
   { id: 'green', name: 'Yeşil', primary: '#166534', accent: '#22c55e' },
   { id: 'purple', name: 'Mor', primary: '#581c87', accent: '#a855f7' },
@@ -65,24 +115,24 @@ const presetThemes = [
   { id: 'olive', name: 'Zeytin', primary: '#292524', accent: '#a3e635' },
 ];
 
-function buildThemeId() {
+function buildThemeId(): string {
   // Yeni kurumlar plandan bağımsız olarak kurumsal varsayılan paletle başlar.
   return 'default';
 }
 
-function customizationMarker(tenantId) {
+function customizationMarker(tenantId: string): string {
   return `SA_TENANT_CUSTOMIZATION::${tenantId}`;
 }
 
-function buildDefaultCustomization(tenant) {
-  const themeId = buildThemeId(tenant);
-  const preset = presetThemes.find((item) => item.id === themeId) || presetThemes[0];
+function buildDefaultCustomization(tenant: TenantWorkspaceDto): TenantCustomizationValues {
+  const themeId = buildThemeId();
+  const preset = presetThemes.find((item) => item.id === themeId) || DEFAULT_PRESET;
   return {
     primaryColor: preset.primary,
     accentColor: preset.accent,
     logoUrl: '',
     faviconUrl: '',
-    appName: tenant.name || tenant.displayName || tenant.schoolName || 'SchoolAsist',
+    appName: tenant.name || 'SchoolAsist',
     darkModeDefault: tenant.plan === 'Enterprise',
     customFonts: tenant.plan !== 'Starter',
     headerFont: tenant.plan === 'Enterprise' ? 'Montserrat' : 'Poppins',
@@ -91,38 +141,38 @@ function buildDefaultCustomization(tenant) {
   };
 }
 
-function normalizeTenantList(value) {
-  if (Array.isArray(value)) return value;
-  if (Array.isArray(value?.items)) return value.items;
-  if (Array.isArray(value?.tenants)) return value.tenants;
-  if (Array.isArray(value?.recentTenants)) return value.recentTenants;
-  return [];
-}
-
 export default function TenantCustomization() {
   const { toast } = useToast();
 
-  const [platform, setPlatform] = useState({ tenants: [] });
+  const [platform, setPlatform] = useState<{ tenants: TenantWorkspaceDto[] }>({ tenants: [] });
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [customizations, setCustomizations] = useState({});
-  const [assetDialog, setAssetDialog] = useState({ open: false, field: 'logoUrl', value: '' });
-  const logoInputRef = useRef(null);
-  const faviconInputRef = useRef(null);
+  const [customizations, setCustomizations] = useState<Record<string, TenantCustomizationValues>>({});
+  const [assetDialog, setAssetDialog] = useState<{ open: boolean; field: AssetField; value: string }>({ open: false, field: 'logoUrl', value: '' });
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
+
+  // Kurum kaydı yüklenirken oluşturulur; olmayan kuruma yama uygulanmaz.
+  const patchCustomization = (tenantId: string, patch: Partial<TenantCustomizationValues>) => {
+    setCustomizations((prev) => {
+      const current = prev[tenantId];
+      return current ? { ...prev, [tenantId]: { ...current, ...patch } } : prev;
+    });
+  };
 
   const MAX_LOGO_BYTES = 512 * 1024; // 512 KB
   const MAX_FAVICON_BYTES = 128 * 1024; // 128 KB
 
-  const readFileAsDataUrl = (file) =>
-    new Promise((resolve, reject) => {
+  const readFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(file);
     });
 
-  const handleFilePicked = async (event, field) => {
+  const handleFilePicked = async (event: ChangeEvent<HTMLInputElement>, field: AssetField) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file || !selectedTenantId) return;
@@ -142,13 +192,7 @@ export default function TenantCustomization() {
     }
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      setCustomizations((prev) => ({
-        ...prev,
-        [selectedTenantId]: {
-          ...prev[selectedTenantId],
-          [field]: dataUrl,
-        },
-      }));
+      patchCustomization(selectedTenantId, { [field]: dataUrl });
       toast({
         title: field === 'logoUrl' ? 'Logo yüklendi' : 'Favicon yüklendi',
         description: 'Kaydet butonuna basarak kalıcı hale getirin.',
@@ -158,15 +202,9 @@ export default function TenantCustomization() {
     }
   };
 
-  const handleClearAsset = (field) => {
+  const handleClearAsset = (field: AssetField) => {
     if (!selectedTenantId) return;
-    setCustomizations((prev) => ({
-      ...prev,
-      [selectedTenantId]: {
-        ...prev[selectedTenantId],
-        [field]: '',
-      },
-    }));
+    patchCustomization(selectedTenantId, { [field]: '' });
   };
 
   const loadCustomizationData = useCallback(async () => {
@@ -174,40 +212,34 @@ export default function TenantCustomization() {
       setLoading(true);
       setError('');
       const [tenantResponse, savedConfigurations] = await Promise.all([
-        fetchPlatformTenants().catch(async (tenantError) => {
+        fetchPlatformTenants().catch(async (tenantError: unknown) => {
           const overview = await fetchPlatformOverview().catch(() => null);
-          const fallbackTenants = normalizeTenantList(overview);
+          const fallbackTenants = overview?.recentTenants ?? [];
           if (fallbackTenants.length > 0) return fallbackTenants;
           throw tenantError;
         }),
-        fetchPlatformConfigurations('tenant-customization').catch(() => []),
+        fetchPlatformConfigurations('tenant-customization').catch((): PlatformConfigurationDto[] => []),
       ]);
-      const tenants = normalizeTenantList(tenantResponse);
+      const tenants = tenantResponse ?? [];
       setPlatform({ tenants });
       const initialTenantId = tenants?.[0]?.id || '';
       setSelectedTenantId((prev) => tenants.some((tenant) => tenant.id === prev) ? prev : initialTenantId);
       setCustomizations((prev) => {
         const next = { ...prev };
         (tenants || []).forEach((tenant) => {
-          const savedRecord = savedConfigurations
+          const savedRecord = (savedConfigurations ?? [])
             .filter((item) => item.scopeKey === tenant.id)
             .sort((a, b) => new Date(b.updatedAtUtc || 0).getTime() - new Date(a.updatedAtUtc || 0).getTime())[0];
-          let savedValues = null;
-          if (savedRecord?.payloadJson) {
-            try {
-              savedValues = JSON.parse(savedRecord.payloadJson);
-            } catch {
-              savedValues = null;
-            }
-          }
-          if (!next[tenant.id]) {
+          const savedValues = savedRecord?.payloadJson ? parseSavedCustomization(savedRecord.payloadJson) : null;
+          const existing = next[tenant.id];
+          if (!existing) {
             next[tenant.id] = {
               ...buildDefaultCustomization(tenant),
               ...savedValues,
             };
           } else if (savedValues) {
             next[tenant.id] = {
-              ...next[tenant.id],
+              ...existing,
               ...savedValues,
             };
           }
@@ -215,7 +247,7 @@ export default function TenantCustomization() {
         return next;
       });
     } catch (err) {
-      const message = err.message || 'Kurum özelleştirme verileri alınamadı.';
+      const message = errorMessage(err, 'Kurum özelleştirme verileri alınamadı.');
       setError(message.includes('403') || message.includes('Forbidden')
         ? 'Platform verileri alınamadı. Bu ekran için platform admin yetkisi gerekir; lütfen tenant bağlı olmayan geliştirici/platform admin hesabıyla giriş yapın.'
         : message);
@@ -225,7 +257,7 @@ export default function TenantCustomization() {
   }, []);
 
   useEffect(() => {
-    loadCustomizationData();
+    void loadCustomizationData();
   }, [loadCustomizationData]);
 
   const tenants = useMemo(() => platform?.tenants || [], [platform]);
@@ -234,35 +266,22 @@ export default function TenantCustomization() {
 
   // Live preview sadece önizleme box'ında gösterilir; global CSS değişkenlerine dokunmuyoruz
 
-  const handleColorChange = (type, color) => {
+  const handleColorChange = (type: ColorField, color: string) => {
     if (!selectedTenant) return;
     setCustomizations((prev) => {
-      const next = {
-        ...prev,
-        [selectedTenant.id]: {
-          ...prev[selectedTenant.id],
-          [type]: color,
-        },
-      };
+      const current = prev[selectedTenant.id];
+      if (!current) return prev;
+      const merged = { ...current, [type]: color };
       // Renk seçilir seçilmez tüm arayüze uygula (canlı global tema).
-      const merged = next[selectedTenant.id];
       applyBrandColorsGlobally(merged.primaryColor, merged.accentColor);
-      return next;
+      return { ...prev, [selectedTenant.id]: merged };
     });
   };
 
-  const handlePresetSelect = (preset) => {
+  const handlePresetSelect = (preset: PresetTheme) => {
     if (!selectedTenant) return;
     applyBrandColorsGlobally(preset.primary, preset.accent);
-    setCustomizations((prev) => ({
-      ...prev,
-      [selectedTenant.id]: {
-        ...prev[selectedTenant.id],
-        primaryColor: preset.primary,
-        accentColor: preset.accent,
-        themeId: preset.id,
-      },
-    }));
+    patchCustomization(selectedTenant.id, { primaryColor: preset.primary, accentColor: preset.accent, themeId: preset.id });
   };
 
   const handleSave = () => {
@@ -271,7 +290,7 @@ export default function TenantCustomization() {
     // Kaydedilen renkleri tüm arayüze uygula.
     applyBrandColorsGlobally(payload?.primaryColor, payload?.accentColor);
     // Sadece kuruma özel olarak kaydet — global'i değiştirme
-    upsertPlatformConfiguration({
+    void upsertPlatformConfiguration({
       configurationType: 'tenant-customization',
       scopeKey: selectedTenant.id,
       displayName: customizationMarker(selectedTenant.id),
@@ -281,8 +300,8 @@ export default function TenantCustomization() {
         title: "Özelleştirmeler Kaydedildi",
         description: `${selectedTenant.name} için branding ayarları kaydedildi.`,
       });
-    }).catch((err) => {
-      const msg = err.message || '';
+    }).catch((err: unknown) => {
+      const msg = errorMessage(err, '');
       const is403 = msg.includes('403') || msg.includes('Forbidden');
       toast({
         title: is403 ? "Yetki Hatası (403)" : "Özelleştirmeler kaydedilemedi",
@@ -294,7 +313,7 @@ export default function TenantCustomization() {
     });
   };
 
-  const handleLogoUpload = (field) => {
+  const handleLogoUpload = (field: AssetField) => {
     if (!selectedTenant) return;
     const currentValue = customizations[selectedTenant.id]?.[field] || '';
     setAssetDialog({ open: true, field, value: currentValue });
@@ -304,13 +323,7 @@ export default function TenantCustomization() {
     if (!selectedTenant) return;
     const { field, value } = assetDialog;
     const nextValue = value.trim();
-    setCustomizations((prev) => ({
-      ...prev,
-      [selectedTenant.id]: {
-        ...prev[selectedTenant.id],
-        [field]: nextValue,
-      },
-    }));
+    patchCustomization(selectedTenant.id, { [field]: nextValue });
     setAssetDialog((prev) => ({ ...prev, open: false }));
     const label = field === 'logoUrl' ? 'logo' : 'favicon';
     toast({
@@ -420,12 +433,12 @@ export default function TenantCustomization() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-brand-primary flex items-center justify-center text-white font-bold">
-                      {(tenant.name || tenant.displayName || 'K').charAt(0)}
+                      {(tenant.name || 'K').charAt(0)}
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{tenant.name || tenant.displayName || 'Kurum'}</p>
+                      <p className="font-medium">{tenant.name || 'Kurum'}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs">{presetThemes.find((t) => t.id === customization?.themeId || buildThemeId(tenant))?.name}</Badge>
+                        <Badge variant="outline" className="text-xs">{presetThemes.find((t) => t.id === (customizations[tenant.id]?.themeId || buildThemeId()))?.name}</Badge>
                         {tenant.plan !== 'Starter' && (
                           <Badge className="bg-purple-100 text-purple-700 text-xs">Özel Renkler</Badge>
                         )}
@@ -744,7 +757,7 @@ export default function TenantCustomization() {
                     </div>
                     <Switch
                       checked={customization.customFonts}
-                      onCheckedChange={(v) => setCustomizations((prev) => ({ ...prev, [selectedTenant.id]: { ...prev[selectedTenant.id], customFonts: v } }))}
+                      onCheckedChange={(v) => patchCustomization(selectedTenant.id, { customFonts: v })}
                     />
                   </div>
 
@@ -752,7 +765,7 @@ export default function TenantCustomization() {
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label>Başlık Yazı Tipi</Label>
-                        <Select value={customization.headerFont} onValueChange={(v) => setCustomizations((prev) => ({ ...prev, [selectedTenant.id]: { ...prev[selectedTenant.id], headerFont: v } }))}>
+                        <Select value={customization.headerFont} onValueChange={(v) => patchCustomization(selectedTenant.id, { headerFont: v })}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -766,7 +779,7 @@ export default function TenantCustomization() {
                       </div>
                       <div className="space-y-2">
                         <Label>Gövde Yazı Tipi</Label>
-                        <Select value={customization.bodyFont} onValueChange={(v) => setCustomizations((prev) => ({ ...prev, [selectedTenant.id]: { ...prev[selectedTenant.id], bodyFont: v } }))}>
+                        <Select value={customization.bodyFont} onValueChange={(v) => patchCustomization(selectedTenant.id, { bodyFont: v })}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -787,7 +800,7 @@ export default function TenantCustomization() {
                     <Label>Uygulama Adı</Label>
                     <Input
                       value={customization.appName}
-                      onChange={(e) => setCustomizations((prev) => ({ ...prev, [selectedTenant.id]: { ...prev[selectedTenant.id], appName: e.target.value } }))}
+                      onChange={(e) => patchCustomization(selectedTenant.id, { appName: e.target.value })}
                       placeholder="Kurum adı veya özel isim"
                     />
                   </div>
@@ -799,7 +812,7 @@ export default function TenantCustomization() {
                     </div>
                     <Switch
                       checked={customization.darkModeDefault}
-                      onCheckedChange={(v) => setCustomizations((prev) => ({ ...prev, [selectedTenant.id]: { ...prev[selectedTenant.id], darkModeDefault: v } }))}
+                      onCheckedChange={(v) => patchCustomization(selectedTenant.id, { darkModeDefault: v })}
                     />
                   </div>
                 </TabsContent>

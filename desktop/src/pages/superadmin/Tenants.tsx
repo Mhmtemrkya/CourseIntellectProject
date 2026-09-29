@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import { Search, Building2, Users, CheckCircle, XCircle, Clock, ShieldAlert, Trash2, Flag, MailWarning, FileDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -23,10 +23,14 @@ import {
 import { downloadBase64File } from '../../lib/downloadBase64';
 import { Switch } from '../../components/ui/switch';
 import { formatMoney } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import { apiErrorBody } from '../../lib/api/client';
+import type { TenantFeature } from '../../lib/api/platformOps';
+import type { RegistrationBlocklistEntryDto, TenantWorkspaceDto } from '../../types/api/generated';
 
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
+const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 
-function statusBadge(status) {
+function statusBadge(status: string) {
   if (status === 'active') return <Badge className="bg-green-100 text-green-700">Aktif</Badge>;
   if (status === 'pending') return <Badge className="bg-yellow-100 text-yellow-700 gap-1"><Clock className="h-3 w-3" />Onay Bekliyor</Badge>;
   if (status === 'rejected') return <Badge className="bg-red-100 text-red-700">Reddedildi</Badge>;
@@ -35,30 +39,30 @@ function statusBadge(status) {
 
 export default function Tenants() {
   const { toast } = useToast();
-  const [tenants, setTenants] = useState([]);
-  const [selectedTenant, setSelectedTenant] = useState(null);
-  const [featureTenant, setFeatureTenant] = useState(null);
-  const [featureList, setFeatureList] = useState([]);
+  const [tenants, setTenants] = useState<TenantWorkspaceDto[]>([]);
+  const [selectedTenant, setSelectedTenant] = useState<TenantWorkspaceDto | null>(null);
+  const [featureTenant, setFeatureTenant] = useState<TenantWorkspaceDto | null>(null);
+  const [featureList, setFeatureList] = useState<TenantFeature[]>([]);
   const [featureLoading, setFeatureLoading] = useState(false);
   const [featureSaving, setFeatureSaving] = useState(false);
 
   // Kuruma özel özellik anahtarlarını yönet: platform yöneticisi
   // her modülü kurum bazında açıp kapatabilir.
-  const openFeatures = async (tenant) => {
+  const openFeatures = async (tenant: TenantWorkspaceDto) => {
     setFeatureTenant(tenant);
     setFeatureLoading(true);
     try {
       const payload = await fetchTenantFeatures(tenant.id);
       setFeatureList(Array.isArray(payload?.features) ? payload.features : []);
     } catch (err) {
-      toast({ title: 'Özellikler alınamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Özellikler alınamadı', description: errorMessage(err), variant: 'destructive' });
       setFeatureTenant(null);
     } finally {
       setFeatureLoading(false);
     }
   };
 
-  const toggleFeature = (key) => {
+  const toggleFeature = (key: string) => {
     setFeatureList((prev) => prev.map((item) => (item.key === key ? { ...item, enabled: !item.enabled } : item)));
   };
 
@@ -71,7 +75,7 @@ export default function Tenants() {
       toast({ title: 'Özellikler kaydedildi', description: `${featureTenant.name} için modül ayarları güncellendi.` });
       setFeatureTenant(null);
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setFeatureSaving(false);
     }
@@ -82,8 +86,8 @@ export default function Tenants() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [actionLoading, setActionLoading] = useState(null); // id of tenant being actioned
-  const [blocklist, setBlocklist] = useState([]);
+  const [actionLoading, setActionLoading] = useState<string | null>(null); // id of tenant being actioned
+  const [blocklist, setBlocklist] = useState<RegistrationBlocklistEntryDto[]>([]);
   const [blockKind, setBlockKind] = useState('domain');
   const [blockValue, setBlockValue] = useState('');
   const [blockReason, setBlockReason] = useState('');
@@ -93,9 +97,9 @@ export default function Tenants() {
     try {
       setLoading(true);
       setError('');
-      setTenants(await fetchPlatformTenants());
+      setTenants((await fetchPlatformTenants()) ?? []);
     } catch (err) {
-      setError(err.message || 'Kurum görünümü alınamadı.');
+      setError(errorMessage(err, 'Kurum görünümü alınamadı.'));
     } finally {
       setLoading(false);
     }
@@ -103,18 +107,18 @@ export default function Tenants() {
 
   const loadBlocklist = useCallback(async () => {
     try {
-      setBlocklist(await fetchRegistrationBlocklist());
+      setBlocklist((await fetchRegistrationBlocklist()) ?? []);
     } catch {
       // Kara liste alınamazsa ana ekran çalışmaya devam etsin.
     }
   }, []);
 
   useEffect(() => {
-    loadTenants();
-    loadBlocklist();
+    void loadTenants();
+    void loadBlocklist();
   }, [loadTenants, loadBlocklist]);
 
-  const handleAddBlock = async (event) => {
+  const handleAddBlock = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!blockValue.trim()) return;
     setBlockSaving(true);
@@ -125,22 +129,22 @@ export default function Tenants() {
       await loadBlocklist();
       toast({ title: 'Kara listeye eklendi', description: 'Bu kaynaktan gelen başvurular sessizce yutulacak.' });
     } catch (err) {
-      toast({ title: 'Eklenemedi', description: err.message || 'Lütfen tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Eklenemedi', description: errorMessage(err, 'Lütfen tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setBlockSaving(false);
     }
   };
 
-  const handleRemoveBlock = async (entry) => {
+  const handleRemoveBlock = async (entry: RegistrationBlocklistEntryDto) => {
     try {
       await removeRegistrationBlocklistEntry(entry.id);
       setBlocklist((prev) => prev.filter((x) => x.id !== entry.id));
     } catch (err) {
-      toast({ title: 'Kaldırılamadı', description: err.message || 'Lütfen tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Kaldırılamadı', description: errorMessage(err, 'Lütfen tekrar deneyin.'), variant: 'destructive' });
     }
   };
 
-  const handleSetupDocument = async (tenant) => {
+  const handleSetupDocument = async (tenant: TenantWorkspaceDto) => {
     setActionLoading(tenant.id);
     try {
       const updated = await regenerateSetupDocument(tenant.id);
@@ -153,8 +157,8 @@ export default function Tenants() {
       // Kurum kendi parolasını belirlemişse yenileme reddedilir; bu bir hata değil,
       // kasıtlı koruma — kullanıcıya doğru yolu söyle.
       toast({
-        title: err.body?.code === 'ALREADY_ACTIVATED' ? 'Belge yenilenmedi' : 'Belge üretilemedi',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        title: apiErrorBody(err)?.code === 'ALREADY_ACTIVATED' ? 'Belge yenilenmedi' : 'Belge üretilemedi',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -162,12 +166,12 @@ export default function Tenants() {
     }
   };
 
-  const handleToggleSuspicious = async (tenant) => {
+  const handleToggleSuspicious = async (tenant: TenantWorkspaceDto) => {
     try {
       const updated = await setApplicationSuspicious(tenant.id, !tenant.isSuspicious);
       setTenants((prev) => prev.map((t) => (t.id === tenant.id ? { ...t, ...updated } : t)));
     } catch (err) {
-      toast({ title: 'İşaret güncellenemedi', description: err.message || 'Lütfen tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'İşaret güncellenemedi', description: errorMessage(err, 'Lütfen tekrar deneyin.'), variant: 'destructive' });
     }
   };
 
@@ -187,7 +191,7 @@ export default function Tenants() {
     });
   }, [visibleTenants, search, planFilter, statusFilter]);
 
-  const handleApprove = async (tenant) => {
+  const handleApprove = async (tenant: TenantWorkspaceDto) => {
     setActionLoading(tenant.id);
     try {
       const updated = await approveTenant(tenant.id);
@@ -206,20 +210,20 @@ export default function Tenants() {
           : `${tenant.name} aktif olarak isaretlendi.${credentialsNote}`,
       });
     } catch (err) {
-      toast({ title: 'Onay başarısız', description: err.message || 'Lütfen tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Onay başarısız', description: errorMessage(err, 'Lütfen tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleReject = async (tenant) => {
+  const handleReject = async (tenant: TenantWorkspaceDto) => {
     setActionLoading(tenant.id);
     try {
       await rejectTenant(tenant.id);
       setTenants((prev) => prev.map((t) => (t.id === tenant.id ? { ...t, status: 'rejected' } : t)));
       toast({ title: 'Kurum Reddedildi', description: `${tenant.name} reddedildi. 30 gün sonra otomatik olarak silinecek.` });
     } catch (err) {
-      toast({ title: 'Red işlemi başarısız', description: err.message || 'Lütfen tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Red işlemi başarısız', description: errorMessage(err, 'Lütfen tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setActionLoading(null);
     }

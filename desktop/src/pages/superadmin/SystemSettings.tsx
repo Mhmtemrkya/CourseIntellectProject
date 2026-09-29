@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Settings, ToggleLeft, Shield, Server, Bell, Save, CheckCircle, AlertCircle, ScanText, CreditCard, Receipt,
 } from 'lucide-react';
@@ -22,6 +22,41 @@ import {
   fetchAppSettings,
   saveAppSettings,
 } from '../../lib/api/modules';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { AppSettingDto, PlatformConfigurationDto, PlatformOverviewDto } from '../../types/api/generated';
+
+interface FeatureToggle {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+}
+
+interface SavedSystemSettings {
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
+  features: Array<{ id: string; enabled: boolean }>;
+}
+
+/** Kayıtlı sistem ayarı JSON'unu doğrular; bozuk kayıt null döner. */
+function parseSavedSettings(payloadJson: string): SavedSystemSettings | null {
+  try {
+    const parsed: unknown = JSON.parse(payloadJson);
+    if (!isRecord(parsed)) return null;
+    const features = Array.isArray(parsed.features)
+      ? parsed.features.filter(isRecord).map((item) => ({ id: String(item.id ?? ''), enabled: Boolean(item.enabled) }))
+      : [];
+    return {
+      maintenanceMode: Boolean(parsed.maintenanceMode),
+      maintenanceMessage: typeof parsed.maintenanceMessage === 'string' ? parsed.maintenanceMessage : '',
+      features,
+    };
+  } catch {
+    return null;
+  }
+}
+
+type ServiceStatus = 'healthy' | 'warning';
 
 const AZURE_KEYS = {
   enabled: 'AzureDocumentIntelligence:Enabled',
@@ -44,16 +79,16 @@ const EINVOICE_KEYS = {
   apiKey: 'EInvoice:ApiKey',
 };
 
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const SETTINGS_MARKER = 'SA_SYSTEM_SETTINGS';
 
 export default function SystemSettings() {
   const { toast } = useToast();
-  const [platform, setPlatform] = useState(null);
-  const [features, setFeatures] = useState([]);
+  const [platform, setPlatform] = useState<PlatformOverviewDto | null>(null);
+  const [features, setFeatures] = useState<FeatureToggle[]>([]);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
-  const [pushConfigured, setPushConfigured] = useState(null);
+  const [pushConfigured, setPushConfigured] = useState<boolean | null>(null);
   const [aiOcrEnabled, setAiOcrEnabled] = useState(true);
   const [aiOcrEndpoint, setAiOcrEndpoint] = useState('');
   const [aiOcrKeyConfigured, setAiOcrKeyConfigured] = useState(false);
@@ -80,11 +115,11 @@ export default function SystemSettings() {
       setError('');
       const [data, savedRecords, systemStatus, integrationSettings] = await Promise.all([
         fetchPlatformOverview(),
-        fetchPlatformConfigurations('system-settings').catch(() => []),
+        fetchPlatformConfigurations('system-settings').catch((): PlatformConfigurationDto[] => []),
         fetchSystemStatus().catch(() => null),
-        fetchAppSettings('integrations').catch(() => []),
+        fetchAppSettings('integrations').catch((): AppSettingDto[] => []),
       ]);
-      const findSetting = (key) => integrationSettings.find((item) => item.key === key);
+      const findSetting = (key: string) => integrationSettings.find((item) => item.key === key);
       const enabledValue = findSetting(AZURE_KEYS.enabled)?.value;
       setAiOcrEnabled(enabledValue == null ? true : (enabledValue === 'true' || enabledValue === '1'));
       setAiOcrEndpoint(findSetting(AZURE_KEYS.endpoint)?.value || '');
@@ -103,24 +138,18 @@ export default function SystemSettings() {
       setInvBaseUrl(findSetting(EINVOICE_KEYS.baseUrl)?.value || '');
       setInvKeyConfigured(Boolean(findSetting(EINVOICE_KEYS.apiKey)?.value));
       setInvKeyInput('');
-      const savedSettings = savedRecords
+      const savedSettings = (savedRecords ?? [])
         .filter((item) => item.scopeKey === 'global')
         .sort((a, b) => new Date(b.updatedAtUtc || 0).getTime() - new Date(a.updatedAtUtc || 0).getTime())[0];
-      let parsedSettings = null;
-      if (savedSettings?.payloadJson) {
-        try {
-          parsedSettings = JSON.parse(savedSettings.payloadJson);
-        } catch {
-          parsedSettings = null;
-        }
-      }
+      const parsedSettings = savedSettings?.payloadJson ? parseSavedSettings(savedSettings.payloadJson) : null;
       setPlatform(data);
-      const baseFeatures = [
-        { id: 'chat', name: 'Mesajlaşma Modülü', description: `${data.stats.openTickets || 0} açık operasyon kaydıyla izleniyor`, enabled: true },
-        { id: 'questions', name: 'Soru Kutusu', description: `${data.stats.totalUsers || 0} aktif kullanıcı hacmiyle çalışıyor`, enabled: true },
+      const stats = data?.stats;
+      const baseFeatures: FeatureToggle[] = [
+        { id: 'chat', name: 'Mesajlaşma Modülü', description: `${stats?.openTickets || 0} açık operasyon kaydıyla izleniyor`, enabled: true },
+        { id: 'questions', name: 'Soru Kutusu', description: `${stats?.totalUsers || 0} aktif kullanıcı hacmiyle çalışıyor`, enabled: true },
         { id: 'live-lessons', name: 'Canlı Dersler', description: 'Platform operasyon omurgası aktif', enabled: true },
         { id: 'mobile-app', name: 'Mobil Uygulama', description: 'Mobil istemciler backend üzerinden bağlı', enabled: true },
-        { id: 'ai-reports', name: 'AI Raporlama', description: `${data.stats.aiRequestCount || 0} AI isteğiyle izleniyor`, enabled: true },
+        { id: 'ai-reports', name: 'AI Raporlama', description: `${stats?.aiRequestCount || 0} AI isteğiyle izleniyor`, enabled: true },
         { id: 'kiosk-mode', name: 'Kiosk Modu', description: 'QR ve yoklama altyapısı bağlı', enabled: true },
       ];
       // Bakım modu artık /api/system/status'tan gelir (gerçek source of truth)
@@ -134,24 +163,24 @@ export default function SystemSettings() {
       }
       if (parsedSettings) {
         setFeatures(baseFeatures.map((item) => {
-          const savedFeature = parsedSettings.features?.find((feature) => feature.id === item.id);
+          const savedFeature = parsedSettings.features.find((feature) => feature.id === item.id);
           return savedFeature ? { ...item, enabled: savedFeature.enabled } : item;
         }));
       } else {
         setFeatures(baseFeatures);
       }
     } catch (err) {
-      setError(err.message || 'Sistem ayarları alınamadı.');
+      setError(errorMessage(err, 'Sistem ayarları alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadSettings();
+    void loadSettings();
   }, [loadSettings]);
 
-  const services = useMemo(() => ([
+  const services = useMemo((): Array<{ name: string; status: ServiceStatus; uptime: string }> => ([
     { name: 'API Gateway', status: 'healthy', uptime: 'Canlı' },
     { name: 'Database Cluster', status: 'healthy', uptime: 'Canlı' },
     { name: 'SignalR Hub', status: 'healthy', uptime: 'Hazır' },
@@ -162,12 +191,12 @@ export default function SystemSettings() {
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
-  const getStatusBadge = (status) => {
-    const styles = {
+  const getStatusBadge = (status: ServiceStatus) => {
+    const styles: Record<ServiceStatus, string> = {
       healthy: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
       warning: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
     };
-    const labels = { healthy: 'Sağlıklı', warning: 'Uyarı' };
+    const labels: Record<ServiceStatus, string> = { healthy: 'Sağlıklı', warning: 'Uyarı' };
     return <Badge className={styles[status]}>{labels[status]}</Badge>;
   };
 
@@ -234,7 +263,7 @@ export default function SystemSettings() {
     } catch (err) {
       toast({
         title: 'Ayarlar kaydedilemedi',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     }

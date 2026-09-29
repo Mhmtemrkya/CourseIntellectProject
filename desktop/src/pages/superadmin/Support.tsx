@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Search,
   Clock,
@@ -52,14 +52,34 @@ import {
   fetchSupportTickets,
   updateSupportTicket,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { SupportTicketDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const containerVariants = {
+type ToastFn = ReturnType<typeof useToast>['toast'];
+
+interface StatusMeta {
+  label: string;
+  cls: string;
+  icon: IconComponent;
+}
+
+interface PriorityMeta {
+  label: string;
+  cls: string;
+  dot: string;
+}
+
+const OPEN_STATUS: StatusMeta = { label: 'Açık', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', icon: AlertCircle };
+const NORMAL_PRIORITY: PriorityMeta = { label: 'Normal', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', dot: 'bg-blue-500' };
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const STATUS_META = {
-  open: { label: 'Açık', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', icon: AlertCircle },
+const STATUS_META: Partial<Record<string, StatusMeta>> = {
+  open: OPEN_STATUS,
   'in-progress': { label: 'İşleniyor', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', icon: Clock },
   pending: { label: 'Beklemede', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', icon: Clock },
   resolved: { label: 'Çözüldü', cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', icon: CheckCircle2 },
@@ -67,17 +87,17 @@ const STATUS_META = {
   cancelled: { label: 'İptal', cls: 'bg-muted text-muted-foreground', icon: XCircle },
 };
 
-const PRIORITY_META = {
+const PRIORITY_META: Partial<Record<string, PriorityMeta>> = {
   urgent: { label: 'Acil', cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300', dot: 'bg-red-500' },
   high: { label: 'Yüksek', cls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300', dot: 'bg-orange-500' },
-  normal: { label: 'Normal', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', dot: 'bg-blue-500' },
+  normal: NORMAL_PRIORITY,
   medium: { label: 'Orta', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', dot: 'bg-blue-500' },
   low: { label: 'Düşük', cls: 'bg-muted text-muted-foreground', dot: 'bg-gray-400' },
 };
 
-function StatusBadge({ status }) {
+function StatusBadge({ status }: { status: string | null | undefined }) {
   const v = String(status || 'open').toLowerCase();
-  const meta = STATUS_META[v] || STATUS_META.open;
+  const meta = STATUS_META[v] || OPEN_STATUS;
   const Icon = meta.icon;
   return (
     <Badge className={`${meta.cls} flex items-center gap-1 border-transparent`}>
@@ -86,9 +106,9 @@ function StatusBadge({ status }) {
   );
 }
 
-function PriorityBadge({ priority }) {
+function PriorityBadge({ priority }: { priority: string | null | undefined }) {
   const v = String(priority || 'normal').toLowerCase();
-  const meta = PRIORITY_META[v] || PRIORITY_META.normal;
+  const meta = PRIORITY_META[v] || NORMAL_PRIORITY;
   return (
     <Badge className={`${meta.cls} flex items-center gap-1.5 border-transparent`}>
       <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
@@ -97,7 +117,7 @@ function PriorityBadge({ priority }) {
   );
 }
 
-function formatDateTime(value) {
+function formatDateTime(value: string | null | undefined): string {
   if (!value) return '-';
   return new Date(value).toLocaleString('tr-TR', {
     day: '2-digit',
@@ -110,13 +130,13 @@ function formatDateTime(value) {
 
 export default function Support() {
   const { toast } = useToast();
-  const [tickets, setTickets] = useState([]);
+  const [tickets, setTickets] = useState<SupportTicketDto[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<SupportTicketDto | null>(null);
 
   const loadSupport = useCallback(async () => {
     try {
@@ -125,14 +145,14 @@ export default function Support() {
       const list = await fetchSupportTickets();
       setTickets(Array.isArray(list) ? list : []);
     } catch (err) {
-      setError(err.message || 'Destek görünümü alınamadı.');
+      setError(errorMessage(err, 'Destek görünümü alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadSupport();
+    void loadSupport();
   }, [loadSupport]);
 
   const filteredTickets = useMemo(
@@ -162,7 +182,7 @@ export default function Support() {
       </div>
     );
 
-  const handleTicketUpdate = (updatedTicket) => {
+  const handleTicketUpdate = (updatedTicket: SupportTicketDto) => {
     setTickets((prev) => prev.map((t) => (t.id === updatedTicket.id ? updatedTicket : t)));
     setSelected(updatedTicket);
   };
@@ -355,7 +375,15 @@ export default function Support() {
  * Detay diyaloğu — talep tüm bilgileri + status güncelleme + yanıtlama
  * ============================================================ */
 
-function TicketDetailDialog({ ticket, open, onClose, onUpdated, toast }) {
+interface TicketDetailDialogProps {
+  ticket: SupportTicketDto | null;
+  open: boolean;
+  onClose: () => void;
+  onUpdated: (ticket: SupportTicketDto) => void;
+  toast: ToastFn;
+}
+
+function TicketDetailDialog({ ticket, open, onClose, onUpdated, toast }: TicketDetailDialogProps) {
   const [status, setStatus] = useState('open');
   const [priority, setPriority] = useState('normal');
   const [reply, setReply] = useState('');
@@ -385,11 +413,11 @@ function TicketDetailDialog({ ticket, open, onClose, onUpdated, toast }) {
         title: 'Talep güncellendi',
         description: `${ticket.ticketNumber} bilgileri kaydedildi.`,
       });
-      onUpdated(updated);
+      if (updated) onUpdated(updated);
     } catch (err) {
       toast({
         title: 'Güncellenemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -411,13 +439,13 @@ function TicketDetailDialog({ ticket, open, onClose, onUpdated, toast }) {
         title: 'Yanıt eklendi',
         description: 'Talebe son mesaj olarak işlendi.',
       });
-      onUpdated(updated);
+      if (updated) onUpdated(updated);
       setReply('');
-      setStatus(updated.status || status);
+      setStatus(updated?.status || status);
     } catch (err) {
       toast({
         title: 'Yanıt gönderilemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Plus, Edit, Check, Trash2, Users, Package, Star, X, Shield, ChevronDown, ChevronRight,
 } from 'lucide-react';
@@ -29,10 +29,39 @@ import {
   buildMarketingFeatureList,
   getRoleModuleOptions,
 } from '../../lib/packageCatalog';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { PlatformPackageRow } from '../../lib/api/platformOps';
+import type { RoleEntitlement } from '../../lib/entitlements';
+import type { TenantWorkspaceDto } from '../../types/api/generated';
 
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+interface PricingPlan {
+  id: string;
+  name: string;
+  description: string;
+  priceMonthly: number;
+  priceYearly: number;
+  features: string[];
+  isPopular: boolean;
+  ctaText: string;
+}
 
-const defaultPricingContent = {
+interface PricingContent {
+  hero: { title: string; subtitle: string };
+  toggleLabels: { monthly: string; yearly: string; discount: string };
+  plans: PricingPlan[];
+  comparisonTitle: string;
+}
+
+/** Rol anahtarı → modül yetkileri (packageCatalog.buildFullAccessRoles biçimi). */
+type PackageRoles = Record<string, Required<RoleEntitlement>>;
+
+function text(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+
+const defaultPricingContent: PricingContent = {
   hero: {
     title: 'Şeffaf Fiyatlandırma',
     subtitle: 'İhtiyacınıza uygun planı seçin. Gizli maliyet yok.',
@@ -77,41 +106,53 @@ const defaultPricingContent = {
   comparisonTitle: 'Tüm Özellikleri Karşılaştır',
 };
 
-function normalizePlan(plan, index = 0) {
+function normalizePlan(value: unknown, index = 0): PricingPlan {
+  const plan = isRecord(value) ? value : {};
   return {
-    id: String(plan?.id ?? `${Date.now()}-${index}`),
-    name: plan?.name ?? 'Yeni Paket',
-    description: plan?.description ?? '',
-    priceMonthly: Number(plan?.priceMonthly ?? 0),
-    priceYearly: Number(plan?.priceYearly ?? 0),
-    features: Array.isArray(plan?.features) ? plan.features.filter((f) => typeof f === 'string') : [],
-    isPopular: Boolean(plan?.isPopular),
-    ctaText: plan?.ctaText ?? 'Başla',
+    id: String(plan.id ?? `${Date.now()}-${index}`),
+    name: text(plan.name, 'Yeni Paket'),
+    description: text(plan.description, ''),
+    priceMonthly: Number(plan.priceMonthly ?? 0),
+    priceYearly: Number(plan.priceYearly ?? 0),
+    features: Array.isArray(plan.features) ? plan.features.filter((f): f is string => typeof f === 'string') : [],
+    isPopular: Boolean(plan.isPopular),
+    ctaText: text(plan.ctaText, 'Başla'),
   };
 }
 
-function normalizeContent(raw) {
+/** Site içeriğindeki fiyat bölümünü doğrular; eksik alanlar varsayılana düşer. */
+function normalizeContent(raw: unknown): PricingContent {
   const base = defaultPricingContent;
-  const content = raw || {};
+  const content = isRecord(raw) ? raw : {};
+  const hero = isRecord(content.hero) ? content.hero : {};
+  const toggleLabels = isRecord(content.toggleLabels) ? content.toggleLabels : {};
   return {
     hero: {
-      title: content.hero?.title ?? base.hero.title,
-      subtitle: content.hero?.subtitle ?? base.hero.subtitle,
+      title: text(hero.title, base.hero.title),
+      subtitle: text(hero.subtitle, base.hero.subtitle),
     },
     toggleLabels: {
-      monthly: content.toggleLabels?.monthly ?? base.toggleLabels.monthly,
-      yearly: content.toggleLabels?.yearly ?? base.toggleLabels.yearly,
-      discount: content.toggleLabels?.discount ?? base.toggleLabels.discount,
+      monthly: text(toggleLabels.monthly, base.toggleLabels.monthly),
+      yearly: text(toggleLabels.yearly, base.toggleLabels.yearly),
+      discount: text(toggleLabels.discount, base.toggleLabels.discount),
     },
     plans: Array.isArray(content.plans) && content.plans.length > 0
       ? content.plans.map(normalizePlan)
       : base.plans.map(normalizePlan),
-    comparisonTitle: content.comparisonTitle ?? base.comparisonTitle,
+    comparisonTitle: text(content.comparisonTitle, base.comparisonTitle),
   };
 }
 
-function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
-  const [draft, setDraft] = useState(plan);
+interface PlanDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  plan: PricingPlan | null;
+  mode: 'edit' | 'create';
+  onSave: (draft: PricingPlan) => void;
+}
+
+function PlanDialog({ open, onOpenChange, plan, mode, onSave }: PlanDialogProps) {
+  const [draft, setDraft] = useState<PricingPlan | null>(plan);
 
   useEffect(() => {
     setDraft(plan);
@@ -119,20 +160,25 @@ function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
 
   if (!draft) return null;
 
-  const updateFeature = (idx, value) => {
-    setDraft((prev) => {
+  // Taslak her zaman dolu olduğunda düzenlenir (yukarıdaki erken dönüş).
+  const patchDraft = (patch: (prev: PricingPlan) => Partial<PricingPlan>) => {
+    setDraft((prev) => (prev ? { ...prev, ...patch(prev) } : prev));
+  };
+
+  const updateFeature = (idx: number, value: string) => {
+    patchDraft((prev) => {
       const next = [...prev.features];
       next[idx] = value;
-      return { ...prev, features: next };
+      return { features: next };
     });
   };
 
   const addFeature = () => {
-    setDraft((prev) => ({ ...prev, features: [...prev.features, 'Yeni özellik'] }));
+    patchDraft((prev) => ({ features: [...prev.features, 'Yeni özellik'] }));
   };
 
-  const removeFeature = (idx) => {
-    setDraft((prev) => ({ ...prev, features: prev.features.filter((_, i) => i !== idx) }));
+  const removeFeature = (idx: number) => {
+    patchDraft((prev) => ({ features: prev.features.filter((_, i) => i !== idx) }));
   };
 
   const isCreate = mode === 'create';
@@ -141,7 +187,7 @@ function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isCreate ? 'Yeni Plan' : `Plan Düzenle: ${plan.name}`}</DialogTitle>
+          <DialogTitle>{isCreate ? 'Yeni Plan' : `Plan Düzenle: ${plan?.name ?? ''}`}</DialogTitle>
           <DialogDescription>
             Burada yaptığınız değişiklikler marketing sitesi fiyatlar sayfasında görünür.
           </DialogDescription>
@@ -152,14 +198,14 @@ function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
               <Label>Plan Adı</Label>
               <Input
                 value={draft.name}
-                onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => patchDraft(() => ({ name: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label>Buton Metni</Label>
               <Input
                 value={draft.ctaText}
-                onChange={(e) => setDraft((prev) => ({ ...prev, ctaText: e.target.value }))}
+                onChange={(e) => patchDraft(() => ({ ctaText: e.target.value }))}
               />
             </div>
           </div>
@@ -169,7 +215,7 @@ function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
             <Textarea
               rows={2}
               value={draft.description}
-              onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))}
+              onChange={(e) => patchDraft(() => ({ description: e.target.value }))}
             />
           </div>
 
@@ -180,7 +226,7 @@ function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
                 type="number"
                 min="0"
                 value={draft.priceMonthly}
-                onChange={(e) => setDraft((prev) => ({ ...prev, priceMonthly: Number(e.target.value) || 0 }))}
+                onChange={(e) => patchDraft(() => ({ priceMonthly: Number(e.target.value) || 0 }))}
               />
             </div>
             <div className="space-y-2">
@@ -189,7 +235,7 @@ function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
                 type="number"
                 min="0"
                 value={draft.priceYearly}
-                onChange={(e) => setDraft((prev) => ({ ...prev, priceYearly: Number(e.target.value) || 0 }))}
+                onChange={(e) => patchDraft(() => ({ priceYearly: Number(e.target.value) || 0 }))}
               />
             </div>
           </div>
@@ -199,7 +245,7 @@ function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
               type="checkbox"
               id="plan-popular"
               checked={draft.isPopular}
-              onChange={(e) => setDraft((prev) => ({ ...prev, isPopular: e.target.checked }))}
+              onChange={(e) => patchDraft(() => ({ isPopular: e.target.checked }))}
               className="h-4 w-4 rounded border-border"
             />
             <Label htmlFor="plan-popular" className="cursor-pointer">Popüler paket olarak işaretle</Label>
@@ -248,24 +294,27 @@ function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
 
 // Var olan paket tanımını tam-erişim şablonuyla birleştirir; böylece editörde
 // kataloğa yeni eklenen modül/aksiyonlar da (varsayılan açık) görünür.
-function mergeRolesWithCatalog(existingRoles) {
+function mergeRolesWithCatalog(existingRoles: unknown): PackageRoles {
   const full = buildFullAccessRoles();
-  if (!existingRoles || typeof existingRoles !== 'object') return full;
-  for (const roleKey of Object.keys(full)) {
+  if (!isRecord(existingRoles)) return full;
+  for (const [roleKey, role] of Object.entries(full)) {
     const saved = existingRoles[roleKey];
-    if (!saved?.modules) continue;
-    for (const moduleKey of Object.keys(full[roleKey].modules)) {
-      const savedModule = saved.modules[moduleKey];
-      if (!savedModule) {
+    const savedModules = isRecord(saved) && isRecord(saved.modules) ? saved.modules : null;
+    if (!savedModules) continue;
+    for (const [moduleKey, moduleEntry] of Object.entries(role.modules)) {
+      const savedModule = savedModules[moduleKey];
+      if (!isRecord(savedModule)) {
         // Kayıtlı pakette hiç geçmeyen modül: kayıt varken eklenen yeni katalog
         // girdisi olabilir — pakette kapalı kabul edip admin kararına bırakırız.
-        full[roleKey].modules[moduleKey].enabled = false;
+        moduleEntry.enabled = false;
         continue;
       }
-      full[roleKey].modules[moduleKey].enabled = Boolean(savedModule.enabled);
-      for (const actionKey of Object.keys(full[roleKey].modules[moduleKey].actions)) {
-        if (savedModule.actions && savedModule.actions[actionKey] === false) {
-          full[roleKey].modules[moduleKey].actions[actionKey] = false;
+      moduleEntry.enabled = Boolean(savedModule.enabled);
+      const savedActions = isRecord(savedModule.actions) ? savedModule.actions : null;
+      const actions = moduleEntry.actions ?? {};
+      for (const actionKey of Object.keys(actions)) {
+        if (savedActions && savedActions[actionKey] === false) {
+          actions[actionKey] = false;
         }
       }
     }
@@ -273,16 +322,27 @@ function mergeRolesWithCatalog(existingRoles) {
   return full;
 }
 
-function EntitlementsDialog({ open, onOpenChange, plan, existingRoles, saving, onSave }) {
-  const [rolesDraft, setRolesDraft] = useState(null);
-  const [activeRole, setActiveRole] = useState(PACKAGE_ROLES[0].key);
-  const [expandedModules, setExpandedModules] = useState(() => new Set());
+const FIRST_ROLE_KEY = PACKAGE_ROLES[0]?.key ?? 'admin';
+
+interface EntitlementsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  plan: PricingPlan | null;
+  existingRoles: unknown;
+  saving: boolean;
+  onSave: (roles: PackageRoles, syncFeatures: boolean) => void;
+}
+
+function EntitlementsDialog({ open, onOpenChange, plan, existingRoles, saving, onSave }: EntitlementsDialogProps) {
+  const [rolesDraft, setRolesDraft] = useState<PackageRoles | null>(null);
+  const [activeRole, setActiveRole] = useState(FIRST_ROLE_KEY);
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(() => new Set());
   const [syncFeatures, setSyncFeatures] = useState(true);
 
   useEffect(() => {
     if (!open) return;
     setRolesDraft(mergeRolesWithCatalog(existingRoles));
-    setActiveRole(PACKAGE_ROLES[0].key);
+    setActiveRole(FIRST_ROLE_KEY);
     setExpandedModules(new Set());
     setSyncFeatures(true);
   }, [open, existingRoles]);
@@ -290,51 +350,44 @@ function EntitlementsDialog({ open, onOpenChange, plan, existingRoles, saving, o
   if (!plan || !rolesDraft) return null;
 
   const moduleOptions = getRoleModuleOptions(activeRole);
-  const roleDraft = rolesDraft[activeRole] || { modules: {} };
+  const roleDraft: Required<RoleEntitlement> = rolesDraft[activeRole] || { modules: {} };
 
-  const setModuleEnabled = (moduleKey, enabled) => {
-    setRolesDraft((prev) => ({
-      ...prev,
-      [activeRole]: {
-        modules: {
-          ...prev[activeRole].modules,
-          [moduleKey]: { ...prev[activeRole].modules[moduleKey], enabled },
-        },
-      },
-    }));
+  // Etkin rolün modül haritasını günceller; taslak ya da rol yoksa dokunmaz.
+  const updateRoleModules = (update: (modules: Required<RoleEntitlement>['modules']) => Required<RoleEntitlement>['modules']) => {
+    setRolesDraft((prev) => {
+      const role = prev?.[activeRole];
+      if (!prev || !role) return prev;
+      return { ...prev, [activeRole]: { modules: update(role.modules) } };
+    });
   };
 
-  const setActionEnabled = (moduleKey, actionKey, enabled) => {
-    setRolesDraft((prev) => {
-      const moduleEntry = prev[activeRole].modules[moduleKey];
+  const setModuleEnabled = (moduleKey: string, enabled: boolean) => {
+    updateRoleModules((modules) => ({ ...modules, [moduleKey]: { ...modules[moduleKey], enabled } }));
+  };
+
+  const setActionEnabled = (moduleKey: string, actionKey: string, enabled: boolean) => {
+    updateRoleModules((modules) => {
+      const moduleEntry = modules[moduleKey];
       return {
-        ...prev,
-        [activeRole]: {
-          modules: {
-            ...prev[activeRole].modules,
-            [moduleKey]: {
-              ...moduleEntry,
-              actions: { ...moduleEntry.actions, [actionKey]: enabled },
-            },
-          },
-        },
+        ...modules,
+        [moduleKey]: { ...moduleEntry, actions: { ...moduleEntry?.actions, [actionKey]: enabled } },
       };
     });
   };
 
-  const setAllForRole = (enabled) => {
-    setRolesDraft((prev) => {
-      const nextModules = {};
-      for (const [moduleKey, moduleEntry] of Object.entries(prev[activeRole].modules)) {
-        const actions = {};
-        for (const actionKey of Object.keys(moduleEntry.actions)) actions[actionKey] = enabled;
+  const setAllForRole = (enabled: boolean) => {
+    updateRoleModules((modules) => {
+      const nextModules: Required<RoleEntitlement>['modules'] = {};
+      for (const [moduleKey, moduleEntry] of Object.entries(modules)) {
+        const actions: Record<string, boolean> = {};
+        for (const actionKey of Object.keys(moduleEntry.actions ?? {})) actions[actionKey] = enabled;
         nextModules[moduleKey] = { enabled, actions };
       }
-      return { ...prev, [activeRole]: { modules: nextModules } };
+      return nextModules;
     });
   };
 
-  const toggleExpanded = (moduleKey) => {
+  const toggleExpanded = (moduleKey: string) => {
     setExpandedModules((prev) => {
       const next = new Set(prev);
       if (next.has(moduleKey)) next.delete(moduleKey);
@@ -343,7 +396,7 @@ function EntitlementsDialog({ open, onOpenChange, plan, existingRoles, saving, o
     });
   };
 
-  const roleEnabledCount = (roleKey) =>
+  const roleEnabledCount = (roleKey: string) =>
     Object.values(rolesDraft[roleKey]?.modules || {}).filter((m) => m.enabled).length;
 
   return (
@@ -396,6 +449,7 @@ function EntitlementsDialog({ open, onOpenChange, plan, existingRoles, saving, o
             <div className="flex-1 overflow-y-auto pr-2 space-y-1">
               {moduleOptions.map((moduleOption) => {
                 const moduleDraft = roleDraft.modules[moduleOption.key] || { enabled: false, actions: {} };
+                const draftActions = moduleDraft.actions ?? {};
                 const actionEntries = Object.entries(moduleOption.actions);
                 const expanded = expandedModules.has(moduleOption.key);
                 return (
@@ -404,7 +458,7 @@ function EntitlementsDialog({ open, onOpenChange, plan, existingRoles, saving, o
                       <input
                         type="checkbox"
                         id={`mod-${activeRole}-${moduleOption.key}`}
-                        checked={moduleDraft.enabled}
+                        checked={Boolean(moduleDraft.enabled)}
                         onChange={(e) => setModuleEnabled(moduleOption.key, e.target.checked)}
                         className="h-4 w-4 rounded border-border"
                       />
@@ -417,18 +471,18 @@ function EntitlementsDialog({ open, onOpenChange, plan, existingRoles, saving, o
                           onClick={() => toggleExpanded(moduleOption.key)}
                           className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
                         >
-                          {actionEntries.filter(([key]) => moduleDraft.actions[key] !== false).length}/{actionEntries.length} işlem
+                          {actionEntries.filter(([key]) => draftActions[key] !== false).length}/{actionEntries.length} işlem
                           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                         </button>
                       ) : null}
                     </div>
-                    {expanded && moduleDraft.enabled && actionEntries.length > 0 ? (
+                    {expanded && Boolean(moduleDraft.enabled) && actionEntries.length > 0 ? (
                       <div className="px-3 pb-2 pl-9 grid grid-cols-1 sm:grid-cols-2 gap-1">
                         {actionEntries.map(([actionKey, actionLabel]) => (
                           <label key={actionKey} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={moduleDraft.actions[actionKey] !== false}
+                              checked={draftActions[actionKey] !== false}
                               onChange={(e) => setActionEnabled(moduleOption.key, actionKey, e.target.checked)}
                               className="h-3.5 w-3.5 rounded border-border"
                             />
@@ -466,18 +520,18 @@ function EntitlementsDialog({ open, onOpenChange, plan, existingRoles, saving, o
 
 export default function Plans() {
   const { toast } = useToast();
-  const [content, setContent] = useState(defaultPricingContent);
-  const [tenants, setTenants] = useState([]);
+  const [content, setContent] = useState<PricingContent>(defaultPricingContent);
+  const [tenants, setTenants] = useState<TenantWorkspaceDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState('edit');
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [lastSavedAt, setLastSavedAt] = useState(null);
-  const [packages, setPackages] = useState([]);
+  const [dialogMode, setDialogMode] = useState<'edit' | 'create'>('edit');
+  const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [packages, setPackages] = useState<PlatformPackageRow[]>([]);
   const [entDialogOpen, setEntDialogOpen] = useState(false);
-  const [entPlan, setEntPlan] = useState(null);
+  const [entPlan, setEntPlan] = useState<PricingPlan | null>(null);
   const [entSaving, setEntSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -486,39 +540,40 @@ export default function Plans() {
       setError('');
       const [pricingResponse, tenantData, packageData] = await Promise.all([
         fetchSiteContentSection('pricing', 'tr'),
-        fetchPlatformTenants().catch(() => []),
+        fetchPlatformTenants().catch(() => null),
         fetchPlatformPackages().catch(() => []),
       ]);
       setContent(normalizeContent(pricingResponse?.content));
-      setTenants(tenantData);
+      setTenants(tenantData ?? []);
       setPackages(Array.isArray(packageData) ? packageData : []);
       if (pricingResponse?.updatedAt) {
         setLastSavedAt(new Date(pricingResponse.updatedAt));
       }
     } catch (err) {
-      setError(err.message || 'Paket görünümü alınamadı.');
+      setError(errorMessage(err, 'Paket görünümü alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const tenantStats = useMemo(() => {
-    const map = {};
+    const map: Partial<Record<string, { count: number; users: number }>> = {};
     tenants.forEach((tenant) => {
       const key = (tenant.plan || '').trim().toLowerCase();
       if (!key) return;
-      if (!map[key]) map[key] = { count: 0, users: 0 };
-      map[key].count += 1;
-      map[key].users += Number(tenant.users || 0);
+      const entry = map[key] ?? { count: 0, users: 0 };
+      entry.count += 1;
+      entry.users += Number(tenant.users || 0);
+      map[key] = entry;
     });
     return map;
   }, [tenants]);
 
-  const persist = async (nextContent) => {
+  const persist = async (nextContent: PricingContent) => {
     setSaving(true);
     try {
       const response = await updateSiteContentSection('pricing', {
@@ -539,7 +594,7 @@ export default function Plans() {
     }
   };
 
-  const handleOpenEdit = (plan) => {
+  const handleOpenEdit = (plan: PricingPlan) => {
     setSelectedPlan(plan);
     setDialogMode('edit');
     setDialogOpen(true);
@@ -560,7 +615,7 @@ export default function Plans() {
     setDialogOpen(true);
   };
 
-  const handleSavePlan = async (draft) => {
+  const handleSavePlan = async (draft: PricingPlan) => {
     const normalizedDraft = normalizePlan(draft);
     const exists = content.plans.some((p) => p.id === normalizedDraft.id);
     const nextPlans = exists
@@ -578,13 +633,13 @@ export default function Plans() {
     } catch (err) {
       toast({
         title: 'Plan kaydedilemedi',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     }
   };
 
-  const findPackageForPlan = (plan) => {
+  const findPackageForPlan = (plan: PricingPlan | null): PlatformPackageRow | null => {
     if (!plan) return null;
     const nameLower = plan.name.trim().toLowerCase();
     return packages.find(
@@ -592,29 +647,29 @@ export default function Plans() {
     ) || null;
   };
 
-  const parsePackageRoles = (pkg) => {
+  const parsePackageRoles = (pkg: PlatformPackageRow | null): unknown => {
     if (!pkg?.payloadJson) return null;
     try {
-      return JSON.parse(pkg.payloadJson)?.roles || null;
+      const parsed: unknown = JSON.parse(pkg.payloadJson);
+      return (isRecord(parsed) ? parsed.roles : null) || null;
     } catch {
       return null;
     }
   };
 
-  const handleOpenEntitlements = (plan) => {
+  const handleOpenEntitlements = (plan: PricingPlan) => {
     setEntPlan(plan);
     setEntDialogOpen(true);
   };
 
-  const handleSaveEntitlements = async (rolesDraft, syncFeatures) => {
+  const handleSaveEntitlements = async (rolesDraft: PackageRoles, syncFeatures: boolean) => {
     if (!entPlan) return;
     setEntSaving(true);
     try {
       const saved = await savePlatformPackage(entPlan.id, { name: entPlan.name, roles: rolesDraft });
-      setPackages((prev) => {
-        const others = prev.filter((pkg) => pkg.packageId !== saved.packageId);
-        return [...others, saved];
-      });
+      if (saved) {
+        setPackages((prev) => [...prev.filter((pkg) => pkg.packageId !== saved.packageId), saved]);
+      }
 
       if (syncFeatures) {
         const features = buildMarketingFeatureList(rolesDraft);
@@ -630,7 +685,7 @@ export default function Plans() {
     } catch (err) {
       toast({
         title: 'Yetkiler kaydedilemedi',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -638,7 +693,7 @@ export default function Plans() {
     }
   };
 
-  const handleDeletePlan = async (planId) => {
+  const handleDeletePlan = async (planId: string) => {
     const target = content.plans.find((p) => p.id === planId);
     if (!target) return;
     if (!window.confirm(`"${target.name}" planını silmek istediğinize emin misiniz?`)) return;
@@ -653,7 +708,7 @@ export default function Plans() {
     } catch (err) {
       toast({
         title: 'Plan silinemedi',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     }

@@ -15,8 +15,16 @@ import {
   fetchPlatformAuditOverview,
   fetchPlatformAuditTenantBranches,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type {
+  Paged,
+  PlatformAuditBranchRow,
+  PlatformAuditLogQuery,
+  PlatformAuditLogRow,
+  PlatformAuditTenantRow,
+} from '../../lib/api/audit';
 
-const CATEGORY_LABEL = {
+const CATEGORY_LABEL: Partial<Record<string, string>> = {
   Approval: 'Onay',
   HR: 'Personel',
   Document: 'Evrak',
@@ -34,11 +42,11 @@ const PAGE_SIZE = 50;
 // Geliştirici denetim merkezi: tüm kurumların logları kurum kurum,
 // kurum seçilince şube şube incelenir.
 export default function PlatformLogs() {
-  const [overview, setOverview] = useState([]);
-  const [selectedTenant, setSelectedTenant] = useState(null);
-  const [branches, setBranches] = useState([]);
-  const [selectedBranch, setSelectedBranch] = useState(null);
-  const [page, setPage] = useState({ items: [], totalCount: 0 });
+  const [overview, setOverview] = useState<PlatformAuditTenantRow[]>([]);
+  const [selectedTenant, setSelectedTenant] = useState<PlatformAuditTenantRow | null>(null);
+  const [branches, setBranches] = useState<PlatformAuditBranchRow[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<PlatformAuditBranchRow | null>(null);
+  const [page, setPage] = useState<Paged<PlatformAuditLogRow>>({ items: [], totalCount: 0, skip: 0, take: PAGE_SIZE });
   const [pageIndex, setPageIndex] = useState(0);
   const [search, setSearch] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
@@ -52,13 +60,13 @@ export default function PlatformLogs() {
       setError('');
       setOverview(await fetchPlatformAuditOverview());
     } catch (err) {
-      setError(err.message || 'Platform denetim özeti alınamadı.');
+      setError(errorMessage(err, 'Platform denetim özeti alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadOverview(); }, [loadOverview]);
+  useEffect(() => { void loadOverview(); }, [loadOverview]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -83,19 +91,19 @@ export default function PlatformLogs() {
   const loadLogs = useCallback(async () => {
     try {
       setLogsLoading(true);
-      const params = { skip: pageIndex * PAGE_SIZE, take: PAGE_SIZE };
+      const params: PlatformAuditLogQuery = { skip: pageIndex * PAGE_SIZE, take: PAGE_SIZE };
       if (selectedTenant?.tenantId) params.tenantId = selectedTenant.tenantId;
       if (selectedBranch?.branchId) params.branchId = selectedBranch.branchId;
       if (appliedSearch) params.search = appliedSearch;
       setPage(await fetchPlatformAuditLogs(params));
     } catch (err) {
-      setError(err.message || 'Loglar alınamadı.');
+      setError(errorMessage(err, 'Loglar alınamadı.'));
     } finally {
       setLogsLoading(false);
     }
   }, [selectedTenant, selectedBranch, appliedSearch, pageIndex]);
 
-  useEffect(() => { loadLogs(); }, [loadLogs]);
+  useEffect(() => { void loadLogs(); }, [loadLogs]);
 
   const totalPages = Math.max(1, Math.ceil((page.totalCount || 0) / PAGE_SIZE));
 

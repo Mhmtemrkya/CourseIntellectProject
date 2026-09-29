@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Brain, Settings, Zap, AlertTriangle, CheckCircle,
   Cpu, Database, Activity, Users, Clock,
@@ -19,13 +19,43 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { GlowingOrb, FloatingParticles } from '../../components/animations/AnimatedBackground';
 import { fetchPlatformOverview, fetchPlatformConfigurations, upsertPlatformConfiguration } from '../../lib/api/modules';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { PlatformAiModelDto, PlatformConfigurationDto, PlatformOverviewDto } from '../../types/api/generated';
 
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
-const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
+interface AiSettings {
+  enabled: boolean;
+  maxTokens: number;
+  temperature: number;
+  rateLimitPerUser: number;
+  rateLimitPerTenant: number;
+  contentFilter: boolean;
+  logging: boolean;
+  disabledModels: string[];
+}
+
+/** Kayıtlı AI ayarından yalnız doğru tipteki bilinen alanları alır. */
+function parseAiSettings(value: unknown): Partial<AiSettings> {
+  if (!isRecord(value)) return {};
+  const result: Partial<AiSettings> = {};
+  if (typeof value.enabled === 'boolean') result.enabled = value.enabled;
+  if (typeof value.maxTokens === 'number') result.maxTokens = value.maxTokens;
+  if (typeof value.temperature === 'number') result.temperature = value.temperature;
+  if (typeof value.rateLimitPerUser === 'number') result.rateLimitPerUser = value.rateLimitPerUser;
+  if (typeof value.rateLimitPerTenant === 'number') result.rateLimitPerTenant = value.rateLimitPerTenant;
+  if (typeof value.contentFilter === 'boolean') result.contentFilter = value.contentFilter;
+  if (typeof value.logging === 'boolean') result.logging = value.logging;
+  if (Array.isArray(value.disabledModels)) {
+    result.disabledModels = value.disabledModels.filter((id): id is string => typeof id === 'string');
+  }
+  return result;
+}
+
+const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
 const AI_SETTINGS_MARKER = 'SA_AI_SETTINGS';
 
-const defaultAiSettings = {
+const defaultAiSettings: AiSettings = {
   enabled: true,
   maxTokens: 2048,
   temperature: 0.7,
@@ -38,10 +68,10 @@ const defaultAiSettings = {
 
 export default function AIManagement() {
   const { toast } = useToast();
-  const [platform, setPlatform] = useState(null);
+  const [platform, setPlatform] = useState<PlatformOverviewDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [aiSettings, setAiSettings] = useState(defaultAiSettings);
+  const [aiSettings, setAiSettings] = useState<AiSettings>(defaultAiSettings);
 
   const loadAiData = useCallback(async () => {
     try {
@@ -49,31 +79,31 @@ export default function AIManagement() {
       setError('');
       const [overview, savedConfigs] = await Promise.all([
         fetchPlatformOverview(),
-        fetchPlatformConfigurations('ai-settings').catch(() => []),
+        fetchPlatformConfigurations('ai-settings').catch((): PlatformConfigurationDto[] => []),
       ]);
       setPlatform(overview);
 
-      const savedRecord = savedConfigs
+      const savedRecord = (savedConfigs ?? [])
         .filter((item) => item.scopeKey === 'global')
         .sort((a, b) => new Date(b.updatedAtUtc || 0).getTime() - new Date(a.updatedAtUtc || 0).getTime())[0];
 
       if (savedRecord?.payloadJson) {
         try {
-          const parsed = JSON.parse(savedRecord.payloadJson);
+          const parsed = parseAiSettings(JSON.parse(savedRecord.payloadJson));
           setAiSettings((prev) => ({ ...prev, ...parsed }));
         } catch {
           // ignore invalid saved config
         }
       }
     } catch (err) {
-      setError(err.message || 'AI yönetim verileri alınamadı.');
+      setError(errorMessage(err, 'AI yönetim verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadAiData();
+    void loadAiData();
   }, [loadAiData]);
 
   const usageStats = useMemo(() => ({
@@ -88,7 +118,7 @@ export default function AIManagement() {
 
   const logs = useMemo(() => platform?.aiLogs || [], [platform]);
 
-  const persistSettings = async (settings) => {
+  const persistSettings = async (settings: AiSettings) => {
     await upsertPlatformConfiguration({
       configurationType: 'ai-settings',
       scopeKey: 'global',
@@ -107,13 +137,13 @@ export default function AIManagement() {
     } catch (err) {
       toast({
         title: "Ayarlar kaydedilemedi",
-        description: err.message || "Lütfen tekrar deneyin.",
+        description: errorMessage(err, "Lütfen tekrar deneyin."),
         variant: "destructive",
       });
     }
   };
 
-  const toggleModel = async (modelId) => {
+  const toggleModel = async (modelId: string) => {
     const nextDisabled = aiSettings.disabledModels?.includes(modelId)
       ? aiSettings.disabledModels.filter((id) => id !== modelId)
       : [...(aiSettings.disabledModels || []), modelId];
@@ -128,13 +158,13 @@ export default function AIManagement() {
     } catch (err) {
       toast({
         title: "Model durumu kaydedilemedi",
-        description: err.message || "Lütfen tekrar deneyin.",
+        description: errorMessage(err, "Lütfen tekrar deneyin."),
         variant: "destructive",
       });
     }
   };
 
-  const openModelSettings = (model) => {
+  const openModelSettings = (model: PlatformAiModelDto) => {
     toast({
       title: 'Model ayarları',
       description: `${model.name} için ayrıntılı yapılandırma bir sonraki panel adımına hazır.`,
@@ -319,7 +349,7 @@ export default function AIManagement() {
                     </div>
                     <Slider
                       value={[aiSettings.maxTokens]}
-                      onValueChange={([v]) => setAiSettings({...aiSettings, maxTokens: v})}
+                      onValueChange={([v]) => setAiSettings({ ...aiSettings, maxTokens: v ?? aiSettings.maxTokens })}
                       max={4096}
                       min={256}
                       step={256}
@@ -333,7 +363,7 @@ export default function AIManagement() {
                     </div>
                     <Slider
                       value={[aiSettings.temperature * 100]}
-                      onValueChange={([v]) => setAiSettings({...aiSettings, temperature: v / 100})}
+                      onValueChange={([v]) => setAiSettings({ ...aiSettings, temperature: (v ?? aiSettings.temperature * 100) / 100 })}
                       max={100}
                       min={0}
                       step={10}
