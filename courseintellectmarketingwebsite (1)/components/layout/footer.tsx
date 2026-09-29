@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { useSectionContent } from "@/context/content-context"
 import { useLanguage } from "@/context/language-context"
+import { isHiddenBillingPath } from "@/lib/billing"
 
 const iconMap: Record<string, React.ElementType> = {
   Twitter,
@@ -47,7 +48,7 @@ export function Footer() {
   const visibleSections = footer.sections.map((section) => ({
     ...section,
     title: section.title === "Destek" ? (language === "tr" ? "Kaynaklar" : "Resources") : section.title,
-    links: section.links.filter((link) => !["/destek", "/yardim"].includes(link.href)),
+    links: section.links.filter((link) => !["/destek", "/yardim"].includes(link.href) && !isHiddenBillingPath(link.href)),
   }))
 
   return (

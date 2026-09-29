@@ -31,6 +31,13 @@ public sealed class PlatformOperationsService(
     /// <summary>Halka açık kayıt formunda kabul edilen planlar.</summary>
     private static readonly string[] PublicPlans = ["Starter", "Business", "Enterprise"];
 
+    /// <summary>
+    /// Ücretli paket akışı (plan seçimi + self-servis satın alma) açık mı?
+    /// Varsayılan KAPALI: şu an kaydolan her kurum ücretsiz ve paket kısıtı
+    /// olmadan kullanır. Akış silinmedi; geri açmak için "Billing:Enabled" = true.
+    /// </summary>
+    private bool BillingEnabled => configuration.GetValue<bool>("Billing:Enabled");
+
     /// <summary>Onaylanan aydınlatma/açık rıza metninin sürümü. İstemciden ALINMAZ.</summary>
     private const string CurrentKvkkConsentVersion = "2026-08-kurum-kaydi-v1";
 
@@ -328,7 +335,7 @@ public sealed class PlatformOperationsService(
         TenantRegistrationContext context,
         CancellationToken cancellationToken = default)
     {
-        var validation = ValidateRegistration(request);
+        var validation = ValidateRegistration(request, BillingEnabled);
         if (validation.Error is not null)
         {
             return new RegisterTenantResult(TenantRegistrationOutcome.Invalid, validation.Error);
@@ -493,7 +500,7 @@ public sealed class PlatformOperationsService(
         string Plan = "",
         InstitutionType InstitutionType = InstitutionType.PrivateSchool);
 
-    private static RegistrationValidation ValidateRegistration(RegisterTenantRequest request)
+    private static RegistrationValidation ValidateRegistration(RegisterTenantRequest request, bool billingEnabled)
     {
         if (!request.KvkkAccepted)
         {
@@ -532,10 +539,18 @@ public sealed class PlatformOperationsService(
             phone = rawPhone.Length > 40 ? rawPhone[..40] : rawPhone;
         }
 
-        var plan = PublicPlans.FirstOrDefault(x => string.Equals(x, Sanitize(request.Plan), StringComparison.OrdinalIgnoreCase));
-        if (plan is null)
+        // Ücretsiz dönemde plan istemciden ALINMAZ: boş plan, EntitlementService'te
+        // paket kısıtı olmadan (tüm modüller açık) çözülür. Eski istemcilerin
+        // gönderdiği plan değeri de yok sayılır ki kimse ücretli pakete düşmesin.
+        var plan = string.Empty;
+        if (billingEnabled)
         {
-            return new RegistrationValidation("Geçersiz plan seçimi.");
+            var selected = PublicPlans.FirstOrDefault(x => string.Equals(x, Sanitize(request.Plan), StringComparison.OrdinalIgnoreCase));
+            if (selected is null)
+            {
+                return new RegistrationValidation("Geçersiz plan seçimi.");
+            }
+            plan = selected;
         }
 
         if (request.EstimatedStudents is < 1 or > 100_000)

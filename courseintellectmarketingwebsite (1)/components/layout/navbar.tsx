@@ -12,6 +12,7 @@ import { useLanguage } from "@/context/language-context"
 import { useUserAuth } from "@/context/user-auth-context"
 import { cn } from "@/lib/utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { isHiddenBillingPath } from "@/lib/billing"
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -26,7 +27,7 @@ export function Navbar() {
     logout: { tr: "Çıkış Yap", en: "Sign Out" },
   }
 
-  const navLinks = navContent.links.filter((link) => link.href !== "/destek")
+  const navLinks = navContent.links.filter((link) => link.href !== "/destek" && !isHiddenBillingPath(link.href))
 
   useEffect(() => {
     const handleScroll = () => {

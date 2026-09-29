@@ -13,7 +13,8 @@ public sealed record RegisterTenantRequest(
     string ContactName,
     string Email,
     string Phone,
-    string Plan,
+    // Ücretsiz dönemde form plan göndermez ("Billing:Enabled" kapalı); zorunlu değildir.
+    string? Plan,
     int EstimatedStudents,
     string InstitutionType = "PrivateSchool",
     string? CaptchaToken = null,

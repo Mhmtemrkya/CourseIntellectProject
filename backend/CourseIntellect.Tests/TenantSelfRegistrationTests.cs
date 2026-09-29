@@ -139,15 +139,30 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     [Theory]
     [InlineData("Ucretsiz")]      // beyaz listede olmayan plan
     [InlineData("")]
-    public async Task Plan_beyaz_liste_disindaysa_reddedilir(string plan)
+    public async Task Ucretli_modda_plan_beyaz_liste_disindaysa_reddedilir(string plan)
     {
-        var service = CreateService();
+        var service = CreateService(settings: new() { ["Billing:Enabled"] = "true" });
 
         var result = await service.RegisterTenantAsync(ValidRequest() with { Plan = plan }, Context);
 
         Assert.Equal(TenantRegistrationOutcome.Invalid, result.Outcome);
         Assert.Empty(await db.Context.TenantRegistrationApplications.ToListAsync());
         Assert.Empty(await db.Context.TenantWorkspaces.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("Enterprise")]   // eski istemci plan gönderse bile
+    [InlineData(null)]           // yeni form plan göndermez
+    public async Task Ucretsiz_donemde_plan_alinmaz_kurum_paketsiz_acilir(string? plan)
+    {
+        var service = CreateService();
+
+        var result = await service.RegisterTenantAsync(ValidRequest() with { Plan = plan }, Context);
+
+        Assert.Equal(TenantRegistrationOutcome.Accepted, result.Outcome);
+        var application = await db.Context.TenantRegistrationApplications.SingleAsync();
+        // Boş plan EntitlementService'te paket kısıtı olmadan (tüm modüller açık) çözülür.
+        Assert.Equal(string.Empty, application.Plan);
     }
 
     [Theory]
@@ -790,7 +805,7 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     public async Task Dogrulama_hatasi_400_captcha_hatasi_400_dondurur()
     {
         var invalid = await CreateController()
-            .RegisterTenant(ValidRequest() with { Plan = "Bedava" }, CancellationToken.None);
+            .RegisterTenant(ValidRequest() with { InstitutionType = "Hastane" }, CancellationToken.None);
         Assert.Equal(StatusCodes.Status400BadRequest, Assert.IsType<BadRequestObjectResult>(invalid).StatusCode);
 
         var captchaFailed = await CreateController(CaptchaVerificationStatus.Failed)

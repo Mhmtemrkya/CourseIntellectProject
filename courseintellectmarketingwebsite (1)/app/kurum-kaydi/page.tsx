@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useLanguage } from "@/context/language-context"
 import { apiRequest, ApiRequestError } from "@/lib/api-client"
 import { TurnstileWidget, turnstileEnabled } from "@/components/turnstile-widget"
+import { billingEnabled } from "@/lib/billing"
 
 const plans = [
   { value: "Starter", label: { tr: "Starter — Küçük Kurumlar", en: "Starter — Small Institutions" } },
@@ -63,10 +64,15 @@ export default function KurumKaydiPage() {
 
   const t = {
     title: { tr: "Kurumunuzu Kaydedin", en: "Register Your Institution" },
-    subtitle: {
-      tr: "Formu doldurun, ekibimiz en kısa sürede sizinle iletişime geçsin.",
-      en: "Fill out the form and our team will contact you shortly.",
-    },
+    subtitle: billingEnabled
+      ? {
+          tr: "Formu doldurun, ekibimiz en kısa sürede sizinle iletişime geçsin.",
+          en: "Fill out the form and our team will contact you shortly.",
+        }
+      : {
+          tr: "Formu doldurun; kurumunuz onaylandığında platformu ücretsiz kullanmaya başlayın.",
+          en: "Fill out the form and start using the platform for free once your institution is approved.",
+        },
     leftHeading: { tr: "Kurumunuzu Dijital Geleceğe Taşıyın", en: "Take Your Institution to the Digital Future" },
     leftSubtitle: {
       tr: "Öğrenci, öğretmen ve veliler için tasarlanmış eksiksiz eğitim yönetim platformu.",
@@ -139,7 +145,8 @@ export default function KurumKaydiPage() {
           contactName: form.contactName,
           email: form.email,
           phone: form.phone,
-          plan: form.plan,
+          // Ücretsiz dönemde plan gönderilmez; backend de yok sayar.
+          ...(billingEnabled ? { plan: form.plan } : {}),
           estimatedStudents: Number(form.estimatedStudents),
           institutionType: form.institutionType,
           captchaToken,
@@ -267,7 +274,7 @@ export default function KurumKaydiPage() {
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <Link
-              href="/fiyatlar"
+              href={billingEnabled ? "/fiyatlar" : "/"}
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -371,6 +378,7 @@ export default function KurumKaydiPage() {
                     </Select>
                   </div>
 
+                  {billingEnabled && (
                   <div className="space-y-2">
                     <Label>{t.plan[language]}</Label>
                     <Select value={form.plan} onValueChange={(v) => setForm((p) => ({ ...p, plan: v }))}>
@@ -386,6 +394,7 @@ export default function KurumKaydiPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="students">{t.students[language]}</Label>

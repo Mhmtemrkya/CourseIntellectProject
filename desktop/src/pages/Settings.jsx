@@ -33,6 +33,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Separator } from '../components/ui/separator';
 import { useToast } from '../hooks/use-toast';
 import { removeTenantLogo, uploadTenantLogo } from '../lib/api/modules';
+import { billingEnabled } from '../lib/billing';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -448,7 +449,8 @@ export default function Settings() {
         </Card>
       </motion.div>
 
-      {/* Package Limits */}
+      {/* Paket limitleri: ücretsiz dönemde gizli (lib/billing.js). */}
+      {billingEnabled && (
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
@@ -486,6 +488,7 @@ export default function Settings() {
           </CardContent>
         </Card>
       </motion.div>
+      )}
 
       {/* Save Button */}
       <motion.div variants={itemVariants} className="flex justify-end">

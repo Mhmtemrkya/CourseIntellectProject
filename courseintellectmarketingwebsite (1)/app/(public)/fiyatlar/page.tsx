@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { useSectionContent } from "@/context/content-context"
 import { cn } from "@/lib/utils"
+import { billingEnabled } from "@/lib/billing"
+import { BillingDisabledRedirect } from "@/components/billing-disabled-redirect"
 import type { PricingPlan } from "@/types/content"
 
 // Fiyatı teklife bağlı plan: rakam yerine "Özel Fiyat", satın alma yerine iletişim.
@@ -19,6 +21,12 @@ function isCustomPriced(plan: PricingPlan) {
 }
 
 export default function PricingPage() {
+  // Ücretsiz dönemde paket/fiyat sayfası gizlidir (derleme sabiti; hook sırası değişmez).
+  if (!billingEnabled) return <BillingDisabledRedirect />
+  return <PricingContent />
+}
+
+function PricingContent() {
   const pricingContent = useSectionContent("pricing")
   const [isYearly, setIsYearly] = useState(false)
 

@@ -11,6 +11,8 @@ import { useSectionContent } from "@/context/content-context"
 import { useUserAuth } from "@/context/user-auth-context"
 import { apiRequest, ApiRequestError } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
+import { billingEnabled } from "@/lib/billing"
+import { BillingDisabledRedirect } from "@/components/billing-disabled-redirect"
 
 type PurchaseResponse = {
   id: string
@@ -22,6 +24,12 @@ type PurchaseResponse = {
 }
 
 export default function CheckoutPage() {
+  // Ücretsiz dönemde satın alma gizlidir; backend ucu da "Billing:Enabled" ile kapalı.
+  if (!billingEnabled) return <BillingDisabledRedirect />
+  return <CheckoutContent />
+}
+
+function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const planId = searchParams.get("plan")

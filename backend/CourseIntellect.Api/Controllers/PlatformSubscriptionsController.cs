@@ -9,7 +9,10 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/platformsubscriptions")]
-public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService service, ITenantContext tenantContext) : ControllerBase
+public sealed class PlatformSubscriptionsController(
+    IPlatformSubscriptionService service,
+    ITenantContext tenantContext,
+    IConfiguration configuration) : ControllerBase
 {
     /// <summary>
     /// Marketing site checkout: kullanıcı giriş yapmış kurum, paket satın alır.
@@ -20,8 +23,22 @@ public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService
         [FromBody] CreatePlatformSubscriptionInvoiceRequest request,
         CancellationToken cancellationToken)
     {
+        // Ücretsiz dönemde self-servis satın alma kapalıdır (akış silinmedi; geri
+        // açmak için "Billing:Enabled" = true). Platform faturaları yönetim ekranından
+        // yürümeye devam eder.
+        if (!configuration.GetValue<bool>("Billing:Enabled"))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                code = "BILLING_DISABLED",
+                message = "Paket satın alma şu an kapalı; kurumlar platformu ücretsiz kullanabilir.",
+            });
+        }
+
         var (actorId, tenantId) = GetClaims();
-        if (request.TenantId.HasValue && request.TenantId.Value != Guid.Empty)
+        // Başka bir kurum adına fatura yalnız kurumsuz platform hesabı açabilir;
+        // aksi hâlde herhangi bir kullanıcı başka kuruma "ödenmiş" abonelik yazabilirdi.
+        if (tenantId == Guid.Empty && request.TenantId.HasValue && request.TenantId.Value != Guid.Empty)
         {
             tenantId = request.TenantId.Value;
         }
