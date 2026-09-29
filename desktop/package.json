@@ -87,7 +87,9 @@
     "desktop:build:prod": "bash scripts/build-macos-signed.sh",
     "desktop:build:unsigned": "bash scripts/macos-build-preflight.sh && swift scripts/generate-dmg-background.swift && REACT_APP_COURSE_INTELLECT_ENV=production PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 node ./node_modules/@tauri-apps/cli/tauri.js build --bundles dmg",
     "desktop:build:signed": "bash scripts/build-macos-signed.sh",
-    "desktop:version": "node scripts/set-desktop-version.mjs"
+    "desktop:version": "node scripts/set-desktop-version.mjs",
+    "typecheck": "tsc --noEmit -p .",
+    "ts:gate": "node ./scripts/ts-strict-gate.mjs"
   },
   "browserslist": {
     "production": [
@@ -108,6 +110,11 @@
     "@playwright/test": "^1.58.2",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/cli": "^2.10.1",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^22.20.4",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
     "autoprefixer": "^10.4.20",
     "eslint": "9.39.4",
     "eslint-plugin-import": "2.31.0",
@@ -116,7 +123,8 @@
     "eslint-plugin-react-hooks": "5.2.0",
     "globals": "15.15.0",
     "postcss": "^8.5.16",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.9.3"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
   "overrides": {
@@ -129,6 +137,9 @@
     "webpack-dev-server": "^5.2.6",
     "sockjs": {
       "uuid": "^11.1.1"
+    },
+    "react-scripts": {
+      "typescript": "$typescript"
     }
   },
   "resolutions": {
