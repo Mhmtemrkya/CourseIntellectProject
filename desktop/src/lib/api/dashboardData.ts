@@ -1,7 +1,47 @@
 import { api } from './client';
 import { isUserPassive } from '../userStatus';
+import type { PlannedExam } from './plannedExams';
+import type { UserLike } from '../../types/session';
+import type {
+  AnnouncementDto,
+  AttendanceEntryDto,
+  ClassRankingDto,
+  ContentDto,
+  ExamResultDto,
+  HomeworkAssignmentDto,
+  MessageThreadDto,
+  NotificationDto,
+  QuestionBankItemDto,
+  QuestionPracticeAttemptDto,
+  QuestionThreadDto,
+  ScheduleEntryDto,
+  StaffLeaveDto,
+  StaffSummaryDto,
+  StudentFinanceAccountDto,
+  StudentSummaryDto,
+  StudyPlanStateDto,
+} from '../../types/api/generated';
 
-function normalizeText(value = '') {
+type DateInput = string | number | Date | null | undefined;
+
+/** Pano "bugünkü dersler" satırı. */
+export interface DashboardLesson {
+  time: string;
+  subject: string;
+  class: string;
+  teacher: string;
+  status: string;
+  room?: string;
+}
+
+export interface DashboardActivity {
+  id: string;
+  message: string;
+  time: string;
+  icon: string;
+}
+
+function normalizeText(value: unknown = ''): string {
   return String(value)
     .trim()
     .toLowerCase()
@@ -13,7 +53,7 @@ function normalizeText(value = '') {
     .replaceAll('ü', 'u');
 }
 
-function isToday(value) {
+function isToday(value: DateInput): boolean {
   if (!value) return false;
   const date = new Date(value);
   const now = new Date();
@@ -27,11 +67,11 @@ function isToday(value) {
 // Bugünkü Türkçe gün adı (ScheduleController kayıtlarındaki 'day' field
 // ile aynı format: 'Pazartesi'...'Pazar').
 const SCHEDULE_DAY_NAMES = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-function todayScheduleDayName() {
-  return SCHEDULE_DAY_NAMES[new Date().getDay()];
+function todayScheduleDayName(): string {
+  return SCHEDULE_DAY_NAMES[new Date().getDay()] ?? '';
 }
 
-function pickScheduleTodayForTeacher(scheduleEntries, teacherName) {
+function pickScheduleTodayForTeacher(scheduleEntries: readonly ScheduleEntryDto[], teacherName: string | null | undefined): DashboardLesson[] {
   if (!Array.isArray(scheduleEntries) || !teacherName) return [];
   const teacherKey = normalizeText(teacherName);
   const todayKey = todayScheduleDayName();
@@ -47,7 +87,7 @@ function pickScheduleTodayForTeacher(scheduleEntries, teacherName) {
     }));
 }
 
-function pickScheduleTodayForClass(scheduleEntries, className) {
+function pickScheduleTodayForClass(scheduleEntries: readonly ScheduleEntryDto[], className: string | null | undefined): DashboardLesson[] {
   if (!Array.isArray(scheduleEntries) || !className) return [];
   const classKey = normalizeText(className);
   const todayKey = todayScheduleDayName();
@@ -63,16 +103,21 @@ function pickScheduleTodayForClass(scheduleEntries, className) {
     }));
 }
 
-function safeData(result, fallback) {
-  return result.status === 'fulfilled' ? result.value : fallback;
+/** Başarısız ya da boş (204) yanıtta varsayılana düşer. */
+function safeData<T>(result: PromiseSettledResult<T | null> | undefined, fallback: T): T {
+  return result?.status === 'fulfilled' ? (result.value ?? fallback) : fallback;
 }
 
-function safeNumber(value, fallback = 0) {
+function settledValue<T>(result: PromiseSettledResult<T | null> | undefined): T | null {
+  return result?.status === 'fulfilled' ? result.value : null;
+}
+
+function safeNumber(value: unknown, fallback = 0): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function formatShortDate(value) {
+function formatShortDate(value: DateInput): string {
   if (!value) return 'Tarih yok';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
@@ -82,19 +127,7 @@ function formatShortDate(value) {
   }).format(date);
 }
 
-function formatLongDate(value) {
-  if (!value) return 'Bilinmiyor';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat('tr-TR', {
-    day: '2-digit',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
-
-function parseHumanDateLabel(value) {
+function parseHumanDateLabel(value: DateInput): Date | null {
   if (!value) return null;
   const direct = new Date(value);
   if (!Number.isNaN(direct.getTime())) return direct;
@@ -103,19 +136,22 @@ function parseHumanDateLabel(value) {
   const parts = normalized.match(/(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
   if (!parts) return null;
 
-  const [, day, month, year] = parts;
+  const [, day = '', month = '', year = ''] = parts;
   const fullYear = year.length === 2 ? `20${year}` : year;
   return new Date(`${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T09:00:00`);
 }
 
-function groupLessons(attendanceEntries, { className, studentName } = {}) {
+function groupLessons(
+  attendanceEntries: readonly AttendanceEntryDto[],
+  { className, studentName }: { className?: string; studentName?: string } = {},
+): DashboardLesson[] {
   const filtered = attendanceEntries.filter((item) => {
     if (className && item.className !== className) return false;
     if (studentName && item.studentName !== studentName) return false;
     return true;
   });
 
-  const lessonMap = new Map();
+  const lessonMap = new Map<string, DashboardLesson>();
   filtered.forEach((item) => {
     const key = `${item.className}-${item.lesson}-${item.lessonDate}`;
     if (!lessonMap.has(key)) {
@@ -133,12 +169,12 @@ function groupLessons(attendanceEntries, { className, studentName } = {}) {
   return Array.from(lessonMap.values()).slice(0, 4);
 }
 
-function mapActivities(announcements, notifications) {
+function mapActivities(announcements: readonly AnnouncementDto[], notifications: readonly NotificationDto[]): DashboardActivity[] {
   return [
     ...announcements.slice(0, 3).map((item, index) => ({
       id: `announcement-${index}`,
       message: item.title,
-      time: item.dateLabel || item.date || 'Bugün',
+      time: item.dateLabel || 'Bugün',
       icon: 'file',
     })),
     ...notifications.slice(0, 3).map((item) => ({
@@ -150,7 +186,7 @@ function mapActivities(announcements, notifications) {
   ].slice(0, 6);
 }
 
-function resolveStudentFromSession(user, students) {
+function resolveStudentFromSession(user: UserLike | null | undefined, students: readonly StudentSummaryDto[]): StudentSummaryDto | null {
   const username = normalizeText(user?.username);
   const fullName = normalizeText(user?.name);
 
@@ -162,13 +198,13 @@ function resolveStudentFromSession(user, students) {
   );
 }
 
-function resolveParentChildren(user, students) {
+function resolveParentChildren(user: UserLike | null | undefined, students: readonly StudentSummaryDto[]): StudentSummaryDto[] {
   const name = normalizeText(user?.name);
   const username = normalizeText(user?.username);
   const email = normalizeText(user?.email);
-  const emailLocal = email.includes('@') ? email.split('@')[0] : email;
+  const emailLocal = email.includes('@') ? (email.split('@')[0] ?? '') : email;
 
-  const matched = students.filter((student) => {
+  return students.filter((student) => {
     const parentName = normalizeText(student.parentName);
     const parentEmail = normalizeText(student.parentEmail);
     return (
@@ -180,31 +216,81 @@ function resolveParentChildren(user, students) {
       (emailLocal && parentEmail.includes(emailLocal))
     );
   });
-
-  if (matched.length > 0) return matched;
-  return [];
 }
 
-export async function fetchAdminDashboardData() {
-  const results = await Promise.allSettled([
-    api.get('/api/students'),
-    api.get('/api/staff'),
-    api.get('/api/attendance'),
-    api.get('/api/announcements'),
-    api.get('/api/messages/threads'),
-    api.get('/api/notifications', { params: { targetRole: 'Admin' } }),
-    api.get('/api/staff-hr/leaves'),
-    api.get('/api/questionthreads'),
+// ─── Yönetici panosu ─────────────────────────────────────────────────────────
+
+export interface QuestionResponseTeacherRow {
+  teacherName: string;
+  askedCount: number;
+  answeredCount: number;
+  questions: Array<{ id: string; studentName: string; title: string; status: string }>;
+}
+
+export interface QuestionResponseClassRow {
+  className: string;
+  askedCount: number;
+  answeredCount: number;
+  responseRate: number;
+  teachers: QuestionResponseTeacherRow[];
+}
+
+type ActivityPeriod = 'day' | 'week' | 'month' | 'year';
+
+export interface AdminDashboardData {
+  stats: {
+    totalStudents: number;
+    totalTeachers: number;
+    totalClasses: number;
+    todayAttendanceRate: number;
+  };
+  lessons: DashboardLesson[];
+  pendingItems: Array<{ id: string; studentName: string; question: string; subject: string }>;
+  activities: DashboardActivity[];
+  announcements: Array<{ id: string; title: string; detail: string; date: string; audience: string }>;
+  classOptions: string[];
+  todayLeaves: Array<{ id: string; staffName: string; leaveType: string; endDate: string }>;
+  attendanceSeries: Array<{ label: string; value: number; present: number; total: number }>;
+  questionResponseByClass: QuestionResponseClassRow[];
+  activeStudentStats: Record<ActivityPeriod, { uniqueCount: number; totalStudents: number }>;
+  quickStats: {
+    attendanceRate: number;
+    answeredMessagesRate: number;
+    publishedAnnouncements: number;
+    unansweredMessages: number;
+    todayLeaveCount: number;
+  };
+}
+
+export async function fetchAdminDashboardData(): Promise<AdminDashboardData> {
+  const [
+    studentsResult,
+    staffResult,
+    attendanceResult,
+    announcementsResult,
+    threadsResult,
+    notificationsResult,
+    leavesResult,
+    questionThreadsResult,
+  ] = await Promise.allSettled([
+    api.get<StudentSummaryDto[]>('/api/students'),
+    api.get<StaffSummaryDto[]>('/api/staff'),
+    api.get<AttendanceEntryDto[]>('/api/attendance'),
+    api.get<AnnouncementDto[]>('/api/announcements'),
+    api.get<MessageThreadDto[]>('/api/messages/threads'),
+    api.get<NotificationDto[]>('/api/notifications', { params: { targetRole: 'Admin' } }),
+    api.get<StaffLeaveDto[]>('/api/staff-hr/leaves'),
+    api.get<QuestionThreadDto[]>('/api/questionthreads'),
   ]);
 
-  const students = safeData(results[0], []).filter((item) => !isUserPassive(item.status));
-  const staff = safeData(results[1], []).filter((item) => !isUserPassive(item.status));
-  const attendance = safeData(results[2], []);
-  const announcements = safeData(results[3], []);
-  const threads = safeData(results[4], []);
-  const notifications = safeData(results[5], []);
-  const leaves = safeData(results[6], []);
-  const questionThreads = safeData(results[7], []);
+  const students = safeData(studentsResult, []).filter((item) => !isUserPassive(item.status));
+  const staff = safeData(staffResult, []).filter((item) => !isUserPassive(item.status));
+  const attendance = safeData(attendanceResult, []);
+  const announcements = safeData(announcementsResult, []);
+  const threads = safeData(threadsResult, []);
+  const notifications = safeData(notificationsResult, []);
+  const leaves = safeData(leavesResult, []);
+  const questionThreads = safeData(questionThreadsResult, []);
 
   const teachers = staff.filter((item) => normalizeText(item.role) === 'teacher');
   const classes = new Set(students.map((item) => item.className).filter(Boolean));
@@ -217,14 +303,14 @@ export async function fetchAdminDashboardData() {
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-  const approvedLeave = (item) => {
+  const approvedLeave = (item: StaffLeaveDto) => {
     const status = normalizeText(item.status);
     return status.includes('onay') || status.includes('approved');
   };
   const todayLeaves = leaves
     .filter((item) => {
-      const start = new Date(item.startDateUtc || item.startDate);
-      const end = new Date(item.endDateUtc || item.endDate);
+      const start = new Date(item.startDateUtc);
+      const end = new Date(item.endDateUtc);
       return approvedLeave(item)
         && !Number.isNaN(start.getTime())
         && !Number.isNaN(end.getTime())
@@ -235,10 +321,10 @@ export async function fetchAdminDashboardData() {
       id: item.id,
       staffName: item.staffName || 'Personel',
       leaveType: item.leaveType || 'İzin',
-      endDate: item.endDateUtc || item.endDate,
+      endDate: item.endDateUtc,
     }));
 
-  const dateKey = (value) => {
+  const dateKey = (value: DateInput) => {
     if (!value) return '';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '';
@@ -249,9 +335,9 @@ export async function fetchAdminDashboardData() {
     day.setDate(todayStart.getDate() - (6 - index));
     const key = dateKey(day);
     const dayRows = attendance.filter((item) => dateKey(item.lessonDate) === key);
-    const uniqueRows = new Map();
+    const uniqueRows = new Map<string, AttendanceEntryDto>();
     dayRows.forEach((item) => {
-      const studentKey = normalizeText(item.studentName || item.studentUsername);
+      const studentKey = normalizeText(item.studentName);
       if (studentKey) uniqueRows.set(studentKey, item);
     });
     const rows = [...uniqueRows.values()];
@@ -267,22 +353,26 @@ export async function fetchAdminDashboardData() {
     };
   });
 
-  const studentClassByKey = new Map();
+  const studentClassByKey = new Map<string, string>();
   students.forEach((student) => {
-    const keys = [student.fullName, student.studentName, student.username, student.userName].map(normalizeText).filter(Boolean);
+    const keys = [student.fullName, student.username].map(normalizeText).filter(Boolean);
     keys.forEach((key) => studentClassByKey.set(key, student.className || 'Sınıf belirtilmemiş'));
   });
-  const responseByClassMap = new Map();
+  const responseByClassMap = new Map<string, Map<string, QuestionResponseTeacherRow>>();
   questionThreads.forEach((thread) => {
-    const studentKey = normalizeText(thread.studentUsername || thread.studentName || thread.contactName);
-    const className = studentClassByKey.get(studentKey) || thread.className || 'Sınıf belirtilmemiş';
+    const studentKey = normalizeText(thread.studentUsername || thread.studentName);
+    const className = studentClassByKey.get(studentKey) || 'Sınıf belirtilmemiş';
     const teacherName = thread.teacherName || 'Öğretmen belirtilmemiş';
-    if (!responseByClassMap.has(className)) responseByClassMap.set(className, new Map());
-    const teacherMap = responseByClassMap.get(className);
-    if (!teacherMap.has(teacherName)) {
-      teacherMap.set(teacherName, { teacherName, askedCount: 0, answeredCount: 0, questions: [] });
+    let teacherMap = responseByClassMap.get(className);
+    if (!teacherMap) {
+      teacherMap = new Map();
+      responseByClassMap.set(className, teacherMap);
     }
-    const row = teacherMap.get(teacherName);
+    let row = teacherMap.get(teacherName);
+    if (!row) {
+      row = { teacherName, askedCount: 0, answeredCount: 0, questions: [] };
+      teacherMap.set(teacherName, row);
+    }
     const teacherAnswered = Array.isArray(thread.replies)
       ? thread.replies.some((reply) => ['teacher', 'admin', 'administrative'].includes(normalizeText(reply.senderRole)))
       : false;
@@ -291,41 +381,46 @@ export async function fetchAdminDashboardData() {
     if (teacherAnswered || statusAnswered) row.answeredCount += 1;
     row.questions.push({
       id: thread.id,
-      studentName: thread.studentName || thread.contactName || 'Öğrenci',
+      studentName: thread.studentName || 'Öğrenci',
       title: thread.title || thread.questionText || 'Soru',
       status: thread.status || (teacherAnswered ? 'Cevaplandı' : 'Bekliyor'),
     });
   });
   const questionResponseByClass = [...responseByClassMap.entries()]
     .map(([className, teacherMap]) => {
-      const teachers = [...teacherMap.values()].sort((a, b) => b.askedCount - a.askedCount || a.teacherName.localeCompare(b.teacherName, 'tr'));
-      const askedCount = teachers.reduce((sum, item) => sum + item.askedCount, 0);
-      const answeredCount = teachers.reduce((sum, item) => sum + item.answeredCount, 0);
+      const teacherRows = [...teacherMap.values()].sort((a, b) => b.askedCount - a.askedCount || a.teacherName.localeCompare(b.teacherName, 'tr'));
+      const askedCount = teacherRows.reduce((sum, item) => sum + item.askedCount, 0);
+      const answeredCount = teacherRows.reduce((sum, item) => sum + item.answeredCount, 0);
       return {
         className,
         askedCount,
         answeredCount,
         responseRate: askedCount > 0 ? Math.round((answeredCount / askedCount) * 100) : 0,
-        teachers,
+        teachers: teacherRows,
       };
     })
     .sort((left, right) => left.className.localeCompare(right.className, 'tr'));
 
-  const activeStudentStats = ['day', 'week', 'month', 'year'].reduce((acc, period) => {
+  const activeStudentsSince = (period: ActivityPeriod) => {
     const start = new Date(todayStart);
     if (period === 'week') start.setDate(start.getDate() - 6);
     if (period === 'month') start.setMonth(start.getMonth() - 1);
     if (period === 'year') start.setFullYear(start.getFullYear() - 1);
     const active = students.filter((student) => {
-      const lastLogin = new Date(student.lastLoginAtUtc || student.lastLogin || student.lastSeenAtUtc || '');
+      const lastLogin = new Date(student.lastLoginAtUtc || '');
       return !Number.isNaN(lastLogin.getTime()) && lastLogin >= start && lastLogin < todayEnd;
     });
-    acc[period] = {
+    return {
       uniqueCount: new Set(active.map((student) => student.userId || student.id || student.username || student.fullName)).size,
       totalStudents: students.length,
     };
-    return acc;
-  }, {});
+  };
+  const activeStudentStats: Record<ActivityPeriod, { uniqueCount: number; totalStudents: number }> = {
+    day: activeStudentsSince('day'),
+    week: activeStudentsSince('week'),
+    month: activeStudentsSince('month'),
+    year: activeStudentsSince('year'),
+  };
 
   return {
     stats: {
@@ -348,8 +443,8 @@ export async function fetchAdminDashboardData() {
     announcements: announcements.slice(0, 8).map((item) => ({
       id: item.id,
       title: item.title || 'Duyuru',
-      detail: item.detail || item.body || item.message || '',
-      date: item.dateLabel || item.date || item.createdAtUtc || item.createdAt || '',
+      detail: item.detail || '',
+      date: item.dateLabel || '',
       audience: item.audience || 'Tüm kurum',
     })),
     classOptions: [...classes].sort((left, right) => left.localeCompare(right, 'tr')),
@@ -367,65 +462,88 @@ export async function fetchAdminDashboardData() {
   };
 }
 
-function buildStudyStats({ exams = [], homework = [], studentName = '', studentAttendance = [], contents = [], practiceAttempts = [] }) {
-  const startOfDay = (value) => {
+// ─── Öğrenci / öğretmen / veli panoları ──────────────────────────────────────
+// NOT: Bu üç toplayıcı şu an hiçbir ekrandan çağrılmıyor (panolar kendi
+// uçlarını kullanıyor). Tipleme sırasında okudukları alanlar DTO'lara
+// indirildi; DTO'da hiç bulunmayan alan okumaları (ör. ödev teslim zaman
+// damgası, içerik oluşturma tarihi) her zaman boş döndüğü için kaldırıldı.
+
+interface StudyBucket {
+  start: Date;
+  end: Date;
+  label: string;
+}
+
+type StudyEventType = 'question' | 'content' | 'exam' | 'homework' | 'attendance';
+
+export interface StudyStatsSeries {
+  labels: string[];
+  values: number[];
+  total: number;
+  summary: { questions: number; contents: number; exams: number; homework: number; attendance: number };
+}
+
+// Yalnız zaman damgası taşıyan kaynaklar sayılır: sınav sonucu (dateLabel) ve
+// katıldı yoklaması (lessonDate). Ödev teslimi, içerik ve soru denemesi
+// DTO'larında bu hesabın okuduğu tarih alanı yoktur.
+function buildStudyStats({
+  exams = [],
+  studentAttendance = [],
+}: {
+  exams?: readonly ExamResultDto[];
+  studentAttendance?: readonly AttendanceEntryDto[];
+}): Record<'day' | 'week' | 'month' | 'year', StudyStatsSeries> {
+  const startOfDay = (value: Date) => {
     const date = new Date(value);
     date.setHours(0, 0, 0, 0);
     return date;
   };
-  const parseDate = (raw) => {
+  const parseDate = (raw: string | null | undefined) => {
     if (!raw) return null;
     const parsed = parseHumanDateLabel(raw) || new Date(raw);
-    return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
+    return !Number.isNaN(parsed.getTime()) ? parsed : null;
   };
 
-  const events = [];
-  const pushEvent = (raw, type) => {
+  const events: Array<{ date: Date; type: StudyEventType }> = [];
+  const pushEvent = (raw: string | null | undefined, type: StudyEventType) => {
     const parsed = parseDate(raw);
     if (parsed) events.push({ date: parsed, type });
   };
 
-  exams.forEach((item) => pushEvent(item.dateLabel || item.date || item.createdAt, 'exam'));
-  homework.forEach((item) => (item.submissions || []).forEach((submission) => {
-    if (normalizeText(submission.studentName) === normalizeText(studentName)) {
-      pushEvent(submission.submittedAtUtc || submission.submittedAt || submission.createdAt, 'homework');
-    }
-  }));
+  exams.forEach((item) => pushEvent(item.dateLabel, 'exam'));
   studentAttendance.forEach((item) => {
-    if (normalizeText(item.status).includes('katildi')) pushEvent(item.lessonDate || item.date, 'attendance');
+    if (normalizeText(item.status).includes('katildi')) pushEvent(item.lessonDate, 'attendance');
   });
-  contents.forEach((item) => pushEvent(item.createdAtUtc || item.createdAt || item.publishedAtUtc || item.publishedAt, 'content'));
-  practiceAttempts.forEach((item) => pushEvent(item.attemptedAtUtc || item.createdAtUtc || item.createdAt || item.date, 'question'));
 
   const today = startOfDay(new Date());
   const monthShort = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
-  const dayBuckets = [];
+  const dayBuckets: StudyBucket[] = [];
   for (let i = 13; i >= 0; i -= 1) {
     const start = new Date(today); start.setDate(today.getDate() - i);
     const end = new Date(start); end.setDate(start.getDate() + 1);
     dayBuckets.push({ start, end, label: String(start.getDate()) });
   }
-  const weekBuckets = [];
+  const weekBuckets: StudyBucket[] = [];
   for (let i = 7; i >= 0; i -= 1) {
     const start = new Date(today); start.setDate(today.getDate() - (i * 7) - 6);
     const end = new Date(today); end.setDate(today.getDate() - (i * 7) + 1);
     weekBuckets.push({ start, end, label: `${start.getDate()}.${start.getMonth() + 1}` });
   }
-  const monthBuckets = [];
+  const monthBuckets: StudyBucket[] = [];
   for (let i = 11; i >= 0; i -= 1) {
     const start = new Date(today.getFullYear(), today.getMonth() - i, 1);
     const end = new Date(today.getFullYear(), today.getMonth() - i + 1, 1);
-    monthBuckets.push({ start, end, label: monthShort[start.getMonth()] });
+    monthBuckets.push({ start, end, label: monthShort[start.getMonth()] ?? '' });
   }
-  const yearBuckets = [];
+  const yearBuckets: StudyBucket[] = [];
   for (let i = 4; i >= 0; i -= 1) {
     const start = new Date(today.getFullYear() - i, 0, 1);
     const end = new Date(today.getFullYear() - i + 1, 0, 1);
     yearBuckets.push({ start, end, label: String(start.getFullYear()) });
   }
 
-  const build = (buckets) => {
+  const build = (buckets: readonly StudyBucket[]): StudyStatsSeries => {
     const values = buckets.map(() => 0);
     const summary = { questions: 0, contents: 0, exams: 0, homework: 0, attendance: 0 };
     const windowStart = buckets[0]?.start;
@@ -435,7 +553,7 @@ function buildStudyStats({ exams = [], homework = [], studentName = '', studentA
       if (windowEnd && event.date >= windowEnd) return;
       const index = buckets.findIndex((bucket) => event.date >= bucket.start && event.date < bucket.end);
       if (index < 0) return;
-      values[index] += 1;
+      values[index] = (values[index] ?? 0) + 1;
       if (event.type === 'question') summary.questions += 1;
       else if (event.type === 'content') summary.contents += 1;
       else if (event.type === 'exam') summary.exams += 1;
@@ -458,42 +576,60 @@ function buildStudyStats({ exams = [], homework = [], studentName = '', studentA
   };
 }
 
-export async function fetchStudentDashboardData(user) {
-  const results = await Promise.allSettled([
-    api.get('/api/students'),
-    api.get('/api/contents', { params: { visibleOnly: true } }),
-    api.get('/api/studyplans'),
-    api.get('/api/homework'),
-    api.get('/api/announcements', { params: { audience: 'Ogrenci' } }),
-    api.get('/api/messages/threads'),
-    api.get('/api/attendance'),
-    api.get('/api/schedule'),
+/** Yaklaşan etkinlik/sınav listeleri için duyuru ya da sınav sonucunun ortak görünümü. */
+interface ExamSignal {
+  subject: string;
+  title: string;
+  type: string;
+  detail: string;
+  audience: string;
+  dateLabel: string;
+}
+
+export async function fetchStudentDashboardData(user: UserLike | null | undefined) {
+  const [
+    studentsResult,
+    contentsResult,
+    studyPlanResult,
+    homeworkResult,
+    announcementsResult,
+    threadsResult,
+    attendanceResult,
+    scheduleResult,
+  ] = await Promise.allSettled([
+    api.get<StudentSummaryDto[]>('/api/students'),
+    api.get<ContentDto[]>('/api/contents', { params: { visibleOnly: true } }),
+    api.get<StudyPlanStateDto>('/api/studyplans'),
+    api.get<HomeworkAssignmentDto[]>('/api/homework'),
+    api.get<AnnouncementDto[]>('/api/announcements', { params: { audience: 'Ogrenci' } }),
+    api.get<MessageThreadDto[]>('/api/messages/threads'),
+    api.get<AttendanceEntryDto[]>('/api/attendance'),
+    api.get<ScheduleEntryDto[]>('/api/schedule'),
   ]);
 
-  const students = safeData(results[0], []);
-  const contents = safeData(results[1], []);
-  const studyPlan = results[2].status === 'fulfilled' ? results[2].value : null;
-  const homework = safeData(results[3], []);
-  const announcements = safeData(results[4], []);
-  const threads = safeData(results[5], []);
-  const attendance = safeData(results[6], []);
-  const scheduleEntries = safeData(results[7], []);
+  const students = safeData(studentsResult, []);
+  const contents = safeData(contentsResult, []);
+  const studyPlan = settledValue(studyPlanResult);
+  const homework = safeData(homeworkResult, []);
+  const announcements = safeData(announcementsResult, []);
+  const threads = safeData(threadsResult, []);
+  const attendance = safeData(attendanceResult, []);
+  const scheduleEntries = safeData(scheduleResult, []);
 
   const student = resolveStudentFromSession(user, students);
   const studentName = student?.fullName || user?.name || 'Öğrenci';
   const className = student?.className || '';
 
-  const [examResultResponse, questionBankResponse, practiceAttemptsResponse, classRankingResponse] = await Promise.allSettled([
-    api.get('/api/examresults', { params: { studentName } }),
-    api.get('/api/questionbank', { params: className ? { className } : undefined }),
-    api.get('/api/questionbank/attempts', { params: student?.username ? { studentUsername: student.username } : undefined }),
-    api.get('/api/examresults/class-ranking'),
+  const [examResultResponse, questionBankResponse, , classRankingResponse] = await Promise.allSettled([
+    api.get<ExamResultDto[]>('/api/examresults', { params: { studentName } }),
+    api.get<QuestionBankItemDto[]>('/api/questionbank', { params: className ? { className } : undefined }),
+    api.get<QuestionPracticeAttemptDto[]>('/api/questionbank/attempts', { params: student?.username ? { studentUsername: student.username } : undefined }),
+    api.get<ClassRankingDto>('/api/examresults/class-ranking'),
   ]);
 
   const exams = safeData(examResultResponse, []);
   const questionBank = safeData(questionBankResponse, []);
-  const practiceAttempts = safeData(practiceAttemptsResponse, []);
-  const classRanking = classRankingResponse.status === 'fulfilled' ? classRankingResponse.value : null;
+  const classRanking = settledValue(classRankingResponse);
 
   const studentAttendance = attendance.filter((item) => normalizeText(item.studentName) === normalizeText(studentName));
   // Bugünkü program /api/schedule'dan, öğrencinin sınıfına göre.
@@ -503,6 +639,9 @@ export async function fetchStudentDashboardData(user) {
     ? Math.round(contents.reduce((sum, item) => sum + safeNumber(item.progress), 0) / contents.length)
     : 0;
   const examSignals = announcements.filter((item) => /sinav|deneme|quiz/i.test(`${item.title} ${item.detail || ''}`));
+  const signalSource: ExamSignal[] = examSignals.length
+    ? examSignals.map((item) => ({ subject: '', title: item.title, type: '', detail: item.detail, audience: item.audience, dateLabel: item.dateLabel }))
+    : exams.map((item) => ({ subject: item.subject, title: '', type: item.type, detail: '', audience: '', dateLabel: item.dateLabel }));
 
   // Not ortalaması ve devam oranı (gerçek veriden türetilir).
   const examScores = exams.map((item) => safeNumber(item.score)).filter((value) => value > 0);
@@ -515,11 +654,12 @@ export async function fetchStudentDashboardData(user) {
     : 0;
 
   // Derse göre performans (Ders Performansım paneli).
-  const subjectMap = new Map();
+  const subjectMap = new Map<string, number[]>();
   exams.forEach((item) => {
     const subject = item.subject || 'Genel';
-    if (!subjectMap.has(subject)) subjectMap.set(subject, []);
-    subjectMap.get(subject).push(safeNumber(item.score));
+    const scores = subjectMap.get(subject) ?? [];
+    scores.push(safeNumber(item.score));
+    subjectMap.set(subject, scores);
   });
   const subjectPerformance = Array.from(subjectMap.entries())
     .map(([subject, scores]) => ({
@@ -536,7 +676,7 @@ export async function fetchStudentDashboardData(user) {
     deadline: item.deadline || '',
     status: item.status || 'Bekliyor',
   }));
-  const distributionMap = new Map();
+  const distributionMap = new Map<string, number>();
   pendingAssignments.forEach((item) => {
     const subject = item.subject || 'Genel';
     distributionMap.set(subject, (distributionMap.get(subject) || 0) + 1);
@@ -548,10 +688,10 @@ export async function fetchStudentDashboardData(user) {
 
   // Yaklaşan etkinlikler (gün sayacı), duyurular, önerilen içerikler, haftalık istatistik.
   const dayMs = 24 * 60 * 60 * 1000;
-  const upcomingEvents = (examSignals.length ? examSignals : exams)
+  const upcomingEvents = signalSource
     .slice(0, 4)
     .map((item) => {
-      const when = parseHumanDateLabel(item.dateLabel || item.date);
+      const when = parseHumanDateLabel(item.dateLabel);
       const days = when ? Math.max(0, Math.ceil((when.getTime() - Date.now()) / dayMs)) : null;
       return {
         title: item.subject || item.title || 'Etkinlik',
@@ -561,43 +701,29 @@ export async function fetchStudentDashboardData(user) {
     });
   const announcementList = announcements.slice(0, 3).map((item) => ({
     title: item.title || 'Duyuru',
-    detail: item.detail || item.body || item.message || '',
-    date: item.dateLabel || item.date || '',
+    detail: item.detail || '',
+    date: item.dateLabel || '',
   }));
   const suggestedContents = contents.slice(0, 4).map((item) => ({
     title: item.title || 'İçerik',
     subject: item.subject || item.grade || '',
-    type: item.fileType || item.type || 'İçerik',
-    meta: item.duration || item.timeLabel || '',
+    type: item.fileType || 'İçerik',
+    meta: '',
   }));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const dayKey = (value) => {
+  const dayKey = (value: string | null | undefined) => {
     if (!value) return '';
     const parsed = parseHumanDateLabel(value) || new Date(value);
     return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
   };
+  // Haftalık seri yalnız sınav sonuçlarını sayar (ödev teslimi ve içerik
+  // DTO'larında tarih alanı yok).
   const weeklySeries = Array.from({ length: 7 }).map((_, index) => {
     const day = new Date(today);
     day.setDate(today.getDate() - (6 - index));
     const key = day.toISOString().slice(0, 10);
-    const submittedHomework = homework.reduce((sum, item) => {
-      const submissions = item.submissions || [];
-      return sum + submissions.filter((submission) => {
-        const submittedAt = submission.submittedAtUtc || submission.submittedAt || submission.createdAt;
-        return normalizeText(submission.studentName) === normalizeText(studentName)
-          && submittedAt
-          && dayKey(submittedAt) === key;
-      }).length;
-    }, 0);
-    const newContents = contents.filter((item) => {
-      const createdAt = item.createdAtUtc || item.createdAt || item.publishedAtUtc || item.publishedAt;
-      return createdAt && dayKey(createdAt) === key;
-    }).length;
-    const examResultsForDay = exams.filter((item) => {
-      return dayKey(item.dateLabel || item.date || item.createdAt) === key;
-    }).length;
-    return submittedHomework + newContents + examResultsForDay;
+    return exams.filter((item) => dayKey(item.dateLabel) === key).length;
   });
   const weekly = {
     solvedQuestions: questionBank.length,
@@ -607,14 +733,15 @@ export async function fetchStudentDashboardData(user) {
   };
 
   // Gerçek zaman damgalı çalışma hareketlerinden gün/hafta/ay/yıl istatistikleri.
-  const studyStats = buildStudyStats({ exams, homework, studentName, studentAttendance, contents, practiceAttempts });
+  const studyStats = buildStudyStats({ exams, studentAttendance });
 
   // Sınıf içi başarı sıralaması (sunucudan, not ortalamasına göre, sızıntısız).
   const rankFromServer = safeNumber(classRanking?.rank, 0);
   const totalFromServer = safeNumber(classRanking?.totalStudents, 0);
+  const xpPoints = safeNumber(studyPlan?.xpPoints, 0);
 
   return {
-    greetingName: studentName.split(' ')[0],
+    greetingName: studentName.split(' ')[0] ?? '',
     className,
     upcomingEvents,
     announcementList,
@@ -629,9 +756,9 @@ export async function fetchStudentDashboardData(user) {
       averageScore,
       attendanceRate,
       streak: safeNumber(studyPlan?.streakCount, 0),
-      xp: safeNumber(studyPlan?.xpPoints, 0),
-      level: Math.max(1, Math.floor(safeNumber(studyPlan?.xpPoints, 0) / 100) + 1),
-      xpToNext: Math.max(100, 100 - (safeNumber(studyPlan?.xpPoints, 0) % 100)),
+      xp: xpPoints,
+      level: Math.max(1, Math.floor(xpPoints / 100) + 1),
+      xpToNext: Math.max(100, 100 - (xpPoints % 100)),
       rank: rankFromServer > 0 ? rankFromServer : null,
       totalStudents: totalFromServer > 0 ? totalFromServer : (students.filter((item) => normalizeText(item.className) === normalizeText(className)).length || null),
       classAverage: Math.round(safeNumber(classRanking?.average, averageScore)),
@@ -640,24 +767,24 @@ export async function fetchStudentDashboardData(user) {
     pendingList,
     assignmentsBySubject,
     todayLessons,
-    upcomingExams: (examSignals.length ? examSignals : exams)
+    upcomingExams: signalSource
       .slice(0, 2)
       .map((item, index) => ({
         subject: item.subject || item.title || `Yaklaşan sınav ${index + 1}`,
-        date: parseHumanDateLabel(item.dateLabel || item.date)?.toISOString() || new Date().toISOString(),
+        date: parseHumanDateLabel(item.dateLabel)?.toISOString() || new Date().toISOString(),
         type: item.type || item.audience || 'Planlandı',
       })),
     recentResults: exams.slice(0, 5).map((item) => ({
       subject: item.subject,
       score: safeNumber(item.score),
-      date: parseHumanDateLabel(item.dateLabel || item.date)?.toISOString() || new Date().toISOString(),
+      date: parseHumanDateLabel(item.dateLabel)?.toISOString() || new Date().toISOString(),
       type: item.type || 'Sınav',
     })),
     achievements: [
       {
         id: 1,
         name: 'Düzenli Başlangıç',
-        unlocked: safeNumber(studyPlan?.xpPoints) >= 50,
+        unlocked: xpPoints >= 50,
         description: 'İlk 50 XP tamamlandı.',
       },
       {
@@ -690,34 +817,44 @@ export async function fetchStudentDashboardData(user) {
   };
 }
 
-export async function fetchTeacherDashboardData(user) {
-  const results = await Promise.allSettled([
-    api.get('/api/students'),
-    api.get('/api/attendance'),
-    api.get('/api/messages/threads'),
-    api.get('/api/homework'),
-    api.get('/api/contents', { params: { visibleOnly: false } }),
-    api.get('/api/notifications', { params: { targetRole: 'Teacher' } }),
-    api.get('/api/schedule'),
-    api.get('/api/examresults'),
-    api.get('/api/plannedexams'),
-    api.get('/api/announcements', { params: { audience: 'Ogretmen' } }),
+export async function fetchTeacherDashboardData(user: UserLike | null | undefined) {
+  const [
+    studentsResult,
+    ,
+    threadsResult,
+    homeworkResult,
+    contentsResult,
+    notificationsResult,
+    scheduleResult,
+    examResultsResult,
+    plannedExamsResult,
+    announcementsResult,
+  ] = await Promise.allSettled([
+    api.get<StudentSummaryDto[]>('/api/students'),
+    api.get<AttendanceEntryDto[]>('/api/attendance'),
+    api.get<MessageThreadDto[]>('/api/messages/threads'),
+    api.get<HomeworkAssignmentDto[]>('/api/homework'),
+    api.get<ContentDto[]>('/api/contents', { params: { visibleOnly: false } }),
+    api.get<NotificationDto[]>('/api/notifications', { params: { targetRole: 'Teacher' } }),
+    api.get<ScheduleEntryDto[]>('/api/schedule'),
+    api.get<ExamResultDto[]>('/api/examresults'),
+    api.get<PlannedExam[]>('/api/plannedexams'),
+    api.get<AnnouncementDto[]>('/api/announcements', { params: { audience: 'Ogretmen' } }),
   ]);
 
-  const students = safeData(results[0], []);
-  const attendance = safeData(results[1], []);
-  const threads = safeData(results[2], []);
-  const homework = safeData(results[3], []);
-  const contents = safeData(results[4], []);
-  const notifications = safeData(results[5], []);
-  const scheduleEntries = safeData(results[6], []);
-  const examResults = safeData(results[7], []);
-  const plannedExams = safeData(results[8], []);
-  const announcements = safeData(results[9], []);
+  const students = safeData(studentsResult, []);
+  const threads = safeData(threadsResult, []);
+  const homework = safeData(homeworkResult, []);
+  const contents = safeData(contentsResult, []);
+  const notifications = safeData(notificationsResult, []);
+  const scheduleEntries = safeData(scheduleResult, []);
+  const examResults = safeData(examResultsResult, []);
+  const plannedExams = safeData(plannedExamsResult, []);
+  const announcements = safeData(announcementsResult, []);
 
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const toMinutes = (value) => {
+  const toMinutes = (value: string | undefined) => {
     const match = String(value || '').match(/(\d{1,2}):(\d{2})/);
     return match ? Number(match[1]) * 60 + Number(match[2]) : null;
   };
@@ -739,13 +876,14 @@ export async function fetchTeacherDashboardData(user) {
   // Sınav ortalaması ve sınıf ortalamaları.
   const examScores = examResults.map((item) => safeNumber(item.score)).filter((value) => value > 0);
   const overallAvg = examScores.length ? Math.round((examScores.reduce((a, b) => a + b, 0) / examScores.length) * 10) / 10 : 0;
-  const classExamMap = new Map();
+  const classExamMap = new Map<string, number[]>();
   examResults.forEach((item) => {
     const cls = item.className || 'Tanımsız';
-    if (!classExamMap.has(cls)) classExamMap.set(cls, []);
-    classExamMap.get(cls).push(safeNumber(item.score));
+    const scores = classExamMap.get(cls) ?? [];
+    scores.push(safeNumber(item.score));
+    classExamMap.set(cls, scores);
   });
-  const studentsByClass = new Map();
+  const studentsByClass = new Map<string, number>();
   students.forEach((item) => {
     const cls = item.className || 'Tanımsız';
     studentsByClass.set(cls, (studentsByClass.get(cls) || 0) + 1);
@@ -766,25 +904,26 @@ export async function fetchTeacherDashboardData(user) {
   }).sort((a, b) => b.average - a.average).slice(0, 6);
 
   // Sınav istatistikleri (donut).
-  const completedExams = new Set(examResults.map((item) => `${item.examTitle || item.title}-${item.className}`)).size;
+  const completedExams = new Set(examResults.map((item) => `${item.examTitle}-${item.className}`)).size;
   const plannedFuture = plannedExams.filter((item) => {
-    const date = parseHumanDateLabel(item.dateLabel || item.date || item.examDate);
+    const date = parseHumanDateLabel(item.dateLabel || item.date);
     return date && date.getTime() > now.getTime();
   });
   const plannedToday = plannedExams.filter((item) => {
-    const date = parseHumanDateLabel(item.dateLabel || item.date || item.examDate);
+    const date = parseHumanDateLabel(item.dateLabel || item.date);
     return date && isToday(date);
   });
   const examStats = { completed: completedExams, ongoing: plannedToday.length, planned: plannedFuture.length };
 
-  // Ödev dağılımı (donut) + bekleyen değerlendirmeler.
+  // Ödev dağılımı (donut) + bekleyen değerlendirmeler. Teslim DTO'sunda not
+  // alanı olmadığından her teslim "değerlendirilmemiş" sayılır.
   const homeworkDistribution = { delivered: 0, pending: 0, overdue: 0 };
   let pendingGradingCount = 0;
-  const pendingGrading = [];
+  const pendingGrading: Array<{ className: string; title: string; count: number }> = [];
   homework.forEach((item) => {
     const subs = item.submissions || [];
     const due = item.deadline ? new Date(item.deadline) : null;
-    const ungraded = subs.filter((sub) => sub.grade == null).length;
+    const ungraded = subs.length;
     pendingGradingCount += ungraded;
     if (ungraded > 0) pendingGrading.push({ className: item.className, title: item.title, count: ungraded });
     if (students.length && subs.length >= students.length) homeworkDistribution.delivered += 1;
@@ -792,7 +931,7 @@ export async function fetchTeacherDashboardData(user) {
     else homeworkDistribution.pending += 1;
   });
 
-  const contentViews = contents.reduce((sum, item) => sum + safeNumber(item.viewCount ?? item.views ?? item.usageCount), 0);
+  const contentViews = contents.reduce((sum, item) => sum + safeNumber(item.views), 0);
   const dayMs = 86400000;
 
   return {
@@ -819,14 +958,14 @@ export async function fetchTeacherDashboardData(user) {
     homeworkDistribution,
     homeworkTotal: homework.length,
     contentViews,
-    contentViewSeries: contents.slice(0, 12).map((item) => safeNumber(item.viewCount ?? item.views ?? item.usageCount)),
+    contentViewSeries: contents.slice(0, 12).map((item) => safeNumber(item.views)),
     pendingGrading: pendingGrading.slice(0, 4),
     upcomingExams: plannedFuture
       .map((item) => {
-        const date = parseHumanDateLabel(item.dateLabel || item.date || item.examDate);
+        const date = parseHumanDateLabel(item.dateLabel || item.date);
         return {
-          title: item.title || item.examTitle || 'Sınav',
-          className: item.className || (item.classTargets || []).join(', '),
+          title: item.title || 'Sınav',
+          className: item.className || '',
           date,
           days: date ? Math.max(0, Math.ceil((date.getTime() - now.getTime()) / dayMs)) : null,
         };
@@ -836,12 +975,12 @@ export async function fetchTeacherDashboardData(user) {
     recentContents: contents.slice(0, 3).map((item) => ({
       title: item.title || 'İçerik',
       type: item.fileType || 'İçerik',
-      date: item.createdAt ? formatShortDate(item.createdAt) : (item.dateLabel || ''),
+      date: '',
     })),
     announcementList: announcements.slice(0, 3).map((item) => ({
       title: item.title || 'Duyuru',
-      detail: item.detail || item.body || '',
-      date: item.dateLabel || item.date || '',
+      detail: item.detail || '',
+      date: item.dateLabel || '',
     })),
     quickStats: {
       activeHomework: homework.length,
@@ -851,12 +990,32 @@ export async function fetchTeacherDashboardData(user) {
   };
 }
 
-export async function fetchParentDashboardData(user) {
-  const studentResult = await api.get('/api/students').catch(() => []);
+interface ChildSummary {
+  attendance: number;
+  attendanceCounts: { present: number; absent: number; excuse: number; total: number };
+  lastExam: { subject: string; score: number; title: string } | null;
+  examTrend: number[];
+  pendingPayment: number;
+  paidTotal: number;
+  exams: ExamResultDto[];
+}
+
+export async function fetchParentDashboardData(user: UserLike | null | undefined) {
+  const studentResult = (await api.get<StudentSummaryDto[]>('/api/students').catch(() => null)) ?? [];
   const children = resolveParentChildren(user, studentResult);
-  const results = await Promise.allSettled([
+  const [
+    ,
+    announcementsResult,
+    threadsResult,
+    attendanceResult,
+    homeworkResult,
+    scheduleResult,
+    plannedExamsResult,
+    notificationsResult,
+    financeResult,
+  ] = await Promise.allSettled([
     Promise.resolve(studentResult),
-    api.get('/api/announcements', {
+    api.get<AnnouncementDto[]>('/api/announcements', {
       params: {
         audience: 'Veli',
         viewerRole: 'Veli',
@@ -867,37 +1026,36 @@ export async function fetchParentDashboardData(user) {
         viewerClassName: children[0]?.className || '',
       },
     }),
-    api.get('/api/messages/threads'),
-    api.get('/api/attendance'),
-    api.get('/api/homework'),
-    api.get('/api/schedule'),
-    api.get('/api/plannedexams'),
-    api.get('/api/notifications', { params: { targetRole: 'Parent' } }),
-    api.get('/api/parent/finance/children'),
+    api.get<MessageThreadDto[]>('/api/messages/threads'),
+    api.get<AttendanceEntryDto[]>('/api/attendance'),
+    api.get<HomeworkAssignmentDto[]>('/api/homework'),
+    api.get<ScheduleEntryDto[]>('/api/schedule'),
+    api.get<PlannedExam[]>('/api/plannedexams'),
+    api.get<NotificationDto[]>('/api/notifications', { params: { targetRole: 'Parent' } }),
+    api.get<StudentFinanceAccountDto[]>('/api/parent/finance/children'),
   ]);
 
-  const students = safeData(results[0], []);
-  const announcements = safeData(results[1], []);
-  const threads = safeData(results[2], []);
-  const attendance = safeData(results[3], []);
-  const homework = safeData(results[4], []);
-  const scheduleEntries = safeData(results[5], []);
-  const plannedExams = safeData(results[6], []);
-  const notifications = safeData(results[7], []);
-  const financeAccounts = safeData(results[8], []);
+  const announcements = safeData(announcementsResult, []);
+  const threads = safeData(threadsResult, []);
+  const attendance = safeData(attendanceResult, []);
+  const homework = safeData(homeworkResult, []);
+  const scheduleEntries = safeData(scheduleResult, []);
+  const plannedExams = safeData(plannedExamsResult, []);
+  const notifications = safeData(notificationsResult, []);
+  const financeAccounts = safeData(financeResult, []);
 
   const selectedChild = children[0] || null;
 
   const examResults = await Promise.allSettled(
-    children.map((child) => api.get('/api/examresults', { params: { studentName: child.fullName } }))
+    children.map((child) => api.get<ExamResultDto[]>('/api/examresults', { params: { studentName: child.fullName } }))
   );
-  const examsByChild = new Map();
+  const examsByChild = new Map<string, ExamResultDto[]>();
   children.forEach((child, index) => {
     examsByChild.set(child.fullName, safeData(examResults[index], []));
   });
   const exams = selectedChild ? (examsByChild.get(selectedChild.fullName) || []) : [];
 
-  const buildChildSummary = (child) => {
+  const buildChildSummary = (child: StudentSummaryDto): ChildSummary => {
     const childExams = examsByChild.get(child.fullName) || [];
     const childAttendance = attendance.filter((item) => normalizeText(item.studentName) === normalizeText(child.fullName));
     const presentCount = childAttendance.filter((item) => normalizeText(item.status).includes('katildi')).length;
@@ -913,6 +1071,7 @@ export async function fetchParentDashboardData(user) {
     );
     const paidTotal = safeNumber(childAccount?.paidTotal);
     const pendingPayment = safeNumber(childAccount?.balance);
+    const lastExam = childExams[0];
 
     return {
       attendance: attendanceRate,
@@ -922,8 +1081,8 @@ export async function fetchParentDashboardData(user) {
         excuse: excuseCount,
         total: totalAttendance,
       },
-      lastExam: childExams[0]
-        ? { subject: childExams[0].subject, score: safeNumber(childExams[0].score), title: childExams[0].examTitle || childExams[0].title || '' }
+      lastExam: lastExam
+        ? { subject: lastExam.subject, score: safeNumber(lastExam.score), title: lastExam.examTitle || '' }
         : null,
       examTrend: childExams.slice(0, 7).reverse().map((item) => safeNumber(item.score)).filter((value) => value > 0),
       pendingPayment,
@@ -932,12 +1091,12 @@ export async function fetchParentDashboardData(user) {
     };
   };
 
-  const childSummaries = children.reduce((map, child) => {
-    map[child.fullName] = buildChildSummary(child);
-    return map;
-  }, {});
+  const childSummaries: Record<string, ChildSummary> = {};
+  children.forEach((child) => {
+    childSummaries[child.fullName] = buildChildSummary(child);
+  });
 
-  const selectedSummary = selectedChild ? childSummaries[selectedChild.fullName] : null;
+  const selectedSummary = selectedChild ? (childSummaries[selectedChild.fullName] ?? null) : null;
   const classNames = new Set(children.map((child) => normalizeText(child.className)).filter(Boolean));
   const childNames = new Set(children.map((child) => normalizeText(child.fullName)).filter(Boolean));
   const todayLessons = selectedChild ? pickScheduleTodayForClass(scheduleEntries, selectedChild.className).slice(0, 5) : [];
@@ -953,31 +1112,31 @@ export async function fetchParentDashboardData(user) {
       title: item.title || 'Ödev',
       subject: item.subject || 'Genel',
       className: item.className || '',
-      deadline: item.deadline || item.dueDate || item.dateLabel || '',
+      deadline: item.deadline || '',
       status: item.status || 'Bekliyor',
     }));
 
   const upcomingExams = plannedExams
     .filter((item) => {
-      const className = normalizeText(item.className || item.targetClass || item.class);
+      const className = normalizeText(item.className);
       return !className || classNames.has(className);
     })
     .slice(0, 4)
     .map((item) => ({
       id: item.id,
-      title: item.title || item.examTitle || 'Sınav',
+      title: item.title || 'Sınav',
       subject: item.subject || '',
-      className: item.className || item.targetClass || '',
-      date: item.dateLabel || item.date || item.startAtUtc || '',
+      className: item.className || '',
+      date: item.dateLabel || item.date || '',
       status: item.status || 'Planlandı',
     }));
 
-  const activities = [
+  const activities: DashboardActivity[] = [
     ...mapActivities(announcements, notifications),
     ...exams.slice(0, 3).map((item) => ({
       id: item.id || `${item.subject}-${item.score}`,
       message: `${item.subject || 'Sınav'} sonucu girildi`,
-      time: item.dateLabel || item.date || '',
+      time: item.dateLabel || '',
       icon: 'exam',
     })),
     ...pendingHomework.slice(0, 3).map((item) => ({
@@ -992,7 +1151,7 @@ export async function fetchParentDashboardData(user) {
   const financeList = Array.isArray(financeAccounts) ? financeAccounts : [];
   const financeInstallments = financeList.flatMap((account) => account.installments || []);
   const remainingInstallments = financeInstallments.filter(
-    (item) => normalizeText(item.status) !== 'paid' && safeNumber(item.remaining ?? item.amount) > 0
+    (item) => normalizeText(item.status) !== 'paid' && safeNumber(item.remaining) > 0
   );
   const finance = {
     totalDebt: financeList.reduce((sum, account) => sum + safeNumber(account.balance), 0),
@@ -1004,8 +1163,8 @@ export async function fetchParentDashboardData(user) {
     currency: financeList[0]?.currency || 'TRY',
     nextDue: financeList
       .map((account) => account.nextDueDateUtc)
-      .filter(Boolean)
-      .sort((a, b) => new Date(a) - new Date(b))[0] || null,
+      .filter((value): value is string => Boolean(value))
+      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] || null,
   };
 
   return {
