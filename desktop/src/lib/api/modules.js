@@ -1,77 +1,6 @@
 import { api } from './client';
-
-const UPLOAD_CHUNK_BYTES = 512 * 1024;
-const UPLOAD_CHUNK_RETRIES = 3;
-
-function isNotFoundError(error) {
-  return /404/.test(String(error?.message || ''));
-}
-
-function arrayBufferToBase64(buffer) {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
-  }
-
-  return window.btoa(binary);
-}
-
-function canUploadInChunks(file) {
-  return file
-    && typeof file.name === 'string'
-    && typeof file.size === 'number'
-    && typeof file.slice === 'function'
-    && typeof file.arrayBuffer === 'function';
-}
-
-function createUploadId() {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-
-  return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (char) =>
-    (Number(char) ^ (Math.floor(Math.random() * 16) >> (Number(char) / 4))).toString(16)
-  );
-}
-
-async function uploadFileInChunks(file, folder) {
-  const uploadId = createUploadId();
-  const totalChunks = Math.max(1, Math.ceil(file.size / UPLOAD_CHUNK_BYTES));
-  let response = null;
-
-  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
-    const start = chunkIndex * UPLOAD_CHUNK_BYTES;
-    const end = Math.min(file.size, start + UPLOAD_CHUNK_BYTES);
-    const chunk = file.slice(start, end);
-    const base64Content = arrayBufferToBase64(await chunk.arrayBuffer());
-
-    for (let attempt = 1; attempt <= UPLOAD_CHUNK_RETRIES; attempt += 1) {
-      try {
-        response = await api.post('/api/uploads/chunk', {
-          uploadId,
-          fileName: file.name,
-          base64Content,
-          contentType: file.type || 'application/octet-stream',
-          folder,
-          startByte: start,
-          totalSize: file.size,
-          chunkIndex,
-          totalChunks,
-        });
-        break;
-      } catch (error) {
-        if (attempt === UPLOAD_CHUNK_RETRIES) {
-          throw error;
-        }
-      }
-    }
-  }
-
-  return response;
-}
+import { isNotFoundError } from './shared';
+export * from './files';
 
 export async function fetchStudents() {
   const response = await api.get('/api/students');
@@ -1518,23 +1447,6 @@ export async function createStaffAccounting(payload) {
 
 export async function markNotificationRead(id) {
   const response = await api.put(`/api/notifications/${id}/read`);
-  return response;
-}
-
-// --- File Uploads ---
-
-export async function uploadFile(formData, folder) {
-  const file = formData?.get?.('file');
-  if (canUploadInChunks(file) && file.size > UPLOAD_CHUNK_BYTES) {
-    return uploadFileInChunks(file, folder);
-  }
-
-  if (folder && formData?.set) {
-    formData.set('folder', folder);
-  }
-  const response = await api.post('/api/uploads', formData, {
-    params: folder ? { folder } : undefined,
-  });
   return response;
 }
 

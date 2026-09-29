@@ -5,10 +5,51 @@ import {
   setActiveDesktopApiBaseUrl,
 } from '../appEnv';
 
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+export type QueryValue = string | number | boolean | null | undefined;
+export type QueryParams = Record<string, QueryValue>;
+
+export interface RequestConfig {
+  headers?: Record<string, string>;
+  /** Değeri null/undefined olan parametreler URL'e yazılmaz. */
+  params?: QueryParams | undefined;
+  responseType?: 'json' | 'blob';
+}
+
+export interface BlobRequestConfig extends RequestConfig {
+  responseType: 'blob';
+}
+
+/** Başarısız HTTP yanıtı: mesaj kullanıcıya gösterilebilir, gövde makine-okunur ipucu taşır. */
+export type ApiError = Error & { status: number; body: unknown };
+
+export function isApiError(error: unknown): error is ApiError {
+  return error instanceof Error && typeof (error as Partial<ApiError>).status === 'number' && 'body' in error;
+}
+
+/** Hata gövdesini bilinen alanlarıyla okur (`error.body?.code` gibi). */
+export function apiErrorBody<T extends object = ApiErrorBody>(error: unknown): Partial<T> | null {
+  if (!isApiError(error) || typeof error.body !== 'object' || error.body === null) return null;
+  return error.body as Partial<T>;
+}
+
+/** Uçlarımızın ve ASP.NET ProblemDetails'in ortak hata gövdesi alanları. */
+export interface ApiErrorBody {
+  message?: string;
+  code?: string;
+  error?: { message?: string } | null;
+  errors?: Record<string, string | string[]> | null;
+  detail?: string;
+  title?: string;
+  action?: string;
+  reason?: string;
+  traceId?: string;
+}
+
 // Owner/admin tarafından seçilen şube filtresi (X-Branch-Filter header'ı).
 // null = "Tüm Şubeler" (header gönderilmez). BranchContext bunu set eder.
-let activeBranchFilter = (typeof localStorage !== 'undefined' && localStorage.getItem('ci-branch-filter')) || null;
-export function setActiveBranchFilter(branchId) {
+let activeBranchFilter: string | null = (typeof localStorage !== 'undefined' && localStorage.getItem('ci-branch-filter')) || null;
+export function setActiveBranchFilter(branchId: string | null | undefined): void {
   activeBranchFilter = branchId || null;
   try {
     if (typeof localStorage !== 'undefined') {
@@ -21,11 +62,11 @@ export function setActiveBranchFilter(branchId) {
 // Sahip/MEB tarafından seçilen aktif kurum bağlamı (X-Tenant-Context header'ı).
 // null = ev kurumu (header gönderilmez). Şubenin bir üst seviyesi; kurum değişince
 // şube filtresi SIFIRLANIR (A'nın şubesi B'de geçersiz). Yetkisiz değer backend'de 403.
-let activeTenantContext = (typeof localStorage !== 'undefined' && localStorage.getItem('ci-tenant-context')) || null;
-export function getActiveTenantContext() {
+let activeTenantContext: string | null = (typeof localStorage !== 'undefined' && localStorage.getItem('ci-tenant-context')) || null;
+export function getActiveTenantContext(): string | null {
   return activeTenantContext;
 }
-export function setActiveTenantContext(tenantId) {
+export function setActiveTenantContext(tenantId: string | null | undefined): void {
   activeTenantContext = tenantId || null;
   try {
     if (typeof localStorage !== 'undefined') {
@@ -43,18 +84,19 @@ export function setActiveTenantContext(tenantId) {
 }
 
 // Lazy singleton: Tauri HTTP plugin import'unu ilk kullanımda await eder
-let _tauriFetchPromise = null;
-async function getTauriFetch() {
+type FetchFn = typeof fetch;
+let _tauriFetchPromise: Promise<FetchFn | null> | null = null;
+async function getTauriFetch(): Promise<FetchFn | null> {
   if (typeof window === 'undefined' || !(window.__TAURI__ || window.__TAURI_INTERNALS__)) return null;
   if (!_tauriFetchPromise) {
     _tauriFetchPromise = import('@tauri-apps/plugin-http')
-      .then((mod) => mod.fetch)
+      .then((mod): FetchFn => mod.fetch)
       .catch(() => null);
   }
   return _tauriFetchPromise;
 }
 
-async function apiFetch(url, options = {}) {
+async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const hasFormDataBody = typeof FormData !== 'undefined' && options?.body instanceof FormData;
   const tauriFetch = hasFormDataBody ? null : await getTauriFetch();
   const fetchFn = tauriFetch || window.fetch;
@@ -70,7 +112,7 @@ async function apiFetch(url, options = {}) {
  */
 const TECHNICAL_ERROR_PATTERN = /request failed|internal server error|http error|status code|sunucu hatası\s*\(\d+\)|işlem başarısız\s*\(\d+\)/i;
 
-function operationLabel(method) {
+function operationLabel(method: string): string {
   switch (String(method || '').toUpperCase()) {
     case 'GET': return 'Bilgiler alınırken';
     case 'POST': return 'Kayıt işlemi sırasında';
@@ -81,7 +123,7 @@ function operationLabel(method) {
   }
 }
 
-function statusGuidance(status) {
+function statusGuidance(status: number): string {
   if (status === 400 || status === 422) return 'Formdaki bilgileri ve zorunlu alanları kontrol edip tekrar deneyin.';
   if (status === 401) return 'Oturumunuz sona ermiş olabilir. Yeniden giriş yapıp tekrar deneyin.';
   if (status === 403) return 'Bu işlem için kurum yöneticinizden gerekli yetkiyi isteyin.';
@@ -92,7 +134,8 @@ function statusGuidance(status) {
   return 'Bilgileri kontrol edip işlemi tekrar deneyin.';
 }
 
-export function describeApiError(body, status, method = '') {
+export function describeApiError(rawBody: unknown, status: number, method = ''): string {
+  const body: ApiErrorBody | null = typeof rawBody === 'object' && rawBody !== null ? (rawBody as ApiErrorBody) : null;
   const operation = operationLabel(method);
   const traceId = body?.traceId ? ` Takip kodu: ${body.traceId}.` : '';
 
@@ -103,7 +146,7 @@ export function describeApiError(body, status, method = '') {
   let detail = body?.message || body?.error?.message || '';
   if (body?.errors && typeof body.errors === 'object') {
     const parts = Object.entries(body.errors)
-      .map(([field, messages]) => `${field}: ${[].concat(messages).join(' ')}`)
+      .map(([field, messages]) => `${field}: ${([] as string[]).concat(messages).join(' ')}`)
       .filter(Boolean);
     if (parts.length) detail = parts.join(' • ');
   }
@@ -117,9 +160,12 @@ export function describeApiError(body, status, method = '') {
   return `${detail}${reason} Yapmanız gereken: ${action}${traceId}`;
 }
 
-async function request(method, url, data, config = {}) {
+// Ağ sınırı: gövde tipine burada güvenilir (backend sözleşmesi); tek tip dönüşümü buradadır.
+async function request(method: HttpMethod, url: string, data: unknown, config: BlobRequestConfig): Promise<Blob | null>;
+async function request<T = unknown>(method: HttpMethod, url: string, data?: unknown, config?: RequestConfig): Promise<T | null>;
+async function request<T = unknown>(method: HttpMethod, url: string, data: unknown, config: RequestConfig = {}): Promise<T | Blob | null> {
   const session = loadDesktopSession();
-  const headers = { ...(config.headers || {}) };
+  const headers: Record<string, string> = { ...(config.headers || {}) };
   if (session?.accessToken) {
     headers['Authorization'] = `Bearer ${session.accessToken}`;
   }
@@ -142,21 +188,21 @@ async function request(method, url, data, config = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const fetchOptions = {
+  const fetchOptions: RequestInit = {
     method,
     headers,
   };
 
   if (data !== undefined && method !== 'GET') {
-    fetchOptions.body = isFormData ? data : JSON.stringify(data);
+    fetchOptions.body = data instanceof FormData ? data : JSON.stringify(data);
   }
 
   const isAbsoluteUrl = /^https?:\/\//i.test(String(url));
   const candidates = isAbsoluteUrl
     ? [desktopApiBaseUrl]
     : getOrderedDesktopApiCandidates();
-  let response = null;
-  let lastConnectionError = null;
+  let response: Response | null = null;
+  let lastConnectionError: unknown = null;
 
   for (const baseUrl of candidates) {
     const fullUrl = new URL(url, baseUrl);
@@ -181,9 +227,10 @@ async function request(method, url, data, config = {}) {
   }
 
   if (!response) {
-    const error = new Error('Sunucuya bağlantı kurulamadı. İnternet bağlantınızı kontrol edin, ardından işlemi tekrar deneyin.');
-    error.cause = lastConnectionError;
-    throw error;
+    throw Object.assign(
+      new Error('Sunucuya bağlantı kurulamadı. İnternet bağlantınızı kontrol edin, ardından işlemi tekrar deneyin.'),
+      { cause: lastConnectionError },
+    );
   }
 
   if (response.status === 401) {
@@ -202,12 +249,13 @@ async function request(method, url, data, config = {}) {
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    const error = new Error(describeApiError(errorBody, response.status, method));
+    const errorBody: unknown = await response.json().catch(() => null);
     // Gövdeyi taşı: bazı uçlar hatanın yanında makine-okunur ipucu döner
     // (ör. randevu kuralını hangi override koduyla ezebileceğin).
-    error.status = response.status;
-    error.body = errorBody;
+    const error: ApiError = Object.assign(new Error(describeApiError(errorBody, response.status, method)), {
+      status: response.status,
+      body: errorBody,
+    });
     throw error;
   }
 
@@ -217,7 +265,7 @@ async function request(method, url, data, config = {}) {
 
   const contentType = response.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {
-    return response.json();
+    return (await response.json()) as T;
   }
   return null;
 }
@@ -225,9 +273,33 @@ async function request(method, url, data, config = {}) {
 export default { request };
 
 export const api = {
-  get: (url, config) => request('GET', url, undefined, config),
-  post: (url, data, config) => request('POST', url, data, config),
-  put: (url, data, config) => request('PUT', url, data, config),
-  patch: (url, data, config) => request('PATCH', url, data, config),
-  delete: (url, config) => request('DELETE', url, undefined, config),
+  get: getRequest,
+  post: postRequest,
+  put: putRequest,
+  patch: patchRequest,
+  delete: deleteRequest,
 };
+
+function getRequest(url: string, config: BlobRequestConfig): Promise<Blob | null>;
+function getRequest<T = unknown>(url: string, config?: RequestConfig): Promise<T | null>;
+function getRequest<T = unknown>(url: string, config?: RequestConfig): Promise<T | Blob | null> {
+  return request<T>('GET', url, undefined, config);
+}
+
+function postRequest(url: string, data: unknown, config: BlobRequestConfig): Promise<Blob | null>;
+function postRequest<T = unknown>(url: string, data?: unknown, config?: RequestConfig): Promise<T | null>;
+function postRequest<T = unknown>(url: string, data?: unknown, config?: RequestConfig): Promise<T | Blob | null> {
+  return request<T>('POST', url, data, config);
+}
+
+function putRequest<T = unknown>(url: string, data?: unknown, config?: RequestConfig): Promise<T | null> {
+  return request<T>('PUT', url, data, config);
+}
+
+function patchRequest<T = unknown>(url: string, data?: unknown, config?: RequestConfig): Promise<T | null> {
+  return request<T>('PATCH', url, data, config);
+}
+
+function deleteRequest<T = unknown>(url: string, config?: RequestConfig): Promise<T | null> {
+  return request<T>('DELETE', url, undefined, config);
+}
