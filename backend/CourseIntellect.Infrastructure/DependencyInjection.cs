@@ -45,7 +45,6 @@ public static class DependencyInjection
         services.AddScoped<ITenantSetupDocumentService, TenantSetupDocumentPdfService>();
 
         services.AddScoped<DatabaseSeeder>();
-        services.AddScoped<DrivingSchoolSeeder>();
         services.AddHostedService<RejectedTenantCleanupService>();
         services.AddScoped<ITenantContext, HttpTenantContext>();
         services.AddScoped<IActiveScope, ActiveScope>();
@@ -55,14 +54,6 @@ public static class DependencyInjection
         services.AddScoped<UsernameGenerator>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IEntitlementService, EntitlementService>();
-        services.AddScoped<IDrivingPermissionService, DrivingPermissionService>();
-        services.AddScoped<IDrivingLedgerService, DrivingLedgerService>();
-        services.AddScoped<IDrivingAppointmentLifecycleService, DrivingAppointmentLifecycleService>();
-        services.AddScoped<IDrivingAvailabilityService, DrivingAvailabilityService>();
-        services.AddScoped<IDrivingNotifier, DrivingNotifier>();
-        services.AddScoped<IDrivingTermAlertService, DrivingTermAlertService>();
-        services.AddScoped<IDrivingImportFileParser, DrivingImportFileParser>();
-        services.AddScoped<IDrivingReminderJobService, DrivingReminderJobService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserDirectoryService, UserDirectoryService>();
         services.AddScoped<IAcademicQueryService, AcademicQueryService>();
@@ -83,13 +74,8 @@ public static class DependencyInjection
         services.AddScoped<IQuestionThreadService, QuestionThreadService>();
         services.AddScoped<IHomeworkService, HomeworkService>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
-        services.AddSingleton<IDrivingPhotoInspectionService, DrivingPhotoInspectionService>();
-        services.AddSingleton<IDrivingCertificatePdfService, DrivingCertificatePdfService>();
-        services.AddSingleton<IDrivingReportPdfService, DrivingReportPdfService>();
-        services.AddSingleton<IDrivingContractFormPdfService, DrivingContractFormPdfService>();
         services.AddSingleton<IStudentStatementPdfService, StudentStatementPdfService>();
         services.AddSingleton<IConsentFormPdfService, ConsentFormPdfService>();
-        services.AddSingleton<IMebbisExportRenderer, MebbisExportRenderer>();
         services.AddScoped<IAccountingService, AccountingService>();
         services.AddScoped<IStaffManagementService, StaffManagementService>();
         services.AddScoped<INotificationService, NotificationService>();

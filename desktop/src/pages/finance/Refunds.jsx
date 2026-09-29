@@ -8,19 +8,13 @@ import { Input } from '../../components/ui/input';
 import { FeatureGate } from '../../components/FeatureGate';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
-import { chargeLabel, getFinanceVocabulary } from '../../lib/financeVocabulary';
+import { getFinanceVocabulary } from '../../lib/financeVocabulary';
 import { useToast } from '../../hooks/use-toast';
 import {
-  fetchDrivingCharges,
-  fetchDrivingCollectionList,
-  fetchDrivingPaymentContext,
   fetchFinanceSummaries,
   fetchStudentFinanceAccount,
-  refundDrivingCharge,
   refundFinancePayment,
 } from '../../lib/api/modules';
-import { resolveUserInstitutionType } from '../../lib/auth';
-import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
 
 const EMPTY_FORM = {
@@ -46,12 +40,9 @@ function paymentLabel(item) {
 
 export default function Refunds() {
   const { user } = useApp();
-  // Kurum türüne göre dil (kursiyer/öğrenci) ve ek ücret kalem adları.
   const vocabulary = getFinanceVocabulary(user);
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { can, loading: permissionLoading } = useDrivingPermissions();
-  const isDrivingSchool = resolveUserInstitutionType(user) === 'DrivingSchool';
   const [students, setStudents] = useState([]);
   const [selectedId, setSelectedId] = useState(searchParams.get('student') || '');
   const [detail, setDetail] = useState(null);
@@ -67,21 +58,19 @@ export default function Refunds() {
     setLoading(true);
     setError('');
     try {
-      const rows = isDrivingSchool ? await fetchDrivingCollectionList() : await fetchFinanceSummaries();
+      const rows = await fetchFinanceSummaries();
       setStudents((Array.isArray(rows) ? rows : []).map((row) => ({
         ...row,
-        id: String(isDrivingSchool ? row.profileId : row.studentUserId || row.studentName),
-        name: isDrivingSchool ? row.fullName : row.studentName,
-        secondary: isDrivingSchool
-          ? row.studentNumber != null ? `${vocabulary.person} No: #${row.studentNumber}` : row.groupName || ''
-          : row.className || '',
+        id: String(row.studentUserId || row.studentName),
+        name: row.studentName,
+        secondary: row.className || '',
       })));
     } catch (err) {
       setError(err.message || 'İade verileri yüklenemedi.');
     } finally {
       setLoading(false);
     }
-  }, [isDrivingSchool]);
+  }, []);
 
   const loadDetail = useCallback(async (studentId) => {
     if (!studentId) {
@@ -93,32 +82,18 @@ export default function Refunds() {
     setSelectedRecord(null);
     setForm(EMPTY_FORM);
     try {
-      if (isDrivingSchool) {
-        // Ücret kalemleri + "Ödeme Al"dan alınan makbuzlar birlikte yüklenir:
-        // yalnız kalemler okunduğunda tahsil edilen para iade edilemiyordu.
-        const [charges, context] = await Promise.all([
-          fetchDrivingCharges(studentId).catch(() => []),
-          fetchDrivingPaymentContext(studentId).catch(() => null),
-        ]);
-        setDetail({
-          charges: charges || [],
-          payments: context?.recentPayments || [],
-          currency: 'TRY',
-        });
-      } else {
-        const student = students.find((item) => item.id === String(studentId));
-        setDetail(await fetchStudentFinanceAccount({
-          studentUserId: student?.studentUserId || undefined,
-          studentName: student?.studentName || student?.name || '',
-        }));
-      }
+      const student = students.find((item) => item.id === String(studentId));
+      setDetail(await fetchStudentFinanceAccount({
+        studentUserId: student?.studentUserId || undefined,
+        studentName: student?.studentName || student?.name || '',
+      }));
     } catch (err) {
       setDetail(null);
       setError(err.message || `${vocabulary.person} hesabı yüklenemedi.`);
     } finally {
       setDetailLoading(false);
     }
-  }, [isDrivingSchool, students]);
+  }, [students]);
 
   useEffect(() => { loadStudents(); }, [loadStudents]);
   useEffect(() => {
@@ -135,46 +110,27 @@ export default function Refunds() {
       `${item.name || ''} ${item.secondary || ''}`.toLocaleLowerCase('tr-TR').includes(needle));
   }, [search, students]);
 
-  // Kayıtlar iki türlü olabilir: sürücü kursu ücret kalemi ("charge") veya
-  // gerçek tahsilat makbuzu ("payment"). İade akışı türe göre ayrışır.
-  const records = useMemo(() => {
-    const payments = (detail?.payments || []).map((item) => ({ ...item, kind: 'payment' }));
-    if (!isDrivingSchool) return payments;
-    const charges = (detail?.charges || []).map((item) => ({ ...item, kind: 'charge' }));
-    return [...charges, ...payments];
-  }, [detail, isDrivingSchool]);
+  const records = useMemo(() => detail?.payments || [], [detail]);
 
-  const isCharge = (item) => item?.kind === 'charge';
-  const recordRefundable = (item) => (isCharge(item)
-    ? (item.refundedAtUtc ? 0 : Number(item.netAmount) || 0)
-    : Number(item.refundableAmount) || 0);
-  const recordLabel = (item) => (isCharge(item)
-    ? chargeLabel(vocabulary, item.chargeType)
-    : paymentLabel(item));
+  const recordRefundable = (item) => Number(item.refundableAmount) || 0;
+  const recordLabel = paymentLabel;
 
-  const refundable = records.filter((item) => (isCharge(item)
-    ? recordRefundable(item) > 0
-    : item.entryType !== 'Refund' && Number(item.amount) > 0 && recordRefundable(item) > 0));
-  const history = records.filter((item) => (isCharge(item)
-    ? !!item.refundedAtUtc
-    : item.entryType === 'Refund' || Number(item.amount) < 0));
+  const refundable = records.filter((item) =>
+    item.entryType !== 'Refund' && Number(item.amount) > 0 && recordRefundable(item) > 0);
+  const history = records.filter((item) => item.entryType === 'Refund' || Number(item.amount) < 0);
   const currency = detail?.currency || 'TRY';
   const selectedStudent = students.find((item) => item.id === String(selectedId));
   const refundableTotal = refundable.reduce((sum, item) => sum + recordRefundable(item), 0);
   const refundedTotal = history.reduce(
-    (sum, item) => sum + Math.abs(Number(isCharge(item) ? item.refundedAmount : item.amount) || 0), 0,
+    (sum, item) => sum + Math.abs(Number(item.amount) || 0), 0,
   );
-  const selectedIsCharge = isCharge(selectedRecord);
   const maxAmount = selectedRecord
-    ? Number(selectedIsCharge
-      ? selectedRecord.netAmount
-      : form.type === 'AdvanceReturn'
-        ? selectedRecord.unallocatedRefundableAmount || 0
-        : form.type === 'ContractReduction' && Number(selectedRecord.allocatedRefundableAmount || 0) > 0
-          ? selectedRecord.allocatedRefundableAmount
-          : selectedRecord.refundableAmount || 0)
+    ? Number(form.type === 'AdvanceReturn'
+      ? selectedRecord.unallocatedRefundableAmount || 0
+      : form.type === 'ContractReduction' && Number(selectedRecord.allocatedRefundableAmount || 0) > 0
+        ? selectedRecord.allocatedRefundableAmount
+        : selectedRecord.refundableAmount || 0)
     : 0;
-  const canSubmitDrivingRefund = !permissionLoading && can(DRIVING.financeRefund);
 
   function selectStudent(student) {
     setSelectedId(student.id);
@@ -186,7 +142,7 @@ export default function Refunds() {
     setSelectedRecord(record);
     setForm({
       ...EMPTY_FORM,
-      amount: String(isCharge(record) ? record.netAmount : record.refundableAmount || ''),
+      amount: String(record.refundableAmount || ''),
       channel: normalizedMethod.includes('kart') || normalizedMethod.includes('online')
         ? 'Karta İade'
         : normalizedMethod.includes('havale') || normalizedMethod.includes('eft')
@@ -202,29 +158,25 @@ export default function Refunds() {
       toast({ title: 'Geçerli bir iade tutarı girin.', variant: 'destructive' });
       return;
     }
-    if (form.reason.trim().length < (selectedIsCharge ? 5 : 1)) {
-      toast({ title: selectedIsCharge ? 'Gerekçe en az 5 karakter olmalıdır.' : 'İade gerekçesi zorunludur.', variant: 'destructive' });
+    if (!form.reason.trim()) {
+      toast({ title: 'İade gerekçesi zorunludur.', variant: 'destructive' });
       return;
     }
-    if (!selectedIsCharge && form.channel !== 'Nakit' && !form.reference.trim()) {
+    if (form.channel !== 'Nakit' && !form.reference.trim()) {
       toast({ title: 'Kart ve banka iadelerinde işlem referansı zorunludur.', variant: 'destructive' });
       return;
     }
 
     try {
       setBusy(true);
-      if (selectedIsCharge) {
-        await refundDrivingCharge(selectedRecord.id, { amount, reason: form.reason.trim() });
-      } else {
-        await refundFinancePayment({
-          paymentId: selectedRecord.id,
-          amount,
-          refundType: form.type,
-          reason: form.reason.trim(),
-          refundChannel: form.channel,
-          externalReference: form.reference.trim() || null,
-        });
-      }
+      await refundFinancePayment({
+        paymentId: selectedRecord.id,
+        amount,
+        refundType: form.type,
+        reason: form.reason.trim(),
+        refundChannel: form.channel,
+        externalReference: form.reference.trim() || null,
+      });
       toast({ title: 'İade başarıyla işlendi', description: money(amount, currency) });
       setSelectedRecord(null);
       setForm(EMPTY_FORM);
@@ -249,8 +201,7 @@ export default function Refunds() {
         <Button type="button" variant="ghost" size="sm" onClick={() => setSelectedRecord(null)} disabled={busy}>Vazgeç</Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        {!selectedIsCharge && (
-          <label className="text-xs font-bold">İade türü
+        <label className="text-xs font-bold">İade türü
             <select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.type} onChange={(e) => {
               const nextType = e.target.value;
               const nextMax = nextType === 'AdvanceReturn'
@@ -265,12 +216,10 @@ export default function Refunds() {
               {!selectedRecord.isDownPayment && <option value="ContractReduction">Ücret indirimi kaynaklı iade</option>}
             </select>
           </label>
-        )}
         <label className="text-xs font-bold">İade tutarı
           <Input className="mt-1" type="number" min="0.01" step="0.01" max={maxAmount} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
         </label>
-        {!selectedIsCharge && (
-          <>
+        <>
             <label className="text-xs font-bold">İade kanalı
               <select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
                 <option>Nakit</option><option>Karta İade</option><option>Havale/EFT</option>
@@ -279,8 +228,7 @@ export default function Refunds() {
             <label className="text-xs font-bold">Banka / POS referansı
               <Input className="mt-1" placeholder={form.channel === 'Nakit' ? 'İsteğe bağlı' : 'Zorunlu'} value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
             </label>
-          </>
-        )}
+        </>
         <label className="text-xs font-bold sm:col-span-2">İade gerekçesi
           <textarea className="mt-1 min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm" maxLength={500} placeholder="İşlem geçmişinde görünecek zorunlu açıklama" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
         </label>
@@ -364,13 +312,9 @@ export default function Refunds() {
                       </div>
                       <div className="flex items-center justify-between gap-3 sm:justify-end">
                         <div className="text-right"><p className="font-black">{money(recordRefundable(item), currency)}</p><p className="text-[11px] text-muted-foreground">İade edilebilir</p></div>
-                        {isDrivingSchool ? (
-                          canSubmitDrivingRefund && <Button variant="outline" className="border-red-500/30 text-red-600" onClick={() => startRefund(item)}>İade Et</Button>
-                        ) : (
-                          <FeatureGate module="collections" action="refund">
-                            <Button variant="outline" className="border-red-500/30 text-red-600" onClick={() => startRefund(item)}>İade Et</Button>
-                          </FeatureGate>
-                        )}
+                        <FeatureGate module="collections" action="refund">
+                          <Button variant="outline" className="border-red-500/30 text-red-600" onClick={() => startRefund(item)}>İade Et</Button>
+                        </FeatureGate>
                       </div>
                     </div>
                   ))}
@@ -378,9 +322,7 @@ export default function Refunds() {
                 </CardContent>
               </Card>
 
-              {selectedRecord && (isDrivingSchool ? canSubmitDrivingRefund : true)
-                ? isDrivingSchool ? refundForm : <FeatureGate module="collections" action="refund">{refundForm}</FeatureGate>
-                : null}
+              {selectedRecord && <FeatureGate module="collections" action="refund">{refundForm}</FeatureGate>}
 
               <Card>
                 <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><RotateCcw className="h-5 w-5" /> İade geçmişi</CardTitle></CardHeader>
@@ -388,8 +330,8 @@ export default function Refunds() {
                   {history.map((item) => (
                     <div key={item.id} className="rounded-xl border border-red-500/20 bg-red-500/[0.03] p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div><p className="font-black">{recordLabel(item)}</p><p className="mt-1 text-xs text-muted-foreground">{dateTime(item.refundedAtUtc || item.paidAtUtc)}</p></div>
-                        <Badge className="border-0 bg-red-500/10 text-red-600">{money(Math.abs(Number(isCharge(item) ? item.refundedAmount : item.amount) || 0), currency)}</Badge>
+                        <div><p className="font-black">{recordLabel(item)}</p><p className="mt-1 text-xs text-muted-foreground">{dateTime(item.paidAtUtc)}</p></div>
+                        <Badge className="border-0 bg-red-500/10 text-red-600">{money(Math.abs(Number(item.amount) || 0), currency)}</Badge>
                       </div>
                       <p className="mt-2 border-t pt-2 text-xs text-muted-foreground">{item.refundReason || item.note || 'Gerekçe kaydı'}{item.externalReference ? ` · Referans: ${item.externalReference}` : ''}</p>
                     </div>

@@ -12,7 +12,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAuditBranchSummary, fetchAuditLogsPaged, fetchOrgUnits } from '../../lib/api/modules';
 import { formatDateTime } from '../../lib/format';
 
-const CATEGORIES = ['', 'Login', 'Approval', 'HR', 'Document', 'Task', 'Admin', 'Account', 'Permission', 'Registration', 'Finance', 'OrgUnit', 'DrivingSchool'];
+const CATEGORIES = ['', 'Login', 'Approval', 'HR', 'Document', 'Task', 'Admin', 'Account', 'Permission', 'Registration', 'Finance', 'OrgUnit'];
 const CATEGORY_LABEL = {
   Login: 'Giriş',
   Approval: 'Onay',
@@ -25,7 +25,6 @@ const CATEGORY_LABEL = {
   Registration: 'Kayıt',
   Finance: 'Finans',
   OrgUnit: 'Birim/Şube',
-  DrivingSchool: 'Sürücü Kursu',
 };
 
 // Kaynak filtresi: kayıt geçmişi iki tabloyu birleştirir.

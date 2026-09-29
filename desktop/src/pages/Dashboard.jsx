@@ -38,7 +38,6 @@ import ActionPriorityPanel from '../components/dashboard/ActionPriorityPanel';
 import SetupWizardPanel from '../components/dashboard/SetupWizardPanel';
 import {
   fetchAdminAnalytics,
-  fetchDrivingSchoolStatus,
   fetchSchoolDashboard,
   fetchSchoolSetupStatus,
 } from '../lib/api/modules';
@@ -269,14 +268,6 @@ export default function Dashboard() {
   const [overview, setOverview] = useState(null);
   const [overviewError, setOverviewError] = useState('');
   const [setupStatus, setSetupStatus] = useState(null);
-
-  useEffect(() => {
-    let active = true;
-    fetchDrivingSchoolStatus()
-      .then((status) => { if (active && status?.available) navigate('/driving/dashboard', { replace: true }); })
-      .catch(() => {});
-    return () => { active = false; };
-  }, [navigate]);
 
   const range = useMemo(() => rangeFor(period, anchor, customFrom, customTo), [period, anchor, customFrom, customTo]);
 

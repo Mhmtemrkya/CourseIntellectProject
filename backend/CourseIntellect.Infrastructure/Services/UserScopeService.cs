@@ -116,7 +116,7 @@ public sealed class UserScopeService(CourseIntellectDbContext dbContext) : IUser
         }
 
         var tenantRows = await dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
-            .Where(t => accessibleTenantIds.Contains(t.Id))
+            .Where(t => accessibleTenantIds.Contains(t.Id) && t.InstitutionType != InstitutionType.DrivingSchool)
             .Select(t => new { t.Id, t.Name })
             .ToListAsync(cancellationToken);
 
@@ -239,6 +239,10 @@ public sealed class UserScopeService(CourseIntellectDbContext dbContext) : IUser
 
     private async Task<bool> CanAccessTenantAsync(IReadOnlyList<UserScopeGrant> grants, Guid tenantId, CancellationToken cancellationToken)
     {
+        // Sürücü kursları DrivingAsist ürününe taşındı: kurum değiştirici ile de
+        // bu üründe açılamazlar (okul arayüzü sürücü kursu verisine bakmasın).
+        if (await IsDrivingSchoolTenantAsync(tenantId, cancellationToken)) return false;
+
         if (grants.Any(g => g.Level == ScopeLevel.Platform)) return true;
         if (grants.Any(g => g.Level == ScopeLevel.Tenant && g.TargetId == tenantId)) return true;
         if (await HasGroupAccessAsync(grants, tenantId, cancellationToken)) return true;
@@ -255,6 +259,10 @@ public sealed class UserScopeService(CourseIntellectDbContext dbContext) : IUser
             .AsNoTracking()
             .AnyAsync(o => branchTargets.Contains(o.Id) && o.TenantId == tenantId, cancellationToken);
     }
+
+    private Task<bool> IsDrivingSchoolTenantAsync(Guid tenantId, CancellationToken cancellationToken) =>
+        dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+            .AnyAsync(t => t.Id == tenantId && t.InstitutionType == InstitutionType.DrivingSchool, cancellationToken);
 
     private async Task<bool> HasGroupAccessAsync(IReadOnlyList<UserScopeGrant> grants, Guid tenantId, CancellationToken cancellationToken)
     {

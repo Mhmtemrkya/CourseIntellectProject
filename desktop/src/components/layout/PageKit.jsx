@@ -1,18 +1,15 @@
 import { motion } from 'framer-motion';
-import { Button } from '../../components/ui/button';
-import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { KPI_TONES, KpiCard } from '../../components/ui/kpi-card';
+import { Button } from '../ui/button';
+import { LoadingDots } from '../animations/AnimatedIcon';
+import { KPI_TONES, KpiCard } from '../ui/kpi-card';
 import { cn } from '@/lib/utils';
 
-export const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
-export const itemVariants = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } };
+// Liste/özet ekranlarının ortak iskeleti: animasyonlu sayfa kabı, başlık,
+// yükleniyor ve boş durum bileşenleri. KPI kartı okul ana paneliyle ortaktır.
+const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
+const itemVariants = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } };
 
-// Ton kümesi ve KPI kartı okul ana paneliyle ORTAKTIR (components/ui/kpi-card).
-// İki kurum türü yan yana aynı ürün gibi görünsün diye tek uygulama vardır;
-// buradaki adlar (TONES / DrivingStatCard) geriye dönük uyumluluk içindir.
-export const TONES = KPI_TONES;
-
-export function DrivingPage({ children, testId, className }) {
+export function Page({ children, testId, className }) {
   return (
     <motion.div
       variants={containerVariants}
@@ -26,12 +23,12 @@ export function DrivingPage({ children, testId, className }) {
   );
 }
 
-export function DrivingPageHeader({ title, description, icon: Icon, actions, onRefresh, refreshing }) {
+export function PageHeader({ title, description, icon: Icon, actions, onRefresh, refreshing }) {
   return (
     <motion.div variants={itemVariants} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
         {Icon ? (
-          <div className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-[0_12px_28px_hsl(var(--brand-accent)/0.24)]', TONES.brand)}>
+          <div className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-[0_12px_28px_hsl(var(--brand-accent)/0.24)]', KPI_TONES.brand)}>
             <Icon className="h-5 w-5" />
           </div>
         ) : null}
@@ -70,17 +67,14 @@ function RefreshIcon({ spinning }) {
   );
 }
 
-// Küçük başlık, animasyonlu büyük değer, gradyanlı ikon rozeti — okul ana
-// paneliyle ortak kart.
-export const DrivingStatCard = KpiCard;
+export const StatCard = KpiCard;
 
-export function DrivingLoading() {
+export function PageLoading() {
   return <div className="flex min-h-[60vh] items-center justify-center"><LoadingDots /></div>;
 }
 
-// Yetkisi olmayan kullanıcıya boş alan bırakmak "sistem bozuk" hissi verir;
-// nedenini söyleyip alanı dolduruyoruz.
-export function DrivingNotice({ icon: Icon, title, message, action }) {
+// Boş alan bırakmak "sistem bozuk" hissi verir; nedenini söyleyip alanı dolduruyoruz.
+export function PageNotice({ icon: Icon, title, message, action }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-foreground/15 bg-foreground/[0.02] p-8 text-center">
       {Icon ? <Icon className="h-8 w-8 text-muted-foreground" /> : null}

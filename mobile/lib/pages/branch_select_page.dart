@@ -3,8 +3,6 @@ import 'package:provider/provider.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../navigation/admin_bottom_nav.dart';
-import '../navigation/driving_school_bottom_nav.dart';
-import '../services/driving_school_api_service.dart';
 import '../services/admin_workflow_api_service.dart';
 import '../services/branding_service.dart';
 import '../services/branch_scope_store.dart';
@@ -93,17 +91,8 @@ class _BranchSelectPageState extends State<BranchSelectPage> {
     if (!mounted) return;
     await BrandingService.instance.applyBranding(context.read<ThemeProvider>());
     if (!mounted) return;
-    var drivingSchool = false;
-    try {
-      drivingSchool = await DrivingSchoolApiService.instance.isAvailable();
-    } catch (_) {}
-    if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => drivingSchool
-            ? const DrivingSchoolBottomNav()
-            : const AdminBottomNav(),
-      ),
+      MaterialPageRoute(builder: (_) => const AdminBottomNav()),
     );
   }
 

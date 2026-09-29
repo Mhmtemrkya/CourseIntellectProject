@@ -428,14 +428,6 @@ if (autoMigrateDatabase || seedDatabase)
     {
         var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
         await seeder.SeedAsync();
-
-        // Sürücü kursu demo verisi YALNIZCA geliştirme ortamında üretilir —
-        // canlıda gerçek kurumların yanına sahte bir kurum düşmemeli.
-        if (app.Environment.IsDevelopment())
-        {
-            var drivingSeeder = scope.ServiceProvider.GetRequiredService<DrivingSchoolSeeder>();
-            await drivingSeeder.SeedAsync();
-        }
     }
     else
     {
@@ -461,36 +453,21 @@ if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
     recurringJobs.AddOrUpdate<IReminderJobService>(
         "stale-push-token-cleanup", x => x.CleanupStalePushTokensAsync(CancellationToken.None), "0 3 * * 0", utc);
 
-    // ─── Sürücü kursu hatırlatmaları ──────────────────────────────────────
-    // Tüm bildirimler dedupe anahtarlı; iş tekrar çalışsa da kimse iki kez rahatsız edilmez.
-
-    // Araç evrakı, muayene/sigorta ve bakım kilometresi: her gün 07:00 TR.
-    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
-        "driving-vehicle-compliance", x => x.RunVehicleComplianceRemindersAsync(CancellationToken.None), "0 4 * * *", utc);
-
-    // Yarınki dersler için öğrenci/öğretmen hatırlatması: her gün 15:00 TR
-    // (akşam üstü, ertesi güne hazırlanabilecekleri saatte).
-    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
-        "driving-appointment-reminders", x => x.RunAppointmentRemindersAsync(CancellationToken.None), "0 12 * * *", utc);
-
-    // Bitiş saati geçmiş açık direksiyon randevularını otomatik tamamla: her 10 dk.
-    // (Ofis "Bugün" listesini açtığında da tembel tetiklenir; bu iş liste hiç
-    // açılmasa bile dakikaların işlenmesini ve mezuniyet sayımının doğru kalmasını garanti eder.)
-    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
-        "driving-auto-complete-appointments", x => x.RunAutoCompleteAppointmentsAsync(CancellationToken.None), "*/10 * * * *", utc);
-
-    // Eksik evrak, azalan ders hakkı, gecikmiş ödeme: Pazartesi & Perşembe 09:00 TR.
-    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
-        "driving-student-reminders", x => x.RunStudentRemindersAsync(CancellationToken.None), "0 6 * * 1,4", utc);
-
-    // Yöneticiye günlük operasyon özeti: her gün 07:30 TR.
-    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
-        "driving-daily-summary", x => x.RunDailyOperationsSummaryAsync(CancellationToken.None), "30 4 * * *", utc);
-
-    // MEBBİS/mevzuat uyumu: dönem kesim tarihi, çalışma izni, son sınav hakkı,
-    // devam riski — her gün 08:00 TR (dedupe basamakları tekrarı engeller).
-    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
-        "driving-compliance-reminders", x => x.RunComplianceRemindersAsync(CancellationToken.None), "0 5 * * *", utc);
+    // Sürücü kursu işleri DrivingAsist ürününe taşındı. Bu ürünün Hangfire deposunda
+    // önceki sürümlerden kalan kayıtlar yalnız bayrak açıkça verilirse silinir:
+    // depo DrivingAsist ile paylaşılıyorsa silmek onun işlerini sessizce durdururdu.
+    if (builder.Configuration.GetValue<bool>("Jobs:RemoveLegacyDrivingJobs"))
+    {
+        foreach (var legacyJobId in new[]
+                 {
+                     "driving-vehicle-compliance", "driving-appointment-reminders",
+                     "driving-auto-complete-appointments", "driving-student-reminders",
+                     "driving-daily-summary", "driving-compliance-reminders",
+                 })
+        {
+            recurringJobs.RemoveIfExists(legacyJobId);
+        }
+    }
 }
 
 app.UseForwardedHeaders();

@@ -8,7 +8,7 @@ import { useToast } from '../../hooks/use-toast';
 import {
   createExpense, deleteExpense, fetchExpenses, updateExpense,
 } from '../../lib/api/modules';
-import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from '../driving/_shared';
+import { Page, PageHeader, PageLoading, PageNotice, StatCard } from '../../components/layout/PageKit';
 import { formatDate, formatDateTime } from '../../lib/format';
 
 // Backend enum'larıyla birebir; personel maaş/primi kasıtlı olarak YOK.
@@ -170,11 +170,11 @@ export default function Expenses() {
   const summary = data?.summary || { total: 0, count: 0, byCategory: [] };
   const topCategory = useMemo(() => (summary.byCategory || [])[0], [summary]);
 
-  if (loading && !data) return <DrivingLoading />;
+  if (loading && !data) return <PageLoading />;
 
   return (
-    <DrivingPage testId="finance-expenses-page">
-      <DrivingPageHeader
+    <Page testId="finance-expenses-page">
+      <PageHeader
         title="Giderler"
         description="Kurumun işletme giderleri: kira, fatura, mazot, bakım, sigorta ve diğer gider faturaları. (Personel maaş/primi burada tutulmaz.)"
         icon={TrendingDown}
@@ -183,13 +183,13 @@ export default function Expenses() {
       />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <DrivingStatCard label="Toplam Gider" value={money(summary.total)} caption="Seçili filtrede" icon={TrendingDown} tone="rose" />
-        <DrivingStatCard label="Kayıt" value={summary.count} caption="Gider faturası" icon={Receipt} tone="brand" />
-        <DrivingStatCard label="En yüksek kalem" value={topCategory ? CATEGORY_LABEL[topCategory.category] || topCategory.category : '—'} caption={topCategory ? money(topCategory.total) : 'Kayıt yok'} icon={Wallet} tone="amber" />
+        <StatCard label="Toplam Gider" value={money(summary.total)} caption="Seçili filtrede" icon={TrendingDown} tone="rose" />
+        <StatCard label="Kayıt" value={summary.count} caption="Gider faturası" icon={Receipt} tone="brand" />
+        <StatCard label="En yüksek kalem" value={topCategory ? CATEGORY_LABEL[topCategory.category] || topCategory.category : '—'} caption={topCategory ? money(topCategory.total) : 'Kayıt yok'} icon={Wallet} tone="amber" />
         {hasVehicles ? (
-          <DrivingStatCard label="Araç gideri" value={money((summary.byCategory || []).filter((x) => x.category === 'Fuel' || x.category === 'Maintenance').reduce((s, x) => s + Number(x.total), 0))} caption="Mazot + bakım" icon={CarFront} tone="violet" />
+          <StatCard label="Araç gideri" value={money((summary.byCategory || []).filter((x) => x.category === 'Fuel' || x.category === 'Maintenance').reduce((s, x) => s + Number(x.total), 0))} caption="Mazot + bakım" icon={CarFront} tone="violet" />
         ) : (
-          <DrivingStatCard label="Sabit gider" value={money((summary.byCategory || []).filter((x) => x.category === 'Rent' || x.category === 'Utilities').reduce((s, x) => s + Number(x.total), 0))} caption="Kira + fatura" icon={Wallet} tone="violet" />
+          <StatCard label="Sabit gider" value={money((summary.byCategory || []).filter((x) => x.category === 'Rent' || x.category === 'Utilities').reduce((s, x) => s + Number(x.total), 0))} caption="Kira + fatura" icon={Wallet} tone="violet" />
         )}
       </div>
 
@@ -210,7 +210,7 @@ export default function Expenses() {
       </div>
 
       {items.length === 0 ? (
-        <DrivingNotice icon={Receipt} title="Gider kaydı yok" message="Bu filtrede gider bulunamadı. Sağ üstten yeni bir gider faturası ekleyebilirsiniz." />
+        <PageNotice icon={Receipt} title="Gider kaydı yok" message="Bu filtrede gider bulunamadı. Sağ üstten yeni bir gider faturası ekleyebilirsiniz." />
       ) : (
         <div className="space-y-2">
           {items.map((item) => (
@@ -252,6 +252,6 @@ export default function Expenses() {
       )}
 
       {modal && <ExpenseModal initial={modal} vehicles={vehicles} onClose={() => setModal(null)} onSaved={() => { setModal(null); load(); }} />}
-    </DrivingPage>
+    </Page>
   );
 }

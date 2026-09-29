@@ -7,14 +7,10 @@ import {
   loadDesktopSession,
   loginWithBackend,
   persistDesktopSession,
-  resolveUserInstitutionType,
 } from '../lib/auth';
 import { startPkceLogin, exchangePkceCode } from '../lib/auth/pkce';
 import { setActiveBranchFilter, setActiveTenantContext } from '../lib/api/client';
-import { fetchDrivingSchoolStatus } from '../lib/api/modules';
-import { resetDrivingPermissionCache } from '../lib/drivingPermissions';
 import { resetEntitlementCache } from '../lib/entitlements';
-import { resetInstitutionTypeCache } from '../lib/institutionType';
 import { resetTenantFeatureCache } from '../lib/tenantFeatures';
 
 // Module-level helper: aktif abonelik kontrolü. Component içinde tanımlanırsa
@@ -32,40 +28,8 @@ function enforceActiveSubscription(payload) {
 }
 
 function resetTenantAccessCaches() {
-  resetDrivingPermissionCache();
   resetEntitlementCache();
-  resetInstitutionTypeCache();
   resetTenantFeatureCache();
-}
-
-async function reconcileInstitutionSession(currentSession) {
-  if (!currentSession?.user || currentSession.user.isPlatformAdmin) {
-    return currentSession;
-  }
-
-  const fallbackType = resolveUserInstitutionType(currentSession.user);
-  try {
-    const status = await fetchDrivingSchoolStatus();
-    const institutionType = status?.institutionType || fallbackType;
-    const drivingSchoolModuleEnabled =
-      typeof status?.moduleEnabled === 'boolean'
-        ? status.moduleEnabled
-        : currentSession.user.drivingSchoolModuleEnabled;
-    const user = {
-      ...currentSession.user,
-      institutionType,
-      drivingSchoolModuleEnabled,
-    };
-    return { ...currentSession, user };
-  } catch {
-    // Ağ geçici olarak kapalıysa login yanıtındaki güvenilir bilgiyi koru.
-    // Bayrak taşıyan eski oturumlar da burada DrivingSchool olarak iyileştirilir.
-    if (fallbackType === currentSession.user.institutionType) return currentSession;
-    return {
-      ...currentSession,
-      user: { ...currentSession.user, institutionType: fallbackType },
-    };
-  }
 }
 
 const AppContext = createContext({
@@ -114,11 +78,6 @@ export function AppProvider({ children }) {
         // bardaki kurum seçiciyle tekrar geçebilir.
         setActiveTenantContext(null);
         resetTenantAccessCaches();
-        // Her açılışta kurum türünü sunucudan uzlaştır. Yalnızca alan boşken
-        // kontrol etmek, eski/başka kuruma ait oturum değerinin kalıcı biçimde
-        // sidebar'a taşınmasına neden oluyordu.
-        savedSession = await reconcileInstitutionSession(savedSession);
-        persistDesktopSession(savedSession);
         if (!active) return;
         setSession(savedSession);
         setUser(savedSession.user);
@@ -138,7 +97,7 @@ export function AppProvider({ children }) {
     if (typeof localStorage !== 'undefined') localStorage.removeItem('ci-branch-selected');
     resetTenantAccessCaches();
     const desktopUser = createDesktopUser(payload);
-    let nextSession = {
+    const nextSession = {
       accessToken: payload.accessToken,
       refreshToken: payload.refreshToken,
       expiresAtUtc: payload.expiresAtUtc,
@@ -146,8 +105,6 @@ export function AppProvider({ children }) {
       user: desktopUser,
     };
 
-    persistDesktopSession(nextSession);
-    nextSession = await reconcileInstitutionSession(nextSession);
     persistDesktopSession(nextSession);
     setSession(nextSession);
     setUser(nextSession.user);
@@ -163,7 +120,7 @@ export function AppProvider({ children }) {
     if (typeof localStorage !== 'undefined') localStorage.removeItem('ci-branch-selected');
     resetTenantAccessCaches();
     const desktopUser = createDesktopUser(payload);
-    let nextSession = {
+    const nextSession = {
       accessToken: payload.accessToken,
       refreshToken: payload.refreshToken,
       expiresAtUtc: payload.expiresAtUtc,
@@ -171,8 +128,6 @@ export function AppProvider({ children }) {
       user: desktopUser,
     };
 
-    persistDesktopSession(nextSession);
-    nextSession = await reconcileInstitutionSession(nextSession);
     persistDesktopSession(nextSession);
     setSession(nextSession);
     setUser(nextSession.user);

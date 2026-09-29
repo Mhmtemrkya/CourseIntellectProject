@@ -55,13 +55,6 @@ export function getRoleHomePath(role) {
 }
 
 export function getHomePathForRole(role, options = {}) {
-  if (
-    options?.institutionType === "DrivingSchool" &&
-    options?.drivingSchoolModuleEnabled !== false
-  ) {
-    return "/driving";
-  }
-
   switch (role) {
     case "admin":
       return options?.isPlatformAdmin ? "/sa/dashboard" : "/dashboard";
@@ -93,13 +86,6 @@ export function getUserHomePath(user) {
     return "/sa/dashboard";
   }
 
-  if (
-    user?.institutionType === "DrivingSchool" &&
-    user?.drivingSchoolModuleEnabled !== false
-  ) {
-    return "/driving";
-  }
-
   if (user?.hasRoleManagementPolicy) {
     const modules = Array.isArray(user.modules) ? user.modules.map((m) => String(m).toLowerCase()) : [];
     for (const moduleKey of modules) {
@@ -112,15 +98,9 @@ export function getUserHomePath(user) {
 
   return getHomePathForRole(user?.role, {
     isPlatformAdmin: user?.isPlatformAdmin,
-    institutionType: user?.institutionType,
-    drivingSchoolModuleEnabled: user?.drivingSchoolModuleEnabled,
   });
 }
 
-// Bazı eski API/oturum sürümleri institutionType alanını taşımıyordu fakat
-// sürücü kursu modül bayrağını doğru gönderiyordu. Bu durumda hesabı normal
-// okul gibi yorumlamak yerine güvenli ve geriye uyumlu biçimde kurum türünü
-// bayraktan çıkarırız.
 // Backend e-posta döndürmüyorsa kullanıcı adından türetilir. Kullanıcı adı zaten
 // bir e-posta ise (ör. test@surucukursu.local) domain EKLENMEZ — aksi halde
 // Ayarlar ekranında "test@surucukursu.local@courseintellect.local" görünüyordu.
@@ -130,11 +110,6 @@ export function resolveUserEmail(user) {
   const username = (user?.username || "").trim();
   if (!username) return "";
   return username.includes("@") ? username : `${username}@courseintellect.local`;
-}
-
-export function resolveUserInstitutionType(user) {
-  if (user?.institutionType) return user.institutionType;
-  return user?.drivingSchoolModuleEnabled === true ? "DrivingSchool" : null;
 }
 
 function getProfilePathForRole(role) {
@@ -234,7 +209,7 @@ export function createDesktopUser(payload) {
   const tenantId = data?.user?.tenantId || null;
   const isPlatformAdmin = Boolean(data?.user?.isPlatformAdmin) || ((backendRole || "").toLowerCase() === "developer" && tenantId == null);
   const tenantName = data?.user?.tenantName || (isPlatformAdmin ? "Platform" : "SchoolAsist Desktop");
-  const institutionType = resolveUserInstitutionType(data?.user);
+  const institutionType = data?.user?.institutionType || null;
 
   return {
     id: data?.user?.id || "",
@@ -250,7 +225,6 @@ export function createDesktopUser(payload) {
     tenantSlug: data?.user?.tenantSlug || "",
     tenant: tenantName,
     institutionType,
-    drivingSchoolModuleEnabled: Boolean(data?.user?.drivingSchoolModuleEnabled),
     branch: data?.user?.campus || "Merkez Kampüs",
     department: data?.user?.departmentOrBranch || "",
     extraRoles: data?.user?.extraRoles || [],
@@ -260,8 +234,6 @@ export function createDesktopUser(payload) {
     homePath: getUserHomePath({
       role,
       isPlatformAdmin,
-      institutionType,
-      drivingSchoolModuleEnabled: Boolean(data?.user?.drivingSchoolModuleEnabled),
       modules: data?.user?.modules || [],
       hasRoleManagementPolicy: Boolean(data?.user?.hasRoleManagementPolicy),
       mustChangePassword: Boolean(data?.user?.mustChangePassword),
@@ -341,6 +313,17 @@ export async function loginWithBackend(username, password) {
       throw err;
     }
     throw new Error("Kullanıcı adı veya şifre yanlış.");
+  }
+
+  // Sürücü kursu kurumları DrivingAsist'e taşındı — 403 + code INSTITUTION_MOVED
+  if (response.status === 403) {
+    let body = null;
+    try { body = await response.json(); } catch {}
+    if (body?.code === "INSTITUTION_MOVED") {
+      const err = new Error(body.message || "Kurumunuz artık DrivingAsist uygulamasını kullanıyor.");
+      err.code = "INSTITUTION_MOVED";
+      throw err;
+    }
   }
 
   // Bakım modu — 503 + code MAINTENANCE_MODE

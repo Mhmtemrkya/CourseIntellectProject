@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { getUserHomePath, resolveUserInstitutionType } from '../lib/auth';
 import { getUserRoles } from '../lib/permissions';
 import { getEntitlements, isModuleAllowed } from '../lib/entitlements';
 import { inferModuleKey } from './layout/ModernSidebar';
-import { getInstitutionType, isModuleAllowedForInstitution, resetInstitutionTypeCache } from '../lib/institutionType';
 import { Button } from './ui/button';
 
 // Bu modüller pakete bakılmaksızın her zaman erişilebilir (ayarlar, profil).
@@ -27,17 +25,6 @@ function moduleKeyForPath(pathname) {
     if (key) return key;
   }
   return '';
-}
-
-// Sürücü kursunda genel "Sorular" menüsü, öğretmen soru bankası arayüzüne
-// yönlendirilir. Menü bu ortak özelliği `questions` paket hakkıyla gösterdiği
-// için route koruması da aynı anahtarı kullanmalıdır; aksi halde görünür menü
-// tıklandığında kurum-türü filtresi sayfayı yeniden kilitler.
-function moduleKeyForInstitution(routeModuleKey, institutionType) {
-  if (institutionType === 'DrivingSchool' && routeModuleKey === 'question-bank') {
-    return 'questions';
-  }
-  return routeModuleKey;
 }
 
 function LockedScreen({ onBack }) {
@@ -68,22 +55,14 @@ export function EntitlementGuard({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [entitlements, setEntitlements] = useState(null);
-  const [institutionType, setInstitutionType] = useState(null);
 
   useEffect(() => {
     let active = true;
     if (user?.isPlatformAdmin) {
       setEntitlements({ unrestricted: true, roles: {} });
-      setInstitutionType('Platform');
     } else {
-      const sessionType = resolveUserInstitutionType(user);
-      setInstitutionType(sessionType);
-      resetInstitutionTypeCache();
       getEntitlements().then((value) => {
         if (active) setEntitlements(value);
-      });
-      getInstitutionType(sessionType || 'PrivateSchool').then((value) => {
-        if (active) setInstitutionType(value);
       });
     }
     return () => {
@@ -93,7 +72,7 @@ export function EntitlementGuard({ children }) {
 
   // Yetkiler yüklenene kadar içerik açılmaz — kilitli sayfanın bir anlığına
   // görünüp veri çekmesini engeller.
-  if (entitlements === null || institutionType === null) {
+  if (entitlements === null) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center text-sm text-muted-foreground">
         Yükleniyor...
@@ -101,14 +80,8 @@ export function EntitlementGuard({ children }) {
     );
   }
 
-  const routeModuleKey = moduleKeyForPath(location.pathname);
-  const accessModuleKey = moduleKeyForInstitution(routeModuleKey, institutionType);
-  if (!user?.isPlatformAdmin && !isModuleAllowedForInstitution(accessModuleKey, institutionType, location.pathname)) {
-    return <LockedScreen onBack={() => navigate(getUserHomePath(user))} />;
-  }
-
   if (!entitlements.unrestricted) {
-    const moduleKey = accessModuleKey;
+    const moduleKey = moduleKeyForPath(location.pathname);
     if (!ALWAYS_ALLOWED.has(moduleKey)) {
       const primaryRole = getUserRoles(user)[0] || 'student';
       if (!isModuleAllowed(entitlements, primaryRole, moduleKey)) {

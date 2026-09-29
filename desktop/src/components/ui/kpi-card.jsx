@@ -5,10 +5,8 @@ import { cn } from '@/lib/utils';
 /**
  * Kurum panolarının ortak KPI kartı.
  *
- * Önce yalnız sürücü kursu panelinde vardı; okul ana paneli de aynı ızgarayı
- * kullandığı için buraya taşındı. İki kurum türü yan yana aynı ürün gibi
- * görünsün diye tek uygulama vardır — `driving/_shared.jsx` bunu yeniden
- * dışa vurur (DrivingStatCard/TONES adları korunur).
+ * Okul ana paneli ve liste ekranları aynı ızgarayı kullanır; tek uygulama
+ * vardır — `components/layout/PageKit.jsx` bunu StatCard adıyla dışa vurur.
  *
  * İlk ton marka vurgusunu takip eder: tenant paleti değişince kartlar da değişir.
  */

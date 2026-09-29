@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/driving_school_api_service.dart';
 import '../theme_provider.dart';
 import 'course_intellect_logo.dart';
 
@@ -102,10 +101,6 @@ class SidebarDestination {
 
 // ─── Logo Section ───────────────────────────────────────────────────────────
 
-/// Kurum türü oturum boyunca bir kez çözülür: her yeniden çizimde ağ isteği
-/// yapılmasın. Çözülemezse okul varsayılanı kullanılır (masaüstüyle aynı davranış).
-String? _cachedInstitutionType;
-
 class _LogoSection extends StatefulWidget {
   final String? tenantLogo;
   final String tenantName;
@@ -117,29 +112,9 @@ class _LogoSection extends StatefulWidget {
 }
 
 class _LogoSectionState extends State<_LogoSection> {
-  String? _institutionType = _cachedInstitutionType;
-
-  @override
-  void initState() {
-    super.initState();
-    if (_institutionType == null) _resolveInstitutionType();
-  }
-
-  Future<void> _resolveInstitutionType() async {
-    try {
-      final type = await DrivingSchoolApiService.instance.institutionType();
-      _cachedInstitutionType = type;
-      if (mounted) setState(() => _institutionType = type);
-    } catch (_) {
-      // Çözülemezse alt satır okul varsayılanında kalır.
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final descriptor = _institutionType == 'DrivingSchool'
-        ? 'Sürücü Kursu Yönetimi'
-        : 'Okul Yönetim Sistemi';
+    const descriptor = 'Okul Yönetim Sistemi';
 
     return Container(
       height: 64,

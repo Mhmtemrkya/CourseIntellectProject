@@ -10,8 +10,7 @@ const money = (value, currency = 'TRY') =>
 
 /**
  * Peşinatı beklenen (henüz tahsil edilmemiş) sözleşmeleri listeler ve tek tıkla
- * makbuzlu tahsilata çevirir. Hem okul (finans/Collections) hem sürücü kursu
- * (DrivingCollection) tahsilat ekranında kullanılır.
+ * makbuzlu tahsilata çevirir. Finans tahsilat ve cari hesap ekranlarında kullanılır.
  *
  * onCollected() — bir peşinat tahsil edilince üst ekran kendi verisini tazelesin.
  */

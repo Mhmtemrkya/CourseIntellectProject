@@ -20,8 +20,6 @@ import {
 } from '../../components/ui/dropdown-menu';
 import { useApp } from '../../context/AppContext';
 import { getFinanceVocabulary } from '../../lib/financeVocabulary';
-import { resolveUserInstitutionType } from '../../lib/auth';
-import DrivingCollectModal from '../../components/finance/DrivingCollectModal';
 import SchoolCollectModal from '../../components/finance/SchoolCollectModal';
 import { useToast } from '../../hooks/use-toast';
 import { SheetHeader, SheetTitle, SheetDescription } from '../../components/ui/sheet';
@@ -33,12 +31,9 @@ import {
   createCollection,
   downloadStudentStatementPdf,
   fetchAccountingDashboard,
-  fetchDrivingBranches,
-  fetchDrivingCollectionList,
   fetchFinanceSummaries,
   fetchStudentFinanceAccount,
   fetchStudents,
-  updateDrivingExamFees,
 } from '../../lib/api/modules';
 import PendingDownPayments from '../../components/finance/PendingDownPayments';
 import {
@@ -97,11 +92,6 @@ function buildAccount(student, dashboard, summary) {
     remaining,
     installmentCount: installments.length,
     status: summary?.status ? normalizeFinanceText(summary.status).includes('over') ? 'overdue' : normalizeFinanceText(summary.status).includes('paid') ? 'paid' : 'current' : status,
-    drivingStudentProfileId: summary?.drivingStudentProfileId,
-    drivingExamFee: Number(summary?.drivingExamFee) || 0,
-    drivingExamFeePaid: Boolean(summary?.drivingExamFeePaid),
-    drivingExamAttemptNo: Number(summary?.drivingExamAttemptNo) || 1,
-    drivingExamDate: summary?.drivingExamDate,
     collections,
     invoices,
     installments,
@@ -125,19 +115,12 @@ function StudentAccountDrawer({
   onCreateCollection,
   onExportStatement,
   onPrintStatement,
-  onUpdated,
 }) {
-  // Sürücü kursunda "veli" kavramı yoktur; kursiyerin muhatabı kendisidir.
   const { user } = useApp();
-  // Finans modülü iki kurum türünde ortaktır; dil ve sürücü kursuna özgü
-  // kalemler kurum türüne göre değişir.
   const vocabulary = getFinanceVocabulary(user);
-  const isDrivingSchool = resolveUserInstitutionType(user) === 'DrivingSchool';
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState('');
-  const [examFeeDraft, setExamFeeDraft] = useState(null);
-  const [savingExamFee, setSavingExamFee] = useState(false);
   // Ekstre tarih aralığı: boş bırakılırsa ilk hareketten taksit planının sonuna
   // kadar tüm geçmiş belgeye girer.
   const [statementRange, setStatementRange] = useState({ from: '', to: '' });
@@ -185,42 +168,13 @@ function StudentAccountDrawer({
   const paid = detail ? Number(detail.paidTotal) || 0 : account.paid;
   const remaining = detail ? Number(detail.totalPayable) || 0 : account.remaining;
   const courseRemaining = detail ? Number(detail.courseRemaining) || 0 : 0;
-  const additionalChargeRemaining = detail ? Number(detail.additionalChargeRemaining) || 0 : 0;
   // Burs kartı YALNIZ burslu öğrencide çizilir; oran 0 ise kart hiç yoktur.
   const scholarshipPercent = Number(detail?.scholarshipPercent) || 0;
   const scholarshipAmount = Number(detail?.scholarshipAmount) || 0;
-  const standaloneExamFeeRemaining = detail ? Number(detail.standaloneExamFeeRemaining) || 0 : 0;
   const grossTotal = Number(detail?.grossTotal) || account.grossTotal;
   const discountTotal = Number(detail?.discountTotal) || account.discountTotal;
   const downPaymentTotal = Number(detail?.downPaymentTotal) || account.downPaymentTotal;
   const downPaymentPaidTotal = Number(detail?.downPaymentPaidTotal) || account.downPaymentPaidTotal;
-  const drivingExamFee = Number(detail?.drivingExamFee) || 0;
-  const drivingExamFeePaid = Boolean(detail?.drivingExamFeePaid);
-  const drivingExamAttemptNo = Number(detail?.drivingExamAttemptNo) || 1;
-
-  const saveExamFee = async () => {
-    if (!detail?.drivingStudentProfileId || !examFeeDraft) return;
-    const amount = Number(examFeeDraft.amount) || 0;
-    if (amount < 0) return;
-    try {
-      setSavingExamFee(true);
-      await updateDrivingExamFees(detail.drivingStudentProfileId, {
-        theoryExamFee: 0,
-        theoryExamFeePaid: false,
-        drivingExamFee: amount,
-        drivingExamFeePaid: amount > 0 && examFeeDraft.paid,
-        drivingExamDate: examFeeDraft.date ? new Date(`${examFeeDraft.date}T12:00:00`).toISOString() : null,
-      });
-      const refreshed = await fetchStudentFinanceAccount(account?.userId
-        ? { studentUserId: account.userId }
-        : { studentName: account?.name });
-      setDetail(refreshed);
-      setExamFeeDraft(null);
-      onUpdated?.();
-    } finally {
-      setSavingExamFee(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -234,7 +188,7 @@ function StudentAccountDrawer({
       <ConsentAlertBanner
         studentProfileId={account.id}
         studentName={account.name}
-        contextKind={isDrivingSchool ? 'DrivingEnrollment' : 'SchoolEnrollment'}
+        contextKind="SchoolEnrollment"
         contextLabel={account.className}
       />
 
@@ -247,7 +201,7 @@ function StudentAccountDrawer({
         <div>
           <h3 className="text-lg font-semibold">{account.name}</h3>
           <p className="text-sm text-muted-foreground">
-            {isDrivingSchool ? account.className : `${account.className} • Veli: ${account.parent}`}
+            {`${account.className} • Veli: ${account.parent}`}
           </p>
         </div>
       </div>
@@ -260,12 +214,6 @@ function StudentAccountDrawer({
           [downPaymentPaidTotal, downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? `Peşinat • ${formatCurrency(downPaymentTotal)} bekleniyor` : 'Ödenen Peşinat', downPaymentTotal > 0 && downPaymentPaidTotal < downPaymentTotal ? 'text-amber-600' : 'text-green-600'],
           [paid, 'Toplam Tahsil Edilen', 'text-green-600'],
           [courseRemaining, vocabulary.feeDebt, courseRemaining > 0 ? 'text-red-600' : 'text-green-600'],
-          // "Ek Ücret Borcu" YALNIZ sürücü kursunda anlamlıdır: kalem DrivingCharge
-          // kayıtlarından gelir ve okulda böyle bir kayıt hiç oluşmaz — okul
-          // yöneticisi sürekli "0 TL" gösteren bir kartla karşılaşmasın.
-          ...(vocabulary.isDrivingSchool
-            ? [[additionalChargeRemaining, vocabulary.additionalChargeDebt, additionalChargeRemaining > 0 ? 'text-red-600' : 'text-green-600']]
-            : []),
           [remaining, 'Toplam Ödenecek', remaining > 0 ? 'text-red-600' : 'text-green-600'],
         ].map(([value, label, color, isCount]) => (
           <Card key={label}>
@@ -292,59 +240,6 @@ function StudentAccountDrawer({
       </div>
 
       {detailError ? <ErrorBanner title="Cari hesap ayrıntıları alınamadı" message={detailError} /> : null}
-
-      {/* Direksiyon sınav ücreti YALNIZ sürücü kursunda vardır; okulda bu kart
-          hiç çizilmez. */}
-      {vocabulary.showDrivingExamFee ? (
-      <Card className="border-brand-primary/20">
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="font-semibold">Direksiyon sınav ücreti</p>
-              <p className="text-sm text-muted-foreground">{drivingExamAttemptNo}. sınav girişi • Kurs ücretinden ayrı takip edilir</p>
-            </div>
-            {detail?.drivingStudentProfileId ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setExamFeeDraft({
-                  amount: drivingExamFee,
-                  paid: drivingExamFeePaid,
-                  date: detail?.drivingExamDate?.slice?.(0, 10) || '',
-                })}
-              >
-                Düzenle
-              </Button>
-            ) : null}
-          </div>
-          {examFeeDraft ? (
-            <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-              <Input type="number" min="0" value={examFeeDraft.amount} onChange={(event) => setExamFeeDraft({ ...examFeeDraft, amount: event.target.value })} placeholder="Ücret (TL)" />
-              <Input type="date" value={examFeeDraft.date} onChange={(event) => setExamFeeDraft({ ...examFeeDraft, date: event.target.value })} />
-              <div className="flex gap-2">
-                <Button type="button" variant={examFeeDraft.paid ? 'default' : 'outline'} onClick={() => setExamFeeDraft({ ...examFeeDraft, paid: !examFeeDraft.paid })}>
-                  {examFeeDraft.paid ? 'Ödendi' : 'Ödenmedi'}
-                </Button>
-                <Button type="button" onClick={saveExamFee} disabled={savingExamFee}>{savingExamFee ? 'Kaydediliyor…' : 'Kaydet'}</Button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <b className="text-xl">{formatCurrency(drivingExamFee)}</b>
-              <Badge className={drivingExamFee > 0 && drivingExamFeePaid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
-                {drivingExamFee > 0 && drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
-              </Badge>
-              <span className="text-sm text-muted-foreground">{formatDateUtc(detail?.drivingExamDate)}</span>
-              {standaloneExamFeeRemaining > 0 ? (
-                <span className="text-sm font-semibold text-red-600">
-                  Toplam borca {formatCurrency(standaloneExamFeeRemaining)} dâhil
-                </span>
-              ) : null}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      ) : null}
 
       {detailLoading ? (
         <div className="flex justify-center py-6"><LoadingDots /></div>
@@ -455,22 +350,13 @@ function StudentAccountDrawer({
 
 export default function StudentAccounts() {
   const { openDrawer, user } = useApp();
-  // Sürücü kursunda "veli" kavramı yoktur; kursiyerin muhatabı kendisidir.
-  const isDrivingSchool = resolveUserInstitutionType(user) === 'DrivingSchool';
   const vocabulary = getFinanceVocabulary(user);
-  // Sürücü kursunda tahsilat, "Ödeme Al" ile AYNI pencereden alınır: taksit planı
-  // görünür, taksit seçilir, ödenmiş taksitler pasiftir, makbuz + tarih-saat düşer.
-  const [drivingRows, setDrivingRows] = useState([]);
-  const [drivingBranches, setDrivingBranches] = useState([]);
-  const [collectTarget, setCollectTarget] = useState(null);
-  // Okul tarafındaki tahsilat penceresinin hedefi (sürücü kursununkinden ayrı).
   const [schoolCollectTarget, setSchoolCollectTarget] = useState(null);
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [examFeeFilter, setExamFeeFilter] = useState('all');
   const [students, setStudents] = useState([]);
   const [dashboard, setDashboard] = useState(null);
   const [summaries, setSummaries] = useState([]);
@@ -542,50 +428,12 @@ export default function StudentAccounts() {
     });
   }, []);
 
-  // Sürücü kursunda kursiyer listesi bir kez çekilir; cari hesap satırını
-  // kursiyer profiline (profileId) bağlamak için gerekir.
-  useEffect(() => {
-    if (!isDrivingSchool) return;
-    let active = true;
-    Promise.all([
-      fetchDrivingCollectionList().catch(() => []),
-      fetchDrivingBranches().catch(() => []),
-    ]).then(([rows, branchList]) => {
-      if (!active) return;
-      setDrivingRows(rows || []);
-      setDrivingBranches(branchList || []);
-    });
-    return () => { active = false; };
-  }, [isDrivingSchool]);
-
-  const normalizeName = (value) => (value || '').trim().toLocaleLowerCase('tr-TR');
-
-  /// Cari hesap satırını sürücü kursiyerine bağlar: önce kullanıcı kimliği, yoksa ad.
-  const resolveDrivingRow = useCallback((account) => drivingRows.find((row) =>
-    (account.userId && row.studentUserId && row.studentUserId === account.userId)
-    || normalizeName(row.fullName) === normalizeName(account.name)), [drivingRows]);
-
   const handleCreateCollection = useCallback(async (account) => {
-    // Sürücü kursu: taksit seçimli ortak tahsilat penceresi açılır.
-    if (isDrivingSchool) {
-      const row = resolveDrivingRow(account);
-      if (!row) {
-        toast({
-          title: 'Kursiyer bulunamadı',
-          description: `${account.name} sürücü kursu kayıtlarıyla eşleşmedi. Listeyi yenileyip tekrar deneyin.`,
-          variant: 'destructive',
-        });
-        return;
-      }
-      setCollectTarget(row);
-      return;
-    }
-
-    // Okul: tahsilat penceresi açılır. ÖNCEDEN bu buton hiçbir şey sormadan
+    // tahsilat penceresi açılır. ÖNCEDEN bu buton hiçbir şey sormadan
     // kalan bakiyenin tamamını "Kart" ile tahsil edilmiş yazıyordu — tahsilat
     // geri alınamaz bir para hareketi, tutar/yöntem/taksit kullanıcıya sorulur.
     setSchoolCollectTarget(account);
-  }, [toast, isDrivingSchool, resolveDrivingRow]);
+  }, []);
 
   const handleExportStatement = useCallback(async (account, range) => {
     try {
@@ -702,11 +550,8 @@ export default function StudentAccounts() {
     const matchesClass = classFilter === 'all' || account.className === classFilter;
     const matchesBranch = branchFilter === 'all' || account.branchName === branchFilter;
     const matchesStatus = statusFilter === 'all' || account.status === statusFilter;
-    const matchesExamFee = examFeeFilter === 'all'
-      || (examFeeFilter === 'paid' && account.drivingExamFee > 0 && account.drivingExamFeePaid)
-      || (examFeeFilter === 'unpaid' && (!account.drivingExamFeePaid || account.drivingExamFee <= 0));
-    return matchesSearch && matchesClass && matchesBranch && matchesStatus && matchesExamFee;
-  }), [accounts, search, classFilter, branchFilter, statusFilter, examFeeFilter]);
+    return matchesSearch && matchesClass && matchesBranch && matchesStatus;
+  }), [accounts, search, classFilter, branchFilter, statusFilter]);
 
   const getStatusBadge = (status) => {
     const labels = { paid: 'Ödendi', current: 'Güncel', overdue: 'Gecikti' };
@@ -792,19 +637,6 @@ export default function StudentAccounts() {
                 <SelectItem value="overdue">Gecikmiş</SelectItem>
               </SelectContent>
             </Select>
-            {/* Direksiyon sınav ücreti filtresi okulda anlamsız — gizlenir. */}
-            {vocabulary.showDrivingExamFee ? (
-              <Select value={examFeeFilter} onValueChange={setExamFeeFilter}>
-                <SelectTrigger className="w-full md:w-44">
-                  <SelectValue placeholder="Sınav ücreti" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tüm sınav ücretleri</SelectItem>
-                  <SelectItem value="paid">Sınav ücreti ödendi</SelectItem>
-                  <SelectItem value="unpaid">Sınav ücreti ödenmedi</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : null}
           </div>
         </CardContent>
       </Card>
@@ -820,7 +652,6 @@ export default function StudentAccounts() {
                 <TableHead>İndirim</TableHead>
                 <TableHead>Peşinat</TableHead>
                 <TableHead>Kalan</TableHead>
-                {vocabulary.showDrivingExamFee ? <TableHead>Direksiyon Sınavı</TableHead> : null}
                 <TableHead>Durum</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -837,7 +668,6 @@ export default function StudentAccounts() {
                       onCreateCollection={handleCreateCollection}
                       onExportStatement={handleExportStatement}
                       onPrintStatement={handlePrintStatement}
-                      onUpdated={loadData}
                     />,
                     { size: 'wide' },
                   )}
@@ -851,9 +681,7 @@ export default function StudentAccounts() {
                       </Avatar>
                       <div>
                         <p className="font-medium">{account.name}</p>
-                        {!isDrivingSchool && (
-                          <p className="text-sm text-muted-foreground">Veli: {account.parent}</p>
-                        )}
+                        <p className="text-sm text-muted-foreground">Veli: {account.parent}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -874,16 +702,6 @@ export default function StudentAccounts() {
                   <TableCell className={account.remaining > 0 ? 'text-red-600 font-bold' : 'text-green-600'}>
                     {formatCurrency(account.remaining)}
                   </TableCell>
-                  {vocabulary.showDrivingExamFee ? (
-                  <TableCell>
-                    <div className="space-y-1">
-                      <span className="text-sm font-medium">{account.drivingExamAttemptNo}. giriş • {formatCurrency(account.drivingExamFee)}</span>
-                      <Badge className={account.drivingExamFee > 0 && account.drivingExamFeePaid ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}>
-                        {account.drivingExamFee > 0 && account.drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  ) : null}
                   <TableCell>{getStatusBadge(account.status)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -906,7 +724,6 @@ export default function StudentAccounts() {
                             onCreateCollection={handleCreateCollection}
                             onExportStatement={handleExportStatement}
                             onPrintStatement={handlePrintStatement}
-                                  onUpdated={loadData}
                           />,
                           { size: 'wide' },
                         )}
@@ -964,8 +781,6 @@ export default function StudentAccounts() {
         </DialogContent>
       </Dialog>
 
-      {/* Sürücü kursu tahsilatı: "Ödeme Al" ile aynı pencere — taksit planı,
-          taksit seçimi, ödenmiş taksitlerin pasifliği ve makbuz burada. */}
       {/* Toplu tahsilat onayı — kaç hesabın ne kadarının işleneceği yazılmadan
           bu işlem başlatılamaz. */}
       <Dialog open={!!bulkConfirm} onOpenChange={(open) => { if (!open) setBulkConfirm(null); }}>
@@ -1006,18 +821,6 @@ export default function StudentAccounts() {
         />
       )}
 
-      {collectTarget && (
-        <DrivingCollectModal
-          row={collectTarget}
-          branches={drivingBranches}
-          onClose={() => setCollectTarget(null)}
-          onDone={() => {
-            setCollectTarget(null);
-            loadData();
-            toast({ title: 'Tahsilat kaydedildi', description: 'Cari hesap güncellendi.' });
-          }}
-        />
-      )}
     </motion.div>
   );
 }

@@ -2,19 +2,10 @@ import {
   createDesktopUser,
   getUserHomePath,
   loginWithBackend,
-  resolveUserInstitutionType,
 } from './auth';
 import { getDesktopApiCandidates } from './appEnv';
 
 describe('getUserHomePath', () => {
-  it('sends an enabled driving-school user to the permission-aware driving entry', () => {
-    expect(getUserHomePath({
-      role: 'admin',
-      institutionType: 'DrivingSchool',
-      drivingSchoolModuleEnabled: true,
-    })).toBe('/driving');
-  });
-
   it('keeps a regular school admin on the school dashboard', () => {
     expect(getUserHomePath({
       role: 'admin',
@@ -23,31 +14,19 @@ describe('getUserHomePath', () => {
   });
 });
 
-describe('resolveUserInstitutionType', () => {
-  it('uses the explicit institution type when the API provides it', () => {
-    expect(resolveUserInstitutionType({
-      institutionType: 'PrivateSchool',
-      drivingSchoolModuleEnabled: true,
-    })).toBe('PrivateSchool');
-  });
-
-  it('recovers legacy driving-school sessions from the module flag', () => {
-    expect(resolveUserInstitutionType({
-      drivingSchoolModuleEnabled: true,
-    })).toBe('DrivingSchool');
-  });
-
-  it('creates a driving-school desktop user even when an old API omits institutionType', () => {
+describe('createDesktopUser', () => {
+  it('ignores the legacy driving-school flag and keeps admins on the school dashboard', () => {
     const user = createDesktopUser({
       user: {
         id: 'owner-1',
         primaryRole: 'Admin',
+        institutionType: 'PrivateSchool',
         drivingSchoolModuleEnabled: true,
       },
     });
 
-    expect(user.institutionType).toBe('DrivingSchool');
-    expect(user.homePath).toBe('/driving');
+    expect(user.institutionType).toBe('PrivateSchool');
+    expect(user.homePath).toBe('/dashboard');
   });
 });
 
@@ -71,5 +50,21 @@ describe('production API resilience', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toBe('https://maydanozasist.schoolasist.com/api/auth/login');
+  });
+
+  it('tells a moved driving-school user to use DrivingAsist', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        code: 'INSTITUTION_MOVED',
+        message: 'Kurumunuz artık DrivingAsist uygulamasını kullanıyor.',
+      }),
+    });
+
+    await expect(loginWithBackend('kurs.admin', 'Parola123')).rejects.toMatchObject({
+      code: 'INSTITUTION_MOVED',
+      message: expect.stringContaining('DrivingAsist'),
+    });
   });
 });

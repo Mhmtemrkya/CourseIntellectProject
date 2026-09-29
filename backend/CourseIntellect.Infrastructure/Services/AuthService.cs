@@ -104,6 +104,11 @@ public sealed class AuthService(
             throw new TemporaryPasswordExpiredException(_temporaryPasswordValidDays);
         }
 
+        if (await IsMovedDrivingSchoolUserAsync(user, cancellationToken))
+        {
+            throw new InstitutionMovedException(DrivingSchoolProductName);
+        }
+
         // Bakım modu açıksa sadece platform admin (Developer + tenantId yok) login olabilir
         var isPlatformAdmin = user.PrimaryRole == UserRole.Developer && user.TenantId is null;
         if (!isPlatformAdmin)
@@ -185,10 +190,33 @@ public sealed class AuthService(
             return null;
         }
 
+        // Taşınan sürücü kursu kurumunun açık oturumu burada yenilenmez; kullanıcı
+        // yeniden giriş yaptığında DrivingAsist yönlendirme mesajını görür.
+        if (await IsMovedDrivingSchoolUserAsync(user, cancellationToken))
+        {
+            return null;
+        }
+
         session.RevokedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return await CreateLoginResponseAsync(user, cancellationToken);
+    }
+
+    private const string DrivingSchoolProductName = "DrivingAsist";
+
+    /// <summary>
+    /// Sürücü kursu kurumları DrivingAsist ürününe taşındı; bu üründe oturum
+    /// açamazlar. Platform yöneticisi (kurumsuz) hiçbir zaman etkilenmez.
+    /// </summary>
+    private async Task<bool> IsMovedDrivingSchoolUserAsync(AppUser user, CancellationToken cancellationToken)
+    {
+        if (user.TenantId is not Guid tenantId) return false;
+
+        return await dbContext.TenantWorkspaces
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(x => x.Id == tenantId && x.InstitutionType == InstitutionType.DrivingSchool, cancellationToken);
     }
 
     private async Task<LoginResponse> CreateLoginResponseAsync(AppUser user, CancellationToken cancellationToken)
@@ -724,7 +752,7 @@ public sealed class AuthService(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == authCode.UserId, cancellationToken);
-        if (user is null)
+        if (user is null || await IsMovedDrivingSchoolUserAsync(user, cancellationToken))
             return null;
 
         return await CreateLoginResponseAsync(user, cancellationToken);

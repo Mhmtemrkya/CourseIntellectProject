@@ -9,7 +9,6 @@ import '../utils/input_formatters.dart';
 import '../services/admin_directory_api_service.dart';
 import '../services/admin_workflow_api_service.dart';
 import '../widgets/role_create_sheet.dart';
-import '../services/driving_school_api_service.dart';
 import '../services/auth_session_store.dart';
 import '../services/credentials_pdf_service.dart';
 import '../services/registration_api_service.dart';
@@ -148,8 +147,6 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   String _teacherMaritalStatus = 'Bekar';
   String _personnelMaritalStatus = 'Bekar';
   bool _saving = false;
-  // Sürücü kursuysa rol ve öğretmen branşı listeleri daraltılır.
-  bool _isDrivingSchool = false;
 
   @override
   void initState() {
@@ -160,34 +157,6 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     _loadStaff();
     _loadCustomRoles();
     _loadTeacherBranches();
-    _loadInstitutionType();
-  }
-
-  Future<void> _loadInstitutionType() async {
-    try {
-      final type = await DrivingSchoolApiService.instance.institutionType();
-      if (!mounted) return;
-      setState(() {
-        _isDrivingSchool = type == 'DrivingSchool';
-        if (_isDrivingSchool) {
-          // Sürücü kursu varsayılanları: öğretmen branşı direksiyon, personel sekreter.
-          if (_teacherBranch != 'Direksiyon Öğretmeni' &&
-              _teacherBranch != 'Teorik Öğretmen') {
-            _teacherBranch = 'Direksiyon Öğretmeni';
-          }
-          if (![
-            'Secretary',
-            'BranchManager',
-            'Administrative',
-          ].contains(_personnelRole)) {
-            _personnelRole = 'Secretary';
-            _personnelDepartment = 'Sekreter';
-          }
-        }
-      });
-    } catch (_) {
-      /* kurum türü okunamazsa okul varsayılanları kalır */
-    }
   }
 
   Future<void> _loadTeacherBranches() async {
@@ -482,20 +451,14 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       labelText: 'Branş'.tr,
                       border: OutlineInputBorder(),
                     ),
-                    items:
-                        (_isDrivingSchool
-                                ? const [
-                                    'Direksiyon Öğretmeni',
-                                    'Teorik Öğretmen',
-                                  ]
-                                : _teacherBranchOptions)
-                            .map(
-                              (branch) => DropdownMenuItem(
-                                value: branch,
-                                child: Text(branch),
-                              ),
-                            )
-                            .toList(),
+                    items: _teacherBranchOptions
+                        .map(
+                          (branch) => DropdownMenuItem(
+                            value: branch,
+                            child: Text(branch),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (value) => setState(
                       () => _teacherBranch = value ?? _teacherBranch,
                     ),
@@ -545,58 +508,55 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 ),
               ],
             ),
-            // Sınıf öğretmenliği ve ders girdiği sınıflar okula özgü; sürücü kursunda gizli.
-            if (!_isDrivingSchool) ...[
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _teacherHomeroomClass,
-                decoration: InputDecoration(
-                  labelText: 'Sınıf Öğretmenliği'.tr,
-                  border: OutlineInputBorder(),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _teacherHomeroomClass,
+              decoration: InputDecoration(
+                labelText: 'Sınıf Öğretmenliği'.tr,
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: 'Sınıf öğretmenliği yok',
+                  child: Text('Sınıf öğretmenliği yok'.tr),
                 ),
-                items: [
-                  DropdownMenuItem(
-                    value: 'Sınıf öğretmenliği yok',
-                    child: Text('Sınıf öğretmenliği yok'.tr),
-                  ),
-                  ..._classOptions.map(
-                    (item) => DropdownMenuItem(value: item, child: Text(item)),
-                  ),
-                ],
-                onChanged: (value) => setState(
-                  () => _teacherHomeroomClass = value ?? _teacherHomeroomClass,
+                ..._classOptions.map(
+                  (item) => DropdownMenuItem(value: item, child: Text(item)),
                 ),
+              ],
+              onChanged: (value) => setState(
+                () => _teacherHomeroomClass = value ?? _teacherHomeroomClass,
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Ders Girdiği Sınıflar'.tr,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _classOptions
-                    .map(
-                      (className) => FilterChip(
-                        selected: _teacherAssignedClasses.contains(className),
-                        label: Text(className),
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _teacherAssignedClasses.add(className);
-                            } else {
-                              _teacherAssignedClasses.remove(className);
-                            }
-                          });
-                        },
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Ders Girdiği Sınıflar'.tr,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _classOptions
+                  .map(
+                    (className) => FilterChip(
+                      selected: _teacherAssignedClasses.contains(className),
+                      label: Text(className),
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _teacherAssignedClasses.add(className);
+                          } else {
+                            _teacherAssignedClasses.remove(className);
+                          }
+                        });
+                      },
+                    ),
+                  )
+                  .toList(),
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -679,47 +639,30 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 labelText: 'Personel Rolü'.tr,
                 border: OutlineInputBorder(),
               ),
-              items: _isDrivingSchool
-                  // Sürücü kursu: yalnız Sekreter / Şube Müdürü / İdari Personel.
-                  // (Öğretmen ayrı sekmede; Yemekhaneci/Servis/özel rol gizli.)
-                  ? [
-                      DropdownMenuItem(
-                        value: 'Secretary',
-                        child: Text('Sekreter'.tr),
-                      ),
-                      DropdownMenuItem(
-                        value: 'BranchManager',
-                        child: Text('Şube Müdürü'.tr),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Administrative',
-                        child: Text('İdari Personel'.tr),
-                      ),
-                    ]
-                  : [
-                      DropdownMenuItem(
-                        value: 'BranchManager',
-                        child: Text('Şube Müdürü'.tr),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Administrative',
-                        child: Text('İdari Personel'.tr),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Cafeteria',
-                        child: Text('Yemekhaneci'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'ServiceDriver',
-                        child: Text('Servis Şoförü'.tr),
-                      ),
-                      ..._customRoles.map(
-                        (r) => DropdownMenuItem(
-                          value: 'custom:${r['id']}',
-                          child: Text('${r['name']} (${'özel rol'.tr})'),
-                        ),
-                      ),
-                    ],
+              items: [
+                DropdownMenuItem(
+                  value: 'BranchManager',
+                  child: Text('Şube Müdürü'.tr),
+                ),
+                DropdownMenuItem(
+                  value: 'Administrative',
+                  child: Text('İdari Personel'.tr),
+                ),
+                DropdownMenuItem(
+                  value: 'Cafeteria',
+                  child: Text('Yemekhaneci'),
+                ),
+                DropdownMenuItem(
+                  value: 'ServiceDriver',
+                  child: Text('Servis Şoförü'.tr),
+                ),
+                ..._customRoles.map(
+                  (r) => DropdownMenuItem(
+                    value: 'custom:${r['id']}',
+                    child: Text('${r['name']} (${'özel rol'.tr})'),
+                  ),
+                ),
+              ],
               onChanged: (value) {
                 if (value == null) return;
                 setState(() {

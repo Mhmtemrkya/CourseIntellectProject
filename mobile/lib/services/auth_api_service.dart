@@ -235,6 +235,25 @@ class AuthApiService {
       throw const AuthApiException('Kullanıcı adı veya şifre yanlış.');
     }
 
+    // Sürücü kursu kurumları DrivingAsist'e taşındı — 403 + code INSTITUTION_MOVED
+    if (response.statusCode == 403) {
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> &&
+            decoded['code']?.toString() == 'INSTITUTION_MOVED') {
+          final m = decoded['message']?.toString();
+          throw AuthApiException(
+            m != null && m.isNotEmpty
+                ? m
+                : 'Kurumunuz artık DrivingAsist uygulamasını kullanıyor.',
+            code: 'INSTITUTION_MOVED',
+          );
+        }
+      } on FormatException {
+        // Gövde JSON değilse aşağıdaki genel hataya düş.
+      }
+    }
+
     // Bakım modu — backend 503 + code MAINTENANCE_MODE döndürür
     if (response.statusCode == 503) {
       String message =

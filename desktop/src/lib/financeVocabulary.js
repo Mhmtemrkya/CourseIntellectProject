@@ -1,31 +1,12 @@
 /**
- * Finans modülü OKUL ve SÜRÜCÜ KURSU tarafından ortak kullanılır; ekranların
- * dili ve bazı kalemleri kurum türüne göre değişir.
+ * Finans ekranlarının ortak dili. Tek doğruluk kaynağı burasıdır: yeni bir
+ * finans ekranı da bu sözlüğü kullanır.
  *
- * Sürücü kursuna özgü alanlar (direksiyon sınav ücreti, ek direksiyon dersi,
- * paket/vites farkı) okulda GÖRÜNMEZ — okul yöneticisi "direksiyon sınav
- * ücreti" gibi kendisini ilgilendirmeyen bir kalemle karşılaşmamalı.
- *
- * Tek doğruluk kaynağı burasıdır: yeni bir finans ekranı da bu sözlüğü kullanır.
+ * Sürücü kursu finansı DrivingAsist ürününe taşındı; bu ürün yalnız okul ve
+ * dershane kurumlarına hizmet verir.
  */
 
-export function isDrivingSchoolUser(user) {
-  return String(user?.institutionType || '') === 'DrivingSchool'
-    || user?.drivingSchoolModuleEnabled === true;
-}
-
-// Sürücü kursunun paket dışı ücret kalemleri (DrivingChargeType ile birebir).
-const DRIVING_CHARGE_LABELS = {
-  ExtraLesson: 'Ek direksiyon dersi',
-  ExamFee: 'Sınav ücreti',
-  FileFee: 'Dosya masrafı',
-  ExtraService: 'Ek hizmet',
-  PackageDifference: 'Paket / vites farkı',
-  Other: 'Diğer ücret',
-};
-
-// Okulda aynı kalem kodları okul karşılıklarıyla gösterilir; "ek direksiyon
-// dersi" yerine etüt/kurs, "paket farkı" yerine sınıf/program farkı.
+// Ek ücret kalemlerinin okul karşılıkları (backend kalem kodlarıyla birebir).
 const SCHOOL_CHARGE_LABELS = {
   ExtraLesson: 'Ek ders / etüt ücreti',
   ExamFee: 'Sınav / deneme ücreti',
@@ -35,28 +16,26 @@ const SCHOOL_CHARGE_LABELS = {
   Other: 'Diğer ücret',
 };
 
+const SCHOOL_VOCABULARY = Object.freeze({
+  // Muhatap
+  person: 'Öğrenci',
+  personPlural: 'Öğrenci',
+  personSearchHint: 'Ad, sınıf veya öğrenci no ara',
+  // Sözleşme/ücret
+  fee: 'Öğrenim Ücreti',
+  netFee: 'Net Öğrenim Ücreti',
+  feeDebt: 'Öğrenim Borcu',
+  additionalChargeDebt: 'Ek Ücret Borcu',
+  // Ek ücret kalemleri
+  chargeLabels: SCHOOL_CHARGE_LABELS,
+});
+
 /**
- * Kurum türüne göre finans sözlüğü.
- * @param {object} user oturum açan kullanıcı (AppContext'ten)
+ * Finans sözlüğü. Parametre, çağıran ekranların imzası değişmesin diye korunur.
  */
+// eslint-disable-next-line no-unused-vars
 export function getFinanceVocabulary(user) {
-  const driving = isDrivingSchoolUser(user);
-  return {
-    isDrivingSchool: driving,
-    // Muhatap
-    person: driving ? 'Kursiyer' : 'Öğrenci',
-    personPlural: driving ? 'Kursiyer' : 'Öğrenci',
-    personSearchHint: driving ? 'Ad veya kursiyer no ara' : 'Ad, sınıf veya öğrenci no ara',
-    // Sözleşme/ücret
-    fee: driving ? 'Kurs Ücreti' : 'Öğrenim Ücreti',
-    netFee: driving ? 'Net Kurs Ücreti' : 'Net Öğrenim Ücreti',
-    feeDebt: driving ? 'Kurs Borcu' : 'Öğrenim Borcu',
-    additionalChargeDebt: 'Ek Ücret Borcu',
-    // Ek ücret kalemleri
-    chargeLabels: driving ? DRIVING_CHARGE_LABELS : SCHOOL_CHARGE_LABELS,
-    // Yalnız sürücü kursunda anlamlı alanlar
-    showDrivingExamFee: driving,
-  };
+  return SCHOOL_VOCABULARY;
 }
 
 export function chargeLabel(vocabulary, type) {

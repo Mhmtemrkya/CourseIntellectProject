@@ -7,7 +7,7 @@ import 'accounting_exports_page.dart';
 import 'accounting_home_page.dart';
 import 'accounting_overdue_page.dart';
 import 'accounting_receipts_page.dart';
-import 'driving_expenses_page.dart';
+import 'expenses_page.dart';
 import 'student_finance_account_page.dart';
 import '../services/accounting_finance_store.dart';
 import '../services/student_finance_api_service.dart';
@@ -194,7 +194,7 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
         'Kira, fatura, mazot ve gider faturaları',
         Icons.receipt_long_outlined,
         const Color(0xFFE11D48),
-        const DrivingExpensesPage(),
+        const ExpensesPage(),
       ),
       _AdminFinanceAction(
         'Dışa Aktar',

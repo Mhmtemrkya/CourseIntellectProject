@@ -13,7 +13,7 @@ function StructuredData({ message, onAction }) {
   if (!data) return null;
   const items = Array.isArray(data.items) ? data.items : Array.isArray(data.recent) ? data.recent : [];
   return <div className="mt-3 space-y-2">
-    {data.fullName && <div className="rounded-xl border bg-background/80 p-3"><b>{data.fullName}</b>{data.className && <span className="text-muted-foreground"> · {data.className}</span>}{data.driving && <div className="mt-2 rounded-lg bg-[hsl(var(--brand-accent)/0.12)] p-2 text-xs">Ehliyet: {data.driving.licenseClass || '-'} · Kalan: {data.driving.remainingDrivingMinutes ?? Math.max(0, (data.driving.purchasedDrivingMinutes || 0) - (data.driving.usedDrivingMinutes || 0))} dk</div>}</div>}
+    {data.fullName && <div className="rounded-xl border bg-background/80 p-3"><b>{data.fullName}</b>{data.className && <span className="text-muted-foreground"> · {data.className}</span>}</div>}
     {typeof data.remaining === 'number' && <div className="rounded-xl border bg-background/80 p-3">Kalan ödeme: <b>{formatMoney(data.remaining)}</b></div>}
     {/* Analitik özet: kuruma bakan sayı metrikleri (Faz 5). */}
     {Array.isArray(data.metrics) && <div className="grid grid-cols-2 gap-2">{data.metrics.map((metric, index) => <div key={index} className="rounded-xl border bg-background/80 p-3"><div className="text-2xl font-bold text-foreground">{typeof metric.value === 'number' ? metric.value.toLocaleString('tr-TR') : metric.value}</div><div className="mt-0.5 text-xs text-muted-foreground">{metric.label}</div></div>)}</div>}

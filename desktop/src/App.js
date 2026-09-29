@@ -116,37 +116,7 @@ import StudentQuestionBox from "./pages/student/StudentQuestionBox";
 import StudentBadges from "./pages/student/StudentBadges";
 import TeacherStudentExams from "./pages/teacher/TeacherStudentExams";
 import DriverPanel from "./pages/DriverPanel";
-const DrivingSchoolDashboard = lazyWithReload(() => import("./pages/driving/DrivingSchoolDashboard"));
-const DrivingHomeRedirect = lazyWithReload(() => import("./pages/driving/DrivingHomeRedirect"));
-const DrivingOperations = lazyWithReload(() => import("./pages/driving/DrivingOperations"));
-const DrivingHub = lazyWithReload(() => import("./pages/driving/DrivingHub"));
-const DrivingCollection = lazyWithReload(() => import("./pages/driving/DrivingCollection"));
 const FinanceExpenses = lazyWithReload(() => import("./pages/finance/Expenses"));
-const DrivingLeads = lazyWithReload(() => import("./pages/driving/DrivingLeads"));
-const DrivingScheduling = lazyWithReload(() => import("./pages/driving/DrivingScheduling"));
-const DrivingLessons = lazyWithReload(() => import("./pages/driving/DrivingLessons"));
-const DrivingFleetCompliance = lazyWithReload(() => import("./pages/driving/DrivingFleetCompliance"));
-const DrivingStudentWizard = lazyWithReload(() => import("./pages/driving/DrivingStudentWizard"));
-const DrivingStudents = lazyWithReload(() => import("./pages/driving/DrivingStudents"));
-const DrivingVehicles = lazyWithReload(() => import("./pages/driving/DrivingVehicles"));
-const DrivingAssignments = lazyWithReload(() => import("./pages/driving/DrivingAssignments"));
-const DrivingCalendar = lazyWithReload(() => import("./pages/driving/DrivingCalendar"));
-const DrivingStudentDetail = lazyWithReload(() => import("./pages/driving/DrivingStudentDetail"));
-const DrivingEducation = lazyWithReload(() => import("./pages/driving/DrivingEducation"));
-const DrivingExamRights = lazyWithReload(() => import("./pages/driving/DrivingExamRights"));
-const DrivingGraduation = lazyWithReload(() => import("./pages/driving/DrivingGraduation"));
-const DrivingContractForms = lazyWithReload(() => import("./pages/driving/DrivingContractForms"));
-const DrivingReports = lazyWithReload(() => import("./pages/driving/DrivingReports"));
-const DrivingMebbisWorkCenter = lazyWithReload(() => import("./pages/driving/DrivingMebbisWorkCenter"));
-const DrivingMebbisEntryAssistant = lazyWithReload(() => import("./pages/driving/DrivingMebbisEntryAssistant"));
-const DrivingTermOpeningWizard = lazyWithReload(() => import("./pages/driving/DrivingTermOpeningWizard"));
-const DrivingTransferPackages = lazyWithReload(() => import("./pages/driving/DrivingTransferPackages"));
-const DrivingMebbisImports = lazyWithReload(() => import("./pages/driving/DrivingMebbisImports"));
-const DrivingMebbisReconciliations = lazyWithReload(() => import("./pages/driving/DrivingMebbisReconciliations"));
-const DrivingMebbisExamResults = lazyWithReload(() => import("./pages/driving/DrivingMebbisExamResults"));
-const DrivingMebbisCertificateNumbers = lazyWithReload(() => import("./pages/driving/DrivingMebbisCertificateNumbers"));
-const DrivingMebbisExport = lazyWithReload(() => import("./pages/driving/DrivingMebbisExport"));
-const DrivingDocumentReviewQueue = lazyWithReload(() => import("./pages/driving/DrivingDocumentReviewQueue"));
 
 // Parent Pages
 import ParentDashboard from "./pages/parent/ParentDashboard";
@@ -312,7 +282,7 @@ function App() {
               {/* Admin Dashboard */}
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/students" element={<Students />} />
-              {/* Okul tarafı sözleşme/form imzalama — sürücü kursundaki /driving/forms'un eşi. */}
+              {/* Okul tarafı sözleşme/form imzalama. */}
               <Route path="/forms" element={<SchoolContractForms />} />
               <Route path="/parents" element={<Parents />} />
               <Route path="/teachers" element={<Teachers />} />
@@ -372,37 +342,8 @@ function App() {
               <Route path="/admin/branch-comparison" element={<AdminBranchComparison />} />
               <Route path="/admin/meetings" element={<AdminMeetings />} />
               <Route path="/admin/service-tracking" element={<ServiceTrackingPage />} />
-              <Route path="/driving" element={<DrivingHomeRedirect />} />
-              <Route path="/driving/dashboard" element={<DrivingSchoolDashboard />} />
-              <Route path="/driving/operations" element={<DrivingOperations />} />
-              <Route path="/driving/hub" element={<DrivingHub />} />
-              <Route path="/driving/collection" element={<DrivingCollection />} />
-              <Route path="/driving/leads" element={<DrivingLeads />} />
-              <Route path="/driving/scheduling" element={<DrivingScheduling />} />
-              <Route path="/driving/lessons" element={<DrivingLessons />} />
-              <Route path="/driving/fleet-compliance" element={<DrivingFleetCompliance />} />
-              <Route path="/driving/calendar" element={<DrivingCalendar />} />
-              <Route path="/driving/assignments" element={<DrivingAssignments />} />
-              <Route path="/driving/students" element={<DrivingStudents />} />
-              <Route path="/driving/vehicles" element={<DrivingVehicles />} />
-              <Route path="/driving/students/new" element={<DrivingStudentWizard />} />
-              <Route path="/driving/students/:profileId" element={<DrivingStudentDetail />} />
-              <Route path="/driving/education" element={<DrivingEducation />} />
-              <Route path="/driving/exam-rights" element={<DrivingExamRights />} />
-              <Route path="/driving/graduation" element={<DrivingGraduation />} />
-              <Route path="/driving/forms" element={<DrivingContractForms />} />
-              <Route path="/driving/reports" element={<DrivingReports />} />
-              <Route path="/driving/mebbis" element={<DrivingMebbisWorkCenter />} />
-              <Route path="/driving/mebbis/assistant/:profileId" element={<DrivingMebbisEntryAssistant />} />
-              <Route path="/driving/mebbis/term-opening" element={<DrivingTermOpeningWizard />} />
-              <Route path="/driving/mebbis/transfer-packages" element={<DrivingTransferPackages />} />
-              <Route path="/driving/mebbis/imports" element={<DrivingMebbisImports />} />
-              <Route path="/driving/mebbis/reconciliations" element={<DrivingMebbisReconciliations />} />
-              <Route path="/driving/mebbis/exam-results" element={<DrivingMebbisExamResults />} />
-              <Route path="/driving/mebbis/certificate-numbers" element={<DrivingMebbisCertificateNumbers />} />
-              <Route path="/driving/mebbis/export" element={<DrivingMebbisExport />} />
-              <Route path="/driving/mebbis/documents" element={<DrivingDocumentReviewQueue />} />
-              <Route path="/driving/mebbis/errors" element={<Navigate to="/driving/mebbis" replace />} />
+              {/* Sürücü kursu DrivingAsist ürününe taşındı; eski bağlantılar panoya döner. */}
+              <Route path="/driving/*" element={<Navigate to="/dashboard" replace />} />
               <Route path="/admin/password-reset-requests" element={<PasswordResetRequests />} />
               <Route path="/cafeteria/menu" element={<CafeteriaWeeklyMenu editable />} />
               <Route path="/admin/destek" element={<Destek />} />

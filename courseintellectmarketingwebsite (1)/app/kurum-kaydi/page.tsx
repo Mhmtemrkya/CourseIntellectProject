@@ -365,7 +365,6 @@ export default function KurumKaydiPage() {
                       <SelectContent>
                         <SelectItem value="PrivateSchool">{language === "tr" ? "Özel Okul" : "Private School"}</SelectItem>
                         <SelectItem value="CourseCenter">{language === "tr" ? "Kurs Merkezi" : "Course Center"}</SelectItem>
-                        <SelectItem value="DrivingSchool">{language === "tr" ? "Sürücü Kursu" : "Driving School"}</SelectItem>
                         <SelectItem value="StudyCenter">{language === "tr" ? "Etüt Merkezi" : "Study Center"}</SelectItem>
                         <SelectItem value="Other">{language === "tr" ? "Diğer" : "Other"}</SelectItem>
                       </SelectContent>

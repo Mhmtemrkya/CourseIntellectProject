@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../i18n/app_locale.dart';
-import '../services/driving_permissions_store.dart';
-import '../services/driving_school_api_service.dart';
-import '../widgets/driving_ui.dart';
+import '../services/expenses_api_service.dart';
+import '../widgets/admin_ui.dart';
 
-// Backend DrivingExpenseCategory ile birebir; personel maaş/primi kasıtlı olarak YOK.
+// Backend gider kategorisi enum'u ile birebir; personel maaş/primi kasıtlı olarak YOK.
 const _categories = <String, String>{
   'Fuel': 'Mazot / Yakıt',
   'Maintenance': 'Bakım / Onarım',
@@ -30,17 +29,16 @@ String _dateTime(dynamic raw) {
   return '${_dateOnly(raw)} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
-class DrivingExpensesPage extends StatefulWidget {
-  const DrivingExpensesPage({super.key});
+class ExpensesPage extends StatefulWidget {
+  const ExpensesPage({super.key});
   @override
-  State<DrivingExpensesPage> createState() => _DrivingExpensesPageState();
+  State<ExpensesPage> createState() => _ExpensesPageState();
 }
 
-class _DrivingExpensesPageState extends State<DrivingExpensesPage> {
+class _ExpensesPageState extends State<ExpensesPage> {
   bool _loading = true, _saving = false;
   String? _error;
   Map<String, dynamic> _data = const {};
-  DrivingPermissionSnapshot _permissions = DrivingPermissionSnapshot.empty;
   String _categoryFilter = '';
 
   List<Map<String, dynamic>> get _items => ((_data['items'] as List?) ?? const [])
@@ -64,17 +62,11 @@ class _DrivingExpensesPageState extends State<DrivingExpensesPage> {
       _error = null;
     });
     try {
-      final result = await Future.wait([
-        DrivingSchoolApiService.instance.expenses(
-          category: _categoryFilter.isEmpty ? null : _categoryFilter,
-        ),
-        DrivingPermissionsStore.instance.load(),
-      ]);
+      final data = await ExpensesApiService.instance.expenses(
+        category: _categoryFilter.isEmpty ? null : _categoryFilter,
+      );
       if (!mounted) return;
-      setState(() {
-        _data = result[0] as Map<String, dynamic>;
-        _permissions = result[1] as DrivingPermissionSnapshot;
-      });
+      setState(() => _data = data);
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
     } finally {
@@ -104,7 +96,7 @@ class _DrivingExpensesPageState extends State<DrivingExpensesPage> {
     );
     if (ok != true) return;
     try {
-      await DrivingSchoolApiService.instance.deleteExpense('${item['id']}');
+      await ExpensesApiService.instance.deleteExpense('${item['id']}');
       _message('Gider silindi.'.tr);
       await _load();
     } catch (e) {
@@ -247,10 +239,10 @@ class _DrivingExpensesPageState extends State<DrivingExpensesPage> {
     setState(() => _saving = true);
     try {
       if (existing == null) {
-        await DrivingSchoolApiService.instance.createExpense(body);
+        await ExpensesApiService.instance.createExpense(body);
         _message('Gider faturası oluşturuldu.'.tr);
       } else {
-        await DrivingSchoolApiService.instance.updateExpense('${existing['id']}', body);
+        await ExpensesApiService.instance.updateExpense('${existing['id']}', body);
         _message('Gider güncellendi.'.tr);
       }
       await _load();
@@ -263,38 +255,28 @@ class _DrivingExpensesPageState extends State<DrivingExpensesPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Kurumdan bağımsız genel gider ekranı. Sürücü kursu bağlamında (driving
-    // modülü açık) ince taneli driving.finance izinleri uygulanır; okul
-    // bağlamında (driving modülü yok) görünürlük backend rol yetkisine bırakılır
-    // (Admin/Accounting/BranchManager) — butonlar gösterilir, yetkisizde 403 döner.
-    final drivingGated = _permissions.moduleAvailable;
-    final canView = !drivingGated || _permissions.can(DrivingPermissions.financeView) || _loading;
-    final canManage = !drivingGated || _permissions.can(DrivingPermissions.financeCollect);
-    return DrivingScaffold(
+    // Kurumdan bağımsız genel gider ekranı. Görünürlük backend rol yetkisine
+    // bırakılır (Admin/Accounting/BranchManager) — yetkisizde 403 döner.
+    return AdminScaffold(
       appBar: AppBar(
         title: Text('Giderler'.tr),
         actions: [
-          if (canManage)
-            IconButton(
-              tooltip: 'Gider Ekle',
-              icon: const Icon(Icons.add_rounded),
-              onPressed: _saving ? null : () => _openForm(),
-            ),
+          IconButton(
+            tooltip: 'Gider Ekle',
+            icon: const Icon(Icons.add_rounded),
+            onPressed: _saving ? null : () => _openForm(),
+          ),
         ],
       ),
-      floatingActionButton: canManage
-          ? FloatingActionButton.extended(
-              onPressed: _saving ? null : () => _openForm(),
-              icon: const Icon(Icons.receipt_long_rounded),
-              label: Text('Gider Ekle'.tr),
-            )
-          : null,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _saving ? null : () => _openForm(),
+        icon: const Icon(Icons.receipt_long_rounded),
+        label: Text('Gider Ekle'.tr),
+      ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? Center(child: FilledButton(onPressed: _load, child: Text(_error!)))
-          : !canView
-          ? Center(child: Text('Bu modüle erişim yetkiniz yok.'.tr))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
@@ -411,8 +393,7 @@ class _DrivingExpensesPageState extends State<DrivingExpensesPage> {
                               '${item['updatedAtUtc'] != null ? ' • (${'düzenlendi'.tr})' : ''}',
                               style: const TextStyle(fontSize: 11, color: Colors.grey),
                             ),
-                            if (canManage)
-                              Align(
+                            Align(
                                 alignment: Alignment.centerRight,
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,

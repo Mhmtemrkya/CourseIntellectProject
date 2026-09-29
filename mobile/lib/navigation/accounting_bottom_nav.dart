@@ -7,7 +7,7 @@ import '../pages/accounting_ledger_page.dart';
 import '../pages/accounting_messages_page.dart';
 import '../pages/accounting_profile_page.dart';
 import '../pages/accounting_receipts_page.dart';
-import '../pages/driving_expenses_page.dart';
+import '../pages/expenses_page.dart';
 import '../widgets/adaptive_scaffold.dart';
 
 class AccountingBottomNav extends StatelessWidget {
@@ -45,7 +45,7 @@ class AccountingBottomNav extends StatelessWidget {
         AdaptiveDestination(
           icon: Icons.receipt_long_outlined,
           label: 'Giderler'.tr,
-          pageBuilder: (_) => const DrivingExpensesPage(),
+          pageBuilder: (_) => const ExpensesPage(),
           sidebarColor: const Color(0xFFE11D48),
         ),
         AdaptiveDestination(

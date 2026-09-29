@@ -176,6 +176,17 @@ public sealed class TenantSelfRegistrationTests : IDisposable
     }
 
     [Fact]
+    public async Task Surucu_kursu_basvurusu_bu_urunde_alinmaz()
+    {
+        var service = CreateService();
+
+        var result = await service.RegisterTenantAsync(ValidRequest() with { InstitutionType = "DrivingSchool" }, Context);
+
+        Assert.Equal(TenantRegistrationOutcome.Invalid, result.Outcome);
+        Assert.Empty(await db.Context.TenantRegistrationApplications.ToListAsync());
+    }
+
+    [Fact]
     public async Task Captcha_dogrulanmazsa_kayit_yazilmaz()
     {
         var service = CreateService(CaptchaVerificationStatus.Failed);

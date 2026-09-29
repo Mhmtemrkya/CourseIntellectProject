@@ -549,6 +549,12 @@ public sealed class PlatformOperationsService(
             return new RegistrationValidation("Geçersiz kurum türü.");
         }
 
+        // Sürücü kursları ayrı ürün (DrivingAsist) üzerinden kaydolur.
+        if (institutionType == InstitutionType.DrivingSchool)
+        {
+            return new RegistrationValidation("Sürücü kursu kayıtları DrivingAsist üzerinden alınmaktadır.");
+        }
+
         return new RegistrationValidation(null, institutionName, contactName, email, phone, plan, institutionType);
     }
 

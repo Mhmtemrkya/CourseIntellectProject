@@ -15,7 +15,6 @@ public sealed class AssistantService(
     CourseIntellectDbContext db,
     IAssistantIntentResolver resolver,
     IEntitlementService entitlementService,
-    IDrivingNotifier drivingNotifier,
     IParentNotifier parentNotifier,
     ILogger<AssistantService> logger) : IAssistantService
 {
@@ -104,26 +103,20 @@ public sealed class AssistantService(
             "student" => Suggestions(
                 ("Bugünkü derslerim", "schedule", "Akademik"), ("Bekleyen ödevlerim", "homework", "Akademik"),
                 ("Yaklaşan sınavlarım", "exam", "Akademik"), ("Devamsızlığım", "attendance", "Akademik"),
-                ("Direksiyon derslerim", "driving_lessons", "Sürücü Kursu"), ("Kurs ilerlemem", "driving_progress", "Sürücü Kursu"),
-                ("Yaklaşan randevularım", "driving_appointments", "Sürücü Kursu"), ("Evrak durumum", "driving_documents", "Sürücü Kursu"),
                 ("Üzerimdeki kitaplar", "library", "Kütüphane")),
             "parent" => Suggestions(
                 ("Çocuğumun devamsızlığı", "attendance", "Takip"), ("Son sınav sonuçları", "exam", "Takip"),
                 ("Bekleyen ödevler", "homework", "Takip"), ("Yaklaşan ödemeler", "payment", "Finans"),
-                ("Servis durumu", "transport", "Servis"), ("Aldığı kitaplar", "library", "Kütüphane"),
-                ("Evrak durumu", "driving_documents", "Sürücü Kursu")),
+                ("Servis durumu", "transport", "Servis"), ("Aldığı kitaplar", "library", "Kütüphane")),
             "teacher" => Suggestions(
                 ("Bugünkü derslerim", "schedule", "Ders"), ("Bugün devamsız olanlar", "absent", "Yoklama"),
-                ("Öğrenci ara", "search", "Öğrenci"), ("Direksiyon dersleri", "driving_lessons", "Sürücü Kursu"),
-                ("Yaklaşan randevular", "driving_appointments", "Sürücü Kursu")),
+                ("Öğrenci ara", "search", "Öğrenci")),
             "accounting" => Suggestions(
                 ("Borcu olan öğrenciler", "debt", "Finans"), ("Ödeme durumunu göster", "payment", "Finans"),
                 ("Öğrenci ara", "search", "Finans"), ("Bu ay tahsilat", "finance_overview", "Özet")),
             _ => Suggestions(
                 ("Öğrenci ara", "search", "Öğrenci"), ("Bugün devamsız olanlar", "absent", "Yoklama"),
                 ("Borcu olan öğrenciler", "debt", "Finans"), ("Yaklaşan sınavlar", "exam", "Akademik"),
-                ("Kursiyer ilerlemesi", "driving_progress", "Sürücü Kursu"), ("Evrak durumu", "driving_documents", "Sürücü Kursu"),
-                ("Yaklaşan randevular", "driving_appointments", "Sürücü Kursu"), ("Mezuniyet durumu", "driving_graduation", "Sürücü Kursu"),
                 ("Gecikmiş kitaplar", "library", "Kütüphane"),
                 ("Kurum özeti", "institution_summary", "Özet"), ("Bu ay tahsilat", "finance_overview", "Özet")),
         };
@@ -139,8 +132,6 @@ public sealed class AssistantService(
     /// </summary>
     private static string HelpText(InstitutionType institutionType) => institutionType switch
     {
-        InstitutionType.DrivingSchool =>
-            "Kursiyer arayabilir; direksiyon dersleri, sınav durumu, kurs ilerlemesi, ödeme ve duyuru bilgilerini gösterebilirim.",
         _ =>
             "Öğrenci arayabilir; devamsızlık, sınav, ödev, ders programı, ödeme, servis ve duyuru bilgilerini gösterebilirim.",
     };
@@ -161,12 +152,6 @@ public sealed class AssistantService(
         "debt" => AssistantIntent.ListStudentsWithDebt,
         "payment" => AssistantIntent.GetPaymentSummary,
         "transport" => AssistantIntent.GetTransportStatus,
-        "driving_lessons" => AssistantIntent.GetDrivingLessons,
-        "driving_progress" => AssistantIntent.GetDrivingProgress,
-        "driving_exam" => AssistantIntent.GetDrivingExamStatus,
-        "driving_documents" => AssistantIntent.GetDrivingDocuments,
-        "driving_appointments" => AssistantIntent.GetDrivingAppointments,
-        "driving_graduation" => AssistantIntent.GetDrivingGraduation,
         "library" => AssistantIntent.GetLibraryLoans,
         "institution_summary" => AssistantIntent.GetInstitutionSummary,
         "finance_overview" => AssistantIntent.GetFinanceOverview,
@@ -192,8 +177,6 @@ public sealed class AssistantService(
             "homework" or "get_homework" => "Bekleyen ödevlerini göster",
             "payment" or "get_payment" => "Ödeme durumunu göster",
             "transport" or "get_transport" => "Servis durumunu göster",
-            "driving_lessons" => "Direksiyon derslerini göster",
-            "driving_progress" => "Kurs ilerlemesini göster",
             "institution_summary" => "Kurum özetini göster",
             "finance_overview" => "Bu ay tahsilat özeti",
             _ => request.Command,
@@ -272,7 +255,6 @@ public sealed class AssistantService(
                 {
                     response = intent switch
                     {
-                        AssistantIntent.SendDocumentReminder => await SendDocumentReminderAsync(request.ConversationId, student, ct),
                         AssistantIntent.NotifyParentAboutAbsence => await NotifyParentAboutAbsenceAsync(request.ConversationId, student, ct),
                         _ => Build(request.ConversationId, "error", "Tanımsız işlem.", null, intent),
                     };
@@ -490,12 +472,6 @@ public sealed class AssistantService(
             AssistantIntent.GetUnreadMessages => Build(conversationId, "text", "Mesajlarınız güvenli mesaj kutusundan görüntülenebilir.", null, intent, [new("navigate", "Mesajları Aç", RoleRoute(context.PrimaryRole, "chat"), null, null)]),
             AssistantIntent.GetPaymentSummary => await PaymentAsync(conversationId, student, ct),
             AssistantIntent.GetTransportStatus => await TransportAsync(conversationId, student, ct),
-            AssistantIntent.GetDrivingLessons => await DrivingLessonsAsync(conversationId, student, ct),
-            AssistantIntent.GetDrivingExamStatus => await DrivingExamAsync(conversationId, student, ct),
-            AssistantIntent.GetDrivingProgress => await DrivingProgressAsync(conversationId, student, ct),
-            AssistantIntent.GetDrivingDocuments => await DrivingDocumentsAsync(conversationId, student, ct),
-            AssistantIntent.GetDrivingAppointments => await DrivingAppointmentsAsync(conversationId, student, ct),
-            AssistantIntent.GetDrivingGraduation => await DrivingGraduationAsync(conversationId, student, ct),
             AssistantIntent.GetLibraryLoans => await LibraryLoansAsync(conversationId, student, ct),
             _ => Build(conversationId, "text", "Bu komut için henüz gösterilecek bir sonuç bulunamadı.", null, intent),
         };
@@ -534,8 +510,7 @@ public sealed class AssistantService(
         else if (query.TcNo is not null) candidatesQuery = candidatesQuery.Where(x => x.TcNo == query.TcNo);
         else if (query.StudentNumber is not null)
         {
-            var drivingIds = await db.StudentDrivingProfiles.AsNoTracking().Where(x => x.StudentNumber.ToString() == query.StudentNumber).Select(x => x.StudentId).ToListAsync(ct);
-            candidatesQuery = candidatesQuery.Where(x => x.SchoolNumber == query.StudentNumber || drivingIds.Contains(x.Id));
+            candidatesQuery = candidatesQuery.Where(x => x.SchoolNumber == query.StudentNumber);
         }
         else
         {
@@ -606,33 +581,6 @@ public sealed class AssistantService(
     /// </summary>
     private async Task<AssistantResponseDto> InstitutionSummaryAsync(Guid conversationId, InstitutionType institutionType, CancellationToken ct)
     {
-        if (institutionType == InstitutionType.DrivingSchool)
-        {
-            var localNow = DateTime.UtcNow.AddHours(3);
-            var monthStartUtc = new DateTime(localNow.Year, localNow.Month, 1, 0, 0, 0, DateTimeKind.Unspecified).AddHours(-3);
-
-            var active = await db.StudentDrivingProfiles.AsNoTracking()
-                .CountAsync(x => x.Status != DrivingStudentStatus.Cancelled && x.Status != DrivingStudentStatus.Graduated, ct);
-            var graduatedThisMonth = await db.DrivingGraduationRecords.AsNoTracking()
-                .CountAsync(x => x.GraduatedAtUtc != null && x.GraduatedAtUtc >= monthStartUtc, ct);
-            var documentsPending = await db.StudentDrivingProfiles.AsNoTracking()
-                .CountAsync(x => x.Status == DrivingStudentStatus.DocumentsPending, ct);
-
-            return Build(conversationId, "institution_summary",
-                $"Aktif kursiyer: {active}. Bu ay mezun: {graduatedThisMonth}. Evrak bekleyen: {documentsPending}.",
-                new
-                {
-                    mode = "driving_school",
-                    metrics = new[]
-                    {
-                        new { label = "Aktif kursiyer", value = active },
-                        new { label = "Bu ay mezun", value = graduatedThisMonth },
-                        new { label = "Evrak bekleyen", value = documentsPending },
-                    },
-                },
-                AssistantIntent.GetInstitutionSummary);
-        }
-
         var today = DateTime.UtcNow.Date;
         var totalStudents = await db.Students.AsNoTracking().CountAsync(ct);
         var absentNames = await db.AttendanceEntries.AsNoTracking()
@@ -696,8 +644,7 @@ public sealed class AssistantService(
 
     private async Task<AssistantResponseDto> StudentSummaryAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
     {
-        var driving = await db.StudentDrivingProfiles.AsNoTracking().Where(x => x.StudentId == student.Id).Select(x => new { x.StudentNumber, x.LicenseClass, status = x.Status.ToString(), x.PurchasedDrivingMinutes, x.UsedDrivingMinutes }).FirstOrDefaultAsync(ct);
-        var data = new { studentId = student.Id, student.FullName, student.ClassName, studentNumberMasked = Mask(student.SchoolNumber), photoUrl = student.PhotoUrl, institutionMode = driving is null ? "school" : "driving_school", driving };
+        var data = new { studentId = student.Id, student.FullName, student.ClassName, studentNumberMasked = Mask(student.SchoolNumber), photoUrl = student.PhotoUrl, institutionMode = "school" };
         return Build(conversationId, "student_summary", "Öğrenci bulundu.", data, AssistantIntent.GetStudentSummary, StudentActions(student.Id));
     }
 
@@ -756,133 +703,6 @@ public sealed class AssistantService(
             : Build(conversationId, "transport_status", "Servis bilgisi bulundu.", new { studentId = student.Id, student.FullName, route = row }, AssistantIntent.GetTransportStatus);
     }
 
-    private async Task<AssistantResponseDto> DrivingLessonsAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
-    {
-        var profileId = await db.StudentDrivingProfiles.AsNoTracking().Where(x => x.StudentId == student.Id).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
-        if (!profileId.HasValue) return Build(conversationId, "error", "Bu öğrenci için sürücü kursu kaydı bulunamadı.", null, AssistantIntent.GetDrivingLessons);
-        var rows = await db.DrivingAppointments.AsNoTracking().Where(x => x.StudentDrivingProfileId == profileId).OrderByDescending(x => x.StartsAtUtc).Take(20).Select(x => new { x.Id, startsAt = x.StartsAtUtc, endsAt = x.EndsAtUtc, status = x.Status.ToString(), x.MeetingPoint }).ToListAsync(ct);
-        return Build(conversationId, "schedule", $"{rows.Count} direksiyon dersi/randevusu bulundu.", new { studentId = student.Id, student.FullName, items = rows, mode = "driving_school" }, AssistantIntent.GetDrivingLessons);
-    }
-
-    /// <summary>
-    /// Kursiyerin güncel evrak dosyası ve onay durumu.
-    /// </summary>
-    private async Task<AssistantResponseDto> DrivingDocumentsAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
-    {
-        var profileId = await db.StudentDrivingProfiles.AsNoTracking().Where(x => x.StudentId == student.Id).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
-        if (!profileId.HasValue) return Build(conversationId, "error", "Bu öğrenci için sürücü kursu kaydı bulunamadı.", null, AssistantIntent.GetDrivingDocuments);
-
-        var stored = await db.StudentDrivingDocuments.AsNoTracking()
-            .Where(x => x.StudentDrivingProfileId == profileId && x.IsCurrent)
-            .Select(x => new { x.DocumentType, x.Status })
-            .ToListAsync(ct);
-
-        var items = stored.Select(x =>
-        {
-            var effective = DrivingStudentRules.EffectiveStatus(x.Status);
-            return new
-            {
-                title = DrivingStudentRules.DocumentLabel(x.DocumentType),
-                status = effective switch
-                {
-                    StudentDocumentStatus.Approved => "Onaylı",
-                    StudentDocumentStatus.PendingApproval => "Onay bekliyor",
-                    StudentDocumentStatus.Rejected => "Reddedildi",
-                    _ => "Eksik",
-                },
-            };
-        }).ToList();
-
-        var problem = items.Count(x => x.status is "Reddedildi" or "Onay bekliyor");
-        var summary = items.Count == 0
-            ? $"{student.FullName} için yüklenmiş evrak bulunamadı."
-            : problem == 0
-                ? $"{student.FullName}: {items.Count} evrağın tamamı onaylı."
-                : $"{student.FullName}: {items.Count} evrağın {problem} tanesi ilgi bekliyor.";
-
-        return Build(conversationId, "driving_documents", summary,
-            new { studentId = student.Id, student.FullName, items }, AssistantIntent.GetDrivingDocuments, StudentActions(student.Id));
-    }
-
-    /// <summary>Yalnız gelecekteki ve iptal edilmemiş randevular — geçmiş ders dökümü ayrı niyet.</summary>
-    private async Task<AssistantResponseDto> DrivingAppointmentsAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
-    {
-        var profileId = await db.StudentDrivingProfiles.AsNoTracking().Where(x => x.StudentId == student.Id).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
-        if (!profileId.HasValue) return Build(conversationId, "error", "Bu öğrenci için sürücü kursu kaydı bulunamadı.", null, AssistantIntent.GetDrivingAppointments);
-
-        var now = DateTime.UtcNow;
-        var rows = await (from appointment in db.DrivingAppointments.AsNoTracking()
-                          join instructorProfile in db.DrivingInstructorProfiles.AsNoTracking() on appointment.InstructorProfileId equals instructorProfile.Id
-                          join staff in db.Staff.AsNoTracking() on instructorProfile.StaffId equals staff.Id
-                          join vehicle in db.DrivingVehicles.AsNoTracking() on appointment.VehicleId equals vehicle.Id
-                          where appointment.StudentDrivingProfileId == profileId
-                                && appointment.StartsAtUtc >= now
-                                && appointment.Status != DrivingAppointmentStatus.Cancelled
-                          orderby appointment.StartsAtUtc
-                          select new
-                          {
-                              startsAt = appointment.StartsAtUtc,
-                              endsAt = appointment.EndsAtUtc,
-                              instructor = staff.FullName,
-                              plate = vehicle.PlateNumber,
-                              meetingPoint = appointment.MeetingPoint,
-                              status = appointment.Status.ToString(),
-                          })
-                         .Take(10).ToListAsync(ct);
-
-        var summary = rows.Count == 0
-            ? $"{student.FullName} için planlanmış randevu bulunmuyor."
-            : $"{student.FullName} için {rows.Count} yaklaşan randevu var.";
-        return Build(conversationId, "driving_appointments", summary,
-            new { studentId = student.Id, student.FullName, items = rows }, AssistantIntent.GetDrivingAppointments, StudentActions(student.Id));
-    }
-
-    private async Task<AssistantResponseDto> DrivingGraduationAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
-    {
-        var profileId = await db.StudentDrivingProfiles.AsNoTracking().Where(x => x.StudentId == student.Id).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
-        if (!profileId.HasValue) return Build(conversationId, "error", "Bu öğrenci için sürücü kursu kaydı bulunamadı.", null, AssistantIntent.GetDrivingGraduation);
-
-        var record = await db.DrivingGraduationRecords.AsNoTracking()
-            .Where(x => x.StudentDrivingProfileId == profileId)
-            .OrderByDescending(x => x.CheckedAtUtc)
-            .Select(x => new { x.Status, x.GraduatedAtUtc, x.RevokedAtUtc, x.RevocationReason })
-            .FirstOrDefaultAsync(ct);
-
-        if (record is null)
-            return Build(conversationId, "text", $"{student.FullName} için henüz mezuniyet kaydı oluşturulmamış.", null, AssistantIntent.GetDrivingGraduation, StudentActions(student.Id));
-
-        // Sertifika ayrı bir varlık (DrivingCertificate); mezuniyet kaydı ile
-        // 1-N ilişkisi var, en güncel aktif olanı gösteriyoruz.
-        var certificate = await db.DrivingCertificates.AsNoTracking()
-            .Where(x => x.StudentDrivingProfileId == profileId && x.Status == DrivingCertificateStatus.Active)
-            .OrderByDescending(x => x.IssuedAtUtc)
-            .Select(x => new { x.DocumentNumber, x.MebbisCertificateNo, x.IssuedAtUtc, x.DeliveryStatus })
-            .FirstOrDefaultAsync(ct);
-
-        var summary = record.RevokedAtUtc.HasValue
-            ? $"{student.FullName} mezuniyeti iptal edilmiş." + (string.IsNullOrWhiteSpace(record.RevocationReason) ? "" : $" Sebep: {record.RevocationReason}")
-            : record.GraduatedAtUtc.HasValue
-                ? certificate is null
-                    ? $"{student.FullName} mezun edilmiş, sertifika henüz düzenlenmemiş."
-                    : $"{student.FullName} mezun edilmiş. Sertifika no: {(string.IsNullOrWhiteSpace(certificate.MebbisCertificateNo) ? certificate.DocumentNumber : certificate.MebbisCertificateNo)}."
-                : $"{student.FullName} için mezuniyet kontrolü sürüyor (durum: {record.Status}).";
-
-        return Build(conversationId, "driving_graduation", summary,
-            new
-            {
-                studentId = student.Id,
-                student.FullName,
-                status = record.Status.ToString(),
-                graduatedAt = record.GraduatedAtUtc,
-                certificateNumber = certificate is null
-                    ? null
-                    : string.IsNullOrWhiteSpace(certificate.MebbisCertificateNo) ? certificate.DocumentNumber : certificate.MebbisCertificateNo,
-                certificateIssuedAt = certificate?.IssuedAtUtc,
-                deliveryStatus = certificate?.DeliveryStatus.ToString(),
-            },
-            AssistantIntent.GetDrivingGraduation, StudentActions(student.Id));
-    }
-
     /// <summary>
     /// Öğrencinin üzerindeki iade edilmemiş kitaplar. Kütüphane kayıtları öğrenciyi
     /// ADIYLA tutuyor (yabancı anahtar yok), o yüzden eşleşme ad üzerinden yapılır.
@@ -920,75 +740,10 @@ public sealed class AssistantService(
             AssistantIntent.GetLibraryLoans, StudentActions(student.Id));
     }
 
-    private async Task<AssistantResponseDto> DrivingExamAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
-    {
-        var profileId = await db.StudentDrivingProfiles.AsNoTracking().Where(x => x.StudentId == student.Id).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
-        if (!profileId.HasValue) return Build(conversationId, "error", "Bu öğrenci için sürücü kursu kaydı bulunamadı.", null, AssistantIntent.GetDrivingExamStatus);
-        var rows = await (from candidate in db.DrivingExamCandidates.AsNoTracking()
-                          join session in db.DrivingExamSessions.AsNoTracking() on candidate.ExamSessionId equals session.Id
-                          where candidate.StudentDrivingProfileId == profileId
-                          orderby session.StartsAtUtc descending
-                          select new { session.Title, examType = session.ExamType.ToString(), startsAt = session.StartsAtUtc, status = candidate.Status.ToString(), candidate.Score, candidate.AttemptNo }).Take(10).ToListAsync(ct);
-        return Build(conversationId, "exam_results", $"{rows.Count} sürücü kursu sınav kaydı bulundu.", new { studentId = student.Id, student.FullName, items = rows, mode = "driving_school" }, AssistantIntent.GetDrivingExamStatus);
-    }
-
-    private async Task<AssistantResponseDto> DrivingProgressAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
-    {
-        var profile = await db.StudentDrivingProfiles.AsNoTracking().Where(x => x.StudentId == student.Id).Select(x => new { profileId = x.Id, x.StudentNumber, x.LicenseClass, transmission = x.TransmissionType.ToString(), status = x.Status.ToString(), x.PurchasedDrivingMinutes, x.UsedDrivingMinutes, remainingDrivingMinutes = Math.Max(0, x.PurchasedDrivingMinutes - x.UsedDrivingMinutes), x.MebbisEnteredAtUtc }).FirstOrDefaultAsync(ct);
-        return profile is null
-            ? Build(conversationId, "error", "Bu öğrenci için sürücü kursu kaydı bulunamadı.", null, AssistantIntent.GetDrivingProgress)
-            : Build(conversationId, "student_summary", "Sürücü kursu ilerleme özeti hazırlandı.", new { studentId = student.Id, student.FullName, driving = profile, mode = "driving_school" }, AssistantIntent.GetDrivingProgress);
-    }
-
     private async Task<AssistantResponseDto> StandaloneErrorAsync(AssistantRequestContext context, Guid? conversationId, string type, string text, AssistantIntent intent, CancellationToken ct)
     {
         var id = conversationId ?? (await CreateConversationAsync(context, "Yeni sohbet", ct)).Id;
         return Build(id, type, text, null, intent);
-    }
-
-    /// <summary>
-    /// Kursiyere eksik evrak hatırlatması gönderir. Eksik belge yoksa bildirim
-    /// GÖNDERİLMEZ — gereksiz bildirim kullanıcıyı bildirimlere karşı körleştirir.
-    /// </summary>
-    private async Task<AssistantResponseDto> SendDocumentReminderAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
-    {
-        var profileId = await db.StudentDrivingProfiles.AsNoTracking()
-            .Where(x => x.StudentId == student.Id).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
-        if (!profileId.HasValue)
-            return Build(conversationId, "error", "Bu öğrenci için sürücü kursu kaydı bulunamadı.", null, AssistantIntent.SendDocumentReminder);
-
-        var stored = await db.StudentDrivingDocuments.AsNoTracking()
-            .Where(x => x.StudentDrivingProfileId == profileId && x.IsCurrent)
-            .Select(x => new { x.DocumentType, x.Status })
-            .ToListAsync(ct);
-
-        var problems = stored
-            .Select(x => new { x.DocumentType, Effective = DrivingStudentRules.EffectiveStatus(x.Status) })
-            .Where(x => x.Effective is StudentDocumentStatus.Rejected or StudentDocumentStatus.PendingApproval)
-            .Select(x => DrivingStudentRules.DocumentLabel(x.DocumentType))
-            .ToList();
-
-        if (problems.Count == 0)
-            return Build(conversationId, "text",
-                $"{student.FullName} için ilgi bekleyen evrak yok — hatırlatma gönderilmedi.",
-                null, AssistantIntent.SendDocumentReminder);
-
-        var now = DateTime.UtcNow;
-        await drivingNotifier.NotifyStudentAsync(
-            profileId.Value,
-            "Evrak hatırlatması",
-            $"Dosyanızda ilgi bekleyen belgeler var: {string.Join(", ", problems)}. Lütfen kurs sekreterliğiyle iletişime geçin.",
-            "driving.document.reminder",
-            // Aynı gün içinde tekrar tetiklenirse kursiyere iki bildirim gitmesin.
-            dedupeKey: $"assistant-doc-reminder-{profileId}-{now:yyyyMMdd}",
-            relatedEntityType: "StudentDrivingProfile",
-            relatedEntityId: profileId.Value.ToString(),
-            cancellationToken: ct);
-
-        return Build(conversationId, "action_result",
-            $"{student.FullName} adlı kursiyere {problems.Count} evrak için hatırlatma gönderildi.",
-            new { studentId = student.Id, student.FullName, items = problems.Select(x => new { title = x }) },
-            AssistantIntent.SendDocumentReminder);
     }
 
     /// <summary>

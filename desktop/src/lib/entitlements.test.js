@@ -17,6 +17,6 @@ describe('isModuleAllowed', () => {
   });
 
   it('allows a module added after an existing package definition', () => {
-    expect(isModuleAllowed(entitlements, 'admin', 'driving-school')).toBe(true);
+    expect(isModuleAllowed(entitlements, 'admin', 'library')).toBe(true);
   });
 });

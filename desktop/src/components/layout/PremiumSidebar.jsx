@@ -14,12 +14,9 @@ import {
   X,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { resolveUserInstitutionType } from "../../lib/auth";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../lib/i18n/LanguageContext";
 import { getDisabledFeatureKeys, isPathDisabled, resetTenantFeatureCache } from "../../lib/tenantFeatures";
-import { getDrivingPermissions, isDrivingPathAllowed, resetDrivingPermissionCache } from "../../lib/drivingPermissions";
-import { getInstitutionType, isModuleAllowedForInstitution, resetInstitutionTypeCache } from "../../lib/institutionType";
 import { getEntitlements, isModuleAllowed, resetEntitlementCache } from "../../lib/entitlements";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 import { collapseMenuHubs } from "../../lib/navigation/hubs";
@@ -224,15 +221,6 @@ export function PremiumSidebar() {
   const [mobile, setMobile] = useState(() => window.innerWidth < 1024);
   const [disabledFeatures, setDisabledFeatures] = useState(null);
   const [entitlements, setEntitlements] = useState(null);
-  // Kurum türü: sürücü kursunda okula özgü menüler (servis, yemekhane, nöbet,
-  // veliler, kurs yönetimi, okul sınavları) gizlenir. Oturum yükünde kurum türü
-  // zaten geliyor (user.institutionType); onu başlangıç değeri olarak kullanırız.
-  // Böylece async getInstitutionType() login anında geçici olarak başarısız olsa
-  // bile sürücü kursu 'PrivateSchool'a düşüp TÜM sürücü menülerini gizlemez.
-  const [institutionType, setInstitutionType] = useState(
-    resolveUserInstitutionType(user),
-  );
-  const [drivingPermissions, setDrivingPermissions] = useState(null);
   // Kullanıcının özel rolü varsa menü o rolün SAYFA listesiyle daraltılır.
   // null = özel rol yok / kısıt yok. { modules:Set, restricted:bool } = kısıtlı.
   const [customRoleGate, setCustomRoleGate] = useState(null);
@@ -255,47 +243,22 @@ export function PremiumSidebar() {
     if (user?.isPlatformAdmin) {
       setDisabledFeatures(new Set());
       setEntitlements({ unrestricted: true, roles: {} });
-      setInstitutionType(null);
     } else {
       // Önbellekler kullanıcı/kurum kapsamlıdır. Aynı uygulamada çıkış yapıp
       // başka kuruma girildiğinde önceki kurumun paket ve özellikleri taşınamaz.
       resetTenantFeatureCache();
       resetEntitlementCache();
-      resetInstitutionTypeCache();
-      resetDrivingPermissionCache();
       getDisabledFeatureKeys().then((keys) => {
         if (active) setDisabledFeatures(keys);
       });
       getEntitlements().then((value) => {
         if (active) setEntitlements(value);
       });
-      // Login yanıtını anında uygula; eski oturumlarda yalnız modül bayrağı
-      // varsa da DrivingSchool olarak çöz. Ardından sunucuyla yeniden doğrula.
-      const sessionType = resolveUserInstitutionType(user);
-      setInstitutionType(sessionType);
-      getInstitutionType(sessionType || "PrivateSchool").then((value) => {
-        if (active) setInstitutionType(value);
-      });
     }
     return () => {
       active = false;
     };
   }, [user]);
-
-  useEffect(() => {
-    let active = true;
-    if (institutionType !== "DrivingSchool") {
-      setDrivingPermissions(null);
-      return () => { active = false; };
-    }
-    resetDrivingPermissionCache();
-    getDrivingPermissions().then((value) => {
-      if (active) setDrivingPermissions(value);
-    });
-    return () => {
-      active = false;
-    };
-  }, [institutionType, user]);
 
   useEffect(() => {
     let active = true;
@@ -350,35 +313,15 @@ export function PremiumSidebar() {
             (item) => !isPathDisabled(item.path, disabledFeatures),
           )
         : roleFilteredItems;
-    // Kurum türü: sürücü kursunda YALNIZCA sürücü kursuna ait + ortak modüller
-    // görünür (allowlist). Okula özgü modüller gizlenir — silinmez, okul
-    // kurumları kullanmaya devam eder. Modül anahtarı üzerinden çalışır ki
-    // /admin/exam-papers → "reports" gibi yol-eşleşme tuzaklarına takılmasın.
-    const institutionFilteredItems = featureFilteredItems.filter((item) =>
-      isModuleAllowedForInstitution(inferModuleKey(item), institutionType, item.path),
-    );
-    // Sürücü kursu menüsü rol adına göre değil, backend'in hesapladığı ince
-    // taneli driving.* izinlerine göre daralır. Böylece sekreter, muhasebe,
-    // filo sorumlusu ve eğitmen yalnızca gerçekten açabildiği sayfaları görür.
-    const permissionFilteredItems =
-      institutionType === "DrivingSchool"
-        ? institutionFilteredItems.filter((item) =>
-            isDrivingPathAllowed(item.path, drivingPermissions),
-          )
-        : institutionFilteredItems;
     // Paket yetkisi: kurumun paketi bu rol için modülü içermiyorsa menüden gizle.
     const visibleItems =
       entitlements && !entitlements.unrestricted
-        ? permissionFilteredItems.filter((item) => {
+        ? featureFilteredItems.filter((item) => {
             const moduleKey = inferModuleKey(item);
             if (!moduleKey || moduleKey === "profile" || moduleKey === "system") return true;
             return isModuleAllowed(entitlements, primaryRole, moduleKey);
           })
-        : permissionFilteredItems;
-    // Sürücü kursunda "Sorular" (öğrenci→öğretmen thread akışı) kullanılmıyor;
-    // menü ehliyet SORU BANKASINA yönlenir. Böylece bulk-yükleme ile eklenen
-    // sorular aynı yerde görünür ('questions' modülü her zaman açık olduğundan
-    // 'question-bank' modülü tenant pakette olmasa bile erişim garanti).
+        : featureFilteredItems;
     // Özel rol kısıtı: kurum yöneticisinin yetki matrisinde işaretlemediği sayfa
     // menüde GÖRÜNMEZ. Yalnız daraltır (hiçbir zaman genişletmez); profil gibi
     // temel girişler dışarıda tutulur, yoksa kullanıcı hesabına erişemez.
@@ -397,22 +340,12 @@ export function PremiumSidebar() {
       })
       : visibleItems;
 
-    const routedItems =
-      institutionType === "DrivingSchool"
-        ? customRoleItems.map((item) =>
-            item.path === "/questions"
-              ? { ...item, path: "/t/question-bank", label: "Soru Bankası" }
-              : item,
-          )
-        : customRoleItems;
     // Son adım: aynı işi bitiren ekranları konu hub'ına katla. Filtrelerden
     // sonra çalışır ki role/pakete kapalı ekran hub'a girmesin.
-    return buildGroupedMenuItems(collapseMenuHubs(routedItems), primaryRole);
+    return buildGroupedMenuItems(collapseMenuHubs(customRoleItems), primaryRole);
   }, [
     disabledFeatures,
     entitlements,
-    institutionType,
-    drivingPermissions,
     customRoleGate,
     enabledModules,
     primaryRole,
@@ -563,7 +496,7 @@ export function PremiumSidebar() {
                   edilmez. Bu satır ürünün ne olduğunu söyler, kurumu değil.
                 */}
                 <p className={cn("max-w-[154px] truncate text-[9px]", light ? "text-slate-500" : "text-foreground/38")}>
-                  {institutionType === "DrivingSchool" ? "Sürücü Kursu Yönetimi" : "Okul Yönetim Sistemi"}
+                  Okul Yönetim Sistemi
                 </p>
               </div>
             )}
