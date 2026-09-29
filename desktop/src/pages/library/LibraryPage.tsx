@@ -50,6 +50,29 @@ import {
   sendLibraryReminders,
   updateLibraryBook,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { LibraryBookRow, LibraryLoanRow, LibraryStats } from '../../lib/api/library';
+import type { LibrarySettings, StudentSummaryDto } from '../../types/api/generated';
+
+interface BookForm {
+  title: string;
+  author: string;
+  publisher: string;
+  isbn: string;
+  category: string;
+  shelf: string;
+  totalCopies: number | string;
+  notes: string;
+}
+
+type SettingsNumberField = 'loanDays' | 'maxActiveLoans' | 'maxExtensions' | 'extensionDays' | 'finePerDay';
+/** Form girdisi sayı alanlarını metin olarak tutabilir; kaydederken sayıya çevrilir. */
+type SettingsForm = Omit<LibrarySettings, SettingsNumberField> & Record<SettingsNumberField, number | string>;
+
+function toNumber(value: number | string, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
 
 const TABS = [
   { id: 'catalog', label: 'Katalog', icon: BookOpen },
@@ -60,9 +83,13 @@ const TABS = [
 
 const CHART_COLORS = ['#3b82f6', '#f59e0b', '#22c55e', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#84cc16'];
 
-const EMPTY_BOOK = { title: '', author: '', publisher: '', isbn: '', category: '', shelf: '', totalCopies: 1, notes: '' };
+type LoanFilter = 'active' | 'overdue' | 'all';
 
-function formatDate(value) {
+const LOAN_FILTERS: ReadonlyArray<readonly [LoanFilter, string]> = [['active', 'Aktif'], ['overdue', 'Gecikenler'], ['all', 'Tümü']];
+
+const EMPTY_BOOK: BookForm = { title: '', author: '', publisher: '', isbn: '', category: '', shelf: '', totalCopies: 1, notes: '' };
+
+function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -71,24 +98,24 @@ function formatDate(value) {
 export default function LibraryPage() {
   const { toast } = useToast();
   const [tab, setTab] = useState('catalog');
-  const [books, setBooks] = useState([]);
-  const [loans, setLoans] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [settings, setSettings] = useState(null);
+  const [books, setBooks] = useState<LibraryBookRow[]>([]);
+  const [loans, setLoans] = useState<LibraryLoanRow[]>([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [stats, setStats] = useState<LibraryStats | null>(null);
+  const [settings, setSettings] = useState<SettingsForm | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
-  const [bookDialog, setBookDialog] = useState(null); // null | { mode:'create'|'edit', book }
-  const [bookForm, setBookForm] = useState(EMPTY_BOOK);
+  const [bookDialog, setBookDialog] = useState<{ mode: 'create' } | { mode: 'edit'; book: LibraryBookRow } | null>(null);
+  const [bookForm, setBookForm] = useState<BookForm>(EMPTY_BOOK);
   const [isbnLoading, setIsbnLoading] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
-  const [checkoutDialog, setCheckoutDialog] = useState(null); // book
+  const [checkoutDialog, setCheckoutDialog] = useState<LibraryBookRow | null>(null);
   const [checkoutStudent, setCheckoutStudent] = useState('');
-  const [loanFilter, setLoanFilter] = useState('active');
+  const [loanFilter, setLoanFilter] = useState<LoanFilter>('active');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -98,23 +125,23 @@ export default function LibraryPage() {
       const [bookList, loanList, studentList, statData, settingsData] = await Promise.all([
         fetchLibraryBooks(),
         fetchLibraryLoans(),
-        fetchStudents().catch(() => []),
+        fetchStudents().catch(() => null),
         fetchLibraryStats().catch(() => null),
         fetchLibrarySettings().catch(() => null),
       ]);
       setBooks(bookList);
       setLoans(loanList);
-      setStudents(studentList);
+      setStudents(studentList ?? []);
       setStats(statData);
       if (settingsData) setSettings(settingsData);
     } catch (err) {
-      setError(err?.message || 'Kütüphane verileri alınamadı.');
+      setError(errorMessage(err, 'Kütüphane verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const categories = useMemo(
     () => [...new Set(books.map((b) => b.category).filter(Boolean))].sort(),
@@ -137,14 +164,26 @@ export default function LibraryPage() {
   }, [loans, loanFilter]);
 
   const openCreateBook = () => { setBookForm(EMPTY_BOOK); setBookDialog({ mode: 'create' }); };
-  const openEditBook = (book) => { setBookForm({ ...book }); setBookDialog({ mode: 'edit', book }); };
+  const openEditBook = (book: LibraryBookRow) => {
+    setBookForm({
+      title: book.title,
+      author: book.author,
+      publisher: book.publisher,
+      isbn: book.isbn,
+      category: book.category,
+      shelf: book.shelf,
+      totalCopies: book.totalCopies,
+      notes: book.notes,
+    });
+    setBookDialog({ mode: 'edit', book });
+  };
 
   const runIsbnLookup = async () => {
     if (!bookForm.isbn?.trim()) return;
     setIsbnLoading(true);
     try {
       const result = await lookupIsbn(bookForm.isbn.trim());
-      if (result?.found) {
+      if (result && 'title' in result && result.found) {
         setBookForm((prev) => ({
           ...prev,
           title: result.title || prev.title,
@@ -156,7 +195,7 @@ export default function LibraryPage() {
         toast({ title: 'ISBN bulunamadı', description: 'Bilgileri elle girebilirsiniz.' });
       }
     } catch (err) {
-      toast({ title: 'Sorgu başarısız', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Sorgu başarısız', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setIsbnLoading(false);
     }
@@ -173,21 +212,21 @@ export default function LibraryPage() {
         toast({ title: 'Kitap eklendi', description: bookForm.title });
       }
       setBookDialog(null);
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const removeBook = async (book) => {
+  const removeBook = async (book: LibraryBookRow) => {
     try {
       await deleteLibraryBook(book.id);
       toast({ title: 'Kitap silindi', description: book.title });
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Silinemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Silinemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
@@ -197,10 +236,10 @@ export default function LibraryPage() {
       .map((line) => line.split(';').map((p) => p.trim()))
       .filter((parts) => parts[0])
       .map((parts) => ({
-        title: parts[0],
+        title: parts[0] ?? '',
         author: parts[1] || '',
         category: parts[2] || '',
-        totalCopies: parseInt(parts[3], 10) || 1,
+        totalCopies: parseInt(parts[3] ?? '', 10) || 1,
         isbn: parts[4] || '',
         shelf: parts[5] || '',
       }));
@@ -214,9 +253,9 @@ export default function LibraryPage() {
       toast({ title: 'İçe aktarma tamam', description: `${result?.created ?? items.length} kitap eklendi.` });
       setBulkOpen(false);
       setBulkText('');
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'İçe aktarılamadı', description: err?.message, variant: 'destructive' });
+      toast({ title: 'İçe aktarılamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -235,36 +274,36 @@ export default function LibraryPage() {
       toast({ title: 'Ödünç verildi', description: `${checkoutDialog.title} → ${checkoutStudent}` });
       setCheckoutDialog(null);
       setCheckoutStudent('');
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Ödünç verilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Ödünç verilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const runReturn = async (loan) => {
+  const runReturn = async (loan: LibraryLoanRow) => {
     try {
       const result = await returnLibraryLoan(loan.id);
       toast({
         title: 'İade alındı',
-        description: result?.fineAmount > 0
+        description: result && result.fineAmount > 0
           ? `${loan.bookTitle} — ${result.overdueDays} gün gecikme, ceza ${formatMoney(result.fineAmount)}`
           : loan.bookTitle,
       });
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'İade alınamadı', description: err?.message, variant: 'destructive' });
+      toast({ title: 'İade alınamadı', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
-  const runExtend = async (loan) => {
+  const runExtend = async (loan: LibraryLoanRow) => {
     try {
       await extendLibraryLoan(loan.id);
       toast({ title: 'Süre uzatıldı', description: loan.bookTitle });
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Uzatılamadı', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Uzatılamadı', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
@@ -273,25 +312,28 @@ export default function LibraryPage() {
       const result = await sendLibraryReminders();
       toast({ title: 'Hatırlatmalar gönderildi', description: `${result?.notified ?? 0} ödünç için öğrenci ve veliye bildirim üretildi.` });
     } catch (err) {
-      toast({ title: 'Gönderilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Gönderilemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
   const persistSettings = async () => {
+    if (!settings) return;
     setSaving(true);
     try {
       const saved = await saveLibrarySettings({
         ...settings,
         loanDays: Number(settings.loanDays) || 15,
         maxActiveLoans: Number(settings.maxActiveLoans) || 3,
-        maxExtensions: Number(settings.maxExtensions) ?? 1,
+        // 0 geçerli bir değerdir (uzatma yok); yalnız geçersiz girdi varsayılana düşer.
+        // Eskiden `Number(x) ?? 1` yazılıydı: ?? hiç devreye girmez, NaN gönderiliyordu.
+        maxExtensions: toNumber(settings.maxExtensions, 1),
         extensionDays: Number(settings.extensionDays) || 7,
         finePerDay: Number(settings.finePerDay) || 0,
       });
       setSettings(saved);
       toast({ title: 'Ayarlar kaydedildi' });
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -407,7 +449,7 @@ export default function LibraryPage() {
       {tab === 'loans' && (
         <div className="rounded-2xl border bg-card shadow-sm">
           <div className="flex flex-wrap items-center gap-3 border-b p-4">
-            {[['active', 'Aktif'], ['overdue', 'Gecikenler'], ['all', 'Tümü']].map(([key, label]) => (
+            {LOAN_FILTERS.map(([key, label]) => (
               <button
                 key={key}
                 type="button"
@@ -565,23 +607,23 @@ export default function LibraryPage() {
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div>
               <Label>Ödünç süresi (gün)</Label>
-              <Input type="number" min="1" className="mt-1 rounded-xl" value={settings.loanDays} onChange={(e) => setSettings((p) => ({ ...p, loanDays: e.target.value }))} />
+              <Input type="number" min="1" className="mt-1 rounded-xl" value={settings.loanDays} onChange={(e) => setSettings((p) => (p ? { ...p, loanDays: e.target.value } : p))} />
             </div>
             <div>
               <Label>Aynı anda en fazla kitap</Label>
-              <Input type="number" min="1" className="mt-1 rounded-xl" value={settings.maxActiveLoans} onChange={(e) => setSettings((p) => ({ ...p, maxActiveLoans: e.target.value }))} />
+              <Input type="number" min="1" className="mt-1 rounded-xl" value={settings.maxActiveLoans} onChange={(e) => setSettings((p) => (p ? { ...p, maxActiveLoans: e.target.value } : p))} />
             </div>
             <div>
               <Label>Uzatma hakkı (adet)</Label>
-              <Input type="number" min="0" className="mt-1 rounded-xl" value={settings.maxExtensions} onChange={(e) => setSettings((p) => ({ ...p, maxExtensions: e.target.value }))} />
+              <Input type="number" min="0" className="mt-1 rounded-xl" value={settings.maxExtensions} onChange={(e) => setSettings((p) => (p ? { ...p, maxExtensions: e.target.value } : p))} />
             </div>
             <div>
               <Label>Uzatma süresi (gün)</Label>
-              <Input type="number" min="1" className="mt-1 rounded-xl" value={settings.extensionDays} onChange={(e) => setSettings((p) => ({ ...p, extensionDays: e.target.value }))} />
+              <Input type="number" min="1" className="mt-1 rounded-xl" value={settings.extensionDays} onChange={(e) => setSettings((p) => (p ? { ...p, extensionDays: e.target.value } : p))} />
             </div>
             <div>
               <Label>Günlük gecikme cezası (TL, 0 = yok)</Label>
-              <Input type="number" min="0" step="0.5" className="mt-1 rounded-xl" value={settings.finePerDay} onChange={(e) => setSettings((p) => ({ ...p, finePerDay: e.target.value }))} />
+              <Input type="number" min="0" step="0.5" className="mt-1 rounded-xl" value={settings.finePerDay} onChange={(e) => setSettings((p) => (p ? { ...p, finePerDay: e.target.value } : p))} />
             </div>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">

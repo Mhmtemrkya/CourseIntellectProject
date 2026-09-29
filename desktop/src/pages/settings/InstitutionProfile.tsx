@@ -12,9 +12,23 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { fetchInstitutionProfile, saveInstitutionProfile } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+
+type ProfileField = 'name' | 'address' | 'district' | 'city' | 'phone' | 'email' | 'website' | 'taxOffice' | 'taxNumber' | 'documentFooterNote';
+
+interface FieldDefinition {
+  key: ProfileField;
+  label: string;
+  placeholder: string;
+  required?: boolean;
+  span?: number;
+  hint?: string;
+}
+
+type ProfileForm = Record<ProfileField, string>;
 
 // Belgeye basılan alanlar; sıra ekstrenin sağ üst köşesindeki sırayla aynıdır.
-const FIELDS = [
+const FIELDS: readonly FieldDefinition[] = [
   { key: 'name', label: 'Kurum adı', placeholder: 'Erzurum Koleji', required: true, span: 2 },
   { key: 'address', label: 'Adres', placeholder: 'Ömer Nasuhi Bilmen Mah. No:45', span: 2 },
   { key: 'district', label: 'İlçe', placeholder: 'Yakutiye' },
@@ -33,14 +47,16 @@ const FIELDS = [
   },
 ];
 
-const EMPTY = FIELDS.reduce((acc, field) => ({ ...acc, [field.key]: '' }), {});
+const EMPTY: ProfileForm = {
+  name: '', address: '', district: '', city: '', phone: '', email: '', website: '', taxOffice: '', taxNumber: '', documentFooterNote: '',
+};
 
 export default function InstitutionProfile() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useApp();
-  const [form, setForm] = useState(EMPTY);
-  const [meta, setMeta] = useState({ isConfigured: false, updatedAtUtc: null });
+  const [form, setForm] = useState<ProfileForm>(EMPTY);
+  const [meta, setMeta] = useState<{ isConfigured: boolean; updatedAtUtc: string | null }>({ isConfigured: false, updatedAtUtc: null });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -53,18 +69,18 @@ export default function InstitutionProfile() {
       setLoading(true);
       setError('');
       const data = await fetchInstitutionProfile();
-      setForm(FIELDS.reduce((acc, field) => ({ ...acc, [field.key]: data?.[field.key] || '' }), {}));
+      setForm(FIELDS.reduce<ProfileForm>((acc, field) => ({ ...acc, [field.key]: data?.[field.key] || '' }), { ...EMPTY }));
       setMeta({ isConfigured: Boolean(data?.isConfigured), updatedAtUtc: data?.updatedAtUtc || null });
     } catch (err) {
-      setError(err.message || 'Kurum künyesi alınamadı.');
+      setError(errorMessage(err, 'Kurum künyesi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const set = (key: ProfileField, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const preview = useMemo(() => [
     form.name,
@@ -90,7 +106,7 @@ export default function InstitutionProfile() {
         description: 'Bundan sonra üretilen ekstre ve belgelerde bu bilgiler görünecek.',
       });
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }

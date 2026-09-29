@@ -25,8 +25,13 @@ import {
   fetchStudents,
   reserveLibraryBook,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { LibraryBookRow, MyLibrary, ParentLibraryChild } from '../../lib/api/library';
+import type { LibraryRecommendation, StudentSummaryDto } from '../../types/api/generated';
 
-function formatDate(value) {
+type Reservation = MyLibrary['reservations'][number];
+
+function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
@@ -39,12 +44,12 @@ export default function LibraryUserPage() {
   const { toast } = useToast();
   const role = user?.role;
 
-  const [books, setBooks] = useState([]);
-  const [my, setMy] = useState(null);
-  const [children, setChildren] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
+  const [books, setBooks] = useState<LibraryBookRow[]>([]);
+  const [my, setMy] = useState<MyLibrary | null>(null);
+  const [children, setChildren] = useState<ParentLibraryChild[]>([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [recommendations, setRecommendations] = useState<LibraryRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -63,22 +68,22 @@ export default function LibraryUserPage() {
         setChildren(await fetchParentLibrary());
       } else {
         const [studentList, classList, recList] = await Promise.all([
-          fetchStudents().catch(() => []),
-          fetchClasses().catch(() => []),
-          fetchLibraryRecommendations().catch(() => []),
+          fetchStudents().catch(() => null),
+          fetchClasses().catch((): string[] => []),
+          fetchLibraryRecommendations().catch((): LibraryRecommendation[] => []),
         ]);
-        setStudents(studentList);
+        setStudents(studentList ?? []);
         setClasses(classList);
         setRecommendations(recList);
       }
     } catch (err) {
-      setError(err?.message || 'Kütüphane verileri alınamadı.');
+      setError(errorMessage(err, 'Kütüphane verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [role]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const filteredBooks = useMemo(() => books.filter((b) => {
     if (!search) return true;
@@ -87,23 +92,23 @@ export default function LibraryUserPage() {
       || (b.author || '').toLocaleLowerCase('tr-TR').includes(q);
   }), [books, search]);
 
-  const reserve = async (book) => {
+  const reserve = async (book: LibraryBookRow) => {
     try {
       const result = await reserveLibraryBook(book.id);
       toast({ title: 'Rezervasyon alındı', description: `${book.title} — sıradaki konumun: ${result?.queuePosition ?? 1}` });
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'Rezerve edilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Rezerve edilemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
-  const cancelReservation = async (reservation) => {
+  const cancelReservation = async (reservation: Reservation) => {
     try {
       await cancelLibraryReservation(reservation.id);
       toast({ title: 'Rezervasyon iptal edildi', description: reservation.bookTitle });
-      load();
+      void load();
     } catch (err) {
-      toast({ title: 'İptal edilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'İptal edilemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
@@ -120,7 +125,7 @@ export default function LibraryUserPage() {
       setRecForm({ bookId: '', target: recForm.target, studentName: '', className: '', note: '' });
       load();
     } catch (err) {
-      toast({ title: 'Gönderilemedi', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Gönderilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -279,10 +284,7 @@ export default function LibraryUserPage() {
                     <Select value={recForm.className || undefined} onValueChange={(v) => setRecForm((p) => ({ ...p, className: v }))}>
                       <SelectTrigger className="mt-1 rounded-xl"><SelectValue placeholder="Sınıf" /></SelectTrigger>
                       <SelectContent>
-                        {classes.map((c) => {
-                          const name = c.name || c.className || c;
-                          return <SelectItem key={name} value={name}>{name}</SelectItem>;
-                        })}
+                        {classes.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   ) : (

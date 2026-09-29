@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, FileSignature, FileText, Plus, Trash2, Eye, Save, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,25 @@ import {
   uploadConsentDocument,
 } from '../../lib/api/modules';
 import { cn } from '@/lib/utils';
+import { errorMessage } from '../../lib/errors';
+import {
+  ConsentSignerRole,
+  type ConsentContextKind,
+  type ConsentContextKindDto,
+  type ConsentDocumentSource,
+  type ConsentTemplateDto,
+  type SaveConsentTemplateRequest,
+} from '../../types/api/generated';
+
+/** Düzenleme taslağı: yeni formda id yoktur, sıra alanı metin olarak da gelebilir. */
+type TemplateDraft = Omit<ConsentTemplateDto, 'id' | 'updatedAtUtc' | 'sortOrder'> & {
+  id: string | null;
+  sortOrder: number | string;
+};
+
+function isSignerRole(value: string): value is ConsentSignerRole {
+  return Object.values<string>(ConsentSignerRole).includes(value);
+}
 
 const PLACEHOLDERS = [
   ['{{ogrenci}}', 'Öğrenci / kursiyer adı'],
@@ -60,15 +79,15 @@ const STARTER_ITEMS = [
   'Kurum kurallarına uyacağımı kabul ederim.',
 ];
 
-const SIGNER_ROLES = [
+const SIGNER_ROLES: ReadonlyArray<{ value: ConsentSignerRole; label: string }> = [
   { value: 'StudentOrParent', label: 'Öğrenci veya veli' },
   { value: 'Student', label: 'Öğrencinin kendisi' },
   { value: 'Parent', label: 'Veli / yasal temsilci' },
 ];
 
-const MODULE_LABEL = { all: 'Ortak', school: 'Okul', driving: 'Sürücü kursu' };
+const MODULE_LABEL: Partial<Record<string, string>> = { all: 'Ortak', school: 'Okul', driving: 'Sürücü kursu' };
 
-function emptyDraft(sourceKind = 'Text') {
+function emptyDraft(sourceKind: ConsentDocumentSource = 'Text'): TemplateDraft {
   return {
     id: null,
     title: '',
@@ -91,9 +110,9 @@ function emptyDraft(sourceKind = 'Text') {
 export default function ConsentTemplates() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [templates, setTemplates] = useState([]);
-  const [contextKinds, setContextKinds] = useState([]);
-  const [draft, setDraft] = useState(null);
+  const [templates, setTemplates] = useState<ConsentTemplateDto[]>([]);
+  const [contextKinds, setContextKinds] = useState<ConsentContextKindDto[]>([]);
+  const [draft, setDraft] = useState<TemplateDraft | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -110,16 +129,16 @@ export default function ConsentTemplates() {
       setTemplates(list);
       setContextKinds(catalog?.contextKinds || []);
     } catch (loadError) {
-      setError(loadError.message);
+      setError(errorMessage(loadError));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const groupedKinds = useMemo(() => {
-    const groups = new Map();
+    const groups = new Map<string, ConsentContextKindDto[]>();
     contextKinds.forEach((kind) => {
       const bucket = groups.get(kind.module) || [];
       bucket.push(kind);
@@ -128,29 +147,31 @@ export default function ConsentTemplates() {
     return [...groups.entries()];
   }, [contextKinds]);
 
-  const uploadDocument = async (event) => {
+  const uploadDocument = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     setUploading(true);
     try {
       const document = await uploadConsentDocument(file);
-      setDraft((current) => ({
+      if (!document) throw new Error('Belge yüklenemedi.');
+      setDraft((current) => (current ? {
         ...current,
         sourceKind: 'Pdf',
         documentId: document.id,
         documentFileName: document.fileName,
         documentPageCount: document.pageCount,
         title: current.title.trim() || document.fileName.replace(/\.pdf$/i, ''),
-      }));
+      } : current));
       toast({ title: 'Belge yüklendi', description: `${document.fileName} · ${document.pageCount} sayfa` });
     } catch (uploadError) {
-      toast({ title: 'Belge yüklenemedi', description: uploadError.message, variant: 'destructive' });
+      toast({ title: 'Belge yüklenemedi', description: errorMessage(uploadError), variant: 'destructive' });
     } finally {
       setUploading(false);
     }
   };
 
   const save = async () => {
+    if (!draft) return;
     if (!draft.title.trim()) {
       toast({ title: 'Başlık zorunlu', description: 'Forma bir başlık verin.', variant: 'destructive' });
       return;
@@ -161,7 +182,7 @@ export default function ConsentTemplates() {
     }
     setSaving(true);
     try {
-      const payload = {
+      const payload: SaveConsentTemplateRequest = {
         title: draft.title,
         body: draft.body,
         checkItems: draft.checkItems.map((item) => item.trim()).filter(Boolean),
@@ -180,36 +201,38 @@ export default function ConsentTemplates() {
       setDraft(null);
       await load();
     } catch (saveError) {
-      toast({ title: 'Form kaydedilemedi', description: saveError.message, variant: 'destructive' });
+      toast({ title: 'Form kaydedilemedi', description: errorMessage(saveError), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const remove = async (template) => {
+  const remove = async (template: ConsentTemplateDto) => {
     if (!window.confirm(`"${template.title}" formu silinsin mi?\n\nDaha önce İMZALANMIŞ belgeler silinmez; yalnız şablon ve bağlı olduğu akışlar kaldırılır.`)) return;
     try {
       await deleteConsentTemplate(template.id);
       toast({ title: 'Form silindi', description: 'İmzalanmış belgeler öğrenci dosyalarında duruyor.' });
       await load();
     } catch (removeError) {
-      toast({ title: 'Form silinemedi', description: removeError.message, variant: 'destructive' });
+      toast({ title: 'Form silinemedi', description: errorMessage(removeError), variant: 'destructive' });
     }
   };
 
-  const preview = async (template) => {
+  const preview = async (template: ConsentTemplateDto) => {
     try {
       const blob = await downloadConsentTemplatePreview(template.id);
+      if (!blob) throw new Error('Önizleme boş döndü.');
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank');
       setTimeout(() => URL.revokeObjectURL(url), 30000);
     } catch (previewError) {
-      toast({ title: 'Önizleme açılamadı', description: previewError.message, variant: 'destructive' });
+      toast({ title: 'Önizleme açılamadı', description: errorMessage(previewError), variant: 'destructive' });
     }
   };
 
-  const toggleBinding = (kind, key = '') => {
+  const toggleBinding = (kind: ConsentContextKind, key = '') => {
     setDraft((current) => {
+      if (!current) return current;
       const exists = current.bindings.some((item) => item.contextKind === kind && (item.contextKey || '') === key);
       return {
         ...current,
@@ -281,7 +304,7 @@ export default function ConsentTemplates() {
                 <select
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={draft.signerRole}
-                  onChange={(event) => setDraft({ ...draft, signerRole: event.target.value })}
+                  onChange={(event) => { if (isSignerRole(event.target.value)) setDraft({ ...draft, signerRole: event.target.value }); }}
                 >
                   {SIGNER_ROLES.map((role) => (
                     <option key={role.value} value={role.value}>{role.label}</option>

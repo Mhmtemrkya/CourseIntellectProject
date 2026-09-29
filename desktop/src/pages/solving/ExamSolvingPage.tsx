@@ -5,7 +5,7 @@ import {
   ArrowLeft, ArrowRight, Bookmark, CheckCircle2, ClipboardList, Clock3, Download, FileDown,
   Flag, Grid2X2, Loader2, Maximize, MessageSquareText, NotebookPen, Save, Send, ShieldAlert, Sparkles, X,
 } from 'lucide-react';
-import { DrawingCanvas } from '../../features/solving/canvas/DrawingCanvas';
+import { DrawingCanvas, type CanvasStroke } from '../../features/solving/canvas/DrawingCanvas';
 import CameraMonitor from '../../components/student/CameraMonitor';
 import { useApp } from '../../context/AppContext';
 import { desktopApiBaseUrl } from '../../lib/auth';
@@ -21,14 +21,31 @@ import {
   saveSolutionNote,
   startSolutionSession,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { SolutionSessionResponse, SolutionSummaryResponse } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-function buildImageUrl(path) {
+type SidePanel = 'solution' | 'note' | 'review';
+
+const RAIL_ITEMS: ReadonlyArray<readonly [IconComponent, string, SidePanel]> = [
+  [ClipboardList, 'Soru Listesi', 'solution'],
+  [NotebookPen, 'Notlar', 'note'],
+  [Grid2X2, 'Kağıt', 'solution'],
+];
+
+const PANEL_TABS: ReadonlyArray<readonly [SidePanel, string, IconComponent]> = [
+  ['solution', 'Çözüm', NotebookPen],
+  ['note', 'Not Ekle', MessageSquareText],
+  ['review', 'Öğretmen Yorumu', Send],
+];
+
+function buildImageUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
   return `${desktopApiBaseUrl}/${String(path).replace(/^\/+/, '')}`;
 }
 
-function formatSeconds(seconds) {
+function formatSeconds(seconds: number | null | undefined): string {
   const safe = Math.max(0, Number(seconds || 0));
   const minutes = Math.floor(safe / 60).toString().padStart(2, '0');
   const rest = Math.floor(safe % 60).toString().padStart(2, '0');
@@ -39,7 +56,7 @@ export default function ExamSolvingPage() {
   const { user } = useApp();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState<SolutionSessionResponse | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,8 +65,8 @@ export default function ExamSolvingPage() {
   const [noteDraft, setNoteDraft] = useState('');
   const [openAnswerDraft, setOpenAnswerDraft] = useState('');
   const [teacherComment, setTeacherComment] = useState('');
-  const [summary, setSummary] = useState(null);
-  const [panel, setPanel] = useState('solution');
+  const [summary, setSummary] = useState<SolutionSummaryResponse | null>(null);
+  const [panel, setPanel] = useState<SidePanel>('solution');
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [violationCount, setViolationCount] = useState(0);
   const [showViolation, setShowViolation] = useState(false);
@@ -74,6 +91,7 @@ export default function ExamSolvingPage() {
       const existingSessionId = searchParams.get('sessionId');
       if (existingSessionId) {
         const loaded = await fetchSolutionSession(existingSessionId);
+        if (!loaded) throw new Error('Çözüm oturumu bulunamadı.');
         setSession(loaded);
         setRemainingSeconds(loaded.durationSeconds || 3600);
         return;
@@ -84,27 +102,28 @@ export default function ExamSolvingPage() {
         subject: searchParams.get('subject') || 'Matematik',
         studentUsername: searchParams.get('studentUsername') || user?.username || user?.email || 'demo-ogrenci',
         studentName: searchParams.get('studentName') || user?.name || 'Demo Öğrenci',
-        className: searchParams.get('className') || user?.className || '',
+        className: searchParams.get('className') || '',
         durationSeconds: Number(searchParams.get('durationSeconds') || 5400),
         isTeacherPreview,
         plannedExamId: searchParams.get('plannedExamId') || null,
         questionIds: searchParams.get('questionIds')?.split(',').filter(Boolean) || null,
         questionCount: Number(searchParams.get('questionCount') || 20),
       });
+      if (!started) throw new Error('Çözüm oturumu başlatılamadı.');
       setSession(started);
       setRemainingSeconds(started.durationSeconds || 3600);
       const next = new URLSearchParams(searchParams);
       next.set('sessionId', started.id);
       setSearchParams(next, { replace: true });
     } catch (err) {
-      setError(err.message || 'Çözüm oturumu başlatılamadı. Soru bankasında uygun soru olduğundan emin olun.');
+      setError(errorMessage(err, 'Çözüm oturumu başlatılamadı. Soru bankasında uygun soru olduğundan emin olun.'));
     } finally {
       setLoading(false);
     }
-  }, [isTeacherPreview, searchParams, setSearchParams, user?.className, user?.email, user?.name, user?.username]);
+  }, [isTeacherPreview, searchParams, setSearchParams, user?.email, user?.name, user?.username]);
 
   useEffect(() => {
-    loadOrStart();
+    void loadOrStart();
   }, [loadOrStart]);
 
   useEffect(() => {
@@ -118,7 +137,7 @@ export default function ExamSolvingPage() {
   // Kopyala/yapıştır ve sağ tık engeli.
   useEffect(() => {
     if (!blockCopyPaste || !examActive) return undefined;
-    const prevent = (event) => event.preventDefault();
+    const prevent = (event: Event) => event.preventDefault();
     const events = ['copy', 'cut', 'paste', 'contextmenu', 'dragstart'];
     events.forEach((name) => document.addEventListener(name, prevent));
     return () => events.forEach((name) => document.removeEventListener(name, prevent));
@@ -140,7 +159,7 @@ export default function ExamSolvingPage() {
   // Sayfadan ayrılma / yenileme uyarısı (sınavı bitirmeden çıkış).
   useEffect(() => {
     if (!examActive) return undefined;
-    const onBeforeUnload = (event) => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
       return '';
@@ -185,10 +204,10 @@ export default function ExamSolvingPage() {
   const refreshSession = useCallback(async () => {
     if (!session?.id) return;
     const loaded = await fetchSolutionSession(session.id);
-    setSession(loaded);
+    if (loaded) setSession(loaded);
   }, [session?.id]);
 
-  const handleAnswer = async (optionIndex, openAnswer = null) => {
+  const handleAnswer = async (optionIndex: number, openAnswer: string | null = null) => {
     if (!session?.id || !question || saving) return;
     try {
       setSaving(true);
@@ -199,10 +218,10 @@ export default function ExamSolvingPage() {
         openAnswer,
         timeSpentSeconds: question.timeSpentSeconds || 0,
       });
-      setSession(updated);
+      if (updated) setSession(updated);
       setAutosaveLabel('Kaydedildi');
     } catch (err) {
-      setError(err.message || 'Cevap kaydedilemedi.');
+      setError(errorMessage(err, 'Cevap kaydedilemedi.'));
       setAutosaveLabel('Kaydedilemedi');
     } finally {
       setSaving(false);
@@ -218,10 +237,10 @@ export default function ExamSolvingPage() {
         isFlagged: !question.isFlagged,
         flagType,
       });
-      setSession(updated);
+      if (updated) setSession(updated);
       setAutosaveLabel('İşaret kaydedildi');
     } catch (err) {
-      setError(err.message || 'İşaret kaydedilemedi.');
+      setError(errorMessage(err, 'İşaret kaydedilemedi.'));
     }
   };
 
@@ -233,10 +252,10 @@ export default function ExamSolvingPage() {
         questionAttemptId: question.attemptId,
         note: noteDraft,
       });
-      setSession(updated);
+      if (updated) setSession(updated);
       setAutosaveLabel('Not kaydedildi');
     } catch (err) {
-      setError(err.message || 'Not kaydedilemedi.');
+      setError(errorMessage(err, 'Not kaydedilemedi.'));
     }
   };
 
@@ -248,17 +267,17 @@ export default function ExamSolvingPage() {
         questionAttemptId: question.attemptId,
         comment: teacherComment.trim(),
       });
-      setSession(updated);
+      if (updated) setSession(updated);
       setTeacherComment('');
       setAutosaveLabel('Öğretmen yorumu kaydedildi');
     } catch (err) {
-      setError(err.message || 'Öğretmen yorumu kaydedilemedi.');
+      setError(errorMessage(err, 'Öğretmen yorumu kaydedilemedi.'));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleStroke = async (stroke) => {
+  const handleStroke = async (stroke: CanvasStroke) => {
     if (!session?.id || !question) return;
     try {
       setAutosaveLabel('Çizim kaydediliyor...');
@@ -277,7 +296,7 @@ export default function ExamSolvingPage() {
     }
   };
 
-  const handleSnapshot = async (dataUrl) => {
+  const handleSnapshot = async (dataUrl: string) => {
     if (!session?.id || !question) return;
     try {
       await saveSolutionCanvasSnapshot(session.id, {
@@ -298,7 +317,7 @@ export default function ExamSolvingPage() {
       setSummary(completed);
       await refreshSession();
     } catch (err) {
-      setError(err.message || 'Sınav bitirilemedi.');
+      setError(errorMessage(err, 'Sınav bitirilemedi.'));
     } finally {
       setSaving(false);
     }
@@ -306,7 +325,7 @@ export default function ExamSolvingPage() {
 
   useEffect(() => {
     if (remainingSeconds === 0 && session?.status === 'Active' && !summary && !saving) {
-      finish();
+      void finish();
     }
   }, [finish, remainingSeconds, saving, session?.status, summary]);
 
@@ -355,7 +374,7 @@ export default function ExamSolvingPage() {
       <CameraMonitor
         active={requireCamera && examActive}
         publish
-        examId={searchParams.get('plannedExamId') || session?.plannedExamId || ''}
+        examId={searchParams.get('plannedExamId') || ''}
         studentUsername={searchParams.get('studentUsername') || user?.username || user?.email || ''}
         studentName={searchParams.get('studentName') || user?.name || 'Öğrenci'}
       />
@@ -393,11 +412,7 @@ export default function ExamSolvingPage() {
           <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-lg shadow-orange-500/25">
             <Sparkles className="h-6 w-6" />
           </div>
-          {[
-            [ClipboardList, 'Soru Listesi', 'solution'],
-            [NotebookPen, 'Notlar', 'note'],
-            [Grid2X2, 'Kağıt', 'solution'],
-          ].map(([Icon, label, targetPanel]) => (
+          {RAIL_ITEMS.map(([Icon, label, targetPanel]) => (
             <button key={label} type="button" onClick={() => setPanel(targetPanel)} className="mb-4 flex w-full flex-col items-center gap-2 rounded-2xl px-2 py-3 text-xs text-muted-foreground hover:bg-foreground/10 hover:text-foreground">
               <Icon className="h-5 w-5" />
               {label}
@@ -497,11 +512,7 @@ export default function ExamSolvingPage() {
 
             <section className="space-y-4">
               <div className="flex rounded-[24px] border border-foreground/10 bg-foreground/5 p-1">
-                {[
-                  ['solution', 'Çözüm', NotebookPen],
-                  ['note', 'Not Ekle', MessageSquareText],
-                  ['review', 'Öğretmen Yorumu', Send],
-                ].map(([key, label, Icon]) => (
+                {PANEL_TABS.map(([key, label, Icon]) => (
                   <button
                     key={key}
                     type="button"
@@ -538,7 +549,7 @@ export default function ExamSolvingPage() {
                   <div className="space-y-3">
                     {(question?.teacherReviews || []).length === 0 ? (
                       <p className="rounded-2xl bg-foreground/5 p-4 text-sm text-muted-foreground">Henüz öğretmen yorumu yok.</p>
-                    ) : question.teacherReviews.map((review) => (
+                    ) : (question?.teacherReviews || []).map((review) => (
                       <div key={review.id} className="rounded-2xl border border-foreground/10 bg-foreground/5 p-4">
                         <p className="text-sm text-foreground">{review.comment}</p>
                         <p className="mt-2 text-xs text-muted-foreground">{review.teacherName}</p>
@@ -622,7 +633,7 @@ export default function ExamSolvingPage() {
   );
 }
 
-function SubmissionSuccessModal({ summary, onBackToExams, onResults }) {
+function SubmissionSuccessModal({ summary, onBackToExams, onResults }: { summary: SolutionSummaryResponse; onBackToExams: () => void; onResults: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
       <div className="relative w-full max-w-xl overflow-hidden rounded-[36px] border border-emerald-300/25 bg-[hsl(var(--ci-card))] p-8 text-center text-foreground shadow-2xl shadow-emerald-950/40">
@@ -650,7 +661,7 @@ function SubmissionSuccessModal({ summary, onBackToExams, onResults }) {
               Sonuçlarım
             </button>
             {summary.report?.downloadUrl ? (
-              <a href={buildImageUrl(summary.report.downloadUrl)} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-400/40 px-5 py-3 font-black text-emerald-700 hover:bg-emerald-300/10 dark:text-emerald-100">
+              <a href={buildImageUrl(summary.report.downloadUrl) ?? undefined} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-400/40 px-5 py-3 font-black text-emerald-700 hover:bg-emerald-300/10 dark:text-emerald-100">
                 <Download className="mr-2 inline h-4 w-4" /> PDF
               </a>
             ) : null}
@@ -661,7 +672,7 @@ function SubmissionSuccessModal({ summary, onBackToExams, onResults }) {
   );
 }
 
-function MetricBox({ label, value }) {
+function MetricBox({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-foreground/10 bg-foreground/5 p-4">
       <div className="text-2xl font-black text-foreground">{value}</div>

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Send, Paperclip, MoreVertical, Phone, Video, Check, CheckCheck, Plus, ChevronLeft,
@@ -40,18 +40,43 @@ import {
   uploadFile,
 } from '../../lib/api/modules';
 import { cn } from '../../lib/utils';
+import { errorMessage } from '../../lib/errors';
+import type { MessageAttachment, MessageItem, MessageThread } from '../../types/api/messages';
+import type { StaffSummaryDto, StudentSummaryDto, UploadedAssetDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const containerVariants = {
+/** Yeni sohbet başlatılabilecek kişi. */
+interface ChatContact {
+  name: string;
+  role: string;
+  contactKey: string;
+  subtitle?: string;
+}
+
+/**
+ * Yüklenen dosyanın mesaj eki türü. Yükleme yanıtında yalnız contentType var;
+ * eskiden var olmayan `fileType` okunduğu için görseller hiç önizlenmiyordu.
+ */
+function attachmentFileType(asset: UploadedAssetDto): string {
+  const contentType = String(asset.contentType || '').toLowerCase();
+  const extension = (asset.fileName.split('.').pop() || '').toLowerCase();
+  if (contentType.startsWith('image/')) return 'image';
+  if (contentType.startsWith('video/')) return 'video';
+  if (contentType === 'application/pdf' || extension === 'pdf') return 'pdf';
+  return 'document';
+}
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
 
-const messageVariants = {
+const messageVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
-function normalize(value = '') {
+function normalize(value: unknown = ''): string {
   return String(value)
     .toLowerCase()
     .replaceAll('ç', 'c')
@@ -63,8 +88,8 @@ function normalize(value = '') {
     .trim();
 }
 
-function includesAnyRole(candidate, expectedRoles = []) {
-  const normalizedRole = normalize(candidate?.role || candidate?.roleType || '');
+function includesAnyRole(candidate: StaffSummaryDto | null | undefined, expectedRoles: readonly string[] = []): boolean {
+  const normalizedRole = normalize(candidate?.role || '');
   const normalizedExtras = Array.isArray(candidate?.extraRoles)
     ? candidate.extraRoles.map((item) => normalize(item))
     : [];
@@ -75,8 +100,8 @@ function includesAnyRole(candidate, expectedRoles = []) {
   });
 }
 
-function buildParentContacts(students = []) {
-  const map = new Map();
+function buildParentContacts(students: readonly StudentSummaryDto[] = []): ChatContact[] {
+  const map = new Map<string, ChatContact>();
   students.forEach((student) => {
     if (!student.parentName) return;
     const key = `${normalize(student.parentName)}|${normalize(student.parentEmail)}`;
@@ -92,7 +117,7 @@ function buildParentContacts(students = []) {
   return Array.from(map.values());
 }
 
-function formatMessageTime(value) {
+function formatMessageTime(value: string | null | undefined): string {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -102,32 +127,32 @@ function formatMessageTime(value) {
   }).format(date);
 }
 
-function attachmentDraftLabel(attachment) {
+function attachmentDraftLabel(attachment: MessageAttachment): string {
   if (attachment.fileType === 'image') return 'Görsel hazır';
   if (attachment.fileType === 'pdf') return 'PDF hazır';
   if (attachment.fileType === 'video') return 'Video hazır';
   return 'Ek dosya hazır';
 }
 
-function attachmentDraftTag(attachment) {
+function attachmentDraftTag(attachment: MessageAttachment): string {
   if (attachment.fileType === 'image') return 'IMG';
   if (attachment.fileType === 'pdf') return 'PDF';
   if (attachment.fileType === 'video') return 'VID';
   return 'DOS';
 }
 
-function sameThreadLists(left = [], right = []) {
+function sameThreadLists(left: readonly MessageThread[] = [], right: readonly MessageThread[] = []): boolean {
   if (left.length !== right.length) return false;
   return left.every((item, index) => (
     item.id === right[index]?.id
     && Number(item.unreadCount || 0) === Number(right[index]?.unreadCount || 0)
     && String(item.lastMessagePreview || '') === String(right[index]?.lastMessagePreview || '')
     && String(item.lastMessageStatus || '') === String(right[index]?.lastMessageStatus || '')
-    && String(item.lastMessageAtUtc || item.lastMessageAt || '') === String(right[index]?.lastMessageAtUtc || right[index]?.lastMessageAt || '')
+    && String(item.lastMessageAtUtc || '') === String(right[index]?.lastMessageAtUtc || '')
   ));
 }
 
-function sameMessageLists(left = [], right = []) {
+function sameMessageLists(left: readonly MessageItem[] = [], right: readonly MessageItem[] = []): boolean {
   if (left.length !== right.length) return false;
   return left.every((item, index) => (
     item.id === right[index]?.id
@@ -138,7 +163,7 @@ function sameMessageLists(left = [], right = []) {
   ));
 }
 
-function renderStatusIcon(status) {
+function renderStatusIcon(status: string) {
   if (status === 'read') {
     return <CheckCheck className="h-3.5 w-3.5 text-sky-500" />;
   }
@@ -155,10 +180,10 @@ export default function Chat() {
   const { user } = useApp();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [threads, setThreads] = useState([]);
-  const [selectedThread, setSelectedThread] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [contacts, setContacts] = useState([]);
+  const [threads, setThreads] = useState<MessageThread[]>([]);
+  const [selectedThread, setSelectedThread] = useState<MessageThread | null>(null);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [contacts, setContacts] = useState<ChatContact[]>([]);
   const [message, setMessage] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -169,15 +194,15 @@ export default function Chat() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState('');
   const [initialMessage, setInitialMessage] = useState('');
-  const [attachments, setAttachments] = useState([]);
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
   const [sending, setSending] = useState(false);
   const [isContactOnline, setIsContactOnline] = useState(false);
   const [isContactTyping, setIsContactTyping] = useState(false);
-  const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
-  const threadSilentSyncRef = useRef(null);
-  const messageSilentSyncRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<number | null>(null);
+  const threadSilentSyncRef = useRef<number | null>(null);
+  const messageSilentSyncRef = useRef<number | null>(null);
   const selectedThreadId = selectedThread?.id;
   const selectedThreadName = selectedThread?.contactName;
 
@@ -185,7 +210,7 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleHeaderAction = (type) => {
+  const handleHeaderAction = (type: 'call' | 'video' | 'details') => {
     if (!selectedThread) return;
     if (type === 'call') {
       toast({
@@ -215,20 +240,21 @@ export default function Chat() {
 
   useEffect(() => {
     let cancelled = false;
-    messageRealtimeClient.ensureConnected().catch(() => {});
+    void messageRealtimeClient.ensureConnected().catch(() => {});
 
     const disposeThread = messageRealtimeClient.onThreadUpdated((payload) => {
       if (cancelled || !payload?.id) return;
       setThreads((prev) => {
         const next = [...prev];
         const index = next.findIndex((item) => item.id === payload.id);
-        if (index >= 0) {
-          next[index] = { ...next[index], ...payload };
+        const existing = next[index];
+        if (existing) {
+          next[index] = { ...existing, ...payload };
         } else {
           next.unshift(payload);
         }
 
-        next.sort((a, b) => new Date(b.lastMessageAtUtc || b.lastMessageAt).getTime() - new Date(a.lastMessageAtUtc || a.lastMessageAt).getTime());
+        next.sort((a, b) => new Date(b.lastMessageAtUtc).getTime() - new Date(a.lastMessageAtUtc).getTime());
         return next;
       });
       if (selectedThreadId === payload.id) {
@@ -293,7 +319,7 @@ export default function Chat() {
 
   const refreshThreadsSilently = useCallback(async () => {
     try {
-      const latest = await fetchThreads();
+      const latest = (await fetchThreads()) ?? [];
       setThreads((prev) => (sameThreadLists(prev, latest) ? prev : latest));
       setSelectedThread((prev) => {
         if (!prev) return prev;
@@ -302,23 +328,23 @@ export default function Chat() {
     } catch (_) {}
   }, []);
 
-  const refreshMessagesSilently = useCallback(async (threadId) => {
+  const refreshMessagesSilently = useCallback(async (threadId: string) => {
     if (!threadId || messageLoading) return;
     try {
-      const latest = await fetchThreadMessages(threadId);
+      const latest = (await fetchThreadMessages(threadId)) ?? [];
       setMessages((prev) => (sameMessageLists(prev, latest) ? prev : latest));
     } catch (_) {}
   }, [messageLoading]);
 
-  const loadMessages = useCallback(async (threadId) => {
+  const loadMessages = useCallback(async (threadId: string) => {
     try {
       setMessageLoading(true);
       const payload = await fetchThreadMessages(threadId);
-      setMessages(payload);
+      setMessages(payload ?? []);
     } catch (err) {
       toast({
         title: 'Mesajlar alınamadı',
-        description: err.message || 'Sohbet yüklenemedi.',
+        description: errorMessage(err, 'Sohbet yüklenemedi.'),
       });
     } finally {
       setMessageLoading(false);
@@ -329,18 +355,21 @@ export default function Chat() {
     try {
       setLoading(true);
       setError('');
-      const [threadList, students, staff] = await Promise.all([
+      const [threadResponse, studentResponse, staffResponse] = await Promise.all([
         fetchThreads(),
-        fetchStudents().catch(() => []),
-        fetchStaff().catch(() => []),
+        fetchStudents().catch(() => null),
+        fetchStaff().catch(() => null),
       ]);
+      const threadList = threadResponse ?? [];
+      const students = studentResponse ?? [];
+      const staff = staffResponse ?? [];
 
       setThreads(threadList);
 
       const role = normalize(user?.backendRole || user?.role);
       const selfName = normalize(user?.name);
       const parentContacts = buildParentContacts(students);
-      let nextContacts = [];
+      let nextContacts: ChatContact[] = [];
 
       if (role === 'student') {
         nextContacts = staff
@@ -401,25 +430,26 @@ export default function Chat() {
       ));
       setContacts(nextContacts);
 
-      if (threadList.length > 0) {
-        setSelectedThread(threadList[0]);
-        await loadMessages(threadList[0].id);
+      const firstThread = threadList[0];
+      if (firstThread) {
+        setSelectedThread(firstThread);
+        await loadMessages(firstThread.id);
       }
     } catch (err) {
-      setError(err.message || 'Mesaj modülü yüklenemedi.');
+      setError(errorMessage(err, 'Mesaj modülü yüklenemedi.'));
     } finally {
       setLoading(false);
     }
   }, [loadMessages, user]);
 
   useEffect(() => {
-    loadChatData();
+    void loadChatData();
   }, [loadChatData]);
 
   useEffect(() => {
     threadSilentSyncRef.current && window.clearInterval(threadSilentSyncRef.current);
     threadSilentSyncRef.current = window.setInterval(() => {
-      refreshThreadsSilently();
+      void refreshThreadsSilently();
     }, 5000);
     return () => {
       threadSilentSyncRef.current && window.clearInterval(threadSilentSyncRef.current);
@@ -430,7 +460,7 @@ export default function Chat() {
     if (!selectedThreadId) return undefined;
     messageSilentSyncRef.current && window.clearInterval(messageSilentSyncRef.current);
     messageSilentSyncRef.current = window.setInterval(() => {
-      refreshMessagesSilently(selectedThreadId);
+      void refreshMessagesSilently(selectedThreadId);
     }, 3500);
     return () => {
       messageSilentSyncRef.current && window.clearInterval(messageSilentSyncRef.current);
@@ -440,7 +470,7 @@ export default function Chat() {
   const filteredThreads = useMemo(() => (
     threads
       .filter((thread) => thread.contactName.toLowerCase().includes(search.toLowerCase()))
-      .sort((a, b) => new Date(b.lastMessageAtUtc || 0) - new Date(a.lastMessageAtUtc || 0))
+      .sort((a, b) => new Date(b.lastMessageAtUtc || 0).getTime() - new Date(a.lastMessageAtUtc || 0).getTime())
   ), [search, threads]);
 
   const chatStats = useMemo(() => ({
@@ -449,7 +479,7 @@ export default function Chat() {
     activeContacts: new Set(threads.map((thread) => thread.contactName)).size,
   }), [threads]);
 
-  const handleSelectConversation = async (thread) => {
+  const handleSelectConversation = async (thread: MessageThread) => {
     setSelectedThread(thread);
     setShowMobileChat(true);
     await loadMessages(thread.id);
@@ -458,8 +488,10 @@ export default function Chat() {
   const handleSend = async () => {
     if ((!message.trim() && attachments.length === 0) || !selectedThread) return;
 
-    const optimistic = {
+    const optimistic: MessageItem = {
       id: `temp-${Date.now()}`,
+      threadId: selectedThread.id,
+      readAtUtc: null,
       senderName: user?.name || 'Ben',
       senderRole: user?.backendRole || user?.role || 'User',
       isFromCurrentActor: true,
@@ -478,6 +510,7 @@ export default function Chat() {
 
     try {
       const created = await sendThreadMessage(selectedThread.id, { text, attachments: currentAttachments });
+      if (!created) throw new Error('Sunucu gönderilen mesajı döndürmedi.');
       setMessages((prev) => prev.map((item) => (
         item.id === optimistic.id
           ? { ...created, status: created.status || 'delivered' }
@@ -501,28 +534,28 @@ export default function Chat() {
       )));
       toast({
         title: 'Mesaj gönderilemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
       });
     } finally {
       setSending(false);
     }
   };
 
-  const handleTypingChange = (value) => {
+  const handleTypingChange = (value: string) => {
     setMessage(value);
     if (!selectedThread) return;
     const actorName = user?.username || user?.name || 'ben';
-    messageRealtimeClient.setTyping(selectedThread.id, actorName, value.trim().length > 0).catch(() => {});
+    void messageRealtimeClient.setTyping(selectedThread.id, actorName, value.trim().length > 0).catch(() => {});
     if (typingTimeoutRef.current) {
       window.clearTimeout(typingTimeoutRef.current);
     }
     if (!value.trim()) return;
     typingTimeoutRef.current = window.setTimeout(() => {
-      messageRealtimeClient.setTyping(selectedThread.id, actorName, false).catch(() => {});
+      void messageRealtimeClient.setTyping(selectedThread.id, actorName, false).catch(() => {});
     }, 900);
   };
 
-  const handlePickAttachment = async (event) => {
+  const handlePickAttachment = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
     try {
@@ -531,17 +564,17 @@ export default function Chat() {
         formData.append('file', file);
         return uploadFile(formData, 'messages');
       }));
-      setAttachments((prev) => [...prev, ...uploaded.map((item) => ({
+      setAttachments((prev) => [...prev, ...uploaded.flatMap((item, index): MessageAttachment[] => (item ? [{
         fileName: item.fileName,
-        originalFileName: item.originalFileName || item.fileName,
+        originalFileName: files[index]?.name || item.fileName,
         fileUrl: item.fileUrl,
-        fileType: item.fileType,
+        fileType: attachmentFileType(item),
         size: item.size,
-      }))]);
+      }] : []))]);
     } catch (err) {
       toast({
         title: 'Dosya yüklenemedi',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -551,7 +584,7 @@ export default function Chat() {
     }
   };
 
-  const handleDeleteForMe = async (msg) => {
+  const handleDeleteForMe = async (msg: MessageItem) => {
     if (!selectedThread) return;
     try {
       await deleteThreadMessageForMe(selectedThread.id, msg.id);
@@ -559,19 +592,19 @@ export default function Chat() {
     } catch (err) {
       toast({
         title: 'Mesaj kaldırılamadı',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     }
   };
 
-  const handleOpenAttachment = (attachment) => {
+  const handleOpenAttachment = (attachment: MessageAttachment) => {
     const raw = attachment.fileUrl || '';
     const href = /^https?:\/\//i.test(raw) ? raw : `${desktopApiBaseUrl}${raw.startsWith('/') ? raw : `/${raw}`}`;
     openHttpUrl(href);
   };
 
-  const removeAttachmentDraft = (fileName) => {
+  const removeAttachmentDraft = (fileName: string) => {
     setAttachments((prev) => prev.filter((item) => item.fileName !== fileName));
   };
 
@@ -584,9 +617,9 @@ export default function Chat() {
       const thread = await createThread({
         contactName: contact.name,
         contactRole: contact.role,
-        contactKey: contact.contactKey,
         initialMessage: initialMessage.trim() || undefined,
       });
+      if (!thread) throw new Error('Sohbet oluşturulamadı.');
 
       setThreads((prev) => [thread, ...prev.filter((item) => item.id !== thread.id)]);
       setSelectedThread(thread);
@@ -602,7 +635,7 @@ export default function Chat() {
     } catch (err) {
       toast({
         title: 'Sohbet oluşturulamadı',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
       });
     }
   };
@@ -634,11 +667,11 @@ export default function Chat() {
         <Card className={cn('w-full md:w-80 lg:w-96 flex flex-col', showMobileChat && 'hidden md:flex')}>
           <CardHeader className="pb-3 space-y-3">
             <div className="grid grid-cols-3 gap-2">
-              {[
+              {([
                 [chatStats.total, 'Thread', MessageCircleMore],
                 [chatStats.unread, 'Yeni', Clock3],
                 [chatStats.activeContacts, 'Kişi', UserRound],
-              ].map(([value, label, Icon]) => (
+              ] satisfies ReadonlyArray<readonly [number, string, IconComponent]>).map(([value, label, Icon]) => (
                 <div key={label} className="rounded-xl border bg-muted/20 p-3 text-center">
                   <Icon className="mx-auto h-4 w-4 text-brand-primary" />
                   <p className="mt-2 text-lg font-semibold">{value}</p>

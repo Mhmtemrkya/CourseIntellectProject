@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { FeatureGate } from '../../components/FeatureGate';
 import {
@@ -16,39 +16,55 @@ import {
   UtensilsCrossed,
 } from 'lucide-react';
 import { fetchCafeteriaWeek, saveCafeteriaWeek } from '../../lib/api/modules';
-import RoleDashboardColumns from '../../components/dashboard/RoleDashboardColumns';
+import RoleDashboardColumns, { type RoleDashboardGroup } from '../../components/dashboard/RoleDashboardColumns';
+import { errorMessage } from '../../lib/errors';
+import type { CafeteriaMealEntry, CafeteriaWeekSnapshot } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
+
+interface MealConfig {
+  type: string;
+  title: string;
+  icon: IconComponent;
+  accent: string;
+  times: readonly [string, string];
+}
+
+/** Ekrandaki hafta: 7 gün × öğün için eksiksiz liste (boş öğünler doldurulur). */
+type CafeteriaWeek = Pick<CafeteriaWeekSnapshot, 'weekStart' | 'weekEnd' | 'note' | 'meals'> & Partial<CafeteriaWeekSnapshot>;
+
+type SummaryColor = 'orange' | 'blue' | 'purple' | 'amber' | 'emerald';
 
 const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
-const meals = [
+const meals: readonly MealConfig[] = [
   { type: 'Breakfast', title: 'Kahvaltı', icon: Sun, accent: 'orange', times: ['07:30', '09:30'] },
   { type: 'Lunch', title: 'Öğle Yemeği', icon: Soup, accent: 'emerald', times: ['12:30', '14:00'] },
 ];
 
-function isoDate(date) {
+function isoDate(date: Date): string {
   const local = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const offset = local.getTimezoneOffset() * 60000;
   return new Date(local.getTime() - offset).toISOString().slice(0, 10);
 }
 
-function mondayOf(date) {
+function mondayOf(date: Date): Date {
   const result = new Date(date);
   const offset = (result.getDay() + 6) % 7;
   result.setDate(result.getDate() - offset);
   return result;
 }
 
-function addDays(dateString, amount) {
+function addDays(dateString: string, amount: number): string {
   const date = new Date(`${dateString}T12:00:00`);
   date.setDate(date.getDate() + amount);
   return isoDate(date);
 }
 
-function formatDay(dateString) {
+function formatDay(dateString: string): string {
   return new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long' })
     .format(new Date(`${dateString}T12:00:00`));
 }
 
-function blankMeal(date, config) {
+function blankMeal(date: string, config: MealConfig): CafeteriaMealEntry {
   return {
     date,
     mealType: config.type,
@@ -65,9 +81,9 @@ function blankMeal(date, config) {
   };
 }
 
-function normalizeWeek(payload, start) {
+function normalizeWeek(payload: CafeteriaWeekSnapshot | null, start: string): CafeteriaWeek {
   const serverMeals = Array.isArray(payload?.meals) ? payload.meals : [];
-  const entries = [];
+  const entries: CafeteriaMealEntry[] = [];
   for (let index = 0; index < 7; index += 1) {
     const date = addDays(start, index);
     meals.forEach((config) => {
@@ -80,13 +96,13 @@ function normalizeWeek(payload, start) {
   return { ...payload, weekStart: start, weekEnd: addDays(start, 6), meals: entries, note: payload?.note || '' };
 }
 
-function nutritionValue(value) {
+function nutritionValue(value: unknown): number {
   return Number(value || 0);
 }
 
-export default function CafeteriaWeeklyMenu({ editable = false }) {
+export default function CafeteriaWeeklyMenu({ editable = false }: { editable?: boolean }) {
   const [weekStart, setWeekStart] = useState(() => isoDate(mondayOf(new Date())));
-  const [week, setWeek] = useState(null);
+  const [week, setWeek] = useState<CafeteriaWeek | null>(null);
   const [selectedKey, setSelectedKey] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -104,8 +120,8 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
           setSelectedKey('');
         }
       })
-      .catch((requestError) => {
-        if (active) setError(requestError?.message || 'Yemek programı yüklenemedi.');
+      .catch((requestError: unknown) => {
+        if (active) setError(errorMessage(requestError, 'Yemek programı yüklenemedi.'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -131,7 +147,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
     };
   }, [week]);
 
-  const dashboardGroups = [
+  const dashboardGroups: RoleDashboardGroup[] = [
     {
       key: 'plan', title: 'Haftalık Plan', description: 'Menü hazırlık ve eksik kayıt durumu',
       cards: [
@@ -155,16 +171,16 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
     },
   ];
 
-  const updateSelectedMeal = (patch) => {
+  const updateSelectedMeal = (patch: Partial<CafeteriaMealEntry>) => {
     if (!selectedMeal) return;
-    setWeek((current) => ({
+    setWeek((current) => (current ? {
       ...current,
       meals: current.meals.map((meal) => (
         meal.date === selectedMeal.date && meal.mealType === selectedMeal.mealType
           ? { ...meal, ...patch }
           : meal
       )),
-    }));
+    } : current));
   };
 
   const save = async () => {
@@ -181,7 +197,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
       setWeek(normalizeWeek(saved, weekStart));
       setMessage('Haftalık yemek programı kurumunuza kaydedildi.');
     } catch (requestError) {
-      setError(requestError?.message || 'Yemek programı kaydedilemedi.');
+      setError(errorMessage(requestError, 'Yemek programı kaydedilemedi.'));
     } finally {
       setSaving(false);
     }
@@ -267,7 +283,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
                       </div>
                       {days.map((_, dayIndex) => {
                         const date = addDays(weekStart, dayIndex);
-                        const cell = week.meals.find((meal) => meal.date === date && meal.mealType === config.type) || blankMeal(date, config);
+                        const cell = (week?.meals ?? []).find((meal) => meal.date === date && meal.mealType === config.type) || blankMeal(date, config);
                         const active = selectedKey === `${date}|${config.type}`;
                         return (
                           <button
@@ -309,7 +325,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
             ) : (
               <div className="mt-4 space-y-4">
                 <div>
-                  <p className="font-semibold">{days[Math.round((new Date(`${selectedMeal.date}T12:00:00`) - new Date(`${weekStart}T12:00:00`)) / 86400000)]} - {meals.find((meal) => meal.type === selectedMeal.mealType)?.title}</p>
+                  <p className="font-semibold">{days[Math.round((new Date(`${selectedMeal.date}T12:00:00`).getTime() - new Date(`${weekStart}T12:00:00`).getTime()) / 86400000)]} - {meals.find((meal) => meal.type === selectedMeal.mealType)?.title}</p>
                   <p className="text-xs text-slate-400">{formatDay(selectedMeal.date)}</p>
                 </div>
                 <Field label="Yemekler (satır satır)">
@@ -358,7 +374,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
   );
 }
 
-function Field({ label, children }) {
+function Field({ label, children }: { label: string; children?: ReactNode }) {
   return (
     <label className="block space-y-2 text-xs text-slate-400">
       <span>{label}</span>
@@ -367,7 +383,7 @@ function Field({ label, children }) {
   );
 }
 
-function NumberField({ label, value, onChange }) {
+function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
   return (
     <Field label={label}>
       <input type="number" min="0" value={value} onChange={(event) => onChange(Math.max(0, Number(event.target.value || 0)))} className="cafeteria-input" />
@@ -375,8 +391,8 @@ function NumberField({ label, value, onChange }) {
   );
 }
 
-function Summary({ icon: Icon, label, value, color }) {
-  const tones = {
+function Summary({ icon: Icon, label, value, color }: { icon: IconComponent; label: string; value: ReactNode; color: SummaryColor }) {
+  const tones: Record<SummaryColor, string> = {
     orange: 'bg-orange-500/12 text-orange-400',
     blue: 'bg-blue-500/12 text-blue-400',
     purple: 'bg-purple-500/12 text-purple-400',
