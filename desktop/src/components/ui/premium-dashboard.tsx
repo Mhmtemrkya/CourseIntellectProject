@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
+import type { IconComponent } from "@/types/ui";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 // İlk seri seçilen marka vurgu rengini (tenant paleti) takip eder; geri kalanı
@@ -10,13 +11,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 // grafiklere de yansır.
 export const CHART_COLORS = ["hsl(var(--brand-accent))", "#3B82F6", "#10B981", "#A855F7", "#F43F5E", "#06B6D4"];
 
-function buildSmoothPath(points) {
-  if (points.length < 2) return "";
-  const d = [`M ${points[0][0]},${points[0][1]}`];
+export type ChartTone = "brand" | "blue" | "emerald" | "violet" | "amber" | "rose";
+export type StatusPillTone = "done" | "live" | "soon" | "warn" | "danger" | "default";
+/** Grafik değerleri: sayı ya da "12.500 TL" gibi sayıya çevrilebilen metin. */
+export type ChartValue = number | string | null | undefined;
+
+type Point = [number, number];
+
+function buildSmoothPath(points: readonly Point[]): string {
+  const first = points[0];
+  if (points.length < 2 || !first) return "";
+  const d = [`M ${first[0]},${first[1]}`];
   for (let i = 0; i < points.length - 1; i += 1) {
-    const p0 = points[i - 1] || points[i];
     const p1 = points[i];
     const p2 = points[i + 1];
+    if (!p1 || !p2) continue;
+    const p0 = points[i - 1] || p1;
     const p3 = points[i + 2] || p2;
     const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
     const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
@@ -27,7 +37,7 @@ function buildSmoothPath(points) {
   return d.join(" ");
 }
 
-const toneClass = {
+const toneClass: Record<ChartTone, string> = {
   brand: "from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-primary-text))]",
   blue: "from-sky-400 to-blue-600",
   emerald: "from-emerald-400 to-teal-600",
@@ -36,7 +46,7 @@ const toneClass = {
   rose: "from-rose-400 to-red-600",
 };
 
-const chartTone = {
+const chartTone: Record<ChartTone, { start: string; end: string; glow: string }> = {
   brand: { start: "hsl(var(--brand-accent))", end: "hsl(var(--brand-accent-hover))", glow: "hsl(var(--brand-accent))" },
   blue: { start: "#38bdf8", end: "#2563eb", glow: "#3b82f6" },
   emerald: { start: "#34d399", end: "#0d9488", glow: "#10b981" },
@@ -45,20 +55,20 @@ const chartTone = {
   rose: { start: "#fb7185", end: "#e11d48", glow: "#f43f5e" },
 };
 
-function coerceNumber(value) {
+function coerceNumber(value: unknown): number {
   if (typeof value === "number") return value;
   const parsed = Number(String(value ?? "0").replace(/[^\d.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function useCountUp(target, duration = 900) {
+function useCountUp(target: number, duration = 900): number {
   const [value, setValue] = React.useState(target);
   React.useEffect(() => {
     if (!Number.isFinite(target)) return undefined;
-    let raf;
+    let raf = 0;
     const start = performance.now();
     const from = 0;
-    const tick = (now) => {
+    const tick = (now: number) => {
       const progress = Math.min(1, (now - start) / duration);
       const eased = 1 - Math.pow(1 - progress, 3);
       setValue(from + (target - from) * eased);
@@ -72,13 +82,14 @@ function useCountUp(target, duration = 900) {
 }
 
 // Sayıyı (ön/son ek koruyarak) animasyonla yukarı sayar. "%92", "+1236", "3 / 39" gibi.
-export function AnimatedValue({ value }) {
+export function AnimatedValue({ value }: { value: React.ReactNode }) {
   const str = String(value ?? "");
   const match = str.match(/^([^\d-]*)(-?\d+(?:[.,]\d+)?)(.*)$/);
-  const target = match ? parseFloat(match[2].replace(",", ".")) : NaN;
+  const numberPart = match?.[2] ?? "";
+  const target = match ? parseFloat(numberPart.replace(",", ".")) : NaN;
   const current = useCountUp(target);
   if (!match) return <>{value}</>;
-  const decimals = (match[2].split(/[.,]/)[1] || "").length;
+  const decimals = (numberPart.split(/[.,]/)[1] || "").length;
   const formatted = decimals ? current.toFixed(decimals) : Math.round(current).toString();
   return <>{match[1]}{formatted}{match[3]}</>;
 }
@@ -86,7 +97,13 @@ export function AnimatedValue({ value }) {
 // Veri (zaman serisi) yokken gösterilen premium boş durum: tona uyumlu, dekoratif
 // bir dalga + kayan parıltı. Dalga kesikli çizilir ve köşede küçük bir etiketle
 // bunun gerçek trend değil görsel amaçlı olduğu belli olur.
-function EmptyChart({ className, tone = "brand", label = "Geçmiş veri yok" }) {
+interface ChartProps {
+  values?: readonly ChartValue[];
+  tone?: ChartTone;
+  className?: string;
+}
+
+function EmptyChart({ className, tone = "brand", label = "Geçmiş veri yok" }: { className?: string; tone?: ChartTone; label?: string }) {
   const gid = React.useId();
   const palette = chartTone[tone] || chartTone.brand;
   const width = 180;
@@ -95,7 +112,7 @@ function EmptyChart({ className, tone = "brand", label = "Geçmiş veri yok" }) 
   const max = Math.max(...decoValues);
   const min = Math.min(...decoValues);
   const range = Math.max(max - min, 1);
-  const points = decoValues.map((value, index) => {
+  const points = decoValues.map((value, index): Point => {
     const x = (index / (decoValues.length - 1)) * width;
     const y = height - ((value - min) / range) * (height - 14) - 7;
     return [x, y];
@@ -133,7 +150,7 @@ function EmptyChart({ className, tone = "brand", label = "Geçmiş veri yok" }) 
   );
 }
 
-export function MiniLineChart({ values = [], tone = "brand", className }) {
+export function MiniLineChart({ values = [], tone = "brand", className }: ChartProps) {
   const safeValues = values.map(coerceNumber).filter((value) => Number.isFinite(value));
   const gid = React.useId();
   if (!safeValues.length) return <EmptyChart className={className} tone={tone} />;
@@ -144,7 +161,7 @@ export function MiniLineChart({ values = [], tone = "brand", className }) {
   const max = Math.max(...safeValues, 1);
   const min = Math.min(...safeValues, 0);
   const range = Math.max(max - min, 1);
-  const points = safeValues.map((value, index) => {
+  const points = safeValues.map((value, index): Point => {
     const x = (index / Math.max(safeValues.length - 1, 1)) * width;
     const y = height - ((value - min) / range) * (height - 8) - 4;
     return [x, y];
@@ -201,7 +218,7 @@ export function MiniLineChart({ values = [], tone = "brand", className }) {
   );
 }
 
-export function MiniBarChart({ values = [], tone = "brand", className }) {
+export function MiniBarChart({ values = [], tone = "brand", className }: ChartProps) {
   const safeValues = values.map(coerceNumber).filter((value) => Number.isFinite(value));
   if (!safeValues.length) return <EmptyChart className={className} tone={tone} />;
 
@@ -222,7 +239,7 @@ export function MiniBarChart({ values = [], tone = "brand", className }) {
   );
 }
 
-export function MiniDonut({ value = 0, label = "Oran", className }) {
+export function MiniDonut({ value = 0, label = "Oran", className }: { value?: ChartValue; label?: React.ReactNode; className?: string }) {
   const safe = Math.max(0, Math.min(100, coerceNumber(value)));
   return (
     <div className={cn("relative grid h-32 w-32 place-items-center rounded-full", className)} style={{ background: `conic-gradient(hsl(var(--brand-accent)) ${safe * 3.6}deg, hsl(var(--muted) / 0.55) 0deg)` }}>
@@ -237,7 +254,7 @@ export function MiniDonut({ value = 0, label = "Oran", className }) {
 }
 
 // Yumuşak (cubic) alan grafiği — turuncu gradyan dolgu + animasyonlu çizgi.
-export function PremiumAreaChart({ values = [], className, height = 150 }) {
+export function PremiumAreaChart({ values = [], className, height = 150 }: { values?: readonly ChartValue[]; className?: string; height?: number }) {
   // Hook her render'da koşulsuz çağrılmalı; erken return'den önce durursa
   // veri geldiğinde "Rendered more hooks" hatası sayfayı beyaza düşürür.
   const gid = React.useId();
@@ -249,7 +266,7 @@ export function PremiumAreaChart({ values = [], className, height = 150 }) {
   const min = Math.min(...safe, 0);
   const range = Math.max(max - min, 1);
   const stepX = width / Math.max(safe.length - 1, 1);
-  const points = safe.map((value, index) => [index * stepX, height - ((value - min) / range) * (height - 28) - 14]);
+  const points = safe.map((value, index): Point => [index * stepX, height - ((value - min) / range) * (height - 28) - 14]);
   const line = buildSmoothPath(points);
   const area = `${line} L ${width},${height} L 0,${height} Z`;
   const last = points[points.length - 1];
@@ -279,13 +296,24 @@ export function PremiumAreaChart({ values = [], className, height = 150 }) {
         animate={{ pathLength: 1 }}
         transition={{ duration: 1.1, ease: "easeInOut" }}
       />
-      <circle cx={last[0]} cy={last[1]} r="4.5" fill="hsl(var(--brand-accent))" className="drop-shadow-[0_0_10px_hsl(var(--brand-accent)/0.7)]" />
+      {last ? <circle cx={last[0]} cy={last[1]} r="4.5" fill="hsl(var(--brand-accent))" className="drop-shadow-[0_0_10px_hsl(var(--brand-accent)/0.7)]" /> : null}
     </svg>
   );
 }
 
 // Çok segmentli donut grafik + lejant. (Yaklaşan Ödevler dağılımı, sınıf dağılımı vb.)
-export function PremiumDonutChart({ segments = [], centerValue, centerLabel, className }) {
+export interface DonutSegment {
+  label: string;
+  value: ChartValue;
+  color?: string;
+}
+
+export function PremiumDonutChart({ segments = [], centerValue, centerLabel, className }: {
+  segments?: readonly DonutSegment[];
+  centerValue?: React.ReactNode;
+  centerLabel?: React.ReactNode;
+  className?: string;
+}) {
   const data = segments.filter((segment) => coerceNumber(segment.value) > 0);
   const total = data.reduce((sum, segment) => sum + coerceNumber(segment.value), 0) || 1;
   const radius = 54;
@@ -341,7 +369,7 @@ export function PremiumDonutChart({ segments = [], centerValue, centerLabel, cla
   );
 }
 
-function CompactRing({ value = 0, className }) {
+function CompactRing({ value = 0, className }: { value?: unknown; className?: string }) {
   const safe = Math.max(0, Math.min(100, coerceNumber(value)));
   return (
     <div className={cn("relative grid h-12 w-12 place-items-center rounded-full", className)} style={{ background: `conic-gradient(hsl(var(--brand-accent)) ${safe * 3.6}deg, hsl(var(--muted) / 0.45) 0deg)` }}>
@@ -362,6 +390,18 @@ export function PremiumMetricCard({
   chartClassName,
   onClick,
   className,
+}: {
+  title: React.ReactNode;
+  value: React.ReactNode;
+  caption?: React.ReactNode;
+  icon?: IconComponent | null;
+  tone?: ChartTone;
+  chart?: "line" | "bars" | "donut";
+  chartValues?: readonly ChartValue[] | null;
+  donutValue?: ChartValue;
+  chartClassName?: string;
+  onClick?: () => void;
+  className?: string;
 }) {
   const sparkline = chartValues?.length ? chartValues : [];
   const Wrapper = onClick ? "button" : "div";
@@ -400,7 +440,14 @@ export function PremiumMetricCard({
   );
 }
 
-export function PremiumPanel({ title, description, action, children, className, contentClassName }) {
+export function PremiumPanel({ title, description, action, children, className, contentClassName }: {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+  children?: React.ReactNode;
+  className?: string;
+  contentClassName?: string;
+}) {
   return (
     <Card className={cn("ci-dashboard-panel flex h-full flex-col overflow-hidden", className)}>
       <CardHeader className="relative flex flex-row items-start justify-between gap-4 border-b border-foreground/10 pb-4">
@@ -418,7 +465,7 @@ export function PremiumPanel({ title, description, action, children, className, 
   );
 }
 
-const statusToneClass = {
+const statusToneClass: Record<StatusPillTone, string> = {
   done: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
   live: "border-[hsl(var(--brand-accent)/0.4)] bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]",
   soon: "border-sky-500/25 bg-sky-500/12 text-sky-300",
@@ -427,7 +474,7 @@ const statusToneClass = {
   default: "border-foreground/10 bg-foreground/[0.05] text-muted-foreground",
 };
 
-export function PremiumStatusPill({ tone = "default", children, className }) {
+export function PremiumStatusPill({ tone = "default", children, className }: { tone?: StatusPillTone; children?: React.ReactNode; className?: string }) {
   return (
     <span className={cn("inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold", statusToneClass[tone] || statusToneClass.default, className)}>
       {children}
@@ -438,7 +485,17 @@ export function PremiumStatusPill({ tone = "default", children, className }) {
 // Konu/ders performans satırı: ikon + başlık + alt başlık, sağda büyük değer ve
 // harf notu, altta gradyanlı ilerleme çubuğu. (Ders Performansım, Sınıf Performansı,
 // Devamsızlık derslere göre vb. tekrar eden kalıp.)
-export function PremiumProgressRow({ icon: Icon, title, subtitle, value, valueLabel, progress, tone = "brand", onClick, className }) {
+export function PremiumProgressRow({ icon: Icon, title, subtitle, value, valueLabel, progress, tone = "brand", onClick, className }: {
+  icon?: IconComponent | null;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  value: React.ReactNode;
+  valueLabel?: React.ReactNode;
+  progress?: ChartValue;
+  tone?: ChartTone;
+  onClick?: () => void;
+  className?: string;
+}) {
   const pct = Math.max(0, Math.min(100, coerceNumber(progress ?? value)));
   const Wrapper = onClick ? "button" : "div";
   return (
@@ -473,7 +530,17 @@ export function PremiumProgressRow({ icon: Icon, title, subtitle, value, valueLa
 
 // Ders programı / zaman çizelgesi satırı: solda saat, ikon + ders + derslik,
 // sağda durum etiketi. (Bugünkü Ders Programı, Yaklaşan Dersler vb.)
-export function PremiumScheduleRow({ time, title, subtitle, icon: Icon, status, statusTone = "default", active = false, onClick, className }) {
+export function PremiumScheduleRow({ time, title, subtitle, icon: Icon, status, statusTone = "default", active = false, onClick, className }: {
+  time?: React.ReactNode;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  icon?: IconComponent | null;
+  status?: React.ReactNode;
+  statusTone?: StatusPillTone;
+  active?: boolean;
+  onClick?: () => void;
+  className?: string;
+}) {
   const Wrapper = onClick ? "button" : "div";
   return (
     <Wrapper
@@ -503,7 +570,16 @@ export function PremiumScheduleRow({ time, title, subtitle, icon: Icon, status, 
 
 // Sınav sonucu kartı: üstte ders, büyük skor + harf notu, sparkline ve altta tarih.
 // (Son Sınav Sonuçlarım, Performans kartları vb.)
-export function PremiumScoreCard({ subject, score, grade, date, values, tone = "brand", onClick, className }) {
+export function PremiumScoreCard({ subject, score, grade, date, values, tone = "brand", onClick, className }: {
+  subject: React.ReactNode;
+  score: React.ReactNode;
+  grade?: React.ReactNode;
+  date?: React.ReactNode;
+  values?: readonly ChartValue[] | null;
+  tone?: ChartTone;
+  onClick?: () => void;
+  className?: string;
+}) {
   const sparkline = values?.length ? values : [];
   const Wrapper = onClick ? "button" : "div";
   return (
@@ -523,7 +599,14 @@ export function PremiumScoreCard({ subject, score, grade, date, values, tone = "
   );
 }
 
-export function PremiumListRow({ icon: Icon, title, subtitle, meta, accent = false, onClick }) {
+export function PremiumListRow({ icon: Icon, title, subtitle, meta, accent = false, onClick }: {
+  icon?: IconComponent | null;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  meta?: React.ReactNode;
+  accent?: boolean;
+  onClick?: () => void;
+}) {
   const Wrapper = onClick ? "button" : "div";
   return (
     <Wrapper

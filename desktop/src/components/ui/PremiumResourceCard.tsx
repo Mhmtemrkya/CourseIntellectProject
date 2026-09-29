@@ -1,8 +1,16 @@
+import type { CSSProperties, ReactNode } from 'react';
 import { motion } from 'framer-motion';
+import type { IconComponent } from '@/types/ui';
+
+export interface ResourceTheme {
+  hue: string;
+  mark: string;
+  tagline: string;
+}
 
 // Course Intellect premium kart dili: koyu lacivert zemin, ince beyaz çizgiler,
 // ders bazlı vurgu rengi ve turuncu marka parıltısı.
-const SUBJECT_THEMES = [
+const SUBJECT_THEMES: Array<ResourceTheme & { match: string[] }> = [
   { match: ['mat'], hue: '#4DA3FF', mark: '∑', tagline: 'FORMÜL • PROBLEM • MANTIK' },
   { match: ['fiz'], hue: '#7B61FF', mark: 'F', tagline: 'HAREKET • ENERJİ • KUVVET' },
   { match: ['kim'], hue: '#FF9D2E', mark: 'H₂O', tagline: 'TEPKİME • MADDE • BAĞ' },
@@ -13,15 +21,21 @@ const SUBJECT_THEMES = [
   { match: ['fen'], hue: '#34D399', mark: 'Fe', tagline: 'DENEY • GÖZLEM • KEŞİF' },
 ];
 
-const DEFAULT_THEME = { hue: '#FF9D2E', mark: '✦', tagline: 'PRATİK • TEKRAR • BAŞARI' };
+const DEFAULT_THEME: ResourceTheme = { hue: '#FF9D2E', mark: '✦', tagline: 'PRATİK • TEKRAR • BAŞARI' };
 
-export function getResourceTheme(subject = '') {
+export function getResourceTheme(subject: unknown = ''): ResourceTheme {
   const normalized = String(subject).toLowerCase();
   return SUBJECT_THEMES.find((theme) => theme.match.some((token) => normalized.includes(token))) || DEFAULT_THEME;
 }
 
-export function CardIconAction({ icon: Icon, title, onClick, disabled = false, tone = 'default' }) {
-  const tones = {
+export function CardIconAction({ icon: Icon, title, onClick, disabled = false, tone = 'default' }: {
+  icon: IconComponent;
+  title?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  tone?: 'default' | 'danger' | 'success';
+}) {
+  const tones: Record<'default' | 'danger' | 'success', string> = {
     default: 'text-slate-300 hover:border-orange-400/40 hover:bg-orange-400/10 hover:text-orange-200',
     danger: 'text-slate-400 hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-300',
     success: 'text-slate-300 hover:border-emerald-400/40 hover:bg-emerald-400/10 hover:text-emerald-300',
@@ -53,6 +67,20 @@ export default function PremiumResourceCard({
   footer = null,
   statusNote = null,
   onClick,
+}: {
+  subject?: string | null;
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  subtitle?: ReactNode;
+  badge?: ReactNode;
+  badgeTone?: 'accent' | 'muted';
+  chips?: ReadonlyArray<string | null | undefined | false>;
+  stats?: ReadonlyArray<readonly [label: string, value: ReactNode]>;
+  description?: ReactNode;
+  actions?: ReactNode;
+  footer?: ReactNode;
+  statusNote?: ReactNode;
+  onClick?: () => void;
 }) {
   const theme = getResourceTheme(subject);
   const clickable = typeof onClick === 'function';
@@ -64,7 +92,8 @@ export default function PremiumResourceCard({
         type={clickable ? 'button' : undefined}
         onClick={onClick}
         className={`group relative flex h-full w-full flex-col overflow-hidden rounded-[24px] border border-foreground/10 bg-[hsl(var(--ci-card))] p-5 text-left text-foreground shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition duration-300 hover:-translate-y-0.5 hover:border-foreground/20 ${clickable ? 'cursor-pointer' : ''}`}
-        style={{ '--hue': theme.hue }}
+        // Özel CSS değişkeni; CSSProperties standart anahtarları tanımadığı için genişletilir.
+        style={{ '--hue': theme.hue } as CSSProperties}
       >
         <div
           className="pointer-events-none absolute inset-0 opacity-80 transition group-hover:opacity-100"
@@ -112,7 +141,7 @@ export default function PremiumResourceCard({
 
         {chips.length > 0 ? (
           <div className="relative mt-4 flex flex-wrap gap-2">
-            {chips.filter(Boolean).map((chip) => (
+            {chips.filter((chip): chip is string => Boolean(chip)).map((chip) => (
               <span key={chip} className="rounded-full border border-foreground/10 bg-foreground/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">
                 {chip}
               </span>

@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Camera, Loader2, Upload, X } from 'lucide-react';
 import { Button } from './button';
 import { useToast } from '../../hooks/use-toast';
 import { uploadFile } from '../../lib/api/modules';
 import { assetUrl } from '../../lib/assetUrl';
+import { errorMessage } from '../../lib/errors';
+
+export interface PhotoCaptureProps {
+  value?: string | null;
+  onChange: (url: string) => void;
+  folder?: string;
+  size?: number;
+}
 
 /**
  * Tek fotoğraf alanı: kullanıcı ister web kamerasından çeker ister var olan bir
@@ -14,11 +22,11 @@ import { assetUrl } from '../../lib/assetUrl';
  * folder       — yükleme klasörü
  * size         — önizleme kenar uzunluğu px (kare)
  */
-export default function PhotoCapture({ value, onChange, folder = 'student-photos', size = 128 }) {
+export default function PhotoCapture({ value, onChange, folder = 'student-photos', size = 128 }: PhotoCaptureProps) {
   const { toast } = useToast();
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const fileRef = useRef(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const [active, setActive] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -53,15 +61,16 @@ export default function PhotoCapture({ value, onChange, folder = 'student-photos
     }
   };
 
-  const upload = async (blobOrFile, name) => {
+  const upload = async (blobOrFile: Blob, name = 'photo.jpg') => {
     setBusy(true);
     try {
       const file = blobOrFile instanceof File ? blobOrFile : new File([blobOrFile], name, { type: 'image/jpeg' });
       const data = new FormData(); data.set('file', file);
       const result = await uploadFile(data, folder);
+      if (!result) throw new Error('Sunucu yüklenen dosyanın adresini döndürmedi.');
       onChange(result.fileUrl);
     } catch (error) {
-      toast({ title: 'Fotoğraf yüklenemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Fotoğraf yüklenemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
@@ -73,15 +82,17 @@ export default function PhotoCapture({ value, onChange, folder = 'student-photos
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
-    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+    const context = canvas.getContext('2d');
+    if (!context) { toast({ title: 'Görüntü alınamadı.', variant: 'destructive' }); return; }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
     if (!blob) { toast({ title: 'Görüntü alınamadı.', variant: 'destructive' }); return; }
     await upload(blob, `webcam-${Date.now()}.jpg`);
     stop();
     toast({ title: 'Fotoğraf çekildi' });
   };
 
-  const onFile = async (event) => {
+  const onFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = ''; // aynı dosya yeniden seçilebilsin
     if (!file) return;

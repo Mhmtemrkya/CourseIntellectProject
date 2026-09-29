@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import { CheckCircle2, Upload } from 'lucide-react';
 import { Button } from './button';
 
@@ -19,17 +19,29 @@ import { Button } from './button';
  *   gerçeğini bilen üst bileşen bunu geçince "Belge yüklendi" yazar.
  * uploadedName — yüklenmiş dosyanın adı (varsa metnin yanında gösterilir)
  */
+export interface FileButtonProps {
+  label?: string;
+  accept?: string;
+  multiple?: boolean;
+  disabled?: boolean;
+  required?: boolean;
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
+  className?: string;
+  uploaded?: boolean;
+  uploadedName?: string;
+}
+
 export function FileButton({
   label = 'Belge Yükle', accept, multiple = false, disabled = false, required = false,
   onChange, className = '', uploaded = false, uploadedName = '',
-}) {
-  const ref = useRef(null);
+}: FileButtonProps) {
+  const ref = useRef<HTMLInputElement | null>(null);
   const [selected, setSelected] = useState('');
 
-  const handleChange = (event) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) setSelected('');
-    else if (files.length === 1) setSelected(files[0].name);
+    else if (files.length === 1) setSelected(files[0]?.name ?? '');
     else setSelected(`${files.length} dosya seçildi`);
     onChange?.(event);
   };

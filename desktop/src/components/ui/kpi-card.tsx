@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { AnimatedValue } from './premium-dashboard';
+import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import type { IconComponent } from '@/types/ui';
 
 /**
  * Kurum panolarının ortak KPI kartı.
@@ -10,7 +12,9 @@ import { cn } from '@/lib/utils';
  *
  * İlk ton marka vurgusunu takip eder: tenant paleti değişince kartlar da değişir.
  */
-export const KPI_TONES = {
+export type KpiTone = 'brand' | 'blue' | 'emerald' | 'violet' | 'amber' | 'rose' | 'cyan';
+
+export const KPI_TONES: Record<KpiTone, string> = {
   brand: 'from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-primary-text))]',
   blue: 'from-sky-400 to-blue-600',
   emerald: 'from-emerald-400 to-teal-600',
@@ -22,7 +26,19 @@ export const KPI_TONES = {
 
 export const kpiItemVariants = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } };
 
-export function KpiCard({ label, value, caption, icon: Icon, tone = 'brand', onClick, testId, className, containerClassName }) {
+export interface KpiCardProps {
+  label: string;
+  value: ComponentProps<typeof AnimatedValue>['value'];
+  caption?: ReactNode;
+  icon?: IconComponent | null;
+  tone?: KpiTone;
+  onClick?: () => void;
+  testId?: string;
+  className?: string;
+  containerClassName?: string;
+}
+
+export function KpiCard({ label, value, caption, icon: Icon, tone = 'brand', onClick, testId, className, containerClassName }: KpiCardProps) {
   const Wrapper = onClick ? 'button' : 'div';
   return (
     <motion.div variants={kpiItemVariants} className={containerClassName}>

@@ -9,9 +9,33 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { Button } from './button';
+import type { ReactNode } from 'react';
 import { cn } from '../../lib/utils';
+import type { IconComponent } from '@/types/ui';
 
-const variants = {
+export type AlertBannerVariant = 'info' | 'success' | 'warning' | 'error';
+
+interface VariantStyle {
+  icon: IconComponent;
+  bg: string;
+  border: string;
+  text: string;
+  iconColor: string;
+}
+
+export interface AlertBannerProps {
+  variant?: AlertBannerVariant;
+  title?: ReactNode;
+  message?: ReactNode;
+  show?: boolean;
+  onClose?: () => void;
+  onRetry?: () => void;
+  className?: string;
+}
+
+type PresetBannerProps = Omit<AlertBannerProps, 'variant'>;
+
+const variants: Record<AlertBannerVariant, VariantStyle> = {
   info: {
     icon: Info,
     bg: 'bg-blue-50 dark:bg-blue-900/20',
@@ -50,7 +74,7 @@ export function AlertBanner({
   onClose,
   onRetry,
   className,
-}) {
+}: AlertBannerProps) {
   const styles = variants[variant];
   const Icon = styles.icon;
 
@@ -109,19 +133,19 @@ export function AlertBanner({
 }
 
 // Pre-configured variants
-export function InfoBanner(props) {
+export function InfoBanner(props: PresetBannerProps) {
   return <AlertBanner variant="info" {...props} />;
 }
 
-export function SuccessBanner(props) {
+export function SuccessBanner(props: PresetBannerProps) {
   return <AlertBanner variant="success" {...props} />;
 }
 
-export function WarningBanner(props) {
+export function WarningBanner(props: PresetBannerProps) {
   return <AlertBanner variant="warning" {...props} />;
 }
 
-export function ErrorBanner(props) {
+export function ErrorBanner(props: PresetBannerProps) {
   return <AlertBanner variant="error" {...props} />;
 }
 

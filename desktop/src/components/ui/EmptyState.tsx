@@ -1,7 +1,18 @@
 // SchoolAsist Empty State Component
 import { motion } from 'framer-motion';
 import { Button } from './button';
+import type { ReactNode } from 'react';
 import { cn } from '../../lib/utils';
+import type { IconComponent } from '@/types/ui';
+
+export interface EmptyStateProps {
+  icon?: IconComponent | null;
+  title?: ReactNode;
+  description?: ReactNode;
+  action?: (() => void) | null;
+  actionLabel?: ReactNode;
+  className?: string;
+}
 
 export function EmptyState({
   icon: Icon,
@@ -10,7 +21,7 @@ export function EmptyState({
   action,
   actionLabel,
   className,
-}) {
+}: EmptyStateProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -47,10 +58,10 @@ export function EmptyState({
 }
 
 // Illustration variants
-export function EmptyStateSearch({ onAction }) {
+export function EmptyStateSearch({ onAction }: { onAction?: () => void }) {
   return (
     <EmptyState
-      icon={({ className }) => (
+      icon={({ className }: { className?: string }) => (
         <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <circle cx="11" cy="11" r="8" />
           <path d="M21 21l-4.35-4.35" />
@@ -64,10 +75,15 @@ export function EmptyStateSearch({ onAction }) {
   );
 }
 
-export function EmptyStateNoData({ title, description, onAction, actionLabel }) {
+export function EmptyStateNoData({ title, description, onAction, actionLabel }: {
+  title?: ReactNode;
+  description?: ReactNode;
+  onAction?: () => void;
+  actionLabel?: ReactNode;
+}) {
   return (
     <EmptyState
-      icon={({ className }) => (
+      icon={({ className }: { className?: string }) => (
         <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
         </svg>
@@ -80,10 +96,10 @@ export function EmptyStateNoData({ title, description, onAction, actionLabel }) 
   );
 }
 
-export function EmptyStateError({ onRetry }) {
+export function EmptyStateError({ onRetry }: { onRetry?: () => void }) {
   return (
     <EmptyState
-      icon={({ className }) => (
+      icon={({ className }: { className?: string }) => (
         <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <circle cx="12" cy="12" r="10" />
           <path d="M12 8v4m0 4h.01" />

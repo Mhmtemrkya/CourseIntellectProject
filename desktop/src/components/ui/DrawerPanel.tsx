@@ -1,15 +1,21 @@
 // SchoolAsist Drawer Panel Component
-import { motion, AnimatePresence } from 'framer-motion';
+import type { ReactNode } from 'react';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Button } from './button';
 import { cn } from '../../lib/utils';
 
-const overlayVariants = {
+interface SlotProps {
+  children?: ReactNode;
+  className?: string;
+}
+
+const overlayVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
 };
 
-const drawerVariants = {
+const drawerVariants: Variants = {
   hidden: { x: '100%', opacity: 0 },
   visible: { 
     x: 0, 
@@ -37,6 +43,14 @@ export function DrawerPanel({
   description,
   className,
   width = 'max-w-lg',
+}: {
+  open: boolean;
+  onClose: () => void;
+  children?: ReactNode;
+  title?: ReactNode;
+  description?: ReactNode;
+  className?: string;
+  width?: string;
 }) {
   return (
     <AnimatePresence>
@@ -97,7 +111,7 @@ export function DrawerPanel({
 }
 
 // Drawer Header Component
-export function DrawerHeader({ children, className }) {
+export function DrawerHeader({ children, className }: SlotProps) {
   return (
     <div className={cn('space-y-1.5', className)}>
       {children}
@@ -106,7 +120,7 @@ export function DrawerHeader({ children, className }) {
 }
 
 // Drawer Title
-export function DrawerTitle({ children, className }) {
+export function DrawerTitle({ children, className }: SlotProps) {
   return (
     <h3 className={cn('text-xl font-semibold font-heading', className)}>
       {children}
@@ -115,7 +129,7 @@ export function DrawerTitle({ children, className }) {
 }
 
 // Drawer Description
-export function DrawerDescription({ children, className }) {
+export function DrawerDescription({ children, className }: SlotProps) {
   return (
     <p className={cn('text-sm text-muted-foreground', className)}>
       {children}
@@ -124,7 +138,7 @@ export function DrawerDescription({ children, className }) {
 }
 
 // Drawer Footer
-export function DrawerFooter({ children, className }) {
+export function DrawerFooter({ children, className }: SlotProps) {
   return (
     <div className={cn('flex gap-3 pt-6 border-t mt-6', className)}>
       {children}
@@ -133,7 +147,7 @@ export function DrawerFooter({ children, className }) {
 }
 
 // Drawer Section
-export function DrawerSection({ title, children, className }) {
+export function DrawerSection({ title, children, className }: SlotProps & { title?: ReactNode }) {
   return (
     <div className={cn('space-y-3', className)}>
       {title && (

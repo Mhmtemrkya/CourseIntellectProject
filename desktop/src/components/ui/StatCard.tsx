@@ -3,15 +3,19 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { Card, CardContent } from './card';
+import type * as React from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '../../lib/utils';
 
+type ColoredIcon = React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+
 // Count Up Animation Hook
-function useCountUp(end, duration = 1000) {
+function useCountUp(end: number, duration = 1000): number {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    let startTime;
-    const animate = (timestamp) => {
+    let startTime: number | undefined;
+    const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
       setCount(Math.floor(progress * end));
@@ -35,6 +39,16 @@ export function StatCard({
   suffix = '',
   prefix = '',
   className,
+}: {
+  title: ReactNode;
+  value: number;
+  icon: ColoredIcon;
+  trend?: 'up' | 'down' | null;
+  trendValue?: ReactNode;
+  color?: string;
+  suffix?: ReactNode;
+  prefix?: ReactNode;
+  className?: string;
 }) {
   const displayValue = useCountUp(value);
 
@@ -95,6 +109,12 @@ export function MiniStatCard({
   icon: Icon,
   color = '#00354F',
   className,
+}: {
+  title: ReactNode;
+  value: ReactNode;
+  icon: ColoredIcon;
+  color?: string;
+  className?: string;
 }) {
   return (
     <Card className={cn('hover:shadow-md transition-shadow', className)}>

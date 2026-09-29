@@ -1,3 +1,4 @@
+import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -10,7 +11,14 @@ import { cn } from '@/lib/utils';
  */
 
 /** Tonlar: anlam → sınıf. Şeffaf zemin kullanır, iki temada da okunur. */
-export const STATUS_TONES = {
+export type StatusTone = 'success' | 'danger' | 'warning' | 'info' | 'brand' | 'neutral';
+
+export interface ResolvedStatus {
+  label: string;
+  tone: StatusTone;
+}
+
+export const STATUS_TONES: Record<StatusTone, string> = {
   success: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
   danger: 'bg-red-500/15 text-red-600 dark:text-red-400',
   warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
@@ -23,7 +31,7 @@ export const STATUS_TONES = {
  * Durum sözlüğü: normalize edilmiş anahtar → { label, tone }.
  * Anahtarlar hem Türkçe metinleri hem backend enum adlarını kapsar.
  */
-const STATUS_MAP = {
+const STATUS_MAP: Record<string, ResolvedStatus> = {
   // Hesap / kayıt durumu
   active: { label: 'Aktif', tone: 'success' },
   aktif: { label: 'Aktif', tone: 'success' },
@@ -95,7 +103,7 @@ const STATUS_MAP = {
 };
 
 /** "Kısmi Ödeme", "PartialPayment", "kismi_odeme" → "kismiodeme" */
-export function normalizeStatusKey(value) {
+export function normalizeStatusKey(value: unknown): string {
   return String(value ?? '')
     .trim()
     .toLocaleLowerCase('tr-TR')
@@ -106,7 +114,7 @@ export function normalizeStatusKey(value) {
 }
 
 /** Sözlükteki karşılık; bilinmeyen durumda metnin kendisi + nötr ton. */
-export function resolveStatus(value, { fallbackTone = 'neutral' } = {}) {
+export function resolveStatus(value: unknown, { fallbackTone = 'neutral' }: { fallbackTone?: StatusTone } = {}): ResolvedStatus {
   const key = normalizeStatusKey(value);
   const hit = STATUS_MAP[key];
   if (hit) return hit;
@@ -118,7 +126,15 @@ export function resolveStatus(value, { fallbackTone = 'neutral' } = {}) {
  * Ortak durum rozeti.
  * `status` sözlükten çözülür; `label`/`tone` verilerek özel durum yazılabilir.
  */
-export function StatusBadge({ status, label, tone, className, size = 'md', children, ...rest }) {
+export interface StatusBadgeProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'children'> {
+  status?: unknown;
+  label?: ReactNode;
+  tone?: StatusTone | null;
+  size?: 'sm' | 'md';
+  children?: ReactNode;
+}
+
+export function StatusBadge({ status, label, tone, className, size = 'md', children, ...rest }: StatusBadgeProps) {
   const resolved = resolveStatus(status);
   const finalTone = tone || resolved.tone;
 

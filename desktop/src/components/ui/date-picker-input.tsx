@@ -14,24 +14,45 @@ import {
 const ISO_DATE_FORMAT = "yyyy-MM-dd"
 const DISPLAY_DATE_FORMAT = "d MMMM yyyy, EEEE"
 
-function parseDate(value) {
+export type DatePickerInputProps = Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "value" | "defaultValue" | "min" | "max" | "type"
+> & {
+  /** ISO tarih "yyyy-MM-dd"; boş metin seçimsiz demektir. */
+  value?: string | null
+  defaultValue?: string
+  min?: string
+  max?: string
+}
+
+function parseDate(value: unknown): Date | undefined {
   if (!value) return undefined
   const parsed = parse(String(value).slice(0, 10), ISO_DATE_FORMAT, new Date())
   return isValid(parsed) ? parsed : undefined
 }
 
-function toIsoDate(value) {
+function toIsoDate(value: Date | null | undefined): string {
   return value ? format(value, ISO_DATE_FORMAT) : ""
 }
 
-function emitDateChange(onChange, value, name) {
-  onChange?.({
+/**
+ * Yerel <input type="date"> ile aynı tüketici kodu çalışsın diye değişiklik,
+ * yalnız `target/currentTarget.value|name` taşıyan bir olayla bildirilir.
+ * Tüketiciler bu iki alandan başkasını okumaz; tip sınırı burada tek yerde tutulur.
+ */
+function emitDateChange(
+  onChange: React.ChangeEventHandler<HTMLInputElement> | undefined,
+  value: string,
+  name: string | undefined,
+): void {
+  const event = {
     target: { value, name },
     currentTarget: { value, name },
-  })
+  }
+  onChange?.(event as unknown as React.ChangeEvent<HTMLInputElement>)
 }
 
-const DatePickerInput = React.forwardRef(({
+const DatePickerInput = React.forwardRef<HTMLButtonElement, DatePickerInputProps>(({
   className,
   value,
   defaultValue,
@@ -46,8 +67,10 @@ const DatePickerInput = React.forwardRef(({
   id,
   placeholder = "Tarih seçin",
   "aria-label": ariaLabel,
-  ...props
+  ...rest
 }, ref) => {
+  // Kalan öznitelikler tetik butonuna aktarılır (yerel input'ta olduğu gibi).
+  const props = rest as React.ButtonHTMLAttributes<HTMLButtonElement>
   const [open, setOpen] = React.useState(false)
   const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue || "")
   const isControlled = value !== undefined
@@ -60,12 +83,12 @@ const DatePickerInput = React.forwardRef(({
   const fromYear = minDate?.getFullYear() ?? 1900
   const toYear = maxDate?.getFullYear() ?? Math.max(today.getFullYear() + 25, 2100)
 
-  const updateValue = (nextValue) => {
+  const updateValue = (nextValue: string) => {
     if (!isControlled) setUncontrolledValue(nextValue)
     emitDateChange(onChange, nextValue, name)
   }
 
-  const selectDate = (date) => {
+  const selectDate = (date: Date | undefined) => {
     if (!date) return
     updateValue(toIsoDate(date))
     setOpen(false)
@@ -90,8 +113,8 @@ const DatePickerInput = React.forwardRef(({
             !selected && "text-muted-foreground/75",
             className,
           )}
-          onBlur={onBlur}
-          onFocus={onFocus}
+          onBlur={onBlur as React.FocusEventHandler<HTMLButtonElement> | undefined}
+          onFocus={onFocus as React.FocusEventHandler<HTMLButtonElement> | undefined}
         >
           <span className="min-w-0 flex-1 truncate">
             {selected
