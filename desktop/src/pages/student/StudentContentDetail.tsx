@@ -9,9 +9,11 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchContents } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { openHttpUrl } from '../../lib/safeOpen';
+import { errorMessage } from '../../lib/errors';
+import type { ContentDto } from '../../types/api/generated';
 
-function buildContentFileUrl(contentFile) {
-  const fileUrl = typeof contentFile === 'object' ? String(contentFile?.fileUrl || '').trim() : '';
+function buildContentFileUrl(contentFile: ContentDto | string): string | undefined {
+  const fileUrl = typeof contentFile === 'object' ? String(contentFile.fileUrl || '').trim() : '';
   if (fileUrl) {
     if (/^https?:\/\//i.test(fileUrl)) {
       return fileUrl;
@@ -26,8 +28,8 @@ function buildContentFileUrl(contentFile) {
     }
   }
 
-  const fileName = typeof contentFile === 'object' ? String(contentFile?.fileName || '').trim() : String(contentFile || '').trim();
-  if (!fileName) return null;
+  const fileName = typeof contentFile === 'object' ? String(contentFile.fileName || '').trim() : contentFile.trim();
+  if (!fileName) return undefined;
   if (!desktopApiBaseUrl) {
     return `/uploads/teacher-content/${encodeURIComponent(fileName)}`;
   }
@@ -39,26 +41,26 @@ function buildContentFileUrl(contentFile) {
 }
 
 export default function StudentContentDetail() {
-  const [contents, setContents] = useState([]);
+  const [contents, setContents] = useState<ContentDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeVideoId, setActiveVideoId] = useState(null);
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
 
   const loadDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      setContents(await fetchContents(true));
+      setContents((await fetchContents(true)) ?? []);
     } catch (err) {
-      setError(err.message || 'İçerik detayları alınamadı.');
+      setError(errorMessage(err, 'İçerik detayları alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadDetails(); }, [loadDetails]);
+  useEffect(() => { void loadDetails(); }, [loadDetails]);
 
-  const openFile = async (contentFile, download = false) => {
+  const openFile = async (contentFile: ContentDto | string, download = false) => {
     const fileUrl = buildContentFileUrl(contentFile);
     if (!fileUrl) return;
     if (download) {
@@ -70,7 +72,7 @@ export default function StudentContentDetail() {
       const objectUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = objectUrl;
-      link.download = (typeof contentFile === 'object' ? contentFile?.fileName || contentFile?.title : contentFile) || 'icerik';
+      link.download = (typeof contentFile === 'object' ? contentFile.fileName || contentFile.title : contentFile) || 'icerik';
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -80,15 +82,16 @@ export default function StudentContentDetail() {
     openHttpUrl(fileUrl);
   };
 
-  const toggleVideo = (item) => {
+  const toggleVideo = (item: ContentDto) => {
     setActiveVideoId((current) => (current === item.id ? null : item.id));
   };
 
   const grouped = useMemo(() => {
-    return contents.reduce((acc, item) => {
+    return contents.reduce<Record<string, ContentDto[]>>((acc, item) => {
       const key = item.subject || 'Genel';
-      acc[key] = acc[key] || [];
-      acc[key].push(item);
+      const bucket = acc[key] ?? [];
+      bucket.push(item);
+      acc[key] = bucket;
       return acc;
     }, {});
   }, [contents]);

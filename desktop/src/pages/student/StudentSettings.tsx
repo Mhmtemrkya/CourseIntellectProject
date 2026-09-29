@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Settings, Lock, Bell, User, Eye, EyeOff, Save, Shield,
 } from 'lucide-react';
@@ -12,13 +12,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { changePassword, fetchUserPreferences, saveUserPreferences } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { UserPreferences } from '../../lib/api/preferences';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
@@ -29,12 +31,16 @@ const desktopNotificationKeys = [
   'examReminders',
   'homeworkReminders',
   'messageAlerts',
-];
+] as const;
 
-function pickDesktopNotificationPrefs(source) {
-  return desktopNotificationKeys.reduce((acc, key) => {
-    if (typeof source?.[key] === 'boolean') {
-      acc[key] = source[key];
+type DesktopNotificationKey = typeof desktopNotificationKeys[number];
+type DesktopNotificationPrefs = Record<DesktopNotificationKey, boolean>;
+
+function pickDesktopNotificationPrefs(source: UserPreferences): Partial<DesktopNotificationPrefs> {
+  return desktopNotificationKeys.reduce<Partial<DesktopNotificationPrefs>>((acc, key) => {
+    const value = source[key];
+    if (typeof value === 'boolean') {
+      acc[key] = value;
     }
     return acc;
   }, {});
@@ -47,7 +53,7 @@ export default function StudentSettings() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [remotePreferences, setRemotePreferences] = useState({});
+  const [remotePreferences, setRemotePreferences] = useState<UserPreferences>({});
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -55,7 +61,7 @@ export default function StudentSettings() {
     confirmPassword: '',
   });
 
-  const [prefs, setPrefs] = useState({
+  const [prefs, setPrefs] = useState<DesktopNotificationPrefs>({
     emailNotifications: true,
     pushNotifications: true,
     examReminders: true,
@@ -91,7 +97,7 @@ export default function StudentSettings() {
       toast({ title: 'Şifreniz başarıyla değiştirildi.' });
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Şifre değiştirilemedi.';
+      const message = errorMessage(err, 'Şifre değiştirilemedi.');
       toast({ title: message, variant: 'destructive' });
     } finally {
       setSaving(false);
@@ -108,7 +114,7 @@ export default function StudentSettings() {
       }
       toast({ title: 'Tercihleriniz kaydedildi.' });
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Tercihler kaydedilemedi.';
+      const message = errorMessage(err, 'Tercihler kaydedilemedi.');
       toast({ title: message, variant: 'destructive' });
     } finally {
       setSaving(false);
@@ -238,13 +244,13 @@ export default function StudentSettings() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 max-w-md">
-                {[
+                {([
                   { key: 'emailNotifications', label: 'E-posta Bildirimleri', desc: 'Önemli güncellemeler için e-posta alın' },
                   { key: 'pushNotifications', label: 'Anlık Bildirimler', desc: 'Anlık bildirimler' },
                   { key: 'examReminders', label: 'Sınav Hatırlatmaları', desc: 'Yaklaşan sınavlar için hatırlatma' },
                   { key: 'homeworkReminders', label: 'Ödev Hatırlatmaları', desc: 'Ödev teslim tarihi yaklaştığında uyarı' },
                   { key: 'messageAlerts', label: 'Mesaj Uyarıları', desc: 'Yeni mesaj geldiğinde bildirim' },
-                ].map(({ key, label, desc }) => (
+                ] satisfies ReadonlyArray<{ key: DesktopNotificationKey; label: string; desc: string }>).map(({ key, label, desc }) => (
                   <div key={key} className="flex items-center justify-between py-2">
                     <div>
                       <p className="text-sm font-medium">{label}</p>

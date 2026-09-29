@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   User, Mail, Phone, Shield, Bell, GraduationCap, Award,
 } from 'lucide-react';
@@ -15,27 +15,31 @@ import { AnimatedValue } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { LegalDocumentsPanel } from '../../components/legal/LegalDocumentsPanel';
 import { fetchAttendance, fetchExamResults, fetchStudents } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { AttendanceEntryDto, ExamResultDto, StudentSummaryDto } from '../../types/api/generated';
 
-const containerVariants = {
+type NotificationKey = 'email' | 'push' | 'exams' | 'content';
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-function normalizeText(value = '') {
+function normalizeText(value: string | null | undefined = ''): string {
   return String(value).trim().toLowerCase();
 }
 
 export default function StudentProfile() {
   const { user } = useApp();
-  const [notifications, setNotifications] = useState({
+  const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     email: true,
     push: true,
     exams: true,
     content: true,
   });
-  const [student, setStudent] = useState(null);
-  const [attendance, setAttendance] = useState([]);
-  const [exams, setExams] = useState([]);
+  const [student, setStudent] = useState<StudentSummaryDto | null>(null);
+  const [attendance, setAttendance] = useState<AttendanceEntryDto[]>([]);
+  const [exams, setExams] = useState<ExamResultDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -43,26 +47,27 @@ export default function StudentProfile() {
     try {
       setLoading(true);
       setError('');
-      const [students, attendanceList, examList] = await Promise.all([
+      const [studentList, attendanceList, examList] = await Promise.all([
         fetchStudents(),
         fetchAttendance().catch(() => []),
         fetchExamResults().catch(() => []),
       ]);
+      const students = studentList ?? [];
       const current = students.find((item) => normalizeText(item.username) === normalizeText(user?.username))
         || students.find((item) => normalizeText(item.fullName) === normalizeText(user?.name))
         || null;
       setStudent(current);
-      setAttendance(current ? attendanceList.filter((item) => normalizeText(item.studentName) === normalizeText(current.fullName)) : []);
-      setExams(current ? examList.filter((item) => normalizeText(item.studentName) === normalizeText(current.fullName)) : []);
+      setAttendance(current ? (attendanceList ?? []).filter((item) => normalizeText(item.studentName) === normalizeText(current.fullName)) : []);
+      setExams(current ? (examList ?? []).filter((item) => normalizeText(item.studentName) === normalizeText(current.fullName)) : []);
     } catch (err) {
-      setError(err.message || 'Öğrenci profili alınamadı.');
+      setError(errorMessage(err, 'Öğrenci profili alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    loadProfile();
+    void loadProfile();
   }, [loadProfile]);
 
   const stats = useMemo(() => {
@@ -153,12 +158,12 @@ export default function StudentProfile() {
               <CardTitle className="flex items-center gap-2"><Bell className="h-5 w-5" />Bildirim Ayarları</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
+              {([
                 ['email', 'E-posta Bildirimleri'],
                 ['push', 'Masaüstü Bildirimleri'],
                 ['exams', 'Sınav Bildirimleri'],
                 ['content', 'İçerik Bildirimleri'],
-              ].map(([key, label]) => (
+              ] satisfies ReadonlyArray<readonly [NotificationKey, string]>).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between">
                   <div><p className="font-medium">{label}</p></div>
                   <Switch checked={notifications[key]} onCheckedChange={(value) => setNotifications((prev) => ({ ...prev, [key]: value }))} />

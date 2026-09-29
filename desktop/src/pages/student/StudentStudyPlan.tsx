@@ -27,13 +27,93 @@ import {
   fetchStudyPlan,
   saveStudyPlan,
 } from '../../lib/api/modules';
-import { collectNewBadges } from '../../lib/badges';
+import { collectNewBadges, type Badge as BadgeDefinition } from '../../lib/badges';
+import { isStudyPlanState } from '../../lib/api/studyPlans';
 import { studyPlanRealtime } from '../../lib/realtime/studyPlanRealtime';
 import BadgeUnlockModal from '../../components/badges/BadgeUnlockModal';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { PlannedExam } from '../../lib/api/plannedExams';
+import type { ExamResultDto, HomeworkAssignmentDto, StudyPlanStateDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
+
+type TaskStatus = 'done' | 'active' | 'pending';
+type PlanTab = 'daily' | 'weekly' | 'monthly' | 'goals' | 'analytics';
+
+/** planItemsSerialized içindeki görev (JSON'da serbest biçimde saklanır). */
+interface PlanTask {
+  id: string;
+  type: 'task';
+  title: string;
+  subject: string;
+  topic: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  status: TaskStatus;
+  source: string;
+  createdAt: string;
+  /** Eski kayıtlarla uyum için tamamlanınca yazılır. */
+  done?: boolean;
+}
+
+interface PlanGoal {
+  id: string;
+  type: 'goal';
+  title: string;
+  target: number;
+  current: number;
+  unit: string;
+  createdAt: string;
+}
+
+/** Görev ekleme formu ve öneriler için şablon (form alanları metin olabilir). */
+interface TaskTemplate {
+  title: string;
+  subject: string;
+  topic?: string;
+  startTime?: string;
+  durationMinutes: number | string;
+  source?: string;
+}
+
+interface SuggestedTask extends TaskTemplate {
+  durationMinutes: number;
+}
+
+interface PlanSuggestion {
+  key: string;
+  icon: IconComponent;
+  color: string;
+  title: string;
+  detail: string;
+  task: SuggestedTask;
+}
+
+interface TaskForm {
+  title: string;
+  subject: string;
+  topic: string;
+  startTime: string;
+  durationMinutes: number | string;
+}
+
+interface GoalForm {
+  title: string;
+  target: number | string;
+  current: number | string;
+  unit: string;
+}
+
+interface PersistOverrides {
+  streakCount?: number;
+  xpPoints?: number;
+  lastCompletedAt?: string | null;
+}
 
 const SUBJECTS = ['Matematik', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji', 'İngilizce', 'Tarih', 'Coğrafya', 'Genel'];
 
-const SUBJECT_COLORS = {
+const SUBJECT_COLORS: Partial<Record<string, string>> = {
   Matematik: '#FF8A00',
   'Türkçe': '#8B5CF6',
   Fizik: '#2563EB',
@@ -45,7 +125,7 @@ const SUBJECT_COLORS = {
   Genel: '#EF4444',
 };
 
-const QUOTES = [
+const QUOTES: ReadonlyArray<readonly [string, string]> = [
   ['Başarı, küçük çabaların her gün tekrarlanmasıdır.', 'Robert Collier'],
   ['Disiplin, hedefler ile başarı arasındaki köprüdür.', 'Jim Rohn'],
   ['Bugünün işini yarına bırakma.', 'Benjamin Franklin'],
@@ -61,18 +141,18 @@ const GOAL_XP = 50;
 const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const MONTH_NAMES = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
-function toIsoDate(date) {
+function toIsoDate(date: Date | string | number): string {
   const d = new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function formatDateLong(iso) {
+function formatDateLong(iso: string): string {
   const d = new Date(`${iso}T00:00:00`);
   const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
   return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}, ${days[d.getDay()]}`;
 }
 
-function formatMinutes(total) {
+function formatMinutes(total: number): string {
   const minutes = Math.max(0, Math.round(total));
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
@@ -82,19 +162,19 @@ function formatMinutes(total) {
 
 // Backend'de PlanItemsSerialized serbest JSON tutar; eski kayıtlar da
 // (date/type alanı olmayan) görev olarak normalize edilir.
-function normalizeItems(raw) {
-  let parsed = [];
+function normalizeItems(raw: string | null | undefined): { tasks: PlanTask[]; goals: PlanGoal[] } {
+  let parsed: unknown = [];
   try {
     parsed = JSON.parse(raw || '[]');
   } catch {
     parsed = [];
   }
-  if (!Array.isArray(parsed)) parsed = [];
+  const entries: unknown[] = Array.isArray(parsed) ? parsed : [];
 
-  const tasks = [];
-  const goals = [];
-  parsed.forEach((item) => {
-    if (!item || typeof item !== 'object') return;
+  const tasks: PlanTask[] = [];
+  const goals: PlanGoal[] = [];
+  entries.forEach((item) => {
+    if (!isRecord(item)) return;
     const type = item.type || (item.target != null ? 'goal' : 'task');
     if (type === 'goal') {
       goals.push({
@@ -104,14 +184,14 @@ function normalizeItems(raw) {
         target: Math.max(1, Number(item.target) || 1),
         current: Math.max(0, Number(item.current) || 0),
         unit: String(item.unit || ''),
-        createdAt: item.createdAt || new Date().toISOString(),
+        createdAt: String(item.createdAt || new Date().toISOString()),
       });
       return;
     }
     const duration = Number(item.durationMinutes)
       || parseInt(String(item.duration || ''), 10)
       || 45;
-    const status = item.status === 'done' || item.done === true
+    const status: TaskStatus = item.status === 'done' || item.done === true
       ? 'done'
       : item.status === 'active' ? 'active' : 'pending';
     tasks.push({
@@ -120,19 +200,19 @@ function normalizeItems(raw) {
       title: String(item.title || 'Görev'),
       subject: String(item.subject || 'Genel'),
       topic: String(item.topic || item.reason || ''),
-      date: String(item.date || (item.createdAt || '').slice(0, 10) || toIsoDate(new Date())),
+      date: String(item.date || String(item.createdAt || '').slice(0, 10) || toIsoDate(new Date())),
       startTime: String(item.startTime || ''),
       endTime: String(item.endTime || ''),
       durationMinutes: duration,
       status,
       source: String(item.source || 'manual'),
-      createdAt: item.createdAt || new Date().toISOString(),
+      createdAt: String(item.createdAt || new Date().toISOString()),
     });
   });
   return { tasks, goals };
 }
 
-function nextStreak(state) {
+function nextStreak(state: StudyPlanStateDto | null): number {
   const last = state?.lastCompletedAt ? new Date(state.lastCompletedAt) : null;
   const streak = Number(state?.streakCount) || 0;
   if (!last) return 1;
@@ -143,15 +223,15 @@ function nextStreak(state) {
   return lastDay === yesterday ? streak + 1 : 1;
 }
 
-function endTimeFor(startTime, durationMinutes) {
+function endTimeFor(startTime: string, durationMinutes: number): string {
   if (!startTime) return '';
   const [h, m] = startTime.split(':').map(Number);
-  if (Number.isNaN(h)) return '';
+  if (h === undefined || Number.isNaN(h)) return '';
   const total = h * 60 + (m || 0) + durationMinutes;
   return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
-const STATUS_META = {
+const STATUS_META: Record<TaskStatus, { label: string; className: string; dot: string }> = {
   done: { label: 'Tamamlandı', className: 'text-emerald-500', dot: 'bg-emerald-500' },
   active: { label: 'Devam Ediyor', className: 'text-orange-500', dot: 'bg-orange-500' },
   pending: { label: 'Bekliyor', className: 'text-muted-foreground', dot: 'bg-slate-400' },
@@ -160,15 +240,15 @@ const STATUS_META = {
 export default function StudentStudyPlan() {
   const { user } = useApp();
   const { toast } = useToast();
-  const [state, setState] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [goals, setGoals] = useState([]);
-  const [homework, setHomework] = useState([]);
-  const [plannedExams, setPlannedExams] = useState([]);
-  const [examResults, setExamResults] = useState([]);
+  const [state, setState] = useState<StudyPlanStateDto | null>(null);
+  const [tasks, setTasks] = useState<PlanTask[]>([]);
+  const [goals, setGoals] = useState<PlanGoal[]>([]);
+  const [homework, setHomework] = useState<HomeworkAssignmentDto[]>([]);
+  const [plannedExams, setPlannedExams] = useState<PlannedExam[]>([]);
+  const [examResults, setExamResults] = useState<ExamResultDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('daily');
+  const [tab, setTab] = useState<PlanTab>('daily');
   const [selectedDate, setSelectedDate] = useState(toIsoDate(new Date()));
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
@@ -178,13 +258,13 @@ export default function StudentStudyPlan() {
   const [goalDialog, setGoalDialog] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [newBadges, setNewBadges] = useState([]);
-  const [taskForm, setTaskForm] = useState({
+  const [newBadges, setNewBadges] = useState<BadgeDefinition[]>([]);
+  const [taskForm, setTaskForm] = useState<TaskForm>({
     title: '', subject: 'Matematik', topic: '', startTime: '09:00', durationMinutes: 45,
   });
-  const [goalForm, setGoalForm] = useState({ title: '', target: 10, current: 0, unit: '' });
+  const [goalForm, setGoalForm] = useState<GoalForm>({ title: '', target: 10, current: 0, unit: '' });
 
-  const applyState = useCallback((planState) => {
+  const applyState = useCallback((planState: StudyPlanStateDto | null) => {
     const normalized = normalizeItems(planState?.planItemsSerialized);
     setState(planState);
     setTasks(normalized.tasks);
@@ -206,23 +286,23 @@ export default function StudentStudyPlan() {
       setPlannedExams(Array.isArray(examList) ? examList : []);
       setExamResults(Array.isArray(resultList) ? resultList : []);
     } catch (err) {
-      setError(err.message || 'Çalışma planı alınamadı.');
+      setError(errorMessage(err, 'Çalışma planı alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [applyState, user]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   // SignalR canlı senkronizasyon: mobilde (veya başka sekmede) yapılan
   // her plan değişikliği anında bu sayfaya yansır.
   useEffect(() => studyPlanRealtime.subscribe((planState) => {
-    applyState(planState);
+    if (isStudyPlanState(planState)) applyState(planState);
   }), [applyState]);
 
-  const persist = useCallback(async (nextTasks, nextGoals, overrides = {}) => {
+  const persist = useCallback(async (nextTasks: PlanTask[], nextGoals: PlanGoal[], overrides: PersistOverrides = {}) => {
     const payload = {
       studentName: user?.name || '',
       planItemsSerialized: JSON.stringify([...nextTasks, ...nextGoals]),
@@ -262,7 +342,7 @@ export default function StudentStudyPlan() {
   }, [tasks, selectedDate]);
 
   const suggestions = useMemo(() => {
-    const list = [];
+    const list: PlanSuggestion[] = [];
     const today = toIsoDate(new Date());
     const myName = (user?.name || '').toLowerCase();
     homework
@@ -297,7 +377,7 @@ export default function StudentStudyPlan() {
       });
     });
     // Kazanım analizi: son sınav sonuçlarında ortalaması düşük dersler.
-    const scoresBySubject = examResults.slice(0, 12).reduce((acc, result) => {
+    const scoresBySubject = examResults.slice(0, 12).reduce<Record<string, number[]>>((acc, result) => {
       const subject = String(result.subject || '').trim();
       const score = Number(result.score);
       if (!subject || Number.isNaN(score)) return acc;
@@ -305,7 +385,7 @@ export default function StudentStudyPlan() {
       return acc;
     }, {});
     Object.entries(scoresBySubject)
-      .map(([subject, scores]) => [subject, Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length), scores.length])
+      .map(([subject, scores]): [string, number, number] => [subject, Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length), scores.length])
       .filter(([, average]) => average < 60)
       .sort((a, b) => a[1] - b[1])
       .slice(0, 2)
@@ -324,7 +404,7 @@ export default function StudentStudyPlan() {
       });
     // Son 14 günde hiç çalışılmamış dersler.
     const recent = tasks.filter((task) => {
-      const diff = (new Date(today) - new Date(task.date)) / 86400000;
+      const diff = (new Date(today).getTime() - new Date(task.date).getTime()) / 86400000;
       return diff >= 0 && diff <= 14;
     });
     const studied = new Set(recent.map((task) => task.subject));
@@ -346,18 +426,18 @@ export default function StudentStudyPlan() {
     return list.slice(0, 6);
   }, [homework, plannedExams, examResults, tasks, user]);
 
-  const calendarDayState = useCallback((iso) => {
+  const calendarDayState = useCallback((iso: string) => {
     const list = tasks.filter((task) => task.date === iso);
     if (list.length === 0) return 'empty';
     return list.every((task) => task.status === 'done') ? 'full' : 'partial';
   }, [tasks]);
 
-  const celebrate = useCallback((updatedState) => {
+  const celebrate = useCallback((updatedState: StudyPlanStateDto | null) => {
     const unlocked = collectNewBadges(updatedState?.xpPoints, user);
     if (unlocked.length) setNewBadges(unlocked);
   }, [user]);
 
-  const addTask = useCallback(async (template, date = selectedDate) => {
+  const addTask = useCallback(async (template: TaskTemplate, date = selectedDate) => {
     const duration = Math.max(10, Number(template.durationMinutes) || 45);
     const item = {
       type: 'task',
@@ -388,13 +468,13 @@ export default function StudentStudyPlan() {
       setTaskForm({ title: '', subject: 'Matematik', topic: '', startTime: '09:00', durationMinutes: 45 });
       toast({ title: 'Görev eklendi' });
     } catch (err) {
-      toast({ title: 'Görev eklenemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Görev eklenemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const setTaskStatus = async (task, status) => {
+  const setTaskStatus = async (task: PlanTask, status: TaskStatus) => {
     try {
       const nextTasks = tasks.map((item) => (item.id === task.id ? { ...item, status, done: status === 'done' } : item));
       if (status === 'done') {
@@ -408,16 +488,16 @@ export default function StudentStudyPlan() {
         await persist(nextTasks, goals);
       }
     } catch (err) {
-      toast({ title: 'Güncellenemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Güncellenemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
-  const removeTask = async (task) => {
+  const removeTask = async (task: PlanTask) => {
     try {
       const updated = await deleteStudyPlanItem(task.id);
       applyState(updated);
     } catch (err) {
-      toast({ title: 'Silinemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Silinemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
@@ -441,13 +521,13 @@ export default function StudentStudyPlan() {
       setGoalForm({ title: '', target: 10, current: 0, unit: '' });
       toast({ title: 'Hedef eklendi' });
     } catch (err) {
-      toast({ title: 'Hedef eklenemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Hedef eklenemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const bumpGoal = async (goal, delta) => {
+  const bumpGoal = async (goal: PlanGoal, delta: number) => {
     const current = Math.min(goal.target, Math.max(0, goal.current + delta));
     if (current === goal.current) return;
     const nextGoals = goals.map((item) => (item.id === goal.id ? { ...item, current } : item));
@@ -460,16 +540,16 @@ export default function StudentStudyPlan() {
         celebrate(afterXp);
       }
     } catch (err) {
-      toast({ title: 'Hedef güncellenemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Hedef güncellenemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
-  const removeGoal = async (goal) => {
+  const removeGoal = async (goal: PlanGoal) => {
     try {
       const updated = await deleteStudyPlanItem(goal.id);
       applyState(updated);
     } catch (err) {
-      toast({ title: 'Silinemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Silinemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
@@ -492,7 +572,7 @@ export default function StudentStudyPlan() {
       setTab('daily');
       toast({ title: 'Plan oluşturuldu', description: 'Ödev, deneme ve eksik derslerden bugünün planı üretildi.' });
     } catch (err) {
-      toast({ title: 'Plan oluşturulamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Plan oluşturulamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
@@ -507,7 +587,7 @@ export default function StudentStudyPlan() {
     );
   }
 
-  const quote = QUOTES[new Date().getDate() % QUOTES.length];
+  const quote = QUOTES[new Date().getDate() % QUOTES.length] ?? ['', ''];
   const xp = Number(state?.xpPoints) || 0;
   const streak = Number(state?.streakCount) || 0;
 
@@ -540,13 +620,13 @@ export default function StudentStudyPlan() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {[
+                {([
                   ['Toplam Görev', `${kpis.total} görev`, ClipboardList, 'text-blue-500 bg-blue-500/10'],
                   ['Tamamlanan', `${kpis.done} görev`, CheckCircle2, 'text-emerald-500 bg-emerald-500/10'],
                   ['Kalan', `${kpis.remaining} görev`, Clock3, 'text-orange-500 bg-orange-500/10'],
                   ['Tahmini Süre', formatMinutes(kpis.planned), Timer, 'text-purple-500 bg-purple-500/10'],
                   ['Gerçekleşen Süre', formatMinutes(kpis.actual), TrendingUp, 'text-cyan-500 bg-cyan-500/10'],
-                ].map(([label, value, Icon, tone]) => (
+                ] satisfies ReadonlyArray<readonly [string, string, IconComponent, string]>).map(([label, value, Icon, tone]) => (
                   <div key={label} className="rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold text-muted-foreground">{label}</p>
@@ -562,13 +642,13 @@ export default function StudentStudyPlan() {
           <Card className="border-0 shadow-lg">
             <CardHeader className="pb-0">
               <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 dark:border-slate-800 -mx-6 px-6">
-                {[
+                {([
                   ['daily', 'Günlük Plan'],
                   ['weekly', 'Haftalık Plan'],
                   ['monthly', 'Aylık Plan'],
                   ['goals', 'Hedeflerim'],
                   ['analytics', 'Analizler'],
-                ].map(([key, label]) => (
+                ] satisfies ReadonlyArray<readonly [PlanTab, string]>).map(([key, label]) => (
                   <button
                     key={key}
                     type="button"
@@ -655,7 +735,7 @@ export default function StudentStudyPlan() {
                               <p className="text-sm font-semibold truncate">{suggestion.title}</p>
                               <p className="text-xs text-muted-foreground truncate">{suggestion.detail}</p>
                             </div>
-                            <Button size="sm" variant="outline" className="rounded-lg" onClick={() => addTask(suggestion.task).then(() => toast({ title: 'Plana eklendi' })).catch((err) => toast({ title: 'Eklenemedi', description: err.message, variant: 'destructive' }))}>
+                            <Button size="sm" variant="outline" className="rounded-lg" onClick={() => addTask(suggestion.task).then(() => toast({ title: 'Plana eklendi' })).catch((err) => toast({ title: 'Eklenemedi', description: errorMessage(err), variant: 'destructive' }))}>
                               Plana Ekle
                             </Button>
                           </div>
@@ -697,7 +777,7 @@ export default function StudentStudyPlan() {
               {tab === 'monthly' && (() => {
                 const monthPrefix = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}`;
                 const monthTasks = tasks.filter((task) => task.date.startsWith(monthPrefix));
-                const grouped = monthTasks.reduce((acc, task) => {
+                const grouped = monthTasks.reduce<Record<string, PlanTask[]>>((acc, task) => {
                   (acc[task.date] = acc[task.date] || []).push(task);
                   return acc;
                 }, {});
@@ -716,7 +796,7 @@ export default function StudentStudyPlan() {
                       <div key={iso}>
                         <p className="text-sm font-black text-muted-foreground">{formatDateLong(iso)}</p>
                         <div className="mt-1 space-y-1">
-                          {grouped[iso].map((task) => (
+                          {(grouped[iso] ?? []).map((task) => (
                             <button key={task.id} type="button" onClick={() => { setSelectedDate(iso); setTab('daily'); }} className="w-full text-left flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2 hover:border-orange-400">
                               <span className={`h-2 w-2 rounded-full ${STATUS_META[task.status].dot}`} />
                               <span className={`text-sm font-semibold flex-1 truncate ${task.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>{task.title}</span>
@@ -769,7 +849,7 @@ export default function StudentStudyPlan() {
                   .reduce((sum, task) => sum + task.durationMinutes, 0));
                 const maxDay = Math.max(60, ...perDay);
                 const doneTasks = tasks.filter((task) => task.status === 'done');
-                const bySubject = doneTasks.reduce((acc, task) => {
+                const bySubject = doneTasks.reduce<Record<string, number>>((acc, task) => {
                   acc[task.subject] = (acc[task.subject] || 0) + task.durationMinutes;
                   return acc;
                 }, {});
@@ -782,8 +862,8 @@ export default function StudentStudyPlan() {
                       <div className="mt-4 flex items-end justify-between gap-2 h-36">
                         {last7.map((iso, index) => (
                           <div key={iso} className="flex flex-col items-center gap-1 flex-1">
-                            <span className="text-[10px] font-bold text-muted-foreground">{perDay[index] > 0 ? formatMinutes(perDay[index]) : ''}</span>
-                            <div className="w-full max-w-8 rounded-t-lg bg-gradient-to-t from-blue-600 to-cyan-400" style={{ height: `${Math.max(4, (perDay[index] / maxDay) * 110)}px` }} />
+                            <span className="text-[10px] font-bold text-muted-foreground">{(perDay[index] ?? 0) > 0 ? formatMinutes((perDay[index] ?? 0)) : ''}</span>
+                            <div className="w-full max-w-8 rounded-t-lg bg-gradient-to-t from-blue-600 to-cyan-400" style={{ height: `${Math.max(4, ((perDay[index] ?? 0) / maxDay) * 110)}px` }} />
                             <span className="text-[10px] font-bold text-muted-foreground">{DAY_NAMES[(new Date(`${iso}T00:00:00`).getDay() + 6) % 7]}</span>
                           </div>
                         ))}

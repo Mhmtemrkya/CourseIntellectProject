@@ -9,8 +9,12 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchContents, fetchMyContentEngagement, saveContentUserState } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { ContentDto, MyContentStateDto } from '../../types/api/generated';
 
-function formatDate(value) {
+type NoteRow = MyContentStateDto & { content: ContentDto };
+
+function formatDate(value: Date | string | null | undefined): string {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -20,14 +24,14 @@ function formatDate(value) {
 export default function StudentNotes() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [contents, setContents] = useState([]);
-  const [states, setStates] = useState([]);
-  const [drafts, setDrafts] = useState({});
+  const [contents, setContents] = useState<ContentDto[]>([]);
+  const [states, setStates] = useState<MyContentStateDto[]>([]);
+  const [drafts, setDrafts] = useState<Partial<Record<string, string>>>({});
   const [savingId, setSavingId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [lastSync, setLastSync] = useState(null);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -41,21 +45,23 @@ export default function StudentNotes() {
       setStates(Array.isArray(engagement) ? engagement : []);
       setLastSync(new Date());
     } catch (err) {
-      setError(err.message || 'Notlar alınamadı.');
+      setError(errorMessage(err, 'Notlar alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const notes = useMemo(() => {
+  const notes = useMemo((): NoteRow[] => {
     const contentById = new Map(contents.map((item) => [String(item.id).toLowerCase(), item]));
     return states
       .filter((item) => String(item.note || '').trim().length > 0)
-      .map((item) => ({ ...item, content: contentById.get(String(item.contentId).toLowerCase()) }))
-      .filter((item) => item.content)
-      .sort((a, b) => new Date(b.updatedAtUtc) - new Date(a.updatedAtUtc));
+      .flatMap((item) => {
+        const content = contentById.get(String(item.contentId).toLowerCase());
+        return content ? [{ ...item, content }] : [];
+      })
+      .sort((a, b) => new Date(b.updatedAtUtc).getTime() - new Date(a.updatedAtUtc).getTime());
   }, [contents, states]);
 
   const visible = useMemo(() => notes.filter((item) => {
@@ -65,9 +71,9 @@ export default function StudentNotes() {
 
   const totalWords = useMemo(() => notes.reduce((sum, item) => sum + String(item.note || '').trim().split(/\s+/).filter(Boolean).length, 0), [notes]);
 
-  const draftFor = (item) => (drafts[item.contentId] !== undefined ? drafts[item.contentId] : item.note);
+  const draftFor = (item: NoteRow): string => drafts[item.contentId] ?? item.note;
 
-  const saveNote = async (item) => {
+  const saveNote = async (item: NoteRow) => {
     const next = draftFor(item);
     setSavingId(item.contentId);
     try {
@@ -82,7 +88,7 @@ export default function StudentNotes() {
       setLastSync(new Date());
       toast({ title: 'Not senkronize edildi', description: 'Notun tüm cihazlarına kaydedildi.' });
     } catch (err) {
-      toast({ title: 'Not kaydedilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Not kaydedilemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSavingId('');
     }
@@ -118,12 +124,12 @@ export default function StudentNotes() {
       {error ? <ErrorBanner title="Notlar yüklenemedi" message={error} onRetry={load} /> : null}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
+        {([
           ['Toplam Not', notes.length],
           ['Kelime', totalWords],
           ['İçerik', contents.length],
           ['Senkron', 'Aktif'],
-        ].map(([label, value]) => (
+        ] satisfies ReadonlyArray<readonly [string, string | number]>).map(([label, value]) => (
           <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4">
             <p className="text-2xl font-black tracking-tight">{value}</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>

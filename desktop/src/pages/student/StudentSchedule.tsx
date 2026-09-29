@@ -10,8 +10,12 @@ import { useApp } from '../../context/AppContext';
 import { fetchScheduleEntries, fetchStudents } from '../../lib/api/modules';
 import { filterScheduleForStudent, resolveCurrentStudent } from '../../lib/userMatching';
 import { deriveScheduleGrid, scheduleDayIndex, ALL_SCHEDULE_DAYS } from '../../lib/scheduleGrid';
+import { errorMessage } from '../../lib/errors';
+import type { ScheduleEntryDto, StudentSummaryDto } from '../../types/api/generated';
 
-const LEGEND = [
+type ScheduleViewMode = 'weekly' | 'monthly';
+
+const LEGEND: ReadonlyArray<readonly [string, string]> = [
   ['Zorunlu Ders', 'bg-sky-400'],
   ['Seçmeli Ders', 'bg-emerald-400'],
   ['Canlı Ders', 'bg-[hsl(var(--brand-accent))]'],
@@ -21,7 +25,7 @@ const LEGEND = [
 
 const DAY_NAMES = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
-function startOfWeek(date) {
+function startOfWeek(date: Date): Date {
   const d = new Date(date);
   const offset = (d.getDay() + 6) % 7; // Pazartesi = 0
   d.setDate(d.getDate() - offset);
@@ -29,17 +33,17 @@ function startOfWeek(date) {
   return d;
 }
 
-function formatDay(date) {
+function formatDay(date: Date): string {
   return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'long' }).format(date);
 }
 
 export default function StudentSchedule() {
   const { user } = useApp();
-  const [scheduleEntries, setScheduleEntries] = useState([]);
-  const [students, setStudents] = useState([]);
+  const [scheduleEntries, setScheduleEntries] = useState<ScheduleEntryDto[]>([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState('weekly');
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>('weekly');
   const [weekOffset, setWeekOffset] = useState(0);
 
   const loadSchedule = useCallback(async () => {
@@ -53,14 +57,14 @@ export default function StudentSchedule() {
       setScheduleEntries(Array.isArray(schedule) ? schedule : []);
       setStudents(Array.isArray(studentList) ? studentList : []);
     } catch (err) {
-      setError(err.message || 'Ders programı alınamadı.');
+      setError(errorMessage(err, 'Ders programı alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadSchedule();
+    void loadSchedule();
   }, [loadSchedule]);
 
   const currentStudent = useMemo(() => resolveCurrentStudent(user, students), [user, students]);
@@ -73,7 +77,7 @@ export default function StudentSchedule() {
         title: entry.subject || 'Ders',
         teacher: entry.teacher || '',
         className: entry.className || className,
-        room: entry.room || entry.derslik || '',
+        room: entry.room || '',
         day: entry.day || '',
         time: entry.time || '',
       }))
@@ -89,7 +93,7 @@ export default function StudentSchedule() {
   const week = useMemo(() => {
     const start = startOfWeek(new Date());
     start.setDate(start.getDate() + weekOffset * 7);
-    const dates = {};
+    const dates: Record<string, string> = {};
     ALL_SCHEDULE_DAYS.forEach((dayName, index) => {
       const date = new Date(start);
       date.setDate(start.getDate() + index);
@@ -98,12 +102,12 @@ export default function StudentSchedule() {
     const end = new Date(start);
     end.setDate(start.getDate() + 5);
     const rangeLabel = `${formatDay(start)} - ${formatDay(end)} ${end.getFullYear()}`;
-    const todayName = weekOffset === 0 ? DAY_NAMES[new Date().getDay()] : null;
+    const todayName = weekOffset === 0 ? DAY_NAMES[new Date().getDay()] ?? null : null;
     return { dates, rangeLabel, todayName };
   }, [weekOffset]);
 
   const groupedByDay = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, typeof lessons>();
     lessons.forEach((lesson) => {
       const key = lesson.day || 'Belirsiz';
       map.set(key, [...(map.get(key) || []), lesson]);
@@ -120,7 +124,7 @@ export default function StudentSchedule() {
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Ders Programı</h1>
           <div className="flex rounded-full border border-foreground/10 bg-foreground/[0.04] p-0.5">
-            {[['weekly', 'Haftalık'], ['monthly', 'Aylık']].map(([value, label]) => (
+            {([['weekly', 'Haftalık'], ['monthly', 'Aylık']] satisfies ReadonlyArray<readonly [ScheduleViewMode, string]>).map(([value, label]) => (
               <button
                 key={value}
                 onClick={() => setViewMode(value)}

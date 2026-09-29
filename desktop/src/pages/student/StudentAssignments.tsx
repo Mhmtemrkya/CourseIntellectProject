@@ -11,24 +11,39 @@ import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
-import { PremiumPanel, PremiumStatusPill } from '../../components/ui/premium-dashboard';
+import { PremiumPanel, PremiumStatusPill, type StatusPillTone } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { getDesktopApiBaseUrl } from '../../lib/appEnv';
 import { classMatchesMine, fetchHomework, getMyClassName, submitHomework, uploadFile } from '../../lib/api/modules';
 import { openHttpUrl } from '../../lib/safeOpen';
+import { errorMessage } from '../../lib/errors';
+import type { HomeworkAssignmentDto, HomeworkSubmissionDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
+
+type AssignmentStatus = 'pending' | 'overdue' | 'submitted' | 'graded';
+type AssignmentTab = 'all' | AssignmentStatus;
+type EnrichedAssignment = HomeworkAssignmentDto & {
+  ownSubmission: HomeworkSubmissionDto | undefined;
+  status: AssignmentStatus;
+};
+
+interface AttachmentLink {
+  name: string;
+  url: string;
+}
 
 const PAGE_SIZE = 8;
 const WEEKDAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
-const STATUS = {
+const STATUS: Record<AssignmentStatus, readonly [StatusPillTone, string, string]> = {
   pending: ['warn', 'Bekleyen', 'bg-amber-400'],
   overdue: ['danger', 'Gecikmiş', 'bg-rose-400'],
   submitted: ['soon', 'Teslim Edildi', 'bg-emerald-400'],
   graded: ['done', 'Değerlendirildi', 'bg-sky-400'],
 };
 
-const TABS = [
+const TABS: ReadonlyArray<readonly [AssignmentTab, string]> = [
   ['all', 'Tümü'],
   ['pending', 'Bekleyen'],
   ['overdue', 'Gecikmiş'],
@@ -36,7 +51,7 @@ const TABS = [
   ['graded', 'Değerlendirilen'],
 ];
 
-function normalize(value = '') {
+function normalize(value: string | null | undefined = ''): string {
   return String(value)
     .toLowerCase()
     .replaceAll('ç', 'c').replaceAll('ğ', 'g').replaceAll('ı', 'i')
@@ -44,7 +59,7 @@ function normalize(value = '') {
     .trim();
 }
 
-function decodeText(value = '') {
+function decodeText(value: string | null | undefined = ''): string {
   return String(value || '')
     .replaceAll('&#xFC;', 'ü').replaceAll('&#xDC;', 'Ü').replaceAll('&#xE7;', 'ç').replaceAll('&#xC7;', 'Ç')
     .replaceAll('&#x131;', 'ı').replaceAll('&#x130;', 'İ').replaceAll('&#xF6;', 'ö').replaceAll('&#xD6;', 'Ö')
@@ -54,7 +69,16 @@ function decodeText(value = '') {
     .replaceAll('&nbsp;', ' ');
 }
 
-function letterGrade(score) {
+/**
+ * Teslimin notu. HomeworkSubmissionDto şu an not taşımıyor (backend'de ödev
+ * notlandırma yok); bu yüzden "Değerlendirildi" durumu oluşmaz. Sunucu notu
+ * eklediğinde yalnız burası değişir.
+ */
+function submissionGrade(_submission: HomeworkSubmissionDto | undefined): number | null {
+  return null;
+}
+
+function letterGrade(score: number | null | undefined): string {
   const value = Number(score);
   if (!Number.isFinite(value)) return '-';
   if (value >= 90) return 'A';
@@ -66,12 +90,12 @@ function letterGrade(score) {
   return 'D';
 }
 
-function parseDate(value) {
-  const date = new Date(value);
+function parseDate(value: string | null | undefined): Date | null {
+  const date = new Date(value ?? '');
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function daysLeftLabel(deadline) {
+function daysLeftLabel(deadline: string): { text: string; tone: string } | null {
   const date = parseDate(deadline);
   if (!date) return null;
   const days = Math.ceil((date.getTime() - Date.now()) / 86400000);
@@ -80,20 +104,20 @@ function daysLeftLabel(deadline) {
   return { text: `${Math.abs(days)} gün geçti`, tone: 'text-muted-foreground' };
 }
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   const date = parseDate(value);
   if (!date) return value || '-';
   return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }).format(date);
 }
 
-function AssignmentCalendar({ marks }) {
+function AssignmentCalendar({ marks }: { marks: Readonly<Record<string, string>> }) {
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
   const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  const cells: Array<number | null> = [...Array.from({ length: firstDay }, () => null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   const monthLabel = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(cursor);
 
   return (
@@ -132,15 +156,15 @@ function AssignmentCalendar({ marks }) {
 export default function StudentAssignments() {
   const { toast } = useToast();
   const { user } = useApp();
-  const [assignments, setAssignments] = useState([]);
-  const [activeTab, setActiveTab] = useState('all');
+  const [assignments, setAssignments] = useState<HomeworkAssignmentDto[]>([]);
+  const [activeTab, setActiveTab] = useState<AssignmentTab>('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
-  const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [detailAssignment, setDetailAssignment] = useState(null);
+  const [selectedAssignment, setSelectedAssignment] = useState<EnrichedAssignment | null>(null);
+  const [detailAssignment, setDetailAssignment] = useState<EnrichedAssignment | null>(null);
   const [submissionNote, setSubmissionNote] = useState('');
-  const [submissionFiles, setSubmissionFiles] = useState([]);
+  const [submissionFiles, setSubmissionFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -156,21 +180,21 @@ export default function StudentAssignments() {
       // Yalnızca öğrencinin kendi sınıfına ait (veya genel) ödevler görünür.
       setAssignments(list.filter((item) => classMatchesMine(item.className, myClass)));
     } catch (err) {
-      setError(err.message || 'Ödevler alınamadı.');
+      setError(errorMessage(err, 'Ödevler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    loadAssignments();
+    void loadAssignments();
   }, [loadAssignments]);
 
-  const enriched = useMemo(() => assignments.map((item) => {
+  const enriched = useMemo(() => assignments.map((item): EnrichedAssignment => {
     const ownSubmission = (item.submissions || []).find((submission) => normalize(submission.studentName) === normalize(studentName));
     const dueDate = new Date(item.deadline);
     const overdue = dueDate < new Date() && !ownSubmission;
-    const status = ownSubmission ? (ownSubmission.grade != null ? 'graded' : 'submitted') : (overdue ? 'overdue' : 'pending');
+    const status: AssignmentStatus = ownSubmission ? (submissionGrade(ownSubmission) != null ? 'graded' : 'submitted') : (overdue ? 'overdue' : 'pending');
     return { ...item, ownSubmission, status };
   }), [assignments, studentName]);
 
@@ -190,7 +214,7 @@ export default function StudentAssignments() {
       .filter((item) => activeTab === 'all' || item.status === activeTab)
       .filter((item) => subjectFilter === 'all' || item.subject === subjectFilter)
       .filter((item) => !q || normalize(`${item.title} ${item.subject}`).includes(q))
-      .sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime());
   }, [enriched, activeTab, subjectFilter, query]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -199,11 +223,11 @@ export default function StudentAssignments() {
 
   const upcoming = useMemo(() => enriched
     .filter((item) => ['pending', 'overdue'].includes(item.status))
-    .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
+    .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
     .slice(0, 4), [enriched]);
   const graded = useMemo(() => enriched.filter((item) => item.status === 'graded').slice(0, 4), [enriched]);
   const calendarMarks = useMemo(() => {
-    const marks = {};
+    const marks: Record<string, string> = {};
     enriched.forEach((item) => {
       const date = parseDate(item.deadline);
       if (!date) return;
@@ -213,7 +237,7 @@ export default function StudentAssignments() {
     return marks;
   }, [enriched]);
 
-  const normalizeAttachment = (value) => {
+  const normalizeAttachment = (value: string): AttachmentLink | null => {
     const raw = String(value || '').trim();
     if (!raw) return null;
     if (raw.includes('::')) {
@@ -223,7 +247,7 @@ export default function StudentAssignments() {
     return { name: decodeText(raw.split('/').pop() || raw), url: raw };
   };
 
-  const resolveAssetUrl = (value) => {
+  const resolveAssetUrl = (value: string) => {
     const raw = String(value || '').trim();
     if (!raw) return '';
     if (/^https?:\/\//i.test(raw)) return raw;
@@ -231,20 +255,20 @@ export default function StudentAssignments() {
     return raw.startsWith('/') ? `${baseUrl}${raw}` : `${baseUrl}/${raw}`;
   };
 
-  const openAttachment = (attachment) => {
-    const url = resolveAssetUrl(attachment?.url);
+  const openAttachment = (attachment: AttachmentLink) => {
+    const url = resolveAssetUrl(attachment.url);
     if (url) openHttpUrl(url);
   };
 
-  const downloadAttachment = async (attachment) => {
-    const url = resolveAssetUrl(attachment?.url);
+  const downloadAttachment = async (attachment: AttachmentLink) => {
+    const url = resolveAssetUrl(attachment.url);
     if (!url) return;
     const response = await fetch(url);
     const blob = await response.blob();
     const downloadUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;
-    link.download = attachment?.name || 'dosya';
+    link.download = attachment.name || 'dosya';
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -255,13 +279,13 @@ export default function StudentAssignments() {
     if (!selectedAssignment) return;
     try {
       setSubmitting(true);
-      const uploadedFiles = [];
+      const uploadedFiles: string[] = [];
       for (const file of submissionFiles) {
         const formData = new FormData();
         formData.append('file', file);
         const uploaded = await uploadFile(formData, 'homework-submissions');
-        const fileName = uploaded.fileName || file.name;
-        const fileUrl = uploaded.fileUrl || uploaded.fileName || file.name;
+        const fileName = uploaded?.fileName || file.name;
+        const fileUrl = uploaded?.fileUrl || uploaded?.fileName || file.name;
         uploadedFiles.push(`${fileName}::${fileUrl}`);
       }
       const updated = await submitHomework(selectedAssignment.id, {
@@ -269,19 +293,19 @@ export default function StudentAssignments() {
         note: submissionNote.trim(),
         files: uploadedFiles,
       });
-      setAssignments((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      if (updated) setAssignments((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       setSelectedAssignment(null);
       setSubmissionNote('');
       setSubmissionFiles([]);
-      toast({ title: 'Ödev teslim edildi', description: `${updated.title} backend üzerinde güncellendi.` });
+      toast({ title: 'Ödev teslim edildi', description: `${updated?.title ?? selectedAssignment.title} backend üzerinde güncellendi.` });
     } catch (err) {
-      toast({ title: 'Teslim başarısız', description: err.message || 'Lütfen tekrar deneyin.' });
+      toast({ title: 'Teslim başarısız', description: errorMessage(err, 'Lütfen tekrar deneyin.') });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const rowAction = (item) => {
+  const rowAction = (item: EnrichedAssignment) => {
     if (['pending', 'overdue'].includes(item.status)) return { label: 'Teslim Et', onClick: () => setSelectedAssignment(item) };
     if (item.status === 'graded') return { label: 'Sonucu Gör', onClick: () => setDetailAssignment(item) };
     return { label: 'Görüntüle', onClick: () => setDetailAssignment(item) };
@@ -296,7 +320,7 @@ export default function StudentAssignments() {
     );
   }
 
-  const statCards = [
+  const statCards: ReadonlyArray<readonly [string, number, IconComponent, string, string]> = [
     ['Toplam Ödev', counts.total, Files, 'from-sky-400 to-blue-600', 'Tüm derslerden'],
     ['Bekleyen', counts.pending, Clock, 'from-amber-400 to-orange-600', 'Teslim süresi yaklaşan'],
     ['Gecikmiş', counts.overdue, AlertCircle, 'from-rose-400 to-red-600', 'Süresi geçen'],
@@ -380,7 +404,7 @@ export default function StudentAssignments() {
                 </thead>
                 <tbody>
                   {pageItems.length ? pageItems.map((item) => {
-                    const [tone, label] = STATUS[item.status] || ['default', item.status];
+                    const [tone, label] = STATUS[item.status];
                     const due = daysLeftLabel(item.deadline);
                     const action = rowAction(item);
                     return (
@@ -461,8 +485,8 @@ export default function StudentAssignments() {
                   <p className="truncate text-xs text-muted-foreground">{decodeText(item.subject)}</p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="text-lg font-black text-[hsl(var(--brand-accent))]">{letterGrade(item.ownSubmission?.grade)}</p>
-                  <p className="text-[10px] text-muted-foreground">{item.ownSubmission?.grade ?? '-'}/100</p>
+                  <p className="text-lg font-black text-[hsl(var(--brand-accent))]">{letterGrade(submissionGrade(item.ownSubmission))}</p>
+                  <p className="text-[10px] text-muted-foreground">{submissionGrade(item.ownSubmission) ?? '-'}/100</p>
                 </div>
               </button>
             )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-6 text-center text-sm text-muted-foreground">Henüz sonuçlanan ödev yok.</div>}
@@ -553,7 +577,7 @@ export default function StudentAssignments() {
               <div>
                 <p className="font-medium">Teslim Dosyaları</p>
                 <div className="mt-2 space-y-2">
-                  {((detailAssignment.ownSubmission?.attachments || detailAssignment.ownSubmission?.files || [])).length > 0 ? (detailAssignment.ownSubmission?.attachments || detailAssignment.ownSubmission?.files || []).map((value, index) => {
+                  {(detailAssignment.ownSubmission?.files || []).length > 0 ? (detailAssignment.ownSubmission?.files || []).map((value, index) => {
                     const attachment = normalizeAttachment(value);
                     if (!attachment) return null;
                     return (
@@ -571,10 +595,10 @@ export default function StudentAssignments() {
                   }) : <p className="text-muted-foreground">Henüz teslim dosyası yüklenmemiş.</p>}
                 </div>
               </div>
-              {detailAssignment.ownSubmission?.grade != null ? (
+              {submissionGrade(detailAssignment.ownSubmission) != null ? (
                 <div>
                   <p className="font-medium">Not</p>
-                  <p className="font-semibold text-emerald-400">{detailAssignment.ownSubmission.grade} ({letterGrade(detailAssignment.ownSubmission.grade)})</p>
+                  <p className="font-semibold text-emerald-400">{submissionGrade(detailAssignment.ownSubmission)} ({letterGrade(submissionGrade(detailAssignment.ownSubmission))})</p>
                 </div>
               ) : null}
               {['pending', 'overdue'].includes(detailAssignment.status) ? (
@@ -590,16 +614,16 @@ export default function StudentAssignments() {
   );
 }
 
-function describeSubmissionFile(file) {
-  const name = String(file?.name || '').toLowerCase();
+function describeSubmissionFile(file: File): string {
+  const name = String(file.name || '').toLowerCase();
   if (/\.(png|jpg|jpeg|webp|gif)$/.test(name)) return 'Görsel hazır';
   if (name.endsWith('.pdf')) return 'PDF hazır';
   if (/\.(mp4|mov|avi|m4v|webm)$/.test(name)) return 'Video hazır';
   return 'Ek dosya hazır';
 }
 
-function submissionFileTag(file) {
-  const name = String(file?.name || '').toLowerCase();
+function submissionFileTag(file: File): string {
+  const name = String(file.name || '').toLowerCase();
   if (/\.(png|jpg|jpeg|webp|gif)$/.test(name)) return 'IMG';
   if (name.endsWith('.pdf')) return 'PDF';
   if (/\.(mp4|mov|avi|m4v|webm)$/.test(name)) return 'VID';

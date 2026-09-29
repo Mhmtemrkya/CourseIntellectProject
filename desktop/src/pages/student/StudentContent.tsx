@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Video, FileText, Play, Pause, Clock, CheckCircle, Download, Eye, Maximize2, Rewind, FastForward,
@@ -29,34 +29,44 @@ import {
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { setAppFullscreen } from '../../lib/tauri';
 import { openHttpUrl } from '../../lib/safeOpen';
+import { errorMessage } from '../../lib/errors';
+import type { ContentCommentDto, ContentDto, ContentExerciseDto, ExamResultDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
+
+interface UserStateOverrides {
+  progress?: number;
+  liked?: boolean;
+  favorite?: boolean;
+  note?: string;
+}
 
 const SUBJECT_TONES = ['from-sky-400 to-blue-600', 'from-violet-400 to-fuchsia-600', 'from-emerald-400 to-teal-600', 'from-amber-400 to-orange-600', 'from-rose-400 to-red-600', 'from-cyan-400 to-blue-500'];
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
 
-function normalizeType(value = '') {
+function normalizeType(value: string | null | undefined = ''): 'video' | 'pdf' | 'file' {
   const text = String(value).toLowerCase();
   if (text.includes('video')) return 'video';
   if (text.includes('pdf')) return 'pdf';
   return 'file';
 }
 
-function previewGradient(type) {
+function previewGradient(type: string): string {
   if (type === 'video') return 'from-orange-400 to-red-500';
   if (type === 'pdf') return 'from-blue-500 to-cyan-500';
   return 'from-slate-500 to-slate-700';
 }
 
-function buildContentFileUrl(contentFile) {
-  const fileUrl = typeof contentFile === 'object' ? String(contentFile?.fileUrl || '').trim() : '';
+function buildContentFileUrl(contentFile: ContentDto | string): string | undefined {
+  const fileUrl = typeof contentFile === 'object' ? String(contentFile.fileUrl || '').trim() : '';
   if (fileUrl) {
     if (/^https?:\/\//i.test(fileUrl)) {
       return fileUrl;
@@ -71,8 +81,8 @@ function buildContentFileUrl(contentFile) {
     }
   }
 
-  const fileName = typeof contentFile === 'object' ? String(contentFile?.fileName || '').trim() : String(contentFile || '').trim();
-  if (!fileName) return null;
+  const fileName = typeof contentFile === 'object' ? String(contentFile.fileName || '').trim() : contentFile.trim();
+  if (!fileName) return undefined;
   if (!desktopApiBaseUrl) {
     return `/uploads/teacher-content/${encodeURIComponent(fileName)}`;
   }
@@ -85,27 +95,27 @@ function buildContentFileUrl(contentFile) {
 
 export default function StudentContent() {
   const navigate = useNavigate();
-  const [content, setContent] = useState([]);
-  const [examResults, setExamResults] = useState([]);
+  const [content, setContent] = useState<ContentDto[]>([]);
+  const [examResults, setExamResults] = useState<ExamResultDto[]>([]);
   const [search, setSearch] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('Tümü');
   const [activeTab, setActiveTab] = useState('all');
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItem, setSelectedItem] = useState<ContentDto | null>(null);
   const [playSelectedVideo, setPlaySelectedVideo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const videoContainerRef = useRef(null);
-  const videoRef = useRef(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [videoCurrentTime, setVideoCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoSpeed, setVideoSpeed] = useState(1);
   const [videoImmersiveMode, setVideoImmersiveMode] = useState(false);
-  const [lessonNotes, setLessonNotes] = useState({});
+  const [lessonNotes, setLessonNotes] = useState<Partial<Record<string, string>>>({});
   const [noteDraft, setNoteDraft] = useState('');
-  const [favoriteIds, setFavoriteIds] = useState({});
-  const [likedIds, setLikedIds] = useState({});
-  const [contentExercises, setContentExercises] = useState([]);
-  const [contentComments, setContentComments] = useState([]);
+  const [favoriteIds, setFavoriteIds] = useState<Partial<Record<string, boolean>>>({});
+  const [likedIds, setLikedIds] = useState<Partial<Record<string, boolean>>>({});
+  const [contentExercises, setContentExercises] = useState<ContentExerciseDto[]>([]);
+  const [contentComments, setContentComments] = useState<ContentCommentDto[]>([]);
   const [commentDraft, setCommentDraft] = useState('');
   const lastProgressSaveRef = useRef({ key: '', progress: 0, time: 0 });
 
@@ -114,16 +124,16 @@ export default function StudentContent() {
       setLoading(true);
       setError('');
       const payload = await fetchContents(true);
-      setContent(payload);
+      setContent(payload ?? []);
     } catch (err) {
-      setError(err.message || 'İçerikler alınamadı.');
+      setError(errorMessage(err, 'İçerikler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadContent();
+    void loadContent();
   }, [loadContent]);
 
   useEffect(() => {
@@ -132,7 +142,7 @@ export default function StudentContent() {
       .catch(() => setExamResults([]));
   }, []);
 
-  const openFile = async (contentFile, download = false) => {
+  const openFile = async (contentFile: ContentDto | string, download = false) => {
     const fileUrl = buildContentFileUrl(contentFile);
     if (!fileUrl) return;
     if (download) {
@@ -144,7 +154,7 @@ export default function StudentContent() {
       const objectUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = objectUrl;
-      link.download = (typeof contentFile === 'object' ? contentFile?.fileName || contentFile?.title : contentFile) || 'icerik';
+      link.download = (typeof contentFile === 'object' ? contentFile.fileName || contentFile.title : contentFile) || 'icerik';
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -161,7 +171,7 @@ export default function StudentContent() {
     const target = video || container;
     if (!target) return;
 
-    const requestFullscreen =
+    const requestFullscreen: (() => Promise<void> | void) | undefined =
       target.requestFullscreen
       || target.webkitRequestFullscreen
       || container?.requestFullscreen
@@ -207,7 +217,7 @@ export default function StudentContent() {
     setPlaySelectedVideo(!video.paused);
   };
 
-  const seekVideoBy = (seconds) => {
+  const seekVideoBy = (seconds: number) => {
     const video = videoRef.current;
     if (!video) return;
     const duration = Number.isFinite(video.duration) ? video.duration : 0;
@@ -216,14 +226,14 @@ export default function StudentContent() {
     setVideoCurrentTime(nextTime);
   };
 
-  const updateVideoSpeed = (speed) => {
+  const updateVideoSpeed = (speed: number) => {
     const video = videoRef.current;
     if (!video) return;
     video.playbackRate = speed;
     setVideoSpeed(speed);
   };
 
-  const formatDuration = (seconds) => {
+  const formatDuration = (seconds: number) => {
     const totalSeconds = Math.max(0, Math.floor(seconds || 0));
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -269,12 +279,12 @@ export default function StudentContent() {
     ? selectedPlaylist[currentPlaylistIndex + 1]
     : null;
 
-  const openPlaylistItem = useCallback((item) => {
+  const openPlaylistItem = useCallback((item: ContentDto) => {
     setSelectedItem(item);
     setPlaySelectedVideo(true);
     setVideoCurrentTime(0);
     setVideoDuration(0);
-    setNoteDraft(lessonNotes[item.id || item.fileName] || '');
+    setNoteDraft(lessonNotes[item.id || item.fileName || ''] || '');
   }, [lessonNotes]);
 
   const shareSelectedContent = useCallback(async () => {
@@ -323,7 +333,7 @@ export default function StudentContent() {
     };
   }, [selectedItem]);
 
-  const persistSelectedUserState = useCallback((overrides = {}) => {
+  const persistSelectedUserState = useCallback((overrides: UserStateOverrides = {}) => {
     if (!selectedItem?.id) return;
     const key = selectedItem.id || selectedItem.fileName || selectedItem.title;
     const progress = Math.max(0, Math.min(100, Number(overrides.progress ?? selectedItem.progress ?? 0)));
@@ -367,13 +377,14 @@ export default function StudentContent() {
 
   // Çözülen testlerden konu analizi: en zayıf derslere göre içerik öner.
   const weakSubjects = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, number[]>();
     examResults.forEach((item) => {
       const subject = (item.subject || '').trim();
       const score = Number(item.score);
       if (!subject || !Number.isFinite(score) || score <= 0) return;
-      if (!map.has(subject)) map.set(subject, []);
-      map.get(subject).push(score);
+      const scores = map.get(subject) ?? [];
+      scores.push(score);
+      map.set(subject, scores);
     });
     return Array.from(map.entries())
       .map(([subject, scores]) => ({ subject, average: scores.reduce((sum, value) => sum + value, 0) / scores.length }))
@@ -398,7 +409,7 @@ export default function StudentContent() {
   }, [content, weakSubjects]);
 
   const weakestSubjectLabel = weakSubjects[0]?.subject || '';
-  const openItem = (item) => {
+  const openItem = (item: ContentDto | undefined) => {
     if (!item) return;
     const type = normalizeType(item.fileType);
     setSelectedItem(item);
@@ -406,7 +417,7 @@ export default function StudentContent() {
     setVideoCurrentTime(0);
     setVideoDuration(0);
     setVideoSpeed(1);
-    setNoteDraft(lessonNotes[item.id || item.fileName] || '');
+    setNoteDraft(lessonNotes[item.id || item.fileName || ''] || '');
   };
 
   if (loading) {
@@ -532,11 +543,11 @@ export default function StudentContent() {
 
       {/* Hızlı işlemler */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {[
+        {([
           ['Çalışma Planı Oluştur', 'Kişisel planın ile daha verimli', NotebookPen, '/s/study-plan'],
           ['Notlarını Senkronize Et', 'Tüm notların her yerde seninle', ListChecks, '/s/notes'],
           ['Favori Konuların', 'Favori konularına hızlıca ulaş', Star, '/s/favorites'],
-        ].map(([title, sub, Icon, href]) => (
+        ] satisfies ReadonlyArray<readonly [string, string, IconComponent, string]>).map(([title, sub, Icon, href]) => (
           <button key={title} onClick={() => navigate(href)} className="flex flex-col gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[hsl(var(--brand-accent)/0.28)] hover:bg-[hsl(var(--brand-accent)/0.08)]">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><Icon className="h-5 w-5" /></span>
             <div><p className="text-sm font-semibold">{title}</p><p className="text-xs text-muted-foreground">{sub}</p></div>
@@ -801,8 +812,7 @@ export default function StudentContent() {
                             <Button
                               className="bg-orange-500 hover:bg-orange-600"
                               onClick={() => {
-                                const key = selectedItem.id || selectedItem.fileName;
-                                const nextNotes = { ...lessonNotes, [key]: noteDraft };
+                                const nextNotes = { ...lessonNotes, [selectedContentKey]: noteDraft };
                                 setLessonNotes(nextNotes);
                                 persistSelectedUserState({ note: noteDraft });
                               }}

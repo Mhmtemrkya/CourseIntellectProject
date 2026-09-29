@@ -9,23 +9,25 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchAnnouncements, fetchStudents } from '../../lib/api/modules';
 import { normalizeText, resolveCurrentStudent } from '../../lib/userMatching';
+import { errorMessage } from '../../lib/errors';
+import type { AnnouncementDto } from '../../types/api/generated';
 
 // /s/announcements: öğrencinin kendi duyuru ekranı.
 // Kaynak: /api/announcements (admin/teacher tarafından oluşturulan
 // duyurular). /api/notifications (sistem bildirimleri) ayrı bir model;
 // o /s/notifications altında gösterilir.
 
-function buildSubtitle(item) {
-  const parts = [];
-  if (item.author) parts.push(item.author);
+function buildSubtitle(item: AnnouncementDto): string {
+  const parts: string[] = [];
+  // Duyuru DTO'sunda `author` yok; duyuruyu yayımlayan öğretmen teacherName'dir.
+  if (item.teacherName) parts.push(item.teacherName);
   if (item.dateLabel) parts.push(item.dateLabel);
   return parts.join(' • ');
 }
 
 export default function StudentAnnouncements() {
   const { user } = useApp();
-  const [announcements, setAnnouncements] = useState([]);
-  const [students, setStudents] = useState([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -37,33 +39,32 @@ export default function StudentAnnouncements() {
       const [studentList] = await Promise.all([
         fetchStudents().catch(() => []),
       ]);
-      setStudents(Array.isArray(studentList) ? studentList : []);
 
       const currentStudent = resolveCurrentStudent(user, Array.isArray(studentList) ? studentList : []);
+      // Sunucu yalnız audience/className/teacherName süzgecini tanır; eski viewer*
+      // parametreleri yok sayılıyordu ve öğrenci başka sınıfların duyurularını da görüyordu.
+      // className verilince sunucu genel duyuruları + öğrencinin kendi sınıfınınkileri döner.
       const list = await fetchAnnouncements({
         audience: 'Ogrenci',
-        viewerRole: 'Student',
-        viewerUsername: user?.username,
-        viewerName: user?.name || user?.fullName,
-        viewerClassName: currentStudent?.className,
+        className: currentStudent?.className || null,
       });
       setAnnouncements(Array.isArray(list) ? list : []);
     } catch (err) {
-      setError(err.message || 'Duyurular alınamadı.');
+      setError(errorMessage(err, 'Duyurular alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    loadAnnouncements();
+    void loadAnnouncements();
   }, [loadAnnouncements]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return announcements;
     const key = normalizeText(search);
     return announcements.filter((item) => {
-      const haystack = [item.title, item.detail, item.author, item.audience]
+      const haystack = [item.title, item.detail, item.teacherName, item.audience]
         .filter(Boolean)
         .map((value) => normalizeText(value))
         .join(' ');

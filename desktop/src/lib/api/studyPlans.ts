@@ -1,9 +1,15 @@
 import { api } from './client';
+import { isRecord } from '../errors';
 import type { StudyPlanStateDto, UpdateStudyPlanStateRequest } from '../../types/api/generated';
 
 // --- Study Plans ---
 // Plan öğeleri sunucuda serileştirilmiş JSON olarak tutulur (planItemsSerialized);
 // öğenin şeklini çalışma planı ekranı belirler.
+
+/** SignalR "studyPlanUpdated" yükü gibi doğrulanmamış veriyi plan durumuna daraltır. */
+export function isStudyPlanState(value: unknown): value is StudyPlanStateDto {
+  return isRecord(value) && typeof value.planItemsSerialized === 'string';
+}
 
 export async function fetchStudyPlan(): Promise<StudyPlanStateDto | null> {
   const response = await api.get<StudyPlanStateDto>('/api/studyplans');

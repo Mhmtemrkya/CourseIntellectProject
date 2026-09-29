@@ -15,10 +15,13 @@ import {
   getAllBadges,
   nextBadge,
   unlockedBadgeCount,
+  type Badge as BadgeDefinition,
 } from '../../lib/badges';
 import BadgeShield from '../../components/badges/BadgeShield';
+import { errorMessage } from '../../lib/errors';
+import type { IconComponent } from '../../types/ui';
 
-const CATEGORY_ICONS = {
+const CATEGORY_ICONS: Partial<Record<string, IconComponent>> = {
   GraduationCap,
   ClipboardCheck,
   Flame,
@@ -35,7 +38,7 @@ export default function StudentBadges() {
   const [xp, setXp] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<{ badge: BadgeDefinition; isUnlocked: boolean } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -44,7 +47,7 @@ export default function StudentBadges() {
       const state = await fetchStudyPlan();
       setXp(Number(state?.xpPoints) || 0);
     } catch (err) {
-      setError(err.message || 'Rozet bilgileri alınamadı.');
+      setError(errorMessage(err, 'Rozet bilgileri alınamadı.'));
     } finally {
       setLoading(false);
     }

@@ -8,13 +8,16 @@ import { Card, CardContent } from '../../components/ui/card';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
-import { PremiumPanel, PremiumScoreCard } from '../../components/ui/premium-dashboard';
+import { PremiumPanel, PremiumScoreCard, type ChartTone } from '../../components/ui/premium-dashboard';
 import { useApp } from '../../context/AppContext';
 import { fetchExamResults } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { ExamResultDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const SCORE_TONES = ['brand', 'blue', 'emerald', 'violet', 'amber', 'rose'];
+const SCORE_TONES: readonly ChartTone[] = ['brand', 'blue', 'emerald', 'violet', 'amber', 'rose'];
 
-function letterGrade(score) {
+function letterGrade(score: number): string {
   if (score >= 90) return 'A';
   if (score >= 80) return 'B';
   if (score >= 70) return 'C';
@@ -25,7 +28,7 @@ function letterGrade(score) {
 export default function StudentExamResults() {
   const navigate = useNavigate();
   const { user } = useApp();
-  const [records, setRecords] = useState([]);
+  const [records, setRecords] = useState<ExamResultDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -34,16 +37,16 @@ export default function StudentExamResults() {
       setLoading(true);
       setError('');
       const payload = await fetchExamResults({ studentName: user?.name || '' });
-      setRecords(payload);
+      setRecords(payload ?? []);
     } catch (err) {
-      setError(err.message || 'Sınav sonuçları alınamadı.');
+      setError(errorMessage(err, 'Sınav sonuçları alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user?.name]);
 
   useEffect(() => {
-    loadResults();
+    void loadResults();
   }, [loadResults]);
 
   const stats = useMemo(() => {
@@ -65,10 +68,10 @@ export default function StudentExamResults() {
       {error ? <ErrorBanner title="Sınav sonuçları alınamadı" message={error} onRetry={loadResults} /> : null}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[
+        {([
           [stats.average, 'Genel Ortalama', BarChart3, 'from-amber-400 to-orange-600'],
           [records.length, 'Toplam Kayıt', TrendingUp, 'from-sky-400 to-blue-600'],
-        ].map(([value, label, Icon, gradient]) => (
+        ] satisfies ReadonlyArray<readonly [number, string, IconComponent, string]>).map(([value, label, Icon, gradient]) => (
           <Card key={label} className="ci-metric-card border-foreground/10">
             <CardContent className="flex items-center gap-4 p-4">
               <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-[0_12px_28px_hsl(var(--brand-accent)/0.22)] ${gradient}`}>
@@ -101,7 +104,7 @@ export default function StudentExamResults() {
                 subject={`${item.subject} • ${item.type}`}
                 score={item.score}
                 grade={letterGrade(Number(item.score || 0))}
-                date={`${item.dateLabel || item.date || ''}${item.net != null ? ` · ${item.net} net` : ''}`}
+                date={`${item.dateLabel || ''}${item.net != null ? ` · ${item.net} net` : ''}`}
                 tone={SCORE_TONES[index % SCORE_TONES.length]}
               />
             ))}

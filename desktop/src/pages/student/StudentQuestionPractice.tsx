@@ -16,18 +16,26 @@ import {
   fetchQuestionPracticeAttempts,
   submitQuestionPracticeAttempt,
 } from '../../lib/api/modules';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { QuestionBankItemDto, QuestionPracticeAttemptDto } from '../../types/api/generated';
 
-function buildQuestionBankSolveReward({ isCorrect, hasImage, hasSolutionAsset }) {
+interface SolveRewardInput {
+  isCorrect: boolean;
+  hasImage: boolean;
+  hasSolutionAsset: boolean;
+}
+
+function buildQuestionBankSolveReward({ isCorrect, hasImage, hasSolutionAsset }: SolveRewardInput): number {
   let amount = isCorrect ? 18 : 6;
   if (hasImage) amount += 4;
   if (hasSolutionAsset) amount += 3;
   return amount;
 }
 
-function isExamOnlyQuestion(item) {
+function isExamOnlyQuestion(item: QuestionBankItemDto): boolean {
   try {
-    const metadata = JSON.parse(item?.editorMetadataJson || '{}');
-    return metadata?.visibility === 'ExamOnly';
+    const metadata: unknown = JSON.parse(item.editorMetadataJson || '{}');
+    return isRecord(metadata) && metadata.visibility === 'ExamOnly';
   } catch {
     return false;
   }
@@ -36,13 +44,13 @@ function isExamOnlyQuestion(item) {
 export default function StudentQuestionPractice() {
   const { toast } = useToast();
   const { user } = useApp();
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState<QuestionBankItemDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedAnswers, setSelectedAnswers] = useState({});
-  const [writtenAnswers, setWrittenAnswers] = useState({});
-  const [attempts, setAttempts] = useState([]);
-  const [submittingId, setSubmittingId] = useState(null);
+  const [selectedAnswers, setSelectedAnswers] = useState<Partial<Record<string, string>>>({});
+  const [writtenAnswers, setWrittenAnswers] = useState<Partial<Record<string, string>>>({});
+  const [attempts, setAttempts] = useState<QuestionPracticeAttemptDto[]>([]);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
 
   const loadPractice = useCallback(async () => {
     try {
@@ -53,24 +61,24 @@ export default function StudentQuestionPractice() {
         fetchQuestionPracticeAttempts(user?.username).catch(() => []),
       ]);
       setQuestions((questionList || []).filter((item) => !isExamOnlyQuestion(item)));
-      setAttempts(attemptList);
+      setAttempts(attemptList ?? []);
     } catch (err) {
-      setError(err.message || 'Soru pratik ekranı alınamadı.');
+      setError(errorMessage(err, 'Soru pratik ekranı alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user?.username]);
 
-  useEffect(() => { loadPractice(); }, [loadPractice]);
+  useEffect(() => { void loadPractice(); }, [loadPractice]);
 
   const visibleQuestions = useMemo(() => questions, [questions]);
 
-  const attemptsByQuestion = useMemo(() => attempts.reduce((acc, item) => {
-    acc[item.questionId] = item;
-    return acc;
-  }, {}), [attempts]);
+  const attemptsByQuestion = useMemo(
+    () => new Map(attempts.map((item) => [item.questionId, item])),
+    [attempts],
+  );
 
-  const handleSubmitAnswer = async (question) => {
+  const handleSubmitAnswer = async (question: QuestionBankItemDto) => {
     const answer = question.options?.length
       ? selectedAnswers[question.id]
       : writtenAnswers[question.id]?.trim();
@@ -84,7 +92,7 @@ export default function StudentQuestionPractice() {
       return;
     }
 
-    const hadAttempt = Boolean(attemptsByQuestion[question.id]);
+    const hadAttempt = attemptsByQuestion.has(question.id);
 
     try {
       setSubmittingId(question.id);
@@ -93,6 +101,7 @@ export default function StudentQuestionPractice() {
         studentUsername: user?.username || 'student',
         answerText: answer,
       });
+      if (!saved) return;
       if (!hadAttempt) {
         const xpAmount = buildQuestionBankSolveReward({
           isCorrect: Boolean(saved.isCorrect),
@@ -111,7 +120,7 @@ export default function StudentQuestionPractice() {
     } catch (err) {
       toast({
         title: 'Cevap kaydedilemedi',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -150,7 +159,7 @@ export default function StudentQuestionPractice() {
                     >
                       {isImageValue(stripOptionPrefix(option)) ? (
                         <img
-                          src={buildQuestionImageUrl(stripOptionPrefix(option))}
+                          src={buildQuestionImageUrl(stripOptionPrefix(option)) ?? undefined}
                           alt={`${String.fromCharCode(65 + index)} şıkkı`}
                           loading="lazy"
                           className="max-h-40 w-auto rounded-lg object-contain"
@@ -174,9 +183,9 @@ export default function StudentQuestionPractice() {
               )}
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-2 text-sm text-green-600">
-                  {attemptsByQuestion[item.id] ? <CircleCheck className="h-4 w-4" /> : <Target className="h-4 w-4" />}
-                  {attemptsByQuestion[item.id]
-                    ? (attemptsByQuestion[item.id].isCorrect ? 'Doğru cevap kaydedildi' : 'Cevap kaydedildi')
+                  {attemptsByQuestion.has(item.id) ? <CircleCheck className="h-4 w-4" /> : <Target className="h-4 w-4" />}
+                  {attemptsByQuestion.has(item.id)
+                    ? (attemptsByQuestion.get(item.id)?.isCorrect ? 'Doğru cevap kaydedildi' : 'Cevap kaydedildi')
                     : 'Çözüm odaklı görünüm hazır'}
                 </div>
                 <Button
@@ -185,7 +194,7 @@ export default function StudentQuestionPractice() {
                   disabled={submittingId === item.id}
                 >
                   <Send className="mr-2 h-4 w-4" />
-                  {submittingId === item.id ? 'Gönderiliyor...' : attemptsByQuestion[item.id] ? 'Tekrar Gönder' : 'Cevabı Gönder'}
+                  {submittingId === item.id ? 'Gönderiliyor...' : attemptsByQuestion.has(item.id) ? 'Tekrar Gönder' : 'Cevabı Gönder'}
                 </Button>
               </div>
             </CardContent>

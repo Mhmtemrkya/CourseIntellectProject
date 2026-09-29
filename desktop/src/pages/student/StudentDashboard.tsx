@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, GraduationCap, CalendarCheck, Target, Medal, ClipboardList, CalendarClock, ArrowRight, Trophy,
@@ -8,17 +8,18 @@ import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import BadgeUnlockModal from '../../components/badges/BadgeUnlockModal';
-import RoleDashboardColumns from '../../components/dashboard/RoleDashboardColumns';
-import { PremiumPanel, PremiumProgressRow, PremiumStatusPill } from '../../components/ui/premium-dashboard';
+import RoleDashboardColumns, { type RoleDashboardGroup } from '../../components/dashboard/RoleDashboardColumns';
+import { PremiumPanel, PremiumProgressRow, PremiumStatusPill, type ChartTone } from '../../components/ui/premium-dashboard';
 import { useApp } from '../../context/AppContext';
-import { fetchStudentDashboardData } from '../../lib/api/dashboardData';
-import { BADGE_TOTAL, collectNewBadges, unlockedBadgeCount } from '../../lib/badges';
+import { fetchStudentDashboardData, type StudentDashboardData } from '../../lib/api/dashboardData';
+import { BADGE_TOTAL, collectNewBadges, unlockedBadgeCount, type Badge } from '../../lib/badges';
+import { errorMessage } from '../../lib/errors';
 
-const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
-const itemVariants = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } };
-const tones = ['brand', 'blue', 'emerald', 'violet', 'amber', 'rose'];
+const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
+const itemVariants: Variants = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } };
+const tones: readonly ChartTone[] = ['brand', 'blue', 'emerald', 'violet', 'amber', 'rose'];
 
-function letterGrade(score) {
+function letterGrade(score: number): string {
   if (score >= 90) return 'A';
   if (score >= 80) return 'B';
   if (score >= 70) return 'C';
@@ -29,10 +30,10 @@ function letterGrade(score) {
 export default function StudentDashboard() {
   const { user } = useApp();
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<StudentDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [newBadges, setNewBadges] = useState([]);
+  const [newBadges, setNewBadges] = useState<Badge[]>([]);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -43,20 +44,20 @@ export default function StudentDashboard() {
       const unlockedNow = collectNewBadges(payload?.stats?.xp, user);
       if (unlockedNow.length) setNewBadges(unlockedNow);
     } catch (err) {
-      setError(err.message || 'Öğrenci paneli alınamadı.');
+      setError(errorMessage(err, 'Öğrenci paneli alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+  useEffect(() => { void loadDashboard(); }, [loadDashboard]);
 
   if (loading) {
     return <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4"><LoadingDots /><p className="text-muted-foreground">Öğrenci paneli hazırlanıyor...</p></div>;
   }
 
-  const stats = data?.stats || {};
-  const xp = Number(stats.xp || 0);
+  const stats = data?.stats;
+  const xp = Number(stats?.xp || 0);
   const badges = unlockedBadgeCount(xp);
   const subjectPerformance = data?.subjectPerformance || [];
   const pendingList = data?.pendingList || [];
@@ -64,19 +65,19 @@ export default function StudentDashboard() {
   const announcements = data?.announcementList || [];
   const todayLessons = data?.todayLessons || [];
 
-  const groups = [
+  const groups: RoleDashboardGroup[] = [
     {
       key: 'academic', title: 'Akademik Durum', description: 'Başarı ve devam durumunuzun özeti',
       cards: [
-        { key: 'average', label: 'Not Ortalaması', value: stats.averageScore || 0, caption: 'Genel başarı ortalaması', icon: GraduationCap, tone: 'brand', path: '/s/exam-results' },
-        { key: 'attendance', label: 'Devam Oranı', value: `%${stats.attendanceRate || 0}`, caption: 'Güncel yoklama oranı', icon: CalendarCheck, tone: 'emerald', path: '/s/attendance' },
-        { key: 'rank', label: 'Sınıf Sıralaması', value: stats.rank ? `${stats.rank} / ${stats.totalStudents || '-'}` : '—', caption: data?.className || 'Sınıf bilgisi', icon: Target, tone: 'violet', path: '/s/exam-results' },
+        { key: 'average', label: 'Not Ortalaması', value: stats?.averageScore || 0, caption: 'Genel başarı ortalaması', icon: GraduationCap, tone: 'brand', path: '/s/exam-results' },
+        { key: 'attendance', label: 'Devam Oranı', value: `%${stats?.attendanceRate || 0}`, caption: 'Güncel yoklama oranı', icon: CalendarCheck, tone: 'emerald', path: '/s/attendance' },
+        { key: 'rank', label: 'Sınıf Sıralaması', value: stats?.rank ? `${stats.rank} / ${stats.totalStudents || '-'}` : '—', caption: data?.className || 'Sınıf bilgisi', icon: Target, tone: 'violet', path: '/s/exam-results' },
       ],
     },
     {
       key: 'tasks', title: 'Yapılacaklar', description: 'Bugün ve yakın tarihte aksiyon bekleyenler',
       cards: [
-        { key: 'assignments', label: 'Bekleyen Ödev', value: stats.pendingAssignments || pendingList.length, caption: 'Teslim edilmesi gereken', icon: ClipboardList, tone: 'amber', path: '/s/assignments' },
+        { key: 'assignments', label: 'Bekleyen Ödev', value: stats?.pendingAssignments || pendingList.length, caption: 'Teslim edilmesi gereken', icon: ClipboardList, tone: 'amber', path: '/s/assignments' },
         { key: 'events', label: 'Yaklaşan Etkinlik', value: upcomingEvents.length, caption: 'Sınav, ödev ve sunum', icon: CalendarClock, tone: 'blue', path: '/s/exams' },
         { key: 'lessons', label: 'Bugünkü Ders', value: todayLessons.length, caption: 'Günün ders programı', icon: BookOpen, tone: 'cyan', path: '/s/schedule' },
       ],
@@ -84,9 +85,9 @@ export default function StudentDashboard() {
     {
       key: 'development', title: 'Gelişim', description: 'Düzenli çalışma ve ilerleme göstergeleri',
       cards: [
-        { key: 'completion', label: 'İçerik Tamamlama', value: `%${stats.completedContent || 0}`, caption: 'Genel içerik ilerlemesi', icon: Trophy, tone: 'emerald', path: '/s/content' },
+        { key: 'completion', label: 'İçerik Tamamlama', value: `%${stats?.completedContent || 0}`, caption: 'Genel içerik ilerlemesi', icon: Trophy, tone: 'emerald', path: '/s/content' },
         { key: 'badges', label: 'Kazanılan Rozet', value: badges, caption: `${BADGE_TOTAL} rozetten`, icon: Medal, tone: 'amber', path: '/s/badges' },
-        { key: 'streak', label: 'Çalışma Serisi', value: `${stats.streak || 0} gün`, caption: `Seviye ${stats.level || 1} · ${xp} XP`, icon: Target, tone: 'rose', path: '/s/study-plan' },
+        { key: 'streak', label: 'Çalışma Serisi', value: `${stats?.streak || 0} gün`, caption: `Seviye ${stats?.level || 1} · ${xp} XP`, icon: Target, tone: 'rose', path: '/s/study-plan' },
       ],
     },
   ];

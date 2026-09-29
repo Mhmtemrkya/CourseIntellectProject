@@ -7,6 +7,10 @@ import { Input } from '../../components/ui/input';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchContents, fetchMyContentEngagement, saveContentUserState } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { ContentDto, MyContentStateDto } from '../../types/api/generated';
+
+type FavoriteContent = ContentDto & { userState: MyContentStateDto | undefined };
 
 const SUBJECT_TONES = ['from-sky-400 to-blue-600', 'from-violet-400 to-fuchsia-600', 'from-emerald-400 to-teal-600', 'from-amber-400 to-orange-600', 'from-rose-400 to-red-600', 'from-cyan-400 to-blue-500'];
 
@@ -19,8 +23,8 @@ function normalizeType(value = '') {
 
 export default function StudentFavorites() {
   const navigate = useNavigate();
-  const [contents, setContents] = useState([]);
-  const [states, setStates] = useState([]);
+  const [contents, setContents] = useState<ContentDto[]>([]);
+  const [states, setStates] = useState<MyContentStateDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -37,15 +41,15 @@ export default function StudentFavorites() {
       setContents(Array.isArray(contentList) ? contentList : []);
       setStates(Array.isArray(engagement) ? engagement : []);
     } catch (err) {
-      setError(err.message || 'Favoriler alınamadı.');
+      setError(errorMessage(err, 'Favoriler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const favorites = useMemo(() => {
+  const favorites = useMemo((): FavoriteContent[] => {
     const favIds = new Set(states.filter((item) => item.favorite).map((item) => String(item.contentId).toLowerCase()));
     const stateById = new Map(states.map((item) => [String(item.contentId).toLowerCase(), item]));
     return contents
@@ -61,14 +65,14 @@ export default function StudentFavorites() {
     return matchesSearch && matchesSubject;
   }), [favorites, search, subject]);
 
-  const removeFavorite = async (item) => {
-    const state = item.userState || {};
+  const removeFavorite = async (item: FavoriteContent) => {
+    const state = item.userState;
     setStates((prev) => prev.map((entry) => (String(entry.contentId).toLowerCase() === String(item.id).toLowerCase() ? { ...entry, favorite: false } : entry)));
     await saveContentUserState(item.id, {
-      progress: Number(state.progress || item.progress || 0),
-      liked: Boolean(state.liked),
+      progress: Number(state?.progress || item.progress || 0),
+      liked: Boolean(state?.liked),
       favorite: false,
-      note: String(state.note || ''),
+      note: String(state?.note || ''),
     }).catch(() => {});
   };
 

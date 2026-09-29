@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Video, Play, ChevronLeft, ChevronRight, User, MapPin, Radio,
@@ -14,31 +14,36 @@ import { fetchLiveRoomSessions, fetchStudents } from '../../lib/api/modules';
 import { resolveCurrentStudent } from '../../lib/userMatching';
 import { openHttpUrl } from '../../lib/safeOpen';
 import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { LiveRoomSession } from '../../lib/api/liveRoom';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
 
 const WEEKDAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
-function mapSessionToLesson(session) {
+type LiveTab = 'upcoming' | 'records';
+
+type LiveLesson = ReturnType<typeof mapSessionToLesson>;
+
+function mapSessionToLesson(session: LiveRoomSession) {
   const startedAt = session.startedAtUtc ? new Date(session.startedAtUtc) : null;
   const endedAt = session.endedAtUtc ? new Date(session.endedAtUtc) : null;
   const rawStatus = String(session.status || '').toLowerCase();
-  const status = rawStatus === 'active' ? 'live' : rawStatus === 'completed' ? 'completed' : 'scheduled';
+  const status: 'live' | 'completed' | 'scheduled' = rawStatus === 'active' ? 'live' : rawStatus === 'completed' ? 'completed' : 'scheduled';
   const duration = startedAt && endedAt
     ? Math.max(1, Math.round((endedAt.getTime() - startedAt.getTime()) / 60000))
     : 60;
   return {
     id: session.id,
     subject: session.lessonTitle || 'Canlı Ders',
-    topic: session.topic || session.description || '',
     teacher: session.teacherName || 'Öğretmen',
     startTime: session.timeLabel || (startedAt ? startedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—'),
     startAt: startedAt ? startedAt.toISOString() : null,
@@ -50,7 +55,7 @@ function mapSessionToLesson(session) {
   };
 }
 
-function Countdown({ target }) {
+function Countdown({ target }: { target: string }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -71,14 +76,14 @@ function Countdown({ target }) {
   );
 }
 
-function MiniCalendar({ sessionDates }) {
+function MiniCalendar({ sessionDates }: { sessionDates: ReadonlySet<string> }) {
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
   const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  const cells: Array<number | null> = [...Array.from({ length: firstDay }, () => null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   const monthLabel = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(cursor);
 
   return (
@@ -113,7 +118,7 @@ function MiniCalendar({ sessionDates }) {
   );
 }
 
-function LiveLessonRow({ lesson, onJoin }) {
+function LiveLessonRow({ lesson, onJoin }: { lesson: LiveLesson; onJoin: (lesson: LiveLesson) => void }) {
   const minutesUntil = lesson.startAt ? Math.round((new Date(lesson.startAt).getTime() - Date.now()) / 60000) : null;
   const future = minutesUntil != null && minutesUntil > 0;
   return (
@@ -127,13 +132,12 @@ function LiveLessonRow({ lesson, onJoin }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{lesson.subject}</p>
-        {lesson.topic ? <p className="truncate text-xs text-muted-foreground">{lesson.topic}</p> : null}
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><User className="h-3 w-3" />{lesson.teacher}</span>
           <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />Derslik: {lesson.className}</span>
         </div>
       </div>
-      {future ? <Countdown target={lesson.startAt} /> : null}
+      {future && lesson.startAt ? <Countdown target={lesson.startAt} /> : null}
       <Button className="shrink-0 bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]" onClick={() => onJoin(lesson)}>
         <Play className="mr-1.5 h-4 w-4" />Derse Katıl
       </Button>
@@ -144,35 +148,32 @@ function LiveLessonRow({ lesson, onJoin }) {
 export default function StudentLive() {
   const navigate = useNavigate();
   const { user } = useApp();
-  const [lessons, setLessons] = useState([]);
+  const [lessons, setLessons] = useState<LiveLesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('upcoming');
+  const [tab, setTab] = useState<LiveTab>('upcoming');
 
   const loadLessons = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      let studentClassName = user?.className || '';
-      if (!studentClassName) {
-        const students = await fetchStudents().catch(() => []);
-        const currentStudent = resolveCurrentStudent(user, Array.isArray(students) ? students : []);
-        studentClassName = currentStudent?.className || '';
-      }
+      const students = await fetchStudents().catch(() => []);
+      const currentStudent = resolveCurrentStudent(user, Array.isArray(students) ? students : []);
+      const studentClassName = currentStudent?.className || '';
       const sessions = await fetchLiveRoomSessions(studentClassName ? { className: studentClassName } : {}).catch(() => []);
       const payload = (Array.isArray(sessions) ? sessions : [])
         .map(mapSessionToLesson)
         .filter((item) => !studentClassName || item.className === 'Tüm Sınıflar' || item.className === studentClassName);
       setLessons(payload);
     } catch (err) {
-      setError(err.message || 'Canlı dersler alınamadı.');
+      setError(errorMessage(err, 'Canlı dersler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    loadLessons();
+    void loadLessons();
   }, [loadLessons]);
 
   const ongoingLessons = useMemo(() => lessons.filter((item) => item.status === 'live'), [lessons]);
@@ -181,8 +182,8 @@ export default function StudentLive() {
   const sessionDates = useMemo(() => new Set(lessons.map((item) => item.date).filter(Boolean)), [lessons]);
   const joinable = ongoingLessons[0] || upcomingLessons[0] || null;
 
-  const handleJoin = (lesson) => {
-    if (lesson?.meetLink) openHttpUrl(lesson.meetLink);
+  const handleJoin = (lesson: LiveLesson) => {
+    if (lesson.meetLink) openHttpUrl(lesson.meetLink);
   };
 
   if (loading) {
@@ -201,7 +202,7 @@ export default function StudentLive() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Canlı Derslerim</h1>
         <div className="flex rounded-full border border-foreground/10 bg-foreground/[0.04] p-0.5">
-          {[['upcoming', 'Yaklaşan Dersler'], ['records', 'Ders Kayıtlarım']].map(([value, label]) => (
+          {([['upcoming', 'Yaklaşan Dersler'], ['records', 'Ders Kayıtlarım']] satisfies ReadonlyArray<readonly [LiveTab, string]>).map(([value, label]) => (
             <button
               key={value}
               onClick={() => setTab(value)}

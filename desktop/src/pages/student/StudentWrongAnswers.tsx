@@ -9,6 +9,16 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { clearWrongAnswers, fetchWrongAnswers } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { WrongAnswerItem } from '../../lib/api/questionBank';
+
+interface WeakSubjectGroup {
+  subject: string;
+  topic: string;
+  count: number;
+  questions: WrongAnswerItem[];
+  latest: string;
+}
 
 function decodeText(value = '') {
   return value
@@ -39,7 +49,7 @@ function decodeText(value = '') {
 export default function StudentWrongAnswers() {
   const navigate = useNavigate();
   const { user } = useApp();
-  const [wrongAnswers, setWrongAnswers] = useState([]);
+  const [wrongAnswers, setWrongAnswers] = useState<WrongAnswerItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -51,34 +61,32 @@ export default function StudentWrongAnswers() {
         studentUsername: user?.username,
         studentName: user?.name,
       }).catch(() => []);
-      setWrongAnswers(records);
+      setWrongAnswers(records ?? []);
     } catch (err) {
-      setError(err.message || 'Yanlışlarım görünümü alınamadı.');
+      setError(errorMessage(err, 'Yanlışlarım görünümü alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user?.name, user?.username]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const weakSubjects = useMemo(() => {
-    const grouped = new Map();
+    const grouped = new Map<string, WeakSubjectGroup>();
     wrongAnswers.forEach((item) => {
       const key = `${decodeText(item.subject)}__${decodeText(item.topic)}`;
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          subject: decodeText(item.subject),
-          topic: decodeText(item.topic),
-          count: 0,
-          questions: [],
-          latest: item.submittedAtUtc,
-        });
-      }
-      const current = grouped.get(key);
+      const current = grouped.get(key) ?? {
+        subject: decodeText(item.subject),
+        topic: decodeText(item.topic),
+        count: 0,
+        questions: [],
+        latest: item.submittedAtUtc,
+      };
       current.count += 1;
       current.questions.push(item);
+      grouped.set(key, current);
     });
 
     return Array.from(grouped.values())

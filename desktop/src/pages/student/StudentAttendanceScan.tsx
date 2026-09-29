@@ -9,11 +9,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
-import { checkInAttendanceQrSession, fetchActiveAttendanceQrSessions, fetchAttendance } from '../../lib/api/modules';
+import { checkInAttendanceQrSession, fetchActiveAttendanceQrSessions, fetchAttendance, fetchStudents } from '../../lib/api/modules';
+import { resolveCurrentStudent } from '../../lib/userMatching';
 import { useToast } from '../../hooks/use-toast';
 import { formatDateTime } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { AttendanceEntryDto, AttendanceQrSessionSnapshot } from '../../types/api/generated';
 
-function normalize(value = '') {
+function normalize(value: string | null | undefined = ''): string {
   return String(value).toLowerCase().trim();
 }
 
@@ -21,9 +24,9 @@ export default function StudentAttendanceScan() {
   const navigate = useNavigate();
   const { user } = useApp();
   const { toast } = useToast();
-  const [attendance, setAttendance] = useState([]);
-  const [activeSessions, setActiveSessions] = useState([]);
-  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [attendance, setAttendance] = useState<AttendanceEntryDto[]>([]);
+  const [activeSessions, setActiveSessions] = useState<AttendanceQrSessionSnapshot[]>([]);
+  const [selectedRecord, setSelectedRecord] = useState<AttendanceEntryDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkingInId, setCheckingInId] = useState('');
   const [error, setError] = useState('');
@@ -32,22 +35,25 @@ export default function StudentAttendanceScan() {
     try {
       setLoading(true);
       setError('');
-      const className = user?.className || '';
+      // Oturum kullanıcısında sınıf alanı yok; eskiden `user.className` hep boş kaldığı için
+      // filtre gitmiyor ve öğrenci tüm sınıfların aktif oturumlarını görüyordu.
+      const students = await fetchStudents().catch(() => []);
+      const className = resolveCurrentStudent(user, Array.isArray(students) ? students : [])?.className || '';
       const [attendanceItems, qrSessions] = await Promise.all([
         fetchAttendance().catch(() => []),
         fetchActiveAttendanceQrSessions(className ? { className } : {}).catch(() => []),
       ]);
-      setAttendance(attendanceItems);
+      setAttendance(attendanceItems ?? []);
       setActiveSessions(Array.isArray(qrSessions) ? qrSessions : []);
     } catch (err) {
-      setError(err.message || 'QR yoklama görünümü alınamadı.');
+      setError(errorMessage(err, 'QR yoklama görünümü alınamadı.'));
     } finally {
       setLoading(false);
     }
-  }, [user?.className]);
+  }, [user]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const studentAttendance = useMemo(
@@ -57,8 +63,8 @@ export default function StudentAttendanceScan() {
   const latest = studentAttendance.slice(0, 6);
   const liveSession = activeSessions[0] || null;
 
-  const handleCheckIn = async (session) => {
-    if (!session?.token) return;
+  const handleCheckIn = async (session: AttendanceQrSessionSnapshot) => {
+    if (!session.token) return;
     try {
       setCheckingInId(session.id);
       await checkInAttendanceQrSession({ token: session.token, studentName: user?.name });
@@ -66,7 +72,7 @@ export default function StudentAttendanceScan() {
       await loadData();
     } catch (err) {
       toast({
-        title: err?.response?.data?.message || err?.message || 'Yoklama gönderilemedi.',
+        title: errorMessage(err, 'Yoklama gönderilemedi.'),
         variant: 'destructive',
       });
     } finally {

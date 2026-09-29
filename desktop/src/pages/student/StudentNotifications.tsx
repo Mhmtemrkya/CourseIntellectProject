@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   Bell, BellRing, CheckCircle, Info, AlertTriangle, MessageSquare,
   FileText, Calendar, BookOpen, Filter, CheckCheck,
@@ -13,19 +13,20 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../hooks/use-toast';
 import { fetchNotifications, markNotificationRead } from '../../lib/api/modules';
-import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { NotificationDto } from '../../types/api/generated';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.07 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
 
-function notifIcon(type) {
+function notifIcon(type: string) {
   const t = String(type || '').toLowerCase();
   if (t.includes('exam') || t.includes('sinav')) return <FileText className="h-5 w-5 text-purple-500" />;
   if (t.includes('homework') || t.includes('odev')) return <BookOpen className="h-5 w-5 text-blue-500" />;
@@ -35,22 +36,10 @@ function notifIcon(type) {
   return <Info className="h-5 w-5 text-gray-500" />;
 }
 
-function timeAgo(dateStr) {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = Math.floor((now - date) / 1000);
-  if (diff < 60) return 'Az once';
-  if (diff < 3600) return `${Math.floor(diff / 60)} dk once`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} saat once`;
-  if (diff < 604800) return `${Math.floor(diff / 86400)} gun once`;
-  return formatDate(date);
-}
-
 export default function StudentNotifications() {
   const { user } = useApp();
   const { toast } = useToast();
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('all');
@@ -62,13 +51,13 @@ export default function StudentNotifications() {
       const data = await fetchNotifications('Student');
       setNotifications(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || 'Duyurular alinamadi.');
+      setError(errorMessage(err, 'Duyurular alinamadi.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadNotifications(); }, [loadNotifications]);
+  useEffect(() => { void loadNotifications(); }, [loadNotifications]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.isRead).length,
@@ -81,7 +70,7 @@ export default function StudentNotifications() {
     return notifications;
   }, [notifications, tab]);
 
-  const handleMarkRead = async (id) => {
+  const handleMarkRead = async (id: string) => {
     try {
       await markNotificationRead(id);
       setNotifications((prev) =>
@@ -160,15 +149,15 @@ export default function StudentNotifications() {
             <motion.div key={notif.id} variants={itemVariants}>
               <Card className={`transition-colors ${!notif.isRead ? 'border-l-4 border-l-blue-500 bg-blue-50/30 dark:bg-blue-950/20' : ''}`}>
                 <CardContent className="flex items-start gap-4 py-4">
-                  <div className="mt-1">{notifIcon(notif.type || notif.category)}</div>
+                  <div className="mt-1">{notifIcon(notif.category)}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-sm">{notif.title || 'Duyuru'}</span>
                       {!notif.isRead && <Badge variant="secondary" className="text-xs">Yeni</Badge>}
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{notif.message || notif.body || ''}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{notif.message || ''}</p>
                     <span className="text-xs text-muted-foreground mt-1 block">
-                      {timeAgo(notif.createdAt || notif.date)}
+                      {notif.timeLabel}
                     </span>
                   </div>
                   {!notif.isRead && (

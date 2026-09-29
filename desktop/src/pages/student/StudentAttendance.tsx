@@ -11,8 +11,28 @@ import { AnimatedValue } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchAttendance } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { AttendanceEntryDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-function normalize(value = '') {
+type MetricTone = 'green' | 'orange' | 'blue' | 'purple';
+
+interface MetricProps {
+  icon: IconComponent;
+  label: string;
+  value: string | number;
+  hint?: string;
+  tone: MetricTone;
+}
+
+interface SubjectAttendance {
+  subject: string;
+  present: number;
+  absent: number;
+  total: number;
+}
+
+function normalize(value: string | null | undefined = ''): string {
   return String(value)
     .trim()
     .toLowerCase()
@@ -24,7 +44,7 @@ function normalize(value = '') {
     .replaceAll('ü', 'u');
 }
 
-function toStatus(status = '') {
+function toStatus(status: string | null | undefined = ''): 'present' | 'late' | 'excuse' | 'absent' {
   const key = normalize(status);
   if (key.includes('katildi')) return 'present';
   if (key.includes('gec')) return 'late';
@@ -32,13 +52,13 @@ function toStatus(status = '') {
   return 'absent';
 }
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   const date = value ? new Date(value) : new Date();
   if (Number.isNaN(date.getTime())) return value || '-';
   return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' }).format(date);
 }
 
-function downloadCsv(records) {
+function downloadCsv(records: readonly AttendanceEntryDto[]) {
   const rows = [
     ['Ders', 'Sınıf', 'Tarih', 'Durum'],
     ...records.map((item) => [item.lesson, item.className, item.lessonDate, item.status]),
@@ -53,8 +73,8 @@ function downloadCsv(records) {
   URL.revokeObjectURL(url);
 }
 
-function Metric({ icon: Icon, label, value, hint, tone }) {
-  const tones = {
+function Metric({ icon: Icon, label, value, hint, tone }: MetricProps) {
+  const tones: Record<MetricTone, string> = {
     green: 'from-emerald-500/20 to-emerald-500/5 text-emerald-300 border-emerald-500/15',
     orange: 'from-orange-500/20 to-orange-500/5 text-orange-300 border-orange-500/15',
     blue: 'from-blue-500/20 to-blue-500/5 text-blue-300 border-blue-500/15',
@@ -72,7 +92,7 @@ function Metric({ icon: Icon, label, value, hint, tone }) {
 
 export default function StudentAttendance() {
   const { user } = useApp();
-  const [records, setRecords] = useState([]);
+  const [records, setRecords] = useState<AttendanceEntryDto[]>([]);
   const [period, setPeriod] = useState('2024 - 2025 / 2. Dönem');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -81,16 +101,16 @@ export default function StudentAttendance() {
     try {
       setLoading(true);
       setError('');
-      setRecords(await fetchAttendance({ studentName: user?.name || '' }));
+      setRecords((await fetchAttendance({ studentName: user?.name || '' })) ?? []);
     } catch (err) {
-      setError(err.message || 'Devamsızlık kayıtları alınamadı.');
+      setError(errorMessage(err, 'Devamsızlık kayıtları alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [user?.name]);
 
   useEffect(() => {
-    loadAttendance();
+    void loadAttendance();
   }, [loadAttendance]);
 
   const stats = useMemo(() => {
@@ -104,7 +124,7 @@ export default function StudentAttendance() {
   }, [records]);
 
   const bySubject = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, SubjectAttendance>();
     records.forEach((item) => {
       const subject = item.lesson || 'Ders';
       const next = map.get(subject) || { subject, present: 0, absent: 0, total: 0 };
@@ -121,7 +141,7 @@ export default function StudentAttendance() {
 
   const latestAbsences = useMemo(() => records
     .filter((item) => toStatus(item.status) === 'absent')
-    .sort((a, b) => new Date(b.lessonDate) - new Date(a.lessonDate))
+    .sort((a, b) => new Date(b.lessonDate).getTime() - new Date(a.lessonDate).getTime())
     .slice(0, 5), [records]);
 
   const calendarDays = useMemo(() => {

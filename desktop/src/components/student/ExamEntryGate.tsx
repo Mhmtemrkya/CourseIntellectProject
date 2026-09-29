@@ -15,7 +15,8 @@ export interface ExamEntryGateExam {
   liveLinkUrl?: string | null;
   lateEntryLimitMinutes?: number | string | null;
   dateLabel?: string | null;
-  date?: string | null;
+  /** Liste satırı zaten çözülmüş tarihi `Date` olarak taşır. */
+  date?: string | Date | null;
   startTime?: string | null;
 }
 
@@ -30,7 +31,7 @@ export interface ExamEntryGateProps {
   onEnter: (decision: ExamEntryDecision) => Promise<unknown> | unknown;
 }
 
-function parseStart(dateLabel: string | null | undefined, startTime: string | null | undefined): { date: Date; hasTime: boolean } | null {
+function parseStart(dateLabel: string | Date | null | undefined, startTime: string | null | undefined): { date: Date; hasTime: boolean } | null {
   const raw = String(dateLabel || '').trim();
   if (!raw) return null;
   let base = new Date(raw);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Send, BellRing, Paperclip, Image as ImageIcon, FileText, Film, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -13,6 +13,8 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { createQuestionThread, fetchQuestionThreads, fetchStaff, uploadFile } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { QuestionThreadAttachmentDto, QuestionThreadDto, StaffSummaryDto } from '../../types/api/generated';
 
 function resolveFileType(fileName = '', mimeType = '') {
   const lower = fileName.toLowerCase();
@@ -22,14 +24,14 @@ function resolveFileType(fileName = '', mimeType = '') {
   return 'file';
 }
 
-function attachmentSummaryLabel(attachment) {
+function attachmentSummaryLabel(attachment: QuestionThreadAttachmentDto): string {
   if (attachment.fileType === 'image') return 'Görsel eklendi';
   if (attachment.fileType === 'pdf') return 'PDF eklendi';
   if (attachment.fileType === 'video') return 'Video eklendi';
   return 'Ek dosya eklendi';
 }
 
-function attachmentTag(attachment) {
+function attachmentTag(attachment: QuestionThreadAttachmentDto): string {
   if (attachment.fileType === 'image') return 'IMG';
   if (attachment.fileType === 'pdf') return 'PDF';
   if (attachment.fileType === 'video') return 'VID';
@@ -38,13 +40,13 @@ function attachmentTag(attachment) {
 
 export default function StudentQuestionBox() {
   const { user } = useApp();
-  const [threads, setThreads] = useState([]);
-  const [teachers, setTeachers] = useState([]);
+  const [threads, setThreads] = useState<QuestionThreadDto[]>([]);
+  const [teachers, setTeachers] = useState<StaffSummaryDto[]>([]);
   const [subject, setSubject] = useState('Matematik');
   const [teacher, setTeacher] = useState('');
   const [title, setTitle] = useState('');
   const [questionText, setQuestionText] = useState('');
-  const [attachments, setAttachments] = useState([]);
+  const [attachments, setAttachments] = useState<QuestionThreadAttachmentDto[]>([]);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -58,28 +60,29 @@ export default function StudentQuestionBox() {
         fetchQuestionThreads(),
         fetchStaff('Teacher').catch(() => []),
       ]);
-      setThreads(threadPayload);
-      setTeachers(teacherPayload);
-      setTeacher((prev) => prev || teacherPayload[0]?.fullName || '');
+      const teacherList = teacherPayload ?? [];
+      setThreads(threadPayload ?? []);
+      setTeachers(teacherList);
+      setTeacher((prev) => prev || teacherList[0]?.fullName || '');
     } catch (err) {
-      setError(err.message || 'Soru kutusu alınamadı.');
+      setError(errorMessage(err, 'Soru kutusu alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const myThreads = useMemo(() => threads.filter((item) => (item.studentName || '').toLowerCase() === (user?.name || '').toLowerCase()), [threads, user?.name]);
 
-  const resolveAttachmentUrl = useCallback((value) => {
+  const resolveAttachmentUrl = useCallback((value: string) => {
     if (!value) return '';
     return /^https?:\/\//i.test(value) ? value : `${desktopApiBaseUrl}${value.startsWith('/') ? '' : '/'}${value}`;
   }, []);
 
-  const handleAttachmentPick = async (event) => {
+  const handleAttachmentPick = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -89,16 +92,17 @@ export default function StudentQuestionBox() {
       const formData = new FormData();
       formData.append('file', file);
       const uploaded = await uploadFile(formData, 'question-threads');
+      if (!uploaded) return;
       setAttachments((prev) => [
         ...prev,
         {
-          fileName: uploaded.originalFileName || uploaded.fileName || file.name,
+          fileName: uploaded.fileName || file.name,
           fileUrl: uploaded.fileUrl || uploaded.fileName || '',
-          fileType: uploaded.fileType || resolveFileType(file.name, file.type),
+          fileType: resolveFileType(file.name, uploaded.contentType || file.type),
         },
       ]);
     } catch (err) {
-      setError(err.message || 'Ek yüklenemedi.');
+      setError(errorMessage(err, 'Ek yüklenemedi.'));
     } finally {
       setUploadingAttachment(false);
     }
@@ -112,7 +116,6 @@ export default function StudentQuestionBox() {
         title: title.trim(),
         subject,
         teacherName: teacher.trim(),
-        studentName: user?.name || 'Ogrenci',
         questionText: questionText.trim(),
         attachments,
       });
@@ -227,9 +230,7 @@ export default function StudentQuestionBox() {
         </CardHeader>
         <CardContent className="space-y-4">
           {myThreads.map((item) => {
-            const lastReply = Array.isArray(item.replies) && item.replies.length > 0
-              ? item.replies[item.replies.length - 1]
-              : null;
+            const lastReply = Array.isArray(item.replies) ? item.replies[item.replies.length - 1] ?? null : null;
             return (
             <div key={item.id} className="rounded-xl border p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -262,7 +263,7 @@ export default function StudentQuestionBox() {
                   <BellRing className="h-4 w-4 text-brand-primary" />
                   Son yanıt
                 </div>
-                <p>{item.lastReplyPreview || 'Henüz öğretmen yanıtı yok.'}</p>
+                <p>{lastReply?.messageText || 'Henüz öğretmen yanıtı yok.'}</p>
                 {Array.isArray(lastReply?.attachments) && lastReply.attachments.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {lastReply.attachments.map((attachment, index) => (
