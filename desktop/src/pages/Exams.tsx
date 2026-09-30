@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Atom,
@@ -33,8 +33,35 @@ import {
   fetchStudents,
 } from '../lib/api/modules';
 import ExamManagementSheet, { classKey } from '../components/exams/ExamManagementSheet';
+import { errorMessage } from '../lib/errors';
+import type { PlannedExam } from '../lib/api/plannedExams';
+import type { ExamResultDto, StudentSummaryDto } from '../types/api/generated';
+import type { IconComponent } from '../types/ui';
 
-const containerVariants = {
+/** Liste satırı: planlı sınav ya da yalnız sonucu girilmiş (sentetik) sınav. */
+interface ExamListRow {
+  id: string;
+  title: string;
+  subject: string;
+  className: string;
+  type: string;
+  dateLabel: string;
+  startTime: string;
+  duration: string;
+  questionCount: number;
+  status: string;
+  attendancePresent: number | null;
+  attendanceTotal: number | null;
+  resultCount: number;
+  averageScore: number | null;
+  totalPoint?: number;
+  date: Date | null;
+  synthetic: boolean;
+}
+
+type ExamView = 'list' | 'calendar';
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 };
@@ -43,7 +70,15 @@ const PAGE_SIZE = 8;
 const ALL = 'all';
 
 // Sınav türüne göre ikon ve renk — listede sınav satırı bir bakışta ayırt edilsin.
-const TYPE_STYLES = {
+interface TypeStyle {
+  icon: IconComponent;
+  tint: string;
+  badge: string;
+}
+
+const DEFAULT_TYPE_STYLE: TypeStyle = { icon: Sigma, tint: 'bg-sky-500/12 text-sky-600', badge: 'bg-sky-500/12 text-sky-600' };
+
+const TYPE_STYLES: Partial<Record<string, TypeStyle>> = {
   yazılı: { icon: Sigma, tint: 'bg-sky-500/12 text-sky-600', badge: 'bg-sky-500/12 text-sky-600' },
   deneme: { icon: FlaskConical, tint: 'bg-amber-500/12 text-amber-600', badge: 'bg-amber-500/12 text-amber-600' },
   ünite: { icon: Globe2, tint: 'bg-rose-500/12 text-rose-600', badge: 'bg-rose-500/12 text-rose-600' },
@@ -51,7 +86,9 @@ const TYPE_STYLES = {
   proje: { icon: Atom, tint: 'bg-violet-500/12 text-violet-600', badge: 'bg-violet-500/12 text-violet-600' },
 };
 
-const STATUS_STYLES = {
+const DEFAULT_STATUS_STYLE = 'bg-sky-500/12 text-sky-600';
+
+const STATUS_STYLES: Partial<Record<string, string>> = {
   tamamlandı: 'bg-emerald-500/12 text-emerald-600',
   planlandı: 'bg-sky-500/12 text-sky-600',
   taslak: 'bg-amber-500/12 text-amber-600',
@@ -61,7 +98,7 @@ const STATUS_STYLES = {
 
 // Sonuç kayıtlarında tür, backend enum adıyla gelir (Written/MockExam...).
 // Listede Türkçe etiket göstermek için tek yerden çevrilir.
-const TYPE_LABELS = {
+const TYPE_LABELS: Partial<Record<string, string>> = {
   written: 'Yazılı',
   oral: 'Sözlü',
   quiz: 'Quiz',
@@ -70,14 +107,14 @@ const TYPE_LABELS = {
   project: 'Proje',
 };
 
-const typeLabel = (type) => TYPE_LABELS[String(type || '').toLocaleLowerCase('tr-TR')] || type || 'Yazılı';
-const typeStyle = (type) => TYPE_STYLES[typeLabel(type).toLocaleLowerCase('tr-TR')] || TYPE_STYLES.yazılı;
-const statusStyle = (status) => STATUS_STYLES[String(status || '').toLocaleLowerCase('tr-TR')] || STATUS_STYLES.planlandı;
+const typeLabel = (type: string | null | undefined): string => TYPE_LABELS[String(type || '').toLocaleLowerCase('tr-TR')] || type || 'Yazılı';
+const typeStyle = (type: string): TypeStyle => TYPE_STYLES[typeLabel(type).toLocaleLowerCase('tr-TR')] || DEFAULT_TYPE_STYLE;
+const statusStyle = (status: string): string => STATUS_STYLES[String(status || '').toLocaleLowerCase('tr-TR')] || DEFAULT_STATUS_STYLE;
 
 const TR_MONTHS = ['ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', 'temmuz', 'ağustos', 'eylül', 'ekim', 'kasım', 'aralık'];
 
 // "17 Haziran 2026" / "17.06.2026" / "2026-06-17" biçimlerini tarihe çevirir.
-function parseExamDate(label) {
+function parseExamDate(label: string | null | undefined): Date | null {
   const raw = String(label || '').trim();
   if (!raw) return null;
   const iso = new Date(raw);
@@ -87,25 +124,26 @@ function parseExamDate(label) {
   if (dotted) return new Date(Number(dotted[3]), Number(dotted[2]) - 1, Number(dotted[1]));
 
   const turkish = raw.match(/^(\d{1,2})\s+([^\s]+)\s*(\d{4})?$/);
-  if (turkish) {
-    const month = TR_MONTHS.findIndex((name) => name === turkish[2].toLocaleLowerCase('tr-TR'));
+  const monthName = turkish?.[2];
+  if (turkish && monthName) {
+    const month = TR_MONTHS.findIndex((name) => name === monthName.toLocaleLowerCase('tr-TR'));
     if (month >= 0) return new Date(Number(turkish[3] || new Date().getFullYear()), month, Number(turkish[1]));
   }
   return Number.isNaN(iso.getTime()) ? null : iso;
 }
 
-function formatExamDate(date, fallback) {
+function formatExamDate(date: Date | null, fallback?: string): string {
   if (!date) return fallback || '—';
   return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function weekdayLabel(date, startTime) {
+function weekdayLabel(date: Date | null, startTime: string): string {
   if (!date) return startTime || '';
   const weekday = date.toLocaleDateString('tr-TR', { weekday: 'long' });
   return [weekday, startTime].filter(Boolean).join(' ');
 }
 
-function StatTile({ icon: Icon, tint, label, value, caption }) {
+function StatTile({ icon: Icon, tint, label, value, caption }: { icon: IconComponent; tint: string; label: string; value: number; caption: string }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-foreground/10 bg-background/60 px-4 py-3">
       <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${tint}`}>
@@ -126,9 +164,9 @@ export default function Exams() {
   const roles = useMemo(() => getUserRoles(user), [user]);
   const canManage = roles.includes('admin') || roles.includes('superadmin') || roles.includes('teacher');
 
-  const [exams, setExams] = useState([]);
-  const [results, setResults] = useState([]);
-  const [students, setStudents] = useState([]);
+  const [exams, setExams] = useState<PlannedExam[]>([]);
+  const [results, setResults] = useState<ExamResultDto[]>([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -137,12 +175,12 @@ export default function Exams() {
   const [classFilter, setClassFilter] = useState(ALL);
   const [typeFilter, setTypeFilter] = useState(ALL);
   const [statusFilter, setStatusFilter] = useState(ALL);
-  const [view, setView] = useState('list');
+  const [view, setView] = useState<ExamView>('list');
   const [page, setPage] = useState(1);
 
   // Açık modal, satırın KOPYASINI değil kimliğini tutar: bir işlem sonrası liste
   // tazelenince (durum/puan değişimi) pencere de anında güncel veriyi gösterir.
-  const [managedExamId, setManagedExamId] = useState(null);
+  const [managedExamId, setManagedExamId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -156,20 +194,20 @@ export default function Exams() {
       setResults(Array.isArray(resultList) ? resultList : []);
       setStudents(Array.isArray(studentList) ? studentList : []);
     } catch (err) {
-      setError(err.message || 'Sınav verileri alınamadı.');
+      setError(errorMessage(err, 'Sınav verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   // Planlı sınavlar listenin omurgasıdır. Sınav künyesi olmadan yalnız sonucu
   // girilmiş kayıtlar da (eski veriler) listede görünsün diye başlığa göre
   // türetilmiş satırlar eklenir — aksi hâlde girilmiş sonuçlar kaybolur.
-  const rows = useMemo(() => {
-    const planned = exams.map((exam) => {
-      const examResults = results.filter((row) => (row.examTitle || row.title) === exam.title);
+  const rows = useMemo((): ExamListRow[] => {
+    const planned = exams.map((exam): ExamListRow => {
+      const examResults = results.filter((row) => row.examTitle === exam.title);
       const average = exam.averageScore ?? (examResults.length
         ? Math.round((examResults.reduce((sum, row) => sum + (Number(row.score) || 0), 0) / examResults.length) * 10) / 10
         : null);
@@ -185,12 +223,12 @@ export default function Exams() {
 
     const knownTitles = new Set(planned.map((row) => String(row.title || '').toLocaleLowerCase('tr-TR')));
     const orphanTitles = [...new Set(results
-      .map((row) => row.examTitle || row.title)
+      .map((row) => row.examTitle)
       .filter((title) => title && !knownTitles.has(String(title).toLocaleLowerCase('tr-TR'))))];
 
-    const orphans = orphanTitles.map((title) => {
-      const examResults = results.filter((row) => (row.examTitle || row.title) === title);
-      const first = examResults[0] || {};
+    const orphans = orphanTitles.map((title): ExamListRow => {
+      const examResults = results.filter((row) => row.examTitle === title);
+      const first: Partial<ExamResultDto> = examResults[0] ?? {};
       return {
         id: `result:${title}`,
         title,
@@ -262,11 +300,12 @@ export default function Exams() {
 
   // Takvim görünümü: sınavlar tarihine göre gruplanır (gerçek veriden, dekor değil).
   const grouped = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, ExamListRow[]>();
     filtered.forEach((row) => {
       const key = row.date ? row.date.toISOString().slice(0, 10) : 'tarihsiz';
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(row);
+      const bucket = map.get(key);
+      if (bucket) bucket.push(row);
+      else map.set(key, [row]);
     });
     return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
@@ -391,7 +430,7 @@ export default function Exams() {
                 .filter((number) => number === 1 || number === pageCount || Math.abs(number - currentPage) <= 1)
                 .map((number, index, list) => (
                   <span key={number} className="flex items-center gap-1">
-                    {index > 0 && number - list[index - 1] > 1 ? <span className="px-1 text-muted-foreground">…</span> : null}
+                    {index > 0 && number - (list[index - 1] ?? number) > 1 ? <span className="px-1 text-muted-foreground">…</span> : null}
                     <Button
                       variant={number === currentPage ? 'default' : 'outline'}
                       size="icon"
@@ -425,7 +464,7 @@ export default function Exams() {
   );
 }
 
-function FilterSelect({ value, onChange, placeholder, options }) {
+function FilterSelect({ value, onChange, placeholder, options }: { value: string; onChange: (value: string) => void; placeholder: string; options: string[] }) {
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="h-10 w-full sm:w-[9.5rem]"><SelectValue placeholder={placeholder} /></SelectTrigger>
@@ -437,11 +476,11 @@ function FilterSelect({ value, onChange, placeholder, options }) {
   );
 }
 
-function ExamRow({ row, onManage }) {
+function ExamRow({ row, onManage }: { row: ExamListRow; onManage: () => void }) {
   const style = typeStyle(row.type);
   const Icon = style.icon;
   const participation = row.attendanceTotal
-    ? Math.round((row.attendancePresent / row.attendanceTotal) * 100)
+    ? Math.round(((row.attendancePresent ?? 0) / row.attendanceTotal) * 100)
     : null;
 
   return (

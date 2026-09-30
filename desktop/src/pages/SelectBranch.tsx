@@ -8,17 +8,18 @@ import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { fetchMyScope, fetchOrgUnits } from '../lib/api/modules';
 import { setActiveBranchFilter } from '../lib/api/client';
 import { getUserHomePath } from '../lib/auth';
+import type { OrgUnitDto } from '../types/api/generated';
 
 const BRANCH_TYPES = ['şube', 'sube', 'kampüs', 'kampus'];
 
 export default function SelectBranch() {
   const navigate = useNavigate();
   const { user, logout } = useApp();
-  const [branches, setBranches] = useState([]);
+  const [branches, setBranches] = useState<OrgUnitDto[]>([]);
   const [canViewAllBranches, setCanViewAllBranches] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const proceed = useCallback((branchId) => {
+  const proceed = useCallback((branchId: string | null) => {
     setActiveBranchFilter(branchId || null);
     if (typeof localStorage !== 'undefined') localStorage.setItem('ci-branch-selected', '1');
     navigate(getUserHomePath(user), { replace: true });
@@ -54,7 +55,7 @@ export default function SelectBranch() {
     }
   }, [proceed, user?.backendRole]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><LoadingDots /></div>;

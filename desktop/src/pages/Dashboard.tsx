@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -42,18 +42,41 @@ import {
   fetchSchoolSetupStatus,
 } from '../lib/api/modules';
 import { fetchAdminDashboardData } from '../lib/api/dashboardData';
+import { errorMessage } from '../lib/errors';
+import type { AdminDashboardData } from '../lib/api/dashboardData';
+import type { SchoolDashboard, SchoolDashboardKpis, SchoolSetupStatus } from '../lib/api/schoolDashboard';
+import type { KpiTone } from '../components/ui/kpi-card';
+import type { AdminAnalyticsBucket, AdminAnalyticsResponse } from '../types/api/generated';
+import type { IconComponent } from '../types/ui';
 
-const containerVariants = {
+type DashboardPeriod = 'day' | 'week' | 'month' | 'year' | 'custom';
+
+interface DateRange {
+  from: string;
+  to: string;
+}
+
+interface KpiOptions {
+  group: string;
+  range?: boolean;
+  money?: boolean;
+}
+
+type KpiMeta = readonly [keyof SchoolDashboardKpis, string, IconComponent, KpiTone, string | null, string, KpiOptions];
+
+type DashboardAnnouncement = AdminDashboardData['announcements'][number];
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
 
-const PERIOD_OPTIONS = [
+const PERIOD_OPTIONS: ReadonlyArray<readonly [DashboardPeriod, string]> = [
   ['day', 'Günlük'],
   ['week', 'Haftalık'],
   ['month', 'Aylık'],
@@ -64,7 +87,7 @@ const PERIOD_OPTIONS = [
 const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
 const moneyFormatter = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
-function formatMoney(value) {
+function formatMoney(value: number | null | undefined) {
   return moneyFormatter.format(Number(value) || 0);
 }
 
@@ -88,7 +111,7 @@ const KPI_GROUPS = [
 // Ana panoda yalnız kurum sahibinin düzenli takip edeceği üst seviye göstergeler
 // tutulur. Günlük ders/devamsızlık, öğretmen, sınav, soru, izin/onay, belge ve
 // şifre talepleri kendi çalışma ekranlarında yönetilir; burada tekrar edilmez.
-const KPI_META = [
+const KPI_META: readonly KpiMeta[] = [
   ['activeStudents', 'Aktif Öğrenci', Users, 'brand', 'Kayıtlı ve aktif öğrenci', '/students', { group: 'student' }],
   ['activeClasses', 'Aktif Sınıf', School, 'violet', 'Öğrencisi olan sınıf', '/classes', { group: 'student' }],
   ['overdueLoans', 'Gecikmiş Kitap', BookOpen, 'amber', 'İade tarihi geçti', '/library', { group: 'student' }],
@@ -112,13 +135,12 @@ const KPI_META = [
   ['activeAnnouncements', 'Duyuru', Megaphone, 'blue', 'Yayındaki duyuru', '/admin/announcements', { group: 'operations' }],
 ];
 
-const isoDay = (date) => date.toISOString().slice(0, 10);
-const localIsoDay = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+const isoDay = (date: Date) => date.toISOString().slice(0, 10);
+const localIsoDay = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 // Seçilen dönemi [from, to) aralığına çevirir. Bitiş HARİÇTİR (backend böyle bekler).
-function rangeFor(period, anchor, customFrom, customTo) {
-  const reference = anchor instanceof Date ? anchor : new Date(anchor);
-  const start = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
+function rangeFor(period: DashboardPeriod, anchor: Date, customFrom: string, customTo: string): DateRange | null {
+  const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
   const end = new Date(start);
 
   if (period === 'day') {
@@ -147,7 +169,7 @@ function rangeFor(period, anchor, customFrom, customTo) {
   return { from: start.toISOString(), to: end.toISOString() };
 }
 
-function periodCaption(period, anchor) {
+function periodCaption(period: DashboardPeriod, anchor: Date) {
   if (period === 'day') return 'Bugünkü';
   if (period === 'week') return 'Bu haftaki';
   if (period === 'month') return `${MONTHS_TR[anchor.getMonth()]} ayı`;
@@ -155,7 +177,7 @@ function periodCaption(period, anchor) {
   return 'Seçili aralık';
 }
 
-function installmentFilterPath(period, range, caption) {
+function installmentFilterPath(period: DashboardPeriod, range: DateRange, caption: string) {
   const params = new URLSearchParams({
     status: 'current',
     period,
@@ -166,7 +188,7 @@ function installmentFilterPath(period, range, caption) {
   return `/finance/installments?${params.toString()}`;
 }
 
-function AnnouncementItem({ announcement }) {
+function AnnouncementItem({ announcement }: { announcement: DashboardAnnouncement }) {
   return (
     <PremiumListRow
       icon={Megaphone}
@@ -180,8 +202,8 @@ function AnnouncementItem({ announcement }) {
 
 // Dönemsel kazanç/gider çubuk grafiği — bir kovanın üstüne gelince o günün/haftanın
 // kazancı, kayıt olan öğrenci sayısı ve gideri tooltip ile gösterilir.
-function FinancialChart({ buckets = [], loading = false }) {
-  const [hover, setHover] = useState(null);
+function FinancialChart({ buckets = [], loading = false }: { buckets?: AdminAnalyticsBucket[]; loading?: boolean }) {
+  const [hover, setHover] = useState<number | null>(null);
 
   if (loading) {
     return <div className="flex h-64 items-center justify-center"><LoadingDots /></div>;
@@ -255,19 +277,19 @@ function FinancialChart({ buckets = [], loading = false }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<AdminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [period, setPeriod] = useState('day');
+  const [period, setPeriod] = useState<DashboardPeriod>('day');
   const [anchor, setAnchor] = useState(() => new Date());
   const [customFrom, setCustomFrom] = useState(() => new Date(new Date().setDate(new Date().getDate() - 13)).toISOString().slice(0, 10));
   const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
-  const [analytics, setAnalytics] = useState(null);
+  const [analytics, setAnalytics] = useState<AdminAnalyticsResponse | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
-  const [overview, setOverview] = useState(null);
+  const [overview, setOverview] = useState<SchoolDashboard | null>(null);
   const [overviewError, setOverviewError] = useState('');
-  const [setupStatus, setSetupStatus] = useState(null);
+  const [setupStatus, setSetupStatus] = useState<SchoolSetupStatus | null>(null);
 
   const range = useMemo(() => rangeFor(period, anchor, customFrom, customTo), [period, anchor, customFrom, customTo]);
 
@@ -277,12 +299,12 @@ export default function Dashboard() {
       setOverviewError('');
       setOverview(await fetchSchoolDashboard(range));
     } catch (err) {
-      setOverviewError(err.message || 'Kurum özeti alınamadı.');
+      setOverviewError(errorMessage(err, 'Kurum özeti alınamadı.'));
       setOverview(null);
     }
   }, [range]);
 
-  useEffect(() => { loadOverview(); }, [loadOverview]);
+  useEffect(() => { void loadOverview(); }, [loadOverview]);
 
   // Kurulum durumu dönemden bağımsızdır; bir kez yüklenir. Alınamazsa sihirbaz
   // hiç çizilmez — kurulumu bitmiş kurumun panosunu hata bandıyla meşgul etmeyiz.
@@ -301,22 +323,20 @@ export default function Dashboard() {
       const payload = await fetchAdminDashboardData();
       setData(payload);
     } catch (err) {
-      setError(err.message || 'Dashboard verisi alınamadı.');
+      setError(errorMessage(err, 'Dashboard verisi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   const loadAnalytics = useCallback(async () => {
-    const inclusiveEnd = range ? new Date(new Date(range.to).getTime() - 1) : null;
-    const params = range
-      ? {
-          period: 'custom',
-          from: localIsoDay(new Date(range.from)),
-          to: localIsoDay(inclusiveEnd),
-        }
-      : null;
-    if (!params) return;
+    if (!range) return;
+    const inclusiveEnd = new Date(new Date(range.to).getTime() - 1);
+    const params = {
+      period: 'custom',
+      from: localIsoDay(new Date(range.from)),
+      to: localIsoDay(inclusiveEnd),
+    };
     try {
       setAnalyticsLoading(true);
       const result = await fetchAdminAnalytics(params);
@@ -329,11 +349,11 @@ export default function Dashboard() {
   }, [range]);
 
   useEffect(() => {
-    loadDashboard();
+    void loadDashboard();
   }, [loadDashboard]);
 
   useEffect(() => {
-    loadAnalytics();
+    void loadAnalytics();
   }, [loadAnalytics]);
 
   if (loading) {
@@ -362,7 +382,7 @@ export default function Dashboard() {
   // aralıkları ölçtüğü için grafiğin kendi aralığı açıkça yazılır.
   const chartRangeLabel = (() => {
     if (!analytics?.rangeStart || !analytics?.rangeEnd) return periodLabel.toLocaleLowerCase('tr-TR');
-    const fmt = (value) => {
+    const fmt = (value: string) => {
       const date = new Date(`${value}T00:00:00`);
       return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: '2-digit' });
     };
@@ -371,13 +391,13 @@ export default function Dashboard() {
     return `${fmt(analytics.rangeStart)} – ${fmt(isoDay(last))}`;
   })();
 
-  const kpis = overview?.kpis || {};
+  const kpis: Partial<SchoolDashboardKpis> = overview?.kpis || {};
   const overviewAlerts = overview?.alerts || [];
   // Karta yazılacak değeri ve alt bilgisini üretir. Sunucu null döndürdüyse
   // (modül kapalı / yetki yok) kart hiç render edilmez.
   const kpiCards = KPI_META
     .filter(([key]) => kpis[key] != null)
-    .map(([key, label, Icon, tone, caption, path, options = {}]) => {
+    .map(([key, label, Icon, tone, caption, path, options]) => {
       const raw = kpis[key];
       const value = options.money
         ? formatMoney(raw)
@@ -386,7 +406,7 @@ export default function Dashboard() {
       let cardPath = path;
       if (key === 'pendingInstallmentAmount') {
         cardCaption = `${selectedPeriodCaption} · ${kpis.pendingInstallments || 0} tahsilat`;
-        cardPath = installmentFilterPath(period, range, selectedPeriodCaption);
+        if (range) cardPath = installmentFilterPath(period, range, selectedPeriodCaption);
       }
       if (key === 'overdueInstallmentAmount') cardCaption = `${kpis.overdueInstallments || 0} vadesi geçmiş tahsilat`;
       return { key, label, Icon, tone, caption: cardCaption, path: cardPath, value, group: options.group };
@@ -426,7 +446,7 @@ export default function Dashboard() {
             <Select
               value={selectedMonth}
               onValueChange={(value) => {
-                const [year, month] = value.split('-').map(Number);
+                const [year = anchor.getFullYear(), month = 1] = value.split('-').map(Number);
                 setAnchor(new Date(year, month - 1, 1));
               }}
             >
@@ -494,7 +514,7 @@ export default function Dashboard() {
               <FinancialChart buckets={buckets} loading={analyticsLoading} />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {[
+              {([
                 // NOT: Bu dört toplam GRAFİĞİN TAMAMINI kapsar (ör. haftalık kırılımda
                 // son 12 hafta); üstteki kartlar ise yalnız seçili dönemi gösterir.
                 // Alt bilgilere aralık yazılmazsa iki blok çelişiyor sanılıyor.
@@ -502,7 +522,7 @@ export default function Dashboard() {
                 ['Toplam Gider', formatMoney(totals.expense), Receipt, 'rose', `Gider defteri + bordro + fatura · ${chartRangeLabel}`],
                 ['Kayıt Olan Öğrenci', totals.registrations || 0, UserPlus, 'sky', `Kaydedilen · ${chartRangeLabel}`],
                 ['Net', formatMoney(totals.net), TrendingUp, totals.net >= 0 ? 'emerald' : 'rose', `Kazanç − gider · ${chartRangeLabel}`],
-              ].map(([label, value, Icon, tone, detail]) => (
+              ] satisfies ReadonlyArray<readonly [string, string | number, IconComponent, string, string]>).map(([label, value, Icon, tone, detail]) => (
                 <div key={label} className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
                   <div className={`grid h-10 w-10 place-items-center rounded-2xl ${tone === 'emerald' ? 'bg-emerald-500/15 text-emerald-400' : tone === 'rose' ? 'bg-rose-500/15 text-rose-400' : 'bg-sky-500/15 text-sky-400'}`}>
                     <Icon className="h-5 w-5" />

@@ -45,10 +45,22 @@ import {
   sortDays,
   sortTimeSlots,
 } from '../lib/scheduleGrid';
+import { errorMessage } from '../lib/errors';
+import type { ScheduleEntryDto, StaffSummaryDto, UpsertScheduleEntryRequest } from '../types/api/generated';
+import type { IconComponent } from '../types/ui';
+
+interface ScheduleForm extends UpsertScheduleEntryRequest {
+  className: string;
+  day: string;
+  time: string;
+  subject: string;
+  teacher: string;
+  room: string;
+}
 
 const subjects = ['Matematik', 'Fizik', 'Kimya', 'Biyoloji', 'Türkçe', 'İngilizce', 'Tarih', 'Coğrafya'];
 
-const subjectColors = {
+const subjectColors: Partial<Record<string, string>> = {
   Matematik: 'from-blue-500 to-cyan-500',
   Fizik: 'from-violet-500 to-purple-500',
   Kimya: 'from-emerald-500 to-lime-500',
@@ -59,27 +71,23 @@ const subjectColors = {
   Coğrafya: 'from-cyan-500 to-sky-500',
 };
 
-const emptyForm = {
+const emptyForm: ScheduleForm = {
   className: '',
-  day: DEFAULT_SCHEDULE_DAYS[0],
-  time: DEFAULT_TIME_SLOTS[0],
-  subject: subjects[0],
+  day: DEFAULT_SCHEDULE_DAYS[0] ?? '',
+  time: DEFAULT_TIME_SLOTS[0] ?? '',
+  subject: subjects[0] ?? '',
   teacher: '',
   room: 'Derslik 1',
 };
 
 const classCollator = new Intl.Collator('tr-TR', { sensitivity: 'base', numeric: true });
 
-function normalizeClassName(value) {
-  const raw = typeof value === 'string'
-    ? value
-    : value?.name || value?.className || value?.displayName || '';
-
-  return String(raw).trim();
+function normalizeClassName(value: string) {
+  return String(value || '').trim();
 }
 
-function mergeClassNames(...groups) {
-  const classMap = new Map();
+function mergeClassNames(...groups: string[][]) {
+  const classMap = new Map<string, string>();
 
   groups.flat().forEach((value) => {
     const normalized = normalizeClassName(value);
@@ -90,7 +98,7 @@ function mergeClassNames(...groups) {
   return Array.from(classMap.values()).sort(classCollator.compare);
 }
 
-const subjectBranchAliases = {
+const subjectBranchAliases: Partial<Record<string, string[]>> = {
   matematik: ['matematik'],
   fizik: ['fizik'],
   kimya: ['kimya'],
@@ -101,7 +109,7 @@ const subjectBranchAliases = {
   cografya: ['cografya'],
 };
 
-function normalizeBranchText(value) {
+function normalizeBranchText(value: string | null | undefined) {
   return String(value || '')
     .replace(/\u0130/g, 'I')
     .replace(/\u0131/g, 'i')
@@ -111,7 +119,7 @@ function normalizeBranchText(value) {
     .replace(/[^a-z0-9]+/g, '');
 }
 
-function teacherMatchesSubject(teacher, subject) {
+function teacherMatchesSubject(teacher: StaffSummaryDto, subject: string) {
   const branch = normalizeBranchText(teacher?.departmentOrBranch);
   const subjectKey = normalizeBranchText(subject);
   if (!branch || !subjectKey) return false;
@@ -120,7 +128,7 @@ function teacherMatchesSubject(teacher, subject) {
   return aliases.some((alias) => branch.includes(alias));
 }
 
-function firstEligibleTeacher(teacherItems, subject) {
+function firstEligibleTeacher(teacherItems: StaffSummaryDto[], subject: string) {
   return teacherItems.find((item) => teacherMatchesSubject(item, subject))?.fullName || '';
 }
 
@@ -128,7 +136,7 @@ function roleTitle(pathname = '') {
   return pathname.startsWith('/admin/') ? 'İdari Program Merkezi' : 'Yönetim Program Merkezi';
 }
 
-function LessonBlock({ lesson, onSelect }) {
+function LessonBlock({ lesson, onSelect }: { lesson: ScheduleEntryDto; onSelect: (lesson: ScheduleEntryDto) => void }) {
   const gradient = subjectColors[lesson.subject] || 'from-slate-500 to-slate-700';
   return (
     <button
@@ -159,15 +167,15 @@ function LessonBlock({ lesson, onSelect }) {
 export default function Schedule() {
   const { toast } = useToast();
   const [selectedClass, setSelectedClass] = useState('');
-  const [classes, setClasses] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [entries, setEntries] = useState([]);
-  const [form, setForm] = useState(emptyForm);
-  const [activeDays, setActiveDays] = useState(DEFAULT_SCHEDULE_DAYS);
-  const [activeTimeSlots, setActiveTimeSlots] = useState(DEFAULT_TIME_SLOTS);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [teachers, setTeachers] = useState<StaffSummaryDto[]>([]);
+  const [entries, setEntries] = useState<ScheduleEntryDto[]>([]);
+  const [form, setForm] = useState<ScheduleForm>(emptyForm);
+  const [activeDays, setActiveDays] = useState<string[]>(DEFAULT_SCHEDULE_DAYS);
+  const [activeTimeSlots, setActiveTimeSlots] = useState<string[]>(DEFAULT_TIME_SLOTS);
   const [draftTimeSlot, setDraftTimeSlot] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
-  const [selectedLesson, setSelectedLesson] = useState(null);
+  const [selectedLesson, setSelectedLesson] = useState<ScheduleEntryDto | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -194,14 +202,14 @@ export default function Schedule() {
 
       if (scheduleResult.status === 'rejected') {
         console.warn('Ders programı alınamadı:', scheduleResult.reason);
-        setError(scheduleResult.reason?.message || 'Ders programı kayıtları yüklenemedi.');
+        setError(errorMessage(scheduleResult.reason, 'Ders programı kayıtları yüklenemedi.'));
       }
 
       const nextClasses = mergeClassNames(classItems);
 
       if (classesResult.status === 'rejected') {
         console.warn('Sınıf listesi alınamadı:', classesResult.reason);
-        setError(classesResult.reason?.message || 'Sınıf listesi yüklenemedi.');
+        setError(errorMessage(classesResult.reason, 'Sınıf listesi yüklenemedi.'));
       }
 
       setClasses(nextClasses);
@@ -218,14 +226,14 @@ export default function Schedule() {
           : firstEligibleTeacher(teacherItems, prev.subject || emptyForm.subject),
       }));
     } catch (err) {
-      setError(err.message || 'Ders programı alınamadı.');
+      setError(errorMessage(err, 'Ders programı alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadSchedule();
+    void loadSchedule();
   }, [loadSchedule]);
 
   const eligibleTeachers = useMemo(
@@ -265,7 +273,7 @@ export default function Schedule() {
   }, [currentLessons, activeDays, activeTimeSlots]);
 
   const lessonMap = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, ScheduleEntryDto>();
     currentLessons.forEach((item) => {
       map.set(`${item.day}-${item.time}`, item);
     });
@@ -293,6 +301,7 @@ export default function Schedule() {
     try {
       setSaving(true);
       const created = await createScheduleEntry(form);
+      if (!created) throw new Error('Kayıt yanıtı alınamadı.');
       setEntries((prev) => [...prev, created]);
       setCreateOpen(false);
       setForm((prev) => ({ ...emptyForm, className: prev.className, teacher: prev.teacher }));
@@ -303,7 +312,7 @@ export default function Schedule() {
     } catch (err) {
       toast({
         title: 'Program kaydedilemedi',
-        description: err.message || 'Aynı öğretmen veya sınıf çakışıyor olabilir.',
+        description: errorMessage(err, 'Aynı öğretmen veya sınıf çakışıyor olabilir.'),
         variant: 'destructive',
       });
     } finally {
@@ -325,7 +334,7 @@ export default function Schedule() {
     } catch (err) {
       toast({
         title: 'Slot silinemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -333,13 +342,13 @@ export default function Schedule() {
     }
   };
 
-  const toggleActiveDay = (day) => {
+  const toggleActiveDay = (day: string) => {
     setActiveDays((prev) => {
       const next = prev.includes(day)
         ? prev.filter((item) => item !== day)
         : [...prev, day];
       const sorted = sortDays(next.length > 0 ? next : [day]);
-      setForm((current) => (sorted.includes(current.day) ? current : { ...current, day: sorted[0] }));
+      setForm((current) => (sorted.includes(current.day) ? current : { ...current, day: sorted[0] ?? day }));
       return sorted;
     });
   };
@@ -355,11 +364,11 @@ export default function Schedule() {
     setDraftTimeSlot('');
   };
 
-  const removeTimeSlot = (slot) => {
+  const removeTimeSlot = (slot: string) => {
     setActiveTimeSlots((prev) => {
       const next = prev.filter((item) => item !== slot);
       const sorted = next.length > 0 ? sortTimeSlots(next) : [slot];
-      setForm((current) => (sorted.includes(current.time) ? current : { ...current, time: sorted[0] }));
+      setForm((current) => (sorted.includes(current.time) ? current : { ...current, time: sorted[0] ?? slot }));
       return sorted;
     });
   };
@@ -507,11 +516,11 @@ export default function Schedule() {
             <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-brand-primary" />Planlama Kuralları</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
-            {[
+            {([
               ['Sınıf bazlı atama', 'Önce sınıf seçilir, sonra programa slot eklenir.', Users],
               ['Öğretmen çakışması yok', 'Aynı öğretmen aynı gün-saatte iki farklı sınıfa atanamaz.', User],
               ['Gerçek kayıt', 'Program doğrudan backend üstünde saklanır, sayfa türetmesi yapılmaz.', BookOpen],
-            ].map(([title, copy, Icon]) => (
+            ] satisfies ReadonlyArray<readonly [string, string, IconComponent]>).map(([title, copy, Icon]) => (
               <div key={title} className="rounded-2xl border border-border bg-muted/50 p-4">
                 <Icon className="h-5 w-5 text-brand-primary" />
                 <p className="mt-3 font-semibold text-foreground">{title}</p>

@@ -4,15 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, Unlock, RotateCw } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import logo from '../assets/brand/logo.png';
-import { useApp } from '../context/AppContext';
 import { openAttendanceQrSession } from '../lib/api/modules';
 import { useQrDataUrl } from '../lib/qr';
+import { errorMessage } from '../lib/errors';
+import type { AttendanceQrSessionSnapshot } from '../types/api/generated';
 
 export default function KioskQR() {
   const navigate = useNavigate();
-  const { user } = useApp();
   const [isLocked, setIsLocked] = useState(false);
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState<AttendanceQrSessionSnapshot | null>(null);
   const [countdown, setCountdown] = useState(900);
   const [error, setError] = useState('');
 
@@ -20,7 +20,8 @@ export default function KioskQR() {
     try {
       setError('');
       const opened = await openAttendanceQrSession({
-        className: user?.className || 'Tum Kurum',
+        // Oturumda sınıf bilgisi yok; kiosk her zaman tüm kurum için açılır.
+        className: 'Tum Kurum',
         lessonTitle: 'QR Yoklama',
         durationMinutes: 15,
       });
@@ -28,12 +29,12 @@ export default function KioskQR() {
       const expiresAt = opened?.expiresAtUtc ? new Date(opened.expiresAtUtc).getTime() : Date.now() + 900_000;
       setCountdown(Math.max(1, Math.round((expiresAt - Date.now()) / 1000)));
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || 'QR oturumu açılamadı.');
+      setError(errorMessage(err, 'QR oturumu açılamadı.'));
     }
-  }, [user?.className]);
+  }, []);
 
   useEffect(() => {
-    generateQR();
+    void generateQR();
   }, [generateQR]);
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function KioskQR() {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     }
-    generateQR();
+    void generateQR();
     return undefined;
   }, [countdown, generateQR]);
 

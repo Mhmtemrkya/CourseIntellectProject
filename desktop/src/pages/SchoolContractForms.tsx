@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
   Download, Eye, FileSignature, FileText, RefreshCw, Search, Upload, UserRound,
@@ -33,6 +33,26 @@ import {
 } from '../lib/api/modules';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '../lib/format';
+import { errorMessage } from '../lib/errors';
+import {
+  ConsentSignerRole,
+  type ConsentContextKind,
+  type ConsentContextKindDto,
+  type ConsentFormDto,
+  type ConsentStationDto,
+  type ConsentTemplateBindingDto,
+  type ConsentTemplateDto,
+  type StudentSummaryDto,
+} from '../types/api/generated';
+
+/** Tablete gönderme bölmesinde açık form; bu açılışta mı üretildiği de tutulur. */
+interface ComposerForm extends ConsentFormDto {
+  createdHere: boolean;
+}
+
+function isSignerRole(value: string): value is ConsentSignerRole {
+  return Object.values<string>(ConsentSignerRole).includes(value);
+}
 
 /** İmza bekleyen form varken bu aralıkta yoklanır — imza anında ekrana düşsün. */
 const POLL_INTERVAL_MS = 2500;
@@ -40,7 +60,7 @@ const POLL_INTERVAL_MS = 2500;
 /** Yüklenen PDF için istemci tarafı sınır; sunucu da 12 MB'da keser. */
 const MAX_PDF_BYTES = 12 * 1024 * 1024;
 
-const SIGNER_ROLES = [
+const SIGNER_ROLES: ReadonlyArray<{ value: ConsentSignerRole; label: string }> = [
   { value: 'StudentOrParent', label: 'Öğrenci veya veli' },
   { value: 'Parent', label: 'Veli / yasal temsilci' },
   { value: 'Student', label: 'Öğrencinin kendisi' },
@@ -49,14 +69,14 @@ const SIGNER_ROLES = [
 /** Bu ekran okul tarafıdır; sürücü kursuna özel akışlar burada listelenmez. */
 const SCHOOL_MODULES = new Set(['all', 'school']);
 
-const STATUS_LABEL = {
+const STATUS_LABEL: Partial<Record<string, string>> = {
   Draft: 'Hazırlanıyor',
   AwaitingSignature: 'İmza bekleniyor',
   Signed: 'İmzalandı',
   Cancelled: 'İptal',
 };
 
-function StatusBadge({ status }) {
+function StatusBadge({ status }: { status: string | null | undefined }) {
   if (status === 'Signed') {
     return <Badge className="border-emerald-500/30 bg-emerald-500/15 text-emerald-600">İmzalandı</Badge>;
   }
@@ -67,7 +87,8 @@ function StatusBadge({ status }) {
   return <Badge variant="secondary">{STATUS_LABEL[status] || status}</Badge>;
 }
 
-function saveBlob(blob, fileName) {
+function saveBlob(blob: Blob | null, fileName: string) {
+  if (!blob) throw new Error('Belge alınamadı.');
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -78,7 +99,8 @@ function saveBlob(blob, fileName) {
   URL.revokeObjectURL(url);
 }
 
-function openBlob(blob) {
+function openBlob(blob: Blob | null) {
+  if (!blob) throw new Error('Belge alınamadı.');
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank');
   // Sekme açılana kadar adres yaşamalı; 30 sn sonra serbest bırakılır.
@@ -102,21 +124,21 @@ export default function SchoolContractForms() {
   // Şablon/PDF yazma yetkisi yönetimdedir (sunucu da aynı rolleri arar).
   const canManageTemplates = roles.has('admin') || roles.has('administrative') || roles.has('superadmin');
 
-  const [students, setStudents] = useState([]);
-  const [templates, setTemplates] = useState([]);
-  const [contextKinds, setContextKinds] = useState([]);
-  const [stations, setStations] = useState([]);
-  const [forms, setForms] = useState([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [templates, setTemplates] = useState<ConsentTemplateDto[]>([]);
+  const [contextKinds, setContextKinds] = useState<ConsentContextKindDto[]>([]);
+  const [stations, setStations] = useState<ConsentStationDto[]>([]);
+  const [forms, setForms] = useState<ConsentFormDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState(null);
-  const [busyId, setBusyId] = useState(null);
-  const [composer, setComposer] = useState(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [composer, setComposer] = useState<ComposerForm | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [justSigned, setJustSigned] = useState(null);
+  const [justSigned, setJustSigned] = useState<string | null>(null);
 
-  const previousStatusRef = useRef(new Map());
+  const previousStatusRef = useRef(new Map<string, string>());
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -124,24 +146,24 @@ export default function SchoolContractForms() {
       const [studentList, templateList, catalog, stationList] = await Promise.all([
         fetchStudents(),
         fetchConsentTemplates(false),
-        fetchConsentCatalog().catch(() => ({ contextKinds: [] })),
+        fetchConsentCatalog().catch(() => null),
         fetchConsentStations().catch(() => []),
       ]);
-      setStudents(Array.isArray(studentList) ? studentList : studentList?.items || []);
+      setStudents(studentList ?? []);
       setTemplates(templateList);
       setContextKinds((catalog?.contextKinds || []).filter((kind) => SCHOOL_MODULES.has(kind.module)));
       setStations(stationList);
     } catch (error) {
-      toast({ title: 'Ekran yüklenemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Ekran yüklenemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [toast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const loadForms = useCallback(async ({ silent = false } = {}) => {
+  const loadForms = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!selectedId) { setForms([]); return; }
     try {
       const [list, stationList] = await Promise.all([
@@ -152,19 +174,19 @@ export default function SchoolContractForms() {
       // İmza az önce mi geldi? Personel ekranında yeşil şerit bunun için çizilir.
       const previous = previousStatusRef.current;
       const fresh = list.find((form) => form.status === 'Signed' && previous.get(form.id) === 'AwaitingSignature');
-      previousStatusRef.current = new Map(list.map((form) => [form.id, form.status]));
+      previousStatusRef.current = new Map(list.map((form): [string, string] => [form.id, form.status]));
       if (fresh) setJustSigned(fresh.title);
 
       setForms(list);
       setStations(stationList);
     } catch (error) {
-      if (!silent) toast({ title: 'Öğrencinin formları alınamadı', description: error.message, variant: 'destructive' });
+      if (!silent) toast({ title: 'Öğrencinin formları alınamadı', description: errorMessage(error), variant: 'destructive' });
     }
   }, [selectedId, toast]);
 
   useEffect(() => {
     previousStatusRef.current = new Map();
-    loadForms();
+    void loadForms();
   }, [loadForms]);
 
   const awaiting = useMemo(() => forms.some((form) => form.status === 'AwaitingSignature'), [forms]);
@@ -172,7 +194,7 @@ export default function SchoolContractForms() {
   // Yalnız imza beklenirken yoklanır; boşta ağ trafiği üretilmez.
   useEffect(() => {
     if (!awaiting) return undefined;
-    const timer = setInterval(() => loadForms({ silent: true }), POLL_INTERVAL_MS);
+    const timer = setInterval(() => void loadForms({ silent: true }), POLL_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [awaiting, loadForms]);
 
@@ -195,16 +217,17 @@ export default function SchoolContractForms() {
   );
 
   /// Şablonun bu öğrencideki EN GÜNCEL kaydı: imzalı varsa o, yoksa en yenisi.
-  const formOf = useCallback((templateId) => {
+  const formOf = useCallback((templateId: string): ConsentFormDto | null => {
     const candidates = forms.filter((form) => form.templateId === templateId);
     if (candidates.length === 0) return null;
     return candidates.slice().sort((a, b) => {
       if ((a.status === 'Signed') !== (b.status === 'Signed')) return a.status === 'Signed' ? -1 : 1;
-      return new Date(b.signedAtUtc || b.createdAtUtc) - new Date(a.signedAtUtc || a.createdAtUtc);
-    })[0];
+      return new Date(b.signedAtUtc || b.createdAtUtc).getTime() - new Date(a.signedAtUtc || a.createdAtUtc).getTime();
+    })[0] ?? null;
   }, [forms]);
 
-  const openComposer = async (template, existing) => {
+  const openComposer = async (template: ConsentTemplateDto, existing: ConsentFormDto | null) => {
+    if (!selectedId) return;
     setBusyId(template.id);
     try {
       // Var olan taslak açılırken KAYDIN metni okunur, şablonunki değil: yer
@@ -221,17 +244,18 @@ export default function SchoolContractForms() {
           contextLabel: selected?.className || null,
           staffNotes: null,
         });
+        if (!created) throw new Error('Form kaydı alınamadı.');
         setComposer({ ...created, createdHere: true });
       }
       await loadForms({ silent: true });
     } catch (error) {
-      toast({ title: 'Form açılamadı', description: error.message, variant: 'destructive' });
+      toast({ title: 'Form açılamadı', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
   };
 
-  const dispatchForm = async (form, stationName) => {
+  const dispatchForm = async (form: ConsentFormDto, stationName: string) => {
     if (!stationName?.trim()) {
       toast({
         title: 'Tablet adı gerekli',
@@ -249,41 +273,41 @@ export default function SchoolContractForms() {
       setComposer(null);
       await loadForms({ silent: true });
     } catch (error) {
-      toast({ title: 'Form gönderilemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Form gönderilemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
   };
 
-  const revoke = async (formId) => {
+  const revoke = async (formId: string) => {
     setBusyId(formId);
     try {
       await revokeConsentFormSession(formId);
       await loadForms({ silent: true });
     } catch (error) {
-      toast({ title: 'Gönderim geri alınamadı', description: error.message, variant: 'destructive' });
+      toast({ title: 'Gönderim geri alınamadı', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
   };
 
-  const downloadSigned = async (form) => {
+  const downloadSigned = async (form: ConsentFormDto) => {
     setBusyId(form.id);
     try {
       const blob = await downloadConsentFormPdf(form.id);
       saveBlob(blob, `${selected?.fullName || 'ogrenci'}-${form.title}.pdf`.replace(/\s+/g, '-'));
     } catch (error) {
-      toast({ title: 'Belge indirilemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Belge indirilemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
   };
 
-  const previewTemplate = async (template) => {
+  const previewTemplate = async (template: ConsentTemplateDto) => {
     try {
       openBlob(await downloadConsentTemplatePreview(template.id));
     } catch (error) {
-      toast({ title: 'Önizleme açılamadı', description: error.message, variant: 'destructive' });
+      toast({ title: 'Önizleme açılamadı', description: errorMessage(error), variant: 'destructive' });
     }
   };
 
@@ -499,7 +523,13 @@ export default function SchoolContractForms() {
 }
 
 /** Formu tablete gönderme bölmesi: belge önizlemesi, uygulama notu, hedef tablet. */
-function ConsentDispatchDialog({ form, stations, busy, onCancel, onDispatch }) {
+function ConsentDispatchDialog({ form, stations, busy, onCancel, onDispatch }: {
+  form: ComposerForm;
+  stations: ConsentStationDto[];
+  busy: boolean;
+  onCancel: () => void | Promise<void>;
+  onDispatch: (form: ConsentFormDto, stationName: string) => void | Promise<void>;
+}) {
   const { toast } = useToast();
   const [notes, setNotes] = useState(form.staffNotes || '');
   const [station, setStation] = useState(() => localStorage.getItem('ci-consent-last-station') || '');
@@ -509,13 +539,13 @@ function ConsentDispatchDialog({ form, stations, busy, onCancel, onDispatch }) {
     try {
       openBlob(await downloadConsentFormDocument(form.id));
     } catch (error) {
-      toast({ title: 'Belge açılamadı', description: error.message, variant: 'destructive' });
+      toast({ title: 'Belge açılamadı', description: errorMessage(error), variant: 'destructive' });
     }
   };
 
   const submit = () => {
     localStorage.setItem('ci-consent-last-station', station.trim());
-    onDispatch({ ...form, staffNotes: notes }, station);
+    void onDispatch({ ...form, staffNotes: notes }, station);
   };
 
   const online = stations.filter((item) => item.online);
@@ -620,18 +650,22 @@ function ConsentDispatchDialog({ form, stations, busy, onCancel, onDispatch }) {
  * Yükleme ile şablon kaydı TEK akışta yapılır; kullanıcı ayrıca Ayarlar
  * ekranına gitmek zorunda kalmaz.
  */
-function UploadDocumentDialog({ contextKinds, onClose, onSaved }) {
+function UploadDocumentDialog({ contextKinds, onClose, onSaved }: {
+  contextKinds: ConsentContextKindDto[];
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
   const { toast } = useToast();
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
-  const [signerRole, setSignerRole] = useState('Parent');
+  const [signerRole, setSignerRole] = useState<ConsentSignerRole>('Parent');
   const [items, setItems] = useState(['Belgenin tamamını okudum.', 'Şartları kabul ediyorum.']);
-  const [bindings, setBindings] = useState([]);
+  const [bindings, setBindings] = useState<ConsentTemplateBindingDto[]>([]);
   const [requiresSignature, setRequiresSignature] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const pickFile = (event) => {
+  const pickFile = (event: ChangeEvent<HTMLInputElement>) => {
     const next = event.target.files?.[0];
     if (!next) return;
     if (next.size > MAX_PDF_BYTES) {
@@ -642,7 +676,7 @@ function UploadDocumentDialog({ contextKinds, onClose, onSaved }) {
     if (!title.trim()) setTitle(next.name.replace(/\.pdf$/i, ''));
   };
 
-  const toggleBinding = (kind) => {
+  const toggleBinding = (kind: ConsentContextKind) => {
     setBindings((current) => (current.some((item) => item.contextKind === kind)
       ? current.filter((item) => item.contextKind !== kind)
       : [...current, { contextKind: kind, contextKey: '' }]));
@@ -661,6 +695,7 @@ function UploadDocumentDialog({ contextKinds, onClose, onSaved }) {
     try {
       // Önce belge yüklenir (sunucu içeriği doğrular), sonra şablona bağlanır.
       const document = await uploadConsentDocument(file);
+      if (!document) throw new Error('Belge yüklenemedi.');
       await createConsentTemplate({
         title: title.trim(),
         body: note.trim(),
@@ -676,7 +711,7 @@ function UploadDocumentDialog({ contextKinds, onClose, onSaved }) {
       toast({ title: 'Belge yüklendi', description: `${document.fileName} · ${document.pageCount} sayfa` });
       await onSaved();
     } catch (error) {
-      toast({ title: 'Belge yüklenemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Belge yüklenemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -718,7 +753,7 @@ function UploadDocumentDialog({ contextKinds, onClose, onSaved }) {
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={signerRole}
-                onChange={(event) => setSignerRole(event.target.value)}
+                onChange={(event) => { if (isSignerRole(event.target.value)) setSignerRole(event.target.value); }}
               >
                 {SIGNER_ROLES.map((role) => (
                   <option key={role.value} value={role.value}>{role.label}</option>

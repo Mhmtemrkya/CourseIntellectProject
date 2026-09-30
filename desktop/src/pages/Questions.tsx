@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -50,8 +50,10 @@ import { useApp } from '../context/AppContext';
 import { desktopApiBaseUrl } from '../lib/auth';
 import { createQuestionThread, fetchQuestionThreads, fetchStaff, replyQuestionThread, uploadFile } from '../lib/api/modules';
 import { formatDateTime } from '../lib/format';
+import { errorMessage } from '../lib/errors';
+import type { QuestionThreadAttachmentDto, QuestionThreadDto, StaffSummaryDto } from '../types/api/generated';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -59,19 +61,19 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, x: -20 },
   visible: { opacity: 1, x: 0 },
 };
 
-function attachmentSummaryLabel(attachment) {
+function attachmentSummaryLabel(attachment: QuestionThreadAttachmentDto) {
   if (attachment.fileType === 'image') return 'Görsel eklendi';
   if (attachment.fileType === 'pdf') return 'PDF eklendi';
   if (attachment.fileType === 'video') return 'Video eklendi';
   return 'Ek dosya eklendi';
 }
 
-function attachmentTag(attachment) {
+function attachmentTag(attachment: QuestionThreadAttachmentDto) {
   if (attachment.fileType === 'image') return 'IMG';
   if (attachment.fileType === 'pdf') return 'PDF';
   if (attachment.fileType === 'video') return 'VID';
@@ -98,6 +100,12 @@ function NewQuestionDialog({
   teachers,
   onCreated,
   onUploadAttachment,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  teachers: StaffSummaryDto[];
+  onCreated: (created: QuestionThreadDto) => void;
+  onUploadAttachment: (file: File) => Promise<QuestionThreadAttachmentDto>;
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -107,10 +115,10 @@ function NewQuestionDialog({
     teacherName: '',
     questionText: '',
   });
-  const [attachments, setAttachments] = useState([]);
+  const [attachments, setAttachments] = useState<QuestionThreadAttachmentDto[]>([]);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
-  const handleAttachmentPick = async (event) => {
+  const handleAttachmentPick = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -122,7 +130,7 @@ function NewQuestionDialog({
     } catch (err) {
       toast({
         title: 'Ek yüklenemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -146,6 +154,7 @@ function NewQuestionDialog({
         ...form,
         attachments,
       });
+      if (!created) throw new Error('Soru kaydı alınamadı.');
       onCreated(created);
       onOpenChange(false);
       setForm({
@@ -158,7 +167,7 @@ function NewQuestionDialog({
     } catch (err) {
       toast({
         title: 'Soru gönderilemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -264,13 +273,13 @@ export default function Questions() {
   const { user } = useApp();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [threads, setThreads] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [selectedThread, setSelectedThread] = useState(null);
+  const [threads, setThreads] = useState<QuestionThreadDto[]>([]);
+  const [teachers, setTeachers] = useState<StaffSummaryDto[]>([]);
+  const [selectedThread, setSelectedThread] = useState<QuestionThreadDto | null>(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [replyText, setReplyText] = useState('');
-  const [replyAttachments, setReplyAttachments] = useState([]);
+  const [replyAttachments, setReplyAttachments] = useState<QuestionThreadAttachmentDto[]>([]);
   const [uploadingReplyAttachment, setUploadingReplyAttachment] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -288,18 +297,19 @@ export default function Questions() {
         fetchQuestionThreads(),
         fetchStaff('Teacher').catch(() => []),
       ]);
-      setThreads(threadList);
-      setTeachers(teacherList);
-      setSelectedThread((prev) => prev || threadList[0] || null);
+      const safeThreads = threadList ?? [];
+      setThreads(safeThreads);
+      setTeachers(teacherList ?? []);
+      setSelectedThread((prev) => prev || safeThreads[0] || null);
     } catch (err) {
-      setError(err.message || 'Soru kayıtları alınamadı.');
+      setError(errorMessage(err, 'Soru kayıtları alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadThreads();
+    void loadThreads();
   }, [loadThreads]);
 
   useEffect(() => {
@@ -336,6 +346,7 @@ export default function Questions() {
         messageText: replyText.trim() || (replyAttachments.length > 0 ? 'Ek paylaşıldı.' : ''),
         attachments: replyAttachments,
       });
+      if (!updated) throw new Error('Yanıt kaydı alınamadı.');
       setThreads((prev) => prev.map((thread) => (thread.id === updated.id ? updated : thread)));
       setSelectedThread(updated);
       setReplyText('');
@@ -347,29 +358,30 @@ export default function Questions() {
     } catch (err) {
       toast({
         title: 'Yanıt gönderilemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     }
   };
 
-  const resolveAttachmentUrl = useCallback((value) => {
+  const resolveAttachmentUrl = useCallback((value: string | null | undefined) => {
     if (!value) return '';
     return /^https?:\/\//i.test(value) ? value : `${desktopApiBaseUrl}${value.startsWith('/') ? '' : '/'}${value}`;
   }, []);
 
-  const handleUploadAttachment = useCallback(async (file) => {
+  const handleUploadAttachment = useCallback(async (file: File): Promise<QuestionThreadAttachmentDto> => {
     const formData = new FormData();
     formData.append('file', file);
     const uploaded = await uploadFile(formData, 'question-threads');
+    if (!uploaded) throw new Error('Dosya yüklenemedi.');
     return {
-      fileName: uploaded.originalFileName || uploaded.fileName || file.name,
+      fileName: uploaded.fileName || file.name,
       fileUrl: uploaded.fileUrl || uploaded.fileName || '',
-      fileType: uploaded.fileType || resolveFileType(file.name, file.type),
+      fileType: resolveFileType(file.name, file.type),
     };
   }, []);
 
-  const handleReplyAttachmentPick = async (event) => {
+  const handleReplyAttachmentPick = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -381,7 +393,7 @@ export default function Questions() {
     } catch (err) {
       toast({
         title: 'Ek yüklenemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {

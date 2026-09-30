@@ -3,7 +3,14 @@ import { Wrench, Clock, ShieldCheck, RefreshCw, LogOut } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { formatDateTime } from '../lib/format';
 
-export default function MaintenancePage({ message, since, onRetry, onLogout }) {
+interface MaintenancePageProps {
+  message?: string | null;
+  since?: string | null;
+  onRetry?: () => void;
+  onLogout?: (() => void) | null;
+}
+
+export default function MaintenancePage({ message, since, onRetry, onLogout }: MaintenancePageProps) {
   const sinceDate = since ? new Date(since) : null;
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[hsl(var(--ci-card))] via-[hsl(var(--ci-card))] to-[hsl(var(--ci-card))] flex items-center justify-center px-6">

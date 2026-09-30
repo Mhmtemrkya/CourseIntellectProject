@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -40,8 +40,34 @@ import { fetchMeetingRequests, fetchParentAccounts, fetchStudents, updateUserSta
 import { isUserPassive } from '../lib/userStatus';
 import { formatDate } from '../lib/format';
 import { StatusBadge } from '../components/ui/status-badge';
+import { errorMessage } from '../lib/errors';
+import type { MeetingRequestDto, ParentAccountDto, StudentSummaryDto } from '../types/api/generated';
 
-const containerVariants = {
+/** Velinin bağlı öğrencisi; yalnız hesaptan gelen satırlarda ad dışında bilgi yoktur. */
+interface ParentChild {
+  id: string;
+  fullName: string;
+  className?: string;
+  programType?: string;
+  status?: string;
+}
+
+interface ParentGroup {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  children: ParentChild[];
+  classNames: string[];
+  meetings: number;
+}
+
+interface ParentRow extends ParentGroup {
+  account: ParentAccountDto | null;
+  status: string | null;
+}
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -49,28 +75,29 @@ const containerVariants = {
   },
 };
 
-function normalizeText(value = '') {
+function normalizeText(value: string | null | undefined = '') {
   return String(value).trim().toLowerCase();
 }
 
-function groupParents(students, meetings) {
-  const map = new Map();
+function groupParents(students: StudentSummaryDto[], meetings: MeetingRequestDto[]): ParentGroup[] {
+  const map = new Map<string, Omit<ParentGroup, 'classNames'> & { classNames: Set<string> }>();
 
   students.forEach((student) => {
     const key = `${normalizeText(student.parentName)}|${normalizeText(student.parentEmail)}`;
-    if (!map.has(key)) {
-      map.set(key, {
+    let item = map.get(key);
+    if (!item) {
+      item = {
         id: key,
         name: student.parentName,
         email: student.parentEmail,
         phone: student.parentPhone,
         children: [],
-        classNames: new Set(),
+        classNames: new Set<string>(),
         meetings: 0,
-      });
+      };
+      map.set(key, item);
     }
 
-    const item = map.get(key);
     item.children.push(student);
     if (student.className) item.classNames.add(student.className);
   });
@@ -88,7 +115,7 @@ function groupParents(students, meetings) {
   }));
 }
 
-function ParentDetailDrawer({ parent }) {
+function ParentDetailDrawer({ parent }: { parent: ParentRow | null }) {
   if (!parent) return null;
 
   return (
@@ -161,8 +188,8 @@ export default function Parents() {
   const navigate = useNavigate();
   const { openDrawer } = useApp();
   const { toast } = useToast();
-  const [parents, setParents] = useState([]);
-  const [accounts, setAccounts] = useState([]);
+  const [parents, setParents] = useState<ParentGroup[]>([]);
+  const [accounts, setAccounts] = useState<ParentAccountDto[]>([]);
   const [accountSearch, setAccountSearch] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(DIRECTORY_ALL);
@@ -179,27 +206,27 @@ export default function Parents() {
         fetchMeetingRequests().catch(() => []),
         fetchParentAccounts().catch(() => []),
       ]);
-      setParents(groupParents(students, meetings));
+      setParents(groupParents(students ?? [], meetings ?? []));
       setAccounts(parentAccounts);
     } catch (err) {
-      setError(err.message || 'Veli listesi alınamadı.');
+      setError(errorMessage(err, 'Veli listesi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadParents();
+    void loadParents();
   }, [loadParents]);
 
   const nameKey = (value = '') => value.trim().toLocaleLowerCase('tr-TR');
 
   // Veli listesi öğrencilerden türetilir; giriş HESABI ayrı uçtan gelir. İkisi
   // tek satırda birleştirilir ki pasifleştirme listeden yapılabilsin.
-  const parentRows = useMemo(() => {
+  const parentRows = useMemo((): ParentRow[] => {
     const accountByName = new Map(accounts.map((account) => [nameKey(account.fullName), account]));
-    const used = new Set();
-    const rows = parents.map((parent) => {
+    const used = new Set<string>();
+    const rows = parents.map((parent): ParentRow => {
       const account = accountByName.get(nameKey(parent.name));
       if (account) used.add(nameKey(parent.name));
       return { ...parent, account: account || null, status: account?.status || null };
@@ -210,7 +237,7 @@ export default function Parents() {
       .forEach((account) => rows.push({
         id: `account:${account.userId}`,
         name: account.fullName,
-        email: account.email || '',
+        email: '',
         phone: account.phone || '',
         children: (account.children || []).map((child) => ({ id: child, fullName: child })),
         classNames: [],
@@ -239,7 +266,7 @@ export default function Parents() {
   }), [parentRows, search, classFilter, statusFilter]);
 
   // Veli hesabını pasife alma / aktifleştirme: hesap silinmez, girişi engellenir.
-  const handleToggleAccountStatus = useCallback(async (account) => {
+  const handleToggleAccountStatus = useCallback(async (account: ParentAccountDto) => {
     const isPassive = isUserPassive(account.status);
     const nextStatus = isPassive ? 'Active' : 'Passive';
     try {
@@ -252,7 +279,7 @@ export default function Parents() {
           : `${account.fullName} artık giriş yapamaz; açık oturumları sonlandırıldı.`,
       });
     } catch (err) {
-      toast({ title: 'Durum güncellenemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Durum güncellenemedi', description: errorMessage(err), variant: 'destructive' });
     }
   }, [toast]);
 
@@ -404,7 +431,7 @@ export default function Parents() {
               <UserStatusButton
                 iconOnly
                 isPassive={isUserPassive(parent.status)}
-                onToggle={() => handleToggleAccountStatus(parent.account)}
+                onToggle={() => (parent.account ? handleToggleAccountStatus(parent.account) : undefined)}
               />
             </FeatureGate>
           ) : null}

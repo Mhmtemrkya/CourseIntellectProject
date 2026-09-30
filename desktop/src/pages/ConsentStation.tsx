@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { downloadConsentFormDocument, pollConsentStation, signConsentForm } from '../lib/api/modules';
-import SignaturePad from '../components/consent/SignaturePad';
+import SignaturePad, { type SignaturePadHandle } from '../components/consent/SignaturePad';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { cn } from '@/lib/utils';
+import { errorMessage } from '../lib/errors';
+import type { ConsentStationFormDto } from '../types/api/generated';
 
 const STATION_STORAGE_KEY = 'ci-consent-station-name';
 const POLL_INTERVAL_MS = 2500;
 const THANKS_DURATION_MS = 6000;
 
-const SIGNER_HINT = {
+const SIGNER_HINT: Partial<Record<string, string>> = {
   Student: 'Öğrenci / kursiyer imzası',
   Parent: 'Veli veya yasal temsilci imzası',
   StudentOrParent: '18 yaş altındaysa veli, değilse öğrencinin kendisi imzalar',
@@ -32,9 +34,9 @@ export default function ConsentStation() {
   const [stationName, setStationName] = useState(() => localStorage.getItem(STATION_STORAGE_KEY) || '');
   const [renaming, setRenaming] = useState(() => !localStorage.getItem(STATION_STORAGE_KEY));
   const [draftName, setDraftName] = useState(stationName);
-  const [form, setForm] = useState(null);
+  const [form, setForm] = useState<ConsentStationFormDto | null>(null);
   const [connected, setConnected] = useState(false);
-  const [checked, setChecked] = useState([]);
+  const [checked, setChecked] = useState<number[]>([]);
   const [signerName, setSignerName] = useState('');
   const [signerRelation, setSignerRelation] = useState('');
   const [hasInk, setHasInk] = useState(false);
@@ -44,8 +46,8 @@ export default function ConsentStation() {
   const [documentUrl, setDocumentUrl] = useState('');
   const [documentError, setDocumentError] = useState('');
 
-  const padRef = useRef(null);
-  const formIdRef = useRef(null);
+  const padRef = useRef<SignaturePadHandle>(null);
+  const formIdRef = useRef<string | null>(null);
   const documentUrlRef = useRef('');
 
   /// Blob adresi ekrandan düşer düşmez serbest bırakılır: tablet günlerce açık
@@ -68,16 +70,20 @@ export default function ConsentStation() {
 
   /// Yüklenmiş PDF'li formda belge ekranda GÖSTERİLİR; indirilemezse imza
   /// düğmesi açılmaz — kimse görmediği belgeyi imzalamamalı.
-  const loadDocument = useCallback(async (form) => {
+  const loadDocument = useCallback(async (form: ConsentStationFormDto) => {
     releaseDocument();
-    if (form?.sourceKind !== 'Pdf') return;
+    if (form.sourceKind !== 'Pdf') return;
     try {
       const blob = await downloadConsentFormDocument(form.id);
+      if (!blob) {
+        setDocumentError('Belge alınamadı.');
+        return;
+      }
       const url = URL.createObjectURL(blob);
       documentUrlRef.current = url;
       setDocumentUrl(url);
     } catch (loadError) {
-      setDocumentError(loadError.message || 'Belge alınamadı.');
+      setDocumentError(errorMessage(loadError, 'Belge alınamadı.'));
     }
   }, [releaseDocument]);
 
@@ -116,8 +122,8 @@ export default function ConsentStation() {
 
   useEffect(() => {
     if (!stationName.trim() || renaming) return undefined;
-    poll();
-    const timer = setInterval(poll, POLL_INTERVAL_MS);
+    void poll();
+    const timer = setInterval(() => void poll(), POLL_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [stationName, renaming, poll]);
 
@@ -136,14 +142,14 @@ export default function ConsentStation() {
   const documentReady = form?.sourceKind !== 'Pdf' || Boolean(documentUrl);
   const canSubmit = Boolean(form) && allChecked && signatureReady && documentReady && !submitting;
 
-  const toggle = (index) => {
+  const toggle = (index: number) => {
     setChecked((current) =>
       current.includes(index) ? current.filter((item) => item !== index) : [...current, index],
     );
   };
 
   const submit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || !form) return;
     setSubmitting(true);
     setError('');
     try {
@@ -159,7 +165,7 @@ export default function ConsentStation() {
       releaseDocument();
       setThanks(true);
     } catch (submitError) {
-      setError(submitError.message);
+      setError(errorMessage(submitError));
     } finally {
       setSubmitting(false);
     }
@@ -398,7 +404,7 @@ export default function ConsentStation() {
   );
 }
 
-function Chip({ children }) {
+function Chip({ children }: { children?: ReactNode }) {
   return (
     <span className="rounded-full border border-border/60 bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground">
       {children}

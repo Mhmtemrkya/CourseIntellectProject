@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -32,6 +32,7 @@ import {
 import { useToast } from "../hooks/use-toast";
 import emblem from "../assets/brand/emblem.png";
 import loginBackground from "../assets/brand/loginbackground.jpeg";
+import { errorMessage } from '../lib/errors';
 
 // SchoolAsist marka renkleri — giriş ekranı kurum temasından bağımsız,
 // sabit marka paletiyle çizilir (mockup: lacivert + turuncu).
@@ -79,7 +80,7 @@ function BrandMark({ size = "md", light = false }) {
 }
 
 // Köşelere serpiştirilen nokta ızgarası (mockup dekoru)
-function DotGrid({ className, color = NAVY, opacity = 0.35 }) {
+function DotGrid({ className, color = NAVY, opacity = 0.35 }: { className: string; color?: string; opacity?: number }) {
   return (
     <div
       aria-hidden
@@ -118,7 +119,7 @@ export default function Login() {
     }
   }, [isAuthenticated, navigate, user]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -128,7 +129,7 @@ export default function Login() {
       refreshBranding();
       navigate(getUserHomePath(loggedUser), { replace: true });
     } catch (err) {
-      setError(err?.message || "Giriş başarısız oldu");
+      setError(errorMessage(err, "Giriş başarısız oldu"));
     } finally {
       setLoading(false);
     }
@@ -140,7 +141,7 @@ export default function Login() {
     setForgotOpen(true);
   };
 
-  const handleForgotPassword = async (event) => {
+  const handleForgotPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const email = forgotEmail.trim();
     if (!email || !email.includes("@")) {
@@ -166,7 +167,7 @@ export default function Login() {
     } catch (err) {
       toast({
         title: "Talep gönderilemedi",
-        description: err?.message || "Lütfen daha sonra tekrar deneyin.",
+        description: errorMessage(err, "Lütfen daha sonra tekrar deneyin."),
         variant: "destructive",
       });
     } finally {
@@ -404,7 +405,7 @@ export default function Login() {
                   <Checkbox
                     id="remember"
                     checked={remember}
-                    onCheckedChange={setRemember}
+                    onCheckedChange={(checked) => setRemember(checked === true)}
                     className="border-slate-300"
                   />
                   <Label

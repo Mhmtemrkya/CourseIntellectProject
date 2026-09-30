@@ -19,8 +19,10 @@ import {
   updateStudentBoardingStatus,
 } from '../lib/api/modules';
 import { resetDriverGuardCache } from '../lib/driverGuard';
+import { errorMessage } from '../lib/errors';
+import type { DriverRouteStudentDto, DriverTodayRouteDto, MarkServiceAttendanceRequest } from '../types/api/generated';
 
-const TRIP_STATUS_LABELS = {
+const TRIP_STATUS_LABELS: Partial<Record<string, string>> = {
   NotStarted: 'Başlamadı',
   InProgress: 'Yolda',
   ArrivedSchool: 'Okulda',
@@ -28,8 +30,10 @@ const TRIP_STATUS_LABELS = {
   Cancelled: 'İptal',
 };
 
-const ATTENDANCE_LABELS = {
-  Pending: ['Bekliyor', 'bg-slate-500/15 text-slate-500'],
+const PENDING_ATTENDANCE = ['Bekliyor', 'bg-slate-500/15 text-slate-500'] as const satisfies readonly [string, string];
+
+const ATTENDANCE_LABELS: Partial<Record<string, readonly [string, string]>> = {
+  Pending: PENDING_ATTENDANCE,
   Boarded: ['Bindi', 'bg-emerald-500/15 text-emerald-500'],
   BoardedFromSchool: ['Bindi', 'bg-emerald-500/15 text-emerald-500'],
   NotBoarded: ['Binmedi', 'bg-red-500/15 text-red-500'],
@@ -42,17 +46,17 @@ const ATTENDANCE_LABELS = {
 export default function DriverPanel() {
   const { user, isAuthenticated, logout } = useApp();
   const { toast } = useToast();
-  const [routes, setRoutes] = useState([]);
-  const [selectedRoute, setSelectedRoute] = useState(null);
-  const [students, setStudents] = useState([]);
+  const [routes, setRoutes] = useState<DriverTodayRouteDto[]>([]);
+  const [selectedRoute, setSelectedRoute] = useState<DriverTodayRouteDto | null>(null);
+  const [students, setStudents] = useState<DriverRouteStudentDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  const loadStudents = useCallback(async (routeId) => {
+  const loadStudents = useCallback(async (routeId: string) => {
     try {
       setStudents(await getDriverStudentPickupList(routeId));
     } catch (err) {
-      toast({ title: 'Öğrenci listesi alınamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Öğrenci listesi alınamadı', description: errorMessage(err), variant: 'destructive' });
     }
   }, [toast]);
 
@@ -65,14 +69,14 @@ export default function DriverPanel() {
       setSelectedRoute(current);
       if (current) await loadStudents(current.routeId);
     } catch (err) {
-      toast({ title: 'Rotalar alınamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Rotalar alınamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   }, [loadStudents, toast]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   if (!isAuthenticated) {
@@ -82,12 +86,12 @@ export default function DriverPanel() {
   const tripId = selectedRoute?.tripId || null;
   const tripStatus = selectedRoute?.tripStatus || 'NotStarted';
 
-  const selectRoute = async (route) => {
+  const selectRoute = async (route: DriverTodayRouteDto) => {
     setSelectedRoute(route);
     await loadStudents(route.routeId);
   };
 
-  const runAction = async (action, successMessage) => {
+  const runAction = async (action: () => Promise<unknown>, successMessage: string) => {
     if (busy) return;
     try {
       setBusy(true);
@@ -95,14 +99,14 @@ export default function DriverPanel() {
       toast({ title: successMessage });
       await load();
     } catch (err) {
-      toast({ title: 'İşlem tamamlanamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'İşlem tamamlanamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
   };
 
-  const markStudent = async (student, status) => {
-    if (!tripId) {
+  const markStudent = async (student: DriverRouteStudentDto, status: MarkServiceAttendanceRequest['status']) => {
+    if (!tripId || !selectedRoute) {
       toast({ title: 'Önce seferi başlat', variant: 'destructive' });
       return;
     }
@@ -110,7 +114,7 @@ export default function DriverPanel() {
       await updateStudentBoardingStatus({ tripId, studentId: student.studentId, status });
       await loadStudents(selectedRoute.routeId);
     } catch (err) {
-      toast({ title: 'Yoklama işaretlenemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Yoklama işaretlenemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
@@ -205,7 +209,7 @@ export default function DriverPanel() {
                     <p className="py-6 text-center text-sm text-muted-foreground">Bu rotaya atanmış öğrenci yok.</p>
                   )}
                   {students.map((student) => {
-                    const [label, tone] = ATTENDANCE_LABELS[student.attendanceStatus] || ATTENDANCE_LABELS.Pending;
+                    const [label, tone] = ATTENDANCE_LABELS[student.attendanceStatus] || PENDING_ATTENDANCE;
                     return (
                       <div key={student.assignmentId} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
                         <div className="min-w-0 flex-1">

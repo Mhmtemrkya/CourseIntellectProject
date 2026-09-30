@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
   Search,
   Plus,
@@ -66,24 +65,25 @@ import { SheetHeader, SheetTitle, SheetDescription } from '../components/ui/shee
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchPendingDownPayments, fetchStudents, promoteStudents, updateStudent, updateUserStatus } from '../lib/api/modules';
+import { fetchAttendance, fetchClasses, fetchExamResults, fetchPendingDownPayments, fetchStudents, promoteStudents, updateStudent, updateUserStatus } from '../lib/api/modules';
 import DirectoryPage, { DIRECTORY_ALL } from '../components/directory/DirectoryPage';
 import { getUserRoles } from '../lib/permissions';
-import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import { assetUrl } from '../lib/assetUrl';
 import { isUserPassive, normalizeUserStatus, userStatusLabel } from '../lib/userStatus';
 import { StatusBadge } from '../components/ui/status-badge';
 import {
   isValidEmail, isValidTcKimlik, isValidTrPhone, maskEmail, maskTcKimlik, maskTrPhone,
 } from '../lib/inputMasks';
+import { errorMessage } from '../lib/errors';
+import type { AttendanceEntryDto, ExamResultDto, StudentSummaryDto, UpdateStudentRequest } from '../types/api/generated';
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-};
-const FALLBACK_CLASSES = [];
+/** Dizin satırı: öğrenci + devam oranı ve son sınav puanı. */
+interface StudentRow extends StudentSummaryDto {
+  attendanceRate: number;
+  lastExamScore: ReactNode;
+}
 
-function buildStudentUpdatePayload(student) {
+function buildStudentUpdatePayload(student: Partial<StudentSummaryDto>): UpdateStudentRequest & { photoUrl: string } {
   return {
     fullName: student.fullName || '',
     tcNo: student.tcNo || '',
@@ -101,17 +101,22 @@ function buildStudentUpdatePayload(student) {
   };
 }
 
-function normalizeText(value = '') {
+function normalizeText(value: string | null | undefined = '') {
   return String(value).trim().toLowerCase();
 }
 
-function StudentDetailDrawer({ student, onToggleStatus, onUpdated }) {
+function StudentDetailDrawer({ student, onToggleStatus, onUpdated }: {
+  student: StudentRow | null;
+  onToggleStatus?: (student: StudentRow) => void;
+  onUpdated?: () => void;
+}) {
   const { toast } = useToast();
   const [photoUrl, setPhotoUrl] = useState(student?.photoUrl || '');
   const [savingPhoto, setSavingPhoto] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
 
-  const savePhoto = async (url) => {
+  const savePhoto = async (url: string) => {
+    if (!student) return;
     setPhotoUrl(url);
     setSavingPhoto(true);
     try {
@@ -120,7 +125,7 @@ function StudentDetailDrawer({ student, onToggleStatus, onUpdated }) {
       onUpdated?.();
     } catch (error) {
       setPhotoUrl(student.photoUrl || '');
-      toast({ title: 'Fotoğraf kaydedilemedi', description: error.message, variant: 'destructive' });
+      toast({ title: 'Fotoğraf kaydedilemedi', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setSavingPhoto(false);
     }
@@ -236,290 +241,14 @@ function StudentDetailDrawer({ student, onToggleStatus, onUpdated }) {
   );
 }
 
-function AddStudentDialog({
-  open, onOpenChange, classes, onCreated,
-}) {
-  const { toast } = useToast();
-  const { user } = useApp();
-  const tenantName = user?.tenant || '';
-  const [saving, setSaving] = useState(false);
-  const [createdCredentials, setCreatedCredentials] = useState(null);
-  const [form, setForm] = useState({
-    fullName: '',
-    tcNo: '',
-    photoUrl: '',
-    className: '',
-    currentSchool: tenantName,
-    schoolNumber: '',
-    birthDate: '',
-    programType: 'Lise',
-    parentName: '',
-    parentPhone: '',
-    parentEmail: '',
-    address: '',
-    note: '',
-  });
-
-  useEffect(() => {
-    setForm((prev) => ({ ...prev, currentSchool: tenantName }));
-  }, [tenantName]);
-
-  const handleSave = async () => {
-    if (!form.fullName || !form.className || !form.parentName) {
-      toast({
-        title: 'Eksik bilgi',
-        description: 'Ad, sınıf ve veli adı zorunlu.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    if (!isValidTcKimlik(form.tcNo)) {
-      toast({ title: 'Geçersiz TC kimlik no', description: 'Geçerli bir TC kimlik numarası girin (11 haneli).', variant: 'destructive' });
-      return;
-    }
-    if (form.parentPhone && !isValidTrPhone(form.parentPhone)) {
-      toast({ title: 'Geçersiz telefon', description: 'Veli telefonu +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' });
-      return;
-    }
-    if (form.parentEmail && !isValidEmail(form.parentEmail)) {
-      toast({ title: 'Geçersiz e-posta', description: 'Geçerli bir veli e-posta adresi girin.', variant: 'destructive' });
-      return;
-    }
-    try {
-      setSaving(true);
-      const created = await createStudent(form);
-      onCreated(created);
-      const studentInfo = {
-        fullName: created.fullName || form.fullName,
-        username: created.username,
-        password: created.password,
-        className: created.className || form.className,
-      };
-      const parentInfo = created.parent
-        ? {
-          fullName: created.parent.fullName || form.parentName,
-          username: created.parent.username,
-          password: created.parent.password,
-        }
-        : null;
-      setCreatedCredentials({ student: studentInfo, parent: parentInfo });
-      try {
-        await downloadCredentialsPdf({
-          tenantName,
-          fullName: studentInfo.fullName,
-          role: 'Öğrenci',
-          username: studentInfo.username,
-          temporaryPassword: studentInfo.password,
-          className: studentInfo.className,
-        });
-        if (parentInfo) {
-          await downloadCredentialsPdf({
-            tenantName,
-            fullName: parentInfo.fullName,
-            role: 'Veli',
-            username: parentInfo.username,
-            temporaryPassword: parentInfo.password,
-            extra: `Velisi olduğu öğrenci: ${studentInfo.fullName} (${studentInfo.className})`,
-          });
-        }
-      } catch (pdfErr) {
-        console.warn('PDF üretimi başarısız', pdfErr);
-      }
-      toast({
-        title: 'Öğrenci oluşturuldu',
-        description: parentInfo
-          ? 'Öğrenci ve veli bilgileri PDF olarak indirildi.'
-          : 'Bilgiler PDF olarak indirildi.',
-      });
-    } catch (err) {
-      toast({
-        title: 'Öğrenci oluşturulamadı',
-        description: err.message || 'Tekrar deneyin.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleClose = () => {
-    setCreatedCredentials(null);
-    onOpenChange(false);
-  };
-
-  const handleDownloadStudent = async () => {
-    if (!createdCredentials?.student) return;
-    const s = createdCredentials.student;
-    await downloadCredentialsPdf({
-      tenantName,
-      fullName: s.fullName,
-      role: 'Öğrenci',
-      username: s.username,
-      temporaryPassword: s.password,
-      className: s.className,
-    });
-  };
-
-  const handleDownloadParent = async () => {
-    if (!createdCredentials?.parent || !createdCredentials?.student) return;
-    const p = createdCredentials.parent;
-    const s = createdCredentials.student;
-    await downloadCredentialsPdf({
-      tenantName,
-      fullName: p.fullName,
-      role: 'Veli',
-      username: p.username,
-      temporaryPassword: p.password,
-      extra: `Velisi olduğu öğrenci: ${s.fullName} (${s.className})`,
-    });
-  };
-
-  if (createdCredentials) {
-    const s = createdCredentials.student;
-    const p = createdCredentials.parent;
-    return (
-      <Dialog open={open} onOpenChange={(value) => { if (!value) handleClose(); }}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Kayıt Tamamlandı</DialogTitle>
-            <DialogDescription>
-              {p ? 'Öğrenci ve veli bilgileri PDF olarak indirildi.' : 'Öğrenci bilgileri PDF olarak indirildi.'}
-              {' '}Her iki taraf da ilk girişte şifrelerini değiştirmek zorundadır.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <div className="text-sm font-semibold flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs">Öğrenci</span>
-                {s.fullName} {s.className ? `• ${s.className}` : ''}
-              </div>
-              <div className="rounded-lg border p-3 space-y-1">
-                <div className="text-xs text-muted-foreground">Kullanıcı Adı</div>
-                <div className="font-mono text-sm break-all">{s.username}</div>
-              </div>
-              <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-3 space-y-1">
-                <div className="text-xs text-amber-700 dark:text-amber-400 font-medium">Geçici Şifre</div>
-                <div className="font-mono text-base font-bold tracking-wider">{s.password}</div>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleDownloadStudent} className="w-full">
-                Öğrenci PDF'ini Tekrar İndir
-              </Button>
-            </div>
-
-            {p && (
-              <div className="space-y-2 pt-2 border-t">
-                <div className="text-sm font-semibold flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs">Veli</span>
-                  {p.fullName}
-                </div>
-                <div className="rounded-lg border p-3 space-y-1">
-                  <div className="text-xs text-muted-foreground">Kullanıcı Adı</div>
-                  <div className="font-mono text-sm break-all">{p.username}</div>
-                </div>
-                <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-3 space-y-1">
-                  <div className="text-xs text-amber-700 dark:text-amber-400 font-medium">Geçici Şifre</div>
-                  <div className="font-mono text-base font-bold tracking-wider">{p.password}</div>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleDownloadParent} className="w-full">
-                  Veli PDF'ini Tekrar İndir
-                </Button>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button onClick={handleClose}>Tamam</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Yeni Öğrenci Ekle</DialogTitle>
-          <DialogDescription>Öğrenci bilgilerini girin</DialogDescription>
-        </DialogHeader>
-        <div className="grid grid-cols-2 gap-4 py-4">
-          <div className="space-y-2 col-span-2">
-            <Label>Öğrenci Fotoğrafı</Label>
-            <PhotoCapture value={form.photoUrl} onChange={(photoUrl) => setForm((p) => ({ ...p, photoUrl }))} folder="student-photos" size={112} />
-          </div>
-          <div className="space-y-2 col-span-2">
-            <Label>Ad Soyad</Label>
-            <Input value={form.fullName} onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))} autoComplete="name" maxLength={100} />
-          </div>
-          <div className="space-y-2">
-            <Label>TC No *</Label>
-            <Input value={form.tcNo} onChange={(e) => setForm((p) => ({ ...p, tcNo: maskTcKimlik(e.target.value) }))} inputMode="numeric" pattern="[0-9]{11}" maxLength={11} placeholder="11 haneli kimlik no" />
-          </div>
-          <div className="space-y-2">
-            <Label>Sınıf</Label>
-            <Select value={form.className} onValueChange={(value) => setForm((p) => ({ ...p, className: value }))}>
-              <SelectTrigger><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
-              <SelectContent>
-                {classes.map((cls) => <SelectItem key={cls} value={cls}>{cls}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Mevcut Okul</Label>
-            <Input value={tenantName} readOnly className="bg-muted cursor-not-allowed" />
-          </div>
-          <div className="space-y-2">
-            <Label>Okul No</Label>
-            <Input value="Kayıt sırasında otomatik oluşturulur" readOnly className="bg-muted cursor-not-allowed" />
-          </div>
-          <div className="space-y-2">
-            <Label>Doğum Tarihi</Label>
-            <Input type="date" value={form.birthDate} onChange={(e) => setForm((p) => ({ ...p, birthDate: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Eğitim Seviyesi</Label>
-            <Select value={form.programType} onValueChange={(value) => setForm((p) => ({ ...p, programType: value }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Ilkokul">İlkokul</SelectItem>
-                <SelectItem value="Ortaokul">Ortaokul</SelectItem>
-                <SelectItem value="Lise">Lise</SelectItem>
-                <SelectItem value="Universite">Üniversite</SelectItem>
-                <SelectItem value="Mezun">Mezun</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Veli Adı</Label>
-            <Input value={form.parentName} onChange={(e) => setForm((p) => ({ ...p, parentName: e.target.value }))} autoComplete="name" maxLength={100} />
-          </div>
-          <div className="space-y-2">
-            <Label>Veli Telefon</Label>
-            <Input value={form.parentPhone} onChange={(e) => setForm((p) => ({ ...p, parentPhone: maskTrPhone(e.target.value) }))} placeholder="+90 5XX XXX XX XX" inputMode="tel" autoComplete="tel" maxLength={17} />
-          </div>
-          <div className="space-y-2 col-span-2">
-            <Label>Veli E-posta</Label>
-            <Input type="email" value={form.parentEmail} onChange={(e) => setForm((p) => ({ ...p, parentEmail: maskEmail(e.target.value) }))} inputMode="email" autoComplete="email" maxLength={254} placeholder="veli@email.com" />
-          </div>
-          <div className="space-y-2 col-span-2">
-            <Label>Adres</Label>
-            <Input value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} />
-          </div>
-          <div className="space-y-2 col-span-2">
-            <Label>Not</Label>
-            <Input value={form.note} onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function EditStudentDialog({
   student, open, onOpenChange, classes, onUpdated,
+}: {
+  student: StudentRow | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  classes: string[];
+  onUpdated: () => Promise<void>;
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -568,7 +297,7 @@ function EditStudentDialog({
       onOpenChange(false);
       await onUpdated();
     } catch (err) {
-      toast({ title: 'Öğrenci güncellenemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Öğrenci güncellenemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -672,23 +401,22 @@ export default function Students() {
   const [classFilter, setClassFilter] = useState(DIRECTORY_ALL);
   const [statusFilter, setStatusFilter] = useState(DIRECTORY_ALL);
   // Sınıf yükseltme (dönem sonu): yalnız kurum yöneticisi ve şube müdürü.
-  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [promoteClass, setPromoteClass] = useState('');
   const [promoting, setPromoting] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingStudent, setEditingStudent] = useState(null);
-  const [students, setStudents] = useState([]);
-  const [attendance, setAttendance] = useState([]);
-  const [examResults, setExamResults] = useState([]);
-  const [classNames, setClassNames] = useState([]);
-  const [activationStudent, setActivationStudent] = useState(null);
+  const [editingStudent, setEditingStudent] = useState<StudentRow | null>(null);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceEntryDto[]>([]);
+  const [examResults, setExamResults] = useState<ExamResultDto[]>([]);
+  const [classNames, setClassNames] = useState<string[]>([]);
+  const [activationStudent, setActivationStudent] = useState<StudentSummaryDto | null>(null);
   const [activationClassName, setActivationClassName] = useState('');
   const [activating, setActivating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  // Peşinatı beklenen öğrenciler (studentUserId = student.id) → kırmızı rozet.
-  const [pendingPesinatIds, setPendingPesinatIds] = useState(() => new Set());
+  // Peşinatı beklenen öğrenciler (studentUserId = student.userId) → kırmızı rozet.
+  const [pendingPesinatIds, setPendingPesinatIds] = useState(() => new Set<string>());
 
   const loadStudents = useCallback(async () => {
     try {
@@ -701,20 +429,20 @@ export default function Students() {
         fetchClasses().catch(() => []),
         fetchPendingDownPayments().catch(() => []),
       ]);
-      setStudents(studentList);
-      setAttendance(attendanceList);
-      setExamResults(examList);
+      setStudents(studentList ?? []);
+      setAttendance(attendanceList ?? []);
+      setExamResults(examList ?? []);
       setClassNames(Array.isArray(classList) ? classList : []);
-      setPendingPesinatIds(new Set((pending || []).map((row) => row.studentUserId).filter(Boolean)));
+      setPendingPesinatIds(new Set((pending || []).flatMap((row) => (row.studentUserId ? [row.studentUserId] : []))));
     } catch (err) {
-      setError(err.message || 'Öğrenci listesi alınamadı.');
+      setError(errorMessage(err, 'Öğrenci listesi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadStudents();
+    void loadStudents();
   }, [loadStudents]);
 
   const classes = useMemo(
@@ -723,13 +451,13 @@ export default function Students() {
   );
 
   // Sınıfı silinen öğrenci sınıfsız kalır; tekrar aktifleştirilirken yeni sınıf seçilmesi zorunludur.
-  const needsClassAssignment = useCallback((student) => {
+  const needsClassAssignment = useCallback((student: StudentSummaryDto) => {
     const current = normalizeText(student?.className || '');
     if (!current) return true;
     return !classes.some((item) => normalizeText(item) === current);
   }, [classes]);
 
-  const activateStudent = useCallback(async (student, className = '') => {
+  const activateStudent = useCallback(async (student: StudentSummaryDto, className = '') => {
     if (className) {
       await updateStudent(student.id, { ...buildStudentUpdatePayload(student), className });
     }
@@ -743,7 +471,7 @@ export default function Students() {
   }, [loadStudents, toast]);
 
   // Öğrenciyi pasif/aktif yapar: pasif öğrenci giriş yapamaz; kaydı silinmez.
-  const handleToggleStudentStatus = useCallback(async (student) => {
+  const handleToggleStudentStatus = useCallback(async (student: StudentSummaryDto) => {
     if (!student?.username) {
       toast({ title: 'Kullanıcı adı bulunamadı.', variant: 'destructive' });
       return;
@@ -765,7 +493,7 @@ export default function Students() {
 
       await activateStudent(student);
     } catch (err) {
-      toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Durum değiştirilemedi.'), variant: 'destructive' });
     }
   }, [activateStudent, loadStudents, needsClassAssignment, toast]);
 
@@ -777,13 +505,13 @@ export default function Students() {
       setActivationStudent(null);
       setActivationClassName('');
     } catch (err) {
-      toast({ title: err.message || 'Öğrenci aktifleştirilemedi.', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Öğrenci aktifleştirilemedi.'), variant: 'destructive' });
     } finally {
       setActivating(false);
     }
   }, [activateStudent, activationClassName, activationStudent, toast]);
 
-  const enrichedStudents = useMemo(() => students.map((student) => {
+  const enrichedStudents = useMemo(() => students.map((student): StudentRow => {
     const studentAttendance = attendance.filter((item) => normalizeText(item.studentName) === normalizeText(student.fullName));
     const presentCount = studentAttendance.filter((item) => normalizeText(item.status) === 'katildi').length;
     const attendanceRate = studentAttendance.length > 0 ? Math.round((presentCount / studentAttendance.length) * 100) : 0;
@@ -816,8 +544,12 @@ export default function Students() {
     if (!promoteClass || selectedIds.length === 0) return;
     try {
       setPromoting(true);
+      // Satır kimliği profil kimliğidir; yükseltme ucu KULLANICI kimliği bekler.
+      const studentUserIds = students
+        .filter((student) => selectedIds.includes(student.id))
+        .map((student) => student.userId);
       const result = await promoteStudents({
-        studentUserIds: selectedIds,
+        studentUserIds,
         targetClassName: promoteClass,
       });
       const skipped = result?.alreadyInClass?.length || 0;
@@ -830,25 +562,11 @@ export default function Students() {
       setSelectedIds([]);
       await loadStudents();
     } catch (err) {
-      toast({ title: err.message || 'Sınıf yükseltilemedi.', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Sınıf yükseltilemedi.'), variant: 'destructive' });
     } finally {
       setPromoting(false);
     }
-  }, [loadStudents, promoteClass, selectedIds, toast]);
-
-  const handleCreated = (created) => {
-    setStudents((prev) => [{
-      id: created.userId,
-      fullName: created.fullName,
-      username: created.username,
-      className: created.className,
-      status: 'Aktif',
-      parentEmail: '',
-      parentPhone: '',
-      parentName: '',
-      programType: '',
-    }, ...prev]);
-  };
+  }, [loadStudents, promoteClass, selectedIds, students, toast]);
 
   if (loading) {
     return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
@@ -857,10 +575,10 @@ export default function Students() {
 
   const activeCount = students.filter((student) => !isUserPassive(student.status)).length;
   const passiveCount = students.length - activeCount;
-  const pesinatCount = students.filter((student) => pendingPesinatIds.has(student.id)).length;
-  const ratio = (value) => (students.length === 0 ? 0 : Math.round((value / students.length) * 1000) / 10);
+  const pesinatCount = students.filter((student) => pendingPesinatIds.has(student.userId)).length;
+  const ratio = (value: number) => (students.length === 0 ? 0 : Math.round((value / students.length) * 1000) / 10);
 
-  const openStudentDrawer = (student) => openDrawer(
+  const openStudentDrawer = (student: StudentRow) => openDrawer(
     <StudentDetailDrawer student={student} onToggleStatus={handleToggleStudentStatus} onUpdated={loadStudents} />,
   );
 
@@ -928,7 +646,7 @@ export default function Students() {
                   <p className="truncate text-xs text-muted-foreground">
                     {student.schoolNumber ? `Öğrenci No: ${student.schoolNumber}` : student.username}
                   </p>
-                  {pendingPesinatIds.has(student.id) ? (
+                  {pendingPesinatIds.has(student.userId) ? (
                     <Badge className="mt-1 border-0 bg-red-100 text-red-700">
                       <XCircle className="mr-1 h-3 w-3" />Peşinat bekliyor
                     </Badge>
@@ -1059,7 +777,6 @@ export default function Students() {
         )}
       />
 
-      <AddStudentDialog open={dialogOpen} onOpenChange={setDialogOpen} classes={classes} onCreated={handleCreated} />
       <EditStudentDialog
         student={editingStudent}
         open={Boolean(editingStudent)}

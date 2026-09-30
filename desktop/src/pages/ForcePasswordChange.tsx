@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Eye, EyeOff, Lock, LogOut } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -10,8 +10,9 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Progress } from '../components/ui/progress';
 import { useToast } from '../hooks/use-toast';
+import { errorMessage } from '../lib/errors';
 
-function evaluateStrength(value) {
+function evaluateStrength(value: string) {
   if (!value) return { score: 0, label: 'Çok zayıf', color: 'bg-red-500' };
   let score = 0;
   if (value.length >= 8) score += 25;
@@ -55,7 +56,7 @@ export default function ForcePasswordChange() {
     navigate('/login', { replace: true });
   };
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!allValid) {
       toast({ title: 'Şifre kuralları sağlanmadı', description: 'Tüm gereksinimleri karşılayın.', variant: 'destructive' });
@@ -70,7 +71,7 @@ export default function ForcePasswordChange() {
       toast({ title: 'Şifre güncellendi', description: 'Yeni şifrenizle tekrar giriş yapın.', variant: 'default' });
       navigate('/login', { replace: true });
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Şifre güncellenemedi.';
+      const message = errorMessage(err, 'Şifre güncellenemedi.');
       toast({ title: 'Hata', description: message, variant: 'destructive' });
     } finally {
       setSaving(false);
@@ -171,7 +172,7 @@ export default function ForcePasswordChange() {
   );
 }
 
-function ValidationRow({ ok, text }) {
+function ValidationRow({ ok, text }: { ok: boolean; text: string }) {
   return (
     <li className={`flex items-center gap-2 ${ok ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-200'}`}>
       <span className={`h-2 w-2 rounded-full ${ok ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.45)] dark:bg-emerald-400' : 'bg-amber-500 dark:bg-amber-400/80'}`} />

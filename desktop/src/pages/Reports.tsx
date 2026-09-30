@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   FileText,
   Download,
@@ -50,44 +50,87 @@ import {
   fetchStudents,
   updateStudent,
 } from '../lib/api/modules';
+import { fetchReportStudents, type ReportStudentRow } from '../lib/api/reports';
 import { formatCurrency, parseFinanceMoney } from '../lib/financeDocuments';
 import { downloadSchoolAsistReportPdf } from '../lib/schoolAsistReportPdf';
 import { useToast } from '../hooks/use-toast';
-import { formatMoney } from '../lib/format';
+import { formatDate as formatShortDate, formatMoney } from '../lib/format';
+import { errorMessage, isRecord } from '../lib/errors';
+import type { AdminDashboardData } from '../lib/api/dashboardData';
+import type { AccountingDashboard } from '../lib/api/accounting';
+import type {
+  AttendanceEntryDto, ExamResultDto, StaffSummaryDto, StudentSummaryDto, UpdateStudentRequest,
+} from '../types/api/generated';
+import type { IconComponent } from '../types/ui';
 
-const containerVariants = {
+interface ReportType {
+  id: 'performance' | 'students' | 'teachers';
+  name: string;
+  icon: IconComponent;
+  description: string;
+}
+
+/** Öğrenci listesi satırı; kayıt/finans özeti /api/reports/students'tan gelir. */
+type StudentReportRow = {
+  id: string;
+  name: string;
+  className: string;
+  programType: string;
+  averageScore: number;
+  attendanceRate: number;
+  enrollmentNet: number;
+  enrollmentPaid: number;
+  enrollmentBalance: number;
+  enrollmentCurrency: string;
+  enrollmentStatus: string;
+  enrollmentOverdueCount: number;
+  raw: StudentSummaryDto;
+};
+
+/** Öğrenci detayındaki taksit/tahsilat/fatura listelerinin ortak satırı. */
+interface DetailRecord {
+  key: string;
+  title: string;
+  date: string | null;
+  status: string;
+  amount: string;
+}
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const reportTypes = [
-  { id: 'performance', name: 'Performans Raporu', icon: BarChart3, description: 'Sınav ve ödev performansı' },
+const PERFORMANCE_REPORT: ReportType = { id: 'performance', name: 'Performans Raporu', icon: BarChart3, description: 'Sınav ve ödev performansı' };
+
+const reportTypes: readonly ReportType[] = [
+  PERFORMANCE_REPORT,
   { id: 'students', name: 'Öğrenci Listesi', icon: Users, description: 'Detaylı öğrenci bilgileri' },
   { id: 'teachers', name: 'Öğretmen Raporu', icon: GraduationCap, description: 'Öğretmen aktivite özeti' },
 ];
 
 const STUDENT_REPORT_NOTES_KEY = 'courseintellect:student-report-notes';
 
-function normalizeLookup(value) {
+function normalizeLookup(value: string | null | undefined) {
   return String(value || '')
     .trim()
     .toLocaleLowerCase('tr-TR')
     .replaceAll('ı', 'i')
     .replaceAll('İ', 'i')
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .replace(/\s+/g, ' ');
 }
 
-function getStudentName(student) {
-  return student?.fullName || student?.name || [student?.firstName, student?.lastName].filter(Boolean).join(' ') || 'Öğrenci';
+function getStudentName(student: StudentSummaryDto) {
+  return student.fullName || 'Öğrenci';
 }
 
-function getStudentKey(student) {
-  return String(student?.id || student?.studentId || student?.username || getStudentName(student));
+function getStudentKey(student: StudentSummaryDto) {
+  return String(student.id || student.username || getStudentName(student));
 }
 
-function getInitials(name) {
+function getInitials(name: string) {
   return String(name || 'Ö')
     .split(' ')
     .filter(Boolean)
@@ -97,45 +140,35 @@ function getInitials(name) {
     .toLocaleUpperCase('tr-TR');
 }
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined) {
   if (!value) return 'Tarih yok';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-  return formatDate(date);
+  return formatShortDate(date);
 }
 
-function isPaidStatus(status) {
+function isPaidStatus(status: string | null | undefined) {
   const normalized = normalizeLookup(status).replace(/\s+/g, '');
   return normalized.includes('odendi') || normalized.includes('paid') || normalized.includes('tahsil');
 }
 
-function recordMatchesStudent(record, student) {
-  if (!record || !student) return false;
-  const studentIds = [
-    student.id,
-    student.studentId,
-    student.username,
-    student.identityNumber,
-    student.tcNo,
-    student.nationalId,
-  ].filter(Boolean).map((value) => normalizeLookup(value));
+/**
+ * Sınav, yoklama ve finans kayıtlarında öğrenciyi taşıyan metin alanları.
+ * Kayıtlar öğrenci kimliği taşımaz; eşleşme ada göre yapılır.
+ */
+interface StudentLinkedRecord {
+  studentName?: string;
+  student?: string;
+  name?: string;
+  title?: string;
+  subtitle?: string;
+  note?: string;
+}
 
-  const recordIds = [
-    record.studentId,
-    record.studentUserId,
-    record.userId,
-    record.username,
-    record.identityNumber,
-    record.tcNo,
-    record.nationalId,
-  ].filter(Boolean).map((value) => normalizeLookup(value));
-
-  if (recordIds.some((id) => studentIds.includes(id))) return true;
-
+function recordMatchesStudent(record: StudentLinkedRecord, student: StudentSummaryDto) {
   const studentNames = [
     getStudentName(student),
     student.fullName,
-    student.name,
     student.username,
   ].filter(Boolean).map((value) => normalizeLookup(value));
 
@@ -143,54 +176,57 @@ function recordMatchesStudent(record, student) {
     record.studentName,
     record.student,
     record.name,
-    record.fullName,
     record.title,
     record.subtitle,
-    record.description,
     record.note,
   ].filter(Boolean).map((value) => normalizeLookup(value));
 
   return recordTexts.some((text) => studentNames.some((name) => name.length > 2 && (text === name || text.includes(name))));
 }
 
-function buildStudentUpdatePayload(student, note) {
+function buildStudentUpdatePayload(student: StudentSummaryDto, note: string): UpdateStudentRequest {
   return {
     fullName: getStudentName(student),
-    tcNo: student.tcNo || student.identityNumber || student.nationalId || '',
+    tcNo: student.tcNo || '',
     className: student.className || '',
-    currentSchool: student.currentSchool || student.school || '',
-    schoolNumber: student.schoolNumber || student.studentNumber || student.number || '',
+    currentSchool: student.currentSchool || '',
+    schoolNumber: student.schoolNumber || '',
     birthDate: student.birthDate || '',
     programType: student.programType || '',
-    parentName: student.parentName || student.guardianName || student.parentFullName || '',
-    parentPhone: student.parentPhone || student.guardianPhone || '',
-    parentEmail: student.parentEmail || student.guardianEmail || '',
+    parentName: student.parentName || '',
+    parentPhone: student.parentPhone || '',
+    parentEmail: student.parentEmail || '',
     address: student.address || '',
     note,
   };
 }
 
+function readSavedNotes(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(STUDENT_REPORT_NOTES_KEY) || '{}');
+    if (!isRecord(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+  } catch {
+    return {};
+  }
+}
+
 function AdministrativeReportOverview() {
   const { toast } = useToast();
-  const [selectedReport, setSelectedReport] = useState(reportTypes[0]);
+  const [selectedReport, setSelectedReport] = useState<ReportType>(PERFORMANCE_REPORT);
   const [classFilter, setClassFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('month');
-  const [dashboardData, setDashboardData] = useState(null);
-  const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [exams, setExams] = useState([]);
-  const [attendance, setAttendance] = useState([]);
-  const [accountingDashboard, setAccountingDashboard] = useState(null);
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(null);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [enrollmentRows, setEnrollmentRows] = useState<ReportStudentRow[]>([]);
+  const [teachers, setTeachers] = useState<StaffSummaryDto[]>([]);
+  const [exams, setExams] = useState<ExamResultDto[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceEntryDto[]>([]);
+  const [accountingDashboard, setAccountingDashboard] = useState<AccountingDashboard | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<StudentReportRow | null>(null);
   const [noteSaving, setNoteSaving] = useState(false);
-  const [studentNotes, setStudentNotes] = useState(() => {
-    if (typeof window === 'undefined') return {};
-    try {
-      return JSON.parse(window.localStorage.getItem(STUDENT_REPORT_NOTES_KEY) || '{}') || {};
-    } catch {
-      return {};
-    }
-  });
+  const [studentNotes, setStudentNotes] = useState<Record<string, string>>(readSavedNotes);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -198,29 +234,32 @@ function AdministrativeReportOverview() {
     try {
       setLoading(true);
       setError('');
-      const [adminDashboard, studentList, teacherList, examList, attendanceList, financeDashboard] = await Promise.all([
+      const [adminDashboard, studentList, reportStudentList, teacherList, examList, attendanceList, financeDashboard] = await Promise.all([
         fetchAdminDashboardData(),
         fetchStudents(),
+        // Kayıt/finans özeti (kalan borç) yalnız rapor ucunda hesaplanır.
+        fetchReportStudents().catch(() => []),
         fetchStaff('Teacher').catch(() => []),
         fetchExamResults().catch(() => []),
         fetchAttendance().catch(() => []),
         fetchAccountingDashboard().catch(() => null),
       ]);
       setDashboardData(adminDashboard);
-      setStudents(studentList);
-      setTeachers(teacherList);
-      setExams(examList);
-      setAttendance(attendanceList);
+      setStudents(studentList ?? []);
+      setEnrollmentRows(reportStudentList ?? []);
+      setTeachers(teacherList ?? []);
+      setExams(examList ?? []);
+      setAttendance(attendanceList ?? []);
       setAccountingDashboard(financeDashboard);
     } catch (err) {
-      setError(err.message || 'Rapor verileri alınamadı.');
+      setError(errorMessage(err, 'Rapor verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadReports();
+    void loadReports();
   }, [loadReports]);
 
   const classes = useMemo(() => [...new Set(students.map((item) => item.className).filter(Boolean))], [students]);
@@ -235,7 +274,7 @@ function AdministrativeReportOverview() {
   ), [students, classFilter]);
 
   const filteredExams = useMemo(() => (
-    classFilter === 'all' ? exams : exams.filter((exam) => exam.className === classFilter || exam.title?.includes(classFilter))
+    classFilter === 'all' ? exams : exams.filter((exam) => exam.className === classFilter || exam.examTitle?.includes(classFilter))
   ), [exams, classFilter]);
 
   const subjectPerformance = useMemo(() => {
@@ -251,11 +290,6 @@ function AdministrativeReportOverview() {
     teachers.map((teacher) => {
       const assignedClasses = teacher.assignedClasses || [];
       const scopedStudents = students.filter((student) => assignedClasses.includes(student.className));
-      const scopedExams = filteredExams.filter((exam) => {
-        const teacherName = String(teacher.fullName || '').trim().toLowerCase();
-        const examTeacher = String(exam.teacher || exam.teacherName || '').trim().toLowerCase();
-        return teacherName && examTeacher === teacherName;
-      });
 
       return {
         id: teacher.id,
@@ -263,17 +297,19 @@ function AdministrativeReportOverview() {
         branch: teacher.departmentOrBranch || teacher.role,
         classes: assignedClasses.length,
         studentCount: scopedStudents.length,
-        averageScore: scopedExams.length
-          ? Math.round(scopedExams.reduce((sum, item) => sum + Number(item.score || 0), 0) / scopedExams.length)
-          : 0,
+        // Sınav sonucu (ExamResultDto) öğretmen bilgisi taşımaz; öğretmen bazlı
+        // ortalama sunucu bu alanı eklemeden hesaplanamaz.
+        averageScore: 0,
       };
     })
-  ), [teachers, students, filteredExams]);
+  ), [teachers, students]);
 
   const displayTeacherRows = teacherRows;
 
+  const enrollmentById = useMemo(() => new Map(enrollmentRows.map((row) => [row.id, row])), [enrollmentRows]);
+
   const displayStudentRows = useMemo(() => (
-    filteredStudents.map((student) => {
+    filteredStudents.map((student): StudentReportRow => {
       const examScores = filteredExams.filter((exam) => recordMatchesStudent(exam, student));
       const averageScore = examScores.length
         ? Math.round(examScores.reduce((sum, item) => sum + Number(item.score || 0), 0) / examScores.length)
@@ -283,6 +319,7 @@ function AdministrativeReportOverview() {
       const attendanceRate = studentAttendance.length
         ? Math.round((presentCount / studentAttendance.length) * 100)
         : 0;
+      const enrollment = enrollmentById.get(student.id);
       return {
         id: student.id,
         name: student.fullName,
@@ -290,20 +327,20 @@ function AdministrativeReportOverview() {
         programType: student.programType || 'Belirtilmemiş',
         averageScore,
         attendanceRate,
-        enrollmentNet: Number(student.enrollmentNet || 0),
-        enrollmentPaid: Number(student.enrollmentPaid || 0),
-        enrollmentBalance: Number(student.enrollmentBalance || 0),
-        enrollmentCurrency: student.enrollmentCurrency || 'TRY',
-        enrollmentStatus: student.enrollmentStatus || 'Kayıt yok',
-        enrollmentOverdueCount: Number(student.enrollmentOverdueCount || 0),
+        enrollmentNet: Number(enrollment?.enrollmentNet || 0),
+        enrollmentPaid: Number(enrollment?.enrollmentPaid || 0),
+        enrollmentBalance: Number(enrollment?.enrollmentBalance || 0),
+        enrollmentCurrency: enrollment?.enrollmentCurrency || 'TRY',
+        enrollmentStatus: enrollment?.enrollmentStatus || 'Kayıt yok',
+        enrollmentOverdueCount: Number(enrollment?.enrollmentOverdueCount || 0),
         raw: student,
       };
     })
-  ), [filteredStudents, filteredExams, attendance]);
+  ), [filteredStudents, filteredExams, attendance, enrollmentById]);
 
   const stats = useMemo(() => ({
     totalStudents: filteredStudents.length,
-    attendanceRate: dashboardData?.quickStats?.attendanceRate || 0,
+    attendanceRate: dashboardData?.stats.todayAttendanceRate || 0,
     averageScore: filteredExams.length ? Math.round(filteredExams.reduce((sum, item) => sum + Number(item.score || 0), 0) / filteredExams.length) : 0,
     activeExams: filteredExams.length,
   }), [filteredStudents, dashboardData, filteredExams]);
@@ -311,17 +348,14 @@ function AdministrativeReportOverview() {
   const selectedStudentDetail = useMemo(() => {
     if (!selectedStudent) return null;
 
-    const student = selectedStudent.raw || selectedStudent;
+    const student = selectedStudent.raw;
     const studentExams = exams.filter((exam) => recordMatchesStudent(exam, student));
     const studentAttendance = attendance.filter((item) => recordMatchesStudent(item, student));
     const installments = (accountingDashboard?.installments || []).filter((item) => recordMatchesStudent(item, student));
-    const collectionSource = accountingDashboard?.collections?.length
-      ? accountingDashboard.collections
-      : accountingDashboard?.recentCollections || [];
-    const collections = collectionSource.filter((item) => recordMatchesStudent(item, student));
+    const collections = (accountingDashboard?.collections || []).filter((item) => recordMatchesStudent(item, student));
     const invoices = (accountingDashboard?.invoices || []).filter((item) => recordMatchesStudent(item, student));
     const averageScore = studentExams.length
-      ? Math.round(studentExams.reduce((sum, item) => sum + Number(item.score || item.point || 0), 0) / studentExams.length)
+      ? Math.round(studentExams.reduce((sum, item) => sum + Number(item.score || 0), 0) / studentExams.length)
       : selectedStudent.averageScore || 0;
     const presentLessons = studentAttendance.filter((item) => normalizeLookup(item.status).includes('katildi')).length;
     const attendanceRate = studentAttendance.length ? Math.round((presentLessons / studentAttendance.length) * 100) : 0;
@@ -335,9 +369,9 @@ function AdministrativeReportOverview() {
     // Tahsilat dağılımı — gerçek ödeme verisinden hesaplanır (sıfır sabit değil).
     // Peşinat: kayıt peşinatı olarak işaretlenen tahsilatlar (not/yöntem "peşinat").
     // Diğer: nakit/kart/havale dışında kalan yöntemler (çek, senet, belirtilmemiş vb.).
-    const isDownPayment = (item) =>
+    const isDownPayment = (item: { note: string; method: string }) =>
       normalizeLookup(item.note).includes('pesinat') || normalizeLookup(item.method).includes('pesinat');
-    const isKnownMethod = (item) => {
+    const isKnownMethod = (item: { method: string }) => {
       const method = normalizeLookup(item.method);
       return (
         method.includes('nakit') ||
@@ -364,15 +398,41 @@ function AdministrativeReportOverview() {
       .filter((item) => !isKnownMethod(item))
       .reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
 
+    const name = getStudentName(student);
+    const installmentRecords = installments.map((item, index): DetailRecord => ({
+      key: item.id || `installment-${index}`,
+      title: item.student || name,
+      date: item.due,
+      status: item.status || 'Planlandı',
+      amount: item.amount,
+    }));
+    const collectionRecords = collections.map((item, index): DetailRecord => ({
+      key: item.id || `collection-${index}`,
+      title: item.name || name,
+      date: item.time,
+      status: item.method || item.note || 'İşlendi',
+      amount: item.amount,
+    }));
+    const invoiceRecords = invoices.map((item, index): DetailRecord => ({
+      key: item.id || `invoice-${index}`,
+      title: item.title || name,
+      date: item.dueDateUtc || item.issueDateUtc,
+      status: item.status || item.category || 'Fatura',
+      amount: item.amount,
+    }));
+
     return {
       student,
-      name: getStudentName(student),
+      name,
       key: getStudentKey(student),
       studentExams,
       studentAttendance,
       installments,
       collections,
       invoices,
+      installmentRecords,
+      collectionRecords,
+      invoiceRecords,
       averageScore,
       attendanceRate,
       paidInstallments,
@@ -397,7 +457,7 @@ function AdministrativeReportOverview() {
     });
   }, [selectedStudentDetail]);
 
-  const saveStudentNoteDraft = useCallback((student, note) => {
+  const saveStudentNoteDraft = useCallback((student: StudentSummaryDto, note: string) => {
     const key = getStudentKey(student);
     setStudentNotes((prev) => {
       const next = { ...prev, [key]: note };
@@ -443,7 +503,7 @@ function AdministrativeReportOverview() {
     } catch (err) {
       toast({
         title: 'Not kaydedilemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -473,7 +533,7 @@ function AdministrativeReportOverview() {
     } catch (err) {
       toast({
         title: 'PDF oluşturulamadı',
-        description: err.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     }
@@ -565,11 +625,11 @@ function AdministrativeReportOverview() {
           </Card>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {[
+            {([
               [stats.totalStudents, 'Toplam Öğrenci', TrendingUp, 'text-green-500'],
               [stats.averageScore, 'Ortalama Puan', TrendingDown, 'text-red-500'],
               [stats.activeExams, 'Aktif Sınav', BarChart3, 'text-brand-primary'],
-            ].map(([value, label, Icon, color]) => (
+            ] satisfies ReadonlyArray<readonly [number, string, IconComponent, string]>).map(([value, label, Icon, color]) => (
               <Card key={label}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -691,17 +751,17 @@ function AdministrativeReportOverview() {
                     </div>
                   </div>
                   <Badge variant="outline" className="w-fit">
-                    {selectedStudentDetail.student.className || selectedStudent.className || 'Sınıf yok'}
+                    {selectedStudentDetail.student.className || selectedStudent?.className || 'Sınıf yok'}
                   </Badge>
                 </div>
               </DialogHeader>
 
               <div className="grid gap-4 md:grid-cols-3">
-                {[
+                {([
                   [formatCurrency(selectedStudentDetail.remainingBalance), 'Kalan ödeme', Wallet, 'text-amber-600'],
                   [selectedStudentDetail.installments.length, 'Taksit kaydı', ReceiptText, 'text-brand-primary'],
                   [formatCurrency(selectedStudentDetail.collectionTotal), 'Tahsil edilen', CheckCircle2, 'text-green-600'],
-                ].map(([value, label, Icon, color]) => (
+                ] satisfies ReadonlyArray<readonly [string | number, string, IconComponent, string]>).map(([value, label, Icon, color]) => (
                   <div key={label} className="rounded-2xl border bg-muted/30 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -724,10 +784,10 @@ function AdministrativeReportOverview() {
                   </CardHeader>
                   <CardContent className="space-y-3 text-sm">
                     {[
-                      ['Öğrenci No', selectedStudentDetail.student.studentNumber || selectedStudentDetail.student.number || selectedStudentDetail.student.username],
-                      ['TC Kimlik', selectedStudentDetail.student.identityNumber || selectedStudentDetail.student.tcNo || selectedStudentDetail.student.nationalId],
-                      ['Program', selectedStudentDetail.student.programType || selectedStudent.programType],
-                      ['Veli', selectedStudentDetail.student.parentName || selectedStudentDetail.student.guardianName || selectedStudentDetail.student.parentFullName],
+                      ['Öğrenci No', selectedStudentDetail.student.schoolNumber || selectedStudentDetail.student.username],
+                      ['TC Kimlik', selectedStudentDetail.student.tcNo],
+                      ['Program', selectedStudentDetail.student.programType || selectedStudent?.programType],
+                      ['Veli', selectedStudentDetail.student.parentName],
                     ].map(([label, value]) => (
                       <div key={label} className="flex items-start justify-between gap-4 rounded-xl bg-muted/40 p-3">
                         <span className="text-muted-foreground">{label}</span>
@@ -737,11 +797,11 @@ function AdministrativeReportOverview() {
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
                       <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-3">
                         <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span>{selectedStudentDetail.student.phone || selectedStudentDetail.student.parentPhone || 'Telefon yok'}</span>
+                        <span>{selectedStudentDetail.student.parentPhone || 'Telefon yok'}</span>
                       </div>
                       <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-3">
                         <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="break-all">{selectedStudentDetail.student.email || selectedStudentDetail.student.parentEmail || 'E-posta yok'}</span>
+                        <span className="break-all">{selectedStudentDetail.student.parentEmail || 'E-posta yok'}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -768,12 +828,12 @@ function AdministrativeReportOverview() {
                     </div>
                     <div className="space-y-2">
                       {selectedStudentDetail.studentExams.slice(0, 5).map((exam, index) => (
-                        <div key={exam.id || `${exam.title}-${index}`} className="flex items-center justify-between rounded-xl border p-3">
+                        <div key={exam.id || `${exam.examTitle}-${index}`} className="flex items-center justify-between rounded-xl border p-3">
                           <div>
-                            <p className="font-medium">{exam.title || exam.examName || exam.subject || 'Sınav'}</p>
+                            <p className="font-medium">{exam.examTitle || exam.subject || 'Sınav'}</p>
                             <p className="text-sm text-muted-foreground">{exam.subject || exam.className || 'Ders bilgisi yok'}</p>
                           </div>
-                          <Badge variant="outline">{exam.score || exam.point || 0} puan</Badge>
+                          <Badge variant="outline">{exam.score || 0} puan</Badge>
                         </div>
                       ))}
                       {selectedStudentDetail.studentExams.length === 0 ? (
@@ -827,11 +887,11 @@ function AdministrativeReportOverview() {
                   </div>
 
                   <div className="grid gap-4 lg:grid-cols-3">
-                    {[
-                      ['Taksitler', selectedStudentDetail.installments, ReceiptText, (item) => item.due || item.dueDate, (item) => item.status || 'Planlandı'],
-                      ['Tahsilatlar', selectedStudentDetail.collections, CheckCircle2, (item) => item.time || item.date || item.createdAt, (item) => item.method || item.note || 'İşlendi'],
-                      ['Faturalar', selectedStudentDetail.invoices, FileText, (item) => item.due || item.dueDate || item.createdAt, (item) => item.status || item.category || 'Fatura'],
-                    ].map(([title, records, Icon, dateGetter, statusGetter]) => (
+                    {([
+                      ['Taksitler', selectedStudentDetail.installmentRecords, ReceiptText],
+                      ['Tahsilatlar', selectedStudentDetail.collectionRecords, CheckCircle2],
+                      ['Faturalar', selectedStudentDetail.invoiceRecords, FileText],
+                    ] satisfies ReadonlyArray<readonly [string, DetailRecord[], IconComponent]>).map(([title, records, Icon]) => (
                       <div key={title} className="rounded-2xl border p-4">
                         <div className="mb-3 flex items-center gap-2 font-semibold">
                           <Icon className="h-4 w-4 text-brand-primary" />
@@ -839,17 +899,17 @@ function AdministrativeReportOverview() {
                         </div>
                         <div className="space-y-2">
                           {records.slice(0, 5).map((item, index) => (
-                            <div key={item.id || `${title}-${index}`} className="rounded-xl bg-muted/40 p-3">
+                            <div key={item.key || `${title}-${index}`} className="rounded-xl bg-muted/40 p-3">
                               <div className="flex items-start justify-between gap-3">
                                 <div>
-                                  <p className="font-medium">{item.title || item.name || item.student || selectedStudentDetail.name}</p>
+                                  <p className="font-medium">{item.title}</p>
                                   <p className="flex items-center gap-1 text-xs text-muted-foreground">
                                     <CalendarDays className="h-3 w-3" />
-                                    {formatDate(dateGetter(item))}
+                                    {formatDate(item.date)}
                                   </p>
                                 </div>
-                                <Badge variant={isPaidStatus(statusGetter(item)) ? 'default' : 'outline'}>
-                                  {statusGetter(item)}
+                                <Badge variant={isPaidStatus(item.status) ? 'default' : 'outline'}>
+                                  {item.status}
                                 </Badge>
                               </div>
                               <p className="mt-2 font-semibold">{formatCurrency(item.amount)}</p>

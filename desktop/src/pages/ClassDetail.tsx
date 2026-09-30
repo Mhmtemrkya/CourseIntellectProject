@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, BookOpen, CalendarDays, ChevronRight, Clock3, GraduationCap,
@@ -15,8 +15,12 @@ import {
   fetchStudents,
 } from '../lib/api/modules';
 import { isUserPassive, userStatusLabel } from '../lib/userStatus';
+import { errorMessage } from '../lib/errors';
+import { parseClassConfigs, type ClassConfig } from '../lib/classConfig';
+import type { StaffSummaryDto, StudentSummaryDto } from '../types/api/generated';
+import type { IconComponent } from '../types/ui';
 
-function normalize(value = '') {
+function normalize(value: string | null | undefined = '') {
   return String(value)
     .trim()
     .toLocaleLowerCase('tr-TR')
@@ -28,11 +32,11 @@ function normalize(value = '') {
     .replaceAll('ü', 'u');
 }
 
-function sameId(left, right) {
-  return left != null && right != null && String(left) === String(right);
+function sameId(left: string | null | undefined, right: string | null | undefined) {
+  return Boolean(left) && Boolean(right) && String(left) === String(right);
 }
 
-function initials(value = '') {
+function initials(value: string | null | undefined = '') {
   return String(value).split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'CI';
 }
 
@@ -44,19 +48,11 @@ function decodeClassName(value = '') {
   }
 }
 
-function decodeConfig(item) {
-  try {
-    return JSON.parse(item?.payloadJson || '{}');
-  } catch {
-    return null;
-  }
-}
-
-function Card({ children, className = '' }) {
+function Card({ children, className = '' }: { children?: ReactNode; className?: string }) {
   return <section className={`rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))] shadow-sm ${className}`}>{children}</section>;
 }
 
-function SectionHeader({ icon: Icon, title, description, count }) {
+function SectionHeader({ icon: Icon, title, description, count }: { icon: IconComponent; title: string; description: string; count?: number }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-foreground/10 px-5 py-4 sm:px-6">
       <div className="flex min-w-0 items-start gap-3">
@@ -73,7 +69,7 @@ function SectionHeader({ icon: Icon, title, description, count }) {
   );
 }
 
-function MetricCard({ label, value, detail, icon: Icon, tone }) {
+function MetricCard({ label, value, detail, icon: Icon, tone }: { label: string; value: ReactNode; detail: string; icon: IconComponent; tone: string }) {
   return (
     <Card className="min-h-[132px] p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
@@ -90,7 +86,7 @@ function MetricCard({ label, value, detail, icon: Icon, tone }) {
   );
 }
 
-function EmptyState({ title, description }) {
+function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <div className="px-5 py-12 text-center sm:px-6">
       <p className="font-semibold text-foreground">{title}</p>
@@ -105,9 +101,9 @@ export default function ClassDetail() {
   const className = decodeClassName(routeClassName);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [config, setConfig] = useState(null);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [teachers, setTeachers] = useState<StaffSummaryDto[]>([]);
+  const [config, setConfig] = useState<ClassConfig | null>(null);
   const [studentQuery, setStudentQuery] = useState('');
 
   const load = useCallback(async () => {
@@ -119,19 +115,19 @@ export default function ClassDetail() {
         fetchStaff('Teacher').catch(() => []),
         fetchPlatformConfigurations('class-management').catch(() => []),
       ]);
-      const decodedConfigs = (configurationRows || []).map(decodeConfig).filter(Boolean);
+      const decodedConfigs = parseClassConfigs(configurationRows);
       setStudents(Array.isArray(studentRows) ? studentRows : []);
       setTeachers(Array.isArray(teacherRows) ? teacherRows : []);
       setConfig(decodedConfigs.find((item) => normalize(item.name) === normalize(className)) || null);
     } catch (requestError) {
-      setError(requestError.message || 'Sınıf detayları alınamadı.');
+      setError(errorMessage(requestError, 'Sınıf detayları alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [className]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const classStudents = useMemo(() => students
@@ -144,11 +140,10 @@ export default function ClassDetail() {
     [classStudents],
   );
 
-  const courseAssignments = useMemo(() => (Array.isArray(config?.courses) ? config.courses : []).map((course, index) => ({
+  const courseAssignments = useMemo(() => (config?.courses ?? []).map((course, index) => ({
     ...course,
-    key: `${course.courseName || course.name || 'ders'}-${index}`,
-    courseName: course.courseName || course.name || course.title || 'Ders',
-    weeklyHours: Number(course.weeklyHours || 0),
+    key: `${course.courseName || 'ders'}-${index}`,
+    courseName: course.courseName || 'Ders',
   })), [config]);
 
   const advisor = useMemo(() => teachers.find((teacher) => (
@@ -158,15 +153,15 @@ export default function ClassDetail() {
 
   const classTeachers = useMemo(() => {
     const configuredIds = new Set([
-      ...(Array.isArray(config?.teachers) ? config.teachers : []).map((item) => String(typeof item === 'object' ? item.teacherId : item)),
-      ...courseAssignments.map((course) => String(course.teacherId)),
-      String(config?.advisorTeacherId),
-    ].filter((id) => id && id !== 'null' && id !== 'undefined'));
+      ...(config?.teachers ?? []).map((item) => item.teacherId),
+      ...courseAssignments.map((course) => course.teacherId),
+      config?.advisorTeacherId ?? '',
+    ].filter(Boolean));
 
     return teachers.filter((teacher) => (
       configuredIds.has(String(teacher.id))
       || normalize(teacher.homeroomClass) === normalize(className)
-      || (Array.isArray(teacher.assignedClasses) && teacher.assignedClasses.some((item) => normalize(item) === normalize(className)))
+      || (teacher.assignedClasses ?? []).some((item) => normalize(item) === normalize(className))
     )).sort((left, right) => String(left.fullName || '').localeCompare(String(right.fullName || ''), 'tr'));
   }, [className, config, courseAssignments, teachers]);
 

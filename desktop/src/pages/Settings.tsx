@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useRef, useState, type ChangeEvent } from 'react';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
   User, 
@@ -29,13 +29,14 @@ import { Label } from '../components/ui/label';
 import { Switch } from '../components/ui/switch';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Separator } from '../components/ui/separator';
 import { useToast } from '../hooks/use-toast';
 import { removeTenantLogo, uploadTenantLogo } from '../lib/api/modules';
 import { billingEnabled } from '../lib/billing';
+import { errorMessage } from '../lib/errors';
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -43,7 +44,7 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
 };
@@ -53,17 +54,17 @@ export default function Settings() {
   const navigate = useNavigate();
   const { theme, setTheme, tenantLogo, tenantName, refreshBranding } = useTheme();
   const { toast } = useToast();
-  const logoInputRef = useRef(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [baseUrl, setBaseUrl] = useState('https://maydanozasist.schoolasist.com');
   const [testing, setTesting] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState<'success' | 'error' | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [logoBusy, setLogoBusy] = useState(false);
   const canManageInstitutionLogo = user?.role === 'admin'
     && String(user?.backendRole || '').toLowerCase() !== 'branchmanager';
 
-  const handleLogoPicked = async (event) => {
+  const handleLogoPicked = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -95,7 +96,7 @@ export default function Settings() {
     } catch (error) {
       toast({
         title: 'Logo yüklenemedi',
-        description: error?.message || 'Lütfen dosyayı kontrol edip tekrar deneyin.',
+        description: errorMessage(error, 'Lütfen dosyayı kontrol edip tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -113,7 +114,7 @@ export default function Settings() {
     } catch (error) {
       toast({
         title: 'Logo kaldırılamadı',
-        description: error?.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(error, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -173,7 +174,6 @@ export default function Settings() {
           <CardContent>
             <div className="flex items-center gap-6">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={user?.avatar} alt={user?.name} />
                 <AvatarFallback className="bg-brand-primary text-white text-2xl">
                   {user?.name?.charAt(0) || 'U'}
                 </AvatarFallback>

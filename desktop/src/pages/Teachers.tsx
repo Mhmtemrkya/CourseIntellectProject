@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import {
   Search,
   Plus,
@@ -69,11 +68,39 @@ import { StatusBadge } from '../components/ui/status-badge';
 import {
   isValidTcKimlik, isValidTrPhone, maskPositiveInteger, maskTcKimlik, maskTrPhone,
 } from '../lib/inputMasks';
+import { errorMessage } from '../lib/errors';
+import type { StaffSummaryDto } from '../types/api/generated';
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
-};
+/** Ekleme ve düzenleme formlarının ortak alanları; TC ve başlangıç yalnız eklemede. */
+interface TeacherFormState {
+  fullName: string;
+  departmentOrBranch: string;
+  phone: string;
+  education: string;
+  campus: string;
+  homeroomClass: string;
+  assignedClasses: string[];
+  maritalStatus: string;
+  childCount: number;
+  note: string;
+  photoUrl: string;
+  tcNo?: string;
+  startDate?: string;
+}
+
+interface CreateTeacherForm extends TeacherFormState {
+  role: string;
+  tcNo: string;
+  startDate: string;
+}
+
+interface IssuedTeacherCredentials {
+  fullName: string;
+  username: string;
+  password: string;
+  roleLabel: string;
+  branch: string;
+}
 
 const PREDEFINED_BRANCHES = [
   'Matematik', 'Fizik', 'Kimya', 'Biyoloji',
@@ -89,13 +116,13 @@ const PREDEFINED_BRANCHES = [
   'Diğer',
 ];
 
-const ROLE_LABELS = {
+const ROLE_LABELS: Partial<Record<string, string>> = {
   Teacher: 'Öğretmen',
   Administrative: 'İdari Personel',
   Admin: 'Yönetici',
 };
 
-function TeacherDetailDrawer({ teacher }) {
+function TeacherDetailDrawer({ teacher }: { teacher: StaffSummaryDto | null }) {
   if (!teacher) return null;
   const assignedClasses = Array.isArray(teacher.assignedClasses) ? teacher.assignedClasses : [];
 
@@ -167,10 +194,16 @@ function TeacherDetailDrawer({ teacher }) {
   );
 }
 
-function TeacherFormFields({ form, setForm, branches, classes, onCreateBranch }) {
+function TeacherFormFields<T extends TeacherFormState>({ form, setForm, branches, classes, onCreateBranch }: {
+  form: T;
+  setForm: Dispatch<SetStateAction<T>>;
+  branches: string[];
+  classes: string[];
+  onCreateBranch: (name: string) => Promise<boolean>;
+}) {
   const EMPTY_HOME_ROOM = '__none__';
 
-  const toggleAssignedClass = (value) => {
+  const toggleAssignedClass = (value: string) => {
     setForm((prev) => ({
       ...prev,
       assignedClasses: prev.assignedClasses.includes(value)
@@ -275,13 +308,20 @@ function TeacherFormFields({ form, setForm, branches, classes, onCreateBranch })
 
 function AddTeacherDialog({
   open, onOpenChange, branches, classes, onCreated, onCreateBranch,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  branches: string[];
+  classes: string[];
+  onCreated: () => void;
+  onCreateBranch: (name: string) => Promise<boolean>;
 }) {
   const { toast } = useToast();
   const { user } = useApp();
   const tenantName = user?.tenant || '';
   const [saving, setSaving] = useState(false);
-  const [createdCredentials, setCreatedCredentials] = useState(null);
-  const [form, setForm] = useState({
+  const [createdCredentials, setCreatedCredentials] = useState<IssuedTeacherCredentials | null>(null);
+  const [form, setForm] = useState<CreateTeacherForm>({
     fullName: '',
     role: 'Teacher',
     departmentOrBranch: '',
@@ -314,7 +354,8 @@ function AddTeacherDialog({
     try {
       setSaving(true);
       const created = await createStaff({ ...form, email: '' });
-      onCreated({ ...created, assignedClasses: form.assignedClasses, departmentOrBranch: form.departmentOrBranch, phone: form.phone });
+      if (!created) throw new Error('Kayıt yanıtı alınamadı.');
+      onCreated();
       const roleLabel = form.role === 'Administrative' ? 'İdari Personel'
         : form.role === 'Accounting' ? 'Muhasebe'
         : 'Öğretmen';
@@ -339,7 +380,7 @@ function AddTeacherDialog({
       }
       toast({ title: 'Personel oluşturuldu', description: 'Bilgiler PDF olarak indirildi.' });
     } catch (err) {
-      toast({ title: 'Personel oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Personel oluşturulamadı', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -415,10 +456,18 @@ function AddTeacherDialog({
 
 function EditTeacherDialog({
   open, onOpenChange, teacher, branches, classes, onUpdated, onCreateBranch,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  teacher: StaffSummaryDto | null;
+  branches: string[];
+  classes: string[];
+  onUpdated: (updated: StaffSummaryDto) => void;
+  onCreateBranch: (name: string) => Promise<boolean>;
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<TeacherFormState>({
     fullName: '',
     departmentOrBranch: '',
     phone: '',
@@ -451,6 +500,7 @@ function EditTeacherDialog({
   }, [teacher]);
 
   const handleSave = async () => {
+    if (!teacher) return;
     if (!form.fullName?.trim() || !form.departmentOrBranch) {
       toast({ title: 'Eksik bilgi', description: 'Ad-soyad ve branş zorunlu.', variant: 'destructive' });
       return;
@@ -461,12 +511,13 @@ function EditTeacherDialog({
     }
     try {
       setSaving(true);
-      const updated = await updateStaff(teacher.id, { ...form, email: teacher?.email || '' });
+      const updated = await updateStaff(teacher.id, { ...form, email: teacher.email || '' });
+      if (!updated) throw new Error('Güncelleme yanıtı alınamadı.');
       onUpdated(updated);
       toast({ title: 'Güncellendi', description: `${updated.fullName} bilgileri güncellendi.` });
       onOpenChange(false);
     } catch (err) {
-      toast({ title: 'Güncellenemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Güncellenemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -497,10 +548,10 @@ export default function Teachers() {
   const [statusFilter, setStatusFilter] = useState(DIRECTORY_ALL);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingTeacher, setEditingTeacher] = useState(null);
-  const [staff, setStaff] = useState([]);
-  const [classNames, setClassNames] = useState([]);
-  const [savedBranches, setSavedBranches] = useState([]);
+  const [editingTeacher, setEditingTeacher] = useState<StaffSummaryDto | null>(null);
+  const [staff, setStaff] = useState<StaffSummaryDto[]>([]);
+  const [classNames, setClassNames] = useState<string[]>([]);
+  const [savedBranches, setSavedBranches] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -513,18 +564,18 @@ export default function Teachers() {
         fetchClasses().catch(() => []),
         fetchPlatformConfigurations('staff-branches').catch(() => []),
       ]);
-      setStaff(staffList);
+      setStaff(staffList ?? []);
       setClassNames(Array.isArray(classList) ? classList : []);
       setSavedBranches(readSavedStaffBranches(branchConfigurations));
     } catch (err) {
-      setError(err.message || 'Öğretmen listesi alınamadı.');
+      setError(errorMessage(err, 'Öğretmen listesi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadTeachers();
+    void loadTeachers();
   }, [loadTeachers]);
 
   const branches = useMemo(() => {
@@ -532,7 +583,7 @@ export default function Teachers() {
     return mergeBranches(PREDEFINED_BRANCHES, [...fromStaff, ...savedBranches]);
   }, [savedBranches, staff]);
 
-  const createBranch = async (name) => {
+  const createBranch = async (name: string) => {
     const next = mergeBranches(savedBranches, [name]);
     try {
       await upsertPlatformConfiguration(staffBranchConfigurationPayload(next));
@@ -540,7 +591,7 @@ export default function Teachers() {
       toast({ title: 'Branş oluşturuldu', description: `${name} seçim listesine eklendi.` });
       return true;
     } catch (err) {
-      toast({ title: 'Branş oluşturulamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Branş oluşturulamadı', description: errorMessage(err), variant: 'destructive' });
       return false;
     }
   };
@@ -562,7 +613,7 @@ export default function Teachers() {
   }), [staff, search, branchFilter, statusFilter]);
 
   // Öğretmeni pasife alma / aktifleştirme: hesap kapatılmaz, girişi engellenir.
-  const handleToggleStatus = useCallback(async (teacher) => {
+  const handleToggleStatus = useCallback(async (teacher: StaffSummaryDto) => {
     if (!teacher?.username) {
       toast({ title: 'İşlem yapılamadı', description: 'Bu kayıt için kullanıcı adı bulunamadı.', variant: 'destructive' });
       return;
@@ -579,34 +630,24 @@ export default function Teachers() {
           : `${teacher.fullName} artık giriş yapamaz; açık oturumları sonlandırıldı.`,
       });
     } catch (err) {
-      toast({ title: 'Durum güncellenemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Durum güncellenemedi', description: errorMessage(err), variant: 'destructive' });
     }
   }, [toast]);
 
-  const handleCreated = (created) => {
-    setStaff((prev) => [{
-      id: created.userId || created.id,
-      fullName: created.fullName,
-      username: created.username,
-      role: created.role,
-      departmentOrBranch: created.departmentOrBranch || '',
-      assignedClasses: Array.isArray(created.assignedClasses) ? created.assignedClasses : [],
-      email: created.email || '',
-      phone: created.phone || '',
-      homeroomClass: created.homeroomClass || '',
-      education: created.education || '',
-      maritalStatus: created.maritalStatus || '',
-      childCount: created.childCount || 0,
-      note: created.note || '',
-      photoUrl: created.photoUrl || '',
-    }, ...prev]);
+  // Kayıt yanıtı yalnız kullanıcı kimliği taşır; satır kimliği personel profilidir.
+  // Listeyi sessizce tazelemek, eklenen satırın hemen düzenlenebilmesini sağlar
+  // (tam yükleme göstergesi kimlik bilgisi penceresini kapatırdı).
+  const handleCreated = () => {
+    fetchStaff('Teacher')
+      .then((list) => { if (list) setStaff(list); })
+      .catch(() => {});
   };
 
-  const handleUpdated = (updated) => {
+  const handleUpdated = (updated: StaffSummaryDto) => {
     setStaff((prev) => prev.map((t) => t.id === updated.id ? { ...t, ...updated } : t));
   };
 
-  const openEditDialog = (teacher) => {
+  const openEditDialog = (teacher: StaffSummaryDto) => {
     setEditingTeacher(teacher);
     setEditDialogOpen(true);
   };

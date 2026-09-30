@@ -17,15 +17,43 @@ import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { deleteAttendanceRecord, fetchAttendance, fetchClasses, fetchStudents, saveAttendance } from '../lib/api/modules';
+import { errorMessage } from '../lib/errors';
+import type { AttendanceEntryDto, StudentSummaryDto } from '../types/api/generated';
+import type { IconComponent } from '../types/ui';
 
-const statusLabels = {
+type AttendanceStatus = 'Katildi' | 'Gec' | 'Izinli' | 'Devamsiz';
+type StatTone = 'blue' | 'green' | 'amber' | 'purple' | 'red';
+type MiniTone = 'green' | 'red' | 'amber' | 'blue';
+
+/** Öğrenci satırı: seçili süzgeçteki devam özetiyle birlikte. */
+interface StudentAttendanceRow extends StudentSummaryDto {
+  present: number;
+  absent: number;
+  late: number;
+  total: number;
+  absenceRate: number;
+  latestAbsence: AttendanceEntryDto | undefined;
+  records: AttendanceEntryDto[];
+}
+
+interface CalendarDay {
+  date: Date;
+  iso: string;
+  inMonth: boolean;
+  hasAbsent: boolean;
+  hasPresent: boolean;
+}
+
+const byLessonDateDesc = (a: AttendanceEntryDto, b: AttendanceEntryDto) => new Date(b.lessonDate).getTime() - new Date(a.lessonDate).getTime();
+
+const statusLabels: Record<AttendanceStatus, string> = {
   Katildi: 'Devam Etti',
   Gec: 'Gecikmeli',
   Izinli: 'İzinli',
   Devamsiz: 'Devamsız',
 };
 
-function normalize(value = '') {
+function normalize(value: string | null | undefined = '') {
   return String(value)
     .trim()
     .toLowerCase()
@@ -37,7 +65,7 @@ function normalize(value = '') {
     .replaceAll('ü', 'u');
 }
 
-function toStatus(value = '') {
+function toStatus(value: string | null | undefined = ''): AttendanceStatus {
   const key = normalize(value);
   if (key.includes('katildi') || key.includes('present')) return 'Katildi';
   if (key.includes('gec') || key.includes('late')) return 'Gec';
@@ -45,14 +73,14 @@ function toStatus(value = '') {
   return 'Devamsiz';
 }
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined) {
   if (!value) return '-';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
 }
 
-function downloadCsv(filename, rows) {
+function downloadCsv(filename: string, rows: ReadonlyArray<ReadonlyArray<string | number | null | undefined>>) {
   const content = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(',')).join('\n');
   const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -63,8 +91,8 @@ function downloadCsv(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
-function StatCard({ icon: Icon, label, value, hint, tone }) {
-  const tones = {
+function StatCard({ icon: Icon, label, value, hint, tone }: { icon: IconComponent; label: string; value: number; hint?: string; tone: StatTone }) {
+  const tones: Record<StatTone, string> = {
     blue: 'from-blue-500/20 to-blue-500/5 text-blue-300 border-blue-500/15',
     green: 'from-emerald-500/20 to-emerald-500/5 text-emerald-300 border-emerald-500/15',
     amber: 'from-amber-500/20 to-amber-500/5 text-amber-300 border-amber-500/15',
@@ -92,17 +120,17 @@ export default function Attendance() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [students, setStudents] = useState([]);
-  const [records, setRecords] = useState([]);
-  const [classes, setClasses] = useState([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [records, setRecords] = useState<AttendanceEntryDto[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedLesson, setSelectedLesson] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [dateFrom, setDateFrom] = useState(() => new Date(new Date().setDate(new Date().getDate() - 14)).toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [manageStudent, setManageStudent] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState<StudentAttendanceRow | null>(null);
+  const [manageStudent, setManageStudent] = useState<StudentAttendanceRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
@@ -129,14 +157,14 @@ export default function Attendance() {
       setClasses(classNames);
       setSelectedClass((prev) => prev || classNames[0] || '');
     } catch (err) {
-      setError(err.message || 'Devamsızlık verileri alınamadı.');
+      setError(errorMessage(err, 'Devamsızlık verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const lessons = useMemo(() => [...new Set(records.map((item) => item.lesson).filter(Boolean))], [records]);
@@ -152,7 +180,7 @@ export default function Attendance() {
     return matchesClass && matchesLesson && matchesType && matchesDate;
   }), [dateFrom, dateTo, records, selectedClass, selectedLesson, selectedType]);
 
-  const studentRows = useMemo(() => classStudents.map((student) => {
+  const studentRows = useMemo(() => classStudents.map((student): StudentAttendanceRow => {
     const studentRecords = filteredRecords.filter((item) => normalize(item.studentName) === normalize(student.fullName));
     const absent = studentRecords.filter((item) => toStatus(item.status) === 'Devamsiz').length;
     const late = studentRecords.filter((item) => toStatus(item.status) === 'Gec').length;
@@ -161,7 +189,7 @@ export default function Attendance() {
     const absenceRate = total ? Math.round((absent / total) * 100) : 0;
     const latestAbsence = studentRecords
       .filter((item) => toStatus(item.status) === 'Devamsiz')
-      .sort((a, b) => new Date(b.lessonDate) - new Date(a.lessonDate))[0];
+      .sort(byLessonDateDesc)[0];
     return { ...student, present, absent, late, total, absenceRate, latestAbsence, records: studentRecords };
   }), [classStudents, filteredRecords]);
 
@@ -186,7 +214,7 @@ export default function Attendance() {
     return studentRows.find((item) => item.id === selectedStudent.id || item.fullName === selectedStudent.fullName) || selectedStudent;
   }, [selectedStudent, studentRows]);
 
-  const calendarDays = useMemo(() => {
+  const calendarDays = useMemo((): CalendarDay[] => {
     const base = new Date(dateTo || new Date());
     const year = base.getFullYear();
     const month = base.getMonth();
@@ -214,17 +242,17 @@ export default function Attendance() {
     if (!manageStudent) return [];
     return records
       .filter((item) => normalize(item.studentName) === normalize(manageStudent.fullName))
-      .sort((a, b) => new Date(b.lessonDate) - new Date(a.lessonDate));
+      .sort(byLessonDateDesc);
   }, [manageStudent, records]);
 
-  const handleDeleteRecord = async (record) => {
+  const handleDeleteRecord = async (record: AttendanceEntryDto) => {
     try {
       setDeletingId(record.id);
       await deleteAttendanceRecord(record.id);
       setRecords((prev) => prev.filter((item) => item.id !== record.id));
       toast({ title: 'Kayıt silindi', description: `${record.lesson || 'Ders'} • ${formatDate(record.lessonDate)}` });
     } catch (err) {
-      toast({ title: 'Kayıt silinemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Kayıt silinemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setDeletingId(null);
     }
@@ -244,11 +272,11 @@ export default function Attendance() {
         lessonDate: addForm.date,
         students: [{ name: student.fullName, status: addForm.status === 'Katildi' ? 'present' : addForm.status === 'Gec' ? 'late' : addForm.status === 'Izinli' ? 'excuse' : 'absent' }],
       });
-      setRecords((prev) => [...payload, ...prev]);
+      setRecords((prev) => [...(payload ?? []), ...prev]);
       setAddOpen(false);
       toast({ title: 'Devamsızlık kaydı eklendi' });
     } catch (err) {
-      toast({ title: 'Kayıt eklenemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Kayıt eklenemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -262,7 +290,7 @@ export default function Attendance() {
     }
     try {
       setSaving(true);
-      const created = [];
+      const created: AttendanceEntryDto[] = [];
       for (const row of rows) {
         const [studentName, lesson = 'Genel Ders', date = new Date().toISOString().slice(0, 10), status = 'Devamsiz'] = row;
         const student = students.find((item) => normalize(item.fullName) === normalize(studentName));
@@ -273,14 +301,14 @@ export default function Attendance() {
           lessonDate: date,
           students: [{ name: student.fullName, status: toStatus(status) === 'Katildi' ? 'present' : toStatus(status) === 'Gec' ? 'late' : toStatus(status) === 'Izinli' ? 'excuse' : 'absent' }],
         });
-        created.push(...payload);
+        created.push(...(payload ?? []));
       }
       setRecords((prev) => [...created, ...prev]);
       setBulkOpen(false);
       setBulkText('');
       toast({ title: 'Toplu giriş tamamlandı', description: `${created.length} kayıt işlendi.` });
     } catch (err) {
-      toast({ title: 'Toplu giriş başarısız', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Toplu giriş başarısız', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -512,8 +540,8 @@ export default function Attendance() {
   );
 }
 
-function StatMini({ label, value, tone }) {
-  const tones = {
+function StatMini({ label, value, tone }: { label: string; value: string | number; tone: MiniTone }) {
+  const tones: Record<MiniTone, string> = {
     green: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600',
     red: 'border-rose-500/20 bg-rose-500/10 text-rose-600',
     amber: 'border-orange-500/25 bg-orange-500/10 text-orange-600',
@@ -527,7 +555,7 @@ function StatMini({ label, value, tone }) {
   );
 }
 
-function MiniCalendar({ days }) {
+function MiniCalendar({ days }: { days: CalendarDay[] }) {
   return (
     <div className="mt-5 rounded-2xl border p-4">
       <div className="mb-4 flex items-center justify-between">

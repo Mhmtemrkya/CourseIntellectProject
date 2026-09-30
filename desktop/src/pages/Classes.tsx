@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -30,8 +30,46 @@ import {
   updateClassAssignments,
 } from '../lib/api/modules';
 import { isUserPassive } from '../lib/userStatus';
+import { errorMessage } from '../lib/errors';
+import { parseClassConfigs, type ClassConfig } from '../lib/classConfig';
+import type {
+  ClassModuleSettingsRequest, CourseDto, StaffSummaryDto, StudentSummaryDto,
+} from '../types/api/generated';
+import type { IconComponent } from '../types/ui';
 
-const steps = [
+interface ClassForm {
+  name: string;
+  code: string;
+  institutionUnit: string;
+  grade: string;
+  section: string;
+  academicYear: string;
+  advisorTeacherId: string;
+  description: string;
+  themeColor: string;
+  icon: string;
+}
+
+/** Sihirbazdaki ders satırı; saat alanı yazılırken metin olarak tutulur. */
+interface CourseAssignment {
+  courseName: string;
+  teacherId: string | null;
+  weeklyHours: number | string;
+  isRequired: boolean;
+}
+
+type SelectOption = string | { value: string; label: string };
+
+const MODULE_LABELS: ReadonlyArray<readonly [keyof ClassModuleSettingsRequest, string]> = [
+  ['attendance', 'Devamsızlık Takibi'],
+  ['grades', 'Not Sistemi'],
+  ['liveLessons', 'Canlı Dersler'],
+  ['homework', 'Ödev Sistemi'],
+  ['study', 'Etüt Sistemi'],
+  ['messaging', 'Mesajlaşma'],
+];
+
+const steps: ReadonlyArray<readonly [string, string, string]> = [
   ['basic', 'Temel Bilgiler', 'Sınıf detaylarını girin'],
   ['teachers', 'Öğretmen & Dersler', 'Öğretmen ve dersleri belirleyin'],
   ['students', 'Öğrenciler', 'Öğrenci ekleyin veya davet gönderin'],
@@ -55,6 +93,13 @@ function ThemedSelect({
   emptyLabel,
   ariaLabel,
   className = 'h-11',
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: readonly SelectOption[];
+  emptyLabel?: string;
+  ariaLabel?: string;
+  className?: string;
 }) {
   const selectedValue = value === '' && emptyLabel ? EMPTY_SELECT_OPTION : String(value);
 
@@ -80,7 +125,7 @@ function ThemedSelect({
   );
 }
 
-function normalize(value = '') {
+function normalize(value: string | null | undefined = '') {
   return String(value)
     .trim()
     .toLowerCase()
@@ -96,21 +141,13 @@ function initials(value = '') {
   return value.split(' ').filter(Boolean).slice(0, 2).map((item) => item[0]).join('').toUpperCase() || 'CI';
 }
 
-function decodeClassConfig(item) {
-  try {
-    return JSON.parse(item.payloadJson || '{}');
-  } catch {
-    return null;
-  }
-}
-
-function generateCode(name, academicYear) {
+function generateCode(name: string, academicYear: string) {
   const clean = normalize(name).replaceAll(' ', '').replaceAll('-', '').toUpperCase();
   const year = String(academicYear || new Date().getFullYear()).match(/\d{4}/)?.[0] || new Date().getFullYear();
   return clean ? `${clean}-${year}-001` : `${year}-001`;
 }
 
-function StepRail({ step }) {
+function StepRail({ step }: { step: number }) {
   return (
     <div className="rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card)/0.8)] p-4 shadow-sm dark:bg-[hsl(var(--ci-card)/0.8)]">
       <div className="grid gap-3 lg:grid-cols-4">
@@ -140,8 +177,8 @@ function StepRail({ step }) {
   );
 }
 
-function ClassIcon({ name, color = '#2563EB' }) {
-  const icons = {
+function ClassIcon({ name, color = '#2563EB' }: { name: string; color?: string }) {
+  const icons: Partial<Record<string, IconComponent>> = {
     users: Users,
     graduation: GraduationCap,
     book: BookOpen,
@@ -163,7 +200,12 @@ function ClassIcon({ name, color = '#2563EB' }) {
   );
 }
 
-function Preview({ form, selectedTeachers, selectedStudents, assignments }) {
+function Preview({ form, selectedTeachers, selectedStudents, assignments }: {
+  form: ClassForm;
+  selectedTeachers: StaffSummaryDto[];
+  selectedStudents: StudentSummaryDto[];
+  assignments: CourseAssignment[];
+}) {
   const advisor = selectedTeachers.find((item) => item.id === form.advisorTeacherId);
   return (
     <div className="rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card)/0.8)] p-5 text-foreground shadow-sm">
@@ -176,14 +218,14 @@ function Preview({ form, selectedTeachers, selectedStudents, assignments }) {
         <h2 className="mt-4 text-3xl font-black">{form.name || 'Yeni Sınıf'}</h2>
       </div>
       <div className="space-y-3 text-sm">
-        {[
+        {([
           ['Seviye', form.grade],
           ['Şube', form.section],
           ['Dönem', form.academicYear],
           ['Danışman', advisor?.fullName || 'Atanmadı'],
           ['Öğrenci Sayısı', selectedStudents.length],
           ['Ders Sayısı', assignments.length],
-        ].map(([label, value]) => (
+        ] satisfies ReadonlyArray<readonly [string, string | number]>).map(([label, value]) => (
           <div key={label} className="flex justify-between gap-4 border-b border-foreground/5 pb-2 last:border-b-0">
             <span className="text-slate-400">{label}</span>
             <b className="text-right">{value || '-'}</b>
@@ -203,24 +245,24 @@ export default function Classes() {
   const [error, setError] = useState('');
   const [step, setStep] = useState(0);
   const [viewOpen, setViewOpen] = useState(false);
-  const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [courses, setCourses] = useState([]);
-  const [classConfigs, setClassConfigs] = useState([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [teachers, setTeachers] = useState<StaffSummaryDto[]>([]);
+  const [courses, setCourses] = useState<CourseDto[]>([]);
+  const [classConfigs, setClassConfigs] = useState<ClassConfig[]>([]);
   const [teacherQuery, setTeacherQuery] = useState('');
   const [studentQuery, setStudentQuery] = useState('');
   const [managementStudentQuery, setManagementStudentQuery] = useState('');
   const [teacherBranchFilter, setTeacherBranchFilter] = useState('all');
   const [studentFilter, setStudentFilter] = useState('all');
   const [managementClassName, setManagementClassName] = useState('');
-  const [managementStudentIds, setManagementStudentIds] = useState([]);
+  const [managementStudentIds, setManagementStudentIds] = useState<string[]>([]);
   const [managementAdvisorId, setManagementAdvisorId] = useState('');
   const [managementSaving, setManagementSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTargetName, setDeleteTargetName] = useState('');
   const [deleteTransferTo, setDeleteTransferTo] = useState(DEACTIVATE_OPTION);
   const [deleting, setDeleting] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ClassForm>({
     name: '',
     code: '',
     institutionUnit: 'Ortaokul',
@@ -232,10 +274,10 @@ export default function Classes() {
     themeColor: '#2563EB',
     icon: 'users',
   });
-  const [selectedTeacherIds, setSelectedTeacherIds] = useState([]);
-  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [modules, setModules] = useState({
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [assignments, setAssignments] = useState<CourseAssignment[]>([]);
+  const [modules, setModules] = useState<ClassModuleSettingsRequest>({
     attendance: true,
     grades: true,
     liveLessons: true,
@@ -257,24 +299,24 @@ export default function Classes() {
       setStudents(Array.isArray(studentRows) ? studentRows : []);
       setTeachers(Array.isArray(teacherRows) ? teacherRows : []);
       setCourses(Array.isArray(courseRows) ? courseRows : []);
-      setClassConfigs((configs || []).map(decodeClassConfig).filter(Boolean));
+      setClassConfigs(parseClassConfigs(configs));
 
-      const firstCourses = (courseRows || []).slice(0, 4).map((course) => ({
-        courseName: course.name || course.title || course.subject || 'Ders',
+      const firstCourses = (courseRows || []).slice(0, 4).map((course): CourseAssignment => ({
+        courseName: course.name || 'Ders',
         teacherId: null,
         weeklyHours: 4,
         isRequired: true,
       }));
       setAssignments((prev) => (prev.length > 0 ? prev : firstCourses));
     } catch (err) {
-      setError(err.message || 'Sınıf verileri alınamadı.');
+      setError(errorMessage(err, 'Sınıf verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   useEffect(() => {
@@ -287,9 +329,9 @@ export default function Classes() {
   const selectedTeachers = useMemo(() => teachers.filter((item) => selectedTeacherIds.includes(item.id)), [selectedTeacherIds, teachers]);
   const selectedStudents = useMemo(() => students.filter((item) => selectedStudentIds.includes(item.id)), [selectedStudentIds, students]);
   const classNames = useMemo(() => {
-    const names = new Set();
+    const names = new Set<string>();
     classConfigs.forEach((item) => {
-      if (item?.name) names.add(item.name);
+      if (item.name) names.add(item.name);
     });
     students.forEach((student) => {
       if (student.className && !normalize(student.className).includes('bekleyen')) names.add(student.className);
@@ -318,8 +360,8 @@ export default function Classes() {
       name: item.name,
       code: item.code,
       studentCount: students.filter((student) => student.className === item.name && !isUserPassive(student.status)).length,
-      teacherCount: item.teachers?.length || 0,
-      courseCount: item.courses?.length || 0,
+      teacherCount: item.teachers.length,
+      courseCount: item.courses.length,
       color: item.themeColor || '#2563EB',
       institutionUnit: item.institutionUnit || '',
       grade: item.grade || '',
@@ -327,7 +369,7 @@ export default function Classes() {
       academicYear: item.academicYear || '',
       advisorName: advisor?.fullName || '',
       description: item.description || '',
-      courses: Array.isArray(item.courses) ? item.courses : [],
+      courses: item.courses,
     };
   }), [classConfigs, students, teachers]);
 
@@ -344,7 +386,7 @@ export default function Classes() {
       ...existingSummary.map((item) => item.name),
       ...students.map((student) => student.className),
     ];
-    const unique = new Map();
+    const unique = new Map<string, string>();
     for (const name of names) {
       const clean = String(name || '').trim();
       if (!clean || normalize(clean) === normalize(deleteClassName)) continue;
@@ -379,11 +421,11 @@ export default function Classes() {
     if (!managementClassName || !classNames.some((item) => normalize(item) === normalize(managementClassName))) {
       const requestedClass = searchParams.get('manage');
       const requestedMatch = classNames.find((item) => normalize(item) === normalize(requestedClass));
-      setManagementClassName(requestedMatch || classNames[0]);
+      setManagementClassName(requestedMatch || classNames[0] || '');
     }
   }, [classNames, managementClassName, searchParams]);
 
-  const openClassDetail = (className) => {
+  const openClassDetail = (className: string) => {
     setViewOpen(false);
     navigate(`/classes/${encodeURIComponent(className)}`);
   };
@@ -401,7 +443,7 @@ export default function Classes() {
     setManagementAdvisorId(advisor?.id || '');
   }, [managementClassName, students, teachers]);
 
-  const updateForm = (key, value) => {
+  const updateForm = (key: keyof ClassForm, value: string) => {
     setForm((prev) => ({
       ...prev,
       [key]: value,
@@ -409,19 +451,19 @@ export default function Classes() {
     }));
   };
 
-  const toggleTeacher = (teacher) => {
+  const toggleTeacher = (teacher: StaffSummaryDto) => {
     setSelectedTeacherIds((prev) => (
       prev.includes(teacher.id) ? prev.filter((id) => id !== teacher.id) : [...prev, teacher.id]
     ));
   };
 
-  const toggleStudent = (student) => {
+  const toggleStudent = (student: StudentSummaryDto) => {
     setSelectedStudentIds((prev) => (
       prev.includes(student.id) ? prev.filter((id) => id !== student.id) : [...prev, student.id]
     ));
   };
 
-  const toggleManagementStudent = (student) => {
+  const toggleManagementStudent = (student: StudentSummaryDto) => {
     setManagementStudentIds((prev) => (
       prev.includes(student.id) ? prev.filter((id) => id !== student.id) : [...prev, student.id]
     ));
@@ -440,11 +482,11 @@ export default function Classes() {
       });
       toast({
         title: 'Sınıf atamaları güncellendi',
-        description: `${result.name || managementClassName} için ${result.studentCount ?? managementStudentIds.length} öğrenci kaydedildi.`,
+        description: `${result?.name || managementClassName} için ${result?.studentCount ?? managementStudentIds.length} öğrenci kaydedildi.`,
       });
       await load();
     } catch (err) {
-      toast({ title: 'Atamalar kaydedilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Atamalar kaydedilemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setManagementSaving(false);
     }
@@ -460,37 +502,37 @@ export default function Classes() {
       toast({
         title: 'Sınıf silindi',
         description: transferTo
-          ? `${result.transferredStudentCount || 0} öğrenci ${result.transferredTo || transferTo} sınıfına taşındı.`
-          : `${result.deactivatedStudentCount || 0} öğrenci pasife alındı; aktifleştirirken yeni sınıf seçilecek.`,
+          ? `${result?.transferredStudentCount || 0} öğrenci ${result?.transferredTo || transferTo} sınıfına taşındı.`
+          : `${result?.deactivatedStudentCount || 0} öğrenci pasife alındı; aktifleştirirken yeni sınıf seçilecek.`,
       });
       setDeleteDialogOpen(false);
       setDeleteTargetName('');
       setManagementClassName('');
       await load();
     } catch (err) {
-      toast({ title: 'Sınıf silinemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Sınıf silinemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setDeleting(false);
     }
   };
 
-  const openDeleteDialog = (className) => {
+  const openDeleteDialog = (className: string) => {
     setDeleteTargetName(className);
     setDeleteTransferTo(DEACTIVATE_OPTION);
     setDeleteDialogOpen(true);
   };
 
   const addCourse = () => {
-    const unused = courses.find((course) => !assignments.some((item) => item.courseName === (course.name || course.title || course.subject)));
+    const unused = courses.find((course) => !assignments.some((item) => item.courseName === course.name));
     setAssignments((prev) => [...prev, {
-      courseName: unused?.name || unused?.title || unused?.subject || '',
+      courseName: unused?.name || '',
       teacherId: selectedTeacherIds[0] || null,
       weeklyHours: 2,
       isRequired: true,
     }]);
   };
 
-  const updateAssignment = (index, key, value) => {
+  const updateAssignment = <K extends keyof CourseAssignment>(index: number, key: K, value: CourseAssignment[K]) => {
     setAssignments((prev) => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)));
   };
 
@@ -531,14 +573,14 @@ export default function Classes() {
         studentIds: selectedStudentIds,
         modules,
       });
-      toast({ title: 'Sınıf oluşturuldu', description: `${result.name} sınıfı canlı veritabanına kaydedildi.` });
+      toast({ title: 'Sınıf oluşturuldu', description: `${result?.name || form.name} sınıfı canlı veritabanına kaydedildi.` });
       setStep(0);
       setForm((prev) => ({ ...prev, name: '', code: generateCode('', prev.academicYear), description: '' }));
       setSelectedTeacherIds([]);
       setSelectedStudentIds([]);
       await load();
     } catch (err) {
-      toast({ title: 'Sınıf oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Sınıf oluşturulamadı', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -773,14 +815,7 @@ export default function Classes() {
                 <div className="grid grid-cols-6 gap-2 sm:grid-cols-10">{iconOptions.map((icon) => <button key={icon} type="button" onClick={() => updateForm('icon', icon)} className={`flex h-12 items-center justify-center rounded-xl border ${form.icon === icon ? 'border-blue-400 bg-blue-500/20' : 'border-foreground/10 bg-foreground/5'}`}><ClassIcon name={icon} color={form.themeColor} /></button>)}</div>
               </Field>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {Object.entries({
-                  attendance: 'Devamsızlık Takibi',
-                  grades: 'Not Sistemi',
-                  liveLessons: 'Canlı Dersler',
-                  homework: 'Ödev Sistemi',
-                  study: 'Etüt Sistemi',
-                  messaging: 'Mesajlaşma',
-                }).map(([key, label]) => (
+                {MODULE_LABELS.map(([key, label]) => (
                   <button key={key} type="button" onClick={() => setModules((prev) => ({ ...prev, [key]: !prev[key] }))} className={`flex items-center justify-between rounded-xl border p-4 ${modules[key] ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100' : 'border-foreground/10 bg-foreground/5 text-slate-300'}`}>
                     <span>{label}</span><span className={`h-5 w-9 rounded-full ${modules[key] ? 'bg-emerald-500' : 'bg-slate-700'}`} />
                   </button>
@@ -792,7 +827,7 @@ export default function Classes() {
           <div className="mt-8 flex items-center justify-between">
             <Button variant="outline" className="rounded-xl border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white" disabled={step === 0} onClick={() => setStep((prev) => Math.max(0, prev - 1))}><ArrowLeft className="mr-2 h-4 w-4" /> Geri</Button>
             {step < steps.length - 1 ? (
-              <Button className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={nextStep}>İleri: {steps[step + 1][1]} <ChevronRight className="ml-2 h-4 w-4" /></Button>
+              <Button className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={nextStep}>İleri: {steps[step + 1]?.[1]} <ChevronRight className="ml-2 h-4 w-4" /></Button>
             ) : (
               <FeatureGate module="classes" action="create"><Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={submit} disabled={saving}><Save className="mr-2 h-4 w-4" /> {saving ? 'Kaydediliyor...' : 'Sınıfı Oluştur'}</Button></FeatureGate>
             )}
@@ -856,8 +891,8 @@ export default function Classes() {
                 {item.courses.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {item.courses.map((course, index) => (
-                      <Badge key={`${course.courseName || course}-${index}`} variant="outline" className="text-xs">
-                        {course.courseName || course.name || 'Ders'}
+                      <Badge key={`${course.courseName}-${index}`} variant="outline" className="text-xs">
+                        {course.courseName || 'Ders'}
                       </Badge>
                     ))}
                   </div>
@@ -915,7 +950,7 @@ export default function Classes() {
   );
 }
 
-function Detail({ label, value }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-xl border bg-muted/30 p-2.5">
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -924,7 +959,7 @@ function Detail({ label, value }) {
   );
 }
 
-function Field({ label, required, className = '', children }) {
+function Field({ label, required = false, className = '', children }: { label: string; required?: boolean; className?: string; children?: ReactNode }) {
   return (
     <label className={`block ${className}`}>
       <span className="mb-2 block text-sm text-slate-300">{label} {required ? <b className="text-red-400">*</b> : null}</span>
@@ -933,7 +968,7 @@ function Field({ label, required, className = '', children }) {
   );
 }
 
-function SelectedPill({ label, sub, onRemove }) {
+function SelectedPill({ label, sub, onRemove }: { label: string; sub: string; onRemove: () => void }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border border-foreground/10 bg-foreground/5 p-3">
       <div className="flex min-w-0 items-center gap-3">
