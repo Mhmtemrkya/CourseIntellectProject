@@ -146,12 +146,19 @@ class _SummaryCardsState extends State<SummaryCards> {
       largeTablet: 4,
     );
 
-    return LayoutBuilder(builder: (context, constraints) {
-      final width = (constraints.maxWidth - (crossAxisCount - 1) * 12) / crossAxisCount;
-      return Wrap(spacing: 12, runSpacing: 12, children: [
-        for (final card in cards) SizedBox(width: width, child: card),
-      ]);
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width =
+            (constraints.maxWidth - (crossAxisCount - 1) * 12) / crossAxisCount;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final card in cards) SizedBox(width: width, child: card),
+          ],
+        );
+      },
+    );
   }
 
   Widget _card(
@@ -163,6 +170,12 @@ class _SummaryCardsState extends State<SummaryCards> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return VividMetricCard(title: title, value: value, caption: hint.tr, icon: icon, onTap: onTap);
+    return VividMetricCard(
+      title: title,
+      value: value,
+      caption: hint.tr,
+      icon: icon,
+      onTap: onTap,
+    );
   }
 }

@@ -15,33 +15,71 @@ class ResourceTheme {
 ResourceTheme resourceTheme(String subject) {
   final normalized = subject.toLowerCase();
   if (normalized.contains('mat')) {
-    return const ResourceTheme(Color(0xFF4DA3FF), '∑', 'FORMÜL • PROBLEM • MANTIK');
+    return const ResourceTheme(
+      Color(0xFF4DA3FF),
+      '∑',
+      'FORMÜL • PROBLEM • MANTIK',
+    );
   }
   if (normalized.contains('fiz')) {
-    return const ResourceTheme(Color(0xFF7B61FF), 'F', 'HAREKET • ENERJİ • KUVVET');
+    return const ResourceTheme(
+      Color(0xFF7B61FF),
+      'F',
+      'HAREKET • ENERJİ • KUVVET',
+    );
   }
   if (normalized.contains('kim')) {
-    return const ResourceTheme(Color(0xFFFF9D2E), 'H₂O', 'TEPKİME • MADDE • BAĞ');
+    return const ResourceTheme(
+      Color(0xFFFF9D2E),
+      'H₂O',
+      'TEPKİME • MADDE • BAĞ',
+    );
   }
   if (normalized.contains('biy')) {
-    return const ResourceTheme(Color(0xFF30D158), 'DNA', 'CANLI • HÜCRE • SİSTEM');
+    return const ResourceTheme(
+      Color(0xFF30D158),
+      'DNA',
+      'CANLI • HÜCRE • SİSTEM',
+    );
   }
-  if (normalized.contains('türk') || normalized.contains('turk') || normalized.contains('edeb')) {
-    return const ResourceTheme(Color(0xFFFF5E7A), 'Aa', 'DİL • ANLAM • PARAGRAF');
+  if (normalized.contains('türk') ||
+      normalized.contains('turk') ||
+      normalized.contains('edeb')) {
+    return const ResourceTheme(
+      Color(0xFFFF5E7A),
+      'Aa',
+      'DİL • ANLAM • PARAGRAF',
+    );
   }
   if (normalized.contains('ing') || normalized.contains('eng')) {
-    return const ResourceTheme(Color(0xFF22D3EE), 'EN', 'VOCAB • GRAMMAR • READING');
+    return const ResourceTheme(
+      Color(0xFF22D3EE),
+      'EN',
+      'VOCAB • GRAMMAR • READING',
+    );
   }
   if (normalized.contains('sosyal') ||
       normalized.contains('tarih') ||
       normalized.contains('coğ') ||
       normalized.contains('cog')) {
-    return const ResourceTheme(Color(0xFFFBBF24), 'TR', 'ZAMAN • MEKAN • TOPLUM');
+    return const ResourceTheme(
+      Color(0xFFFBBF24),
+      'TR',
+      'ZAMAN • MEKAN • TOPLUM',
+    );
   }
   if (normalized.contains('fen')) {
-    return const ResourceTheme(Color(0xFF34D399), 'Fe', 'DENEY • GÖZLEM • KEŞİF');
+    return const ResourceTheme(
+      Color(0xFF34D399),
+      'Fe',
+      'DENEY • GÖZLEM • KEŞİF',
+    );
   }
-  return const ResourceTheme(Color(0xFFFF9D2E), '✦', 'PRATİK • TEKRAR • BAŞARI');
+  return const ResourceTheme(
+    Color(0xFFFF9D2E),
+    '✦',
+    'PRATİK • TEKRAR • BAŞARI',
+  );
 }
 
 class PremiumResourceCard extends StatelessWidget {
@@ -83,10 +121,12 @@ class PremiumResourceCard extends StatelessWidget {
     final hue = theme.hue;
 
     final Color titleColor = dark ? Colors.white : const Color(0xFF0F172A);
-    final Color mutedColor =
-        dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final Color faintColor =
-        dark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+    final Color mutedColor = dark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
+    final Color faintColor = dark
+        ? const Color(0xFF64748B)
+        : const Color(0xFF94A3B8);
     final Color tileColor = dark
         ? Colors.white.withValues(alpha: 0.04)
         : const Color(0xFFF6F8FC);
@@ -458,10 +498,7 @@ class CardPrimaryButton extends StatelessWidget {
             ],
             Text(
               label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
             ),
           ],
         ),

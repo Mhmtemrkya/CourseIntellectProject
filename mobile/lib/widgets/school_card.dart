@@ -3,9 +3,20 @@ import 'card_system.dart';
 
 /// Content-card counterpart to VividMetricCard. Keeps controls and body readable.
 class SchoolCard extends StatelessWidget {
-  const SchoolCard({super.key, this.child, this.title, this.color, this.shadowColor,
-    this.surfaceTintColor, this.elevation, this.shape, this.borderOnForeground = true,
-    this.margin, this.clipBehavior, this.semanticContainer = true});
+  const SchoolCard({
+    super.key,
+    this.child,
+    this.title,
+    this.color,
+    this.shadowColor,
+    this.surfaceTintColor,
+    this.elevation,
+    this.shape,
+    this.borderOnForeground = true,
+    this.margin,
+    this.clipBehavior,
+    this.semanticContainer = true,
+  });
   final Widget? child;
   final String? title;
   final Color? color;
@@ -30,7 +41,10 @@ class SchoolCard extends StatelessWidget {
     clipBehavior: clipBehavior ?? Clip.antiAlias,
     semanticContainer: semanticContainer,
     child: DecoratedBox(
-      decoration: contentCardDecoration(context, title: title ?? cardTitleOf(child)),
+      decoration: contentCardDecoration(
+        context,
+        title: title ?? cardTitleOf(child),
+      ),
       child: child,
     ),
   );

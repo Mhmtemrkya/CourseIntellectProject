@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { AnimatedValue } from './premium-dashboard';
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
@@ -40,9 +40,10 @@ export interface KpiCardProps {
 }
 
 export function KpiCard({ label, value, caption, icon: Icon, tone = 'brand', onClick, testId, className, containerClassName }: KpiCardProps) {
+  const reducedMotion = useReducedMotion();
   const Wrapper = onClick ? 'button' : 'div';
   return (
-    <motion.div variants={kpiItemVariants} className={containerClassName}>
+    <motion.div variants={reducedMotion ? undefined : kpiItemVariants} className={containerClassName}>
       <Wrapper
         type={onClick ? 'button' : undefined}
         onClick={onClick}

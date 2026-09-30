@@ -9,11 +9,11 @@ type Metric = { label: string; value: string | number; caption: string; icon: Ic
 const finance: Metric[] = [
   { label: 'Tahsilat', value: '0 TL', caption: '0 işlem', icon: CreditCard, tone: 'emerald' },
   { label: 'Geciken Tutar', value: '14.750 TL', caption: '2 kayıt · Takip gerekli', icon: AlertCircle, tone: 'rose' },
-  { label: 'Gider', value: '0 TL', caption: 'Gider · maaş · fatura', icon: Wallet, tone: 'blue' },
-  { label: 'Net Akış', value: '+0 TL', caption: 'Dönem pozitif', icon: TrendingUp, tone: 'brand' },
+  { label: 'Gider', value: '0 TL', caption: 'Gider · maaş · fatura', icon: Wallet, tone: 'rose' },
+  { label: 'Net Akış', value: '+0 TL', caption: 'Dönem pozitif', icon: TrendingUp, tone: 'blue' },
   { label: 'Tahsilat Oranı', value: '%0', caption: 'Hedef 14.750 TL', icon: Target, tone: 'violet' },
-  { label: 'İade', value: '0 TL', caption: 'Dönem içindeki iadeler', icon: Receipt, tone: 'amber' },
-  { label: 'Geciken Kayıt', value: 2, caption: 'Vadesi geçmiş ödeme', icon: CalendarDays, tone: 'cyan' },
+  { label: 'İade', value: '0 TL', caption: 'Dönem içindeki iadeler', icon: Receipt, tone: 'violet' },
+  { label: 'Geciken Kayıt', value: 2, caption: 'Vadesi geçmiş ödeme', icon: CalendarDays, tone: 'amber' },
   { label: 'Bekleyen Peşinat', value: 0, caption: 'Toplam 0 TL', icon: Banknote, tone: 'violet' },
 ];
 const examples: Record<string, Metric[]> = {
@@ -65,7 +65,14 @@ export function CardDesignPreview() {
   useEffect(() => { document.getElementById('sa-boot')?.remove(); }, []);
   const [role, setRole] = useState('Muhasebe');
   const [dark, setDark] = useState(true);
-  return <div className={dark ? 'dark' : 'light'}>
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = root.className;
+    root.classList.remove('light', 'dark');
+    root.classList.add(dark ? 'dark' : 'light');
+    return () => { root.className = previous; };
+  }, [dark]);
+  return <div className={`card-design-preview ${dark ? 'dark' : 'light'}`}>
     <main className="ci-page min-h-screen bg-background p-5 text-foreground sm:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
@@ -73,7 +80,7 @@ export function CardDesignPreview() {
           <div className="flex gap-3"><select aria-label="Rol" value={role} onChange={(event) => setRole(event.target.value)} className="rounded-xl border bg-background px-3 py-2">{Object.keys(examples).map((item) => <option key={item}>{item}</option>)}</select><button className="rounded-xl border px-3 py-2" onClick={() => setDark(!dark)}>{dark ? 'Açık tema' : 'Koyu tema'}</button></div>
         </header>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-          {examples[role]?.map((metric, index) => <KpiCard key={`${role}-${metric.label}`} {...metric} containerClassName={index < 2 ? 'lg:col-span-3 min-w-0' : 'lg:col-span-2 min-w-0'} className={index < 2 ? 'min-h-[210px] justify-between' : 'min-h-[174px] justify-between'} />)}
+          {examples[role]?.map((metric, index) => <KpiCard key={`${role}-${metric.label}`} {...metric} containerClassName={index < 2 ? 'lg:col-span-3 min-w-0' : 'lg:col-span-2 min-w-0'} className={index < 2 ? 'ci-metric-featured min-h-[210px] justify-between' : 'min-h-[174px] justify-between'} />)}
         </div>
         <Card><CardHeader><CardTitle>{role === 'Muhasebe' ? 'Tahsilat Kayıtları' : 'Günlük İşlemler'}</CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">Bu ekran temsili verilerle ortak bileşenleri gösterir. Liste ve form alanları daha sakin renk vurguları kullanır.</p></CardContent></Card>
       </div>

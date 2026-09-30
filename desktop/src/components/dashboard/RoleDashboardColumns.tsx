@@ -61,7 +61,7 @@ export default function RoleDashboardColumns({ groups = [], navigate, testId = '
               icon={card.icon || card.Icon}
               tone={card.tone}
               containerClassName={index === 0 && group.key !== 'collection' ? 'h-full min-w-0 lg:col-span-2' : 'h-full min-w-0'}
-              className="min-h-[172px] justify-between"
+              className={index === 0 && group.key !== 'collection' ? 'ci-metric-featured min-h-[172px] justify-between' : 'min-h-[172px] justify-between'}
               onClick={card.onClick || (card.path && navigate ? () => navigate(card.path ?? '') : undefined)}
             />
           ))}

@@ -2,8 +2,8 @@
 [data-card-tone] { --tile-start: 232 74% 49%; --tile-end: 247 60% 35%; --tile-ink: 0 0% 100%; --tile-accent: 232 85% 65%; }
 [data-card-tone="brand"] { --tile-start: 28 94% 63%; --tile-end: 17 92% 57%; --tile-ink: 222 63% 13%; --tile-accent: 28 94% 55%; }
 [data-card-tone="blue"] { --tile-start: 217 90% 43%; --tile-end: 235 79% 34%; --tile-accent: 217 90% 60%; }
-[data-card-tone="emerald"] { --tile-start: 168 85% 30%; --tile-end: 177 79% 22%; --tile-accent: 168 76% 44%; }
-[data-card-tone="rose"] { --tile-start: 348 80% 44%; --tile-end: 14 85% 37%; --tile-accent: 348 85% 62%; }
+[data-card-tone="emerald"] { --tile-start: 168 85% 25%; --tile-end: 177 79% 19%; --tile-accent: 168 76% 44%; }
+[data-card-tone="rose"] { --tile-start: 348 80% 39%; --tile-end: 14 85% 32%; --tile-accent: 348 85% 62%; }
 [data-card-tone="violet"] { --tile-start: 266 75% 49%; --tile-end: 283 56% 34%; --tile-accent: 266 88% 68%; }
 [data-card-tone="amber"] { --tile-start: 41 100% 62%; --tile-end: 28 97% 55%; --tile-ink: 222 63% 13%; --tile-accent: 35 95% 55%; }
 [data-card-tone="cyan"] { --tile-start: 179 76% 58%; --tile-end: 192 86% 51%; --tile-ink: 222 63% 13%; --tile-accent: 187 86% 48%; }
@@ -61,7 +61,7 @@
     color: hsl(var(--tile-ink)) !important;
     overflow-wrap: anywhere;
 }
-.ci-color-metric .ci-metric-caption { font-size: 12px; line-height: 1.5; color: hsl(var(--tile-ink) / .85); margin-top: 5px; overflow-wrap: anywhere; }
+.ci-color-metric .ci-metric-caption { font-size: 12px; line-height: 1.5; color: hsl(var(--tile-ink) / .95); margin-top: 5px; overflow-wrap: anywhere; }
 .ci-color-metric .ci-metric-body { padding-right: 34px; }
 .ci-color-metric .ci-metric-relief {
     position: absolute;
@@ -77,9 +77,12 @@
 }
 .ci-color-metric:focus-visible { outline: 3px solid hsl(var(--tile-accent)); outline-offset: 4px; }
 .ci-color-metric.ci-metric-card:hover { transform: translateY(-3px); box-shadow: inset 0 1px 0 hsl(0 0% 100% / .22), 0 18px 35px hsl(var(--tile-end) / .26) !important; }
-.ci-color-metric .text-muted-foreground { color: hsl(var(--tile-ink) / .85) !important; }
+.ci-color-metric .text-muted-foreground { color: hsl(var(--tile-ink) / .95) !important; }
 .ci-color-metric .text-foreground { color: hsl(var(--tile-ink)) !important; }
+.ci-color-metric :is(.text-white, .text-slate-300, .text-slate-400) { color: hsl(var(--tile-ink)) !important; }
 .ci-color-metric [class*="text-3xl"] { overflow-wrap: anywhere; }
+.ci-page .ci-color-metric.ci-metric-featured .ci-metric-value { font-size: clamp(36px, 4vw, 54px) !important; }
+.card-design-preview .ci-page h1 { font-size: 26px !important; text-transform: none; color: hsl(var(--foreground)); letter-spacing: -.04em; }
 .ci-resource-card {
     border-radius: 24px !important;
     border-color: color-mix(in srgb, var(--hue), transparent 65%) !important;
@@ -91,6 +94,7 @@
 
 @media (max-width: 640px) {
     .ci-color-metric .ci-metric-value { font-size: 30px !important; }
+    .ci-page .ci-color-metric.ci-metric-featured .ci-metric-value { font-size: 34px !important; }
     .ci-color-metric .ci-metric-relief { width: 64px; height: 64px; }
 }
 @media (prefers-reduced-motion: reduce) {

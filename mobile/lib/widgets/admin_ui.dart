@@ -165,8 +165,12 @@ class AdminHeroMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(child: Padding(padding: const EdgeInsets.only(right: 10),
-      child: VividMetricCard(title: label, value: value, compact: true)));
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.only(right: 10),
+        child: VividMetricCard(title: label, value: value, compact: true),
+      ),
+    );
   }
 }
 
@@ -179,7 +183,6 @@ class AdminPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       width: double.infinity,
       margin: margin,

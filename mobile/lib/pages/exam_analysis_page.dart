@@ -70,28 +70,11 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
     IconData icon,
   ) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(title, style: Theme.of(context).textTheme.bodyMedium),
-          ],
-        ),
+      child: VividMetricCard(
+        title: title,
+        value: value,
+        icon: icon,
+        compact: true,
       ),
     );
   }
@@ -269,7 +252,8 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
                         const SizedBox(height: 16),
                         if (subjects.isEmpty)
                           Text(
-                            'Ders bazlı analiz için henüz sonuç kaydı bulunmuyor.'.tr,
+                            'Ders bazlı analiz için henüz sonuç kaydı bulunmuyor.'
+                                .tr,
                           )
                         else
                           ...subjects.asMap().entries.map((entry) {

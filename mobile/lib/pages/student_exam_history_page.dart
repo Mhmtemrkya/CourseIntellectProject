@@ -263,7 +263,8 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Bütün ders notlarını ve girdigin tüm deneme sonuçlarını tek merkezden ac.'.tr,
+            'Bütün ders notlarını ve girdigin tüm deneme sonuçlarını tek merkezden ac.'
+                .tr,
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -285,7 +286,9 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
   }
 
   Widget _heroMetric(String label, String value) {
-    return Expanded(child: VividMetricCard(title: label, value: value, compact: true));
+    return Expanded(
+      child: VividMetricCard(title: label, value: value, compact: true),
+    );
   }
 
   Widget _summaryCard(
@@ -295,38 +298,11 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
     required String subtitle,
     required Color color,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(height: 1.35),
-          ),
-        ],
-      ),
+    return VividMetricCard(
+      title: title,
+      value: value,
+      caption: subtitle,
+      compact: true,
     );
   }
 

@@ -23,9 +23,10 @@ export function cardText(node: React.ReactNode): string {
 export function cardTone(title: React.ReactNode, fallback: CardTone = 'brand'): CardTone {
   if (fallback !== 'brand') return fallback;
   const text = cardText(title).toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i');
-  if (/geciken kayit|randevu|takvim|bekleyen|yaklasan|hedef|menu|yemek/.test(text)) return 'amber';
+  if (/geciken kayit/.test(text)) return 'amber';
   if (/gecik|devamsiz|risk|uyari|hata|redd|iptal/.test(text)) return 'rose';
   if (/tahsilat orani|iade|pesinat|odev|sinav|rehber|gorusme|mesaj|bildirim/.test(text)) return 'violet';
+  if (/randevu|takvim|bekleyen|yaklasan|hedef|menu|yemek/.test(text)) return 'amber';
   if (/tahsilat|gelir|bakiye|tamam|basari|gelisim|onay|aktif/.test(text)) return 'emerald';
   if (/devam|yoklama|katilim|servis|ulasim/.test(text)) return 'cyan';
   if (/gider|net akis|ders|ogrenci|ogretmen|personel|kayit|sube|kurum|rapor|belge/.test(text)) return 'blue';

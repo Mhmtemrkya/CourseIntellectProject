@@ -1,5 +1,4 @@
 import 'card_system.dart';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -29,64 +28,26 @@ class ServiceGlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final colors = glowColors ?? const [serviceOrange, serviceBlue];
-    final baseColor = isDark ? const Color(0xFF0B1220) : Colors.white;
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.09)
-        : const Color(0xFFCBD5E1).withValues(alpha: 0.65);
-
-    final card = ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          width: double.infinity,
-          padding: padding,
-          decoration: BoxDecoration(
-            color: baseColor.withValues(alpha: isDark ? 0.74 : 0.88),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: borderColor),
-            gradient: LinearGradient(
-              colors: [
-                colors.first.withValues(alpha: isDark ? 0.18 : 0.10),
-                baseColor.withValues(alpha: isDark ? 0.84 : 0.96),
-                colors.last.withValues(alpha: isDark ? 0.10 : 0.06),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.26 : 0.08),
-                blurRadius: 30,
-                offset: const Offset(0, 18),
-              ),
-              BoxShadow(
-                color: colors.first.withValues(alpha: isDark ? 0.12 : 0.08),
-                blurRadius: 36,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
-    );
-
+    final colors = glowColors ?? const [serviceCyan, serviceBlue];
+    final radius = BorderRadius.circular(24);
     return Container(
       margin: margin,
-      child: onTap == null
-          ? card
-          : Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(28),
-                onTap: onTap,
-                child: card,
-              ),
-            ),
+      decoration: contentCardDecoration(
+        context,
+        title: cardTitleOf(child),
+        accent: colors.first,
+      ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: radius,
+            child: Padding(padding: padding, child: child),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -258,7 +219,12 @@ class ServiceHeroStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return VividMetricCard(title: label, value: value, icon: icon, compact: true);
+    return VividMetricCard(
+      title: label,
+      value: value,
+      icon: icon,
+      compact: true,
+    );
   }
 }
 

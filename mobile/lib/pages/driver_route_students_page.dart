@@ -176,9 +176,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
                   DropdownButtonFormField<DriverTodayRouteRecord>(
                     initialValue: _selectedRoute,
                     isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: 'Bugünkü rota'.tr,
-                    ),
+                    decoration: InputDecoration(labelText: 'Bugünkü rota'.tr),
                     items: _routes
                         .map(
                           (route) => DropdownMenuItem(
@@ -210,7 +208,8 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
                   ServiceSectionHeader(
                     title: 'Öğrenci Alım Listesi'.tr,
                     subtitle:
-                        'Durak sırasına göre yoklama alın ve veliye bildirim gönderin.'.tr,
+                        'Durak sırasına göre yoklama alın ve veliye bildirim gönderin.'
+                            .tr,
                     trailing: ServiceStatusPill(
                       label: '$_boardedCount / ${_students.length}',
                       color: serviceGreen,
@@ -344,7 +343,13 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
     required String value,
     required String detail,
   }) {
-    return VividMetricCard(title: label, value: value, compact: true, icon: icon);
+    return VividMetricCard(
+      title: label,
+      value: value,
+      caption: detail,
+      compact: true,
+      icon: icon,
+    );
   }
 
   Widget _routeControls() {

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cardTone } from "./card-palette";
 import { ArrowUpRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import type { IconComponent } from "@/types/ui";
@@ -63,9 +63,11 @@ function coerceNumber(value: unknown): number {
 }
 
 function useCountUp(target: number, duration = 900): number {
+  const reducedMotion = useReducedMotion();
   const [value, setValue] = React.useState(target);
   React.useEffect(() => {
     if (!Number.isFinite(target)) return undefined;
+    if (reducedMotion) { setValue(target); return undefined; }
     let raf = 0;
     const start = performance.now();
     const from = 0;
@@ -78,7 +80,7 @@ function useCountUp(target: number, duration = 900): number {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
+  }, [target, duration, reducedMotion]);
   return value;
 }
 
@@ -413,7 +415,7 @@ export function PremiumMetricCard({
       onClick={onClick}
       className={cn("group block h-full w-full text-left", onClick && "cursor-pointer")}
     >
-      <Card tone={cardTone(title, tone)} className={cn("ci-metric-card ci-color-metric h-full overflow-hidden border-foreground/10", className)}> 
+      <Card tone={cardTone(title, tone)} className={cn("ci-metric-card ci-color-metric h-full overflow-hidden border-foreground/10", className)}>
         <CardContent className="relative flex h-full min-h-[128px] flex-col justify-between p-4">
           {Icon ? <Icon className="ci-metric-relief" aria-hidden="true" /> : null}
           <div className="flex items-start justify-between gap-3">
