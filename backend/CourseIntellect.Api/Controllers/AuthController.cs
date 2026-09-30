@@ -60,6 +60,14 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
                 targetProduct = ex.TargetProduct,
             });
         }
+        catch (PublicDemoPasswordException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                code = "PUBLIC_DEMO_PASSWORD",
+                message = ex.Message,
+            });
+        }
     }
 
     [HttpPost("refresh")]
@@ -175,10 +183,31 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> PkceAuthorize([FromBody] PkceAuthorizeRequest request, CancellationToken cancellationToken)
     {
-        var result = await authService.PkceAuthorizeAsync(request, cancellationToken);
-        return result is null
-            ? Unauthorized(new { message = "Kimlik dogrulama basarisiz veya gecersiz istemci." })
-            : Ok(result);
+        try
+        {
+            var result = await authService.PkceAuthorizeAsync(request, cancellationToken);
+            return result is null
+                ? Unauthorized(new { message = "Kimlik dogrulama basarisiz veya gecersiz istemci." })
+                : Ok(result);
+        }
+        catch (AccountLockedException ex)
+        {
+            Response.Headers.RetryAfter = (ex.RetryAfterMinutes * 60).ToString();
+            return StatusCode(StatusCodes.Status429TooManyRequests, new
+            {
+                code = "ACCOUNT_LOCKED",
+                message = ex.Message,
+                retryAfterMinutes = ex.RetryAfterMinutes,
+            });
+        }
+        catch (PublicDemoPasswordException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                code = "PUBLIC_DEMO_PASSWORD",
+                message = ex.Message,
+            });
+        }
     }
 
     [HttpPost("pkce/token")]

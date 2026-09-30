@@ -240,6 +240,17 @@ class AuthApiService {
     if (response.statusCode == 403) {
       try {
         final decoded = jsonDecode(response.body);
+        // Herkese açık demo parolası canlıda reddedilir (PUBLIC_DEMO_PASSWORD).
+        if (decoded is Map<String, dynamic> &&
+            decoded['code']?.toString() == 'PUBLIC_DEMO_PASSWORD') {
+          final m = decoded['message']?.toString();
+          throw AuthApiException(
+            m != null && m.isNotEmpty
+                ? m
+                : 'Bu parola güvenlik nedeniyle kullanılamaz. Parolanızı sıfırlatın.',
+            code: 'PUBLIC_DEMO_PASSWORD',
+          );
+        }
         if (decoded is Map<String, dynamic> &&
             decoded['code']?.toString() == 'INSTITUTION_MOVED') {
           final m = decoded['message']?.toString();

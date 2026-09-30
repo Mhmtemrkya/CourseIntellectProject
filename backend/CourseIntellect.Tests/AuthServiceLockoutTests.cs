@@ -50,6 +50,42 @@ public sealed class AuthServiceLockoutTests : IDisposable
     }
 
     [Fact]
+    public async Task Login_RejectsPublicDemoPassword_UnlessExplicitlyAllowed()
+    {
+        await SeedUserAsync("kurum.admin", "KRM2026A");
+
+        // Depoda yazılı demo parolası: doğru olsa da reddedilir.
+        await Assert.ThrowsAsync<PublicDemoPasswordException>(
+            () => BuildService().LoginAsync(new LoginRequest("kurum.admin", "KRM2026A")));
+    }
+
+    [Fact]
+    public async Task PkceAuthorize_BlocksPassiveAccounts_AndRecordsFailures()
+    {
+        await SeedUserAsync("pasif", "correct-horse");
+        var user = db.Context.Users.Single(x => x.Username == "pasif");
+        user.Status = UserStatus.Passive;
+        await db.Context.SaveChangesAsync();
+
+        var request = new PkceAuthorizeRequest("pasif", "correct-horse", "desktop", "app://cb", "challenge", "S256");
+        Assert.Null(await BuildService().PkceAuthorizeAsync(request));
+        // Başarısız deneme kaydı tutulur (kilitleme bu kayıtlarla çalışır).
+        Assert.Contains(db.Context.LoginAttempts, x => x.Email == "pasif" && !x.Success);
+    }
+
+    [Fact]
+    public async Task PkceAuthorize_AppliesAccountLockout()
+    {
+        await SeedUserAsync("kilit", "correct-horse");
+        var service = BuildService(maxFailed: 2);
+        var wrong = new PkceAuthorizeRequest("kilit", "yanlis", "desktop", "app://cb", "challenge", "S256");
+        Assert.Null(await service.PkceAuthorizeAsync(wrong));
+        Assert.Null(await service.PkceAuthorizeAsync(wrong));
+        var right = wrong with { Password = "correct-horse" };
+        await Assert.ThrowsAsync<AccountLockedException>(() => service.PkceAuthorizeAsync(right));
+    }
+
+    [Fact]
     public async Task Login_LocksAccount_AfterThresholdFailures_EvenWithCorrectPassword()
     {
         await SeedUserAsync("ali", "correct-horse");

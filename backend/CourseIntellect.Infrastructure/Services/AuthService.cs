@@ -35,6 +35,25 @@ public sealed class AuthService(
     private readonly bool _subscriptionGateEnabled =
         bool.TryParse(configuration["Subscription:GateEnabled"], out var gate) && gate;
 
+    // Kaynak kodunda (herkese açık depo) ve demo belgelerinde yazılı parolalar.
+    // Bunlarla giriş, açıkça izin verilmedikçe (yalnız yerel geliştirme) REDDEDİLİR:
+    // canlıda bu parolalarla oluşturulmuş hesaplar herkesçe ele geçirilebilirdi.
+    private static readonly HashSet<string> PublicDemoPasswords = new(StringComparer.Ordinal)
+    {
+        "KRM2026A", "HYN2026A", "ALI2026A", "VLI2026A", "MHS2026A", "CRN2026B", "KRS2026A", "Parola123",
+    };
+
+    private readonly bool _allowPublicDemoPasswords =
+        bool.TryParse(configuration["Security:AllowPublicDemoPasswords"], out var allowDemo) && allowDemo;
+
+    private void RejectPublicDemoPassword(string password)
+    {
+        if (!_allowPublicDemoPasswords && PublicDemoPasswords.Contains(password))
+        {
+            throw new PublicDemoPasswordException();
+        }
+    }
+
     // Hesap kilitleme: bir kullanıcı adı için pencere içinde eşik kadar başarısız
     // deneme olursa geçici olarak kilitlenir. Son başarılı girişten sonrası sayılır.
     private readonly int _lockoutMaxFailed =
@@ -93,6 +112,8 @@ public sealed class AuthService(
             await RecordLoginAttemptAsync(login, user.Id, user.PrimaryRole.ToString(), false, user.TenantId, cancellationToken);
             return null;
         }
+
+        RejectPublicDemoPassword(request.Password);
 
         // Geçici parolanın ömrü (kurum onayında verilen parola için). Başarısız deneme
         // olarak KAYDEDİLMEZ: parola doğruydu, kilitleme bütçesini yemesi gerçek bir
@@ -709,11 +730,28 @@ public sealed class AuthService(
         if (request.CodeChallengeMethod != "S256")
             return null;
 
+        // Güvenlik: bu yol eskiden parola girişinin denetimlerini atlıyordu — pasif
+        // hesap girebiliyor, hesap kilidi uygulanmıyor, deneme kaydı tutulmuyordu.
+        var login = request.Username.Trim().ToLowerInvariant();
+        if (_lockoutMaxFailed > 0 && await IsLockedOutAsync(login, cancellationToken))
+        {
+            throw new AccountLockedException(_lockoutWindowMinutes);
+        }
+
         var user = await dbContext.Users
-            .FirstOrDefaultAsync(x => x.Username.ToLower() == request.Username.ToLower(), cancellationToken);
+            .FirstOrDefaultAsync(x => x.Username.ToLower() == login, cancellationToken);
+        if (user is not null && user.Status != UserStatus.Active)
+        {
+            user = null;
+        }
 
         if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
+        {
+            await RecordLoginAttemptAsync(login, user?.Id, user?.PrimaryRole.ToString() ?? string.Empty, false, user?.TenantId, cancellationToken);
             return null;
+        }
+
+        RejectPublicDemoPassword(request.Password);
 
         var code = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 

@@ -358,6 +358,10 @@ export async function loginWithBackend(username: string, password: string): Prom
     if (body?.code === "INSTITUTION_MOVED") {
       throw createCodedError(body.message || "Kurumunuz artık DrivingAsist uygulamasını kullanıyor.", "INSTITUTION_MOVED");
     }
+    // Herkese açık demo parolası canlıda reddedilir; kullanıcı parolasını sıfırlatmalı.
+    if (body?.code === "PUBLIC_DEMO_PASSWORD") {
+      throw createCodedError(body.message || "Bu parola güvenlik nedeniyle kullanılamaz. Parolanızı sıfırlatın.", "PUBLIC_DEMO_PASSWORD");
+    }
   }
 
   // Bakım modu — 503 + code MAINTENANCE_MODE

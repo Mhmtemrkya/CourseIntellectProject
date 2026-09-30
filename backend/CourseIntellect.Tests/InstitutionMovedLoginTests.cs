@@ -32,7 +32,11 @@ public sealed class InstitutionMovedLoginTests : IDisposable
         new LoginAttemptService(db.Context),
         new FakeSystem(),
         new HttpContextAccessor { HttpContext = null },
-        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build());
+        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            // Bu testler kurum yönlendirmesini sınar; test parolası demo listesinde.
+            ["Security:AllowPublicDemoPasswords"] = "true",
+        }).Build());
 
     private async Task SeedAsync()
     {
