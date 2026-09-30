@@ -13,7 +13,6 @@ class VeliFinancePage extends StatefulWidget {
 class _VeliFinancePageState extends State<VeliFinancePage> {
   List<Map<String, dynamic>> _accounts = [];
   bool _loading = true;
-  bool _busy = false;
   String? _error;
 
   @override
@@ -49,42 +48,14 @@ class _VeliFinancePageState extends State<VeliFinancePage> {
         _ => Colors.grey,
       };
 
-  Future<void> _pay(Map<String, dynamic> account) async {
-    final controller = TextEditingController(
-      text: (account['balance'] is num && account['balance'] > 0) ? '${account['balance']}' : '',
-    );
-    final amount = await showDialog<double>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Online Ödeme • ${account['studentName']}'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('Kalan borç: ${_tl(account['balance'])}'),
-          const SizedBox(height: 8),
-          TextField(controller: controller, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Tutar'), autofocus: true),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Vazgeç'.tr)),
-          ElevatedButton(
-            onPressed: () {
-              final v = double.tryParse(controller.text.trim());
-              Navigator.pop(ctx, (v != null && v > 0) ? v : null);
-            },
-            child: Text('Öde'.tr),
-          ),
-        ],
+  // Çevrimiçi ödeme altyapısı yok: sunucu veli adına tahsilat kaydını reddeder
+  // (ONLINE_PAYMENT_UNAVAILABLE). Veli ödemeyi kuruma yapar, tahsilatı personel girer.
+  void _explainOfflinePayment() {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        'Çevrimiçi ödeme henüz kullanılamıyor. Ödemenizi kuruma yapabilirsiniz; tahsilat kurum tarafından kaydedilir.'.tr,
       ),
-    );
-    if (amount == null) return;
-    setState(() => _busy = true);
-    try {
-      final res = await StudentFinanceApiService.instance.parentPay(studentName: '${account['studentName']}', amount: amount);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ödeme alındı • Makbuz: ${res['receiptNo'] ?? '-'}')));
-      await _load();
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ödeme yapılamadı: $e')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    ));
   }
 
   @override
@@ -123,9 +94,9 @@ class _VeliFinancePageState extends State<VeliFinancePage> {
               children: [
                 Expanded(child: Text('${account['studentName']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
                 FilledButton.icon(
-                  onPressed: (_busy || !hasBalance) ? null : () => _pay(account),
-                  icon: const Icon(Icons.credit_card, size: 16),
-                  label: Text(hasBalance ? 'Online Öde' : 'Borç Yok'),
+                  onPressed: hasBalance ? _explainOfflinePayment : null,
+                  icon: const Icon(Icons.info_outline, size: 16),
+                  label: Text(hasBalance ? 'Ödeme Bilgisi' : 'Borç Yok'),
                 ),
               ],
             ),

@@ -9,19 +9,15 @@ import {
   Download,
   FileText,
   LockKeyhole,
-  Loader2,
   ShieldCheck,
   Wallet,
 } from 'lucide-react';
-import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { fetchParentChildrenFinance, parentPay } from '../../lib/api/modules';
+import { fetchParentChildrenFinance } from '../../lib/api/modules';
 import {
   DonutChart,
   EmptyPanel,
@@ -46,11 +42,6 @@ import type { FinanceInstallmentDto, StudentFinanceAccountDto } from '../../type
 import type { IconComponent } from '../../types/ui';
 
 type InstallmentStatusMeta = readonly [label: string, tone: PillTone];
-
-interface PayTarget {
-  account: StudentFinanceAccountDto;
-  installment: FinanceInstallmentDto | null;
-}
 
 const PENDING_STATUS: InstallmentStatusMeta = ['Bekliyor', 'orange'];
 
@@ -77,9 +68,6 @@ export default function ParentPayments() {
   const { user } = useApp();
   const [accounts, setAccounts] = useState<StudentFinanceAccountDto[]>([]);
   const [selectedStudent, setSelectedStudent] = useState('');
-  const [payFor, setPayFor] = useState<PayTarget | null>(null);
-  const [amount, setAmount] = useState('');
-  const [paying, setPaying] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -118,36 +106,13 @@ export default function ParentPayments() {
     return { currency, netTotal, paidTotal, balance, overdue, nextDue };
   }, [accounts, selectedAccount?.currency]);
 
-  const openPay = (account: StudentFinanceAccountDto, installment: FinanceInstallmentDto | null = null) => {
-    const value = installment ? safeNumber(installment.remaining || installment.amount) : safeNumber(account?.balance);
-    setPayFor({ account, installment });
-    setAmount(value > 0 ? String(value) : '');
-  };
-
-  const submitPay = async () => {
-    const value = Number(amount);
-    if (!payFor?.account || !value || value <= 0) {
-      toast({ title: 'Geçerli bir ödeme tutarı girin.', variant: 'destructive' });
-      return;
-    }
-    try {
-      setPaying(true);
-      // Sunucu (ParentPaymentRequest) yalnız öğrenci adı + tutar + yöntem okur;
-      // taksit/sözleşme seçimi gönderilse de yok sayılıyordu, tahsilatı sunucu dağıtır.
-      const result = await parentPay({
-        studentName: payFor.account.studentName,
-        amount: value,
-        method: 'Online',
-      });
-      toast({ title: 'Ödeme alındı', description: `${formatMoney(value, payFor.account.currency)} • Makbuz: ${result?.receiptNo || '-'}` });
-      setPayFor(null);
-      setAmount('');
-      await load();
-    } catch (err) {
-      toast({ title: 'Ödeme yapılamadı', description: errorMessage(err), variant: 'destructive' });
-    } finally {
-      setPaying(false);
-    }
+  // Çevrimiçi ödeme altyapısı yok: sunucu veli adına tahsilat kaydını reddeder
+  // (ONLINE_PAYMENT_UNAVAILABLE). Veli ödemeyi kuruma yapar, tahsilatı personel girer.
+  const explainOfflinePayment = () => {
+    toast({
+      title: 'Çevrimiçi ödeme henüz kullanılamıyor',
+      description: 'Ödemenizi kuruma yapabilirsiniz; tahsilat kurum tarafından kaydedilir ve burada görünür.',
+    });
   };
 
   if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><LoadingDots /></div>;
@@ -161,11 +126,6 @@ export default function ParentPayments() {
         icon={<IconTile icon={CreditCard} tone="purple" className="h-14 w-14" />}
         actions={(
           <>
-            <FeatureGate module="payments" action="pay">
-              <Button className="h-11 rounded-[10px] bg-purple-600 px-8 font-black text-white hover:bg-purple-500" onClick={() => selectedAccount && openPay(selectedAccount)}>
-                <CreditCard className="mr-2 h-4 w-4" />Ödeme Yap
-              </Button>
-            </FeatureGate>
             <SmallButton onClick={() => document.getElementById('parent-payment-plan')?.scrollIntoView({ behavior: 'smooth' })}>
               <CalendarDays className="mr-2 h-4 w-4" />Ödeme Planı
             </SmallButton>
@@ -225,9 +185,7 @@ export default function ParentPayments() {
                               <Button variant="ghost" size="icon" className="rounded-[10px] border border-foreground/[0.08] bg-foreground/[0.04] text-slate-200" onClick={() => downloadReceiptLike(`taksit-${item.seqNo}.txt`, JSON.stringify(item, null, 2))}>
                                 <Download className="h-4 w-4" />
                               </Button>
-                            ) : (
-                              <Button className="h-9 rounded-[10px] bg-purple-600 px-5 font-black text-white hover:bg-purple-500" onClick={() => { if (selectedAccount) openPay(selectedAccount, item); }}>Öde</Button>
-                            )}
+                            ) : null}
                           </td>
                         </tr>
                       );
@@ -242,7 +200,7 @@ export default function ParentPayments() {
               <p className="mb-4 text-sm text-slate-400">Güvenli ödeme seçeneklerimizle kolayca ödeme yapın.</p>
               <div className="grid gap-4 md:grid-cols-3">
                 {([
-                  ['Kredi / Banka Kartı', 'Kredi veya banka kartınız ile peşin veya taksitli ödeme yapın.', CreditCard, 'purple', 'Ödeme Yap', () => selectedAccount && openPay(selectedAccount)],
+                  ['Kredi / Banka Kartı', 'Çevrimiçi kart ödemesi henüz kullanılamıyor; ödemenizi kuruma yapabilirsiniz.', CreditCard, 'purple', 'Bilgi Al', explainOfflinePayment],
                   ['Banka Havalesi', 'Banka hesabımıza havale/EFT ile ödeme yapabilirsiniz.', Building2, 'blue', 'Havale Bilgileri', () => toast({ title: 'Havale bilgileri', description: 'Kurum banka bilgileri finans birimi tarafından paylaşılır.' })],
                   ['Kayıtlı Kartlarım', 'Kayıtlı kartlarınızla hızlı ve güvenli ödeme yapın.', Wallet, 'green', 'Kartlarımı Yönet', () => toast({ title: 'Kart yönetimi', description: 'Kart saklama sağlayıcısı yapılandırıldığında aktif olur.' })],
                 ] satisfies ReadonlyArray<readonly [string, string, IconComponent, ParentTone, string, () => unknown]>).map(([title, text, Icon, tone, button, action]) => (
@@ -321,28 +279,6 @@ export default function ParentPayments() {
         </div>
       )}
 
-      <Dialog open={!!payFor} onOpenChange={(open) => { if (!open) setPayFor(null); }}>
-        <DialogContent className="border-foreground/[0.08] bg-[hsl(var(--ci-card))] text-foreground">
-          <DialogHeader>
-            <DialogTitle>Online Ödeme — {decodeText(payFor?.account?.studentName || '')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="rounded-[12px] border border-foreground/[0.08] bg-foreground/[0.04] p-4">
-              <p className="text-sm text-slate-400">Kalan borç</p>
-              <p className="mt-1 text-2xl font-black">{formatMoney(payFor?.installment?.remaining || payFor?.account?.balance, payFor?.account?.currency)}</p>
-            </div>
-            <Input type="number" min="0" inputMode="decimal" placeholder="Tutar" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-[10px] border-foreground/[0.08] bg-foreground/[0.04] text-white" />
-            <p className="text-xs text-slate-400">Ödeme seçili taksite, taksit seçilmediyse en eski açık bakiyeye işlenir; makbuz otomatik oluşur.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPayFor(null)} className="border-foreground/[0.08] bg-foreground/[0.04] text-white">Vazgeç</Button>
-            <Button onClick={submitPay} disabled={paying} className="bg-purple-600 text-white hover:bg-purple-500">
-              {paying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
-              Öde
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </motion.div>
   );
 }
