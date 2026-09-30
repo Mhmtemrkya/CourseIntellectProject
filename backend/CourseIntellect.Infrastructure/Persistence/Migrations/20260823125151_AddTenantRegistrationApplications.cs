@@ -89,7 +89,7 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     src.kvkk_consent_version,
                     src.kvkk_consent_at_utc,
                     src.created_at_utc,
-                    CASE WHEN src.status = 'pending' AND src.rn > 1 THEN now() ELSE src.rejected_at_utc END
+                    CASE WHEN src.status = 'pending' AND src.rn > 1 THEN now() ELSE src."RejectedAtUtc" END
                 FROM (
                     SELECT
                         tw.*,
