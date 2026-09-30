@@ -5,8 +5,8 @@
  */
 
 /**
- * `superadmin` backend rolünden eşlenmez; yalnız üst çubuktaki çalışma alanı
- * seçicisiyle (setUserRole) oturuma yazılabilir.
+ * `superadmin` platform yöneticisi bayrağından türetilir (lib/permissions);
+ * istemci tarafında rol değiştirme yoktur — rol yalnız sunucudan gelir.
  */
 export type DesktopRole =
   | 'superadmin'

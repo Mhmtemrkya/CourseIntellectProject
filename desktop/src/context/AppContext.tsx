@@ -23,7 +23,7 @@ import { setActiveBranchFilter, setActiveTenantContext } from '../lib/api/client
 import { resetEntitlementCache } from '../lib/entitlements';
 import { resetTenantFeatureCache } from '../lib/tenantFeatures';
 import { createCodedError } from '../lib/errors';
-import type { DesktopRole, DesktopSession, DesktopUser, LoginPayload } from '../types/session';
+import type { DesktopSession, DesktopUser, LoginPayload } from '../types/session';
 
 export interface DrawerOptions {
   size?: 'wide';
@@ -45,7 +45,6 @@ export interface AppContextValue {
   loginWithBrowser: () => Promise<DesktopUser>;
   logout: () => void;
   markPasswordChanged: () => void;
-  setUserRole: (role: DesktopRole) => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: Dispatch<SetStateAction<boolean>>;
   drawerOpen: boolean;
@@ -188,12 +187,6 @@ export function AppProvider({ children }: { children?: ReactNode }) {
     });
   }, []);
 
-  const setUserRole = useCallback((role: DesktopRole) => {
-    if (user) {
-      setUser({ ...user, role });
-    }
-  }, [user]);
-
   const openDrawer = (content: ReactNode, options: DrawerOptions | null = null): void => {
     setDrawerContent(content);
     setDrawerOptions(options);
@@ -219,7 +212,6 @@ export function AppProvider({ children }: { children?: ReactNode }) {
     loginWithBrowser,
     logout,
     markPasswordChanged,
-    setUserRole,
     sidebarCollapsed,
     setSidebarCollapsed,
     drawerOpen,
@@ -239,7 +231,6 @@ export function AppProvider({ children }: { children?: ReactNode }) {
     drawerContent,
     drawerOptions,
     commandPaletteOpen,
-    setUserRole,
     markPasswordChanged,
     login,
     loginWithBrowser,

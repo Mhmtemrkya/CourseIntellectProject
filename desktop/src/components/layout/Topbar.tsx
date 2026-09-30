@@ -10,11 +10,7 @@ import {
   Moon,
   Sun,
   Monitor,
-  Building2,
-  Shield,
-  Users,
   GraduationCap,
-  Wallet,
   HelpCircle,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
@@ -24,7 +20,6 @@ import { fetchMyScope, fetchNotifications, fetchOrgUnits } from "../../lib/api/m
 import { setActiveBranchFilter, setActiveTenantContext } from "../../lib/api/client";
 import type { MyScopeResponse, NotificationDto, OrgUnitDto } from "../../types/api/generated";
 import type { DesktopRole } from "../../types/session";
-import type { IconComponent } from "../../types/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,26 +93,22 @@ const pathLabels: Record<string, string> = {
   p: "Veli",
 };
 
-// Rehber (counselor) çalışma alanı seçicide listelenmez.
-const roleLabels: Partial<Record<DesktopRole, { label: string; icon: IconComponent; color: string }>> = {
-  admin: { label: "Yönetici", icon: Shield, color: "text-brand-primary" },
-  administrative: { label: "İdari Birim", icon: Building2, color: "text-teal-600" },
-  finance: { label: "Muhasebe", icon: Wallet, color: "text-green-600" },
-  superadmin: {
-    label: "Platform Admin",
-    icon: Building2,
-    color: "text-purple-600",
-  },
-  teacher: { label: "Öğretmen", icon: GraduationCap, color: "text-blue-600" },
-  student: { label: "Öğrenci", icon: Users, color: "text-orange-600" },
-  parent: { label: "Veli", icon: User, color: "text-teal-600" },
-  cafeteria: { label: "Yemekhaneci", icon: Building2, color: "text-orange-600" },
+
+// Kullanıcı menüsünde gösterilen rol adı (rol yalnız sunucudan gelir; değiştirilemez).
+const ROLE_LABELS: Partial<Record<DesktopRole, string>> = {
+  admin: "Yönetici",
+  administrative: "İdari Birim",
+  finance: "Muhasebe",
+  superadmin: "Platform Admin",
+  teacher: "Öğretmen",
+  counselor: "Rehber Öğretmen",
+  student: "Öğrenci",
+  parent: "Veli",
+  cafeteria: "Yemekhaneci",
 };
 
-const ROLE_ORDER: readonly DesktopRole[] = ['admin', 'administrative', 'finance', 'superadmin', 'teacher', 'student', 'parent', 'cafeteria'];
-
 export function Topbar() {
-  const { user, logout, setCommandPaletteOpen, setUserRole } = useApp();
+  const { user, logout, setCommandPaletteOpen } = useApp();
   const { startPageTour, startWelcomeTour, hasPageTour } = useOnboarding();
   const { theme, setTheme } = useTheme();
   const location = useLocation();
@@ -235,29 +226,11 @@ export function Topbar() {
     navigate("/login");
   };
 
-  const handleRoleSwitch = (role: DesktopRole) => {
-    setUserRole(role);
-    const roleHomePaths: Partial<Record<DesktopRole, string>> = {
-      admin: "/dashboard",
-      administrative: "/admin/operations",
-      finance: "/finance/dashboard",
-      superadmin: "/sa/dashboard",
-      teacher: "/t/dashboard",
-      student: "/s/dashboard",
-      parent: "/p/dashboard",
-      cafeteria: "/cafeteria/menu",
-    };
-    navigate(roleHomePaths[role] || "/dashboard");
-  };
-
   const getThemeIcon = () => {
     if (theme === "dark") return <Moon className="h-4 w-4" />;
     if (theme === "light") return <Sun className="h-4 w-4" />;
     return <Monitor className="h-4 w-4" />;
   };
-
-  const currentRole = roleLabels[user?.role || "admin"];
-  const CurrentRoleIcon = currentRole?.icon || Shield;
 
   return (
     <header
@@ -359,40 +332,6 @@ export function Topbar() {
             <span className="text-xs">⌘</span>K
           </kbd>
         </Button>
-
-        {/* Role Switcher */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden lg:flex items-center gap-2"
-            >
-              <CurrentRoleIcon className={`h-4 w-4 ${currentRole?.color}`} />
-              <span>{currentRole?.label}</span>
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>Çalışma Alanı</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {ROLE_ORDER.map((key) => {
-              const val = roleLabels[key];
-              if (!val) return null;
-              const Icon = val.icon;
-              return (
-                <DropdownMenuItem
-                  key={key}
-                  onClick={() => handleRoleSwitch(key)}
-                  className={user?.role === key ? "bg-muted" : ""}
-                >
-                  <Icon className={`h-4 w-4 mr-2 ${val.color}`} />
-                  {val.label}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
 
         {/* Onboarding / Yardım Turu */}
         <DropdownMenu>
@@ -519,7 +458,7 @@ export function Topbar() {
                   {user?.name || "Kullanıcı"}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {currentRole?.label}
+                  {ROLE_LABELS[user?.role || "admin"] ?? ""}
                 </span>
               </div>
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
