@@ -86,10 +86,7 @@ class QuickActions extends StatelessWidget {
         Icons.insights_rounded,
         "Sınav Sonuçları",
         const Color(0xFF2563EB),
-        StudentExamHistoryPage(
-          studentName: '',
-          title: 'Sınav Sonuçlarım'.tr,
-        ),
+        StudentExamHistoryPage(studentName: '', title: 'Sınav Sonuçlarım'.tr),
         'exams',
       ),
       (
@@ -156,9 +153,10 @@ class QuickActions extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         ResponsiveLayout.isTablet(context)
-            ? Wrap(
-                spacing: 12,
-                runSpacing: 12,
+            ? ResponsiveGrid(
+                phone: 2,
+                tablet: 3,
+                largeTablet: 4,
                 children: actions
                     .map(
                       (item) => _actionCard(
@@ -167,13 +165,7 @@ class QuickActions extends StatelessWidget {
                         title: item.$2,
                         color: item.$3,
                         page: item.$4,
-                        width: ResponsiveLayout.itemWidth(
-                          context,
-                          spacing: 12,
-                          phone: 2,
-                          tablet: 3,
-                          largeTablet: 4,
-                        ),
+                        width: double.infinity,
                       ),
                     )
                     .toList(),

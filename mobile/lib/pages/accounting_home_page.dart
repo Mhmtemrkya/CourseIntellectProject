@@ -76,16 +76,28 @@ _Range _periodRange(String period, DateTime anchor) {
   switch (period) {
     case 'day':
       final start = DateTime(anchor.year, anchor.month, anchor.day);
-      return _Range(start, start.add(const Duration(days: 1) - const Duration(milliseconds: 1)));
+      return _Range(
+        start,
+        start.add(const Duration(days: 1) - const Duration(milliseconds: 1)),
+      );
     case 'week':
       final offset = (anchor.weekday + 6) % 7;
       final start = DateTime(anchor.year, anchor.month, anchor.day - offset);
-      return _Range(start, start.add(const Duration(days: 7) - const Duration(milliseconds: 1)));
+      return _Range(
+        start,
+        start.add(const Duration(days: 7) - const Duration(milliseconds: 1)),
+      );
     case 'year':
-      return _Range(DateTime(anchor.year, 1, 1), DateTime(anchor.year, 12, 31, 23, 59, 59));
+      return _Range(
+        DateTime(anchor.year, 1, 1),
+        DateTime(anchor.year, 12, 31, 23, 59, 59),
+      );
     default:
       final start = DateTime(anchor.year, anchor.month, 1);
-      return _Range(start, DateTime(anchor.year, anchor.month + 1, 0, 23, 59, 59));
+      return _Range(
+        start,
+        DateTime(anchor.year, anchor.month + 1, 0, 23, 59, 59),
+      );
   }
 }
 
@@ -145,18 +157,27 @@ List<_Range> _bucketRanges(String period, DateTime anchor) {
     case 'day':
       return List.generate(8, (i) {
         final start = DateTime(anchor.year, anchor.month, anchor.day, i * 3);
-        return _Range(start, start.add(const Duration(hours: 3) - const Duration(milliseconds: 1)));
+        return _Range(
+          start,
+          start.add(const Duration(hours: 3) - const Duration(milliseconds: 1)),
+        );
       });
     case 'week':
       final offset = (anchor.weekday + 6) % 7;
       final monday = DateTime(anchor.year, anchor.month, anchor.day - offset);
       return List.generate(7, (i) {
         final start = monday.add(Duration(days: i));
-        return _Range(start, start.add(const Duration(days: 1) - const Duration(milliseconds: 1)));
+        return _Range(
+          start,
+          start.add(const Duration(days: 1) - const Duration(milliseconds: 1)),
+        );
       });
     case 'year':
       return List.generate(12, (i) {
-        return _Range(DateTime(anchor.year, i + 1, 1), DateTime(anchor.year, i + 2, 0, 23, 59, 59));
+        return _Range(
+          DateTime(anchor.year, i + 1, 1),
+          DateTime(anchor.year, i + 2, 0, 23, 59, 59),
+        );
       });
     default:
       // Ay → haftalık kovalar (1. Hafta ... )
@@ -165,10 +186,12 @@ List<_Range> _bucketRanges(String period, DateTime anchor) {
       var day = 1;
       while (day <= daysInMonth) {
         final endDay = math.min(day + 6, daysInMonth);
-        ranges.add(_Range(
-          DateTime(anchor.year, anchor.month, day),
-          DateTime(anchor.year, anchor.month, endDay, 23, 59, 59),
-        ));
+        ranges.add(
+          _Range(
+            DateTime(anchor.year, anchor.month, day),
+            DateTime(anchor.year, anchor.month, endDay, 23, 59, 59),
+          ),
+        );
         day = endDay + 1;
       }
       return ranges;
@@ -251,8 +274,18 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
   bool _isExpenseInvoice(InvoiceRecord invoice) {
     final c = invoice.category.toLowerCase();
     const excludedMarkers = [
-      'öğrenci', 'ogrenci', 'kurs', 'ücret', 'ucret', 'tahsil', 'gelir',
-      'maaş', 'maas', 'bordro', 'personel', 'payroll',
+      'öğrenci',
+      'ogrenci',
+      'kurs',
+      'ücret',
+      'ucret',
+      'tahsil',
+      'gelir',
+      'maaş',
+      'maas',
+      'bordro',
+      'personel',
+      'payroll',
     ];
     return !excludedMarkers.any(c.contains);
   }
@@ -297,7 +330,11 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
     );
     final invoice = _sumAmount(
       _store.invoices
-          .where((i) => range.contains(_parseTrDate(i.subtitle)) && _isExpenseInvoice(i))
+          .where(
+            (i) =>
+                range.contains(_parseTrDate(i.subtitle)) &&
+                _isExpenseInvoice(i),
+          )
           .map((i) => i.amount),
     );
     final ledger = _sumLedger(range);
@@ -310,10 +347,8 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
       .fold<int>(0, (sum, item) => sum + item.amount);
 
   int get _periodUnpaidDue => _sumAmount(
-        _periodInstallments
-            .where((i) => !_isPaid(i.status))
-            .map((i) => i.amount),
-      );
+    _periodInstallments.where((i) => !_isPaid(i.status)).map((i) => i.amount),
+  );
 
   int get _periodTarget => _periodCollected + _periodUnpaidDue;
 
@@ -327,13 +362,22 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
       _sumAmount(_overdueInstallments.map((i) => i.amount));
 
   int get _periodCash => _sumAmount(
-        _periodCollections
-            .where((c) => c.method.toLowerCase().contains('nakit'))
-            .map((c) => c.amount),
-      );
+    _periodCollections
+        .where((c) => c.method.toLowerCase().contains('nakit'))
+        .map((c) => c.amount),
+  );
 
   int get _periodCardBank {
-    const keys = ['kart', 'card', 'pos', 'havale', 'eft', 'bank', 'banka', 'transfer'];
+    const keys = [
+      'kart',
+      'card',
+      'pos',
+      'havale',
+      'eft',
+      'bank',
+      'banka',
+      'transfer',
+    ];
     return _sumAmount(
       _periodCollections
           .where((c) => keys.any((k) => c.method.toLowerCase().contains(k)))
@@ -364,7 +408,11 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
       );
       final invoice = _sumAmount(
         _store.invoices
-            .where((i) => range.contains(_parseTrDate(i.subtitle)) && _isExpenseInvoice(i))
+            .where(
+              (i) =>
+                  range.contains(_parseTrDate(i.subtitle)) &&
+                  _isExpenseInvoice(i),
+            )
             .map((i) => i.amount),
       );
       final ledger = _sumLedger(range);
@@ -495,7 +543,8 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
     return AccountingHeroCard(
       eyebrow: '${_periodLabel(_period, _anchor)} finans özeti',
       title:
-          'Tahsilat akışları, onay bekleyen işlemler ve riskli bakiyeler tek panelde.'.tr,
+          'Tahsilat akışları, onay bekleyen işlemler ve riskli bakiyeler tek panelde.'
+              .tr,
       description:
           'Bu ${_periodNoun[_period]}: ${_periodCollections.length} tahsilat, ${_store.approvals.where((item) => item.status == 'Bekliyor').length} bekleyen onay ve ${_overdueInstallments.length} geciken plan izleniyor.',
       metrics: [
@@ -555,9 +604,8 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
                 ),
               ),
               IconButton(
-                onPressed: () => setState(
-                  () => _anchor = _shiftAnchor(_period, _anchor, 1),
-                ),
+                onPressed: () =>
+                    setState(() => _anchor = _shiftAnchor(_period, _anchor, 1)),
                 icon: const Icon(Icons.chevron_right_rounded),
               ),
             ],
@@ -595,16 +643,20 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
         Icons.warning_amber_rounded,
       ),
     ];
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+    return ResponsiveGrid(
+      phone: 2,
+      tablet: 2,
+      largeTablet: 4,
       children: cards.map((card) => _summaryCard(context, card)).toList(),
     );
   }
 
   Widget _summaryCard(BuildContext context, _SummaryMetric card) {
-    final width = ResponsiveLayout.itemWidth(context, spacing: 12, phone: 2, tablet: 2, largeTablet: 4);
-    return SizedBox(width: width, child: VividMetricCard(title: card.title, value: card.value, icon: card.icon));
+    return VividMetricCard(
+      title: card.title,
+      value: card.value,
+      icon: card.icon,
+    );
   }
 
   Widget _flowChartSection(BuildContext context) {
@@ -673,7 +725,12 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
     );
   }
 
-  Widget _miniTotal(BuildContext context, String label, String value, Color color) {
+  Widget _miniTotal(
+    BuildContext context,
+    String label,
+    String value,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
@@ -684,10 +741,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 4),
           Text(
             value,
@@ -709,9 +763,9 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
         children: [
           Text(
             'Tahsilat Oranı'.tr,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w900,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 2),
           Text(
@@ -721,22 +775,40 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
           const SizedBox(height: 16),
           Center(child: _RingGauge(value: rate)),
           const SizedBox(height: 16),
-          _rateRow(context, Icons.savings_outlined, 'Tahsil edilen',
-              _store.formatAmount(_periodCollected), const Color(0xFF10B981)),
+          _rateRow(
+            context,
+            Icons.savings_outlined,
+            'Tahsil edilen',
+            _store.formatAmount(_periodCollected),
+            const Color(0xFF10B981),
+          ),
           const SizedBox(height: 8),
-          _rateRow(context, Icons.event_outlined, 'Bekleyen (vade)',
-              _store.formatAmount(_periodUnpaidDue), const Color(0xFFB45309)),
+          _rateRow(
+            context,
+            Icons.event_outlined,
+            'Bekleyen (vade)',
+            _store.formatAmount(_periodUnpaidDue),
+            const Color(0xFFB45309),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: _miniTotal(context, 'Nakit',
-                    _store.formatAmount(_periodCash), const Color(0xFF2563EB)),
+                child: _miniTotal(
+                  context,
+                  'Nakit',
+                  _store.formatAmount(_periodCash),
+                  const Color(0xFF2563EB),
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _miniTotal(context, 'Kart / Havale',
-                    _store.formatAmount(_periodCardBank), const Color(0xFF7C3AED)),
+                child: _miniTotal(
+                  context,
+                  'Kart / Havale',
+                  _store.formatAmount(_periodCardBank),
+                  const Color(0xFF7C3AED),
+                ),
               ),
             ],
           ),
@@ -745,7 +817,13 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
     );
   }
 
-  Widget _rateRow(BuildContext context, IconData icon, String label, String value, Color color) {
+  Widget _rateRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -808,7 +886,10 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
                   color: const Color(0xFFFF7A1A).withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.flag_outlined, color: Color(0xFFFF7A1A)),
+                child: const Icon(
+                  Icons.flag_outlined,
+                  color: Color(0xFFFF7A1A),
+                ),
               ),
             ],
           ),
@@ -830,10 +911,9 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
             child: LinearProgressIndicator(
               value: rate / 100,
               minHeight: 10,
-              backgroundColor: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.5),
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               valueColor: const AlwaysStoppedAnimation(Color(0xFFFF7A1A)),
             ),
           ),
@@ -841,10 +921,14 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('%$rate tamamlandı',
-                  style: Theme.of(context).textTheme.bodySmall),
-              Text('Kalan: ${_store.formatAmount(math.max(0, _periodTarget - _periodCollected))}',
-                  style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                '%$rate tamamlandı',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              Text(
+                'Kalan: ${_store.formatAmount(math.max(0, _periodTarget - _periodCollected))}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -867,8 +951,8 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
                   change == null
                       ? const Color(0xFF64748B)
                       : change >= 0
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFF43F5E),
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFFF43F5E),
                 ),
               ),
             ],
@@ -1073,7 +1157,8 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
                     return _listRow(
                       context,
                       title: item.name,
-                      subtitle: '${item.className} • ${item.method} • ${item.time}',
+                      subtitle:
+                          '${item.className} • ${item.method} • ${item.time}',
                       amount: item.amount,
                       color: const Color(0xFF0F766E),
                     );
@@ -1180,112 +1265,112 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
   }
 
   List<_ModuleCard> _modules() => [
-        _ModuleCard(
-          'Cari Hesaplar',
-          'Sınıf, toplam ücret, ödenen, kalan',
-          Icons.groups_2_outlined,
-          const Color(0xFF2563EB),
-          const AccountingLedgerPage(),
-        ),
-        _ModuleCard(
-          'Tahsilatlar',
-          'Güncel ödeme hareketleri ve yeni tahsilat',
-          Icons.point_of_sale_outlined,
-          const Color(0xFF0F766E),
-          const AccountingReceiptsPage(),
-        ),
-        _ModuleCard(
-          'Taksitler',
-          'Bekleyen, geciken ve yeni planlar',
-          Icons.calendar_month_outlined,
-          const Color(0xFF7C3AED),
-          const AccountingInstallmentsPage(),
-        ),
-        _ModuleCard(
-          'Faturalar ve Makbuzlar',
-          'Öğrenci, mekan, gider ve maaş kayıtları',
-          Icons.receipt_long_outlined,
-          const Color(0xFFB45309),
-          const AccountingInvoicesPage(),
-        ),
-        _ModuleCard(
-          'İndirim ve Burs',
-          'Aktif indirim, burs ve önizleme',
-          Icons.workspace_premium_outlined,
-          const Color(0xFF0891B2),
-          const AccountingDiscountPage(),
-        ),
-        _ModuleCard(
-          'Geciken Ödemeler',
-          'Arama, filtre ve iletişim aksiyonları',
-          Icons.notifications_active_outlined,
-          const Color(0xFFB42318),
-          const AccountingOverduePage(),
-        ),
-        _ModuleCard(
-          'Mesajlar',
-          'Veli ve öğrenci finans iletişimi',
-          Icons.chat_bubble_outline_rounded,
-          const Color(0xFF14532D),
-          const AccountingMessagesPage(),
-        ),
-        _ModuleCard(
-          'Dışa Aktar',
-          'Excel, PDF ve hazır rapor çıkışları',
-          Icons.ios_share_outlined,
-          const Color(0xFF4F46E5),
-          const AccountingExportsPage(),
-        ),
-        _ModuleCard(
-          'Maaş Ödemeleri',
-          'Personel maaş ve banka planlaması',
-          Icons.badge_outlined,
-          const Color(0xFF1D4ED8),
-          const AccountingSalaryPage(),
-        ),
-        _ModuleCard(
-          'Tahsilat Takvimi',
-          'Gün bazlı beklenen ödeme görünümü',
-          Icons.calendar_today_outlined,
-          const Color(0xFF2563EB),
-          const AccountingCollectionCalendarPage(),
-        ),
-        _ModuleCard(
-          'Toplu İşlem Merkezi',
-          'Toplu tahsilat ve toplu mesaj akışı',
-          Icons.groups_outlined,
-          const Color(0xFF14532D),
-          const AccountingBulkActionsPage(),
-        ),
-        _ModuleCard(
-          'Makbuz Arşivi',
-          'Tüm tahsilat belgelerine tek yerden erişim',
-          Icons.folder_copy_outlined,
-          const Color(0xFF7C3AED),
-          const AccountingReceiptArchivePage(),
-        ),
-        _ModuleCard(
-          'Gecikme Senaryoları',
-          'Otomatik hatırlatma ve eskalasyon kuralları',
-          Icons.rule_folder_outlined,
-          const Color(0xFFB45309),
-          const AccountingOverdueRulesPage(),
-        ),
-        _ModuleCard(
-          'Kasa Dağılımı',
-          'Nakit, kart ve havale kırılımı',
-          Icons.pie_chart_outline_rounded,
-          const Color(0xFF0891B2),
-          const AccountingCashReportPage(),
-        ),
-        _ModuleCard(
-          'Mutabakat',
-          'Banka, POS ve kasa eşleştirme merkezi',
-          Icons.compare_arrows_outlined,
-          const Color(0xFF4F46E5),
-          const AccountingReconciliationPage(),
-        ),
-      ];
+    _ModuleCard(
+      'Cari Hesaplar',
+      'Sınıf, toplam ücret, ödenen, kalan',
+      Icons.groups_2_outlined,
+      const Color(0xFF2563EB),
+      const AccountingLedgerPage(),
+    ),
+    _ModuleCard(
+      'Tahsilatlar',
+      'Güncel ödeme hareketleri ve yeni tahsilat',
+      Icons.point_of_sale_outlined,
+      const Color(0xFF0F766E),
+      const AccountingReceiptsPage(),
+    ),
+    _ModuleCard(
+      'Taksitler',
+      'Bekleyen, geciken ve yeni planlar',
+      Icons.calendar_month_outlined,
+      const Color(0xFF7C3AED),
+      const AccountingInstallmentsPage(),
+    ),
+    _ModuleCard(
+      'Faturalar ve Makbuzlar',
+      'Öğrenci, mekan, gider ve maaş kayıtları',
+      Icons.receipt_long_outlined,
+      const Color(0xFFB45309),
+      const AccountingInvoicesPage(),
+    ),
+    _ModuleCard(
+      'İndirim ve Burs',
+      'Aktif indirim, burs ve önizleme',
+      Icons.workspace_premium_outlined,
+      const Color(0xFF0891B2),
+      const AccountingDiscountPage(),
+    ),
+    _ModuleCard(
+      'Geciken Ödemeler',
+      'Arama, filtre ve iletişim aksiyonları',
+      Icons.notifications_active_outlined,
+      const Color(0xFFB42318),
+      const AccountingOverduePage(),
+    ),
+    _ModuleCard(
+      'Mesajlar',
+      'Veli ve öğrenci finans iletişimi',
+      Icons.chat_bubble_outline_rounded,
+      const Color(0xFF14532D),
+      const AccountingMessagesPage(),
+    ),
+    _ModuleCard(
+      'Dışa Aktar',
+      'Excel, PDF ve hazır rapor çıkışları',
+      Icons.ios_share_outlined,
+      const Color(0xFF4F46E5),
+      const AccountingExportsPage(),
+    ),
+    _ModuleCard(
+      'Maaş Ödemeleri',
+      'Personel maaş ve banka planlaması',
+      Icons.badge_outlined,
+      const Color(0xFF1D4ED8),
+      const AccountingSalaryPage(),
+    ),
+    _ModuleCard(
+      'Tahsilat Takvimi',
+      'Gün bazlı beklenen ödeme görünümü',
+      Icons.calendar_today_outlined,
+      const Color(0xFF2563EB),
+      const AccountingCollectionCalendarPage(),
+    ),
+    _ModuleCard(
+      'Toplu İşlem Merkezi',
+      'Toplu tahsilat ve toplu mesaj akışı',
+      Icons.groups_outlined,
+      const Color(0xFF14532D),
+      const AccountingBulkActionsPage(),
+    ),
+    _ModuleCard(
+      'Makbuz Arşivi',
+      'Tüm tahsilat belgelerine tek yerden erişim',
+      Icons.folder_copy_outlined,
+      const Color(0xFF7C3AED),
+      const AccountingReceiptArchivePage(),
+    ),
+    _ModuleCard(
+      'Gecikme Senaryoları',
+      'Otomatik hatırlatma ve eskalasyon kuralları',
+      Icons.rule_folder_outlined,
+      const Color(0xFFB45309),
+      const AccountingOverdueRulesPage(),
+    ),
+    _ModuleCard(
+      'Kasa Dağılımı',
+      'Nakit, kart ve havale kırılımı',
+      Icons.pie_chart_outline_rounded,
+      const Color(0xFF0891B2),
+      const AccountingCashReportPage(),
+    ),
+    _ModuleCard(
+      'Mutabakat',
+      'Banka, POS ve kasa eşleştirme merkezi',
+      Icons.compare_arrows_outlined,
+      const Color(0xFF4F46E5),
+      const AccountingReconciliationPage(),
+    ),
+  ];
 }
 
 class _LegendDot extends StatelessWidget {
@@ -1331,7 +1416,8 @@ class _FlowChartState extends State<_FlowChart> {
   Widget build(BuildContext context) {
     final buckets = widget.buckets;
     final theme = Theme.of(context);
-    if (buckets.isEmpty || buckets.every((b) => b.income == 0 && b.expense == 0)) {
+    if (buckets.isEmpty ||
+        buckets.every((b) => b.income == 0 && b.expense == 0)) {
       return Container(
         height: 150,
         alignment: Alignment.center,
@@ -1339,16 +1425,16 @@ class _FlowChartState extends State<_FlowChart> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
         ),
-        child: Text('Bu dönem için veri yok.'.tr,
-            style: theme.textTheme.bodyMedium),
+        child: Text(
+          'Bu dönem için veri yok.'.tr,
+          style: theme.textTheme.bodyMedium,
+        ),
       );
     }
 
     final maxValue = math.max(
       1,
-      buckets
-          .map((b) => math.max(b.income, b.expense))
-          .fold<int>(1, math.max),
+      buckets.map((b) => math.max(b.income, b.expense)).fold<int>(1, math.max),
     );
     final selected = _selected != null && _selected! < buckets.length
         ? buckets[_selected!]
@@ -1363,9 +1449,10 @@ class _FlowChartState extends State<_FlowChart> {
               return GestureDetector(
                 onTapDown: (details) {
                   final ratio = details.localPosition.dx / constraints.maxWidth;
-                  final index = (ratio * buckets.length)
-                      .floor()
-                      .clamp(0, buckets.length - 1);
+                  final index = (ratio * buckets.length).floor().clamp(
+                    0,
+                    buckets.length - 1,
+                  );
                   setState(() => _selected = index);
                 },
                 child: CustomPaint(
@@ -1375,8 +1462,7 @@ class _FlowChartState extends State<_FlowChart> {
                     maxValue: maxValue.toDouble(),
                     selectedIndex: _selected,
                     gridColor: theme.dividerColor.withValues(alpha: 0.4),
-                    labelColor: theme.textTheme.bodySmall?.color ??
-                        Colors.grey,
+                    labelColor: theme.textTheme.bodySmall?.color ?? Colors.grey,
                   ),
                 ),
               );
@@ -1404,23 +1490,50 @@ class _FlowChartState extends State<_FlowChart> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(bucket.fullLabel,
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+            bucket.fullLabel,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
+          ),
           const SizedBox(height: 8),
-          _detailRow(context, '↑ Ne geldi',
-              widget.formatAmount(bucket.income), const Color(0xFF10B981)),
-          _detailRow(context, '↓ Ne gitti',
-              widget.formatAmount(bucket.expense), const Color(0xFFF43F5E)),
+          _detailRow(
+            context,
+            '↑ Ne geldi',
+            widget.formatAmount(bucket.income),
+            const Color(0xFF10B981),
+          ),
+          _detailRow(
+            context,
+            '↓ Ne gitti',
+            widget.formatAmount(bucket.expense),
+            const Color(0xFFF43F5E),
+          ),
           const Divider(height: 16),
-          _detailRow(context, '• Maaş gideri',
-              widget.formatAmount(bucket.salary), theme.textTheme.bodySmall?.color),
-          _detailRow(context, '• Gider defteri',
-              widget.formatAmount(bucket.ledger), const Color(0xFFF43F5E)),
-          _detailRow(context, '• Fatura gideri',
-              widget.formatAmount(bucket.invoice), theme.textTheme.bodySmall?.color),
-          _detailRow(context, '• Tahsilat adedi', '${bucket.count} işlem',
-              theme.textTheme.bodySmall?.color),
+          _detailRow(
+            context,
+            '• Maaş gideri',
+            widget.formatAmount(bucket.salary),
+            theme.textTheme.bodySmall?.color,
+          ),
+          _detailRow(
+            context,
+            '• Gider defteri',
+            widget.formatAmount(bucket.ledger),
+            const Color(0xFFF43F5E),
+          ),
+          _detailRow(
+            context,
+            '• Fatura gideri',
+            widget.formatAmount(bucket.invoice),
+            theme.textTheme.bodySmall?.color,
+          ),
+          _detailRow(
+            context,
+            '• Tahsilat adedi',
+            '${bucket.count} işlem',
+            theme.textTheme.bodySmall?.color,
+          ),
           const Divider(height: 16),
           _detailRow(
             context,
@@ -1434,24 +1547,33 @@ class _FlowChartState extends State<_FlowChart> {
     );
   }
 
-  Widget _detailRow(BuildContext context, String label, String value, Color? color,
-      {bool bold = false}) {
+  Widget _detailRow(
+    BuildContext context,
+    String label,
+    String value,
+    Color? color, {
+    bool bold = false,
+  }) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: color,
-                fontWeight: bold ? FontWeight.w900 : FontWeight.w600,
-              )),
-          Text(value,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: color,
-                fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
-              )),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: color,
+              fontWeight: bold ? FontWeight.w900 : FontWeight.w600,
+            ),
+          ),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: color,
+              fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -1498,7 +1620,8 @@ class _FlowChartPainter extends CustomPainter {
       final cx = slot * i + slot / 2;
 
       if (selectedIndex == i) {
-        final hl = Paint()..color = const Color(0xFFFF7A1A).withValues(alpha: 0.1);
+        final hl = Paint()
+          ..color = const Color(0xFFFF7A1A).withValues(alpha: 0.1);
         canvas.drawRRect(
           RRect.fromRectAndRadius(
             Rect.fromLTWH(slot * i + 2, padTop, slot - 4, plotH),
@@ -1527,7 +1650,14 @@ class _FlowChartPainter extends CustomPainter {
     }
   }
 
-  void _bar(Canvas canvas, double left, double baseY, double w, double h, Paint paint) {
+  void _bar(
+    Canvas canvas,
+    double left,
+    double baseY,
+    double w,
+    double h,
+    Paint paint,
+  ) {
     final height = math.max(2.0, h);
     final rect = RRect.fromRectAndCorners(
       Rect.fromLTWH(left, baseY - height, w, height),
@@ -1555,8 +1685,8 @@ class _RingGauge extends StatelessWidget {
     final tone = value >= 80
         ? const Color(0xFF10B981)
         : value >= 50
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFFF43F5E);
+        ? const Color(0xFFF59E0B)
+        : const Color(0xFFF43F5E);
     return SizedBox(
       width: 140,
       height: 140,
@@ -1578,10 +1708,7 @@ class _RingGauge extends StatelessWidget {
                   color: tone,
                 ),
               ),
-              Text(
-                'Tahsilat',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              Text('Tahsilat', style: Theme.of(context).textTheme.bodySmall),
             ],
           ),
         ),
@@ -1621,7 +1748,13 @@ class _RingGaugePainter extends CustomPainter {
 
     final rect = Rect.fromCircle(center: center, radius: radius);
     canvas.drawArc(rect, startAngle, sweepAngle, false, track);
-    canvas.drawArc(rect, startAngle, sweepAngle * value.clamp(0, 1), false, progress);
+    canvas.drawArc(
+      rect,
+      startAngle,
+      sweepAngle * value.clamp(0, 1),
+      false,
+      progress,
+    );
   }
 
   @override

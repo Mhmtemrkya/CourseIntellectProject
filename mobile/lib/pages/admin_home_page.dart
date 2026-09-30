@@ -50,6 +50,11 @@ class AdminHomePage extends StatefulWidget {
 }
 
 class _AdminHomePageState extends State<AdminHomePage> {
+  /// Telefonda ilk bu kadar gösterge açık gelir; kalanı "Tüm göstergeler" ile
+  /// açılır. 31 kartın tamamı alt alta dizilince sayfa bitmiyordu.
+  static const int _collapsedKpiCount = 6;
+  bool _showAllKpis = false;
+
   final _finance = AccountingFinanceStore.instance;
 
   static const _periods = [
@@ -571,11 +576,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   ),
                 )
               else
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: kpis.map((kpi) => _kpiCard(context, kpi)).toList(),
-                ),
+                ..._kpiSection(context, kpis),
               const SizedBox(height: 18),
               AdminSectionTitle(title: 'Kazanç & Gider Eğrisi'.tr),
               const SizedBox(height: 12),
@@ -583,345 +584,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
               const SizedBox(height: 18),
               AdminSectionTitle(title: 'Hızlı Yönetici Erişimleri'.tr),
               const SizedBox(height: 12),
-              Row(
+              ResponsiveGrid(
+                spacing: 10,
+                phone: 3,
+                tablet: 4,
+                largeTablet: 6,
                 children: [
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Nöbet Oluştur'.tr,
-                      subtitle: 'Öğretmenlere nöbet ata'.tr,
-                      color: const Color(0xFFF97316),
-                      icon: Icons.add_alarm_rounded,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DutyCreatePage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Tüm Nöbetler'.tr,
-                      subtitle: 'Çizelge, denge, boş günler'.tr,
-                      color: const Color(0xFFF59E0B),
-                      icon: Icons.shield_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DutiesBoardPage(),
-                        ),
-                      ),
-                    ),
-                  ),
+                  for (final link in _quickLinks()) _quickTile(context, link),
                 ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'İdari Yönetim'.tr,
-                      subtitle: 'Onay, izin, görev, evrak ve denetim'.tr,
-                      color: const Color(0xFF7C3AED),
-                      icon: Icons.verified_user_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminWorkflowHubPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Servis Takip',
-                      subtitle: 'Araç, rota, durak ve öğrenci atama'.tr,
-                      color: const Color(0xFF0F766E),
-                      icon: Icons.directions_bus_filled_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ServiceRoutesPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Pasif Kayıtlar'.tr,
-                      subtitle: 'Pasif kişiler; buradan aktifleştir'.tr,
-                      color: const Color(0xFF64748B),
-                      icon: Icons.person_off_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminPassiveRecordsPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Akademik Rapor',
-                      subtitle: 'Sınıf ve branş trendleri'.tr,
-                      color: const Color(0xFF2563EB),
-                      icon: Icons.bar_chart_rounded,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const TeacherReportsPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Finans Paneli',
-                      subtitle: 'Tahsilat ve onay akışı'.tr,
-                      color: const Color(0xFF14532D),
-                      icon: Icons.account_balance_wallet_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AccountingHomePage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Görüşme Akışı'.tr,
-                      subtitle: 'Veli talepleri ve onaylar'.tr,
-                      color: const Color(0xFF0F766E),
-                      icon: Icons.calendar_month_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminMeetingOverviewPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Sınavlar'.tr,
-                      // Kurum genelindeki sınav listesi + "Yönet" penceresi;
-                      // masaüstündeki /exams ekranının aynısı.
-                      subtitle: 'Sınav kayıtları ve sonuç girişi'.tr,
-                      color: const Color(0xFF7C3AED),
-                      icon: Icons.fact_check_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const TeacherExamsPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Geciken Ödemeler'.tr,
-                      subtitle: 'Riskli finans kayıtları'.tr,
-                      color: const Color(0xFFB42318),
-                      icon: Icons.warning_amber_rounded,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AccountingOverduePage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Mesaj Merkezi',
-                      subtitle: 'Tüm birimlerle hızlı iletişim'.tr,
-                      color: const Color(0xFF14532D),
-                      icon: Icons.chat_bubble_outline_rounded,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminMessagesPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Duyurular',
-                      subtitle: 'Tüm paylaşımları tek merkezde gör'.tr,
-                      color: const Color(0xFFB45309),
-                      icon: Icons.campaign_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminAnnouncementsPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Devamsızlık'.tr,
-                      subtitle: 'Tüm şube yoklama akışı'.tr,
-                      color: const Color(0xFFB42318),
-                      icon: Icons.fact_check_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AttendanceOverviewPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Kurum İçi Arama'.tr,
-                      subtitle: 'Öğrenci, veli ve kadro arama'.tr,
-                      color: const Color(0xFF2563EB),
-                      icon: Icons.manage_search_rounded,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminGlobalSearchPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Şube Karşılaştırma'.tr,
-                      subtitle: 'Kampüs performans özeti'.tr,
-                      color: const Color(0xFF14532D),
-                      icon: Icons.apartment_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminBranchComparisonPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Rol Yönetimi'.tr,
-                      subtitle: 'Yetki ve erişim kontrolü'.tr,
-                      color: const Color(0xFF7C3AED),
-                      icon: Icons.admin_panel_settings_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminRoleManagementPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _quickCard(
-                      context,
-                      title: 'Canlı Görev'.tr,
-                      subtitle: 'Bekleyen süreçler ve aksiyonlar'.tr,
-                      color: const Color(0xFFB45309),
-                      icon: Icons.playlist_add_check_circle_outlined,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminTaskCenterPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _quickCard(
-                context,
-                title: 'Kurum Özeti'.tr,
-                subtitle:
-                    'Doluluk, tahsilat, devamsızlık ve başarı göstergeleri'.tr,
-                color: const Color(0xFF0F766E),
-                icon: Icons.insights_outlined,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const AdminKpiDashboardPage(),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _quickCard(
-                context,
-                title: 'Destek',
-                subtitle: 'SchoolAsist ekibine talep aç'.tr,
-                color: const Color(0xFFFF7A1A),
-                icon: Icons.support_agent_outlined,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SupportPage()),
-                ),
               ),
             ],
           ),
@@ -1236,10 +906,48 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   // Masaüstü panosundaki KPI kartının mobil karşılığı: her kart tıklanabilir ve
   // ilgili yönetim sayfasını açar.
-  Widget _kpiCard(BuildContext context, _Kpi kpi) {
-    final width = ResponsiveLayout.itemWidth(context, spacing: 12, phone: 2, tablet: 3, largeTablet: 4);
-    return SizedBox(width: width, child: VividMetricCard(title: kpi.label.tr, value: kpi.value,
-      caption: kpi.caption.tr, icon: kpi.icon, onTap: kpi.onTap));
+  List<Widget> _kpiSection(BuildContext context, List<_Kpi> kpis) {
+    final phone = !ResponsiveLayout.isTablet(context);
+    final collapsible = phone && kpis.length > _collapsedKpiCount;
+    final visible = collapsible && !_showAllKpis
+        ? kpis.take(_collapsedKpiCount).toList()
+        : kpis;
+    return [
+      ResponsiveGrid(
+        phone: 2,
+        tablet: 3,
+        largeTablet: 4,
+        children: [
+          for (final kpi in visible)
+            VividMetricCard(
+              title: kpi.label.tr,
+              value: kpi.value,
+              // Telefonda açıklama satırı kartı iki katına uzatıyordu.
+              caption: phone ? null : kpi.caption.tr,
+              icon: kpi.icon,
+              onTap: kpi.onTap,
+              compact: phone,
+            ),
+        ],
+      ),
+      if (collapsible)
+        Align(
+          alignment: Alignment.center,
+          child: TextButton.icon(
+            onPressed: () => setState(() => _showAllKpis = !_showAllKpis),
+            icon: Icon(
+              _showAllKpis
+                  ? Icons.expand_less_rounded
+                  : Icons.expand_more_rounded,
+            ),
+            label: Text(
+              _showAllKpis
+                  ? 'Daha az göster'.tr
+                  : '${'Tüm göstergeler'.tr} (${kpis.length})',
+            ),
+          ),
+        ),
+    ];
   }
 
   Widget _analyticsCard(BuildContext context) {
@@ -1501,49 +1209,204 @@ class _AdminHomePageState extends State<AdminHomePage> {
     );
   }
 
-  Widget _quickCard(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required Color color,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(22),
-      onTap: onTap,
-      child: AdminPanel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
+  List<_QuickLink> _quickLinks() => [
+    _QuickLink(
+      'Nöbet Oluştur'.tr,
+      'Öğretmenlere nöbet ata'.tr,
+      const Color(0xFFF97316),
+      Icons.add_alarm_rounded,
+      () => const DutyCreatePage(),
+    ),
+    _QuickLink(
+      'Tüm Nöbetler'.tr,
+      'Çizelge, denge, boş günler'.tr,
+      const Color(0xFFF59E0B),
+      Icons.shield_outlined,
+      () => const DutiesBoardPage(),
+    ),
+    _QuickLink(
+      'İdari Yönetim'.tr,
+      'Onay, izin, görev, evrak ve denetim'.tr,
+      const Color(0xFF7C3AED),
+      Icons.verified_user_outlined,
+      () => const AdminWorkflowHubPage(),
+    ),
+    _QuickLink(
+      'Servis Takip',
+      'Araç, rota, durak ve öğrenci atama'.tr,
+      const Color(0xFF0F766E),
+      Icons.directions_bus_filled_outlined,
+      () => const ServiceRoutesPage(),
+    ),
+    _QuickLink(
+      'Pasif Kayıtlar'.tr,
+      'Pasif kişiler; buradan aktifleştir'.tr,
+      const Color(0xFF64748B),
+      Icons.person_off_outlined,
+      () => const AdminPassiveRecordsPage(),
+    ),
+    _QuickLink(
+      'Akademik Rapor',
+      'Sınıf ve branş trendleri'.tr,
+      const Color(0xFF2563EB),
+      Icons.bar_chart_rounded,
+      () => const TeacherReportsPage(),
+    ),
+    _QuickLink(
+      'Finans Paneli',
+      'Tahsilat ve onay akışı'.tr,
+      const Color(0xFF14532D),
+      Icons.account_balance_wallet_outlined,
+      () => const AccountingHomePage(),
+    ),
+    _QuickLink(
+      'Görüşme Akışı'.tr,
+      'Veli talepleri ve onaylar'.tr,
+      const Color(0xFF0F766E),
+      Icons.calendar_month_outlined,
+      () => const AdminMeetingOverviewPage(),
+    ),
+    // Kurum genelindeki sınav listesi + "Yönet" penceresi; masaüstündeki
+    // /exams ekranının aynısı.
+    _QuickLink(
+      'Sınavlar'.tr,
+      'Sınav kayıtları ve sonuç girişi'.tr,
+      const Color(0xFF7C3AED),
+      Icons.fact_check_outlined,
+      () => const TeacherExamsPage(),
+    ),
+    _QuickLink(
+      'Geciken Ödemeler'.tr,
+      'Riskli finans kayıtları'.tr,
+      const Color(0xFFB42318),
+      Icons.warning_amber_rounded,
+      () => const AccountingOverduePage(),
+    ),
+    _QuickLink(
+      'Mesaj Merkezi',
+      'Tüm birimlerle hızlı iletişim'.tr,
+      const Color(0xFF14532D),
+      Icons.chat_bubble_outline_rounded,
+      () => const AdminMessagesPage(),
+    ),
+    _QuickLink(
+      'Duyurular',
+      'Tüm paylaşımları tek merkezde gör'.tr,
+      const Color(0xFFB45309),
+      Icons.campaign_outlined,
+      () => const AdminAnnouncementsPage(),
+    ),
+    _QuickLink(
+      'Devamsızlık'.tr,
+      'Tüm şube yoklama akışı'.tr,
+      const Color(0xFFB42318),
+      Icons.fact_check_outlined,
+      () => const AttendanceOverviewPage(),
+    ),
+    _QuickLink(
+      'Kurum İçi Arama'.tr,
+      'Öğrenci, veli ve kadro arama'.tr,
+      const Color(0xFF2563EB),
+      Icons.manage_search_rounded,
+      () => const AdminGlobalSearchPage(),
+    ),
+    _QuickLink(
+      'Şube Karşılaştırma'.tr,
+      'Kampüs performans özeti'.tr,
+      const Color(0xFF14532D),
+      Icons.apartment_outlined,
+      () => const AdminBranchComparisonPage(),
+    ),
+    _QuickLink(
+      'Rol Yönetimi'.tr,
+      'Yetki ve erişim kontrolü'.tr,
+      const Color(0xFF7C3AED),
+      Icons.admin_panel_settings_outlined,
+      () => const AdminRoleManagementPage(),
+    ),
+    _QuickLink(
+      'Canlı Görev'.tr,
+      'Bekleyen süreçler ve aksiyonlar'.tr,
+      const Color(0xFFB45309),
+      Icons.playlist_add_check_circle_outlined,
+      () => const AdminTaskCenterPage(),
+    ),
+    _QuickLink(
+      'Kurum Özeti'.tr,
+      'Doluluk, tahsilat, devamsızlık ve başarı göstergeleri'.tr,
+      const Color(0xFF0F766E),
+      Icons.insights_outlined,
+      () => const AdminKpiDashboardPage(),
+    ),
+    _QuickLink(
+      'Destek',
+      'SchoolAsist ekibine talep aç'.tr,
+      const Color(0xFFFF7A1A),
+      Icons.support_agent_outlined,
+      () => const SupportPage(),
+    ),
+  ];
+
+  /// Hızlı erişim kutucuğu: simge + kısa ad. Açıklama yalnız uzun basışta
+  /// (Tooltip) ve ekran okuyucuda; kutucuklar eşit boyda kalsın diye.
+  Widget _quickTile(BuildContext context, _QuickLink link) {
+    final theme = Theme.of(context);
+    return Tooltip(
+      message: link.subtitle,
+      child: Semantics(
+        button: true,
+        hint: link.subtitle,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => link.page()),
+          ),
+          child: AdminPanel(
+            padding: const EdgeInsets.fromLTRB(8, 12, 8, 10),
+            child: SizedBox(
+              height: 72,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: link.color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(link.icon, color: link.color, size: 21),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    link.title,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
               ),
-              child: Icon(icon, color: color),
             ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(height: 1.35),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _QuickLink {
+  const _QuickLink(this.title, this.subtitle, this.color, this.icon, this.page);
+
+  final String title;
+  final String subtitle;
+  final Color color;
+  final IconData icon;
+  final Widget Function() page;
 }
 
 class _Kpi {

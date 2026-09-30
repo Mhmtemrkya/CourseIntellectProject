@@ -114,23 +114,11 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
     ];
 
     if (ResponsiveLayout.isTablet(context)) {
-      return Wrap(
+      return ResponsiveGrid(
         spacing: 8,
-        runSpacing: 8,
-        children: cards
-            .map(
-              (card) => SizedBox(
-                width: ResponsiveLayout.itemWidth(
-                  context,
-                  spacing: 8,
-                  phone: 1,
-                  tablet: 3,
-                  largeTablet: 3,
-                ),
-                child: card,
-              ),
-            )
-            .toList(),
+        tablet: 3,
+        largeTablet: 3,
+        children: cards,
       );
     }
 

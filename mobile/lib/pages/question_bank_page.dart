@@ -188,23 +188,11 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     ];
 
     if (ResponsiveLayout.isTablet(context)) {
-      return Wrap(
+      return ResponsiveGrid(
         spacing: 12,
-        runSpacing: 12,
-        children: cards
-            .map(
-              (card) => SizedBox(
-                width: ResponsiveLayout.itemWidth(
-                  context,
-                  spacing: 12,
-                  phone: 1,
-                  tablet: 3,
-                  largeTablet: 3,
-                ),
-                child: card,
-              ),
-            )
-            .toList(),
+        tablet: 3,
+        largeTablet: 3,
+        children: cards,
       );
     }
 

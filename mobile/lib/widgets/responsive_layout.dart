@@ -60,22 +60,51 @@ class ResponsiveLayout {
     if (isTablet(context)) return tablet;
     return phone;
   }
+}
 
-  static double itemWidth(
-    BuildContext context, {
-    required double spacing,
-    int phone = 1,
-    int tablet = 2,
-    int largeTablet = 3,
-  }) {
-    final count = columns(
+/// Kartları sütunlara dizen ızgara. Genişlik ekrandan değil, ızgaranın
+/// gerçekten aldığı alandan (LayoutBuilder) hesaplanır: sayfa dolgusu ekran
+/// genişliğinden düşülmezse iki kart sığmaz ve Wrap her kartı ayrı satıra atar.
+class ResponsiveGrid extends StatelessWidget {
+  const ResponsiveGrid({
+    super.key,
+    required this.children,
+    this.spacing = 12,
+    this.runSpacing,
+    this.phone = 1,
+    this.tablet = 2,
+    this.largeTablet = 3,
+  });
+
+  final List<Widget> children;
+  final double spacing;
+  final double? runSpacing;
+  final int phone;
+  final int tablet;
+  final int largeTablet;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = ResponsiveLayout.columns(
       context,
       phone: phone,
       tablet: tablet,
       largeTablet: largeTablet,
     );
-    final maxWidth = contentMaxWidth(context);
-    return (maxWidth - (spacing * (count - 1))) / count;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Kesirli piksel yuvarlaması son kartı alt satıra itmesin.
+        final width = ((constraints.maxWidth - spacing * (count - 1)) / count)
+            .floorToDouble();
+        return Wrap(
+          spacing: spacing,
+          runSpacing: runSpacing ?? spacing,
+          children: [
+            for (final child in children) SizedBox(width: width, child: child),
+          ],
+        );
+      },
+    );
   }
 }
 
