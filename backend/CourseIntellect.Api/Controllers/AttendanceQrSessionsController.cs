@@ -1,3 +1,4 @@
+using CourseIntellect.Api.Security;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -63,6 +64,20 @@ public sealed class AttendanceQrSessionsController(CourseIntellectDbContext dbCo
             active = active.Where(item => CompatibilitySnapshotStore.NormalizeText(item.ClassName) == key);
         }
 
+        // Güvenlik: oturumlar QR token'ını taşır. Öğrenci yalnız kendi sınıfının
+        // (ve tüm kurum) oturumlarını görür; veli ve diğer roller hiç görmez.
+        // Aksi hâlde herkes her sınıfın token'ını alıp derste olmadan yoklama verebiliyordu.
+        if (!IsStaff())
+        {
+            if (!User.IsInRole("Student"))
+            {
+                return Ok(Array.Empty<AttendanceQrSessionSnapshot>());
+            }
+
+            var ownClasses = await StudentScope.ResolveAllowedClassNamesAsync(User, dbContext, cancellationToken) ?? [];
+            active = active.Where(item => IsSessionForClasses(item, ownClasses));
+        }
+
         return Ok(active.OrderByDescending(item => item.OpenedAtUtc).ToList());
     }
 
@@ -117,9 +132,31 @@ public sealed class AttendanceQrSessionsController(CourseIntellectDbContext dbCo
             return BadRequest(new { message = "Oturum süresi geçmiş veya kapalı." });
         }
 
-        var studentName = string.IsNullOrWhiteSpace(request.StudentName)
-            ? (User.FindFirstValue("name") ?? User.FindFirstValue(ClaimTypes.Name) ?? string.Empty)
-            : request.StudentName.Trim();
+        // Güvenlik: öğrenci yalnız KENDİ adına ve kendi sınıfının oturumuna
+        // yoklama verir (gövdedeki ad yok sayılır). Personel öğrenci adına
+        // işaretleyebilir; diğer roller (veli vb.) yoklama veremez.
+        string studentName;
+        if (IsStaff())
+        {
+            studentName = string.IsNullOrWhiteSpace(request.StudentName)
+                ? StudentScope.ResolveDisplayName(User)
+                : request.StudentName.Trim();
+        }
+        else if (User.IsInRole("Student"))
+        {
+            var ownClasses = await StudentScope.ResolveAllowedClassNamesAsync(User, dbContext, cancellationToken) ?? [];
+            if (!IsSessionForClasses(session, ownClasses))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Bu yoklama oturumu sınıfınıza ait değil." });
+            }
+
+            studentName = StudentScope.ResolveDisplayName(User);
+        }
+        else
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Yoklamaya yalnız öğrenci katılabilir." });
+        }
+
         if (string.IsNullOrWhiteSpace(studentName))
         {
             return BadRequest(new { message = "Öğrenci bilgisi gerekli." });
@@ -155,6 +192,21 @@ public sealed class AttendanceQrSessionsController(CourseIntellectDbContext dbCo
 
         await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, sessions, session.TeacherName, cancellationToken);
         return Ok(session);
+    }
+
+    private bool IsStaff()
+        => User.IsInRole("Admin") || User.IsInRole("Administrative") || User.IsInRole("Teacher");
+
+    /// <summary>Oturum öğrencinin sınıfına ya da tüm kuruma açık mı?</summary>
+    private static bool IsSessionForClasses(AttendanceQrSessionSnapshot session, IReadOnlyList<string> classNames)
+    {
+        var sessionClass = CompatibilitySnapshotStore.NormalizeText(session.ClassName);
+        if (sessionClass == CompatibilitySnapshotStore.NormalizeText("Tum Kurum"))
+        {
+            return true;
+        }
+
+        return classNames.Any(name => CompatibilitySnapshotStore.NormalizeText(name) == sessionClass);
     }
 }
 
