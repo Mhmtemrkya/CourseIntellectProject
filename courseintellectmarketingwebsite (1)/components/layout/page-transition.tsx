@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState, useCallback } from "react"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { AnimatePresence } from "framer-motion"
 import { PageLoader } from "@/components/ui/page-loader"
 
@@ -24,7 +24,6 @@ const pathToPageName: Record<string, PageLoaderVariant> = {
 
 export function PageTransitionProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [currentPath, setCurrentPath] = useState(pathname)
 

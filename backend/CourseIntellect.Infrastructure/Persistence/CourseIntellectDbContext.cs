@@ -117,6 +117,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<EnrollmentContract> EnrollmentContracts => Set<EnrollmentContract>();
     public DbSet<FinanceInstallment> FinanceInstallments => Set<FinanceInstallment>();
     public DbSet<FinancePayment> FinancePayments => Set<FinancePayment>();
+    public DbSet<FinanceReceiptSequence> FinanceReceiptSequences => Set<FinanceReceiptSequence>();
     public DbSet<FinancePaymentAllocation> FinancePaymentAllocations => Set<FinancePaymentAllocation>();
     public DbSet<AttendanceEntry> AttendanceEntries => Set<AttendanceEntry>();
     public DbSet<HomeworkAssignment> HomeworkAssignments => Set<HomeworkAssignment>();
@@ -263,6 +264,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ExtraRolesSerialized).HasColumnName("extra_roles").HasMaxLength(400);
             entity.Property(x => x.RoleHistorySerialized).HasColumnName("role_history").HasMaxLength(4000);
             entity.Property(x => x.MustChangePassword).HasColumnName("must_change_password").HasDefaultValue(false);
+            entity.Property(x => x.SecurityVersion).HasColumnName("security_version").HasDefaultValue(1L);
             entity.Property(x => x.TemporaryPasswordExpiresAtUtc).HasColumnName("temporary_password_expires_at_utc");
             entity.Property(x => x.CustomRoleId).HasColumnName("custom_role_id");
             entity.HasIndex(x => x.CustomRoleId);
@@ -507,6 +509,8 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ParticipantTwoName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.ParticipantTwoRole).HasMaxLength(50).IsRequired();
             entity.Property(x => x.LastMessagePreview).HasMaxLength(400).IsRequired();
+            entity.HasIndex(x => x.ParticipantOneUserId);
+            entity.HasIndex(x => x.ParticipantTwoUserId);
         });
 
         modelBuilder.Entity<MessageItem>(entity =>
@@ -523,6 +527,7 @@ public sealed class CourseIntellectDbContext : DbContext
                 .IsRequired()
                 .HasDefaultValue("[]");
             entity.HasIndex(x => x.ThreadId);
+            entity.HasIndex(x => x.SenderUserId);
         });
 
         modelBuilder.Entity<ContentItem>(entity =>
@@ -609,6 +614,8 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.LastActivityLabel).HasMaxLength(40).IsRequired();
             entity.Property(x => x.AttachmentSummary).HasMaxLength(240).IsRequired();
             entity.Property(x => x.AttachmentsSerialized).HasColumnName("attachments").HasMaxLength(4000).IsRequired();
+            entity.HasIndex(x => x.StudentUserId);
+            entity.HasIndex(x => x.TeacherUserId);
         });
 
         modelBuilder.Entity<StudentQuestionReply>(entity =>
@@ -617,6 +624,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasKey(x => x.Id);
             ConfigureTenantScope(entity);
             entity.HasIndex(x => x.ThreadId);
+            entity.HasIndex(x => x.SenderUserId);
             entity.Property(x => x.SenderName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.SenderRole).HasMaxLength(50).IsRequired();
             entity.Property(x => x.MessageText).HasMaxLength(4000).IsRequired();
@@ -854,6 +862,18 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasIndex(x => new { x.TenantId, x.ClientRequestId })
                 .IsUnique()
                 .HasFilter("client_request_id IS NOT NULL");
+            entity.HasIndex(x => new { x.TenantId, x.ReceiptNo })
+                .IsUnique()
+                .HasFilter("\"ReceiptNo\" <> '' AND tenant_id IS NOT NULL");
+        });
+
+        modelBuilder.Entity<FinanceReceiptSequence>(entity =>
+        {
+            entity.ToTable("finance_receipt_sequences");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Period).HasMaxLength(39).IsRequired();
+            entity.HasIndex(x => x.Period).IsUnique();
         });
 
         modelBuilder.Entity<FinancePaymentAllocation>(entity =>
@@ -907,6 +927,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.ToTable("homework_submissions");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("id");
+            entity.HasIndex(x => x.StudentUserId);
             ConfigureTenantScope(entity);
             entity.Property(x => x.AssignmentId).HasColumnName("assignment_id");
             entity.HasIndex(x => x.AssignmentId);
@@ -1205,6 +1226,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.TokenHash).IsUnique();
             entity.Property(x => x.TokenHash).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.SecurityVersion).HasColumnName("security_version").HasDefaultValue(1L);
         });
 
         modelBuilder.Entity<PasswordResetRequest>(entity =>
@@ -1337,6 +1359,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ClientId).HasMaxLength(80).IsRequired();
             entity.Property(x => x.RedirectUri).HasMaxLength(500).IsRequired();
             entity.Property(x => x.CodeChallengeHash).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.SecurityVersion).HasColumnName("security_version").HasDefaultValue(1L);
         });
 
         modelBuilder.Entity<PushDeviceRegistration>(entity =>
@@ -1958,9 +1981,11 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasIndex(x => new { x.TenantId, x.DrivingLessonId }).IsUnique();
             entity.HasIndex(x => new { x.StudentDrivingProfileId, x.CreatedAtUtc });
             entity.HasIndex(x => x.AppointmentId);
+            entity.HasIndex(x => x.DrivingChargeId);
             entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.StudentDrivingProfileId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<DrivingLesson>().WithMany().HasForeignKey(x => x.DrivingLessonId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<DrivingAppointment>().WithMany().HasForeignKey(x => x.AppointmentId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<DrivingCharge>().WithMany().HasForeignKey(x => x.DrivingChargeId).OnDelete(DeleteBehavior.SetNull);
         });
         modelBuilder.Entity<DrivingAppointmentStatusHistory>(entity =>
         {

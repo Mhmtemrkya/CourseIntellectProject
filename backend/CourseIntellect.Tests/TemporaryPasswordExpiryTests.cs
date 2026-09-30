@@ -117,7 +117,7 @@ public sealed class TemporaryPasswordExpiryTests : IDisposable
     {
         var user = await SeedAsync("Gecici123", DateTime.UtcNow.AddDays(3));
 
-        await BuildService().ChangePasswordAsync(user.Id, new ChangePasswordRequest(null, "YeniParola1"));
+        await BuildService().ChangePasswordAsync(user.Id, new ChangePasswordRequest("Gecici123", "YeniParola1"));
 
         var stored = await db.Context.Users.SingleAsync(x => x.Id == user.Id);
         Assert.False(stored.MustChangePassword);

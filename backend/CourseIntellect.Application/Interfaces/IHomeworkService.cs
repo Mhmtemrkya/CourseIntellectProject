@@ -13,6 +13,7 @@ public interface IHomeworkService
     /// <param name="requestorName">Çağıranın adı — öğrenci yalnız kendi teslimini görür.</param>
     Task<IReadOnlyList<HomeworkAssignmentDto>> GetAssignmentsAsync(
         string requestorRole,
+        Guid requestorUserId,
         string requestorName,
         CancellationToken cancellationToken = default);
 
@@ -25,6 +26,7 @@ public interface IHomeworkService
     Task<HomeworkAssignmentDto?> SubmitAssignmentAsync(
         Guid id,
         string requestorRole,
+        Guid requestorUserId,
         string requestorName,
         CreateHomeworkSubmissionRequest request,
         CancellationToken cancellationToken = default);

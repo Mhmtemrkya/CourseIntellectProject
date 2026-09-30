@@ -38,6 +38,8 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
             [NameIdClaim] = user.Id.ToString(),
             [NameClaim] = user.FullName,
             [PlatformAdminClaim] = user.PrimaryRole == Domain.Enums.UserRole.Developer && user.TenantId is null,
+            ["security_version"] = user.SecurityVersion,
+            ["bootstrap_only"] = user.MustChangePassword,
         };
 
         if (user.TenantId.HasValue)

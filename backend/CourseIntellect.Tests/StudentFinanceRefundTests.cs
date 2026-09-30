@@ -18,6 +18,37 @@ public sealed class StudentFinanceRefundTests : IDisposable
         new InstitutionProfileService(db.Context, new EmptyTenantContext(), new NoopAuditLog()));
 
     [Fact]
+    public async Task EnrollmentDownPayment_RetriesWhenAllocatedReceiptCollides()
+    {
+        var tenantId = await SeedTenantAndReceiptAsync(1);
+        var service = Service;
+
+        var contract = await service.CreateEnrollmentAsync(new CreateEnrollmentRequest(
+            null, "Ada Yılmaz", "10-A", "2026", 1_000m, 0, null, 400m, 1,
+            DateTime.UtcNow.AddMonths(1), "TRY", null, "Nakit", true), null);
+
+        var payment = await db.Context.FinancePayments.SingleAsync(x => x.EnrollmentContractId == contract.Id);
+        Assert.Equal($"MKB-{DateTime.UtcNow:yyyyMM}-00002", payment.ReceiptNo);
+        Assert.Equal(tenantId, payment.TenantId);
+    }
+
+    [Fact]
+    public async Task Refund_RetriesWhenAllocatedReceiptCollides()
+    {
+        await SeedTenantAndReceiptAsync(2);
+        var service = Service;
+        var contract = await CreateContractAsync(service, 500m, 1);
+        var source = await service.RecordPaymentAsync(new RecordPaymentRequest(
+            null, "Ada Yılmaz", contract.Id, null, 500m, "Nakit", null), null);
+
+        var refund = await service.RefundPaymentAsync(new RefundRequest(
+            source.Id, 100m, "PaymentReversal", "Düzeltme", "Nakit", null), null);
+
+        Assert.Equal($"MKB-{DateTime.UtcNow:yyyyMM}-00003", refund.ReceiptNo);
+        Assert.Equal(3, await db.Context.FinancePayments.CountAsync());
+    }
+
+    [Fact]
     public async Task PaymentReversal_IsBoundToReceipt_AndReversesExactLastAllocation()
     {
         var service = Service;
@@ -186,6 +217,31 @@ public sealed class StudentFinanceRefundTests : IDisposable
         var after = await service.GetAccountAsync(user.Id, null);
         Assert.Equal(0m, after.TotalPayable);
         Assert.True((await db.Context.StudentDrivingProfiles.SingleAsync()).DrivingExamFeePaid);
+    }
+
+    private async Task<Guid> SeedTenantAndReceiptAsync(int receiptSuffix)
+    {
+        var tenantId = Guid.NewGuid();
+        db.Context.SetTenantOverride(tenantId);
+        db.Context.TenantWorkspaces.Add(new TenantWorkspace
+        {
+            Id = tenantId,
+            Name = "Test Tenant",
+            Slug = $"test-{tenantId:N}",
+            ContactEmail = "test@example.invalid",
+            ContactName = "Test",
+            Plan = "Test",
+            Status = "Active",
+        });
+        db.Context.FinancePayments.Add(new FinancePayment
+        {
+            TenantId = tenantId,
+            StudentName = "Collision",
+            Amount = 1,
+            ReceiptNo = $"MKB-{DateTime.UtcNow:yyyyMM}-{receiptSuffix:D5}",
+        });
+        await db.Context.SaveChangesAsync();
+        return tenantId;
     }
 
     private static Task<EnrollmentContractDto> CreateContractAsync(

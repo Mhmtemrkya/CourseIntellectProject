@@ -10,6 +10,7 @@ using CourseIntellect.Domain.Enums;
 using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CourseIntellect.Infrastructure.Services;
 
@@ -131,6 +132,7 @@ public sealed class StudentFinanceService(
         // listesinde, makbuzda, özet toplamlarında ve muhasebe aktivite akışında
         // eksiksiz görünür. Tahsil edilmediyse HİÇBİR ödeme kaydı yazılmaz —
         // peşinat "bekliyor" olarak sözleşmede durur ve "Peşinat Bekleyenler"de görünür.
+        FinancePayment? enrollmentDownPayment = null;
         if (downPayment > 0 && request.DownPaymentPaid)
         {
             // Peşinatın gerçek ödeme kanalı (Nakit/Kart/Havale) — kasa/nakit-kart
@@ -140,7 +142,7 @@ public sealed class StudentFinanceService(
                 ? "Nakit"
                 : request.DownPaymentMethod.Trim();
             var receiptNo = await NextReceiptNoAsync(cancellationToken);
-            await dbContext.FinancePayments.AddAsync(new FinancePayment
+            enrollmentDownPayment = new FinancePayment
             {
                 EnrollmentContractId = contract.Id,
                 StudentUserId = contract.StudentUserId,
@@ -152,7 +154,8 @@ public sealed class StudentFinanceService(
                 Note = "Kayıt peşinatı",
                 CreatedByUserId = createdByUserId,
                 PaidAtUtc = DateTime.UtcNow,
-            }, cancellationToken);
+            };
+            await dbContext.FinancePayments.AddAsync(enrollmentDownPayment, cancellationToken);
 
             var amountLabel = MoneyText.Format(downPayment, currency);
             await dbContext.AccountingNotifications.AddAsync(new AccountingNotification
@@ -170,7 +173,10 @@ public sealed class StudentFinanceService(
             }, cancellationToken);
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        if (enrollmentDownPayment is null)
+            await dbContext.SaveChangesAsync(cancellationToken);
+        else
+            await SavePaymentWithReceiptRetryAsync(enrollmentDownPayment, cancellationToken);
         await auditLogService.LogAsync(
             "Kayıt sözleşmesi oluşturuldu",
             "Finance",
@@ -857,7 +863,7 @@ public sealed class StudentFinanceService(
                 }, cancellationToken);
             }
         }
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await SavePaymentWithReceiptRetryAsync(payment, cancellationToken);
 
         await auditLogService.LogAsync(
             "Tahsilat kaydedildi",
@@ -944,7 +950,7 @@ public sealed class StudentFinanceService(
 
         contract.DownPaymentPaidAmount = contract.DownPayment;
         contract.DownPaymentPaid = true;
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await SavePaymentWithReceiptRetryAsync(payment, cancellationToken);
 
         await auditLogService.LogAsync(
             "Bekleyen peşinat tahsil edildi",
@@ -1311,7 +1317,7 @@ public sealed class StudentFinanceService(
             Detail = $"{refund.StudentName} — {amount:0.##} {refund.Currency}; kaynak {source.ReceiptNo}; tür {refundType}; gerekçe: {refund.RefundReason}.",
             Time = $"{DateTime.Now:dd MMMM yyyy} • {DateTime.Now:HH:mm}",
         }, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await SavePaymentWithReceiptRetryAsync(refund, cancellationToken);
         await auditLogService.LogAsync(
             "İade yapıldı",
             "Finance",
@@ -1535,55 +1541,88 @@ public sealed class StudentFinanceService(
     }
 
     /// <summary>
-    /// Sıradaki makbuz numarası (MKB-yyyyAA-NNNNN).
-    ///
-    /// Eskiden <c>COUNT(*) + 1</c> ile üretiliyordu; bu üç şeyi birden bozuyordu:
-    /// sayaç TÜM kiracılar üzerinden ortaktı (başka kurum tahsilat alınca numara
-    /// zıplıyordu), silinen bir kayıt numarayı geri sarıp mükerrer üretiyordu ve
-    /// paralel iki tahsilat aynı numarayı alabiliyordu.
-    ///
-    /// Artık numara kiracının o AYKİ en büyük numarasından türetilir (sıfır dolgulu
-    /// sonek sayesinde sözlük sırası = sayısal sıra) ve alınmışsa bir sonrakine
-    /// geçilir. Bu, pratikteki çakışmaları kapatır; TAM garanti için veritabanı
-    /// tarafında ReceiptNo üzerinde tekil kısıt gerekir (mevcut veride mükerrer
-    /// olabileceğinden ayrı bir temizlik + migration adımı ister).
+    /// Atomically allocates the next tenant/month receipt number. The allocator row
+    /// is updated by the database in one UPSERT statement, so separate contexts and
+    /// processes cannot observe and reuse the same sequence value.
     /// </summary>
     public async Task<string> NextReceiptNumberAsync(CancellationToken cancellationToken = default)
     {
-        var prefix = $"MKB-{DateTime.UtcNow:yyyyMM}-";
+        var month = DateTime.UtcNow.ToString("yyyyMM", CultureInfo.InvariantCulture);
+        var tenantKey = dbContext.CurrentTenantId?.ToString("N") ?? "legacy";
+        var periodKey = $"{tenantKey}:{month}";
+        var connection = dbContext.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+            await connection.OpenAsync(cancellationToken);
 
-        // Global query filter kiracıyı zaten süzer; numara kurum içinde sıralıdır.
-        var lastReceiptNo = await dbContext.FinancePayments
-            .Where(item => item.ReceiptNo != null && item.ReceiptNo.StartsWith(prefix))
-            .OrderByDescending(item => item.ReceiptNo)
-            .Select(item => item.ReceiptNo)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        var lastSequence = 0;
-        if (!string.IsNullOrEmpty(lastReceiptNo) && lastReceiptNo.Length > prefix.Length)
+        for (var attempt = 0; ; attempt++)
         {
-            _ = int.TryParse(lastReceiptNo[prefix.Length..], NumberStyles.Integer, CultureInfo.InvariantCulture, out lastSequence);
+            try
+            {
+                await using var command = connection.CreateCommand();
+                command.Transaction = dbContext.Database.CurrentTransaction?.GetDbTransaction();
+                command.CommandText = """
+                    INSERT INTO finance_receipt_sequences ("Id", tenant_id, "Period", "LastValue")
+                    VALUES (@id, @tenantId, @period, 1)
+                    ON CONFLICT ("Period") DO UPDATE
+                    SET "LastValue" = finance_receipt_sequences."LastValue" + 1
+                    RETURNING "LastValue";
+                    """;
+                AddParameter(command, "@id", Guid.NewGuid());
+                AddParameter(command, "@tenantId", (object?)dbContext.CurrentTenantId ?? DBNull.Value);
+                AddParameter(command, "@period", periodKey);
+                var value = Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture);
+                return $"MKB-{month}-{value:D5}";
+            }
+            catch (System.Data.Common.DbException exception) when (attempt < 7 && IsTransientAllocatorConflict(exception))
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(10 * (attempt + 1)), cancellationToken);
+            }
         }
+    }
 
-        for (var attempt = 1; attempt <= 10; attempt++)
-        {
-            var candidate = $"{prefix}{lastSequence + attempt:D5}";
-            var taken = await dbContext.FinancePayments
-                .AnyAsync(item => item.ReceiptNo == candidate, cancellationToken);
-            if (!taken) return candidate;
-        }
+    private static bool IsTransientAllocatorConflict(System.Data.Common.DbException exception)
+    {
+        var message = exception.ToString();
+        return message.Contains("locked", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("busy", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("40001", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("40P01", StringComparison.OrdinalIgnoreCase);
+    }
 
-        // Sıra kapalıysa numarasız makbuz kesmek yerine çakışmayan bir sonek kullan.
-        // DİKKAT: bu numara bilerek FARKLI bir önek taşır ("...AA" + 'X'). Aynı öneki
-        // kullansaydı, harf içeren sonek sözlük sırasında rakamların ÜSTÜNE çıkar,
-        // yukarıdaki OrderByDescending onu "son numara" sanır, int.TryParse başarısız
-        // olur ve o ayın sayacı kalıcı olarak 1'e düşerdi. Ayrı önek bu kaydı max
-        // sorgusunun dışında tutar.
-        return $"MKB-{DateTime.UtcNow:yyyyMM}X-{Guid.NewGuid():N}"[..24];
+    private static void AddParameter(System.Data.Common.DbCommand command, string name, object value)
+    {
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = name;
+        parameter.Value = value;
+        command.Parameters.Add(parameter);
     }
 
     private Task<string> NextReceiptNoAsync(CancellationToken cancellationToken)
         => NextReceiptNumberAsync(cancellationToken);
+
+    public async Task SavePaymentWithReceiptRetryAsync(FinancePayment payment, CancellationToken cancellationToken = default)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (DbUpdateException exception) when (attempt < 4 && IsReceiptCollision(exception))
+            {
+                payment.ReceiptNo = await NextReceiptNoAsync(cancellationToken);
+            }
+        }
+    }
+
+    private static bool IsReceiptCollision(DbUpdateException exception)
+    {
+        var message = exception.ToString();
+        return message.Contains("ReceiptNo", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("receipt_no", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("IX_finance_payments_tenant_id_ReceiptNo", StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// Dağılım tablosundan önce oluşturulmuş tahsilatları, bugün taksitlerde görünen

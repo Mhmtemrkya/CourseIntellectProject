@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+: "${COURSE_INTELLECT_UPLOADS_ROOT:?COURSE_INTELLECT_UPLOADS_ROOT is required}"
+: "${COURSE_INTELLECT_UPLOADS_BACKUP_ROOT:=/var/backups/courseintellect/uploads}"
+: "${COURSE_INTELLECT_UPLOADS_BACKUP_ID:=$(date -u +%Y%m%dT%H%M%SZ)}"
+
+(( EUID == 0 )) || { echo "Uploads backup must run as root." >&2; exit 2; }
+[[ "$COURSE_INTELLECT_UPLOADS_ROOT" == /* && -d "$COURSE_INTELLECT_UPLOADS_ROOT" && ! -L "$COURSE_INTELLECT_UPLOADS_ROOT" ]] \
+  || { echo "Uploads root must be an absolute, existing, non-symlink directory." >&2; exit 2; }
+[[ "$COURSE_INTELLECT_UPLOADS_BACKUP_ROOT" == /* && "$COURSE_INTELLECT_UPLOADS_BACKUP_ROOT" != / ]] \
+  || { echo "Uploads backup root must be a safe absolute path." >&2; exit 2; }
+[[ "$COURSE_INTELLECT_UPLOADS_BACKUP_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]] \
+  || { echo "Uploads backup id contains unsafe characters." >&2; exit 2; }
+command -v rsync >/dev/null 2>&1 || { echo "rsync is required." >&2; exit 2; }
+
+mkdir -p "$COURSE_INTELLECT_UPLOADS_BACKUP_ROOT"
+chown root:root "$COURSE_INTELLECT_UPLOADS_BACKUP_ROOT"
+chmod 0700 "$COURSE_INTELLECT_UPLOADS_BACKUP_ROOT"
+backup_root="$(readlink -f "$COURSE_INTELLECT_UPLOADS_BACKUP_ROOT")"
+uploads_root="$(readlink -f "$COURSE_INTELLECT_UPLOADS_ROOT")"
+[[ "$uploads_root" != "$backup_root" && "$uploads_root" != "$backup_root/"* \
+   && "$backup_root" != "$uploads_root/"* ]] \
+  || { echo "Uploads and backup roots must not overlap." >&2; exit 2; }
+
+snapshot="$backup_root/$COURSE_INTELLECT_UPLOADS_BACKUP_ID"
+temporary="$backup_root/.${COURSE_INTELLECT_UPLOADS_BACKUP_ID}.tmp.$$"
+[[ ! -e "$snapshot" && ! -L "$snapshot" && ! -e "$temporary" ]] \
+  || { echo "Uploads backup destination already exists." >&2; exit 1; }
+cleanup() { rm -rf -- "$temporary"; }
+trap cleanup EXIT INT TERM
+mkdir -m 0700 "$temporary" "$temporary/data"
+chown root:root "$temporary" "$temporary/data"
+
+make_manifest() {
+  local base="$1" hashes="$2" metadata="$3" count=0 bytes=0 file size
+  : > "$hashes"
+  while IFS= read -r -d '' file; do
+    size="$(stat -c '%s' -- "$file")"
+    ((count += 1))
+    ((bytes += size))
+  done < <(find -P "$base" -type f -print0)
+  (
+    cd "$base"
+    find -P . -type f -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum
+  ) > "$hashes"
+  printf 'files=%s\nbytes=%s\n' "$count" "$bytes" > "$metadata"
+}
+
+make_manifest "$uploads_root" "$temporary/source.sha256" "$temporary/source.meta"
+rsync --archive --delete --numeric-ids -- "$uploads_root/" "$temporary/data/"
+make_manifest "$temporary/data" "$temporary/MANIFEST.sha256" "$temporary/MANIFEST.meta"
+cmp -s "$temporary/source.sha256" "$temporary/MANIFEST.sha256" \
+  && cmp -s "$temporary/source.meta" "$temporary/MANIFEST.meta" \
+  || { echo "Uploads snapshot checksum/count/byte parity verification failed." >&2; exit 1; }
+rm -f "$temporary/source.sha256" "$temporary/source.meta"
+chmod 0600 "$temporary/MANIFEST.sha256" "$temporary/MANIFEST.meta"
+chmod 0700 "$temporary" "$temporary/data"
+chown root:root "$temporary" "$temporary/data" "$temporary/MANIFEST.sha256" "$temporary/MANIFEST.meta"
+mv -- "$temporary" "$snapshot"
+trap - EXIT INT TERM
+printf 'Uploads backup created: %s\n' "$snapshot"

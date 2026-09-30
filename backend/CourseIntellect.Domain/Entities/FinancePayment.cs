@@ -46,3 +46,12 @@ public sealed class FinancePayment : IBranchScopedEntity
     /// </summary>
     public Guid? ClientRequestId { get; set; }
 }
+
+/// <summary>Kiracı ve ay bazında atomik makbuz sayacı.</summary>
+public sealed class FinanceReceiptSequence : ITenantScopedEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
+    public string Period { get; set; } = string.Empty;
+    public int LastValue { get; set; }
+}

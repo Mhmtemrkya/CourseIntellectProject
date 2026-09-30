@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -175,11 +176,31 @@ public sealed class UploadsController(IFileStorageService fileStorageService) : 
         var chunksRoot = Path.Combine(Path.GetTempPath(), "courseintellect-upload-chunks");
         Directory.CreateDirectory(chunksRoot);
         var tempPath = Path.Combine(chunksRoot, $"{BuildChunkKey(uploadId)}.part");
-
-        await using (var tempStream = new FileStream(tempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None))
+        var statePath = tempPath + ".json";
+        var metadata = new ChunkUploadState(request.FileName.Trim(), request.ContentType?.Trim() ?? "application/octet-stream",
+            string.IsNullOrWhiteSpace(request.Folder) ? "general" : request.Folder.Trim(), request.TotalSize, request.TotalChunks, 0, 0);
+        ChunkUploadState state;
+        await using (var stateStream = new FileStream(statePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
         {
-            tempStream.Position = request.StartByte;
-            await tempStream.WriteAsync(chunkBytes, cancellationToken);
+            state = stateStream.Length == 0
+                ? metadata
+                : (await JsonSerializer.DeserializeAsync<ChunkUploadState>(stateStream, cancellationToken: cancellationToken)
+                    ?? throw new InvalidOperationException("Yükleme durumu okunamadı."));
+            if (state.FileName != metadata.FileName || state.ContentType != metadata.ContentType || state.Folder != metadata.Folder
+                || state.TotalSize != metadata.TotalSize || state.TotalChunks != metadata.TotalChunks)
+                return BadRequest(new { message = "Yükleme meta verileri değiştirilemez." });
+            if (request.ChunkIndex != state.NextChunkIndex || request.StartByte != state.NextByte)
+                return BadRequest(new { message = "Dosya parçaları sıralı ve bitişik gönderilmelidir." });
+            var nextByte = checked(state.NextByte + chunkBytes.LongLength);
+            if (request.ChunkIndex == request.TotalChunks - 1 && nextByte != request.TotalSize)
+                return BadRequest(new { message = "Son parça bildirilen toplam boyutu tam olarak kaplamalıdır." });
+
+            await using (var tempStream = new FileStream(tempPath, FileMode.Append, FileAccess.Write, FileShare.None))
+                await tempStream.WriteAsync(chunkBytes, cancellationToken);
+            state = state with { NextChunkIndex = state.NextChunkIndex + 1, NextByte = nextByte };
+            stateStream.Position = 0;
+            stateStream.SetLength(0);
+            await JsonSerializer.SerializeAsync(stateStream, state, cancellationToken: cancellationToken);
         }
 
         if (request.ChunkIndex < request.TotalChunks - 1)
@@ -222,6 +243,7 @@ public sealed class UploadsController(IFileStorageService fileStorageService) : 
             {
                 System.IO.File.Delete(tempPath);
             }
+            if (System.IO.File.Exists(statePath)) System.IO.File.Delete(statePath);
         }
     }
 
@@ -241,6 +263,9 @@ public sealed class UploadsController(IFileStorageService fileStorageService) : 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{uploadId:N}|{tenantId}|{userId}"));
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
+
+    private sealed record ChunkUploadState(string FileName, string ContentType, string Folder, long TotalSize,
+        int TotalChunks, int NextChunkIndex, long NextByte);
 }
 
 public sealed class JsonFileUploadRequest

@@ -95,7 +95,7 @@ export default function CoursesPage() {
           query: { page: 1, pageSize: 200 },
         })
         setCourses(response.items.map(mapCourse))
-      } catch (error) {
+      } catch {
         setLoadError("Kurslar yüklenemedi.")
       } finally {
         setIsLoading(false)
@@ -219,7 +219,7 @@ export default function CoursesPage() {
               method: "DELETE",
             })
             setCourses((prev) => prev.filter((c) => c.id !== row.id))
-          } catch (error) {
+          } catch {
             setLoadError("Kurs silinemedi.")
           }
         })()
@@ -255,7 +255,7 @@ export default function CoursesPage() {
       }
 
       handleCloseModal()
-    } catch (error) {
+    } catch {
       setLoadError("Kurs kaydedilemedi.")
     }
   }

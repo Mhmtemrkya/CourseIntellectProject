@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CourseIntellect.Api.Controllers;
 using CourseIntellect.Application.DTOs.PlatformSubscriptions;
 using CourseIntellect.Application.Interfaces;
@@ -31,7 +32,7 @@ public sealed class PlatformSubscriptionPurchaseTests
 
         return new PlatformSubscriptionsController(service, new FixedTenant(currentTenant), configuration)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(currentTenant is null ? new[] { new Claim("platform_admin", "true"), new Claim("user_id", Guid.NewGuid().ToString()) } : new[] { new Claim("tenant_id", currentTenant.Value.ToString()), new Claim("user_id", Guid.NewGuid().ToString()) }, "test")) } },
         };
     }
 
@@ -52,10 +53,11 @@ public sealed class PlatformSubscriptionPurchaseTests
     {
         var service = new RecordingService();
 
-        await CreateController(service, OwnTenant, billingEnabled: true)
+        var result = await CreateController(service, OwnTenant, billingEnabled: true)
             .Purchase(Request, CancellationToken.None);
 
-        Assert.Equal(OwnTenant, service.CreatedFor);
+        Assert.IsType<ForbidResult>(result);
+        Assert.Null(service.CreatedFor);
     }
 
     [Fact]

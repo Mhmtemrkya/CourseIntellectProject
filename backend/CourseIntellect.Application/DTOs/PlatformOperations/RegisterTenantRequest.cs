@@ -34,6 +34,9 @@ public sealed record TenantRegistrationContext(
 /// </summary>
 public enum TenantRegistrationOutcome
 {
+    /// <summary>Halka açık kurum kaydı production yapılandırmasında kapalı.</summary>
+    Disabled,
+
     /// <summary>Başvuru alındı ve kuyruğa yazıldı.</summary>
     Accepted,
 

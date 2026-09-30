@@ -245,6 +245,14 @@ public sealed class PlatformOperationsService(
         TenantRegistrationContext context,
         CancellationToken cancellationToken = default)
     {
+        var registrationEnabled = configuration.GetValue<bool?>("Registration:Enabled")
+            ?? !environment.IsProduction();
+        if (!registrationEnabled)
+        {
+            logger.LogInformation("Halka açık kurum kaydı yapılandırma gereği kapalı.");
+            return new RegisterTenantResult(TenantRegistrationOutcome.Disabled);
+        }
+
         var validation = ValidateRegistration(request, BillingEnabled);
         if (validation.Error is not null)
         {
@@ -284,8 +292,7 @@ public sealed class PlatformOperationsService(
         // Çağırana yine 202 döneceğiz; "bu e-posta zaten kayıtlı" demek kayıt
         // varlığını sızdırırdı.
         var duplicatePending = await dbContext.TenantRegistrationApplications
-            .AsNoTracking()
-            .AnyAsync(
+            .FirstOrDefaultAsync(
                 x => x.ContactEmailNormalized == normalizedEmail
                      && x.Status == "pending"
                      && x.CreatedAtUtc >= cooldownStart,
@@ -295,10 +302,18 @@ public sealed class PlatformOperationsService(
             .AsNoTracking()
             .AnyAsync(x => x.ContactEmail.ToLower() == normalizedEmail && x.Status == "active", cancellationToken);
 
-        var duplicate = duplicatePending || duplicateTenant;
+        var duplicate = duplicatePending is not null || duplicateTenant;
 
         if (duplicate)
         {
+            if (duplicatePending is not null
+                && duplicatePending.VerifiedAtUtc is null
+                && (duplicatePending.VerificationSentAtUtc is null
+                    || duplicatePending.VerificationExpiresAtUtc <= DateTime.UtcNow))
+            {
+                await TryRotateExpiredContactVerificationAsync(duplicatePending, cancellationToken);
+            }
+
             logger.LogInformation(
                 "Kurum kaydı yinelenen başvuru olarak yutuldu. Ip={Ip} Ua={UserAgent}",
                 context.IpAddress,
@@ -496,14 +511,20 @@ public sealed class PlatformOperationsService(
 
     public async Task<TenantWorkspaceDto?> ApproveTenantAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        // YÖNLENDİRME KURALI: id ile gelen her uç (Approve/Reject/Delete) ÖNCE
-        // başvurulara, sonra kurumlara bakar. Tek liste döndüğümüz için istemci
-        // hangi tabloda olduğunu bilmez; sıra her metotta aynı olmalıdır.
+        // Approved applications are deliberately retained. A retry after a lost
+        // approval response rotates and redelivers bootstrap credentials without
+        // creating a second tenant.
         var application = await dbContext.TenantRegistrationApplications
-            .SingleOrDefaultAsync(x => x.Id == id && x.Status != "approved", cancellationToken);
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (application is not null)
         {
+            if (application.Status == "approved" && application.CreatedTenantId is Guid createdTenantId)
+            {
+                var recovered = await RegenerateSetupDocumentAsync(createdTenantId, cancellationToken);
+                return recovered.Outcome == SetupDocumentOutcome.Ready ? recovered.Tenant : null;
+            }
+
             return await ApproveApplicationAsync(application, cancellationToken);
         }
 
@@ -1041,6 +1062,7 @@ public sealed class PlatformOperationsService(
         var temporaryPassword = PasswordGenerator.Generate(10);
         adminUser.PasswordHash = passwordHasher.Hash(temporaryPassword);
         adminUser.MustChangePassword = true;
+        adminUser.SecurityVersion++;
         adminUser.TemporaryPasswordExpiresAtUtc = DateTime.UtcNow.AddDays(
             configuration.GetValue<int?>("Registration:TemporaryPasswordValidDays") ?? 7);
 
@@ -1053,10 +1075,10 @@ public sealed class PlatformOperationsService(
             session.RevokedAtUtc = DateTime.UtcNow;
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        await SendApprovalEmailAsync(tenant, adminUser, temporaryPassword, cancellationToken);
         var document = BuildSetupDocument(tenant, adminUser, temporaryPassword);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await SendApprovalEmailAsync(tenant, adminUser, temporaryPassword, cancellationToken);
 
         await auditLog.LogAsync(
             "Kurum kurulum belgesi yeniden üretildi",
@@ -1147,11 +1169,95 @@ public sealed class PlatformOperationsService(
         application.VerificationSentAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        var sent = await SendContactVerificationEmailAsync(application, token, cancellationToken);
+
+        if (!sent)
+        {
+            // Gönderilemedi: "yanıt bekleniyor" durumunda bırakırsak başvuru kuyrukta
+            // hiç görünmez ve kimse fark etmez. Kanıtlanmamış duruma geri al.
+            application.VerificationTokenHash = null;
+            application.VerificationExpiresAtUtc = null;
+            application.VerificationSentAtUtc = null;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Expired/unproven resend is a database compare-and-set. Only the transaction
+    /// that replaces the expired state may send its token; losing requests remain
+    /// non-enumerating duplicates and never email a stale token.
+    /// </summary>
+    private async Task TryRotateExpiredContactVerificationAsync(
+        TenantRegistrationApplication application,
+        CancellationToken cancellationToken)
+    {
+        if (!emailSender.IsConfigured)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var token = GenerateVerificationToken();
+        var tokenHash = HashVerificationToken(token);
+        var expiresAtUtc = now.AddHours(
+            configuration.GetValue<int?>("Registration:VerificationValidHours") ?? 48);
+
+        var claimed = await dbContext.TenantRegistrationApplications
+            .Where(x => x.Id == application.Id
+                        && x.Status == "pending"
+                        && x.VerifiedAtUtc == null
+                        && (x.VerificationSentAtUtc == null || x.VerificationExpiresAtUtc <= now))
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(x => x.VerificationTokenHash, tokenHash)
+                    .SetProperty(x => x.VerificationExpiresAtUtc, expiresAtUtc)
+                    .SetProperty(x => x.VerificationSentAtUtc, now),
+                cancellationToken);
+
+        if (claimed == 0)
+        {
+            return;
+        }
+
+        // ExecuteUpdate bypasses the change tracker. Keep this scoped context's
+        // identity map aligned so a subsequent verification query cannot rematerialize
+        // the row with the expired token values.
+        application.VerificationTokenHash = tokenHash;
+        application.VerificationExpiresAtUtc = expiresAtUtc;
+        application.VerificationSentAtUtc = now;
+        dbContext.Entry(application).State = EntityState.Unchanged;
+
+        if (await SendContactVerificationEmailAsync(application, token, cancellationToken))
+        {
+            return;
+        }
+
+        // Clear only our own failed rotation. This preserves a newer winner if the
+        // row changes between the transport failure and cleanup.
+        await dbContext.TenantRegistrationApplications
+            .Where(x => x.Id == application.Id && x.VerificationTokenHash == tokenHash)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(x => x.VerificationTokenHash, (string?)null)
+                    .SetProperty(x => x.VerificationExpiresAtUtc, (DateTime?)null)
+                    .SetProperty(x => x.VerificationSentAtUtc, (DateTime?)null),
+                cancellationToken);
+        application.VerificationTokenHash = null;
+        application.VerificationExpiresAtUtc = null;
+        application.VerificationSentAtUtc = null;
+        dbContext.Entry(application).State = EntityState.Unchanged;
+    }
+
+    private async Task<bool> SendContactVerificationEmailAsync(
+        TenantRegistrationApplication application,
+        string token,
+        CancellationToken cancellationToken)
+    {
         var baseUrl = (configuration["Registration:VerificationUrl"]
                        ?? "https://schoolasist.com/kurum-kaydi/dogrula").TrimEnd('/');
         var link = $"{baseUrl}?token={Uri.EscapeDataString(token)}";
 
-        var sent = await emailSender.SendAsync(
+        return await emailSender.SendAsync(
             application.ContactEmail,
             "Kurum kaydı başvurunuzu doğrulayın",
             $"""
@@ -1164,16 +1270,6 @@ public sealed class PlatformOperationsService(
             Bu başvuruyu siz yapmadıysanız bu e-postayı yok sayabilirsiniz.</p>
             """,
             cancellationToken);
-
-        if (!sent)
-        {
-            // Gönderilemedi: "yanıt bekleniyor" durumunda bırakırsak başvuru kuyrukta
-            // hiç görünmez ve kimse fark etmez. Kanıtlanmamış duruma geri al.
-            application.VerificationTokenHash = null;
-            application.VerificationExpiresAtUtc = null;
-            application.VerificationSentAtUtc = null;
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
     }
 
     /// <summary>
@@ -1193,7 +1289,17 @@ public sealed class PlatformOperationsService(
         var application = await dbContext.TenantRegistrationApplications
             .SingleOrDefaultAsync(x => x.VerificationTokenHash == hash, cancellationToken);
 
-        if (application is null || application.Status != "pending")
+        if (application is not null)
+        {
+            // A resend CAS uses ExecuteUpdate and may have bypassed this scoped
+            // context's identity map. Reload before evaluating expiry/status so a
+            // previously tracked expired token cannot shadow the committed winner.
+            await dbContext.Entry(application).ReloadAsync(cancellationToken);
+        }
+
+        if (application is null
+            || application.VerificationTokenHash != hash
+            || application.Status != "pending")
         {
             return false;
         }
@@ -1421,12 +1527,36 @@ public sealed class PlatformOperationsService(
     /// Başvuruyu gerçek kuruma çevirir: kurum satırı, okunabilir slug ve yönetici
     /// hesabı bu anda üretilir. Başvuru satırı silinmez, "approved" olarak iz kalır.
     /// </summary>
-    private async Task<TenantWorkspaceDto> ApproveApplicationAsync(
+    private async Task<TenantWorkspaceDto?> ApproveApplicationAsync(
         TenantRegistrationApplication application,
         CancellationToken cancellationToken)
     {
+        var tenantId = Guid.NewGuid();
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        // CreatedTenantId is an existing nullable field and serves as the transaction-local
+        // compare-and-set claim. PostgreSQL locks the matching row for this UPDATE; a
+        // concurrent transaction waits, then affects zero rows after the winner commits.
+        // Because the claim is inside this same transaction, rollback restores NULL and a
+        // later request can safely retry. No process-local lock or new schema state is used.
+        var claimed = await dbContext.TenantRegistrationApplications
+            .Where(x => x.Id == application.Id
+                        && (x.Status == "pending" || x.Status == "rejected")
+                        && x.CreatedTenantId == null)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(x => x.CreatedTenantId, tenantId),
+                cancellationToken);
+
+        if (claimed == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            dbContext.Entry(application).State = EntityState.Detached;
+            return null;
+        }
+
         var tenant = new TenantWorkspace
         {
+            Id = tenantId,
             Name = application.InstitutionName,
             Slug = await GenerateUniqueSlugAsync(application.InstitutionName, null, cancellationToken),
             ContactEmail = application.ContactEmail,
@@ -1447,12 +1577,6 @@ public sealed class PlatformOperationsService(
             ApprovedAtUtc = DateTime.UtcNow,
         };
 
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        var claimed = await dbContext.TenantRegistrationApplications
-            .Where(a => a.Id == application.Id && (a.Status == "pending" || a.Status == "rejected"))
-            .ExecuteUpdateAsync(setters => setters.SetProperty(a => a.Status, "approving"), cancellationToken);
-        if (claimed != 1) throw new InvalidOperationException("Başvuru başka bir yönetici tarafından işlenmiş. Listeyi yenileyin.");
-
         // İKİ AŞAMALI KAYIT ŞART: kurum ile yönetici birbirini işaret ediyor
         // (tenant.AdminUserId → user, user.TenantId → tenant). İkisi tek SaveChanges'te
         // eklenirse EF dairesel bağımlılık hatası verir. Önce kurum yazılır.
@@ -1469,17 +1593,19 @@ public sealed class PlatformOperationsService(
         application.ApprovedAtUtc = DateTime.UtcNow;
         application.CreatedTenantId = tenant.Id;
 
+        // Render before commit. If rendering fails, disposal rolls the transaction
+        // back and no unusable bootstrap password or claim is persisted.
+        var document = BuildSetupDocument(tenant, created.User, created.TemporaryPassword);
+
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        await SendApprovalEmailAsync(tenant, created.User, created.TemporaryPassword, cancellationToken);
 
         logger.LogInformation(
             "Kurum başvurusu onaylandı. BasvuruId={ApplicationId} KurumId={TenantId} Slug={Slug}",
             application.Id,
             tenant.Id,
             tenant.Slug);
-
-        await SendApprovalEmailAsync(tenant, created.User, created.TemporaryPassword, cancellationToken);
-        var document = BuildSetupDocument(tenant, created.User, created.TemporaryPassword);
 
         await auditLog.LogAsync(
             "Kurum onaylandı, kurulum belgesi üretildi",

@@ -156,7 +156,7 @@ export default function RegistrationsPage() {
       }))
 
       setRegistrations(mapped)
-    } catch (error) {
+    } catch {
       setLoadError("Kayıtlar yüklenemedi.")
     } finally {
       setIsLoading(false)

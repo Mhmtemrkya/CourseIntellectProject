@@ -1,23 +1,66 @@
-name: dotnet-ci
+name: full-stack-ci
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
-  build:
+  build-test-audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate release scripts and production assertions
+        run: |
+          bash -n scripts/production_preflight.sh scripts/apply_production_migrations.sh scripts/deploy_production_fullstack.sh scripts/test_release_ops.sh scripts/test_deploy_failure_paths.sh
+          bash scripts/test_release_ops.sh
+          bash scripts/test_deploy_failure_paths.sh
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - name: Restore
+
+      - name: Restore backend
         run: dotnet restore backend/CourseIntellect.sln
-      - name: Build
-        run: dotnet build backend/CourseIntellect.sln --no-restore /p:UseAppHost=false
-      - name: Test
-        run: dotnet test backend/CourseIntellect.Tests/CourseIntellect.Tests.csproj --no-build --verbosity normal
+
+      - name: Build backend
+        run: dotnet build backend/CourseIntellect.sln --no-restore --configuration Release /p:UseAppHost=false
+
+      - name: Test backend
+        run: dotnet test backend/CourseIntellect.Tests/CourseIntellect.Tests.csproj --no-build --configuration Release --verbosity normal
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: courseintellectmarketingwebsite (1)/package-lock.json
+
+      - name: Install marketing dependencies
+        working-directory: courseintellectmarketingwebsite (1)
+        run: npm ci --include=dev --no-audit --no-fund
+
+      - name: Lint marketing
+        working-directory: courseintellectmarketingwebsite (1)
+        run: npm run lint
+
+      - name: Typecheck marketing
+        working-directory: courseintellectmarketingwebsite (1)
+        run: npx tsc --noEmit
+
+      - name: Audit marketing production dependency tree
+        working-directory: courseintellectmarketingwebsite (1)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Build marketing static export
+        working-directory: courseintellectmarketingwebsite (1)
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_API_URL: https://api.example.invalid
+          # Cloudflare's documented always-pass public test site key. Production
+          # deploys must provide their real site key through the external env.
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+        run: npm run build

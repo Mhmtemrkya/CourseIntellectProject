@@ -24,7 +24,7 @@ public sealed class SystemController(ISystemService systemService) : ControllerB
     /// Bakım modu aç/kapat — sadece platform admin.
     /// </summary>
     [HttpPut("maintenance")]
-    [Authorize(Roles = "Admin,Developer")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> SetMaintenance(
         [FromBody] UpdateMaintenanceRequest request,
         CancellationToken cancellationToken)

@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+: "${COURSE_INTELLECT_DB_BACKUP_ROOT:=/var/backups/courseintellect/database}"
+: "${COURSE_INTELLECT_DB_PASSWORD_FILE:=/etc/courseintellect/db-password}"
+: "${COURSE_INTELLECT_DB_BACKUP_ID:=$(date -u +%Y%m%dT%H%M%SZ)}"
+: "${COURSE_INTELLECT_DB_HOST:=127.0.0.1}"
+: "${COURSE_INTELLECT_DB_USER:=courseintellect_app}"
+: "${COURSE_INTELLECT_DB_NAME:=courseintellect_prod}"
+: "${COURSE_INTELLECT_DB_BACKUP_RETENTION_DAYS:=30}"
+
+(( EUID == 0 )) || { echo "Database backup must run as root." >&2; exit 2; }
+[[ "$COURSE_INTELLECT_DB_BACKUP_ROOT" == /* && "$COURSE_INTELLECT_DB_BACKUP_ROOT" != / \
+   && ! -L "$COURSE_INTELLECT_DB_BACKUP_ROOT" ]] \
+  || { echo "Database backup root must be a safe absolute non-symlink path." >&2; exit 2; }
+[[ "$COURSE_INTELLECT_DB_PASSWORD_FILE" == /* && -s "$COURSE_INTELLECT_DB_PASSWORD_FILE" \
+   && -f "$COURSE_INTELLECT_DB_PASSWORD_FILE" && ! -L "$COURSE_INTELLECT_DB_PASSWORD_FILE" ]] \
+  || { echo "Database password file is missing or unsafe." >&2; exit 2; }
+[[ "$COURSE_INTELLECT_DB_BACKUP_ID" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] \
+  || { echo "Database backup id is invalid." >&2; exit 2; }
+[[ "$COURSE_INTELLECT_DB_BACKUP_RETENTION_DAYS" =~ ^[1-9][0-9]{0,3}$ ]] \
+  || { echo "Database backup retention is invalid." >&2; exit 2; }
+command -v pg_dump >/dev/null 2>&1 || { echo "pg_dump is required." >&2; exit 2; }
+command -v pg_restore >/dev/null 2>&1 || { echo "pg_restore is required." >&2; exit 2; }
+
+mkdir -p "$COURSE_INTELLECT_DB_BACKUP_ROOT"
+chown root:root "$COURSE_INTELLECT_DB_BACKUP_ROOT"
+chmod 0700 "$COURSE_INTELLECT_DB_BACKUP_ROOT"
+backup_root="$(readlink -f "$COURSE_INTELLECT_DB_BACKUP_ROOT")"
+final="$backup_root/courseintellect_prod-$COURSE_INTELLECT_DB_BACKUP_ID.dump"
+temporary="$final.tmp.$$"
+[[ ! -e "$final" && ! -L "$final" && ! -e "$temporary" ]] \
+  || { echo "Database backup destination already exists." >&2; exit 1; }
+cleanup() { rm -f -- "$temporary"; }
+trap cleanup EXIT INT TERM
+
+export PGPASSWORD
+PGPASSWORD="$(tr -d '\r\n' < "$COURSE_INTELLECT_DB_PASSWORD_FILE")"
+[[ -n "$PGPASSWORD" ]] || { echo "Database password file is empty." >&2; exit 2; }
+pg_dump --host="$COURSE_INTELLECT_DB_HOST" --username="$COURSE_INTELLECT_DB_USER" \
+  --dbname="$COURSE_INTELLECT_DB_NAME" --format=custom --compress=6 \
+  --no-owner --no-privileges > "$temporary"
+pg_restore --list "$temporary" >/dev/null
+chmod 0600 "$temporary"
+chown root:root "$temporary"
+mv -- "$temporary" "$final"
+trap - EXIT INT TERM
+sha256sum "$final" > "$final.sha256"
+chmod 0600 "$final" "$final.sha256"
+chown root:root "$final" "$final.sha256"
+
+python3 - "$backup_root" "$COURSE_INTELLECT_DB_BACKUP_RETENTION_DAYS" <<'PY'
+import pathlib, sys, time
+root = pathlib.Path(sys.argv[1])
+cutoff = time.time() - int(sys.argv[2]) * 86400
+for dump in root.glob("courseintellect_prod-*.dump"):
+    if dump.is_file() and not dump.is_symlink() and dump.stat().st_mtime < cutoff:
+        dump.unlink(missing_ok=True)
+        dump.with_suffix(dump.suffix + ".sha256").unlink(missing_ok=True)
+PY
+
+printf 'Database backup created: %s\n' "$final"

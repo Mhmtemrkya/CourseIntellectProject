@@ -4,6 +4,8 @@ public sealed class StudentQuestionThread : ITenantScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? StudentUserId { get; set; }
+    public Guid? TeacherUserId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
     public string StudentName { get; set; } = string.Empty;

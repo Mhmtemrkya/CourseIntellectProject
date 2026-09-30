@@ -10,7 +10,7 @@ using System.Security.Claims;
 namespace CourseIntellect.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = "PlatformAdmin")]
 [Route("api/platformops")]
 public sealed class PlatformOperationsController(
     IPlatformOperationsService platformOperationsService,
@@ -19,13 +19,11 @@ public sealed class PlatformOperationsController(
 {
     private bool DenyPlatformAccess()
     {
-        var isPlatformAdmin = string.Equals(User.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase)
-                              || (User.IsInRole("Developer") && string.IsNullOrWhiteSpace(User.FindFirstValue("tenant_id")));
-        return !isPlatformAdmin;
+        var isPlatformAdmin = string.Equals(User.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase);
+        return !isPlatformAdmin || !string.IsNullOrWhiteSpace(User.FindFirstValue("tenant_id"));
     }
 
     [HttpGet("overview")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetOverview(CancellationToken cancellationToken)
     {
         if (DenyPlatformAccess()) return Forbid();
@@ -34,7 +32,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpGet("tenants")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetTenants(CancellationToken cancellationToken)
     {
         if (DenyPlatformAccess()) return Forbid();
@@ -43,7 +40,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpPut("tenants")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpsertTenant([FromQuery] Guid? id, [FromBody] UpsertTenantWorkspaceRequest request, CancellationToken cancellationToken)
     {
         if (DenyPlatformAccess()) return Forbid();
@@ -52,7 +48,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpGet("support-tickets")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetSupportTickets(CancellationToken cancellationToken)
     {
         if (DenyPlatformAccess()) return Forbid();
@@ -61,7 +56,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpPost("support-tickets")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreateSupportTicket([FromBody] CreateSupportTicketRequest request, CancellationToken cancellationToken)
     {
         if (DenyPlatformAccess()) return Forbid();
@@ -91,6 +85,12 @@ public sealed class PlatformOperationsController(
 
         return result.Outcome switch
         {
+            TenantRegistrationOutcome.Disabled =>
+                StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    code = "REGISTRATION_DISABLED",
+                    message = "Kurum kaydı geçici olarak kullanılamıyor.",
+                }),
             TenantRegistrationOutcome.Invalid =>
                 BadRequest(new { code = "VALIDATION_FAILED", message = result.Message }),
             TenantRegistrationOutcome.CaptchaFailed =>
@@ -140,7 +140,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpPut("tenants/{id:guid}/approve")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ApproveTenant(Guid id, CancellationToken cancellationToken)
     {
         if (DenyPlatformAccess()) return Forbid();
@@ -150,7 +149,6 @@ public sealed class PlatformOperationsController(
 
     /// <summary>Kurulum belgesini yeniden üretir. Eski geçici parola geçersiz olur.</summary>
     [HttpPost("tenants/{id:guid}/setup-document")]
-    [Authorize(Roles = "Admin,Developer")]
     public async Task<IActionResult> RegenerateSetupDocument(Guid id, CancellationToken cancellationToken)
     {
         if (DenyPlatformAccess()) return Forbid();
@@ -192,7 +190,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpPut("tenants/{id:guid}/reject")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RejectTenant(
         Guid id,
         [FromQuery] string? reason,
@@ -205,7 +202,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpDelete("tenants/{id:guid}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteTenant(Guid id, CancellationToken cancellationToken)
     {
         if (DenyPlatformAccess()) return Forbid();
@@ -214,7 +210,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpPost("tenants/{id:guid}/reset-data")]
-    [Authorize(Roles = "Admin,Developer")]
     public async Task<IActionResult> ResetTenantData(
         Guid id,
         [FromBody] ResetTenantDataRequest request,
@@ -248,7 +243,6 @@ public sealed class PlatformOperationsController(
     // --- Kurum kaydı kuyruğu: kara liste ve şüpheli işareti ---
 
     [HttpGet("registration-blocklist")]
-    [Authorize(Roles = "Admin,Developer")]
     public async Task<IActionResult> GetRegistrationBlocklist(CancellationToken cancellationToken)
     {
         if (DenyPlatformAccess()) return Forbid();
@@ -257,7 +251,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpPost("registration-blocklist")]
-    [Authorize(Roles = "Admin,Developer")]
     public async Task<IActionResult> AddRegistrationBlocklistEntry(
         [FromBody] AddRegistrationBlocklistRequest request,
         CancellationToken cancellationToken)
@@ -278,7 +271,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpDelete("registration-blocklist/{id:guid}")]
-    [Authorize(Roles = "Admin,Developer")]
     public async Task<IActionResult> RemoveRegistrationBlocklistEntry(Guid id, CancellationToken cancellationToken)
     {
         if (DenyPlatformAccess()) return Forbid();
@@ -287,7 +279,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpPut("tenants/{id:guid}/suspicious")]
-    [Authorize(Roles = "Admin,Developer")]
     public async Task<IActionResult> SetApplicationSuspicious(
         Guid id,
         [FromQuery] bool value,
@@ -300,7 +291,6 @@ public sealed class PlatformOperationsController(
     }
 
     [HttpPut("support-tickets/{id:guid}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateSupportTicket(Guid id, [FromBody] UpdateSupportTicketRequest request, CancellationToken cancellationToken)
     {
         if (DenyPlatformAccess()) return Forbid();

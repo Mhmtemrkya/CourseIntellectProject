@@ -11,6 +11,7 @@ public sealed class QuestionThreadService(CourseIntellectDbContext dbContext) : 
 {
     public async Task<IReadOnlyList<QuestionThreadDto>> GetThreadsAsync(
         string requestorRole,
+        Guid requestorUserId,
         string fullName,
         string username,
         CancellationToken cancellationToken = default)
@@ -20,11 +21,17 @@ public sealed class QuestionThreadService(CourseIntellectDbContext dbContext) : 
 
         if (normalizedRole.Equals("Student", StringComparison.OrdinalIgnoreCase))
         {
-            query = query.Where(x => x.StudentUsername == username || x.StudentName == fullName);
+            query = requestorUserId != Guid.Empty
+                ? query.Where(x => x.StudentUserId == requestorUserId || (x.StudentUserId == null && x.StudentUsername == username))
+                : query.Where(x => x.StudentName == fullName);
         }
         else if (normalizedRole.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
         {
-            query = query.Where(x => x.TeacherName == fullName);
+            query = query.Where(x => x.TeacherUserId == requestorUserId || (x.TeacherUserId == null && x.TeacherName == fullName));
+        }
+        else if (!IsManagementRole(normalizedRole))
+        {
+            query = query.Where(_ => false);
         }
 
         var threads = await query
@@ -44,18 +51,27 @@ public sealed class QuestionThreadService(CourseIntellectDbContext dbContext) : 
 
     public async Task<QuestionThreadDto> CreateThreadAsync(
         string studentName,
+        Guid studentUserId,
         string studentUsername,
         CreateQuestionThreadRequest request,
         CancellationToken cancellationToken = default)
     {
         var attachments = request.Attachments?.Where(IsValidAttachment).ToList() ?? [];
+        var teachers = await dbContext.Users.AsNoTracking()
+            .Where(x => x.Status == CourseIntellect.Domain.Enums.UserStatus.Active
+                && x.PrimaryRole == CourseIntellect.Domain.Enums.UserRole.Teacher
+                && x.FullName.ToLower() == request.TeacherName.Trim().ToLower())
+            .Select(x => x.Id).ToListAsync(cancellationToken);
+        if (teachers.Count != 1) throw new InvalidOperationException("Öğretmen bulunamadı veya kurum içinde tekil değil.");
         var thread = new StudentQuestionThread
         {
             Title = request.Title.Trim(),
             Subject = request.Subject.Trim(),
             StudentName = studentName.Trim(),
+            StudentUserId = studentUserId,
             StudentUsername = studentUsername.Trim(),
             TeacherName = request.TeacherName.Trim(),
+            TeacherUserId = teachers[0],
             QuestionText = request.QuestionText.Trim(),
             Status = "Bekliyor",
             CreatedAtLabel = BuildDateLabel(),
@@ -71,6 +87,7 @@ public sealed class QuestionThreadService(CourseIntellectDbContext dbContext) : 
 
     public async Task<QuestionThreadDto?> AddReplyAsync(
         Guid threadId,
+        Guid senderUserId,
         string senderName,
         string senderRole,
         string senderUsername,
@@ -88,7 +105,7 @@ public sealed class QuestionThreadService(CourseIntellectDbContext dbContext) : 
         // yanıt yazıp dönen DTO üzerinden sorunun metnini, soruyu soran öğrencinin
         // adını, ekleri ve tüm yanıt geçmişini okuyabiliyordu. Yetkisizde null
         // döner — "bulunamadı" ile aynı sonuç, thread'in varlığı sızmaz.
-        if (!CanAccessThread(thread, senderRole, senderName, senderUsername))
+        if (!CanAccessThread(thread, senderUserId, senderRole, senderName, senderUsername))
         {
             return null;
         }
@@ -98,6 +115,7 @@ public sealed class QuestionThreadService(CourseIntellectDbContext dbContext) : 
         {
             TenantId = thread.TenantId,
             ThreadId = threadId,
+            SenderUserId = senderUserId,
             SenderName = senderName.Trim(),
             SenderRole = senderRole.Trim(),
             MessageText = request.MessageText.Trim(),
@@ -123,28 +141,36 @@ public sealed class QuestionThreadService(CourseIntellectDbContext dbContext) : 
     /// öğrenci yalnız kendi sorusunu, öğretmen yalnız kendisine yöneltilen soruyu,
     /// yönetim rolleri hepsini görür. Tanınmayan rol hiçbir şey göremez (fail-closed).
     /// </summary>
-    private static bool CanAccessThread(StudentQuestionThread thread, string requestorRole, string fullName, string username)
+    private static bool CanAccessThread(StudentQuestionThread thread, Guid userId, string requestorRole, string fullName, string username)
     {
         var normalizedRole = requestorRole.Trim();
 
         if (normalizedRole.Equals("Student", StringComparison.OrdinalIgnoreCase))
         {
-            return (!string.IsNullOrWhiteSpace(username) && thread.StudentUsername == username)
-                || (!string.IsNullOrWhiteSpace(fullName) && thread.StudentName == fullName);
+            return thread.StudentUserId is Guid ownerId
+                ? ownerId == userId
+                : !string.IsNullOrWhiteSpace(username)
+                    ? thread.StudentUsername == username
+                    : !string.IsNullOrWhiteSpace(fullName) && thread.StudentName == fullName;
         }
 
         if (normalizedRole.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
         {
-            return !string.IsNullOrWhiteSpace(fullName) && thread.TeacherName == fullName;
+            return thread.TeacherUserId is Guid teacherId
+                ? teacherId == userId
+                : !string.IsNullOrWhiteSpace(fullName) && thread.TeacherName == fullName;
         }
 
         // Listeleme tarafında filtre uygulanmayan yönetim rolleri.
-        return normalizedRole.Equals("Admin", StringComparison.OrdinalIgnoreCase)
+        return IsManagementRole(normalizedRole);
+    }
+
+    private static bool IsManagementRole(string normalizedRole)
+        => normalizedRole.Equals("Admin", StringComparison.OrdinalIgnoreCase)
             || normalizedRole.Equals("Administrative", StringComparison.OrdinalIgnoreCase)
             || normalizedRole.Equals("InstitutionAdmin", StringComparison.OrdinalIgnoreCase)
             || normalizedRole.Equals("Idare", StringComparison.OrdinalIgnoreCase)
             || normalizedRole.Equals("Developer", StringComparison.OrdinalIgnoreCase);
-    }
 
     private static QuestionThreadDto ToDto(StudentQuestionThread thread, IReadOnlyList<StudentQuestionReply> replies)
     {

@@ -31,7 +31,7 @@ public sealed class PlatformPackagesController(CourseIntellectDbContext dbContex
 
     /// <summary>Platform yöneticisi: tüm paket yetki tanımlarını listeler.</summary>
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> List(CancellationToken cancellationToken)
     {
         if (HasTenantContext()) return Forbid();
@@ -49,7 +49,7 @@ public sealed class PlatformPackagesController(CourseIntellectDbContext dbContex
 
     /// <summary>Platform yöneticisi: paket yetki tanımını oluşturur/günceller.</summary>
     [HttpPut("{packageId}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> Upsert(
         string packageId,
         [FromBody] UpsertPlatformPackageRequest request,
@@ -103,7 +103,7 @@ public sealed class PlatformPackagesController(CourseIntellectDbContext dbContex
 
     /// <summary>Platform yöneticisi: paket yetki tanımını siler.</summary>
     [HttpDelete("{packageId}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> Delete(string packageId, CancellationToken cancellationToken)
     {
         if (HasTenantContext()) return Forbid();

@@ -96,6 +96,7 @@ public sealed class UserDirectoryService(
     {
         if (!Enum.TryParse<UserRole>(request.Role, true, out var role))
             role = UserRole.Student;
+        EnsureRoleAssignable(role);
 
         var user = new AppUser
         {
@@ -131,11 +132,16 @@ public sealed class UserDirectoryService(
         if (request.Email is not null) user.Username = request.Email;
         if (request.Password is not null) user.PasswordHash = passwordHasher.Hash(request.Password);
         if (request.Role is not null && Enum.TryParse<UserRole>(request.Role, true, out var role))
+        {
+            EnsureRoleAssignable(role);
             user.PrimaryRole = role;
+        }
         if (request.IsActive.HasValue)
             user.Status = request.IsActive.Value ? UserStatus.Active : UserStatus.Passive;
         if (request.IsEmailVerified.HasValue)
             user.IsEmailVerified = request.IsEmailVerified.Value;
+
+        user.SecurityVersion++;
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToAdminListItem(user);
@@ -208,6 +214,7 @@ public sealed class UserDirectoryService(
         {
             throw new InvalidOperationException("Gecersiz rol bilgisi.");
         }
+        EnsureRoleAssignable(parsedRole);
 
         var policy = await dbContext.RolePolicies.SingleOrDefaultAsync(x => x.RoleName == parsedRole.ToString(), cancellationToken);
         if (policy is null)
@@ -222,6 +229,11 @@ public sealed class UserDirectoryService(
         policy.MessagingScope = request.MessagingScope;
         policy.ModuleAccessSerialized = JsonSerializer.Serialize(request.ModuleAccess);
 
+        var affectedUsers = await ApplyTenantScope(dbContext.Users)
+            .Where(x => x.PrimaryRole == parsedRole)
+            .ToListAsync(cancellationToken);
+        foreach (var affectedUser in affectedUsers) affectedUser.SecurityVersion++;
+
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -234,6 +246,7 @@ public sealed class UserDirectoryService(
                           request.Status.Equals("Pasif", StringComparison.OrdinalIgnoreCase);
         var previousStatus = user.Status;
         user.Status = makePassive ? UserStatus.Passive : UserStatus.Active;
+        if (previousStatus != user.Status) user.SecurityVersion++;
 
         // Pasifleştirilen kullanıcının açık oturumları anında düşürülür:
         // refresh token'ları iptal edilmezse mevcut oturum token süresi bitene dek çalışmaya devam ederdi.
@@ -272,12 +285,14 @@ public sealed class UserDirectoryService(
         {
             throw new InvalidOperationException("Gecersiz rol bilgisi.");
         }
+        EnsureRoleAssignable(parsedRole);
 
         var history = user.RoleHistory;
         history.Add($"PRIMARY:{user.PrimaryRole}:{request.PrimaryRole}:{DateTime.UtcNow:O}");
         user.RoleHistory = history;
         user.ExtraRoles = user.ExtraRoles.Where(x => x != parsedRole).ToList();
         user.PrimaryRole = parsedRole;
+        user.SecurityVersion++;
         user.DepartmentOrBranch = request.DepartmentOrBranch;
         if (staff is not null)
         {
@@ -303,12 +318,14 @@ public sealed class UserDirectoryService(
         {
             throw new InvalidOperationException("Gecersiz ek yetki bilgisi.");
         }
+        EnsureRoleAssignable(parsedRole);
 
         var roles = user.ExtraRoles;
         if (user.PrimaryRole != parsedRole && !roles.Contains(parsedRole))
         {
             roles.Add(parsedRole);
             user.ExtraRoles = roles;
+            user.SecurityVersion++;
             var history = user.RoleHistory;
             history.Add($"EXTRA:{parsedRole}:{DateTime.UtcNow:O}");
             user.RoleHistory = history;
@@ -360,6 +377,7 @@ public sealed class UserDirectoryService(
             }
         }
 
+        user.SecurityVersion++;
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -411,4 +429,10 @@ public sealed class UserDirectoryService(
     }
 
     private Guid? ResolveCurrentTenantId() => tenantContext.CurrentTenantId;
+
+    private void EnsureRoleAssignable(UserRole role)
+    {
+        if (tenantContext.HasTenant && role == UserRole.Developer)
+            throw new InvalidOperationException("Platform rolleri kurum kapsamından yönetilemez.");
+    }
 }

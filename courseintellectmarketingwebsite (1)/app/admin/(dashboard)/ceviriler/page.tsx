@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { useLanguage, defaultTranslations, type Language } from "@/context/language-context"
+import { useLanguage, defaultTranslations, type Language, type Translations } from "@/context/language-context"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -35,8 +35,17 @@ const categories = [
   { id: "common", label: "Genel" },
 ]
 
+function getTranslationSection(source: Partial<Translations>, category: keyof Translations): Record<string, string> {
+  const section = source[category]
+  if (!section) return {}
+
+  return Object.fromEntries(
+    Object.entries(section).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  )
+}
+
 export default function TranslationsPage() {
-  const { language, customTranslations, saveCustomTranslations } = useLanguage()
+  const { customTranslations, saveCustomTranslations } = useLanguage()
   const { toast } = useToast()
   const [selectedCategory, setSelectedCategory] = useState("navbar")
   const [searchQuery, setSearchQuery] = useState("")
@@ -45,10 +54,11 @@ export default function TranslationsPage() {
 
   // Build translation items from defaults and custom
   const getTranslationItems = (category: string): TranslationItem[] => {
-    const defaultTr = Object.fromEntries(Object.entries(defaultTranslations.tr))[category] || {}
-    const defaultEn = Object.fromEntries(Object.entries(defaultTranslations.en))[category] || {}
-    const customTr = (customTranslations.tr as Record<string, Record<string, string>>)[category] || {}
-    const customEn = (customTranslations.en as Record<string, Record<string, string>>)[category] || {}
+    const section = category as keyof Translations
+    const defaultTr = getTranslationSection(defaultTranslations.tr, section)
+    const defaultEn = getTranslationSection(defaultTranslations.en, section)
+    const customTr = getTranslationSection(customTranslations.tr, section)
+    const customEn = getTranslationSection(customTranslations.en, section)
 
     return Object.keys(defaultTr).map((key) => ({
       key: `${category}.${key}`,
@@ -85,7 +95,7 @@ export default function TranslationsPage() {
         title: "Kaydedildi",
         description: "Çeviriler başarıyla kaydedildi.",
       })
-    } catch (error) {
+    } catch {
       toast({
         title: "Hata",
         description: "Çeviriler kaydedilemedi.",

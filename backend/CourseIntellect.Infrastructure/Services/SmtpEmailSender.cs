@@ -3,6 +3,7 @@ using System.Net.Mail;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
 
 namespace CourseIntellect.Infrastructure.Services;
 
@@ -34,7 +35,7 @@ public sealed class SmtpEmailSender : IEmailSender
     private readonly string? fromAddress;
     private readonly string fromName;
 
-    public SmtpEmailSender(IConfiguration configuration, ILogger<SmtpEmailSender> logger)
+    public SmtpEmailSender(IConfiguration configuration, IHostEnvironment environment, ILogger<SmtpEmailSender> logger)
     {
         this.logger = logger;
 
@@ -49,6 +50,41 @@ public sealed class SmtpEmailSender : IEmailSender
         useSsl = configuration.GetValue<bool?>("Email:Smtp:UseSsl") ?? true;
         fromAddress = Normalize(configuration["Email:From"]);
         fromName = Normalize(configuration["Email:FromName"]) ?? "SchoolAsist";
+
+        if (environment.IsProduction())
+        {
+            if (host is null || fromAddress is null)
+            {
+                throw new InvalidOperationException(
+                    "Production ortamında Email:Smtp:Host ve Email:From eksiksiz yapılandırılmalıdır.");
+            }
+
+            if ((user is null) != (password is null))
+            {
+                throw new InvalidOperationException(
+                    "Production ortamında SMTP kullanıcı adı ve parolası birlikte yapılandırılmalıdır.");
+            }
+
+            if (port is < 1 or > 65535)
+            {
+                throw new InvalidOperationException("SMTP portu 1-65535 aralığında olmalıdır.");
+            }
+
+            try
+            {
+                _ = new MailAddress(fromAddress);
+            }
+            catch (FormatException exception)
+            {
+                throw new InvalidOperationException("Email:From geçerli bir e-posta adresi olmalıdır.", exception);
+            }
+
+            if (user is not null && !useSsl)
+            {
+                throw new InvalidOperationException(
+                    "Production ortamında kimlik doğrulamalı SMTP bağlantısı TLS olmadan kullanılamaz.");
+            }
+        }
     }
 
     public bool IsConfigured => host is not null && fromAddress is not null;

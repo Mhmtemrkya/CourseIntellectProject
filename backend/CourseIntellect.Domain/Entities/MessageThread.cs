@@ -4,6 +4,8 @@ public sealed class MessageThread : ITenantScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? ParticipantOneUserId { get; set; }
+    public Guid? ParticipantTwoUserId { get; set; }
     public string ParticipantOneName { get; set; } = string.Empty;
     public string ParticipantOneRole { get; set; } = string.Empty;
     public string ParticipantTwoName { get; set; } = string.Empty;

@@ -152,7 +152,7 @@ public sealed class AuthService(
         user.LastLoginAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var response = await CreateLoginResponseAsync(user, cancellationToken);
+        var response = await CreateLoginResponseAsync(user, cancellationToken, user.MustChangePassword);
         return response;
     }
 
@@ -209,9 +209,9 @@ public sealed class AuthService(
         }
 
         var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == session.UserId, cancellationToken);
-        // Pasif kullanıcı refresh ile de yeni token alamaz — yoksa pasifleştirme
-        // refresh token ömrü boyunca (günler) etkisiz kalırdı.
-        if (user is null || user.Status != UserStatus.Active)
+        // Pasif veya bootstrap kullanıcısı refresh ile yeni ordinary token alamaz.
+        if (user is null || user.Status != UserStatus.Active || user.MustChangePassword
+            || session.SecurityVersion != user.SecurityVersion)
         {
             return null;
         }
@@ -252,16 +252,17 @@ public sealed class AuthService(
             .AnyAsync(x => x.Id == tenantId && x.InstitutionType == InstitutionType.DrivingSchool, cancellationToken);
     }
 
-    private async Task<LoginResponse> CreateLoginResponseAsync(AppUser user, CancellationToken cancellationToken)
+    private async Task<LoginResponse> CreateLoginResponseAsync(AppUser user, CancellationToken cancellationToken, bool bootstrapOnly = false)
     {
         var accessToken = jwtTokenService.CreateToken(user);
         var expiresAtUtc = DateTime.UtcNow.AddMinutes(jwtTokenService.AccessTokenMinutes);
-        var refreshToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-        var refreshTokenExpiresAtUtc = DateTime.UtcNow.AddDays(jwtTokenService.RefreshTokenDays);
+        var refreshToken = bootstrapOnly ? string.Empty : Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+        var refreshTokenExpiresAtUtc = bootstrapOnly ? DateTime.UtcNow : DateTime.UtcNow.AddDays(jwtTokenService.RefreshTokenDays);
 
-        dbContext.RefreshTokenSessions.Add(new RefreshTokenSession
+        if (!bootstrapOnly) dbContext.RefreshTokenSessions.Add(new RefreshTokenSession
         {
             UserId = user.Id,
+            SecurityVersion = user.SecurityVersion,
             TokenHash = HashRefreshToken(refreshToken),
             ExpiresAtUtc = refreshTokenExpiresAtUtc,
             CreatedAtUtc = DateTime.UtcNow
@@ -327,9 +328,7 @@ public sealed class AuthService(
                     : "Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermelidir.");
         }
 
-        // İlk-giriş zorunlu değişimde mevcut şifre alanı boş gelebilir; bu durumda atla.
-        // Diğer durumlarda mevcut şifre doğrulaması yapılır.
-        if (!user.MustChangePassword)
+        // Bootstrap dahil her parola değişimi mevcut kimlik bilgisini kanıtlamalıdır.
         {
             var currentPassword = (request.CurrentPassword ?? string.Empty).Trim();
             if (string.IsNullOrEmpty(currentPassword) || !passwordHasher.Verify(currentPassword, user.PasswordHash))
@@ -341,6 +340,7 @@ public sealed class AuthService(
         user.PasswordHash = passwordHasher.Hash(newPassword);
         user.MustChangePassword = false;
         user.TemporaryPasswordExpiresAtUtc = null;
+        user.SecurityVersion++;
 
         var activeSessions = await dbContext.RefreshTokenSessions
             .Where(x => x.UserId == user.Id && x.RevokedAtUtc == null)
@@ -522,6 +522,7 @@ public sealed class AuthService(
         var temporaryPassword = PasswordGenerator.Generate(10);
         user.PasswordHash = passwordHasher.Hash(temporaryPassword);
         user.MustChangePassword = true;
+        user.SecurityVersion++;
         // Sıfırlamayla verilen yeni parola kendi süresini getirir. Yazılmazsa kurum
         // onayından kalan ESKİ tarih yürürlükte kalır ve taze parola daha ilk girişte
         // "süresi doldu" derdi.
@@ -757,7 +758,8 @@ public sealed class AuthService(
             user = null;
         }
 
-        if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
+        if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash)
+            || !await IsUserEligibleForOrdinaryLoginAsync(user, cancellationToken))
         {
             await RecordLoginAttemptAsync(login, user?.Id, user?.PrimaryRole.ToString() ?? string.Empty, false, user?.TenantId, cancellationToken);
             return null;
@@ -771,6 +773,7 @@ public sealed class AuthService(
         {
             Code = code,
             UserId = user.Id,
+            SecurityVersion = user.SecurityVersion,
             ClientId = request.ClientId,
             RedirectUri = request.RedirectUri,
             CodeChallengeHash = request.CodeChallenge,
@@ -798,14 +801,26 @@ public sealed class AuthService(
         if (computedChallenge != authCode.CodeChallengeHash)
             return null;
 
-        authCode.IsUsed = true;
-        await dbContext.SaveChangesAsync(cancellationToken);
-
         var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == authCode.UserId, cancellationToken);
-        if (user is null || await IsMovedDrivingSchoolUserAsync(user, cancellationToken))
+        if (user is null || await IsMovedDrivingSchoolUserAsync(user, cancellationToken) || authCode.SecurityVersion != user.SecurityVersion
+            || !await IsUserEligibleForOrdinaryLoginAsync(user, cancellationToken))
             return null;
 
+        authCode.IsUsed = true;
+        await dbContext.SaveChangesAsync(cancellationToken);
         return await CreateLoginResponseAsync(user, cancellationToken);
+    }
+
+    private async Task<bool> IsUserEligibleForOrdinaryLoginAsync(AppUser user, CancellationToken cancellationToken)
+    {
+        if (user.Status != UserStatus.Active || user.MustChangePassword
+            || !await IsTenantActiveAsync(user, cancellationToken)
+            || await IsMovedDrivingSchoolUserAsync(user, cancellationToken)) return false;
+        if ((user.PrimaryRole != UserRole.Developer || user.TenantId is not null)
+            && await systemService.IsMaintenanceActiveAsync(cancellationToken)) return false;
+        var policy = await dbContext.RolePolicies.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.RoleName == user.PrimaryRole.ToString(), cancellationToken);
+        return policy is null || (policy.IsActive && policy.LoginEnabled);
     }
 
     private static string HashRefreshToken(string token)

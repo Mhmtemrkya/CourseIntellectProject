@@ -47,7 +47,7 @@ public sealed class TenantFeaturesController(CourseIntellectDbContext dbContext)
 
     /// <summary>Platform yöneticisi: bir kurumun bayraklarını okur.</summary>
     [HttpGet("tenants/{tenantId:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> GetForTenant(Guid tenantId, CancellationToken cancellationToken)
     {
         if (HasTenantContext()) return Forbid();
@@ -57,7 +57,7 @@ public sealed class TenantFeaturesController(CourseIntellectDbContext dbContext)
 
     /// <summary>Platform yöneticisi: bir kurumun bayraklarını günceller.</summary>
     [HttpPut("tenants/{tenantId:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> UpdateForTenant(
         Guid tenantId,
         [FromBody] UpdateTenantFeaturesRequest request,

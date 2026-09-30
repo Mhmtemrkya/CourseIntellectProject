@@ -1,6 +1,5 @@
 "use client"
 
-import type { LucideIcon } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
@@ -14,6 +13,7 @@ import {
   Phone,
   Twitter,
   Youtube,
+  type LucideIcon,
 } from "lucide-react"
 import { useSectionContent } from "@/context/content-context"
 import { useLanguage } from "@/context/language-context"

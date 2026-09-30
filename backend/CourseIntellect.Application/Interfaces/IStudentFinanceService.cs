@@ -1,4 +1,5 @@
 using CourseIntellect.Application.DTOs.StudentFinance;
+using CourseIntellect.Domain.Entities;
 
 namespace CourseIntellect.Application.Interfaces;
 
@@ -50,6 +51,12 @@ public interface IStudentFinanceService
     /// numarasını üreten her akış er ya da geç mükerrer numara yazar.
     /// </summary>
     Task<string> NextReceiptNumberAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Persists a tracked payment and reallocates its receipt number on a
+    /// provider-reported unique receipt collision.</summary>
+    Task SavePaymentWithReceiptRetryAsync(
+        FinancePayment payment,
+        CancellationToken cancellationToken = default);
 
     Task<FinanceDashboardDto> GetDashboardAsync(
         string? className,

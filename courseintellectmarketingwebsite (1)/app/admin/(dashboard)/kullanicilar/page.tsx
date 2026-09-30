@@ -123,7 +123,7 @@ export default function UsersPage() {
           query: { page: 1, pageSize: 200 },
         })
         setUsers(response.items.map(mapUser))
-      } catch (error) {
+      } catch {
         setLoadError("Kullanıcılar yüklenemedi.")
       } finally {
         setIsLoading(false)
@@ -210,7 +210,7 @@ export default function UsersPage() {
               method: "DELETE",
             })
             setUsers((prev) => prev.filter((u) => u.id !== row.id))
-          } catch (error) {
+          } catch {
             setLoadError("Kullanıcı silinemedi.")
           }
         })()
@@ -262,7 +262,7 @@ export default function UsersPage() {
       }
 
       handleCloseModal()
-    } catch (error) {
+    } catch {
       setLoadError("Kullanıcı kaydedilemedi.")
     }
   }
