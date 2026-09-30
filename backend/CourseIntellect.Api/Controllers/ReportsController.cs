@@ -1,3 +1,4 @@
+using CourseIntellect.Api.Security;
 using System.Text;
 using System.Text.Json;
 using CourseIntellect.Application.Interfaces;
@@ -18,12 +19,24 @@ public sealed class ReportsController(
     IStudentFinanceService studentFinanceService) : ControllerBase
 {
     public const string TeacherWeeklyReportsSectionKey = "teacher-weekly-reports";
+
+    // Güvenlik: sınıf yapılandırmasında [Authorize] tek başına duruyordu; öğrenci
+    // ve veli tüm okulun analitiklerine, borç özetine ve veli iletişim bilgilerine
+    // erişebiliyordu. Kurum geneli raporlar personele kapalıdır; öğrenci/veli
+    // kullanan iki uç (sınav analizi, haftalık rapor) StudentScope ile süzülür.
+    private const string StaffRoles = "Admin,Administrative,Teacher";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     [HttpGet("exam-analytics")]
     public async Task<IActionResult> GetExamAnalytics([FromQuery] string? studentName, CancellationToken cancellationToken)
     {
         var exams = await dbContext.ExamResults.AsNoTracking().ToListAsync(cancellationToken);
+        var allowedNames = await StudentScope.ResolveAllowedStudentNamesAsync(User, dbContext, cancellationToken);
+        if (allowedNames is not null)
+        {
+            exams = StudentScope.FilterByStudentNames(exams, allowedNames, item => item.StudentName).ToList();
+        }
+
         if (!string.IsNullOrWhiteSpace(studentName))
         {
             var normalizedStudent = CompatibilitySnapshotStore.NormalizeText(studentName);
@@ -58,6 +71,7 @@ public sealed class ReportsController(
     }
 
     [HttpGet("teacher-analytics")]
+    [Authorize(Roles = StaffRoles)]
     public async Task<IActionResult> GetTeacherAnalytics([FromQuery] string? className, CancellationToken cancellationToken)
     {
         var students = await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken);
@@ -143,6 +157,7 @@ public sealed class ReportsController(
     }
 
     [HttpGet("attendance")]
+    [Authorize(Roles = StaffRoles)]
     public async Task<IActionResult> GetAttendance([FromQuery] string? className, CancellationToken cancellationToken)
     {
         var students = await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken);
@@ -184,6 +199,7 @@ public sealed class ReportsController(
     }
 
     [HttpGet("performance")]
+    [Authorize(Roles = StaffRoles)]
     public async Task<IActionResult> GetPerformance([FromQuery] string? className, CancellationToken cancellationToken)
     {
         var exams = await dbContext.ExamResults.AsNoTracking().ToListAsync(cancellationToken);
@@ -208,6 +224,7 @@ public sealed class ReportsController(
     }
 
     [HttpGet("students")]
+    [Authorize(Roles = StaffRoles)]
     public async Task<IActionResult> GetStudents([FromQuery] string? className, CancellationToken cancellationToken)
     {
         var students = await dbContext.Students.AsNoTracking().OrderBy(item => item.FullName).ToListAsync(cancellationToken);
@@ -259,6 +276,7 @@ public sealed class ReportsController(
     }
 
     [HttpGet("teachers")]
+    [Authorize(Roles = StaffRoles)]
     public async Task<IActionResult> GetTeachers(CancellationToken cancellationToken)
     {
         var teachers = await dbContext.Staff
@@ -293,6 +311,7 @@ public sealed class ReportsController(
     }
 
     [HttpGet("teacher-weekly/bootstrap")]
+    [Authorize(Roles = StaffRoles)]
     public async Task<IActionResult> GetTeacherWeeklyReportBootstrap([FromQuery] string? teacherUsername, CancellationToken cancellationToken)
     {
         var students = await dbContext.Students.AsNoTracking().OrderBy(item => item.FullName).ToListAsync(cancellationToken);
@@ -353,6 +372,7 @@ public sealed class ReportsController(
     }
 
     [HttpPost("teacher-weekly")]
+    [Authorize(Roles = StaffRoles)]
     public async Task<IActionResult> CreateTeacherWeeklyReport([FromBody] TeacherWeeklyReportCreateRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.TeacherName) ||
@@ -428,6 +448,7 @@ public sealed class ReportsController(
     }
 
     [HttpGet("teacher-weekly/teacher")]
+    [Authorize(Roles = StaffRoles)]
     public async Task<IActionResult> GetTeacherWeeklyReportsForTeacher([FromQuery] string? teacherUsername, [FromQuery] string? teacherName, CancellationToken cancellationToken)
     {
         var reports = await CompatibilitySnapshotStore.LoadListAsync<StoredTeacherWeeklyReport>(dbContext, TeacherWeeklyReportsSectionKey, cancellationToken);
@@ -458,13 +479,21 @@ public sealed class ReportsController(
                 (string.IsNullOrWhiteSpace(parentName) || CompatibilitySnapshotStore.NormalizeText(item.ParentName) == CompatibilitySnapshotStore.NormalizeText(parentName)) &&
                 (string.IsNullOrWhiteSpace(parentEmail) || CompatibilitySnapshotStore.NormalizeText(item.ParentEmail) == CompatibilitySnapshotStore.NormalizeText(parentEmail)))
             .OrderByDescending(item => item.CreatedAtUtc)
-            .Select(ToTeacherWeeklyReportResponse)
             .ToList();
 
-        return Ok(filtered);
+        // Öğrenci/veli yalnız kendi (çocuklarının) raporlarını görür; istemcinin
+        // gönderdiği veli adı/e-postası tek başına kapsam değildir.
+        var allowedNames = await StudentScope.ResolveAllowedStudentNamesAsync(User, dbContext, cancellationToken);
+        if (allowedNames is not null)
+        {
+            filtered = StudentScope.FilterByStudentNames(filtered, allowedNames, item => item.StudentName).ToList();
+        }
+
+        return Ok(filtered.Select(ToTeacherWeeklyReportResponse).ToList());
     }
 
     [HttpGet("{type}/export")]
+    [Authorize(Roles = StaffRoles)]
     public async Task<IActionResult> Export(string type, [FromQuery] string? className, CancellationToken cancellationToken)
     {
         var normalizedType = type.Trim().ToLowerInvariant();
