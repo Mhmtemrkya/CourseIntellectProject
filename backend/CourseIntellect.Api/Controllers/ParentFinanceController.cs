@@ -44,6 +44,19 @@ public sealed class ParentFinanceController(
     [RequireEntitlement("payments", "pay")]
     public async Task<IActionResult> Pay([FromBody] ParentPaymentRequest request, CancellationToken cancellationToken)
     {
+        // Güvenlik: çevrimiçi ödeme altyapısı (sanal POS) yok. Veli bu uçla
+        // para ödemeden "tahsil edildi" kaydı ve makbuz üretebiliyordu — yani
+        // kendi borcunu sıfırlayabiliyordu. Ödeme sağlayıcısı bağlanana dek
+        // tahsilatı yalnız kurum personeli (Admin/Administrative) kaydeder.
+        if (User.IsInRole("Parent") && !User.IsInRole("Admin") && !User.IsInRole("Administrative"))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Çevrimiçi ödeme henüz kullanılamıyor. Ödemenizi kuruma yapın; tahsilat kurum tarafından kaydedilir.",
+                code = "ONLINE_PAYMENT_UNAVAILABLE",
+            });
+        }
+
         if (request.Amount <= 0 || string.IsNullOrWhiteSpace(request.StudentName))
         {
             return BadRequest(new { message = "Öğrenci ve geçerli tutar zorunludur." });
@@ -71,11 +84,8 @@ public sealed class ParentFinanceController(
         return Ok(payment);
     }
 
-    private Guid? CurrentUserId()
-    {
-        var raw = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(raw, out var id) ? id : null;
-    }
+    // JWT kimliği "sub"/"nameid" ile taşır; NameIdentifier tek başına hep null dönüyordu.
+    private Guid? CurrentUserId() => StudentScope.ResolveUserId(User);
 }
 
 public sealed record ParentPaymentRequest(string StudentName, decimal Amount, string? Method);
