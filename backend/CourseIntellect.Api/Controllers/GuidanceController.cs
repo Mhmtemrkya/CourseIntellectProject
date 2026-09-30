@@ -664,7 +664,8 @@ public sealed class GuidanceController(
         if (counselor is null) return Forbid();
         if (string.IsNullOrWhiteSpace(request.StudentName))
             return BadRequest(new { message = "Öğrenci adı gerekli." });
-        var plan = await studyPlanService.UpdateAsync(request, cancellationToken);
+        // Rehber yalnız programı düzenler; XP/seri öğrenciye aittir ve korunur.
+        var plan = await studyPlanService.UpdatePlanItemsAsync(request.StudentName, request.PlanItemsSerialized, cancellationToken);
         return Ok(plan);
     }
 

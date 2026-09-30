@@ -73,6 +73,27 @@ public sealed class StudyPlanService(CourseIntellectDbContext dbContext) : IStud
         return ToDto(entity);
     }
 
+    public async Task<StudyPlanStateDto> UpdatePlanItemsAsync(string studentName, string planItemsSerialized, CancellationToken cancellationToken = default)
+    {
+        // Önce kaydın var olduğundan emin ol (GetOrCreate ile aynı yarış koruması).
+        await GetOrCreateAsync(studentName, cancellationToken);
+        var normalized = studentName.Trim();
+
+        // Tek alanlık güncelleme: öğrencinin aynı anda kazandığı XP/seri üzerine
+        // yazılmaz (eskiden istemcinin gönderdiği değerler aynen yazılıyordu).
+        await dbContext.Set<StudyPlanState>()
+            .Where(x => x.StudentName == normalized)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(x => x.PlanItemsSerialized, planItemsSerialized),
+                cancellationToken);
+
+        dbContext.ChangeTracker.Clear();
+        var entity = await dbContext.Set<StudyPlanState>()
+            .AsNoTracking()
+            .FirstAsync(x => x.StudentName == normalized, cancellationToken);
+        return ToDto(entity);
+    }
+
     public async Task<StudyPlanStateDto> AddXpAsync(string studentName, int amount, CancellationToken cancellationToken = default)
     {
         var normalized = studentName.Trim();
