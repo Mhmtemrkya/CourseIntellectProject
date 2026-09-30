@@ -54,7 +54,7 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
 
         var item = await dbContext.ContentItems.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return null;
-        Apply(item, request);
+        Apply(item, request, isUpdate: true);
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToDto(item);
     }
@@ -70,8 +70,14 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
         return ToDto(item);
     }
 
-    private static void Apply(ContentItem item, CreateContentRequest request)
+    private static void Apply(ContentItem item, CreateContentRequest request, bool isUpdate = false)
     {
+        // Güncellemede gönderilmeyen (null) dosya/kapak/çalma listesi alanları
+        // korunur; boş metin bilinçli temizlemedir. Eskiden eksik gövde dosyayı
+        // ve kapağı sessizce siliyordu.
+        string? Keep(string? incoming, string? current)
+            => isUpdate && incoming is null ? current : (string.IsNullOrWhiteSpace(incoming) ? null : incoming.Trim());
+
         item.Subject = request.Subject.Trim();
         item.Title = request.Title.Trim();
         item.Teacher = request.Teacher.Trim();
@@ -82,12 +88,12 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
         item.Views = request.Views.Trim();
         item.Size = request.Size.Trim();
         item.Description = request.Description.Trim();
-        item.FileName = string.IsNullOrWhiteSpace(request.FileName) ? null : request.FileName.Trim();
-        item.FileUrl = string.IsNullOrWhiteSpace(request.FileUrl) ? null : request.FileUrl.Trim();
-        item.CoverImageUrl = string.IsNullOrWhiteSpace(request.CoverImageUrl) ? null : request.CoverImageUrl.Trim();
-        item.PlaylistKey = string.IsNullOrWhiteSpace(request.PlaylistKey) ? null : request.PlaylistKey.Trim();
-        item.PlaylistTitle = string.IsNullOrWhiteSpace(request.PlaylistTitle) ? null : request.PlaylistTitle.Trim();
-        item.PlaylistOrder = request.PlaylistOrder;
+        item.FileName = Keep(request.FileName, item.FileName);
+        item.FileUrl = Keep(request.FileUrl, item.FileUrl);
+        item.CoverImageUrl = Keep(request.CoverImageUrl, item.CoverImageUrl);
+        item.PlaylistKey = Keep(request.PlaylistKey, item.PlaylistKey);
+        item.PlaylistTitle = Keep(request.PlaylistTitle, item.PlaylistTitle);
+        item.PlaylistOrder = isUpdate && request.PlaylistOrder is null ? item.PlaylistOrder : request.PlaylistOrder;
         item.AllowDownload = request.AllowDownload;
         item.AllowNotes = request.AllowNotes;
         item.CompletionCertificate = request.CompletionCertificate;
