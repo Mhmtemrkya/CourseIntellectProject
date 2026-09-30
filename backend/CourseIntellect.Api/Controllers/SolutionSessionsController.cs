@@ -199,6 +199,16 @@ public sealed class SolutionSessionsController(
     [HttpGet("my-papers")]
     public async Task<IActionResult> MyPapers([FromQuery] string? studentName, [FromQuery] string? studentUsername, CancellationToken cancellationToken)
     {
+        // Güvenlik: yönetici olmayan kullanıcı yalnız kendi kağıtlarını alır;
+        // eskiden sorgudaki kullanıcı adıyla başkasının sınav kağıtları okunabiliyordu.
+        if (!CanManageSessions())
+        {
+            return Ok(await examSolvingService.GetStudentPapersAsync(
+                CurrentUsername(),
+                User.FindFirstValue("name") ?? string.Empty,
+                cancellationToken));
+        }
+
         var username = string.IsNullOrWhiteSpace(studentUsername) ? CurrentUsername() : studentUsername.Trim();
         return Ok(await examSolvingService.GetStudentPapersAsync(username, studentName ?? string.Empty, cancellationToken));
     }
