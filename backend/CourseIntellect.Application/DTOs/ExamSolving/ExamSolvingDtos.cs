@@ -135,4 +135,5 @@ public sealed record SolutionSummaryResponse(
     int Empty,
     decimal Net,
     int SuccessPercent,
-    PdfReportResponse? Report);
+    PdfReportResponse? Report,
+    int XpAwarded = 0);

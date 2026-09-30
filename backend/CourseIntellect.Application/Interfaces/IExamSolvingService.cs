@@ -11,7 +11,8 @@ public interface IExamSolvingService
     Task<SolutionSessionResponse> SaveNoteAsync(Guid sessionId, SaveStudentNoteRequest request, CancellationToken cancellationToken);
     Task SaveStrokeAsync(Guid sessionId, SaveCanvasStrokeRequest request, CancellationToken cancellationToken);
     Task<CanvasSnapshotSavedResult> SaveSnapshotAsync(Guid sessionId, SaveCanvasSnapshotRequest request, string baseUrl, CancellationToken cancellationToken);
-    Task<SolutionSummaryResponse> CompleteAsync(Guid sessionId, string baseUrl, CancellationToken cancellationToken);
+    /// <param name="awardXp">Yalnız oturumun sahibi öğrenci tamamladığında true (personel XP dağıtamaz).</param>
+    Task<SolutionSummaryResponse> CompleteAsync(Guid sessionId, string baseUrl, bool awardXp, CancellationToken cancellationToken);
     Task<PdfReportResponse> QueuePdfAsync(Guid sessionId, string baseUrl, CancellationToken cancellationToken);
     Task<IReadOnlyList<TeacherExamPaperReportResponse>> GetTeacherReportsAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<StudentExamPaperResponse>> GetStudentPapersAsync(string studentUsername, string studentName, CancellationToken cancellationToken);

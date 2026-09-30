@@ -164,8 +164,17 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext, IStu
         var isCorrect = EvaluateAnswer(item, normalizedAnswer);
         var normalizedUsername = request.StudentUsername.Trim();
         // XP yalnız soruya İLK denemede verilir (tekrar deneyerek XP biriktirilemez).
+        // Çözüm oturumunda (sınav/konu testi) daha önce çözülmüşse de ilk deneme sayılmaz.
         var isFirstAttempt = !await dbContext.QuestionPracticeAttempts
-            .AnyAsync(x => x.QuestionId == id && x.StudentUsername == normalizedUsername, cancellationToken);
+                .AnyAsync(x => x.QuestionId == id && x.StudentUsername == normalizedUsername, cancellationToken)
+            && !await (
+                from sessionAttempt in dbContext.QuestionAttempts
+                join solveSession in dbContext.ExamSessions on sessionAttempt.ExamSessionId equals solveSession.Id
+                where sessionAttempt.QuestionBankItemId == id
+                    && solveSession.StudentUsername == normalizedUsername
+                    && solveSession.CompletedAtUtc != null
+                    && (sessionAttempt.Status == "Correct" || sessionAttempt.Status == "Answered")
+                select sessionAttempt.Id).AnyAsync(cancellationToken);
 
         var attempt = new QuestionPracticeAttempt
         {

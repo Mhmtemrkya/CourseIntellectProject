@@ -5,6 +5,7 @@ using System.Text.Json;
 using CourseIntellect.Application.DTOs.ExamSolving;
 using CourseIntellect.Application.DTOs.Notifications;
 using CourseIntellect.Application.Interfaces;
+using CourseIntellect.Application.Rewards;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,8 @@ public sealed class ExamSolvingService(
     CourseIntellectDbContext dbContext,
     IFileStorageService fileStorageService,
     IExamSolvingRealtimeNotifier realtimeNotifier,
-    INotificationService notificationService) : IExamSolvingService
+    INotificationService notificationService,
+    IStudyPlanService studyPlanService) : IExamSolvingService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -274,13 +276,23 @@ public sealed class ExamSolvingService(
         return new CanvasSnapshotSavedResult(snapshot.Id, snapshot.StorageKey);
     }
 
-    public async Task<SolutionSummaryResponse> CompleteAsync(Guid sessionId, string baseUrl, CancellationToken cancellationToken)
+    public async Task<SolutionSummaryResponse> CompleteAsync(Guid sessionId, string baseUrl, bool awardXp, CancellationToken cancellationToken)
     {
         var session = await dbContext.ExamSessions.FirstOrDefaultAsync(item => item.Id == sessionId, cancellationToken)
             ?? throw new InvalidOperationException("Oturum bulunamadı.");
-        session.Status = "Completed";
-        session.CompletedAtUtc ??= DateTime.UtcNow;
-        await dbContext.SaveChangesAsync(cancellationToken);
+        // XP yalnız oturumun İLK tamamlanışında verilir; koşullu güncelleme ile
+        // eşzamanlı ikinci "tamamla" isteği aynı oturumdan iki kez XP alamaz.
+        var firstCompletion = await dbContext.ExamSessions
+            .Where(item => item.Id == sessionId && item.CompletedAtUtc == null)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(item => item.Status, "Completed")
+                .SetProperty(item => item.CompletedAtUtc, DateTime.UtcNow), cancellationToken) == 1;
+        if (!firstCompletion && session.Status != "Completed")
+        {
+            session.Status = "Completed";
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        await dbContext.Entry(session).ReloadAsync(cancellationToken);
 
         var response = await GetAsync(sessionId, cancellationToken) ?? throw new InvalidOperationException("Oturum bulunamadı.");
         var total = response.Questions.Count;
@@ -291,9 +303,55 @@ public sealed class ExamSolvingService(
         var wrong = Math.Max(0, answered - correct);
         var net = correct - wrong / 4m;
         var percent = total == 0 ? 0 : (int)Math.Round((decimal)correct / total * 100, MidpointRounding.AwayFromZero);
+        var xpAwarded = firstCompletion && awardXp ? await AwardSessionXpAsync(session, response, cancellationToken) : 0;
         var report = await QueuePdfAsync(sessionId, baseUrl, cancellationToken);
         await realtimeNotifier.NotifyExamCompletedAsync(sessionId, cancellationToken);
-        return new SolutionSummaryResponse(sessionId, total, correct, wrong, empty, net, percent, report);
+        return new SolutionSummaryResponse(sessionId, total, correct, wrong, empty, net, percent, report, xpAwarded);
+    }
+
+    // Çözülen her soru için XP; soru bankası denemesiyle aynı kural: öğrenci bir
+    // soruya yalnız İLK çözümünde XP alır (önceki tamamlanmış oturum ya da
+    // pratik denemesi varsa o soru XP getirmez). Öğretmen önizlemesi XP almaz.
+    private async Task<int> AwardSessionXpAsync(ExamSession session, SolutionSessionResponse response, CancellationToken cancellationToken)
+    {
+        if (session.IsTeacherPreview
+            || string.IsNullOrWhiteSpace(session.StudentName) || string.IsNullOrWhiteSpace(session.StudentUsername))
+        {
+            return 0;
+        }
+
+        var answered = response.Questions
+            .Where(item => item.Answer is not null
+                && (item.Answer.SelectedOptionIndex >= 0 || !string.IsNullOrWhiteSpace(item.Answer.OpenAnswer)))
+            .ToList();
+        if (answered.Count == 0) return 0;
+
+        var questionIds = answered.Select(item => item.QuestionBankItemId).Distinct().ToList();
+        var username = session.StudentUsername;
+        var solvedInOtherSessions = await (
+                from attempt in dbContext.QuestionAttempts
+                join other in dbContext.ExamSessions on attempt.ExamSessionId equals other.Id
+                where other.Id != session.Id
+                    && other.StudentUsername == username
+                    && other.CompletedAtUtc != null
+                    && questionIds.Contains(attempt.QuestionBankItemId)
+                    && (attempt.Status == "Correct" || attempt.Status == "Answered")
+                select attempt.QuestionBankItemId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var practiced = await dbContext.QuestionPracticeAttempts
+            .Where(item => item.StudentUsername == username && questionIds.Contains(item.QuestionId))
+            .Select(item => item.QuestionId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var alreadySolved = solvedInOtherSessions.Concat(practiced).ToHashSet();
+
+        var total = answered
+            .DistinctBy(item => item.QuestionBankItemId)
+            .Where(item => !alreadySolved.Contains(item.QuestionBankItemId))
+            .Sum(item => StudentXpRewards.QuestionSolve(item.Answer!.IsCorrect, hasImage: !string.IsNullOrWhiteSpace(item.ImagePath), hasSolutionAsset: false));
+        if (total > 0) await studyPlanService.AddXpAsync(session.StudentName, total, cancellationToken);
+        return total;
     }
 
     public async Task<PdfReportResponse> QueuePdfAsync(Guid sessionId, string baseUrl, CancellationToken cancellationToken)

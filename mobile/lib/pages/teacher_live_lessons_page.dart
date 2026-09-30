@@ -8,6 +8,7 @@ import 'package:student/widgets/responsive_overlays.dart';
 import 'package:student/widgets/teacher_empty_state_panel.dart';
 import 'package:student/widgets/teacher_header.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:student/utils/safe_url.dart';
 
 class TeacherLiveLessonsPage extends StatefulWidget {
   const TeacherLiveLessonsPage({super.key});
@@ -23,9 +24,9 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
   String? _errorMessage;
 
   Future<void> _openMeeting(BuildContext context, String url) async {
-    final uri = Uri.parse(url);
+    final uri = httpUri(url);
 
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Canlı ders bağlantısı açılamadı.".tr)),

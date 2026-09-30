@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_session_store.dart';
 import '../services/meeting_request_api_service.dart';
+import 'package:student/utils/safe_url.dart';
 
 class VeliMeetingsListPage extends StatefulWidget {
   const VeliMeetingsListPage({super.key});
@@ -33,7 +34,7 @@ class _VeliMeetingsListPageState extends State<VeliMeetingsListPage> {
   }
 
   Future<void> _join(String link) async {
-    final uri = Uri.tryParse(link);
+    final uri = httpUri(link);
     if (uri != null) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }

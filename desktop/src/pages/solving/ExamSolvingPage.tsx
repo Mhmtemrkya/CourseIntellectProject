@@ -653,6 +653,10 @@ function SubmissionSuccessModal({ summary, onBackToExams, onResults }: { summary
             <MetricBox label="Yanlış" value={summary.wrong} />
             <MetricBox label="Boş" value={summary.empty} />
           </div>
+          {/* XP'yi sunucu verir: her soru yalnız ilk çözümünde sayılır. */}
+          {summary.xpAwarded > 0 ? (
+            <p className="mt-4 text-sm font-black text-orange-600 dark:text-orange-300">+{summary.xpAwarded} XP kazandın</p>
+          ) : null}
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <button type="button" onClick={onBackToExams} className="rounded-2xl bg-orange-500 px-5 py-3 font-black text-white shadow-lg shadow-orange-500/25 hover:bg-orange-600">
               Sınavlarıma Dön

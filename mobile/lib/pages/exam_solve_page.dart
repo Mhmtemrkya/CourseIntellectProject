@@ -454,6 +454,14 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                       Expanded(child: _completionMetric(colors, 'Boş', '${summary.empty}')),
                     ],
                   ),
+                  if (summary.xpAwarded > 0) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      '+${summary.xpAwarded} XP kazandın',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: _SolveColors.primary, fontWeight: FontWeight.w800),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,

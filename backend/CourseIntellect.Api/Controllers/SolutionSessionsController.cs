@@ -165,7 +165,11 @@ public sealed class SolutionSessionsController(
     public async Task<IActionResult> Complete(Guid sessionId, CancellationToken cancellationToken)
     {
         if (!await HasAccessAsync(sessionId, cancellationToken)) return Forbid();
-        var summary = await examSolvingService.CompleteAsync(sessionId, BaseUrl(), cancellationToken);
+        // XP yalnız oturumun kendi öğrencisi tamamladığında; personel tamamlaması XP vermez.
+        var username = CurrentUsername();
+        var awardXp = !CanManageSessions() && !string.IsNullOrWhiteSpace(username)
+            && string.Equals((await examSolvingService.GetAsync(sessionId, cancellationToken))?.StudentUsername, username, StringComparison.Ordinal);
+        var summary = await examSolvingService.CompleteAsync(sessionId, BaseUrl(), awardXp, cancellationToken);
         await MirrorCompletedSessionForPlannedExamAsync(sessionId, cancellationToken);
         return Ok(summary);
     }

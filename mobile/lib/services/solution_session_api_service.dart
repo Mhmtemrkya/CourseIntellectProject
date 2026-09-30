@@ -183,6 +183,8 @@ class SolutionSummaryRecord {
   final num net;
   final int successPercent;
   final PdfReportRecord? report;
+  /// Sunucunun verdiği XP (her soru yalnız ilk çözümünde sayılır).
+  final int xpAwarded;
 
   const SolutionSummaryRecord({
     required this.sessionId,
@@ -193,6 +195,7 @@ class SolutionSummaryRecord {
     required this.net,
     required this.successPercent,
     this.report,
+    this.xpAwarded = 0,
   });
 
   factory SolutionSummaryRecord.fromMap(Map<String, dynamic> map) {
@@ -204,6 +207,7 @@ class SolutionSummaryRecord {
       empty: map['empty'] as int? ?? 0,
       net: map['net'] as num? ?? 0,
       successPercent: map['successPercent'] as int? ?? 0,
+      xpAwarded: map['xpAwarded'] as int? ?? 0,
       report: map['report'] is Map
           ? PdfReportRecord.fromMap(
               Map<String, dynamic>.from(map['report'] as Map),

@@ -14,6 +14,7 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createMeetingRequest, fetchMeetingAdvisors, fetchMeetingRequests, fetchMeetingSlots, fetchStaff, fetchStudents } from '../../lib/api/modules';
 import { errorMessage } from '../../lib/errors';
+import { isHttpUrl } from '../../lib/safeOpen';
 import type { MeetingSlot } from '../../lib/api/meetings';
 import type { MeetingRequestDto, StudentSummaryDto } from '../../types/api/generated';
 
@@ -293,7 +294,9 @@ export default function ParentMeetings() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {item.meetingLink ? (
+                  {/* Personelin girdiği serbest metin: yalnız http(s) bağlantısı tıklanabilir
+                      (React 18 javascript: href'i engellemez; Tauri webview'da XSS olurdu). */}
+                  {isHttpUrl(item.meetingLink) ? (
                     <a
                       href={item.meetingLink}
                       target="_blank"

@@ -6215,6 +6215,7 @@ export interface SolutionSummaryResponse {
   net: number;
   successPercent: number;
   report: PdfReportResponse | null;
+  xpAwarded: number;
 }
 
 // CourseIntellect.Domain/Entities/StaffAssetAssignment.cs
