@@ -1,13 +1,14 @@
 using System.Text.Json;
 using CourseIntellect.Application.DTOs.QuestionBank;
 using CourseIntellect.Application.Interfaces;
+using CourseIntellect.Application.Rewards;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace CourseIntellect.Infrastructure.Services;
 
-public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQuestionBankService
+public sealed class QuestionBankService(CourseIntellectDbContext dbContext, IStudyPlanService studyPlanService) : IQuestionBankService
 {
     public async Task<IReadOnlyList<QuestionBankItemDto>> GetQuestionsAsync(string? className, bool includeDrafts = false, CancellationToken cancellationToken = default)
     {
@@ -54,7 +55,8 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
                 x.StudentUsername,
                 x.AnswerText,
                 x.IsCorrect,
-                x.SubmittedAtUtc))
+                x.SubmittedAtUtc,
+                0))
             .ToListAsync(cancellationToken);
     }
 
@@ -150,7 +152,7 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
         return ToDto(item);
     }
 
-    public async Task<QuestionPracticeAttemptDto?> SubmitAttemptAsync(Guid id, SubmitQuestionPracticeAttemptRequest request, CancellationToken cancellationToken = default)
+    public async Task<QuestionPracticeAttemptDto?> SubmitAttemptAsync(Guid id, SubmitQuestionPracticeAttemptRequest request, bool awardXp = false, CancellationToken cancellationToken = default)
     {
         var item = await dbContext.QuestionBankItems.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null)
@@ -160,6 +162,10 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
 
         var normalizedAnswer = request.AnswerText.Trim();
         var isCorrect = EvaluateAnswer(item, normalizedAnswer);
+        var normalizedUsername = request.StudentUsername.Trim();
+        // XP yalnız soruya İLK denemede verilir (tekrar deneyerek XP biriktirilemez).
+        var isFirstAttempt = !await dbContext.QuestionPracticeAttempts
+            .AnyAsync(x => x.QuestionId == id && x.StudentUsername == normalizedUsername, cancellationToken);
 
         var attempt = new QuestionPracticeAttempt
         {
@@ -176,6 +182,16 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
         await dbContext.QuestionPracticeAttempts.AddAsync(attempt, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        var xpAwarded = 0;
+        if (awardXp && isFirstAttempt && !string.IsNullOrWhiteSpace(attempt.StudentName))
+        {
+            xpAwarded = StudentXpRewards.QuestionSolve(
+                isCorrect,
+                hasImage: !string.IsNullOrWhiteSpace(item.ImagePath),
+                hasSolutionAsset: !string.IsNullOrWhiteSpace(item.SolutionAssetPath));
+            await studyPlanService.AddXpAsync(attempt.StudentName, xpAwarded, cancellationToken);
+        }
+
         return new QuestionPracticeAttemptDto(
             attempt.Id,
             attempt.QuestionId,
@@ -183,7 +199,8 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
             attempt.StudentUsername,
             attempt.AnswerText,
             attempt.IsCorrect,
-            attempt.SubmittedAtUtc);
+            attempt.SubmittedAtUtc,
+            xpAwarded);
     }
 
     private static void Apply(QuestionBankItem item, CreateQuestionBankItemRequest request)

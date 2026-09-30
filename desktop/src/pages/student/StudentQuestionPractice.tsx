@@ -11,26 +11,12 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { isImageValue, buildQuestionImageUrl, stripOptionPrefix } from '../../lib/questionMedia';
 import {
-  addStudyPlanXp,
   fetchQuestionBank,
   fetchQuestionPracticeAttempts,
   submitQuestionPracticeAttempt,
 } from '../../lib/api/modules';
 import { errorMessage, isRecord } from '../../lib/errors';
 import type { QuestionBankItemDto, QuestionPracticeAttemptDto } from '../../types/api/generated';
-
-interface SolveRewardInput {
-  isCorrect: boolean;
-  hasImage: boolean;
-  hasSolutionAsset: boolean;
-}
-
-function buildQuestionBankSolveReward({ isCorrect, hasImage, hasSolutionAsset }: SolveRewardInput): number {
-  let amount = isCorrect ? 18 : 6;
-  if (hasImage) amount += 4;
-  if (hasSolutionAsset) amount += 3;
-  return amount;
-}
 
 function isExamOnlyQuestion(item: QuestionBankItemDto): boolean {
   try {
@@ -92,8 +78,6 @@ export default function StudentQuestionPractice() {
       return;
     }
 
-    const hadAttempt = attemptsByQuestion.has(question.id);
-
     try {
       setSubmittingId(question.id);
       const saved = await submitQuestionPracticeAttempt(question.id, {
@@ -102,21 +86,14 @@ export default function StudentQuestionPractice() {
         answerText: answer,
       });
       if (!saved) return;
-      if (!hadAttempt) {
-        const xpAmount = buildQuestionBankSolveReward({
-          isCorrect: Boolean(saved.isCorrect),
-          hasImage: Boolean(question.imagePath),
-          // Çözüm yolu öğrenciye gönderilmez; varlığı türünden anlaşılır.
-          hasSolutionAsset: Boolean(question.solutionAssetPath || question.solutionAssetType),
-        });
-        await addStudyPlanXp(xpAmount).catch(() => null);
-      }
+      // XP'yi sunucu verir (yalnız ilk denemede); yanıttaki miktar gösterilir.
+      const xpNote = saved.xpAwarded > 0 ? ` +${saved.xpAwarded} XP` : '';
       setAttempts((prev) => [saved, ...prev.filter((item) => item.questionId !== saved.questionId)]);
       toast({
         title: 'Cevap kaydedildi',
         description: saved.isCorrect
-          ? `${question.topic || question.subject} için doğru cevap kaydedildi.`
-          : `${question.topic || question.subject} için cevap kaydedildi, tekrar gözden geçirilebilir.`,
+          ? `${question.topic || question.subject} için doğru cevap kaydedildi.${xpNote}`
+          : `${question.topic || question.subject} için cevap kaydedildi, tekrar gözden geçirilebilir.${xpNote}`,
       });
     } catch (err) {
       toast({

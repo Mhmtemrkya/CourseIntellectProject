@@ -6,7 +6,7 @@ namespace CourseIntellect.Tests;
 public sealed class QuestionBankServiceTests : IDisposable
 {
     private readonly TestDb db = new();
-    private QuestionBankService Service => new(db.Context);
+    private QuestionBankService Service => new(db.Context, new StudyPlanService(db.Context));
 
     private static CreateQuestionBankItemRequest Request(string? status = null) => new(
         Subject: "Matematik",
@@ -63,6 +63,48 @@ public sealed class QuestionBankServiceTests : IDisposable
         await Service.DeleteQuestionAsync(created.Id);
         var teacherList = await Service.GetQuestionsAsync(null, includeDrafts: true);
         Assert.DoesNotContain(teacherList, item => item.Id == created.Id);
+    }
+
+    [Fact]
+    public async Task StudentXp_IsAwardedOnlyOnFirstAttempt_AndNeverForStaff()
+    {
+        var created = await Service.CreateQuestionAsync(Request());
+        var plans = new StudyPlanService(db.Context);
+
+        // İlk doğru deneme: 18 XP (resim/çözüm eki yok).
+        var first = await Service.SubmitAttemptAsync(created.Id, new SubmitQuestionPracticeAttemptRequest("Ali Kaya", "ali", "2"), awardXp: true);
+        Assert.NotNull(first);
+        Assert.True(first!.IsCorrect);
+        Assert.Equal(18, first.XpAwarded);
+
+        // Aynı soruya tekrar deneme XP getirmez (tekrar tekrar deneyerek XP toplanamaz).
+        var second = await Service.SubmitAttemptAsync(created.Id, new SubmitQuestionPracticeAttemptRequest("Ali Kaya", "ali", "2"), awardXp: true);
+        Assert.Equal(0, second!.XpAwarded);
+        Assert.Equal(18, (await plans.GetOrCreateAsync("Ali Kaya")).XpPoints);
+
+        // Personel denemesi (awardXp=false) hiçbir öğrenciye XP yazmaz.
+        var staff = await Service.SubmitAttemptAsync(created.Id, new SubmitQuestionPracticeAttemptRequest("Ayşe Demir", "ayse", "2"), awardXp: false);
+        Assert.Equal(0, staff!.XpAwarded);
+        Assert.Equal(0, (await plans.GetOrCreateAsync("Ayşe Demir")).XpPoints);
+    }
+
+    [Fact]
+    public async Task StudyPlan_ClientCannotSetXp_AndChecklistDoesNotAwardXp()
+    {
+        var plans = new StudyPlanService(db.Context);
+        await plans.AddXpAsync("Can Öz", 30);
+
+        // PUT gövdesindeki XP/seri yok sayılır.
+        var updated = await plans.UpdateAsync(new CourseIntellect.Application.DTOs.StudyPlans.UpdateStudyPlanStateRequest("Can Öz", "[]", 99, 99999, null));
+        Assert.Equal(30, updated.XpPoints);
+        Assert.Equal(0, updated.StreakCount);
+
+        // Kendi eklediği maddeyi işaretlemek XP vermez.
+        var withItem = await plans.AddItemAsync("Can Öz", new CourseIntellect.Application.DTOs.StudyPlans.StudyPlanItemRequest(System.Text.Json.JsonDocument.Parse("{\"id\":\"m1\",\"title\":\"Madde\"}").RootElement));
+        var done = await plans.SetItemDoneAsync("Can Öz", "m1", true);
+        Assert.Equal(30, done.XpPoints);
+        Assert.Equal(1, done.StreakCount);
+        _ = withItem;
     }
 
     public void Dispose() => db.Dispose();

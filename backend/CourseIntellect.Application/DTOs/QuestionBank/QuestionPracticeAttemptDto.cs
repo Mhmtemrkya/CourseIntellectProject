@@ -7,5 +7,7 @@ public sealed record QuestionPracticeAttemptDto(
     string StudentUsername,
     string AnswerText,
     bool IsCorrect,
-    DateTime SubmittedAtUtc
+    DateTime SubmittedAtUtc,
+    /// <summary>Bu denemeyle sunucunun verdiği XP (tekrar denemede 0).</summary>
+    int XpAwarded = 0
 );

@@ -268,9 +268,9 @@ class QuestionBankApiService {
         file.uri.pathSegments.last;
   }
 
-  /// Denemeyi kaydeder ve sunucunun değerlendirmesini döndürür (doğru mu?).
-  /// Doğru cevap öğrenciye gönderilmediği için puanlama sunucudadır.
-  Future<bool> submitAttempt({
+  /// Denemeyi kaydeder; sunucunun değerlendirmesini (doğru mu?) ve verdiği XP'yi
+  /// döndürür. Doğru cevap ve XP hesabı sunucudadır (XP yalnız ilk denemede).
+  Future<QuestionAttemptResult> submitAttempt({
     required String questionId,
     required String studentName,
     required String studentUsername,
@@ -303,7 +303,12 @@ class QuestionBankApiService {
     }
 
     final decoded = jsonDecode(response.body);
-    return decoded is Map && decoded['isCorrect'] == true;
+    if (decoded is! Map) return const QuestionAttemptResult(isCorrect: false, xpAwarded: 0);
+    final xp = decoded['xpAwarded'];
+    return QuestionAttemptResult(
+      isCorrect: decoded['isCorrect'] == true,
+      xpAwarded: xp is num ? xp.toInt() : 0,
+    );
   }
 
   static QuestionBankRecord _mapRecord(Map<String, dynamic> map) {
@@ -411,4 +416,12 @@ class QuestionBankApiService {
     if (value == null) return null;
     return _normalizeLabel(value);
   }
+}
+
+/// Sunucunun soru denemesi sonucu.
+class QuestionAttemptResult {
+  final bool isCorrect;
+  final int xpAwarded;
+
+  const QuestionAttemptResult({required this.isCorrect, required this.xpAwarded});
 }

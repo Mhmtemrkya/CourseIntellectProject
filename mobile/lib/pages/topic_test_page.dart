@@ -5,7 +5,6 @@ import 'package:student/services/api_config.dart';
 import 'package:student/services/question_bank_api_service.dart';
 import 'package:student/services/question_bank_store.dart';
 import 'package:student/utils/question_media.dart';
-import 'package:student/services/student_xp_service.dart';
 
 class TopicTestPage extends StatefulWidget {
   const TopicTestPage({super.key});
@@ -23,6 +22,8 @@ class _TopicTestPageState extends State<TopicTestPage>
   int selectedOption = -1;
   // Sunucunun değerlendirmesi; doğru şık öğrenciye gönderilmez.
   bool? _lastAnswerCorrect;
+  // Sunucunun verdiği toplam XP (her sorunun ilk denemesinde).
+  int _earnedXp = 0;
   int correctCount = 0;
   int wrongCount = 0;
   bool _loading = true;
@@ -89,12 +90,14 @@ class _TopicTestPageState extends State<TopicTestPage>
     try {
       final session = await AuthSessionStore.instance.load();
       if (session != null) {
-        isCorrect = await QuestionBankApiService.instance.submitAttempt(
+        final result = await QuestionBankApiService.instance.submitAttempt(
           questionId: question.id,
           studentName: session.fullName,
           studentUsername: session.username,
           answerText: selectedText,
         );
+        isCorrect = result.isCorrect;
+        _earnedXp += result.xpAwarded;
       }
     } catch (_) {
       if (mounted) {
@@ -133,28 +136,20 @@ class _TopicTestPageState extends State<TopicTestPage>
         _lastAnswerCorrect = null;
       });
     } else {
-      final reward = StudentXpService.buildTopicTestReward(
-        correctCount: correctCount,
-        totalQuestions: _questions.length,
-      );
-
       showDialog(
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text("Test Bitti"),
           content: Text(
-            "Doğru: $correctCount\nYanlis: $wrongCount\nKazanilan XP: ${reward.amount}"
-            "${reward.bonuses.isEmpty ? "" : "\nBonus: ${reward.bonuses.join(" • ")}"}",
+            "Doğru: $correctCount\nYanlis: $wrongCount\nKazanilan XP: $_earnedXp",
           ),
           actions: [
             TextButton(
               onPressed: () async {
                 final dialogNavigator = Navigator.of(dialogContext);
                 final pageNavigator = Navigator.of(context);
-                await StudentXpService.addXp(reward.amount);
-                if (!mounted) return;
                 dialogNavigator.pop();
-                pageNavigator.pop(reward.amount);
+                pageNavigator.pop(_earnedXp);
               },
               child: const Text("Tamam"),
             ),

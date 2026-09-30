@@ -8,7 +8,6 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../services/auth_session_store.dart';
-import '../services/badge_progress_store.dart';
 import '../services/homework_api_service.dart';
 import '../services/planned_exam_api_service.dart';
 import '../services/school_feed_api_service.dart';
@@ -20,8 +19,6 @@ import '../widgets/responsive_layout.dart';
 /// Çalışma Planım — öğrencinin günlük çalışma merkezi.
 /// Tüm veriler /api/studyplans (görev + hedef JSON'u), /api/homework ve
 /// /api/plannedexams uçlarından gelir; mock veri kullanılmaz.
-const int _taskXp = 20;
-const int _goalXp = 50;
 
 const List<String> _subjects = [
   'Matematik',
@@ -387,32 +384,20 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
         .toList();
   }
 
-  Future<void> _persist({DateTime? completedAt, int? streak}) async {
+  Future<void> _persist() async {
+    // Sunucu yalnız program maddelerini yazar; XP/seri istemciden alınmaz.
     await StudyPlanApiService.instance.save(
       studentName: _studentName,
       planItems: [
         ..._tasks.map((task) => task.toJson()),
         ..._goals.map((goal) => goal.toJson()),
       ],
-      streakCount: streak ?? _streak,
+      streakCount: _streak,
       xpPoints: _xp,
-      lastCompletedAt: completedAt ?? _lastCompletedAt,
+      lastCompletedAt: _lastCompletedAt,
     );
-    if (streak != null) _streak = streak;
-    if (completedAt != null) _lastCompletedAt = completedAt;
   }
 
-  int _nextStreak() {
-    final last = _lastCompletedAt;
-    if (last == null) return 1;
-    final today = _isoDate(DateTime.now());
-    final lastDay = _isoDate(last);
-    if (lastDay == today) return math.max(1, _streak);
-    final yesterday = _isoDate(
-      DateTime.now().subtract(const Duration(days: 1)),
-    );
-    return lastDay == yesterday ? _streak + 1 : 1;
-  }
 
   List<_PlanTask> get _dayTasks {
     final list = _tasks.where((task) => task.date == _selectedDate).toList()
@@ -435,14 +420,18 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
     setState(() => task.status = status);
     try {
       if (status == 'done' && previous != 'done') {
-        await _persist(completedAt: DateTime.now(), streak: _nextStreak());
-        final after = await StudyPlanApiService.instance.addXp(_taskXp);
+        // Seri sunucuda hesaplanır; plan maddesi XP vermez (XP yalnız soru
+        // çözümü ve ödev tesliminden gelir).
+        final after = await StudyPlanApiService.instance.setItemDone(task.id, true);
+        await _persist();
         if (!mounted) return;
-        setState(() => _xp = after.xpPoints);
+        setState(() {
+          _streak = after.streakCount;
+          _lastCompletedAt = after.lastCompletedAt;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Görev tamamlandı! +$_taskXp XP 🎉')),
+          SnackBar(content: Text('Görev tamamlandı! 🎉'.tr)),
         );
-        await BadgeUnlockService.checkAndCelebrate(context, xp: after.xpPoints);
       } else {
         await _persist();
       }
@@ -519,13 +508,10 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
     try {
       await _persist();
       if (next >= goal.target && previous < goal.target) {
-        final after = await StudyPlanApiService.instance.addXp(_goalXp);
         if (!mounted) return;
-        setState(() => _xp = after.xpPoints);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hedef tamamlandı! +$_goalXp XP 🏆')),
+          SnackBar(content: Text('Hedef tamamlandı! 🏆'.tr)),
         );
-        await BadgeUnlockService.checkAndCelebrate(context, xp: after.xpPoints);
       }
     } catch (error) {
       if (!mounted) return;

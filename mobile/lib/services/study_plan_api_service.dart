@@ -87,30 +87,6 @@ class StudyPlanApiService {
     }
   }
 
-  Future<StudyPlanStateRecord> addXp(int amount) async {
-    final session = await AuthSessionStore.instance.load();
-    if (session == null) {
-      throw const StudyPlanApiException('Oturum bulunamadı.');
-    }
-
-    final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/studyplans/xp'),
-      headers: {
-        'Authorization': 'Bearer ${session.accessToken}',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'amount': amount}),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StudyPlanApiException(
-        'XP senkronize edilemedi (${response.statusCode}).',
-      );
-    }
-
-    return _recordFromBody(response.body);
-  }
-
   Future<StudyPlanStateRecord> addItem(Map<String, dynamic> item) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {

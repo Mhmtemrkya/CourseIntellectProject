@@ -21,11 +21,6 @@ export async function saveStudyPlan(payload: UpdateStudyPlanStateRequest): Promi
   return response;
 }
 
-export async function addStudyPlanXp(amount: number): Promise<StudyPlanStateDto | null> {
-  const response = await api.post<StudyPlanStateDto>('/api/studyplans/xp', { amount });
-  return response;
-}
-
 export async function addStudyPlanItem(item: unknown): Promise<StudyPlanStateDto | null> {
   const response = await api.post<StudyPlanStateDto>('/api/studyplans/items', { item });
   return response;

@@ -19,13 +19,13 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import {
   addStudyPlanItem,
-  addStudyPlanXp,
   deleteStudyPlanItem,
   fetchExamResults,
   fetchHomework,
   fetchPlannedExams,
   fetchStudyPlan,
   saveStudyPlan,
+  setStudyPlanItemDone,
 } from '../../lib/api/modules';
 import { collectNewBadges, type Badge as BadgeDefinition } from '../../lib/badges';
 import { isStudyPlanState } from '../../lib/api/studyPlans';
@@ -105,12 +105,6 @@ interface GoalForm {
   unit: string;
 }
 
-interface PersistOverrides {
-  streakCount?: number;
-  xpPoints?: number;
-  lastCompletedAt?: string | null;
-}
-
 const SUBJECTS = ['Matematik', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji', 'İngilizce', 'Tarih', 'Coğrafya', 'Genel'];
 
 const SUBJECT_COLORS: Partial<Record<string, string>> = {
@@ -134,9 +128,6 @@ const QUOTES: ReadonlyArray<readonly [string, string]> = [
   ['Yapabileceğine inan, yolu yarılamış olursun.', 'Theodore Roosevelt'],
   ['Mükemmellik bir eylem değil, alışkanlıktır.', 'Aristoteles'],
 ];
-
-const TASK_XP = 20;
-const GOAL_XP = 50;
 
 const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const MONTH_NAMES = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
@@ -210,17 +201,6 @@ function normalizeItems(raw: string | null | undefined): { tasks: PlanTask[]; go
     });
   });
   return { tasks, goals };
-}
-
-function nextStreak(state: StudyPlanStateDto | null): number {
-  const last = state?.lastCompletedAt ? new Date(state.lastCompletedAt) : null;
-  const streak = Number(state?.streakCount) || 0;
-  if (!last) return 1;
-  const today = toIsoDate(new Date());
-  const lastDay = toIsoDate(last);
-  if (lastDay === today) return Math.max(1, streak);
-  const yesterday = toIsoDate(new Date(Date.now() - 86400000));
-  return lastDay === yesterday ? streak + 1 : 1;
 }
 
 function endTimeFor(startTime: string, durationMinutes: number): string {
@@ -302,13 +282,14 @@ export default function StudentStudyPlan() {
     if (isStudyPlanState(planState)) applyState(planState);
   }), [applyState]);
 
-  const persist = useCallback(async (nextTasks: PlanTask[], nextGoals: PlanGoal[], overrides: PersistOverrides = {}) => {
+  const persist = useCallback(async (nextTasks: PlanTask[], nextGoals: PlanGoal[]) => {
     const payload = {
       studentName: user?.name || '',
       planItemsSerialized: JSON.stringify([...nextTasks, ...nextGoals]),
-      streakCount: overrides.streakCount ?? state?.streakCount ?? 0,
-      xpPoints: overrides.xpPoints ?? state?.xpPoints ?? 0,
-      lastCompletedAt: overrides.lastCompletedAt ?? state?.lastCompletedAt ?? null,
+      // Sunucu bu alanları yok sayar (XP/seri sunucuda); sözleşme gereği gönderilir.
+      streakCount: state?.streakCount ?? 0,
+      xpPoints: state?.xpPoints ?? 0,
+      lastCompletedAt: state?.lastCompletedAt ?? null,
     };
     const updated = await saveStudyPlan(payload);
     applyState(updated);
@@ -478,12 +459,12 @@ export default function StudentStudyPlan() {
     try {
       const nextTasks = tasks.map((item) => (item.id === task.id ? { ...item, status, done: status === 'done' } : item));
       if (status === 'done') {
-        const streak = nextStreak(state);
-        await persist(nextTasks, goals, { lastCompletedAt: new Date().toISOString(), streakCount: streak });
-        const afterXp = await addStudyPlanXp(TASK_XP);
-        setState(afterXp);
-        toast({ title: `Görev tamamlandı! +${TASK_XP} XP 🎉` });
-        celebrate(afterXp);
+        // Seri sunucuda hesaplanır (madde tamamlanınca); XP yalnız soru çözümü ve
+        // ödev tesliminden gelir, plan maddesi XP vermez.
+        await setStudyPlanItemDone(task.id, true);
+        const afterDone = await persist(nextTasks, goals);
+        toast({ title: 'Görev tamamlandı! 🎉' });
+        celebrate(afterDone);
       } else {
         await persist(nextTasks, goals);
       }
@@ -534,10 +515,7 @@ export default function StudentStudyPlan() {
     try {
       await persist(tasks, nextGoals);
       if (current >= goal.target && goal.current < goal.target) {
-        const afterXp = await addStudyPlanXp(GOAL_XP);
-        setState(afterXp);
-        toast({ title: `Hedef tamamlandı! +${GOAL_XP} XP 🏆`, description: goal.title });
-        celebrate(afterXp);
+        toast({ title: 'Hedef tamamlandı! 🏆', description: goal.title });
       }
     } catch (err) {
       toast({ title: 'Hedef güncellenemedi', description: errorMessage(err), variant: 'destructive' });

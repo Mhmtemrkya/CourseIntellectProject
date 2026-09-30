@@ -36,6 +36,8 @@ class _StudentQuestionBankSolvePageState
   // Doğru cevap öğrenciye gelmediği için doğruluk sunucudan okunur.
   final Map<String, String> _submittedAnswers = {};
   final Map<String, bool> _serverCorrect = {};
+  // Sunucunun verdiği XP (yalnız ilk denemede > 0).
+  final Map<String, int> _serverXp = {};
   int _currentIndex = 0;
   bool _finished = false;
 
@@ -125,32 +127,20 @@ class _StudentQuestionBankSolvePageState
     }
 
     int correctCount = 0;
-    int totalXp = 0;
-    final bonuses = <String>[];
     final wrongQuestions = <QuestionBankRecord>[];
 
     for (final question in widget.questions) {
-      final isCorrect = _isCorrectFor(question);
-      if (isCorrect) {
+      if (_isCorrectFor(question)) {
         correctCount++;
       } else {
         wrongQuestions.add(question);
       }
-
-      final reward = StudentXpService.buildQuestionBankSolveReward(
-        isCorrect: isCorrect,
-        hasImage: question.imagePath != null,
-        // Çözüm yolu öğrenciye gönderilmez; varlığı türünden anlaşılır.
-        hasSolutionAsset: question.solutionAssetPath != null || question.solutionAssetType != null,
-      );
-      totalXp += reward.amount;
-      bonuses.addAll(reward.bonuses);
     }
 
-    bonuses.sort();
-    final uniqueBonuses = bonuses.toSet().toList();
-
-    final newTotalXp = await StudentXpService.addXp(totalXp);
+    // XP'yi sunucu verir (her sorunun ilk denemesinde); burada yalnız toplanır.
+    final totalXp = _serverXp.values.fold<int>(0, (sum, xp) => sum + xp);
+    final uniqueBonuses = <String>[];
+    final newTotalXp = await StudentXpService.getXp();
     if (!mounted) return;
 
     await _showResultDialog(
@@ -184,14 +174,15 @@ class _StudentQuestionBankSolvePageState
     }
 
     try {
-      final isCorrect = await QuestionBankApiService.instance.submitAttempt(
+      final result = await QuestionBankApiService.instance.submitAttempt(
         questionId: question.id,
         studentName: session.fullName,
         studentUsername: session.username,
         answerText: answerText,
       );
       _submittedAnswers[question.id] = answerText;
-      _serverCorrect[question.id] = isCorrect;
+      _serverCorrect[question.id] = result.isCorrect;
+      _serverXp[question.id] = (_serverXp[question.id] ?? 0) + result.xpAwarded;
     } catch (_) {
       // Ağ hatası: yerel kontrole düşülür (yalnız öğretmen cevabı açtıysa mümkün).
     }

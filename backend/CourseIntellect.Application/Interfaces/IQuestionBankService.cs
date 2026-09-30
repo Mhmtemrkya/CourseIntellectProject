@@ -11,5 +11,6 @@ public interface IQuestionBankService
     Task<QuestionBankItemDto?> UpdateQuestionAsync(Guid id, CreateQuestionBankItemRequest request, CancellationToken cancellationToken = default);
     Task<bool> DeleteQuestionAsync(Guid id, CancellationToken cancellationToken = default);
     Task<QuestionBankItemDto?> IncrementUsageAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<QuestionPracticeAttemptDto?> SubmitAttemptAsync(Guid id, SubmitQuestionPracticeAttemptRequest request, CancellationToken cancellationToken = default);
+    /// <param name="awardXp">Yalnız öğrencinin kendi denemesinde true; personel denemesi XP vermez.</param>
+    Task<QuestionPracticeAttemptDto?> SubmitAttemptAsync(Guid id, SubmitQuestionPracticeAttemptRequest request, bool awardXp = false, CancellationToken cancellationToken = default);
 }

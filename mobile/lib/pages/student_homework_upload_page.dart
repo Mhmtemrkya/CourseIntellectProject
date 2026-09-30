@@ -83,7 +83,8 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
         return AlertDialog(
           title: Text("Başarılı".tr),
           content: Text(
-            "Ödeviniz teslim edildi. +${reward.amount} XP kazandınız."
+            // XP'yi sunucu verir, yalnız ilk teslimde (yeniden teslim XP getirmez).
+            "Ödeviniz teslim edildi. İlk teslimde +${reward.amount} XP hesabınıza eklenir."
             "${reward.bonuses.isEmpty ? "" : "\nBonus: ${reward.bonuses.join(" • ")}"}",
           ),
           actions: [
@@ -91,7 +92,6 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
               onPressed: () async {
                 final dialogNavigator = Navigator.of(dialogContext);
                 final pageNavigator = Navigator.of(context);
-                await StudentXpService.addXp(reward.amount);
                 if (!mounted) return;
                 dialogNavigator.pop();
                 pageNavigator.pop(reward.amount);

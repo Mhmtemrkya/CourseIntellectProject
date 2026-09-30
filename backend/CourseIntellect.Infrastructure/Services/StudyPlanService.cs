@@ -64,10 +64,10 @@ public sealed class StudyPlanService(CourseIntellectDbContext dbContext) : IStud
             }
         }
 
+        // Güvenlik: yalnız program maddeleri yazılır. XP/seri/son tamamlanma
+        // istemciden ALINMAZ — öğrenci PUT ile kendi XP'sini ayarlayabiliyordu.
+        // XP sunucuda soru denemesi ve ödev tesliminden (StudentXpRewards) gelir.
         entity.PlanItemsSerialized = request.PlanItemsSerialized;
-        entity.StreakCount = request.StreakCount;
-        entity.XpPoints = request.XpPoints;
-        entity.LastCompletedAt = request.LastCompletedAt;
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return ToDto(entity);
@@ -251,15 +251,15 @@ public sealed class StudyPlanService(CourseIntellectDbContext dbContext) : IStud
 
     private static void ApplyCompletionReward(StudyPlanState entity, bool completed)
     {
+        // Plan maddesini işaretlemek XP VERMEZ: madde öğrencinin kendisi tarafından
+        // eklenip işaretlendiği için sınırsız XP üretilebiliyordu. Yalnız seri güncellenir.
         if (!completed)
         {
-            entity.XpPoints = Math.Max(0, entity.XpPoints - 25);
             return;
         }
 
         var today = DateTime.UtcNow.Date;
         var lastDate = entity.LastCompletedAt?.Date;
-        entity.XpPoints += 25;
 
         if (lastDate is null)
         {

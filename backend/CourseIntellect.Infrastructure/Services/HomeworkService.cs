@@ -3,6 +3,7 @@ using System.Text.Json;
 using CourseIntellect.Application.DTOs.Homework;
 using CourseIntellect.Application.DTOs.Notifications;
 using CourseIntellect.Application.Interfaces;
+using CourseIntellect.Application.Rewards;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,8 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class HomeworkService(
     CourseIntellectDbContext dbContext,
-    Hangfire.IBackgroundJobClient backgroundJobClient) : IHomeworkService
+    Hangfire.IBackgroundJobClient backgroundJobClient,
+    IStudyPlanService studyPlanService) : IHomeworkService
 {
     /// <summary>
     /// Ödev kartlarını ve GÖRÜLMESİNE İZİN VERİLEN teslimleri döner.
@@ -134,6 +136,7 @@ public sealed class HomeworkService(
         var existing = await dbContext.Set<HomeworkSubmission>()
             .FirstOrDefaultAsync(x => x.AssignmentId == id && x.StudentName == studentName, cancellationToken);
 
+        var isFirstSubmission = existing is null;
         if (existing is null)
         {
             existing = new HomeworkSubmission
@@ -149,6 +152,15 @@ public sealed class HomeworkService(
         existing.FilesSerialized = JsonSerializer.Serialize((request.Files ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).ToList());
         existing.SubmittedAtLabel = BuildDateLabel();
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // XP yalnız öğrencinin kendi İLK teslimine verilir; yeniden teslim ve
+        // personelin öğrenci adına girdiği kâğıt teslim XP getirmez.
+        if (!isStaff && isFirstSubmission)
+        {
+            var fileCount = (request.Files ?? []).Count(x => !string.IsNullOrWhiteSpace(x));
+            var xp = StudentXpRewards.HomeworkSubmission(fileCount, hasNote: !string.IsNullOrWhiteSpace(request.Note));
+            await studyPlanService.AddXpAsync(studentName, xp, cancellationToken);
+        }
 
         var allSubmissions = await dbContext.Set<HomeworkSubmission>()
             .Where(x => x.AssignmentId == id)

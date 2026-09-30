@@ -1,4 +1,3 @@
-import 'auth_session_store.dart';
 import 'study_plan_api_service.dart';
 
 class StudentXpReward {
@@ -19,40 +18,9 @@ class StudentXpService {
     return state.xpPoints;
   }
 
-  static Future<int> addXp(int amount) async {
-    final session = await AuthSessionStore.instance.load();
-    if (session == null) {
-      return amount;
-    }
-    final state = await StudyPlanApiService.instance.addXp(amount);
-    return state.xpPoints;
-  }
-
   static Future<(int xp, int streak)> getProgress() async {
     final state = await StudyPlanApiService.instance.fetch();
     return (state.xpPoints, state.streakCount);
-  }
-
-  static StudentXpReward buildTopicTestReward({
-    required int correctCount,
-    required int totalQuestions,
-  }) {
-    var amount = 10 + (correctCount * 8);
-    final bonuses = <String>[];
-
-    if (correctCount == totalQuestions) {
-      amount += 20;
-      bonuses.add('Tüm sorular doğru bonusu +20 XP');
-    } else if (correctCount >= totalQuestions - 1) {
-      amount += 10;
-      bonuses.add('Yuksek isabet bonusu +10 XP');
-    }
-
-    return StudentXpReward(
-      amount: amount,
-      summary: 'Konu testi tamamlandı',
-      bonuses: bonuses,
-    );
   }
 
   static StudentXpReward buildHomeworkReward({
@@ -76,62 +44,6 @@ class StudentXpService {
     return StudentXpReward(
       amount: amount,
       summary: 'Ödev teslim edildi',
-      bonuses: bonuses,
-    );
-  }
-
-  static StudentXpReward buildExamReward({
-    required int correctCount,
-    required int totalQuestions,
-    required int remainingSeconds,
-  }) {
-    var amount = 20 + (correctCount * 10);
-    final bonuses = <String>[];
-
-    if (correctCount == totalQuestions) {
-      amount += 30;
-      bonuses.add('Tam doğru bonusu +30 XP');
-    }
-
-    if (remainingSeconds > 15 * 60) {
-      amount += 10;
-      bonuses.add('Süre bonusu +10 XP');
-    }
-
-    return StudentXpReward(
-      amount: amount,
-      summary: 'Sınav tamamlandı',
-      bonuses: bonuses,
-    );
-  }
-
-  static StudentXpReward buildQuestionBankSolveReward({
-    required bool isCorrect,
-    required bool hasImage,
-    required bool hasSolutionAsset,
-  }) {
-    var amount = isCorrect ? 18 : 6;
-    final bonuses = <String>[];
-
-    if (isCorrect) {
-      bonuses.add('Doğru cevap bonusu +18 XP');
-    } else {
-      bonuses.add('Deneme katılımi +6 XP');
-    }
-
-    if (hasImage) {
-      amount += 4;
-      bonuses.add('Resimli soru bonusu +4 XP');
-    }
-
-    if (hasSolutionAsset) {
-      amount += 3;
-      bonuses.add('Çözüm eki bonusu +3 XP');
-    }
-
-    return StudentXpReward(
-      amount: amount,
-      summary: 'Soru bankası sorusu cozuldu',
       bonuses: bonuses,
     );
   }

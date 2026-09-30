@@ -108,7 +108,8 @@ public sealed class QuestionBankController(
     public async Task<IActionResult> SubmitAttempt(Guid id, [FromBody] SubmitQuestionPracticeAttemptRequest request, CancellationToken cancellationToken)
     {
         // Öğrenci denemeyi yalnız kendi adına kaydeder (gövdedeki kimlik yok sayılır).
-        if (User.IsInRole("Student") && !IsStaff())
+        var isStudentAttempt = User.IsInRole("Student") && !IsStaff();
+        if (isStudentAttempt)
         {
             request = request with
             {
@@ -117,7 +118,7 @@ public sealed class QuestionBankController(
             };
         }
 
-        var item = await questionBankService.SubmitAttemptAsync(id, request, cancellationToken);
+        var item = await questionBankService.SubmitAttemptAsync(id, request, awardXp: isStudentAttempt, cancellationToken);
         return item is null ? NotFound() : Ok(item);
     }
 

@@ -72,13 +72,12 @@ public sealed class StudyPlansController(
             return Unauthorized(new { message = "Oturum bilgisi alınamadı." });
         }
 
-        if (request.Amount <= 0)
-        {
-            return BadRequest(new { message = "XP miktarı pozitif olmalıdır." });
-        }
-
-        var item = await studyPlanService.AddXpAsync(fullName, request.Amount, cancellationToken);
-        await BroadcastAsync(fullName, item, cancellationToken);
+        // Güvenlik: istemcinin gönderdiği XP miktarı KABUL EDİLMEZ (öğrenci istediği
+        // kadar XP ekleyebiliyordu). XP yalnız sunucuda soru denemesi ve ödev
+        // tesliminden verilir. Uç, eski istemciler hata almasın diye durur ve
+        // değişiklik yapmadan güncel durumu döndürür.
+        _ = request;
+        var item = await studyPlanService.GetOrCreateAsync(fullName, cancellationToken);
         return Ok(item);
     }
 

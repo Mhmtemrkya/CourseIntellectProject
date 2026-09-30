@@ -5235,6 +5235,7 @@ export interface QuestionPracticeAttemptDto {
   answerText: string;
   isCorrect: boolean;
   submittedAtUtc: string;
+  xpAwarded: number;
 }
 
 // CourseIntellect.Application/DTOs/QuestionBank/QuestionPracticeStatsDto.cs
