@@ -252,15 +252,24 @@ public sealed class FcmPushNotificationService(
         }
     }
 
-    private string CreateServiceAccountAssertion()
+    private string CreateServiceAccountAssertion() => CreateServiceAccountAssertion(options.Value);
+
+    public static string CreateServiceAccountAssertion(FcmPushOptions fcm)
     {
         using var rsa = RSA.Create();
-        rsa.ImportFromPem(options.Value.PrivateKey!.AsSpan());
-        var credentials = new SigningCredentials(new RsaSecurityKey(rsa), SecurityAlgorithms.RsaSha256);
+        rsa.ImportFromPem(fcm.PrivateKey!.AsSpan());
+        // IdentityModel imzalayıcıyı anahtar kimliğine göre önbelleğe alır; aynı
+        // anahtarla ikinci çağrı, burada `using` ile atılmış İLK RSA'yı taşıyan
+        // imzalayıcıyı geri verip ObjectDisposedException fırlatıyordu (süreç
+        // başına yalnız ilk push gidiyordu). Önbellek kapatılır.
+        var credentials = new SigningCredentials(new RsaSecurityKey(rsa), SecurityAlgorithms.RsaSha256)
+        {
+            CryptoProviderFactory = new CryptoProviderFactory { CacheSignatureProviders = false },
+        };
         var now = DateTime.UtcNow;
         var token = new JwtSecurityToken(
-            issuer: options.Value.ClientEmail,
-            audience: options.Value.TokenUri,
+            issuer: fcm.ClientEmail,
+            audience: fcm.TokenUri,
             // Google "iat" ister; JwtSecurityToken bunu kendiliğinden eklemez ve
             // eksikken token uç noktası invalid_grant (400) döner — push hiç gitmiyordu.
             claims:
