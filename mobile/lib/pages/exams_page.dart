@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/exam_solve_page.dart';
@@ -475,35 +476,7 @@ class _ExamsPageState extends State<ExamsPage> {
   }
 
   Widget _heroStat(String value, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return Expanded(child: VividMetricCard(title: label, value: value, compact: true));
   }
 
   Widget _tabBar(ThemeData theme) {
@@ -547,10 +520,7 @@ class _ExamsPageState extends State<ExamsPage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-      ),
+      decoration: contentCardDecoration(context, title: 'Sınav'),
       child: Column(
         children: [
           Text(
@@ -602,15 +572,7 @@ class _ExamsPageState extends State<ExamsPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0B1728) : Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.10)
-              : const Color(0xFFE2E8F0),
-        ),
-      ),
+      decoration: contentCardDecoration(context, title: 'Sınav'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

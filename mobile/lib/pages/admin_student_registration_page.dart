@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -716,23 +717,7 @@ class _AdminStudentRegistrationPageState
   }
 
   Widget _rosterStat(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).scaffoldBackgroundColor.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
-        ],
-      ),
-    );
+    return VividMetricCard(title: label, value: value, compact: true);
   }
 
   Widget _previewTile(String title, String value) {

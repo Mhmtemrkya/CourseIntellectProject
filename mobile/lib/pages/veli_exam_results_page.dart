@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -214,36 +215,7 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
   }
 
   Widget _heroMetric(String label, String value) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return Expanded(child: VividMetricCard(title: label, value: value, compact: true));
   }
 
   Widget _segmentBar() {

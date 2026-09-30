@@ -1,3 +1,4 @@
+import 'card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
@@ -145,15 +146,12 @@ class _SummaryCardsState extends State<SummaryCards> {
       largeTablet: 4,
     );
 
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: crossAxisCount,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: crossAxisCount == 4 ? 1.35 : 1.05,
-      children: cards,
-    );
+    return LayoutBuilder(builder: (context, constraints) {
+      final width = (constraints.maxWidth - (crossAxisCount - 1) * 12) / crossAxisCount;
+      return Wrap(spacing: 12, runSpacing: 12, children: [
+        for (final card in cards) SizedBox(width: width, child: card),
+      ]);
+    });
   }
 
   Widget _card(
@@ -165,107 +163,6 @@ class _SummaryCardsState extends State<SummaryCards> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDark
-                ? [color.withValues(alpha: 0.22), theme.cardColor]
-                : [color.withValues(alpha: 0.14), theme.cardColor],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: color.withValues(alpha: isDark ? 0.22 : 0.16),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.05),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(icon, color: color),
-                  ),
-                  if (value.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.scaffoldBackgroundColor.withValues(
-                          alpha: 0.62,
-                        ),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        value,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: color,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const Spacer(),
-              Text(
-                title,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                hint,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  height: 1.35,
-                  color: theme.textTheme.bodySmall?.color?.withValues(
-                    alpha: 0.72,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Text(
-                    'Detayı aç',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(Icons.chevron_right_rounded, color: color, size: 20),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return VividMetricCard(title: title, value: value, caption: hint.tr, icon: icon, onTap: onTap);
   }
 }

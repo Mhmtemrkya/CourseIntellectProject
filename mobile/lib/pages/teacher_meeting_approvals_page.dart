@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -461,35 +462,7 @@ class _TeacherMeetingApprovalsPageState
   }
 
   Widget _heroStat(String value, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return Expanded(child: VividMetricCard(title: label, value: value, compact: true));
   }
 
   Widget _requestCard(BuildContext context, MeetingRequestApiRecord item) {
@@ -504,19 +477,7 @@ class _TeacherMeetingApprovalsPageState
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: theme.brightness == Brightness.dark
-                ? Colors.black.withValues(alpha: 0.18)
-                : Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: contentCardDecoration(context, title: 'Randevu'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -144,37 +145,7 @@ class _StudentBadgesPageState extends State<StudentBadgesPage> {
   }
 
   Widget _heroMetric(String value, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.85),
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return Expanded(child: VividMetricCard(title: label, value: value, compact: true));
   }
 
   Widget _categorySection(ThemeData theme, BadgeCategory category) {

@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/language_tile.dart';
 import 'package:student/i18n/app_locale.dart';
@@ -195,11 +196,7 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
   Widget _card(Widget child) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-      ),
+      decoration: contentCardDecoration(context, title: 'Kurum'),
       child: child,
     );
   }

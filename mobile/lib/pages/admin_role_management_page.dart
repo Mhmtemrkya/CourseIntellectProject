@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -210,7 +211,7 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
           ),
           const SizedBox(height: 16),
           // Kuruma özgü özel roller (ad + taban rol + modül kısıtı).
-          Card(
+          SchoolCard(
             child: ListTile(
               leading: const CircleAvatar(child: Icon(Icons.badge_outlined)),
               title: Text('Özel Roller'.tr, style: const TextStyle(fontWeight: FontWeight.w800)),

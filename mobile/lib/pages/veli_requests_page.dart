@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -63,7 +64,7 @@ class _VeliRequestsPageState extends State<VeliRequestsPage> {
                           itemBuilder: (context, i) {
                             final it = _items[i];
                             final st = '${it['status']}';
-                            return Card(child: ListTile(
+                            return SchoolCard(child: ListTile(
                               title: Text('${it['title']}'),
                               subtitle: Text('${it['category']}${(it['description'] ?? '').toString().isNotEmpty ? ' • ${it['description']}' : ''}'),
                               trailing: Text(_statusLabel(st), style: TextStyle(color: _statusColor(st), fontWeight: FontWeight.w700)),

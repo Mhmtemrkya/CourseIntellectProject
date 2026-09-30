@@ -1,3 +1,4 @@
+import { KpiCard } from '@/components/ui/kpi-card';
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -1034,25 +1035,7 @@ export default function ServiceTrackingPage() {
 }
 
 function MetricCard({ icon: Icon, label, value, accent = 'orange' }: { icon: IconComponent; label: string; value: ReactNode; accent?: MetricAccent }) {
-  const accents: Record<MetricAccent, string> = {
-    orange: 'bg-orange-500/10 text-orange-500 shadow-orange-500/10',
-    blue: 'bg-blue-500/10 text-blue-500 shadow-blue-500/10',
-    green: 'bg-emerald-500/10 text-emerald-500 shadow-emerald-500/10',
-    purple: 'bg-violet-500/10 text-violet-500 shadow-violet-500/10',
-  };
-  return (
-    <Card className="border-slate-200/70 bg-foreground/85 shadow-sm backdrop-blur dark:border-foreground/10 dark:bg-foreground/5">
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className={`rounded-2xl p-3 shadow-lg ${accents[accent]}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{label}</p>
-          <p className="text-2xl font-black text-slate-950 dark:text-white">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return <KpiCard icon={Icon} label={label} value={value} tone={accent === 'green' ? 'emerald' : accent === 'purple' ? 'violet' : accent === 'orange' ? 'amber' : 'blue'} />;
 }
 
 function EmptyCard({ title, detail }: { title: string; detail: string }) {

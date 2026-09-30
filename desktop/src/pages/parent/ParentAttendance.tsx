@@ -1,3 +1,4 @@
+import { KpiCard } from '@/components/ui/kpi-card';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -58,20 +59,7 @@ function downloadCsv(records: readonly AttendanceEntryDto[]) {
 }
 
 function Metric({ icon: Icon, label, value, hint, tone }: { icon: IconComponent; label: string; value: ReactNode; hint?: string; tone: MetricTone }) {
-  const tones: Record<MetricTone, string> = {
-    green: 'from-emerald-500/20 to-emerald-500/5 text-emerald-300 border-emerald-500/15',
-    orange: 'from-orange-500/20 to-orange-500/5 text-orange-300 border-orange-500/15',
-    blue: 'from-blue-500/20 to-blue-500/5 text-blue-300 border-blue-500/15',
-    purple: 'from-purple-500/20 to-purple-500/5 text-purple-300 border-purple-500/15',
-  };
-  return (
-    <div className={`rounded-2xl border bg-gradient-to-br p-5 ${tones[tone]}`}>
-      <Icon className="h-6 w-6" />
-      <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-      <p className="text-3xl font-black text-foreground">{value}</p>
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-    </div>
-  );
+  return <KpiCard icon={Icon} label={label} value={value} caption={hint} tone={tone === 'green' ? 'emerald' : tone === 'orange' ? 'amber' : tone === 'purple' ? 'violet' : 'blue'} />;
 }
 
 export default function ParentAttendance() {

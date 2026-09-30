@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'dart:async';
 import 'package:student/i18n/app_locale.dart';
 import 'dart:math' as math;
@@ -929,42 +930,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
     required String value,
     required String label,
   }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: theme.dividerColor),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10.5),
-            ),
-          ],
-        ),
-      ),
-    );
+    return Expanded(child: VividMetricCard(title: label, value: value, compact: true, icon: icon));
   }
 
   Widget _emptyDayCard(ThemeData theme) {
@@ -1138,13 +1104,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF97316).withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFF97316).withValues(alpha: 0.30),
-        ),
-      ),
+      decoration: contentCardDecoration(context, title: 'Kurum'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1304,11 +1264,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.dividerColor),
-      ),
+      decoration: contentCardDecoration(context, title: 'Kurum'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

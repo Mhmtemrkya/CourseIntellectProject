@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'dart:async';
 import 'package:student/i18n/app_locale.dart';
 import 'dart:convert';
@@ -468,19 +469,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
         : lessons[selectedLesson];
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.20)
-                : Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+      decoration: contentCardDecoration(context, title: 'Yoklama'),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -931,19 +920,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.20)
-                : Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+      decoration: contentCardDecoration(context, title: 'Yoklama'),
       child: Column(
         children: [
           Row(

@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -201,33 +202,7 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
   }
 
   Widget _metric(String label, String value) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return Expanded(child: VividMetricCard(title: label, value: value, compact: true));
   }
 
   Widget _dayTabs(ThemeData theme) {
@@ -344,10 +319,7 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
   Widget _errorCard(String text) => Container(
     margin: const EdgeInsets.only(bottom: 12),
     padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.red.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(12),
-    ),
+    decoration: contentCardDecoration(context, title: 'Ders'),
     child: Text(text, style: const TextStyle(color: Colors.red)),
   );
 }

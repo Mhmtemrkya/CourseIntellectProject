@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -319,12 +320,7 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).scaffoldBackgroundColor.withValues(alpha: 0.52),
-        borderRadius: BorderRadius.circular(18),
-      ),
+      decoration: contentCardDecoration(context, title: title),
       child: Row(
         children: [
           Expanded(

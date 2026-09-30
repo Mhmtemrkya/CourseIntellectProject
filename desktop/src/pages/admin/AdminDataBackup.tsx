@@ -1,3 +1,4 @@
+import { KpiCard } from '@/components/ui/kpi-card';
 import { useCallback, useEffect, useState } from 'react';
 import {
   AlertTriangle, Archive, Database, FileArchive, HardDriveDownload, Loader2, Lock, ShieldCheck,
@@ -15,14 +16,7 @@ import type { IconComponent } from '../../types/ui';
 const number = (value: unknown): string => Number(value || 0).toLocaleString('tr-TR');
 
 function StatTile({ icon: Icon, label, value }: { icon: IconComponent; label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-4">
-      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-        <Icon className="h-4 w-4" />{label}
-      </div>
-      <p className="mt-1 text-2xl font-black">{value}</p>
-    </div>
-  );
+  return <KpiCard icon={Icon} label={label} value={value} />;
 }
 
 export default function AdminDataBackup() {

@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -1236,68 +1237,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
   // Masaüstü panosundaki KPI kartının mobil karşılığı: her kart tıklanabilir ve
   // ilgili yönetim sayfasını açar.
   Widget _kpiCard(BuildContext context, _Kpi kpi) {
-    final width = ResponsiveLayout.itemWidth(
-      context,
-      spacing: 12,
-      phone: 2,
-      tablet: 3,
-      largeTablet: 5,
-    );
-    return SizedBox(
-      width: width,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: kpi.onTap,
-        child: AdminPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      kpi.label.tr,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: kpi.color,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: kpi.color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(kpi.icon, color: kpi.color, size: 18),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                kpi.value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                kpi.caption.tr,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final width = ResponsiveLayout.itemWidth(context, spacing: 12, phone: 2, tablet: 3, largeTablet: 4);
+    return SizedBox(width: width, child: VividMetricCard(title: kpi.label.tr, value: kpi.value,
+      caption: kpi.caption.tr, icon: kpi.icon, onTap: kpi.onTap));
   }
 
   Widget _analyticsCard(BuildContext context) {

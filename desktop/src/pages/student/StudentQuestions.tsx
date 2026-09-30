@@ -1,3 +1,4 @@
+import { cardTone } from '@/components/ui/card-palette';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -268,7 +269,7 @@ export default function StudentQuestions() {
           ['Boş', blankCount, MinusCircle, 'from-slate-400 to-slate-600', 'Çözülmeyen soru'],
           ['Net', netScore >= 0 ? `+${netScore}` : `${netScore}`, TrendingUp, 'from-amber-400 to-orange-600', 'Net puan'],
         ] satisfies ReadonlyArray<readonly [string, string | number, IconComponent, string, string]>).map(([label, value, Icon, gradient, sub]) => (
-          <div key={label} className="ci-metric-card flex flex-col gap-2 rounded-2xl border border-foreground/10 p-3.5">
+          <div key={label} data-card-tone={cardTone(label)} className="ci-metric-card ci-color-metric flex flex-col gap-2 rounded-2xl border border-foreground/10 p-3.5">
             <div className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br text-white ${gradient}`}><Icon className="h-4 w-4" /></div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>

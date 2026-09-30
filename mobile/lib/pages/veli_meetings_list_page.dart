@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -59,7 +60,7 @@ class _VeliMeetingsListPageState extends State<VeliMeetingsListPage> {
                         itemBuilder: (context, i) {
                           final m = _items[i];
                           final canJoin = m.onlineMeeting && m.meetingLink.isNotEmpty;
-                          return Card(child: ListTile(
+                          return SchoolCard(child: ListTile(
                             title: Text('${m.advisor} • ${m.topic}'),
                             subtitle: Text('${m.studentName} • ${m.slot} • ${m.onlineMeeting ? 'Online' : 'Yüz yüze'} • ${m.status}'),
                             trailing: canJoin

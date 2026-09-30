@@ -1,3 +1,4 @@
+import { KpiCard } from '@/components/ui/kpi-card';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -188,16 +189,8 @@ function StepRail({ currentStep }: { currentStep: number }) {
   );
 }
 
-function MetricCard({ label, value, icon: Icon, color = 'text-orange-300' }: { label: string; value: number | string; icon: IconComponent; color?: string }) {
-  return (
-    <div className="rounded-xl border border-foreground/10 bg-foreground/[0.035] p-4">
-      <div className="mb-2 flex items-center gap-2 text-xs text-slate-400">
-        <Icon className={`h-4 w-4 ${color}`} />
-        {label}
-      </div>
-      <p className="text-2xl font-black text-white">{value}</p>
-    </div>
-  );
+function MetricCard({ label, value, icon: Icon }: { label: string; value: number | string; icon: IconComponent; color?: string }) {
+  return <KpiCard icon={Icon} label={label} value={value} />;
 }
 
 export default function TeacherBulkQuestionUpload() {

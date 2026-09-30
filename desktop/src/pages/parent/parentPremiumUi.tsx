@@ -1,3 +1,5 @@
+import { KpiCard } from '../../components/ui/kpi-card';
+import { cardTone, type CardTone } from '../../components/ui/card-palette';
 import { useId, type ComponentProps, type ReactNode } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { Button } from '../../components/ui/button';
@@ -156,7 +158,7 @@ export function PageHeader({ icon, title, description, userName, actions }: Pare
 
 export function Panel({ title, action, children, className = '' }: { title?: ReactNode; action?: ReactNode; children?: ReactNode; className?: string }) {
   return (
-    <motion.section variants={itemMotion} className={`${panelClass} p-5 ${className}`}>
+    <motion.section variants={itemMotion} data-card-tone={cardTone(title)} className={`${panelClass} ci-semantic-panel p-5 ${className}`}>
       {(title || action) ? (
         <div className="mb-5 flex items-center justify-between gap-3">
           <h2 className="text-base font-black tracking-[-0.02em] text-white">{title}</h2>
@@ -178,16 +180,8 @@ export interface ParentStatCardProps {
 }
 
 export function StatCard({ icon, tone = 'purple', label, value, sub, className = '' }: ParentStatCardProps) {
-  return (
-    <motion.div variants={itemMotion} className={`${panelClass} flex min-h-[110px] items-center gap-4 p-5 ${className}`}>
-      <IconTile icon={icon} tone={tone} />
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-slate-300">{label}</p>
-        <p className="mt-1 truncate text-[28px] font-black leading-none tracking-[-0.04em] text-white">{value}</p>
-        <p className="mt-2 truncate text-xs text-slate-400">{sub}</p>
-      </div>
-    </motion.div>
-  );
+  const mapped: Record<ParentTone, CardTone> = { blue: 'blue', green: 'emerald', orange: 'amber', purple: 'violet', cyan: 'cyan', red: 'rose' };
+  return <KpiCard label={label} value={value} caption={sub} icon={icon} tone={mapped[tone]} className={className} />;
 }
 
 export function StatusPill({ children, tone = 'green' }: { children?: ReactNode; tone?: PillTone }) {

@@ -3,6 +3,7 @@ import { AnimatedValue } from './premium-dashboard';
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { IconComponent } from '@/types/ui';
+import { cardText, cardTone } from './card-palette';
 
 /**
  * Kurum panolarının ortak KPI kartı.
@@ -27,7 +28,7 @@ export const KPI_TONES: Record<KpiTone, string> = {
 export const kpiItemVariants = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } };
 
 export interface KpiCardProps {
-  label: string;
+  label: ReactNode;
   value: ComponentProps<typeof AnimatedValue>['value'];
   caption?: ReactNode;
   icon?: IconComponent | null;
@@ -46,24 +47,26 @@ export function KpiCard({ label, value, caption, icon: Icon, tone = 'brand', onC
         type={onClick ? 'button' : undefined}
         onClick={onClick}
         data-testid={testId}
-        title={onClick ? `${label} — detay için tıklayın` : label}
+        data-card-tone={cardTone(label, tone)}
+        title={onClick ? `${cardText(label)} — detay için tıklayın` : cardText(label)}
         className={cn(
-          'ci-metric-card flex h-full w-full flex-col gap-3 rounded-2xl border border-foreground/10 p-4 text-left transition-all',
+          'ci-metric-card ci-color-metric flex h-full w-full flex-col gap-5 rounded-3xl border p-5 text-left transition-all',
           onClick && 'cursor-pointer hover:-translate-y-0.5 hover:border-[hsl(var(--brand-accent)/0.35)]',
           className,
         )}
       >
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+        {Icon ? <Icon className="ci-metric-relief" aria-hidden="true" /> : <span className="ci-metric-orbit" aria-hidden="true" />}
+        <div className="ci-metric-heading flex items-center gap-3">
           {Icon ? (
-            <div className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-white', KPI_TONES[tone] || KPI_TONES.brand)}>
-              <Icon className="h-4 w-4" />
+            <div className="ci-metric-icon">
+              <Icon className="h-5 w-5" aria-hidden="true" />
             </div>
           ) : null}
+          <span className="ci-metric-label">{label}</span>
         </div>
-        <div>
-          <p className="text-3xl font-black tracking-tight"><AnimatedValue value={value} /></p>
-          {caption ? <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{caption}</p> : null}
+        <div className="ci-metric-body">
+          <p className="ci-metric-value"><AnimatedValue value={value} /></p>
+          {caption ? <div className="ci-metric-caption">{caption}</div> : null}
         </div>
       </Wrapper>
     </motion.div>

@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:file_picker/file_picker.dart';
@@ -901,19 +902,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.18)
-                : Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: contentCardDecoration(context, title: 'Kurum'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

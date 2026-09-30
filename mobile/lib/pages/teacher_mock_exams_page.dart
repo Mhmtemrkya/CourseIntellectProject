@@ -1,3 +1,5 @@
+import 'package:student/widgets/card_system.dart';
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import '../widgets/premium_resource_card.dart';
@@ -224,28 +226,7 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
   }
 
   Widget _stat(String value, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            Text(label, style: const TextStyle(color: Colors.white70)),
-          ],
-        ),
-      ),
-    );
+    return Expanded(child: VividMetricCard(title: label, value: value, compact: true));
   }
 
   Widget _examCard(ThemeData theme, PlannedExamRecord exam) {
@@ -277,7 +258,7 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
     required String description,
     required Widget action,
   }) {
-    return Card(
+    return SchoolCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(

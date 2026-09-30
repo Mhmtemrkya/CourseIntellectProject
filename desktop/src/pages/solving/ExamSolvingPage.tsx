@@ -1,3 +1,4 @@
+import { KpiCard } from '@/components/ui/kpi-card';
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -677,10 +678,5 @@ function SubmissionSuccessModal({ summary, onBackToExams, onResults }: { summary
 }
 
 function MetricBox({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-2xl border border-foreground/10 bg-foreground/5 p-4">
-      <div className="text-2xl font-black text-foreground">{value}</div>
-      <div className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
-    </div>
-  );
+  return <KpiCard label={label} value={value} />;
 }

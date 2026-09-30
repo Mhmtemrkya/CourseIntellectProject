@@ -1,3 +1,4 @@
+import 'card_system.dart';
 import 'package:flutter/material.dart';
 import 'adaptive_scaffold.dart';
 import 'responsive_layout.dart';
@@ -164,37 +165,8 @@ class AdminHeroMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return Expanded(child: Padding(padding: const EdgeInsets.only(right: 10),
+      child: VividMetricCard(title: label, value: value, compact: true)));
   }
 }
 
@@ -207,28 +179,12 @@ class AdminPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
 
     return Container(
       width: double.infinity,
       margin: margin,
       padding: padding ?? const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor.withValues(
-          alpha: theme.brightness == Brightness.dark ? 0.86 : 0.96,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.72)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(
-              alpha: theme.brightness == Brightness.dark ? 0.18 : 0.06,
-            ),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
+      decoration: contentCardDecoration(context, title: cardTitleOf(child)),
       child: child,
     );
   }

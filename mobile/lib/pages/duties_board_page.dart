@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -140,11 +141,7 @@ class _DutiesBoardPageState extends State<DutiesBoardPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
-      ),
+      decoration: contentCardDecoration(context, title: 'Kurum'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

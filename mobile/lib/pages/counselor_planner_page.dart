@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'dart:convert';
 
 import 'package:student/i18n/app_locale.dart';
@@ -293,17 +294,7 @@ class _CounselorPlannerPageState extends State<CounselorPlannerPage> {
     final tasks = _tasksFor(date);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
+      decoration: contentCardDecoration(context, title: 'Rehberlik'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

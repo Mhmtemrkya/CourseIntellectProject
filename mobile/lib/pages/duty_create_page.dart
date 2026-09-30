@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -242,7 +243,7 @@ class _DutyCreatePageState extends State<DutyCreatePage> {
                 else
                   ...filtered.map((t) {
                     final selected = _selectedIds.contains(t.id);
-                    return Card(
+                    return SchoolCard(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: CheckboxListTile(
                         value: selected,

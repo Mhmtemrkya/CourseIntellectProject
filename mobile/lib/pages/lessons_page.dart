@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/school_feed_api_service.dart';
 import 'package:student/widgets/lesson_tile.dart';
@@ -82,10 +83,7 @@ class _LessonsPageState extends State<LessonsPage> {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: contentCardDecoration(context, title: 'Ders'),
       child: Text(
         message,
         textAlign: TextAlign.center,

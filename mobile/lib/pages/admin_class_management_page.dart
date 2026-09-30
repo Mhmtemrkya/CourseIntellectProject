@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -51,7 +52,7 @@ class _AdminClassManagementPageState extends State<AdminClassManagementPage> {
                 else
                   ..._classes.map((className) {
                     final count = students.where((s) => s.className == className).length;
-                    return Card(
+                    return SchoolCard(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: const CircleAvatar(child: Icon(Icons.school_outlined)),

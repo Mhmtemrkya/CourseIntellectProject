@@ -1,3 +1,5 @@
+import 'package:student/widgets/card_system.dart';
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
@@ -346,7 +348,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                                 .length;
                             final allSelected =
                                 selectedCount == questions.length;
-                            return Card(
+                            return SchoolCard(
                               margin: const EdgeInsets.only(bottom: 12),
                               child: ExpansionTile(
                                 leading: Checkbox(
@@ -1065,19 +1067,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.20)
-                : Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+      decoration: contentCardDecoration(context, title: 'Sınav'),
       child: child,
     );
   }

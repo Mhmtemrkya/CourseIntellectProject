@@ -1,3 +1,4 @@
+import { KpiCard } from '@/components/ui/kpi-card';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -143,19 +144,8 @@ function weekdayLabel(date: Date | null, startTime: string): string {
   return [weekday, startTime].filter(Boolean).join(' ');
 }
 
-function StatTile({ icon: Icon, tint, label, value, caption }: { icon: IconComponent; tint: string; label: string; value: number; caption: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-foreground/10 bg-background/60 px-4 py-3">
-      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${tint}`}>
-        <Icon className="h-5 w-5" />
-      </span>
-      <div className="min-w-0">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="text-2xl font-black leading-tight tabular-nums">{value}</p>
-        <p className="truncate text-[11px] text-muted-foreground">{caption}</p>
-      </div>
-    </div>
-  );
+function StatTile({ icon: Icon, label, value, caption }: { icon: IconComponent; tint: string; label: string; value: number; caption: string }) {
+  return <KpiCard icon={Icon} label={label} value={value} caption={caption} />;
 }
 
 export default function Exams() {

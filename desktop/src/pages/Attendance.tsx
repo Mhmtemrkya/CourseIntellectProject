@@ -1,3 +1,4 @@
+import { KpiCard } from '@/components/ui/kpi-card';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -92,27 +93,7 @@ function downloadCsv(filename: string, rows: ReadonlyArray<ReadonlyArray<string 
 }
 
 function StatCard({ icon: Icon, label, value, hint, tone }: { icon: IconComponent; label: string; value: number; hint?: string; tone: StatTone }) {
-  const tones: Record<StatTone, string> = {
-    blue: 'from-blue-500/20 to-blue-500/5 text-blue-300 border-blue-500/15',
-    green: 'from-emerald-500/20 to-emerald-500/5 text-emerald-300 border-emerald-500/15',
-    amber: 'from-amber-500/20 to-amber-500/5 text-amber-300 border-amber-500/15',
-    purple: 'from-purple-500/20 to-purple-500/5 text-purple-300 border-purple-500/15',
-    red: 'from-rose-500/20 to-rose-500/5 text-rose-300 border-rose-500/15',
-  };
-  return (
-    <div className={`rounded-2xl border bg-gradient-to-br p-5 shadow-sm ${tones[tone]}`}>
-      <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-foreground/10">
-          <Icon className="h-6 w-6" />
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-3xl font-black text-foreground">{value}</p>
-          {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-        </div>
-      </div>
-    </div>
-  );
+  return <KpiCard icon={Icon} label={label} value={value} caption={hint} tone={tone === 'green' ? 'emerald' : tone === 'red' ? 'rose' : tone === 'purple' ? 'violet' : tone} />;
 }
 
 export default function Attendance() {

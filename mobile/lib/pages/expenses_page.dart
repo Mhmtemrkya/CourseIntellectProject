@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import '../i18n/app_locale.dart';
@@ -282,7 +283,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                 children: [
-                  Card(
+                  SchoolCard(
                     child: ListTile(
                       leading: const Icon(Icons.trending_down_rounded, color: Colors.redAccent),
                       title: Text(
@@ -326,7 +327,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       child: Center(child: Text('Bu filtrede gider kaydı yok.'.tr)),
                     ),
                   ..._items.map(
-                    (item) => Card(
+                    (item) => SchoolCard(
                       margin: const EdgeInsets.only(bottom: 10),
                       child: Padding(
                         padding: const EdgeInsets.all(14),

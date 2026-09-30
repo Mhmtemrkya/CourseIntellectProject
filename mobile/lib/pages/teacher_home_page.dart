@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/teacher_assignments_page.dart';
@@ -866,34 +867,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
   }
 
   Widget _heroStat(String title, String value) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.86),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
+    return VividMetricCard(title: title, value: value, compact: true);
   }
 
   Widget _filterRow(ThemeData theme) {
@@ -940,11 +914,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: _shadow(isDark),
-      ),
+      decoration: contentCardDecoration(context, title: 'Kurum'),
       child: Row(
         children: [
           Container(
@@ -1178,25 +1148,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     required String title,
     required String value,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(title),
-        ],
-      ),
-    );
+    return VividMetricCard(title: title, value: value, compact: true);
   }
 
   Widget _classComparisonCard(ThemeData theme, bool isDark) {
@@ -1262,11 +1214,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: _shadow(isDark),
-      ),
+      decoration: contentCardDecoration(context, title: 'Kurum'),
       child: Row(
         children: [
           Container(
@@ -1411,11 +1359,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: _shadow(isDark),
-      ),
+      decoration: contentCardDecoration(context, title: 'Kurum'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1476,11 +1420,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: _shadow(isDark),
-      ),
+      decoration: contentCardDecoration(context, title: 'Ders'),
       child: Column(
         children: scheduleItems.isEmpty
             ? [
@@ -1568,11 +1508,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: _shadow(isDark),
-      ),
+      decoration: contentCardDecoration(context, title: 'Bildirim'),
       child: Column(
         children: [
           _announcementItem(

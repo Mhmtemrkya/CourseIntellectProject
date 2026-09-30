@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'dart:math' as math;
 
 import 'package:student/i18n/app_locale.dart';
@@ -602,47 +603,8 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
   }
 
   Widget _summaryCard(BuildContext context, _SummaryMetric card) {
-    final width = ResponsiveLayout.itemWidth(
-      context,
-      spacing: 12,
-      phone: 2,
-      tablet: 2,
-      largeTablet: 4,
-    );
-    return SizedBox(
-      width: width,
-      child: AccountingPanel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: card.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(card.icon, color: card.color),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              card.title,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: card.color,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              card.value,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    final width = ResponsiveLayout.itemWidth(context, spacing: 12, phone: 2, tablet: 2, largeTablet: 4);
+    return SizedBox(width: width, child: VividMetricCard(title: card.title, value: card.value, icon: card.icon));
   }
 
   Widget _flowChartSection(BuildContext context) {
@@ -1438,11 +1400,7 @@ class _FlowChartState extends State<_FlowChart> {
     final net = bucket.net;
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF020B1F).withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
-      ),
+      decoration: contentCardDecoration(context, title: 'Finans'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

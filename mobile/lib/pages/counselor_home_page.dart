@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/counselor_student_file_page.dart';
@@ -157,36 +158,9 @@ class _CounselorHomePageState extends State<CounselorHomePage> {
       );
 
   Widget _statsRow(ThemeData theme, bool isDark) {
-    Widget stat(String label, String value, IconData icon, Color color) =>
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(icon, color: color, size: 22),
-                const SizedBox(height: 8),
-                Text(value,
-                    style: theme.textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w900)),
-                Text(label,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.hintColor)),
-              ],
-            ),
-          ),
-        );
+    Widget stat(String label, String value, IconData icon, Color color) => Expanded(
+      child: VividMetricCard(title: label, value: value, icon: icon, compact: true),
+    );
 
     return Row(
       children: [
@@ -203,11 +177,7 @@ class _CounselorHomePageState extends State<CounselorHomePage> {
 
   Widget _followUpsCard(ThemeData theme, bool isDark) => Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _orange.withValues(alpha: isDark ? 0.12 : 0.08),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _orange.withValues(alpha: 0.35)),
-        ),
+        decoration: contentCardDecoration(context, title: 'Rehberlik'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -302,17 +272,7 @@ class _CounselorHomePageState extends State<CounselorHomePage> {
         .toList();
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
+      decoration: contentCardDecoration(context, title: 'Rehberlik'),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: () => _openFile(s['studentName'] as String? ?? ''),

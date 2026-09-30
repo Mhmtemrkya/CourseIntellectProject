@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -82,7 +83,7 @@ class _VeliFinancePageState extends State<VeliFinancePage> {
   Widget _accountCard(Map<String, dynamic> account) {
     final installments = (account['installments'] as List<dynamic>? ?? const []);
     final hasBalance = (account['balance'] as num? ?? 0) > 0;
-    return Card(
+    return SchoolCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(16),

@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -259,7 +260,7 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
         ],
       ),
     );
-    return Card(
+    return SchoolCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

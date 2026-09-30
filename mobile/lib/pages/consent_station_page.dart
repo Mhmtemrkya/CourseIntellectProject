@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -391,7 +392,7 @@ class _ConsentStationPageState extends State<ConsentStationPage> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 28),
-              Card(
+              SchoolCard(
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(

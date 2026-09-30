@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -153,19 +154,7 @@ class _AccountingDiscountPageState extends State<AccountingDiscountPage> {
   }
 
   Widget _metric(BuildContext context, String title, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w900),
-        ),
-      ],
-    );
+    return VividMetricCard(title: title, value: value, compact: true);
   }
 
   Widget _recordCard(BuildContext context, Map<String, String> record) {

@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -242,29 +243,7 @@ class StudentQuestionDetailPage extends StatelessWidget {
   }
 
   Widget _heroStat(String label, String value, Color valueColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(color: valueColor, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.86),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
+    return VividMetricCard(title: label, value: value, compact: true);
   }
 
   Widget _panel(ThemeData theme, bool isDark, {required Widget child}) {

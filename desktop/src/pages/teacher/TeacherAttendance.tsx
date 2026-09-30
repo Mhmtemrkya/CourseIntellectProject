@@ -1,3 +1,4 @@
+import { KpiCard } from '@/components/ui/kpi-card';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -12,7 +13,6 @@ import { Textarea } from '../../components/ui/textarea';
 import { Progress } from '../../components/ui/progress';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../../components/ui/sheet';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
-import { AnimatedValue } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
@@ -93,25 +93,7 @@ function downloadTextFile(filename: string, content: string, type = 'text/csv;ch
 }
 
 function StatCard({ icon: Icon, label, value, tone }: { icon: IconComponent; label: string; value: number; tone: StatTone }) {
-  const tones: Record<StatTone, string> = {
-    blue: 'from-blue-500/20 to-blue-500/5 text-blue-300 border-blue-400/15',
-    green: 'from-emerald-500/20 to-emerald-500/5 text-emerald-300 border-emerald-400/15',
-    amber: 'from-amber-500/20 to-amber-500/5 text-amber-300 border-amber-400/15',
-    red: 'from-rose-500/20 to-rose-500/5 text-rose-300 border-rose-400/15',
-  };
-  return (
-    <div className={`ci-rise rounded-2xl border bg-gradient-to-br p-5 ${tones[tone]}`}>
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-foreground/10">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-3xl font-black text-foreground"><AnimatedValue value={value} /></p>
-        </div>
-      </div>
-    </div>
-  );
+  return <KpiCard icon={Icon} label={label} value={value} caption={undefined} tone={tone === 'green' ? 'emerald' : tone === 'red' ? 'rose' : tone} />;
 }
 
 export default function TeacherAttendance() {

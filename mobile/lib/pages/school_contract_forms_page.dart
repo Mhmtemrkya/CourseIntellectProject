@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -465,7 +466,7 @@ class _SchoolContractFormsPageState extends State<SchoolContractFormsPage> {
           final isPdf = template['sourceKind']?.toString() == 'Pdf';
           final busy = _busyId == template['id'].toString() || _busyId == form?['id'];
 
-          return Card(
+          return SchoolCard(
             margin: const EdgeInsets.only(bottom: 10),
             child: Padding(
               padding: const EdgeInsets.all(12),

@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -306,10 +307,7 @@ class _SchedulePageState extends State<SchedulePage>
   Widget _errorCard(ThemeData theme, String text) => Container(
     margin: const EdgeInsets.only(bottom: 12),
     padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.red.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(12),
-    ),
+    decoration: contentCardDecoration(context, title: 'Ders'),
     child: Text(text, style: const TextStyle(color: Colors.red)),
   );
 }

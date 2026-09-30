@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -300,7 +301,7 @@ class _ConsentCenterPageState extends State<ConsentCenterPage> {
     final templateId = row['templateId'].toString();
     final busy = _busyId == formId || _busyId == templateId;
 
-    return Card(
+    return SchoolCard(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.all(12),

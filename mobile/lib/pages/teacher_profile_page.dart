@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/language_tile.dart';
 import 'package:student/i18n/app_locale.dart';
@@ -172,10 +173,7 @@ class _TeacherProfilePageState extends State<TeacherProfilePage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
+      decoration: contentCardDecoration(context, title: 'Kurum'),
       child: child,
     );
   }

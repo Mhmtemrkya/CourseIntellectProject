@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -53,7 +54,7 @@ class _VeliAcademicPageState extends State<VeliAcademicPage> {
     final trend = (child['netTrend'] as num? ?? 0).toInt();
     final trendColor = trend > 0 ? Colors.green : trend < 0 ? Colors.red : Colors.grey;
     final exams = (child['recentExams'] as List<dynamic>? ?? const []);
-    return Card(
+    return SchoolCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(16),

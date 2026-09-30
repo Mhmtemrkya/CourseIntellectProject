@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'dart:async';
 
 import 'package:student/i18n/app_locale.dart';
@@ -343,42 +344,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
     required String value,
     required String detail,
   }) {
-    return ServiceGlassCard(
-      padding: const EdgeInsets.all(14),
-      glowColors: [color, serviceBlue],
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ServiceIconBadge(icon: icon, color: color, size: 42),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
-          ),
-          Text(
-            detail,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(
-                context,
-              ).textTheme.bodySmall?.color?.withValues(alpha: 0.62),
-            ),
-          ),
-        ],
-      ),
-    );
+    return VividMetricCard(title: label, value: value, compact: true, icon: icon);
   }
 
   Widget _routeControls() {

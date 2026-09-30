@@ -1,3 +1,4 @@
+import 'card_system.dart';
 import 'package:flutter/material.dart';
 
 /// SchoolAsist premium kart dili (desktop ile ortak):
@@ -81,9 +82,6 @@ class PremiumResourceCard extends StatelessWidget {
     final theme = resourceTheme(subject);
     final hue = theme.hue;
 
-    final Color cardColor = dark ? const Color(0xFF0B1728) : Colors.white;
-    final Color borderColor =
-        dark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFE2E8F0);
     final Color titleColor = dark ? Colors.white : const Color(0xFF0F172A);
     final Color mutedColor =
         dark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
@@ -98,18 +96,7 @@ class PremiumResourceCard extends StatelessWidget {
 
     return Container(
       margin: margin,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.32 : 0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
+      decoration: contentCardDecoration(context, title: subject, accent: hue),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: Material(

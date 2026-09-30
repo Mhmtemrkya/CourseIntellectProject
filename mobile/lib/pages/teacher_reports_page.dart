@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'dart:io';
 
 import 'package:student/i18n/app_locale.dart';
@@ -2015,61 +2016,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: onTap,
-      child: Ink(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: reportTheme.cardColor,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: reportTheme.shadow,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, color: color),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: reportTheme.textColor,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: reportTheme.textColor,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: reportTheme.subtleTextColor,
-                fontSize: 12,
-                height: 1.35,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return VividMetricCard(title: title, value: value, compact: true, icon: icon, onTap: onTap, caption: subtitle);
   }
 
   Widget _studentDetailCenterPanel(_ReportTheme reportTheme) {
@@ -2496,31 +2443,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
     required String label,
     required String value,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: reportTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(color: reportTheme.subtleTextColor, fontSize: 12),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              color: reportTheme.textColor,
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-            ),
-          ),
-        ],
-      ),
-    );
+    return VividMetricCard(title: label, value: value, compact: true);
   }
 
   Widget _classReportCard(
@@ -2536,11 +2459,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: reportTheme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: reportTheme.shadow,
-      ),
+      decoration: contentCardDecoration(context, title: 'Kurum'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2927,57 +2846,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
     required IconData icon,
     required Color color,
   }) {
-    // Kart kendi opak zeminini çizer; bu yüzden hangi yüzeyin üstünde olursa
-    // olsun metin rengini de kendisi temadan almalı.
-    final reportTheme = _ReportTheme(
-      Theme.of(context),
-      Theme.of(context).brightness == Brightness.dark,
-    );
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: reportTheme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: reportTheme.borderColor),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: reportTheme.subtleTextColor,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: reportTheme.textColor,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return VividMetricCard(title: title, value: value, compact: true, icon: icon);
   }
 
   String _studentInitials(String name) {

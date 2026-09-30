@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -114,7 +115,7 @@ class _ConsolidatedOverviewPageState extends State<ConsolidatedOverviewPage> {
                 ),
                 const SizedBox(height: 8),
                 ...tenants.map(
-                  (t) => Card(
+                  (t) => SchoolCard(
                     margin: const EdgeInsets.only(bottom: 10),
                     child: ListTile(
                       leading: const CircleAvatar(child: Icon(Icons.business_outlined)),
@@ -141,7 +142,7 @@ class _ConsolidatedOverviewPageState extends State<ConsolidatedOverviewPage> {
   }
 
   Widget _tile(ThemeData theme, String label, String value, IconData icon) {
-    return Card(
+    return SchoolCard(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(

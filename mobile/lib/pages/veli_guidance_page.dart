@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/guidance_api_service.dart';
@@ -198,14 +199,7 @@ class _VeliGuidancePageState extends State<VeliGuidancePage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [_navy, Color(0xFF1E3A66)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: contentCardDecoration(context, title: 'Rehberlik'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

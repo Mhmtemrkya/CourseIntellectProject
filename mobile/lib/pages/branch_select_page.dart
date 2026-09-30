@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -121,7 +122,7 @@ class _BranchSelectPageState extends State<BranchSelectPage> {
           ),
           const SizedBox(height: 16),
           if (_canViewAllBranches)
-            Card(
+            SchoolCard(
               color: theme.colorScheme.primaryContainer,
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
@@ -140,7 +141,7 @@ class _BranchSelectPageState extends State<BranchSelectPage> {
               ),
             ),
           ..._branches.map(
-            (branch) => Card(
+            (branch) => SchoolCard(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
                 leading: const CircleAvatar(

@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -98,7 +99,7 @@ class _ApprovalsTabState extends State<_ApprovalsTab> {
         itemBuilder: (context, i) {
           final it = _items[i];
           final pending = it['status'] == 'Pending';
-          return Card(child: ListTile(
+          return SchoolCard(child: ListTile(
             title: Text('${it['title']}'),
             subtitle: Text('${it['category']} • ${it['requesterName'] ?? ''} • ${_tr('${it['status']}')}'),
             trailing: pending ? Wrap(spacing: 4, children: [
@@ -158,7 +159,7 @@ class _LeavesTabState extends State<_LeavesTab> {
                   itemBuilder: (context, i) {
                     final it = _items[i];
                     final pending = it['status'] == 'Pending';
-                    return Card(child: ListTile(
+                    return SchoolCard(child: ListTile(
                       title: Text('${it['staffName']} • ${it['leaveType']}'),
                       subtitle: Text('${'${it['startDateUtc']}'.split('T').first} → ${'${it['endDateUtc']}'.split('T').first} • ${it['days']} gün • ${_tr('${it['status']}')}'),
                       trailing: pending ? Wrap(spacing: 4, children: [
@@ -289,7 +290,7 @@ class _TasksTabState extends State<_TasksTab> {
               itemBuilder: (context, i) {
                 final it = _items[i];
                 final done = it['status'] == 'Done';
-                return Card(child: ListTile(
+                return SchoolCard(child: ListTile(
                   title: Text('${it['title']}'),
                   subtitle: Text('${it['assignedToName'] ?? 'Atanmadı'} • ${_tr('${it['status']}')}'),
                   trailing: done ? const Icon(Icons.check_circle, color: Colors.green) : Wrap(spacing: 4, children: [
@@ -362,7 +363,7 @@ class _DocumentsTabState extends State<_DocumentsTab> {
               itemBuilder: (context, i) {
                 final it = _items[i];
                 final archived = it['status'] == 'Archived';
-                return Card(child: ListTile(
+                return SchoolCard(child: ListTile(
                   title: Text('${it['title']}'),
                   subtitle: Text('${it['category']}${archived ? ' • Arşiv' : ''}'),
                   trailing: archived ? null : IconButton(icon: const Icon(Icons.archive_outlined), onPressed: () => _archive(it)),
@@ -615,7 +616,7 @@ class _RolesTabState extends State<_RolesTab> {
         itemBuilder: (context, i) {
           final it = _items[i];
           final modules = (it['moduleAccess'] as List<dynamic>? ?? const []).map((e) => '$e').toList();
-          return Card(
+          return SchoolCard(
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

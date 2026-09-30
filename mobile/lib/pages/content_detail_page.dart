@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1202,26 +1203,10 @@ class _ContentDetailPageState extends State<ContentDetailPage>
     required String subtitle,
     required List<Widget> children,
   }) {
-    final dark = isDark(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: dark ? const Color(0xFF0B1626) : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: dark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.05),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withValues(alpha: dark ? 0.10 : 0.06),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+      decoration: contentCardDecoration(context, title: title),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

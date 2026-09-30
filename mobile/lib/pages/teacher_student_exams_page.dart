@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -319,11 +320,7 @@ class _TeacherStudentExamsPageState extends State<TeacherStudentExamsPage> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.dividerColor),
-      ),
+      decoration: contentCardDecoration(context, title: 'Sınav'),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,

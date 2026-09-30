@@ -1,4 +1,5 @@
 import * as React from "react";
+import { cardTone } from "./card-palette";
 import { ArrowUpRight } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -412,17 +413,17 @@ export function PremiumMetricCard({
       onClick={onClick}
       className={cn("group block h-full w-full text-left", onClick && "cursor-pointer")}
     >
-      <Card className={cn("ci-metric-card h-full overflow-hidden border-foreground/10", className)}>
+      <Card tone={cardTone(title, tone)} className={cn("ci-metric-card ci-color-metric h-full overflow-hidden border-foreground/10", className)}> 
         <CardContent className="relative flex h-full min-h-[128px] flex-col justify-between p-4">
-          <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[hsl(var(--brand-accent)/0.18)] blur-2xl transition-opacity group-hover:opacity-100" />
+          {Icon ? <Icon className="ci-metric-relief" aria-hidden="true" /> : null}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{title}</p>
-              <div className="mt-1.5 text-[28px] font-black leading-none tracking-[-0.04em]"><AnimatedValue value={value} /></div>
-              {caption ? <p className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">{caption}</p> : null}
+              <p className="ci-metric-label">{title}</p>
+              <div className="ci-metric-value mt-3"><AnimatedValue value={value} /></div>
+              {caption ? <p className="ci-metric-caption mt-2">{caption}</p> : null}
             </div>
             {Icon ? (
-              <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-[0_12px_28px_hsl(var(--brand-accent)/0.24)]", toneClass[tone] || toneClass.brand)}>
+              <div className="ci-metric-icon">
                 <Icon className="h-5 w-5" />
               </div>
             ) : null}
@@ -584,7 +585,7 @@ export function PremiumScoreCard({ subject, score, grade, date, values, tone = "
   const Wrapper = onClick ? "button" : "div";
   return (
     <Wrapper type={onClick ? "button" : undefined} onClick={onClick} className={cn("group block h-full w-full text-left", onClick && "cursor-pointer")}>
-      <Card className={cn("ci-metric-card h-full overflow-hidden border-foreground/10", className)}>
+      <Card tone={cardTone(subject, tone)} className={cn("ci-metric-card ci-color-metric h-full overflow-hidden border-foreground/10", className)}>
         <CardContent className="flex h-full flex-col justify-between gap-3 p-4">
           <p className="truncate text-xs font-semibold text-muted-foreground">{subject}</p>
           <div className="flex items-baseline gap-1.5">

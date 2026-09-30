@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -871,17 +872,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
               (student) => Container(
                 margin: const EdgeInsets.only(top: 10),
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).scaffoldBackgroundColor.withValues(alpha: 0.58),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: Theme.of(
-                      context,
-                    ).dividerColor.withValues(alpha: 0.18),
-                  ),
-                ),
+                decoration: contentCardDecoration(context, title: 'Kurum'),
                 child: Row(
                   children: [
                     const ServiceIconBadge(

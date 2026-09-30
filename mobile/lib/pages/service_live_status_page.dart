@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'dart:async';
 import 'package:student/i18n/app_locale.dart';
 import 'dart:math' as math;
@@ -293,18 +294,7 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
     final distance = _formatDistance(item.distanceMeters);
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          colors: [
-            serviceBlue.withValues(alpha: 0.14),
-            serviceOrange.withValues(alpha: 0.08),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: serviceBlue.withValues(alpha: 0.16)),
-      ),
+      decoration: contentCardDecoration(context, title: 'Kurum'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

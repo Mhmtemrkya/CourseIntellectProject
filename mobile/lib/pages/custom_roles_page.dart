@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -139,7 +140,7 @@ class _CustomRolesPageState extends State<CustomRolesPage> {
               padding: const EdgeInsets.all(16),
               children: [
                 if (_creating) ...[
-                  Card(
+                  SchoolCard(
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
@@ -205,7 +206,7 @@ class _CustomRolesPageState extends State<CustomRolesPage> {
                   const SizedBox(height: 12),
                 ],
                 ..._roles.map(
-                  (r) => Card(
+                  (r) => SchoolCard(
                     margin: const EdgeInsets.only(bottom: 10),
                     child: ListTile(
                       leading: const CircleAvatar(child: Icon(Icons.badge_outlined)),

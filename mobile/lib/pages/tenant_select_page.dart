@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -93,7 +94,7 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
           ),
           const SizedBox(height: 16),
           // Tüm kurumların toplamı — konsolide görünüm.
-          Card(
+          SchoolCard(
             color: Theme.of(context).colorScheme.primaryContainer,
             margin: const EdgeInsets.only(bottom: 12),
             child: ListTile(
@@ -111,7 +112,7 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
           ),
           // Kapsam yönetimi — platform admin veya delege yönetici (grup + yetki atama).
           if (_canManageScopes)
-            Card(
+            SchoolCard(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
                 leading: const CircleAvatar(child: Icon(Icons.hub_outlined)),
@@ -127,7 +128,7 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
               ),
             ),
           ..._tenants.map(
-            (tenant) => Card(
+            (tenant) => SchoolCard(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
                 leading: const CircleAvatar(child: Icon(Icons.business_outlined)),

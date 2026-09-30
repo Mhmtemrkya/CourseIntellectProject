@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
@@ -175,7 +176,7 @@ class _ScopeManagementPageState extends State<ScopeManagementPage> {
       Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(t, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)));
 
   Widget _groupsSection() {
-    return Card(
+    return SchoolCard(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -222,7 +223,7 @@ class _ScopeManagementPageState extends State<ScopeManagementPage> {
   }
 
   Widget _tenantSection() {
-    return Card(
+    return SchoolCard(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -264,7 +265,7 @@ class _ScopeManagementPageState extends State<ScopeManagementPage> {
             ? _tenants
             : const <Map<String, dynamic>>[];
 
-    return Card(
+    return SchoolCard(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(

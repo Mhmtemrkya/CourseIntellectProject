@@ -1,3 +1,4 @@
+import { KpiCard } from '@/components/ui/kpi-card';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -69,21 +70,8 @@ function SectionHeader({ icon: Icon, title, description, count }: { icon: IconCo
   );
 }
 
-function MetricCard({ label, value, detail, icon: Icon, tone }: { label: string; value: ReactNode; detail: string; icon: IconComponent; tone: string }) {
-  return (
-    <Card className="min-h-[132px] p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
-          <p className="mt-3 text-3xl font-black tracking-tight text-foreground">{value}</p>
-        </div>
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm" style={{ background: tone }}>
-          <Icon className="h-5 w-5" />
-        </span>
-      </div>
-      <p className="mt-2 truncate text-sm text-muted-foreground">{detail}</p>
-    </Card>
-  );
+function MetricCard({ label, value, detail, icon: Icon }: { label: string; value: ReactNode; detail: string; icon: IconComponent; tone: string }) {
+  return <KpiCard label={label} value={value} caption={detail} icon={Icon} />;
 }
 
 function EmptyState({ title, description }: { title: string; description: string }) {

@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import '../i18n/app_locale.dart';
@@ -174,7 +175,7 @@ class _AdminPassiveRecordsPageState extends State<AdminPassiveRecordsPage> {
         .take(2)
         .map((p) => p[0])
         .join();
-    return Card(
+    return SchoolCard(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.all(12),

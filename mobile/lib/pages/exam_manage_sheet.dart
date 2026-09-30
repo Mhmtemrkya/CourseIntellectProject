@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -790,31 +791,7 @@ class _ExamDetailPage extends StatelessWidget {
   }
 
   Widget _stat(BuildContext context, String label, String value) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label.tr,
-              style: theme.textTheme.labelSmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
+    return Expanded(child: VividMetricCard(title: label, value: value, compact: true));
   }
 }
 

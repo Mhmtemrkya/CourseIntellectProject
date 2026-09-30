@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
@@ -822,25 +823,9 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
   }
 
   Widget _sectionCard({required String title, required Widget child}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0B1626) : Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.transparent,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: contentCardDecoration(context, title: title),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -1,3 +1,4 @@
+import { cardTone } from '@/components/ui/card-palette';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
@@ -1046,7 +1047,7 @@ export default function TeacherContent() {
           ['PDF İçerikler', stats.pdf, 'doküman', FileText, 'from-rose-400 to-red-600'],
           ['Sunumlar', stats.sunum, 'sunum', FolderOpen, 'from-amber-400 to-orange-600'],
         ] satisfies ReadonlyArray<readonly [string, number, string, IconComponent, string]>).map(([label, value, unit, Icon, gradient]) => (
-          <motion.div variants={itemVariants} key={label} className="ci-metric-card flex flex-col gap-3 rounded-2xl border border-foreground/10 p-4">
+          <motion.div variants={itemVariants} key={label} data-card-tone={cardTone(label)} className="ci-metric-card ci-color-metric flex flex-col gap-3 rounded-2xl border border-foreground/10 p-4">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
               <div className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br text-white ${gradient}`}><Icon className="h-4 w-4" /></div>

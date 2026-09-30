@@ -1,3 +1,4 @@
+import { cardTone } from '@/components/ui/card-palette';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -209,7 +210,7 @@ export default function StudentExams({ mockOnly = false }: { mockOnly?: boolean 
           [examsToday, 'Bugün'],
           [readySessions, 'Hazır Oturum'],
         ].map(([value, label]) => (
-          <div key={label} className="ci-metric-card rounded-2xl border border-foreground/10 p-4">
+          <div key={label} data-card-tone={cardTone(label)} className="ci-metric-card ci-color-metric rounded-2xl border border-foreground/10 p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
             <p className="mt-2 truncate text-3xl font-black tracking-tight"><AnimatedValue value={value} /></p>
           </div>

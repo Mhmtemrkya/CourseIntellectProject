@@ -12,6 +12,7 @@ import { PageErrorBoundary } from '../system/PageErrorBoundary';
 import { Sheet, SheetContent } from '../ui/sheet';
 import { gsap } from 'gsap';
 import { OnboardingProvider } from '../../onboarding/OnboardingProvider';
+import { CardToneContext, cardToneForPath } from '../ui/card-palette';
 
 const pageVariants: Variants = {
   initial: { opacity: 0, y: 10 },
@@ -82,6 +83,7 @@ export function DashboardLayout() {
 
   return (
     <OnboardingProvider>
+    <CardToneContext.Provider value={cardToneForPath(location.pathname)}>
     <div className="app-shell flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <PremiumSidebar />
@@ -139,6 +141,7 @@ export function DashboardLayout() {
       {/* Command Palette */}
       <CommandPalette />
     </div>
+    </CardToneContext.Provider>
     </OnboardingProvider>
   );
 }

@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import '../services/cafeteria_api_service.dart';
@@ -361,11 +362,7 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        color: color.withValues(alpha: 0.07),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
+      decoration: contentCardDecoration(context, title: title),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -536,27 +533,7 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
     IconData icon,
     Color color,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: Theme.of(context).textTheme.labelSmall),
-              Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
-            ],
-          ),
-        ],
-      ),
-    );
+    return SizedBox(width: 156, child: VividMetricCard(title: label, value: value, compact: true, icon: icon));
   }
 
   Future<void> _editMeal(CafeteriaMealEntry meal, String title) async {

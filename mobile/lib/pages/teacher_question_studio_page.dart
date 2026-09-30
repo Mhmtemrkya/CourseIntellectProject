@@ -1,3 +1,4 @@
+import 'package:student/widgets/school_card.dart';
 import 'dart:convert';
 import 'package:student/i18n/app_locale.dart';
 import 'dart:io';
@@ -511,7 +512,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                               .where((item) => stagedIds.contains(item.id))
                               .length;
                           final allSelected = selectedCount == questions.length;
-                          return Card(
+                          return SchoolCard(
                             margin: const EdgeInsets.only(bottom: 12),
                             child: ExpansionTile(
                               leading: Checkbox(

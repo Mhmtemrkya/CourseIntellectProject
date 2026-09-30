@@ -1,3 +1,4 @@
+import 'package:student/widgets/card_system.dart';
 import 'dart:convert';
 
 import 'package:student/i18n/app_locale.dart';
@@ -176,14 +177,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
 
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [_navy, Color(0xFF1E3A66)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-      ),
+      decoration: contentCardDecoration(context, title: 'Rehberlik'),
       child: Column(
         children: [
           Row(

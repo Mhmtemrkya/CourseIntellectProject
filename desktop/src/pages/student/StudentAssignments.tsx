@@ -1,3 +1,4 @@
+import { cardTone } from '@/components/ui/card-palette';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '../../hooks/use-toast';
@@ -340,7 +341,7 @@ export default function StudentAssignments() {
       {/* Stat kartları */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
         {statCards.map(([label, value, Icon, gradient, sub]) => (
-          <div key={label} className="ci-metric-card flex flex-col gap-3 rounded-2xl border border-foreground/10 p-4">
+          <div key={label} data-card-tone={cardTone(label)} className="ci-metric-card ci-color-metric flex flex-col gap-3 rounded-2xl border border-foreground/10 p-4">
             <div className={`grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-[0_12px_28px_hsl(var(--brand-accent)/0.22)] ${gradient}`}>
               <Icon className="h-5 w-5" />
             </div>
