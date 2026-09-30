@@ -1,3 +1,4 @@
+using CourseIntellect.Api.Security;
 using CourseIntellect.Application.DTOs.QuestionBank;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
@@ -19,12 +20,33 @@ public sealed class QuestionBankController(
     {
         var includeDrafts = User.IsInRole("Teacher") || User.IsInRole("Admin");
         var items = await questionBankService.GetQuestionsAsync(className, includeDrafts, cancellationToken);
-        return Ok(items);
+        if (IsStaff())
+        {
+            return Ok(items);
+        }
+
+        // Güvenlik: doğru şık, beklenen cevap ve çözüm öğrenciye gönderilmez
+        // (puanlama SubmitAttempt'te sunucudadır). Öğretmen "cevabı öğrenciye
+        // göster" dediyse alanlar korunur.
+        return Ok(items.Select(item => item.RevealCorrectAnswerToStudent
+            ? item
+            : item with
+            {
+                CorrectOptionIndex = null,
+                ExpectedAnswer = null,
+                SolutionAssetPath = null,
+                SolutionTextHtml = null,
+            }).ToList());
     }
 
     [HttpGet("attempts")]
     public async Task<IActionResult> GetAttempts([FromQuery] string? studentUsername, CancellationToken cancellationToken = default)
     {
+        if (!TryScopeStudentUsername(ref studentUsername))
+        {
+            return Ok(Array.Empty<QuestionPracticeAttemptDto>());
+        }
+
         var items = await questionBankService.GetAttemptsAsync(studentUsername, cancellationToken);
         return Ok(items);
     }
@@ -32,6 +54,11 @@ public sealed class QuestionBankController(
     [HttpGet("attempts/stats")]
     public async Task<IActionResult> GetAttemptStats([FromQuery] string? studentUsername, [FromQuery] string? className, CancellationToken cancellationToken = default)
     {
+        if (!TryScopeStudentUsername(ref studentUsername))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Bu istatistik yalnız öğrenciye ve personele açıktır." });
+        }
+
         var stats = await questionBankService.GetStatsAsync(studentUsername, className, cancellationToken);
         return Ok(stats);
     }
@@ -80,8 +107,41 @@ public sealed class QuestionBankController(
     [RequireEntitlement("question-bank", "practice")]
     public async Task<IActionResult> SubmitAttempt(Guid id, [FromBody] SubmitQuestionPracticeAttemptRequest request, CancellationToken cancellationToken)
     {
+        // Öğrenci denemeyi yalnız kendi adına kaydeder (gövdedeki kimlik yok sayılır).
+        if (User.IsInRole("Student") && !IsStaff())
+        {
+            request = request with
+            {
+                StudentName = StudentScope.ResolveDisplayName(User),
+                StudentUsername = StudentScope.ResolveUsername(User),
+            };
+        }
+
         var item = await questionBankService.SubmitAttemptAsync(id, request, cancellationToken);
         return item is null ? NotFound() : Ok(item);
+    }
+
+    private bool IsStaff()
+        => User.IsInRole("Admin") || User.IsInRole("Administrative") || User.IsInRole("Teacher");
+
+    /// <summary>
+    /// Deneme geçmişi kapsamı: personel serbest; öğrenci yalnız kendi kullanıcı
+    /// adına zorlanır; diğer roller (veli vb.) erişemez (false).
+    /// </summary>
+    private bool TryScopeStudentUsername(ref string? studentUsername)
+    {
+        if (IsStaff())
+        {
+            return true;
+        }
+
+        if (!User.IsInRole("Student"))
+        {
+            return false;
+        }
+
+        studentUsername = StudentScope.ResolveUsername(User);
+        return !string.IsNullOrWhiteSpace(studentUsername);
     }
 
     private async Task RemoveQuestionFromPlannedExamSourcesAsync(Guid questionId, CancellationToken cancellationToken)
