@@ -850,7 +850,8 @@ public sealed class AssistantService(
     private static AssistantResponseDto FromStored(AssistantMessage message, Guid conversationId)
     {
         StoredPayload? payload = null;
-        try { payload = JsonSerializer.Deserialize<StoredPayload>(message.StructuredPayloadJson, JsonOptions); } catch { }
+        // Bozuk/eski biçimli kayıt yalnız metin olarak gösterilir; yapısal kısım düşer.
+        try { payload = JsonSerializer.Deserialize<StoredPayload>(message.StructuredPayloadJson, JsonOptions); } catch (JsonException) { payload = null; }
         return new(conversationId, message.Id, payload?.Type ?? "text", message.Text, payload?.Data, payload?.Actions ?? [], payload?.Suggestions ?? [], message.Intent);
     }
     private static string RoleRoute(string role, string page) => role.ToLowerInvariant() switch { "student" => $"/s/{page}", "parent" => $"/p/{page}", "teacher" => $"/t/{page}", _ => $"/{page}" };

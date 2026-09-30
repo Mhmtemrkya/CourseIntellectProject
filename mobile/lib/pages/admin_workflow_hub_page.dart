@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../services/admin_workflow_api_service.dart';
+import 'package:student/utils/log_ignored.dart';
 
 const _statusTr = {
   'Pending': 'İncelemede', 'Approved': 'Onaylandı', 'Rejected': 'Reddedildi',
@@ -75,7 +76,7 @@ class _ApprovalsTabState extends State<_ApprovalsTab> {
   void initState() { super.initState(); _load(); }
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _items = await widget.api.getApprovals(); } catch (_) {}
+    try { _items = await widget.api.getApprovals(); } catch (e) { logIgnored('admin_workflow_hub_page', e); }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -127,7 +128,7 @@ class _LeavesTabState extends State<_LeavesTab> {
   void initState() { super.initState(); _load(); }
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _items = await widget.api.getLeaves(); } catch (_) {}
+    try { _items = await widget.api.getLeaves(); } catch (e) { logIgnored('admin_workflow_hub_page', e); }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -250,7 +251,7 @@ class _TasksTabState extends State<_TasksTab> {
   void initState() { super.initState(); _load(); }
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _items = await widget.api.getTasks(); } catch (_) {}
+    try { _items = await widget.api.getTasks(); } catch (e) { logIgnored('admin_workflow_hub_page', e); }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -321,7 +322,7 @@ class _DocumentsTabState extends State<_DocumentsTab> {
   void initState() { super.initState(); _load(); }
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _items = await widget.api.getDocuments(); } catch (_) {}
+    try { _items = await widget.api.getDocuments(); } catch (e) { logIgnored('admin_workflow_hub_page', e); }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -389,7 +390,7 @@ class _AuditTabState extends State<_AuditTab> {
   void initState() { super.initState(); _load(); }
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _items = await widget.api.getAuditLogs(); } catch (_) {}
+    try { _items = await widget.api.getAuditLogs(); } catch (e) { logIgnored('admin_workflow_hub_page', e); }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -434,7 +435,7 @@ class _OrgUnitsTabState extends State<_OrgUnitsTab> {
   void initState() { super.initState(); _load(); }
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _items = await widget.api.getOrgUnits(); } catch (_) {}
+    try { _items = await widget.api.getOrgUnits(); } catch (e) { logIgnored('admin_workflow_hub_page', e); }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -564,7 +565,7 @@ class _OrgUnitsTabState extends State<_OrgUnitsTab> {
                             try {
                               await widget.api.setOrgUnitActive('${it['id']}', !isActive);
                               await _load();
-                            } catch (_) {}
+                            } catch (e) { logIgnored('admin_workflow_hub_page', e); }
                           },
                         ),
                         IconButton(
@@ -597,7 +598,7 @@ class _RolesTabState extends State<_RolesTab> {
   void initState() { super.initState(); _load(); }
   Future<void> _load() async {
     setState(() => _loading = true);
-    try { _items = await widget.api.getRoles(); } catch (_) {}
+    try { _items = await widget.api.getRoles(); } catch (e) { logIgnored('admin_workflow_hub_page', e); }
     if (mounted) setState(() => _loading = false);
   }
 

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class ServiceTrackingApiException implements Exception {
   final String message;
@@ -1021,7 +1022,7 @@ class ServiceTrackingApiService {
       if (decoded is Map && decoded['message'] is String) {
         message = decoded['message'] as String;
       }
-    } catch (_) {}
+    } catch (e) { logIgnored('service_tracking_api_service', e); }
     throw ServiceTrackingApiException(message);
   }
 

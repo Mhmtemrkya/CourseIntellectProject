@@ -9,6 +9,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchContents, fetchMyContentEngagement, saveContentUserState } from '../../lib/api/modules';
 import { errorMessage } from '../../lib/errors';
 import type { ContentDto, MyContentStateDto } from '../../types/api/generated';
+import { logIgnored } from '../../lib/logIgnored';
 
 type FavoriteContent = ContentDto & { userState: MyContentStateDto | undefined };
 
@@ -73,7 +74,7 @@ export default function StudentFavorites() {
       liked: Boolean(state?.liked),
       favorite: false,
       note: String(state?.note || ''),
-    }).catch(() => {});
+    }).catch(logIgnored('StudentFavorites'));
   };
 
   if (loading) {

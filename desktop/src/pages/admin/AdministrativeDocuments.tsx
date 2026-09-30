@@ -231,7 +231,7 @@ export default function AdministrativeDocuments() {
                   <div className="flex flex-wrap gap-2">
                     {url ? (
                       <>
-                        <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-brand-primary/10"><ExternalLink className="h-4 w-4" />Aç</a>
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-brand-primary/10"><ExternalLink className="h-4 w-4" />Aç</a>
                         <Button size="sm" variant="outline" onClick={() => printDocument(url, item.title)}><Printer className="mr-1 h-4 w-4" />Yazdır</Button>
                         <Button size="sm" variant="outline" onClick={() => downloadDocument(url, item.title)}><Download className="mr-1 h-4 w-4" />İndir</Button>
                       </>

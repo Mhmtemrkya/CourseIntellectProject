@@ -8,6 +8,7 @@ import '../services/schedule_store.dart';
 import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
 import 'admin_class_management_page.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class AdminScheduleEditPage extends StatefulWidget {
   final ScheduleEntryApiRecord? entry;
@@ -82,11 +83,11 @@ class _AdminScheduleEditPageState extends State<AdminScheduleEditPage> {
 
       try {
         remoteClasses = await AdminDirectoryApiService.instance.fetchClasses();
-      } catch (_) {}
+      } catch (e) { logIgnored('admin_schedule_edit_page', e); }
 
       try {
         courses = await CoursesApiService.instance.fetchAll(isActive: true);
-      } catch (_) {}
+      } catch (e) { logIgnored('admin_schedule_edit_page', e); }
 
       if (!mounted) return;
 

@@ -3,6 +3,7 @@ import 'package:student/i18n/app_locale.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:student/services/admin_directory_api_service.dart';
 import 'package:student/services/library_api_service.dart';
+import 'package:student/utils/log_ignored.dart';
 
 const _navy = Color(0xFF15294B);
 const _orange = Color(0xFFF7941D);
@@ -45,7 +46,7 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
         studentList = records
             .map((s) => {'fullName': s.fullName, 'className': s.className})
             .toList();
-      } catch (_) {}
+      } catch (e) { logIgnored('library_manage_page', e); }
       if (!mounted) return;
       setState(() {
         books = bookList;
@@ -461,7 +462,7 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
                 publisher.text =
                     (result['publisher'] as String?) ?? publisher.text;
               }
-            } catch (_) {}
+            } catch (e) { logIgnored('library_manage_page', e); }
             setSheetState(() => lookupBusy = false);
           }
 

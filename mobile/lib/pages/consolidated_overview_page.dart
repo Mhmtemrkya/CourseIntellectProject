@@ -5,6 +5,7 @@ import '../services/admin_workflow_api_service.dart';
 import '../services/branch_scope_store.dart';
 import '../services/tenant_scope_store.dart';
 import 'branch_select_page.dart';
+import 'package:student/utils/log_ignored.dart';
 
 /// Konsolide görünüm: kurum sahibi/MEB'in erişebildiği tüm kurumların özet metrikleri
 /// + genel toplam. Bir kuruma dokununca o kuruma drill-down yapılır (bağlam ayarlanır).
@@ -29,7 +30,7 @@ class _ConsolidatedOverviewPageState extends State<ConsolidatedOverviewPage> {
     Map<String, dynamic>? data;
     try {
       data = await AdminWorkflowApiService.instance.getMyScopeRollup();
-    } catch (_) {}
+    } catch (e) { logIgnored('consolidated_overview_page', e); }
     if (!mounted) return;
     setState(() {
       _data = data;

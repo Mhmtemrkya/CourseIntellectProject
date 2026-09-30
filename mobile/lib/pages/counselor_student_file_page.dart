@@ -4,6 +4,7 @@ import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/pages/counselor_planner_page.dart';
 import 'package:student/services/guidance_api_service.dart';
+import 'package:student/utils/log_ignored.dart';
 
 const _navy = Color(0xFF15294B);
 const _orange = Color(0xFFF7941D);
@@ -80,7 +81,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
       items = jsonDecode(
               (file?['studyPlan']?['planItemsSerialized'] as String?) ?? '[]')
           as List<dynamic>;
-    } catch (_) {}
+    } catch (e) { logIgnored('counselor_student_file_page', e); }
     final tasks = items
         .whereType<Map<String, dynamic>>()
         .where((i) => i['type'] != 'goal')
@@ -685,7 +686,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
           try {
             answers = jsonDecode(item['answersJson'] as String? ?? '[]')
                 as List<dynamic>;
-          } catch (_) {}
+          } catch (e) { logIgnored('counselor_student_file_page', e); }
           final done = item['status'] == 'Tamamlandı';
           return Container(
             margin: const EdgeInsets.only(bottom: 10),

@@ -223,7 +223,7 @@ export default function ConsentTemplates() {
       const blob = await downloadConsentTemplatePreview(template.id);
       if (!blob) throw new Error('Önizleme boş döndü.');
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
       setTimeout(() => URL.revokeObjectURL(url), 30000);
     } catch (previewError) {
       toast({ title: 'Önizleme açılamadı', description: errorMessage(previewError), variant: 'destructive' });

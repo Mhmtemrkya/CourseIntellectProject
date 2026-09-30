@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import 'auth_session_store.dart';
 import 'branch_scope_store.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class RegistrationApiException implements Exception {
   final String message;
@@ -189,7 +190,7 @@ class RegistrationApiService {
         if (decoded is Map && decoded['message'] is String) {
           message = decoded['message'] as String;
         }
-      } catch (_) {}
+      } catch (e) { logIgnored('registration_api_service', e); }
       throw RegistrationApiException(message);
     }
   }
@@ -295,7 +296,7 @@ class RegistrationApiService {
         if (decoded is Map && decoded['message'] is String) {
           message = decoded['message'] as String;
         }
-      } catch (_) {}
+      } catch (e) { logIgnored('registration_api_service', e); }
       throw RegistrationApiException(message);
     }
 

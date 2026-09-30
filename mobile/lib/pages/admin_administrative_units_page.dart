@@ -9,6 +9,7 @@ import '../widgets/admin_ui.dart';
 import 'admin_announcements_page.dart';
 import 'admin_staff_registration_page.dart';
 import 'admin_student_registration_page.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class AdminAdministrativeUnitsPage extends StatefulWidget {
   const AdminAdministrativeUnitsPage({super.key});
@@ -230,7 +231,7 @@ class _AdminAdministrativeUnitsPageState
     List<Map<String, dynamic>> candidates = const [];
     try {
       candidates = await AdminWorkflowApiService.instance.getManagerCandidates();
-    } catch (_) {}
+    } catch (e) { logIgnored('admin_administrative_units_page', e); }
     if (!mounted) return;
     String? managerUserId;
     String unitType = 'Şube';

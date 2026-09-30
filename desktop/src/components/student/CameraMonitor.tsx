@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Camera, CameraOff, Radio } from 'lucide-react';
 import { examCameraRealtime } from '../../lib/realtime/examCameraRealtime';
 import { errorMessage } from '../../lib/errors';
+import { logIgnored } from '../../lib/logIgnored';
 
 const FRAME_INTERVAL_MS = 4000; // kameradan ~4 sn'de bir kare gönder
 const FRAME_WIDTH = 320;        // küçük kare = küçük yük
@@ -40,7 +41,7 @@ export default function CameraMonitor({ active, examId, studentUsername, student
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(() => {});
+          await videoRef.current.play().catch(logIgnored('CameraMonitor'));
         }
         setError('');
       } catch (err) {

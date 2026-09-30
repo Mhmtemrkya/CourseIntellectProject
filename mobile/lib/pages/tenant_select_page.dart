@@ -7,6 +7,7 @@ import '../services/tenant_scope_store.dart';
 import 'branch_select_page.dart';
 import 'consolidated_overview_page.dart';
 import 'scope_management_page.dart';
+import 'package:student/utils/log_ignored.dart';
 
 /// Sahip/MEB ilk girişte yönetmek istediği kurumu seçer. Tek kurumlu (veya kurum
 /// geçiş yetkisi olmayan) kullanıcıda otomatik olarak şube seçimine devam edilir.
@@ -38,7 +39,7 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
     Map<String, dynamic>? scope;
     try {
       scope = await AdminWorkflowApiService.instance.getMyScope();
-    } catch (_) {}
+    } catch (e) { logIgnored('tenant_select_page', e); }
     final canSwitch = scope?['canSwitchTenant'] == true;
     final tenants = ((scope?['tenants'] as List<dynamic>?) ?? const [])
         .map((e) => Map<String, dynamic>.from(e as Map))

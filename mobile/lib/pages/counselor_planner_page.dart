@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/guidance_api_service.dart';
+import 'package:student/utils/log_ignored.dart';
 
 const _navy = Color(0xFF15294B);
 const _orange = Color(0xFFF7941D);
@@ -105,7 +106,7 @@ class _CounselorPlannerPageState extends State<CounselorPlannerPage> {
       try {
         items =
             jsonDecode(plan['planItemsSerialized'] as String? ?? '[]') as List;
-      } catch (_) {}
+      } catch (e) { logIgnored('counselor_planner_page', e); }
       if (!mounted) return;
       setState(() {
         planItems = items.whereType<Map<String, dynamic>>().toList();

@@ -68,6 +68,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { getUserRoles, mergeMenuItemsForRoles, type NavAccessItem } from "../../lib/permissions";
 import type { DesktopRole } from "../../types/session";
 import type { IconComponent } from "../../types/ui";
+import { logIgnored } from '../../lib/logIgnored';
 
 /** Sidebar menü girişi (rol menüleri, modül kayıt defteri ve hub girişleri). */
 export interface SidebarMenuItem extends NavAccessItem {
@@ -1469,7 +1470,7 @@ function StudentStats({ collapsed }: { collapsed: boolean }) {
           const xpToNext = Math.max(0, 100 - (xp % 100));
           setStats({ xp, streak, level, xpToNext });
         })
-        .catch(() => {});
+        .catch(logIgnored('ModernSidebar'));
     });
     return () => {
       cancelled = true;

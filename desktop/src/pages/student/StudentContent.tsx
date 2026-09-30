@@ -28,6 +28,7 @@ import { openHttpUrl } from '../../lib/safeOpen';
 import { errorMessage } from '../../lib/errors';
 import type { ContentCommentDto, ContentDto, ContentExerciseDto, ExamResultDto } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { logIgnored } from '../../lib/logIgnored';
 
 interface UserStateOverrides {
   progress?: number;
@@ -198,7 +199,7 @@ export default function StudentContent() {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      video.play().catch(() => {});
+      video.play().catch(logIgnored('StudentContent'));
     } else {
       video.pause();
     }
@@ -284,11 +285,11 @@ export default function StudentContent() {
     };
 
     if (navigator.share) {
-      await navigator.share(sharePayload).catch(() => {});
+      await navigator.share(sharePayload).catch(logIgnored('StudentContent'));
       return;
     }
 
-    await navigator.clipboard?.writeText(sharePayload.url).catch(() => {});
+    await navigator.clipboard?.writeText(sharePayload.url).catch(logIgnored('StudentContent'));
   }, [selectedItem]);
 
   const selectedContentKey = selectedItem ? (selectedItem.id || selectedItem.fileName || selectedItem.title) : '';
@@ -313,7 +314,7 @@ export default function StudentContent() {
         setLikedIds((prev) => ({ ...prev, [key]: Boolean(engagement.liked) }));
         setNoteDraft(engagement.note || '');
       })
-      .catch(() => {});
+      .catch(logIgnored('StudentContent'));
 
     return () => {
       mounted = false;
@@ -330,7 +331,7 @@ export default function StudentContent() {
       favorite: Boolean(overrides.favorite ?? favoriteIds[key]),
       note: String(overrides.note ?? lessonNotes[key] ?? noteDraft ?? ''),
     };
-    saveContentUserState(selectedItem.id, payload).catch(() => {});
+    saveContentUserState(selectedItem.id, payload).catch(logIgnored('StudentContent'));
   }, [favoriteIds, lessonNotes, likedIds, noteDraft, selectedItem]);
 
   const stats = {
@@ -560,7 +561,7 @@ export default function StudentContent() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" className="rounded-full border-foreground/10 bg-foreground/[0.05] text-slate-100 hover:bg-foreground/[0.09]" onClick={() => openFile(selectedItem, true).catch(() => {})}>
+                    <Button variant="outline" className="rounded-full border-foreground/10 bg-foreground/[0.05] text-slate-100 hover:bg-foreground/[0.09]" onClick={() => openFile(selectedItem, true).catch(logIgnored('StudentContent'))}>
                       <Download className="mr-2 h-4 w-4" />
                       İndir
                     </Button>
@@ -641,7 +642,7 @@ export default function StudentContent() {
                           variant="outline"
                           size="icon"
                           className="rounded-full border-foreground/20 bg-black/45 text-white hover:bg-black/60"
-                          onClick={() => closeVideoFullscreen().catch(() => {})}
+                          onClick={() => closeVideoFullscreen().catch(logIgnored('StudentContent'))}
                         >
                           <Maximize2 className="h-4 w-4" />
                         </Button>
@@ -651,7 +652,7 @@ export default function StudentContent() {
                         variant="outline"
                         size="icon"
                         className="rounded-full border-foreground/20 bg-black/45 text-white hover:bg-black/60"
-                        onClick={() => openFile(selectedItem, true).catch(() => {})}
+                        onClick={() => openFile(selectedItem, true).catch(logIgnored('StudentContent'))}
                       >
                         <Download className="h-4 w-4" />
                       </Button>
@@ -668,7 +669,7 @@ export default function StudentContent() {
                         variant="outline"
                         size="icon"
                         className="rounded-full border-foreground/20 bg-black/45 text-white hover:bg-black/60"
-                        onClick={() => openVideoFullscreen().catch(() => {})}
+                        onClick={() => openVideoFullscreen().catch(logIgnored('StudentContent'))}
                       >
                         <Maximize2 className="h-4 w-4" />
                       </Button>
@@ -729,7 +730,7 @@ export default function StudentContent() {
                     Dosyayi Ac
                   </Button>
                 ) : null}
-                <Button variant="outline" className="rounded-full" onClick={() => openFile(selectedItem, true).catch(() => {})}>
+                <Button variant="outline" className="rounded-full" onClick={() => openFile(selectedItem, true).catch(logIgnored('StudentContent'))}>
                   <Download className="h-4 w-4 mr-2" />
                   Indir
                 </Button>
@@ -807,7 +808,7 @@ export default function StudentContent() {
                               key={exercise.id || exercise.title}
                               href={exercise.url || '#'}
                               target={exercise.url ? '_blank' : undefined}
-                              rel="noreferrer"
+                              rel="noopener noreferrer"
                               className="block rounded-2xl border border-foreground/10 bg-foreground/[0.04] p-4 transition hover:bg-foreground/[0.08]"
                             >
                               <p className="font-semibold text-white">{exercise.title}</p>

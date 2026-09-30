@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_config.dart';
 import '../services/auth_session_store.dart';
+import 'package:student/utils/log_ignored.dart';
 
 /// Onboarding "görüldü" durumu deposu.
 ///
@@ -76,7 +77,7 @@ class OnboardingStore {
     await prefs.setString(key, jsonEncode(seen));
     // Uzak senkron arka planda; hata yutulur.
     // ignore: unawaited_futures
-    _pushRemoteSeen(seen).catchError((_) {});
+    _pushRemoteSeen(seen).catchError((Object e) { logIgnored('onboarding_store', e); });
   }
 
   Future<Map<String, dynamic>?> _fetchRemoteSeen() async {

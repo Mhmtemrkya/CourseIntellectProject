@@ -5,6 +5,7 @@ import { useToast } from '../../hooks/use-toast';
 import { uploadFile } from '../../lib/api/modules';
 import { assetUrl } from '../../lib/assetUrl';
 import { errorMessage } from '../../lib/errors';
+import { logIgnored } from '../../lib/logIgnored';
 
 export interface PhotoCaptureProps {
   value?: string | null;
@@ -44,7 +45,7 @@ export default function PhotoCapture({ value, onChange, folder = 'student-photos
   useEffect(() => {
     if (active && streamRef.current && videoRef.current) {
       videoRef.current.srcObject = streamRef.current;
-      videoRef.current.play().catch(() => {});
+      videoRef.current.play().catch(logIgnored('photo-capture'));
     }
   }, [active]);
 

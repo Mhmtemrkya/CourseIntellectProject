@@ -95,7 +95,7 @@ export default function ParentService() {
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
                 <span>{item.lastLocationAt ? `Son konum: ${new Date(item.lastLocationAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : 'Servis konumu henüz gelmedi.'}</span>
                 {mapUrl ? (
-                  <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border px-3 py-2 font-semibold text-brand-primary hover:bg-brand-primary/10">
+                  <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-xl border px-3 py-2 font-semibold text-brand-primary hover:bg-brand-primary/10">
                     <MapPin className="h-4 w-4" />Haritada Gör
                   </a>
                 ) : null}

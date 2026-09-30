@@ -29,6 +29,7 @@ import type {
   ConsentStationDto,
   ConsentStatusDto,
 } from '../../types/api/generated';
+import { logIgnored } from '../../lib/logIgnored';
 
 /** Onam akışının bağlamı — öğrenci kartı, randevu, cari hesap vb. */
 export interface ConsentContextProps {
@@ -366,7 +367,7 @@ export default function ConsentCenter({
               // Yalnız BU açılışta üretilen taslak geri alınır; daha önce hazırlanmış
               // taslak vazgeçince silinmez (personelin yazdığı not kaybolmasın).
               if (composer.createdHere) {
-                await cancelConsentForm(composer.id).catch(() => {});
+                await cancelConsentForm(composer.id).catch(logIgnored('ConsentCenter'));
                 await load({ silent: true });
               }
               setComposer(null);
@@ -403,7 +404,7 @@ function ConsentComposer({ form, stations, busy, onCancel, onDispatch }: Consent
     const blob = await downloadConsentFormDocument(form.id);
     if (!blob) return;
     const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   };
 

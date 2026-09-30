@@ -11,6 +11,7 @@ import { desktopApiBaseUrl } from '../../lib/auth';
 import { openHttpUrl } from '../../lib/safeOpen';
 import { errorMessage } from '../../lib/errors';
 import type { ContentDto } from '../../types/api/generated';
+import { logIgnored } from '../../lib/logIgnored';
 
 function buildContentFileUrl(contentFile: ContentDto | string): string | undefined {
   const fileUrl = typeof contentFile === 'object' ? String(contentFile.fileUrl || '').trim() : '';
@@ -130,7 +131,7 @@ export default function StudentContentDetail() {
                           Aç
                         </Button>
                       )}
-                      <Button variant="outline" size="sm" onClick={() => openFile(item, true).catch(() => {})}>
+                      <Button variant="outline" size="sm" onClick={() => openFile(item, true).catch(logIgnored('StudentContentDetail'))}>
                         <Download className="h-4 w-4 mr-1" />
                         İndir
                       </Button>

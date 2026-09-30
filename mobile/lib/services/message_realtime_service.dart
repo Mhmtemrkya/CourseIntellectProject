@@ -4,6 +4,7 @@ import 'package:signalr_netcore/signalr_client.dart';
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class MessageRealtimeService {
   MessageRealtimeService._();
@@ -114,7 +115,7 @@ class MessageRealtimeService {
     if (_connection?.state == HubConnectionState.Connected) {
       try {
         await _connection!.invoke('JoinThread', args: [threadId]);
-      } catch (_) {}
+      } catch (e) { logIgnored('message_realtime_service', e); }
     }
   }
 
@@ -124,7 +125,7 @@ class MessageRealtimeService {
     if (_connection?.state == HubConnectionState.Connected) {
       try {
         await _connection!.invoke('LeaveThread', args: [threadId]);
-      } catch (_) {}
+      } catch (e) { logIgnored('message_realtime_service', e); }
     }
   }
 
@@ -136,7 +137,7 @@ class MessageRealtimeService {
     if (_connection?.state == HubConnectionState.Connected) {
       try {
         await _connection!.invoke('SubscribePresence', args: [normalized]);
-      } catch (_) {}
+      } catch (e) { logIgnored('message_realtime_service', e); }
     }
   }
 
@@ -147,7 +148,7 @@ class MessageRealtimeService {
     if (_connection?.state == HubConnectionState.Connected) {
       try {
         await _connection!.invoke('UnsubscribePresence', args: [normalized]);
-      } catch (_) {}
+      } catch (e) { logIgnored('message_realtime_service', e); }
     }
   }
 
@@ -164,7 +165,7 @@ class MessageRealtimeService {
         isTyping ? 'TypingStart' : 'TypingStop',
         args: [threadId, actorName],
       );
-    } catch (_) {}
+    } catch (e) { logIgnored('message_realtime_service', e); }
   }
 
   Map<String, dynamic>? _firstMap(List<Object?>? arguments) {

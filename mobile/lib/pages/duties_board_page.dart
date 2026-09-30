@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../services/duty_api_service.dart';
+import 'package:student/utils/log_ignored.dart';
 
 const List<String> _trMonths = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -58,7 +59,7 @@ class _DutiesBoardPageState extends State<DutiesBoardPage> {
       List<TeacherDutyLoad> load = [];
       try {
         load = await _api.fetchLoad();
-      } catch (_) {}
+      } catch (e) { logIgnored('duties_board_page', e); }
       if (!mounted) return;
       setState(() {
         _duties = duties;

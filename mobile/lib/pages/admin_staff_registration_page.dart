@@ -16,6 +16,7 @@ import '../services/service_tracking_api_service.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/responsive_layout.dart';
+import 'package:student/utils/log_ignored.dart';
 
 /// Öğretmen branşlarının saklandığı yapılandırma anahtarı. Masaüstündeki
 /// `lib/staffBranches.js` ile BİREBİR aynı olmalı; ayrılırsa iki platform
@@ -1351,17 +1352,17 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       if (driverId != null && driverId.isNotEmpty) {
         await serviceApi.deleteDriver(driverId);
       }
-    } catch (_) {}
+    } catch (e) { logIgnored('admin_staff_registration_page', e); }
     try {
       if (vehicleId != null && vehicleId.isNotEmpty) {
         await serviceApi.deleteVehicle(vehicleId);
       }
-    } catch (_) {}
+    } catch (e) { logIgnored('admin_staff_registration_page', e); }
     try {
       if (staffUserId != null && staffUserId.isNotEmpty) {
         await RegistrationApiService.instance.deleteStaffUser(staffUserId);
       }
-    } catch (_) {}
+    } catch (e) { logIgnored('admin_staff_registration_page', e); }
   }
 
   Future<void> _showResultCard({

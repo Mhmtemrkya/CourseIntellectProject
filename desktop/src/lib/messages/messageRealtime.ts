@@ -8,6 +8,7 @@ import type {
   PresenceChanged,
   TypingChanged,
 } from '../../types/api/messages';
+import { logIgnored } from '../logIgnored';
 
 type Handler<T> = (payload: T) => void;
 
@@ -47,10 +48,10 @@ class MessageRealtimeClient {
 
       connection.onreconnected(async () => {
         await Promise.allSettled(
-          Array.from(this.joinedThreads).map((threadId) => connection.invoke('JoinThread', threadId).catch(() => {})),
+          Array.from(this.joinedThreads).map((threadId) => connection.invoke('JoinThread', threadId).catch(logIgnored('messageRealtime'))),
         );
         await Promise.allSettled(
-          Array.from(this.presenceKeys).map((actorKey) => connection.invoke('SubscribePresence', actorKey).catch(() => {})),
+          Array.from(this.presenceKeys).map((actorKey) => connection.invoke('SubscribePresence', actorKey).catch(logIgnored('messageRealtime'))),
         );
       });
 

@@ -24,6 +24,7 @@ import { desktopApiBaseUrl } from '../../lib/auth';
 import { errorMessage } from '../../lib/errors';
 import type { ContentDto, CreateContentRequest } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { logIgnored } from '../../lib/logIgnored';
 
 interface ContentForm {
   title: string;
@@ -363,7 +364,7 @@ export default function TeacherContent() {
             description: item.description.trim(),
             url: item.url.trim(),
           })),
-      }).catch(() => {});
+      }).catch(logIgnored('TeacherContent'));
       setContent((prev) => [created, ...prev]);
       setUploadOpen(false);
       setForm({
@@ -519,7 +520,7 @@ export default function TeacherContent() {
       link.href = fileUrl;
       link.download = (typeof contentFile === 'object' ? contentFile.fileName || contentFile.title : contentFile) || 'icerik';
       link.target = '_blank';
-      link.rel = 'noreferrer';
+      link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -540,7 +541,7 @@ export default function TeacherContent() {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      video.play().catch(() => {});
+      video.play().catch(logIgnored('TeacherContent'));
     } else {
       video.pause();
     }
@@ -1231,7 +1232,7 @@ export default function TeacherContent() {
                       <Button type="button" variant="outline" className="h-9 rounded-full border-foreground/20 bg-black/45 px-3 text-xs text-white hover:bg-black/60 sm:text-sm" onClick={() => updateVideoSpeed(videoSpeed === 1 ? 1.5 : 1)}>
                         {videoSpeed}x
                       </Button>
-                      <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-full border-foreground/20 bg-black/45 text-white hover:bg-black/60" onClick={() => openVideoFullscreen().catch(() => {})}>
+                      <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-full border-foreground/20 bg-black/45 text-white hover:bg-black/60" onClick={() => openVideoFullscreen().catch(logIgnored('TeacherContent'))}>
                         <Maximize2 className="h-4 w-4" />
                       </Button>
                     </div>

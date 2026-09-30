@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../services/consent_api_service.dart';
 import '../widgets/consent_dispatch_sheet.dart';
+import 'package:student/utils/log_ignored.dart';
 
 const _pollInterval = Duration(milliseconds: 2500);
 
@@ -170,7 +171,7 @@ class _ConsentCenterPageState extends State<ConsentCenterPage> {
 
       // Gönderilmediyse ve taslağı BU açılışta ürettiysek geri al; çöp kalmasın.
       if (dispatched != true && createdHere) {
-        await ConsentApiService.instance.cancelForm(form['id'].toString()).catchError((_) {});
+        await ConsentApiService.instance.cancelForm(form['id'].toString()).catchError((Object e) { logIgnored('consent_center_page', e); });
       }
       await _load(silent: true);
     } catch (error) {

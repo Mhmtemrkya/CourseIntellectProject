@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'strings_tr_en.dart';
+import 'package:student/utils/log_ignored.dart';
 
 /// Uygulama dili. Flutter'da DOM gözlemcisi olmadığından çeviri, string
 /// literallerini saran `.tr` uzantısı ile yapılır: aktif dil global bir
@@ -23,7 +24,7 @@ class AppLocale {
       if (saved == 'en' || saved == 'tr') {
         language.value = saved!;
       }
-    } catch (_) {}
+    } catch (e) { logIgnored('app_locale', e); }
   }
 
   static Future<void> set(String lang) async {
@@ -32,7 +33,7 @@ class AppLocale {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_storageKey, lang);
-    } catch (_) {}
+    } catch (e) { logIgnored('app_locale', e); }
   }
 
   static void toggle() {

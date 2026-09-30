@@ -44,6 +44,7 @@ import {
   type ConsentTemplateDto,
   type StudentSummaryDto,
 } from '../types/api/generated';
+import { logIgnored } from '../lib/logIgnored';
 
 /** Tablete gönderme bölmesinde açık form; bu açılışta mı üretildiği de tutulur. */
 interface ComposerForm extends ConsentFormDto {
@@ -102,7 +103,7 @@ function saveBlob(blob: Blob | null, fileName: string) {
 function openBlob(blob: Blob | null) {
   if (!blob) throw new Error('Belge alınamadı.');
   const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  window.open(url, '_blank', 'noopener,noreferrer');
   // Sekme açılana kadar adres yaşamalı; 30 sn sonra serbest bırakılır.
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
@@ -499,7 +500,7 @@ export default function SchoolContractForms() {
             // Yalnız BU açılışta üretilen taslak geri alınır; daha önce hazırlanmış
             // taslak vazgeçince silinmez (personelin yazdığı not kaybolmasın).
             if (composer.createdHere) {
-              await cancelConsentForm(composer.id).catch(() => {});
+              await cancelConsentForm(composer.id).catch(logIgnored('SchoolContractForms'));
               await loadForms({ silent: true });
             }
             setComposer(null);

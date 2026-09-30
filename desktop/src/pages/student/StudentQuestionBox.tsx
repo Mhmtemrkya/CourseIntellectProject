@@ -246,7 +246,7 @@ export default function StudentQuestionBox() {
                       key={`${item.id}-attachment-${index}`}
                       href={resolveAttachmentUrl(attachment.fileUrl)}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-full border bg-muted/40 px-3 py-2 text-xs font-medium hover:bg-muted"
                     >
                       {attachment.fileType === 'image' ? <ImageIcon className="h-3.5 w-3.5 text-sky-500" /> : null}
@@ -271,7 +271,7 @@ export default function StudentQuestionBox() {
                         key={`${item.id}-reply-attachment-${index}`}
                         href={resolveAttachmentUrl(attachment.fileUrl)}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 rounded-full border bg-background px-3 py-2 text-xs font-medium hover:bg-muted"
                       >
                         {attachment.fileType === 'image' ? <ImageIcon className="h-3.5 w-3.5 text-sky-500" /> : null}

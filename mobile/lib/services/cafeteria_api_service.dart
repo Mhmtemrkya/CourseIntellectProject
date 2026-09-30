@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class CafeteriaApiException implements Exception {
   final String message;
@@ -210,7 +211,7 @@ class CafeteriaApiService {
         message =
             (jsonDecode(response.body) as Map<String, dynamic>)['message']
                 as String?;
-      } catch (_) {}
+      } catch (e) { logIgnored('cafeteria_api_service', e); }
       throw CafeteriaApiException(
         message ?? 'Yemekhane işlemi başarısız oldu (${response.statusCode}).',
       );

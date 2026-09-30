@@ -9,6 +9,7 @@ import '../services/message_api_service.dart';
 import '../services/message_realtime_service.dart';
 import 'message_bubble.dart';
 import 'message_composer.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class ChatConversationView extends StatefulWidget {
   final String contactName;
@@ -163,7 +164,7 @@ class _ChatConversationViewState extends State<ChatConversationView> {
         await MessageRealtimeService.instance.subscribePresence(
           widget.contactKey ?? widget.contactName,
         );
-      } catch (_) {}
+      } catch (e) { logIgnored('chat_conversation_view', e); }
 
       _messageSubscription?.cancel();
       _messageSubscription = MessageRealtimeService
@@ -296,7 +297,7 @@ class _ChatConversationViewState extends State<ChatConversationView> {
         _error = null;
       });
       _jumpToBottom();
-    } catch (_) {}
+    } catch (e) { logIgnored('chat_conversation_view', e); }
   }
 
   bool _sameMessages(

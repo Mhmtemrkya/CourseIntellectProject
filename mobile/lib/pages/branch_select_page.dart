@@ -7,6 +7,7 @@ import '../services/admin_workflow_api_service.dart';
 import '../services/branding_service.dart';
 import '../services/branch_scope_store.dart';
 import '../theme_provider.dart';
+import 'package:student/utils/log_ignored.dart';
 
 const _branchTypes = ['şube', 'sube', 'kampüs', 'kampus'];
 
@@ -35,10 +36,10 @@ class _BranchSelectPageState extends State<BranchSelectPage> {
     Map<String, dynamic>? scope;
     try {
       units = await AdminWorkflowApiService.instance.getOrgUnits();
-    } catch (_) {}
+    } catch (e) { logIgnored('branch_select_page', e); }
     try {
       scope = await AdminWorkflowApiService.instance.getMyScope();
-    } catch (_) {}
+    } catch (e) { logIgnored('branch_select_page', e); }
     final tenants = ((scope?['tenants'] as List<dynamic>?) ?? const [])
         .map((item) => Map<String, dynamic>.from(item as Map))
         .toList();

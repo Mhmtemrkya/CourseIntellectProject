@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import 'auth_session_store.dart';
 import 'legal_consent_api_service.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class AuthApiException implements Exception {
   final String message;
@@ -163,7 +164,7 @@ class AuthApiService {
         if (decoded is Map<String, dynamic> && decoded['message'] is String) {
           message = decoded['message'] as String;
         }
-      } catch (_) {}
+      } catch (e) { logIgnored('auth_api_service', e); }
       throw AuthApiException(message);
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -278,7 +279,7 @@ class AuthApiService {
           final m = decoded['message']?.toString();
           if (m != null && m.isNotEmpty) message = m;
         }
-      } catch (_) {}
+      } catch (e) { logIgnored('auth_api_service', e); }
       throw AuthApiException(message, code: code ?? 'MAINTENANCE_MODE');
     }
 
@@ -294,7 +295,7 @@ class AuthApiService {
           final m = decoded['message']?.toString();
           if (m != null && m.isNotEmpty) message = m;
         }
-      } catch (_) {}
+      } catch (e) { logIgnored('auth_api_service', e); }
       throw AuthApiException(message, code: code ?? 'RATE_LIMITED');
     }
 
@@ -415,7 +416,7 @@ class AuthApiService {
         if (decoded is Map<String, dynamic> && decoded['message'] is String) {
           message = decoded['message'] as String;
         }
-      } catch (_) {}
+      } catch (e) { logIgnored('auth_api_service', e); }
       throw AuthApiException(message);
     }
 

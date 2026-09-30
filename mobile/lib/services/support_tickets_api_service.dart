@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class SupportTicketRecord {
   final String id;
@@ -134,7 +135,7 @@ class SupportTicketsApiService {
           message = body['message']?.toString() ?? message;
           code = body['code']?.toString() ?? code;
         }
-      } catch (_) {}
+      } catch (e) { logIgnored('support_tickets_api_service', e); }
       throw SupportTicketException(message, code: code);
     }
 
@@ -145,7 +146,7 @@ class SupportTicketsApiService {
         if (body is Map && body['message'] != null) {
           message = body['message'].toString();
         }
-      } catch (_) {}
+      } catch (e) { logIgnored('support_tickets_api_service', e); }
       throw SupportTicketException(message);
     }
 

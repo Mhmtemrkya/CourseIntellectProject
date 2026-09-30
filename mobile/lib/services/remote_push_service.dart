@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class RemotePushService {
   RemotePushService._();
@@ -115,7 +116,7 @@ class RemotePushService {
       if (token != null && token.isNotEmpty) {
         await _registerToken(token);
       }
-    } catch (_) {}
+    } catch (e) { logIgnored('remote_push_service', e); }
   }
 
   Future<void> unregister() async {
@@ -132,7 +133,7 @@ class RemotePushService {
         },
         body: jsonEncode({'token': token}),
       );
-    } catch (_) {}
+    } catch (e) { logIgnored('remote_push_service', e); }
   }
 
   Future<void> _registerToken(String token) async {

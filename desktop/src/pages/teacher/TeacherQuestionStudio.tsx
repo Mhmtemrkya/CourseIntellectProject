@@ -119,10 +119,11 @@ const freshSettings = () => ({
   addVisual: true,
 });
 
+// DOMParser ile ayrıştırılan belge etkisizdir: betik çalışmaz, <img onerror>
+// tetiklenmez. Canlı belgede innerHTML ile ayrıştırmak XSS kapısıydı.
 function plainText(html: string | null | undefined): string {
-  const element = document.createElement('div');
-  element.innerHTML = html || '';
-  return (element.textContent || element.innerText || '').trim();
+  const parsed = new DOMParser().parseFromString(html || '', 'text/html');
+  return (parsed.body.textContent || '').trim();
 }
 
 function assetUrl(path: string | null | undefined): string {
@@ -869,7 +870,7 @@ export default function TeacherQuestionStudio() {
                 <div className="mb-3 flex items-center justify-between"><h2 className="font-black">Çözüm ve Çizim</h2><div className="flex gap-2"><Button variant="outline" onClick={() => solutionFileRef.current?.click()} className="border-foreground/10 text-foreground"><Paperclip className="mr-2 h-4 w-4" />Dosya</Button><Button variant="outline" onClick={() => setCanvasOpen(true)} className="border-foreground/10 text-foreground"><Maximize2 className="mr-2 h-4 w-4" />Çizim Alanı</Button></div></div>
                 <input ref={solutionFileRef} type="file" className="hidden" onChange={(event) => handleSolutionFile(event.target.files?.[0])} />
                 <div ref={solutionRef} contentEditable suppressContentEditableWarning data-placeholder="Çözüm açıklamasını yazın..." onInput={(event) => { setSolutionHtml(event.currentTarget.innerHTML); touch(); }} className="min-h-[130px] rounded-2xl border border-foreground/10 bg-background/65 p-4 leading-7 outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]" />
-                {solutionAssetPath && <a href={assetUrl(solutionAssetPath)} target="_blank" rel="noreferrer" className="mt-3 block text-sm text-orange-300">Yüklenen çözüm dosyasını görüntüle</a>}
+                {solutionAssetPath && <a href={assetUrl(solutionAssetPath)} target="_blank" rel="noopener noreferrer" className="mt-3 block text-sm text-orange-300">Yüklenen çözüm dosyasını görüntüle</a>}
                 {settings.addHint && <Textarea value={settings.hint || ''} onChange={(event) => updateSetting('hint', event.target.value)} placeholder="Öğrenciye gösterilecek ipucunu yazın..." className="mt-4 min-h-[72px] border-foreground/10 bg-background/75 text-foreground" />}
               </div>
             )}
@@ -993,6 +994,7 @@ export default function TeacherQuestionStudio() {
           <DialogHeader><DialogTitle>Soru Önizleme</DialogTitle></DialogHeader>
           <div className="rounded-3xl border border-foreground/10 bg-background/75 p-6">
             <p className="mb-3 text-xs font-bold uppercase tracking-wider text-orange-300">{settings.subject} / {settings.topic || 'Konu seçilmedi'} / {settings.difficulty}</p>
+            {/* Zengin metin editörü çıktısı; DOMPurify ile temizlenmeden basılmaz. */}
             <div className="leading-8" dangerouslySetInnerHTML={{ __html: questionHtml ? DOMPurify.sanitize(questionHtml) : '<p class=\"text-slate-500\">Soru metni henüz yazılmadı.</p>' }} />
             {assetPath && <img src={assetUrl(assetPath)} alt={visual.caption || 'Soru görseli'} className="mx-auto my-5 rounded-2xl object-contain" style={{ width: `${visual.width}%`, transform: `rotate(${visual.rotation}deg)` }} />}
             {choiceType && <div className="mt-5 grid gap-3 sm:grid-cols-2">{options.filter((item) => item.text.trim()).map((option, index) => <div key={option.id} className={`rounded-2xl border p-3 ${option.correct ? 'border-emerald-500/45 bg-emerald-500/10' : 'border-foreground/10'}`}><div><b className="mr-3 text-orange-300">{optionLetter(index)}</b>{option.text}</div>{option.imagePath && <img src={assetUrl(option.imagePath)} alt="" className="mt-3 h-24 w-full rounded-xl object-contain" />}</div>)}</div>}
@@ -1002,6 +1004,7 @@ export default function TeacherQuestionStudio() {
                 <p className="text-emerald-900 dark:text-emerald-50">{expectedAnswer}</p>
               </div>
             )}
+            {/* Çözüm HTML'i de DOMPurify'dan geçer (aynı gerekçe). */}
             {solutionHtml && <div className="mt-6 rounded-2xl border border-purple-400/30 bg-purple-500/10 p-4"><p className="mb-2 font-bold text-purple-800 dark:text-purple-200">Çözüm</p><div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(solutionHtml) }} /></div>}
           </div>
         </DialogContent>

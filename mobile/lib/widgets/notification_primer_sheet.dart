@@ -3,6 +3,7 @@ import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class NotificationPrimer {
   NotificationPrimer._();
@@ -54,7 +55,7 @@ class _NotificationPrimerSheetState extends State<_NotificationPrimerSheet> {
             AndroidFlutterLocalNotificationsPlugin
           >();
       await androidPlugin?.requestNotificationsPermission();
-    } catch (_) {}
+    } catch (e) { logIgnored('notification_primer_sheet', e); }
     if (!mounted) return;
     Navigator.of(context).pop();
   }

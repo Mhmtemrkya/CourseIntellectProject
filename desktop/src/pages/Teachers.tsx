@@ -61,6 +61,7 @@ import {
 } from '../lib/inputMasks';
 import { errorMessage } from '../lib/errors';
 import type { StaffSummaryDto } from '../types/api/generated';
+import { logIgnored } from '../lib/logIgnored';
 
 /** Ekleme ve düzenleme formlarının ortak alanları; TC ve başlangıç yalnız eklemede. */
 interface TeacherFormState {
@@ -631,7 +632,7 @@ export default function Teachers() {
   const handleCreated = () => {
     fetchStaff('Teacher')
       .then((list) => { if (list) setStaff(list); })
-      .catch(() => {});
+      .catch(logIgnored('Teachers'));
   };
 
   const handleUpdated = (updated: StaffSummaryDto) => {

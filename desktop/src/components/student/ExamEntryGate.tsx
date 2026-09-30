@@ -6,6 +6,7 @@ import { Dialog, DialogContent } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { openHttpUrl } from '../../lib/safeOpen';
 import { errorMessage } from '../../lib/errors';
+import { logIgnored } from '../../lib/logIgnored';
 
 /** Kapının okuduğu sınav alanları (öğrenci sınav listesi satırı). */
 export interface ExamEntryGateExam {
@@ -98,7 +99,7 @@ export default function ExamEntryGate({ exam, onCancel, onEnter }: ExamEntryGate
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => {});
+        await videoRef.current.play().catch(logIgnored('ExamEntryGate'));
       }
       setCameraReady(true);
     } catch (err) {

@@ -6,6 +6,7 @@
 
 import type { DesktopSession } from '../types/session';
 import { isRecord } from './errors';
+import { logIgnored } from './logIgnored';
 
 const LEGACY_STORAGE_KEY = 'courseintellect-desktop-session';
 const ENCRYPTED_STORAGE_KEY = 'courseintellect-desktop-session-v2';
@@ -165,7 +166,7 @@ export function clearDesktopSession(): void {
   localStorage.removeItem(LEGACY_STORAGE_KEY);
   if (secureMode) {
     pendingWrite = pendingWrite
-      .catch(() => {})
+      .catch(logIgnored('secureSession'))
       .then(() => {
         localStorage.removeItem(ENCRYPTED_STORAGE_KEY);
       });

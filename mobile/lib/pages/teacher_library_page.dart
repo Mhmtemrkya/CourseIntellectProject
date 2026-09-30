@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/library_api_service.dart';
 import 'package:student/services/student_registry_store.dart';
+import 'package:student/utils/log_ignored.dart';
 
 const _navy = Color(0xFF15294B);
 const _orange = Color(0xFFF7941D);
@@ -50,7 +51,7 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
             .toSet()
             .toList()
           ..sort();
-      } catch (_) {}
+      } catch (e) { logIgnored('teacher_library_page', e); }
       if (!mounted) return;
       setState(() {
         books = bookList;

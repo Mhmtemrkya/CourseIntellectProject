@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../services/duty_api_service.dart';
+import 'package:student/utils/log_ignored.dart';
 
 const List<String> _trMonths = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -76,11 +77,11 @@ class _TeacherDutiesPageState extends State<TeacherDutiesPage> {
       List<AdminTaskRecord> tasks = const [];
       try {
         tasks = await _api.fetchMyAdminTasks();
-      } catch (_) {}
+      } catch (e) { logIgnored('teacher_duties_page', e); }
       DutyStats stats = const DutyStats();
       try {
         stats = await _api.fetchMyStats();
-      } catch (_) {}
+      } catch (e) { logIgnored('teacher_duties_page', e); }
       if (!mounted) return;
       setState(() {
         _all = duties;

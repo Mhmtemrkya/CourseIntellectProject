@@ -7,6 +7,7 @@ import '../services/api_config.dart';
 import '../services/content_api_service.dart';
 import '../services/content_store.dart';
 import '../widgets/responsive_layout.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class ContentDetailPage extends StatefulWidget {
   final String title;
@@ -1009,7 +1010,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
           favorite: _favorite,
           note: _noteController.text,
         )
-        .catchError((_) {});
+        .catchError((Object e) { logIgnored('content_detail_page', e); });
   }
 
   Future<void> _saveProgressIfNeeded() async {

@@ -297,7 +297,7 @@ export default function ParentMeetings() {
                     <a
                       href={item.meetingLink}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
                     >
                       <Video className="h-4 w-4" />Görüşmeye Katıl

@@ -4,6 +4,7 @@ import 'package:student/i18n/app_locale.dart';
 import '../services/admin_workflow_api_service.dart';
 import '../services/staff_registry_store.dart';
 import 'admin_staff_edit_page.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class AdminStaffDetailPage extends StatefulWidget {
   final String staffId;
@@ -117,7 +118,7 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
                   .contains((u['unitType'] ?? '').toString().toLowerCase()))
           .toList();
       customRoles = results[1];
-    } catch (_) {}
+    } catch (e) { logIgnored('admin_staff_detail_page', e); }
     if (!mounted) return;
 
     String? role;

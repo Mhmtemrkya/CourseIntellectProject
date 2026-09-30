@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import 'auth_session_store.dart';
 import 'branch_scope_store.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class GuidanceApiException implements Exception {
   final String message;
@@ -41,7 +42,7 @@ class GuidanceApiService {
       if (decoded is Map && decoded['message'] is String) {
         message = decoded['message'] as String;
       }
-    } catch (_) {}
+    } catch (e) { logIgnored('guidance_api_service', e); }
     throw GuidanceApiException('$message (${response.statusCode})');
   }
 

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import 'auth_session_store.dart';
 import 'branch_scope_store.dart';
+import 'package:student/utils/log_ignored.dart';
 
 /// Onam / izin formu uçları (/api/consent).
 ///
@@ -18,7 +19,7 @@ class ConsentApiService {
     Map<String, dynamic>? payload;
     try {
       payload = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
-    } catch (_) {}
+    } catch (e) { logIgnored('consent_api_service', e); }
 
     final serverMessage = payload?['message']?.toString().trim() ?? '';
     if (serverMessage.isNotEmpty) return serverMessage;

@@ -568,9 +568,7 @@ public sealed class SchoolDashboardController(
     {
         foreach (var id in new[] { "Europe/Istanbul", "Turkey Standard Time" })
         {
-            try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
-            catch (TimeZoneNotFoundException) { }
-            catch (InvalidTimeZoneException) { }
+            if (TimeZoneInfo.TryFindSystemTimeZoneById(id, out var zone)) return zone;
         }
 
         return TimeZoneInfo.CreateCustomTimeZone("TR", TimeSpan.FromHours(3), "Türkiye", "Türkiye");

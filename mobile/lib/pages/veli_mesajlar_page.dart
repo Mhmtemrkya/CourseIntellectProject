@@ -9,6 +9,7 @@ import '../services/message_realtime_service.dart';
 import '../services/staff_registry_store.dart';
 import '../widgets/message_threads_view.dart';
 import 'veli_chat_page.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class VeliMesajlarPage extends StatefulWidget {
   const VeliMesajlarPage({super.key});
@@ -29,7 +30,7 @@ class _VeliMesajlarPageState extends State<VeliMesajlarPage> {
   @override
   void initState() {
     super.initState();
-    MessageRealtimeService.instance.ensureConnected().catchError((_) {});
+    MessageRealtimeService.instance.ensureConnected().catchError((Object e) { logIgnored('veli_mesajlar_page', e); });
     _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream
         .listen((payload) {
           if (!mounted) return;
@@ -122,7 +123,7 @@ class _VeliMesajlarPageState extends State<VeliMesajlarPage> {
         _threads = latest;
         _error = null;
       });
-    } catch (_) {}
+    } catch (e) { logIgnored('veli_mesajlar_page', e); }
   }
 
   bool _sameThreads(

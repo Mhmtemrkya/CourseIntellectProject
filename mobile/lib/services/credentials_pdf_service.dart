@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class CredentialsPdfService {
   CredentialsPdfService._();
@@ -51,7 +52,7 @@ class CredentialsPdfService {
     try {
       final data = await rootBundle.load('assets/logo/course_intellect2.png');
       logoBytes = data.buffer.asUint8List();
-    } catch (_) {}
+    } catch (e) { logIgnored('credentials_pdf_service', e); }
 
     final pdf = pw.Document(
       theme: regularFont != null

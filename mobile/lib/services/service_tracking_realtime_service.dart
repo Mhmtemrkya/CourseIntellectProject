@@ -4,6 +4,7 @@ import 'package:signalr_netcore/signalr_client.dart';
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class ServiceVehicleLocationEvent {
   final String id;
@@ -110,7 +111,7 @@ class ServiceTrackingRealtimeService {
       try {
         await _connection!.start();
         await _resubscribe();
-      } catch (_) {}
+      } catch (e) { logIgnored('service_tracking_realtime_service', e); }
     }
   }
 
@@ -126,7 +127,7 @@ class ServiceTrackingRealtimeService {
     for (final tripId in normalized) {
       try {
         await _connection!.invoke('JoinTrip', args: [tripId]);
-      } catch (_) {}
+      } catch (e) { logIgnored('service_tracking_realtime_service', e); }
     }
   }
 
@@ -142,7 +143,7 @@ class ServiceTrackingRealtimeService {
     for (final vehicleId in normalized) {
       try {
         await _connection!.invoke('JoinVehicle', args: [vehicleId]);
-      } catch (_) {}
+      } catch (e) { logIgnored('service_tracking_realtime_service', e); }
     }
   }
 
@@ -157,7 +158,7 @@ class ServiceTrackingRealtimeService {
     if (connection?.state == HubConnectionState.Connected) {
       try {
         await connection!.stop();
-      } catch (_) {}
+      } catch (e) { logIgnored('service_tracking_realtime_service', e); }
     }
   }
 
@@ -166,12 +167,12 @@ class ServiceTrackingRealtimeService {
     for (final tripId in _joinedTripIds) {
       try {
         await _connection!.invoke('JoinTrip', args: [tripId]);
-      } catch (_) {}
+      } catch (e) { logIgnored('service_tracking_realtime_service', e); }
     }
     for (final vehicleId in _joinedVehicleIds) {
       try {
         await _connection!.invoke('JoinVehicle', args: [vehicleId]);
-      } catch (_) {}
+      } catch (e) { logIgnored('service_tracking_realtime_service', e); }
     }
   }
 

@@ -32,6 +32,7 @@ import type {
   QuestionImportQuestionSnapshot,
 } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { logIgnored } from '../../lib/logIgnored';
 
 interface EditDraft {
   questionText: string;
@@ -289,11 +290,11 @@ export default function TeacherBulkQuestionUpload() {
 
     connection.start()
       .then(() => connection.invoke('JoinImport', jobId))
-      .catch(() => {});
+      .catch(logIgnored('TeacherBulkQuestionUpload'));
 
     return () => {
-      connection.invoke('LeaveImport', jobId).catch(() => {});
-      connection.stop().catch(() => {});
+      connection.invoke('LeaveImport', jobId).catch(logIgnored('TeacherBulkQuestionUpload'));
+      connection.stop().catch(logIgnored('TeacherBulkQuestionUpload'));
     };
   }, [job?.id]);
 

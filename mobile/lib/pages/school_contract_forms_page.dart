@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import '../services/admin_directory_api_service.dart';
 import '../services/consent_api_service.dart';
 import '../widgets/consent_dispatch_sheet.dart';
+import 'package:student/utils/log_ignored.dart';
 
 const _pollInterval = Duration(milliseconds: 2500);
 
@@ -277,7 +278,7 @@ class _SchoolContractFormsPageState extends State<SchoolContractFormsPage> {
       if (dispatched != true && createdHere) {
         await ConsentApiService.instance
             .cancelForm(form['id'].toString())
-            .catchError((_) {});
+            .catchError((Object e) { logIgnored('school_contract_forms_page', e); });
       }
       await _loadForms(silent: true);
     } catch (error) {

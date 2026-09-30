@@ -48,6 +48,7 @@ import type { SchoolDashboard, SchoolDashboardKpis, SchoolSetupStatus } from '..
 import type { KpiTone } from '../components/ui/kpi-card';
 import type { AdminAnalyticsBucket, AdminAnalyticsResponse } from '../types/api/generated';
 import type { IconComponent } from '../types/ui';
+import { logIgnored } from '../lib/logIgnored';
 
 type DashboardPeriod = 'day' | 'week' | 'month' | 'year' | 'custom';
 
@@ -312,7 +313,7 @@ export default function Dashboard() {
     let active = true;
     fetchSchoolSetupStatus()
       .then((status) => { if (active) setSetupStatus(status); })
-      .catch(() => {});
+      .catch(logIgnored('Dashboard'));
     return () => { active = false; };
   }, []);
 

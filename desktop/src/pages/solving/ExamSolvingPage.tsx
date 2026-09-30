@@ -24,6 +24,7 @@ import {
 import { errorMessage } from '../../lib/errors';
 import type { SolutionSessionResponse, SolutionSummaryResponse } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { logIgnored } from '../../lib/logIgnored';
 
 type SidePanel = 'solution' | 'note' | 'review';
 
@@ -177,7 +178,7 @@ export default function ExamSolvingPage() {
   }, [requireFullscreen]);
 
   const enterFullscreen = useCallback(() => {
-    document.documentElement.requestFullscreen?.().catch(() => {});
+    document.documentElement.requestFullscreen?.().catch(logIgnored('ExamSolvingPage'));
   }, []);
 
   const guardedBack = useCallback(() => {
@@ -660,7 +661,7 @@ function SubmissionSuccessModal({ summary, onBackToExams, onResults }: { summary
               Sonuçlarım
             </button>
             {summary.report?.downloadUrl ? (
-              <a href={buildImageUrl(summary.report.downloadUrl) ?? undefined} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-400/40 px-5 py-3 font-black text-emerald-700 hover:bg-emerald-300/10 dark:text-emerald-100">
+              <a href={buildImageUrl(summary.report.downloadUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="rounded-2xl border border-emerald-400/40 px-5 py-3 font-black text-emerald-700 hover:bg-emerald-300/10 dark:text-emerald-100">
                 <Download className="mr-2 inline h-4 w-4" /> PDF
               </a>
             ) : null}

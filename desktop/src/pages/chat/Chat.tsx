@@ -44,6 +44,7 @@ import { errorMessage } from '../../lib/errors';
 import type { MessageAttachment, MessageItem, MessageThread } from '../../types/api/messages';
 import type { StaffSummaryDto, StudentSummaryDto, UploadedAssetDto } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { logIgnored } from '../../lib/logIgnored';
 
 /** Yeni sohbet başlatılabilecek kişi. */
 interface ChatContact {
@@ -240,7 +241,7 @@ export default function Chat() {
 
   useEffect(() => {
     let cancelled = false;
-    void messageRealtimeClient.ensureConnected().catch(() => {});
+    void messageRealtimeClient.ensureConnected().catch(logIgnored('Chat'));
 
     const disposeThread = messageRealtimeClient.onThreadUpdated((payload) => {
       if (cancelled || !payload?.id) return;
@@ -306,12 +307,12 @@ export default function Chat() {
 
   useEffect(() => {
     if (!selectedThreadId) return undefined;
-    messageRealtimeClient.joinThread(selectedThreadId).catch(() => {});
-    messageRealtimeClient.subscribePresence(selectedThreadName).catch(() => {});
+    messageRealtimeClient.joinThread(selectedThreadId).catch(logIgnored('Chat'));
+    messageRealtimeClient.subscribePresence(selectedThreadName).catch(logIgnored('Chat'));
     setThreads((prev) => prev.map((thread) => (thread.id === selectedThreadId ? { ...thread, unreadCount: 0 } : thread)));
     return () => {
-      messageRealtimeClient.leaveThread(selectedThreadId).catch(() => {});
-      messageRealtimeClient.unsubscribePresence(selectedThreadName).catch(() => {});
+      messageRealtimeClient.leaveThread(selectedThreadId).catch(logIgnored('Chat'));
+      messageRealtimeClient.unsubscribePresence(selectedThreadName).catch(logIgnored('Chat'));
       setIsContactTyping(false);
       setIsContactOnline(false);
     };
@@ -325,7 +326,7 @@ export default function Chat() {
         if (!prev) return prev;
         return latest.find((item) => item.id === prev.id) || prev;
       });
-    } catch (_) {}
+    } catch (error) { logIgnored('Chat')(error); }
   }, []);
 
   const refreshMessagesSilently = useCallback(async (threadId: string) => {
@@ -333,7 +334,7 @@ export default function Chat() {
     try {
       const latest = (await fetchThreadMessages(threadId)) ?? [];
       setMessages((prev) => (sameMessageLists(prev, latest) ? prev : latest));
-    } catch (_) {}
+    } catch (error) { logIgnored('Chat')(error); }
   }, [messageLoading]);
 
   const loadMessages = useCallback(async (threadId: string) => {
@@ -545,13 +546,13 @@ export default function Chat() {
     setMessage(value);
     if (!selectedThread) return;
     const actorName = user?.username || user?.name || 'ben';
-    void messageRealtimeClient.setTyping(selectedThread.id, actorName, value.trim().length > 0).catch(() => {});
+    void messageRealtimeClient.setTyping(selectedThread.id, actorName, value.trim().length > 0).catch(logIgnored('Chat'));
     if (typingTimeoutRef.current) {
       window.clearTimeout(typingTimeoutRef.current);
     }
     if (!value.trim()) return;
     typingTimeoutRef.current = window.setTimeout(() => {
-      void messageRealtimeClient.setTyping(selectedThread.id, actorName, false).catch(() => {});
+      void messageRealtimeClient.setTyping(selectedThread.id, actorName, false).catch(logIgnored('Chat'));
     }, 900);
   };
 

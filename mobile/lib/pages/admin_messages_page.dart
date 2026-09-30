@@ -9,6 +9,7 @@ import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/message_threads_view.dart';
 import 'admin_chat_page.dart';
+import 'package:student/utils/log_ignored.dart';
 
 class AdminMessagesPage extends StatefulWidget {
   const AdminMessagesPage({super.key});
@@ -29,7 +30,7 @@ class _AdminMessagesPageState extends State<AdminMessagesPage> {
   @override
   void initState() {
     super.initState();
-    MessageRealtimeService.instance.ensureConnected().catchError((_) {});
+    MessageRealtimeService.instance.ensureConnected().catchError((Object e) { logIgnored('admin_messages_page', e); });
     _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream
         .listen((payload) {
           if (!mounted) return;
@@ -117,7 +118,7 @@ class _AdminMessagesPageState extends State<AdminMessagesPage> {
         _threads = latest;
         _error = null;
       });
-    } catch (_) {}
+    } catch (e) { logIgnored('admin_messages_page', e); }
   }
 
   bool _sameThreads(

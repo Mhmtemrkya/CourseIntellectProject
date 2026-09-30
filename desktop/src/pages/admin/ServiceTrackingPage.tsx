@@ -574,7 +574,7 @@ export default function ServiceTrackingPage() {
                           <a
                             href={`https://www.openstreetmap.org/?mlat=${trip.latitude}&mlon=${trip.longitude}#map=16/${trip.latitude}/${trip.longitude}`}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 font-semibold text-orange-500 hover:underline"
                           >
                             <MapPinned className="h-3.5 w-3.5" />
