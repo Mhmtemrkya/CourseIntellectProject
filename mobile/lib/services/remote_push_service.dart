@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'push_navigation.dart';
 import 'package:student/utils/log_ignored.dart';
 
 class RemotePushService {
@@ -57,6 +58,12 @@ class RemotePushService {
           );
 
       FirebaseMessaging.onMessage.listen(_showForegroundNotification);
+      // Arka planda/kapalıyken bildirime dokunma → ilgili ekran.
+      FirebaseMessaging.onMessageOpenedApp.listen(
+        (message) => PushNavigation.instance.handleTap(message.data),
+      );
+      final initial = await FirebaseMessaging.instance.getInitialMessage();
+      if (initial != null) PushNavigation.instance.handleTap(initial.data);
       FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
         try {
           await _registerToken(token);
@@ -99,7 +106,20 @@ class RemotePushService {
       macOS: iosSettings,
     );
 
-    await _localNotifications.initialize(settings);
+    await _localNotifications.initialize(
+      settings,
+      // Ön planda gösterilen yerel bildirime dokunma (Android).
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload == null || payload.isEmpty) return;
+        try {
+          final decoded = jsonDecode(payload);
+          if (decoded is Map) {
+            PushNavigation.instance.handleTap(Map<String, dynamic>.from(decoded));
+          }
+        } catch (e) { logIgnored('remote_push_service', e); }
+      },
+    );
     final androidPlugin = _localNotifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -115,6 +135,9 @@ class RemotePushService {
   }
 
   Future<void> _showForegroundNotification(RemoteMessage message) async {
+    // iOS'ta sistem ön planda da gösterir (setForegroundNotificationPresentationOptions);
+    // yerel kopya çift bildirim üretirdi.
+    if (Platform.isIOS) return;
     final notification = message.notification;
     final title = notification?.title ?? message.data['title']?.toString();
     final body = notification?.body ?? message.data['body']?.toString();
@@ -137,6 +160,7 @@ class RemotePushService {
         iOS: DarwinNotificationDetails(),
         macOS: DarwinNotificationDetails(),
       ),
+      payload: jsonEncode(message.data),
     );
   }
 

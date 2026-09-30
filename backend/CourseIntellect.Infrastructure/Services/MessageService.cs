@@ -234,7 +234,7 @@ public sealed class MessageService(
                 recipientName,
                 currentUserName,
                 pushBody,
-                new Dictionary<string, string> { ["category"] = "message", ["threadId"] = thread.Id.ToString() },
+                new Dictionary<string, string> { ["category"] = "message", ["threadId"] = thread.Id.ToString(), ["senderName"] = currentUserName },
                 cancellationToken);
         }
 

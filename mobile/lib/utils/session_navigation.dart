@@ -4,10 +4,12 @@ import '../onboarding/onboarding_store.dart';
 import '../pages/login_page.dart';
 import '../services/auth_session_store.dart';
 import '../services/branch_scope_store.dart';
+import '../services/push_navigation.dart';
 import '../services/tenant_scope_store.dart';
 
 Future<void> logoutToRoleSelect(BuildContext context) async {
   await AuthSessionStore.instance.clear();
+  PushNavigation.instance.markPanelClosed();
   await BranchScopeStore.instance.clear();
   await TenantScopeStore.instance.clear();
   // Sonraki kullanıcı kendi onboarding durumunu yüklesin.
