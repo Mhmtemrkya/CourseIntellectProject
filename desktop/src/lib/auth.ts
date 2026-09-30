@@ -4,7 +4,8 @@ import {
   getOrderedDesktopApiCandidates,
   setActiveDesktopApiBaseUrl,
 } from "./appEnv";
-import { createCodedError } from "./errors";
+import { createCodedError, isRecord } from "./errors";
+import { isLoginPayload } from "./loginPayload";
 import type {
   BackendCurrentUser,
   DesktopRole,
@@ -24,13 +25,14 @@ export interface UserPayload {
   user?: BackendCurrentUser | null;
 }
 
-function unwrapBackendPayload<T extends object>(payload: Envelope<T>): T {
-  if ("data" in payload && payload.data && typeof payload.data === "object") {
-    return payload.data;
-  }
-
-  return payload as T;
+function isDataEnvelope<T extends object>(payload: Envelope<T>): payload is { data: T } {
+  return "data" in payload && isRecord(payload.data);
 }
+
+function unwrapBackendPayload<T extends object>(payload: Envelope<T>): T {
+  return isDataEnvelope(payload) ? payload.data : payload;
+}
+
 
 export function mapBackendRoleToDesktopRole(role: string | null | undefined): DesktopRole {
   const normalizedRole = String(role || "")
@@ -293,7 +295,12 @@ interface LoginErrorBody {
 
 async function readErrorBody(response: Response): Promise<LoginErrorBody | null> {
   try {
-    return (await response.json()) as LoginErrorBody;
+    const body: unknown = await response.json();
+    if (!isRecord(body)) return null;
+    return {
+      code: typeof body.code === "string" ? body.code : undefined,
+      message: typeof body.message === "string" ? body.message : undefined,
+    };
   } catch {
     return null;
   }
@@ -379,8 +386,11 @@ export async function loginWithBackend(username: string, password: string): Prom
     throw new Error("Giriş işlemi şu anda tamamlanamadı. Kısa bir süre sonra tekrar deneyin; sorun devam ederse destek ekibine başvurun.");
   }
 
-  const payload = (await response.json()) as Envelope<LoginPayload>;
-  const data = unwrapBackendPayload(payload);
+  const payload: unknown = await response.json();
+  const data = isRecord(payload) && isLoginPayload(payload.data) ? payload.data : payload;
+  if (!isLoginPayload(data)) {
+    throw new Error("Giriş yanıtı beklenen biçimde değil. Kısa bir süre sonra tekrar deneyin.");
+  }
 
   // Kurum üyesi ama abonelik ödemesi yapılmamış → desktop'a giriş reddedilir.
   // Platform admin (kendi platformumuzun yöneticisi) bu kontrolden muaftır.

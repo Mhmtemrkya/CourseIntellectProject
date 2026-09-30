@@ -53,9 +53,66 @@ interface ChatMessage {
 
 type ActionHandler = (command: string | null | undefined, studentId?: string | null, route?: string | null) => void;
 
+function optText(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function optNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function optNullableNumber(value: unknown): number | null | undefined {
+  return value === null ? null : optNumber(value);
+}
+
+function asDataItem(value: unknown): AssistantDataItem | null {
+  if (!isRecord(value)) return null;
+  return {
+    id: optText(value.id),
+    studentId: optText(value.studentId),
+    fullName: optText(value.fullName),
+    title: optText(value.title),
+    examTitle: optText(value.examTitle),
+    lesson: optText(value.lesson),
+    label: optText(value.label),
+    className: optText(value.className),
+    subject: optText(value.subject),
+    status: optText(value.status),
+    date: optText(value.date),
+    deadline: optText(value.deadline),
+    startsAt: optText(value.startsAt),
+    score: optNullableNumber(value.score),
+    remaining: optNullableNumber(value.remaining),
+  };
+}
+
+function asDataItems(value: unknown): AssistantDataItem[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.map(asDataItem).filter((item): item is AssistantDataItem => item !== null);
+}
+
 function asAssistantData(value: unknown): AssistantData | null {
-  // Sunucu sözleşmesi: data ya null ya da niyete özgü bir nesnedir.
-  return isRecord(value) ? (value as AssistantData) : null;
+  // Sunucu sözleşmesi: data ya null ya da niyete özgü bir nesnedir; yalnız
+  // bilinen alanlar doğrulanarak alınır.
+  if (!isRecord(value)) return null;
+  const metrics = Array.isArray(value.metrics)
+    ? value.metrics.flatMap((metric: unknown) => (
+      isRecord(metric) && typeof metric.label === 'string' && (typeof metric.value === 'number' || typeof metric.value === 'string')
+        ? [{ label: metric.label, value: metric.value }]
+        : []))
+    : undefined;
+  return {
+    items: asDataItems(value.items),
+    recent: asDataItems(value.recent),
+    fullName: optText(value.fullName),
+    className: optText(value.className),
+    remaining: optNumber(value.remaining),
+    metrics,
+    collectedThisMonth: optNumber(value.collectedThisMonth),
+    periodLabel: optText(value.periodLabel),
+    openDebt: optNumber(value.openDebt),
+    overdueInstallments: optNullableNumber(value.overdueInstallments),
+  };
 }
 
 function actionStudentId(item: AssistantActionDto): string | undefined {

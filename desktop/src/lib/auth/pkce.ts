@@ -1,4 +1,6 @@
 import type { LoginPayload } from "../../types/session";
+import { isRecord } from "../errors";
+import { isLoginPayload } from "../loginPayload";
 
 /**
  * PKCE (Proof Key for Code Exchange) utilities for OAuth flow.
@@ -99,10 +101,10 @@ export async function startPkceLogin(apiBaseUrl: string): Promise<PkceLoginResul
 /**
  * Exchange authorization code + code_verifier for tokens.
  */
-export async function exchangePkceCode<T = LoginPayload>(
+export async function exchangePkceCode(
   apiBaseUrl: string,
   { code, codeVerifier, clientId, redirectUri }: PkceLoginResult,
-): Promise<T> {
+): Promise<LoginPayload> {
   const response = await fetch(`${apiBaseUrl}/api/auth/pkce/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -115,11 +117,16 @@ export async function exchangePkceCode<T = LoginPayload>(
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(body?.message || `Token exchange failed (${response.status})`);
+    const body: unknown = await response.json().catch(() => null);
+    const message = isRecord(body) && typeof body.message === 'string' ? body.message : '';
+    throw new Error(message || `Token exchange failed (${response.status})`);
   }
 
-  return (await response.json()) as T;
+  const payload: unknown = await response.json();
+  if (!isLoginPayload(payload)) {
+    throw new Error('Token yanıtı beklenen biçimde değil.');
+  }
+  return payload;
 }
 
 function base64UrlEncode(bytes: Uint8Array): string {

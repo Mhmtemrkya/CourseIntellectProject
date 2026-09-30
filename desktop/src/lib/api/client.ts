@@ -27,13 +27,43 @@ export interface BlobRequestConfig extends RequestConfig {
 export type ApiError = Error & { status: number; body: unknown };
 
 export function isApiError(error: unknown): error is ApiError {
-  return error instanceof Error && typeof (error as Partial<ApiError>).status === 'number' && 'body' in error;
+  return error instanceof Error && 'status' in error && typeof error.status === 'number' && 'body' in error;
 }
 
 /** Hata gövdesini bilinen alanlarıyla okur (`error.body?.code` gibi). */
-export function apiErrorBody<T extends object = ApiErrorBody>(error: unknown): Partial<T> | null {
-  if (!isApiError(error) || typeof error.body !== 'object' || error.body === null) return null;
-  return error.body as Partial<T>;
+export function apiErrorBody(error: unknown): ApiErrorBody | null {
+  return isApiError(error) ? toApiErrorBody(error.body) : null;
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+/** Bilinmeyen hata gövdesini yalnız doğrulanmış alanlarla ApiErrorBody'ye çevirir. */
+function toApiErrorBody(raw: unknown): ApiErrorBody | null {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null;
+  const source: Record<string, unknown> = { ...raw };
+  const errors: Record<string, string | string[]> = {};
+  const rawErrors = source.errors;
+  if (typeof rawErrors === 'object' && rawErrors !== null && !Array.isArray(rawErrors)) {
+    for (const [key, value] of Object.entries(rawErrors)) {
+      if (typeof value === 'string') errors[key] = value;
+      else if (Array.isArray(value)) errors[key] = value.filter((item): item is string => typeof item === 'string');
+    }
+  }
+  const nested = source.error;
+  const nestedMessage = typeof nested === 'object' && nested !== null && 'message' in nested ? optionalString(nested.message) : undefined;
+  return {
+    message: optionalString(source.message),
+    code: optionalString(source.code),
+    error: nestedMessage === undefined ? null : { message: nestedMessage },
+    errors: Object.keys(errors).length > 0 ? errors : null,
+    detail: optionalString(source.detail),
+    title: optionalString(source.title),
+    action: optionalString(source.action),
+    reason: optionalString(source.reason),
+    traceId: optionalString(source.traceId),
+  };
 }
 
 /** Uçlarımızın ve ASP.NET ProblemDetails'in ortak hata gövdesi alanları. */
@@ -138,7 +168,7 @@ function statusGuidance(status: number): string {
 }
 
 export function describeApiError(rawBody: unknown, status: number, method = ''): string {
-  const body: ApiErrorBody | null = typeof rawBody === 'object' && rawBody !== null ? (rawBody as ApiErrorBody) : null;
+  const body = toApiErrorBody(rawBody);
   const operation = operationLabel(method);
   const traceId = body?.traceId ? ` Takip kodu: ${body.traceId}.` : '';
 
@@ -149,7 +179,7 @@ export function describeApiError(rawBody: unknown, status: number, method = ''):
   let detail = body?.message || body?.error?.message || '';
   if (body?.errors && typeof body.errors === 'object') {
     const parts = Object.entries(body.errors)
-      .map(([field, messages]) => `${field}: ${([] as string[]).concat(messages).join(' ')}`)
+      .map(([field, messages]) => `${field}: ${(Array.isArray(messages) ? messages : [messages]).join(' ')}`)
       .filter(Boolean);
     if (parts.length) detail = parts.join(' • ');
   }
@@ -268,7 +298,10 @@ async function request<T = unknown>(method: HttpMethod, url: string, data: unkno
 
   const contentType = response.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {
-    return (await response.json()) as T;
+    // Tek güven sınırı: sunucu JSON'u, backend C# sözleşmesinden üretilen DTO
+    // tipine (types/api/generated.ts) bağlanır. Çalışma zamanı şema doğrulaması
+    // yoktur; ts:gate bu satırı işaretli istisna olarak sayar.
+    return (await response.json()) as T; // ts-gate:trust-boundary
   }
   return null;
 }

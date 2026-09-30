@@ -1,6 +1,8 @@
 // TypeScript katılık kapısı: tsc'nin yakalamadığı kaçış kapılarını sayar.
-// `any` tipi, @ts-ignore / @ts-nocheck / @ts-expect-error yorumları ve
+// `any` tipi, tip dönüşümleri (`x as T`, `<T>x`; `as const` hariç), non-null
+// iddiaları (`x!`), @ts-ignore / @ts-nocheck / @ts-expect-error yorumları ve
 // src altında kalan .js/.jsx dosyaları sıfır olmadıkça kapı kırmızıdır.
+// Tek istisna: satırda `ts-gate:trust-boundary` işaretli, belgelenmiş ağ sınırı.
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
@@ -27,8 +29,18 @@ function scan(file) {
     const { line } = source.getLineAndCharacterOfPosition(pos);
     findings.push(`${rel}:${line + 1} ${kind}`);
   };
+  const lines = text.split('\n');
+  const lineHasTrustMarker = (node) => {
+    const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
+    return (lines[line] || '').includes('ts-gate:trust-boundary');
+  };
   const visit = (node) => {
     if (node.kind === ts.SyntaxKind.AnyKeyword) report(node.getStart(source), 'any');
+    const isAssertion = ts.isAsExpression(node) || (ts.isTypeAssertionExpression && ts.isTypeAssertionExpression(node));
+    if (isAssertion && node.type.getText(source) !== 'const' && !lineHasTrustMarker(node)) {
+      report(node.getStart(source), `as ${node.type.getText(source)}`);
+    }
+    if (ts.isNonNullExpression(node) && !lineHasTrustMarker(node)) report(node.getStart(source), 'non-null !');
     ts.forEachChild(node, visit);
   };
   visit(source);

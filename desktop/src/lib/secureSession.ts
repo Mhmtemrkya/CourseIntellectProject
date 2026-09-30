@@ -5,6 +5,7 @@
 // localStorage davranışına düşülür, işlev kaybı olmaz.
 
 import type { DesktopSession } from '../types/session';
+import { isRecord } from './errors';
 
 const LEGACY_STORAGE_KEY = 'courseintellect-desktop-session';
 const ENCRYPTED_STORAGE_KEY = 'courseintellect-desktop-session-v2';
@@ -37,11 +38,28 @@ function fromBase64(value: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
 }
 
+/** Kayıttan okunan oturum beklenen biçimde mi? (bozuk/eski kayıt oturumu düşürür) */
+function isDesktopSession(value: unknown): value is DesktopSession {
+  return isRecord(value)
+    && typeof value.accessToken === 'string'
+    && typeof value.refreshToken === 'string'
+    && typeof value.expiresAtUtc === 'string'
+    && typeof value.refreshTokenExpiresAtUtc === 'string'
+    && isRecord(value.user)
+    && typeof value.user.id === 'string'
+    && typeof value.user.role === 'string';
+}
+
+function parseSession(raw: string): DesktopSession | null {
+  const parsed: unknown = JSON.parse(raw);
+  return isDesktopSession(parsed) ? parsed : null;
+}
+
 function readPlainLocal(): DesktopSession | null {
   const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as DesktopSession;
+    return parseSession(raw);
   } catch {
     localStorage.removeItem(LEGACY_STORAGE_KEY);
     return null;
@@ -79,7 +97,7 @@ async function decryptFromStorage(): Promise<DesktopSession | null> {
       requireCryptoKey(),
       fromBase64(dataPart),
     );
-    return JSON.parse(new TextDecoder().decode(plaintext)) as DesktopSession;
+    return parseSession(new TextDecoder().decode(plaintext));
   } catch {
     // Anahtar değişmiş veya kayıt bozulmuş: oturum düşer, yeniden giriş istenir.
     localStorage.removeItem(ENCRYPTED_STORAGE_KEY);

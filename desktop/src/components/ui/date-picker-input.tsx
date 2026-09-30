@@ -14,15 +14,24 @@ import {
 const ISO_DATE_FORMAT = "yyyy-MM-dd"
 const DISPLAY_DATE_FORMAT = "d MMMM yyyy, EEEE"
 
-export type DatePickerInputProps = Omit<
-  React.InputHTMLAttributes<HTMLInputElement>,
-  "value" | "defaultValue" | "min" | "max" | "type"
-> & {
+/**
+ * Yerel <input type="date"> yerine geçen seçicinin API'si. Tüketiciler yalnız
+ * bu alanları kullanır (değer, değişiklik, sınırlar, kimlik ve görünüm).
+ */
+export interface DatePickerInputProps {
   /** ISO tarih "yyyy-MM-dd"; boş metin seçimsiz demektir. */
   value?: string | null
   defaultValue?: string
   min?: string
   max?: string
+  id?: string
+  name?: string
+  className?: string
+  disabled?: boolean
+  required?: boolean
+  placeholder?: string
+  "aria-label"?: string
+  onChange?: React.ChangeEventHandler<HTMLInputElement>
 }
 
 function parseDate(value: unknown): Date | undefined {
@@ -37,19 +46,29 @@ function toIsoDate(value: Date | null | undefined): string {
 
 /**
  * Yerel <input type="date"> ile aynı tüketici kodu çalışsın diye değişiklik,
- * yalnız `target/currentTarget.value|name` taşıyan bir olayla bildirilir.
- * Tüketiciler bu iki alandan başkasını okumaz; tip sınırı burada tek yerde tutulur.
+ * gizli GERÇEK bir <input> üzerinden tam tipli bir ChangeEvent olarak bildirilir
+ * (tip dönüşümü yok; target.value/name gerçek DOM düğümünden okunur).
  */
-function emitDateChange(
-  onChange: React.ChangeEventHandler<HTMLInputElement> | undefined,
-  value: string,
-  name: string | undefined,
-): void {
-  const event = {
-    target: { value, name },
-    currentTarget: { value, name },
+function createChangeEvent(input: HTMLInputElement): React.ChangeEvent<HTMLInputElement> {
+  let defaultPrevented = false
+  let propagationStopped = false
+  return {
+    nativeEvent: new Event("change", { bubbles: true }),
+    target: input,
+    currentTarget: input,
+    bubbles: true,
+    cancelable: false,
+    defaultPrevented: false,
+    eventPhase: 0,
+    isTrusted: false,
+    timeStamp: Date.now(),
+    type: "change",
+    preventDefault: () => { defaultPrevented = true },
+    isDefaultPrevented: () => defaultPrevented,
+    stopPropagation: () => { propagationStopped = true },
+    isPropagationStopped: () => propagationStopped,
+    persist: () => undefined,
   }
-  onChange?.(event as unknown as React.ChangeEvent<HTMLInputElement>)
 }
 
 const DatePickerInput = React.forwardRef<HTMLButtonElement, DatePickerInputProps>(({
@@ -57,8 +76,6 @@ const DatePickerInput = React.forwardRef<HTMLButtonElement, DatePickerInputProps
   value,
   defaultValue,
   onChange,
-  onBlur,
-  onFocus,
   disabled,
   required,
   min,
@@ -67,10 +84,8 @@ const DatePickerInput = React.forwardRef<HTMLButtonElement, DatePickerInputProps
   id,
   placeholder = "Tarih seçin",
   "aria-label": ariaLabel,
-  ...rest
 }, ref) => {
-  // Kalan öznitelikler tetik butonuna aktarılır (yerel input'ta olduğu gibi).
-  const props = rest as React.ButtonHTMLAttributes<HTMLButtonElement>
+  const hiddenInputRef = React.useRef<HTMLInputElement>(null)
   const [open, setOpen] = React.useState(false)
   const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue || "")
   const isControlled = value !== undefined
@@ -85,7 +100,11 @@ const DatePickerInput = React.forwardRef<HTMLButtonElement, DatePickerInputProps
 
   const updateValue = (nextValue: string) => {
     if (!isControlled) setUncontrolledValue(nextValue)
-    emitDateChange(onChange, nextValue, name)
+    const input = hiddenInputRef.current
+    if (input) {
+      input.value = nextValue
+      onChange?.(createChangeEvent(input))
+    }
   }
 
   const selectDate = (date: Date | undefined) => {
@@ -100,7 +119,6 @@ const DatePickerInput = React.forwardRef<HTMLButtonElement, DatePickerInputProps
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          {...props}
           id={id}
           ref={ref}
           type="button"
@@ -113,8 +131,6 @@ const DatePickerInput = React.forwardRef<HTMLButtonElement, DatePickerInputProps
             !selected && "text-muted-foreground/75",
             className,
           )}
-          onBlur={onBlur as React.FocusEventHandler<HTMLButtonElement> | undefined}
-          onFocus={onFocus as React.FocusEventHandler<HTMLButtonElement> | undefined}
         >
           <span className="min-w-0 flex-1 truncate">
             {selected
@@ -127,7 +143,8 @@ const DatePickerInput = React.forwardRef<HTMLButtonElement, DatePickerInputProps
         </button>
       </PopoverTrigger>
 
-      {name ? <input type="hidden" name={name} value={currentValue || ""} /> : null}
+      {/* Form gönderimi ve değişiklik olayının hedefi için gerçek gizli alan. */}
+      <input ref={hiddenInputRef} type="hidden" name={name} value={currentValue || ""} readOnly />
 
       <PopoverContent
         align="start"

@@ -26,7 +26,9 @@ export interface OnboardingContextValue {
 }
 
 function asSeenMap(value: unknown): SeenMap | null {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as SeenMap) : null;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  // Yalnız sayısal (zaman damgası) değerler alınır; bozuk kayıt turu çökertmez.
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, number] => typeof entry[1] === 'number'));
 }
 
 const OnboardingContext = createContext<OnboardingContextValue>({
@@ -50,7 +52,7 @@ function readLocalSeen(user: SeenOwner): SeenMap {
   try {
     const raw = localStorage.getItem(storageKey(user));
     const parsed: unknown = raw ? JSON.parse(raw) : null;
-    return parsed && typeof parsed === 'object' ? (parsed as SeenMap) : {};
+    return asSeenMap(parsed) ?? {};
   } catch {
     return {};
   }

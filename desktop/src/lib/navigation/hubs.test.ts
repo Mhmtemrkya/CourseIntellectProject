@@ -10,10 +10,14 @@ import { ADMIN_HUBS, FINANCE_HUBS, collapseMenuHubs, findHubByPath, type Collaps
 const item = (path: string, label: string) => ({ path, label, icon: null, color: '#000' });
 
 /** Listedeki girişin katlanmış hub olduğunu doğrular ve onu döner. */
+function isHubEntry(entry: object): entry is CollapsedHubEntry {
+  return 'covers' in entry && Array.isArray(entry.covers);
+}
+
 function hubAt(list: ReadonlyArray<object>, index: number): CollapsedHubEntry {
   const entry = list[index];
-  if (!entry || !('covers' in entry)) throw new Error(`${index}. giriş hub değil`);
-  return entry as CollapsedHubEntry;
+  if (!entry || !isHubEntry(entry)) throw new Error(`${index}. giriş hub değil`);
+  return entry;
 }
 
 describe('collapseMenuHubs', () => {
@@ -108,8 +112,7 @@ describe('hub tanımları', () => {
 
 describe('yönetici menüsü boyutu', () => {
   it('kurum yöneticisinin menüsünü belirgin şekilde kısaltır', () => {
-    // eslint-disable-next-line global-require
-    const { menuConfigs } = require('../../components/layout/ModernSidebar') as typeof import('../../components/layout/ModernSidebar');
+    const { menuConfigs } = jest.requireActual<typeof import('../../components/layout/ModernSidebar')>('../../components/layout/ModernSidebar');
     const admin = menuConfigs.admin ?? [];
     expect(admin.length).toBeGreaterThan(0);
     const collapsed = collapseMenuHubs(admin);

@@ -100,6 +100,8 @@ const roleLabels: Partial<Record<DesktopRole, { label: string; icon: IconCompone
   cafeteria: { label: "Yemekhaneci", icon: Building2, color: "text-orange-600" },
 };
 
+const ROLE_ORDER: readonly DesktopRole[] = ['admin', 'administrative', 'finance', 'superadmin', 'teacher', 'student', 'parent', 'cafeteria'];
+
 export function Topbar() {
   const { user, logout, setCommandPaletteOpen, setUserRole } = useApp();
   const { startPageTour, startWelcomeTour, hasPageTour } = useOnboarding();
@@ -355,7 +357,7 @@ export function Topbar() {
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>Çalışma Alanı</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {(Object.keys(roleLabels) as DesktopRole[]).map((key) => {
+            {ROLE_ORDER.map((key) => {
               const val = roleLabels[key];
               if (!val) return null;
               const Icon = val.icon;

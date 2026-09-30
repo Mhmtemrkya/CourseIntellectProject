@@ -1,3 +1,4 @@
+import { isRecord } from './errors';
 export const STAFF_BRANCH_CONFIGURATION_TYPE = 'staff-branches';
 export const STAFF_BRANCH_SCOPE_KEY = 'teacher-branches';
 
@@ -14,13 +15,14 @@ export interface StaffBranchConfigurationPayload {
 }
 
 export function readSavedStaffBranches(configurations: unknown): string[] {
-  const list: ScopedConfiguration[] = Array.isArray(configurations) ? configurations : [];
-  const item = list.find((entry) => entry.scopeKey === STAFF_BRANCH_SCOPE_KEY);
+  const list: unknown[] = Array.isArray(configurations) ? configurations : [];
+  const item = list.find((entry): entry is ScopedConfiguration => isRecord(entry) && entry.scopeKey === STAFF_BRANCH_SCOPE_KEY);
   if (!item?.payloadJson) return [];
   try {
-    const parsed = JSON.parse(item.payloadJson) as { branches?: unknown };
-    return Array.isArray(parsed.branches)
-      ? parsed.branches.map((value: unknown) => String(value || '').trim()).filter(Boolean)
+    const parsed: unknown = JSON.parse(item.payloadJson);
+    const branches: unknown = isRecord(parsed) ? parsed.branches : undefined;
+    return Array.isArray(branches)
+      ? branches.map((value: unknown) => String(value || '').trim()).filter(Boolean)
       : [];
   } catch {
     return [];

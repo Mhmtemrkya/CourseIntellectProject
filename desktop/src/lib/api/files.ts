@@ -31,12 +31,11 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 function canUploadInChunks(file: unknown): file is File {
-  if (!file || typeof file !== 'object') return false;
-  const candidate = file as Partial<File>;
-  return typeof candidate.name === 'string'
-    && typeof candidate.size === 'number'
-    && typeof candidate.slice === 'function'
-    && typeof candidate.arrayBuffer === 'function';
+  return typeof file === 'object' && file !== null
+    && 'name' in file && typeof file.name === 'string'
+    && 'size' in file && typeof file.size === 'number'
+    && 'slice' in file && typeof file.slice === 'function'
+    && 'arrayBuffer' in file && typeof file.arrayBuffer === 'function';
 }
 
 function createUploadId(): string {

@@ -1,3 +1,4 @@
+import { isRecord } from './errors';
 /**
  * Dizin tablolarının kullanıcı tercihleri (yoğunluk, gizli sütun, sayfa boyutu).
  *
@@ -31,7 +32,7 @@ function isDensity(value: unknown): value is Density {
 
 /** Bozuk/eski kayıtları güvenli varsayılana indirger — tercih hiçbir zaman çökertmez. */
 export function normalizePreferences(raw: unknown): DirectoryPreferences {
-  const value: Record<string, unknown> = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const value: Record<string, unknown> = isRecord(raw) ? raw : {};
   const density = isDensity(value.density) ? value.density : DEFAULT_DENSITY;
   const hiddenColumns = Array.isArray(value.hiddenColumns)
     ? [...new Set(value.hiddenColumns.filter((key): key is string => typeof key === 'string' && key !== ''))]

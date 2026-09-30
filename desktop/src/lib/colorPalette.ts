@@ -73,8 +73,6 @@ const SHADE_LIGHTNESS: Record<Shade, number> = {
  * @param {string} hex - Ana renk (#RRGGBB)
  * @returns {Object} shade → hex eşleşmeleri { 50: '#...', 100: '#...', ... }
  */
-const SHADES: Shade[] = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
-
 export function generatePalette(hex: string): Palette {
   const { h, s } = hexToHSL(hex);
   const shadeHex = (shade: Shade): string => {
@@ -84,7 +82,19 @@ export function generatePalette(hex: string): Palette {
     else if (shade >= 900) adjS = Math.max(s - 10, 25);
     return hslToHex(h, adjS, SHADE_LIGHTNESS[shade]);
   };
-  return Object.fromEntries(SHADES.map((shade) => [shade, shadeHex(shade)])) as Palette;
+  return {
+    50: shadeHex(50),
+    100: shadeHex(100),
+    200: shadeHex(200),
+    300: shadeHex(300),
+    400: shadeHex(400),
+    500: shadeHex(500),
+    600: shadeHex(600),
+    700: shadeHex(700),
+    800: shadeHex(800),
+    900: shadeHex(900),
+    950: shadeHex(950),
+  };
 }
 
 /**
