@@ -61,5 +61,57 @@ public sealed class StudentScopeTests : IDisposable
         Assert.Equal(["Ayşe Demir"], filtered);
     }
 
+    [Fact]
+    public void ResolveUserId_ReadsSubClaim()
+    {
+        // JWT kimliği "sub" ile taşır; NameIdentifier eşlenmez (inbound map kapalı).
+        var id = Guid.NewGuid();
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", id.ToString())], "test"));
+        Assert.Equal(id, StudentScope.ResolveUserId(principal));
+    }
+
+    [Fact]
+    public async Task StudentClasses_AreOwnClassOnly()
+    {
+        var studentId = Guid.NewGuid();
+        db.Context.Students.AddRange(
+            new StudentProfile { FullName = "Kendi Öğrenci", ClassName = "10-A", UserId = studentId },
+            new StudentProfile { FullName = "Başka Öğrenci", ClassName = "11-B", UserId = Guid.NewGuid() });
+        await db.Context.SaveChangesAsync();
+
+        var classes = await StudentScope.ResolveAllowedClassNamesAsync(
+            Principal("Student", name: "Kendi Öğrenci", userId: studentId), db.Context, CancellationToken.None);
+
+        Assert.Equal(["10-A"], classes);
+    }
+
+    [Fact]
+    public async Task ParentClasses_AreChildrenClasses()
+    {
+        var parentId = Guid.NewGuid();
+        db.Context.Students.AddRange(
+            new StudentProfile { FullName = "Çocuk Bir", ClassName = "9-C", ParentUserId = parentId, UserId = Guid.NewGuid() },
+            new StudentProfile { FullName = "Çocuk İki", ClassName = "12-A", ParentUserId = parentId, UserId = Guid.NewGuid() },
+            new StudentProfile { FullName = "Başka Öğrenci", ClassName = "11-B", ParentUserId = Guid.NewGuid(), UserId = Guid.NewGuid() });
+        await db.Context.SaveChangesAsync();
+
+        var classes = await StudentScope.ResolveAllowedClassNamesAsync(
+            Principal("Parent", userId: parentId), db.Context, CancellationToken.None);
+
+        Assert.NotNull(classes);
+        Assert.Equal(2, classes!.Count);
+        Assert.Contains("9-C", classes);
+        Assert.Contains("12-A", classes);
+        Assert.DoesNotContain("11-B", classes);
+    }
+
+    [Fact]
+    public async Task StaffClasses_AreUnrestricted()
+    {
+        var classes = await StudentScope.ResolveAllowedClassNamesAsync(
+            Principal("Admin", name: "Yönetici"), db.Context, CancellationToken.None);
+        Assert.Null(classes);
+    }
+
     public void Dispose() => db.Dispose();
 }
