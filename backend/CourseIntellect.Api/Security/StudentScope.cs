@@ -67,6 +67,78 @@ public static class StudentScope
         return null;
     }
 
+    /// <summary>
+    /// Oturumdaki kullanıcı kimliği. JWT kimliği "sub"/"nameid" ile taşır ve
+    /// inbound claim map kapalıdır; ClaimTypes.NameIdentifier tek başına null döner.
+    /// </summary>
+    public static Guid? ResolveUserId(ClaimsPrincipal user)
+    {
+        var raw = user.FindFirstValue("user_id")
+            ?? user.FindFirstValue("sub")
+            ?? user.FindFirstValue("nameid")
+            ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(raw, out var id) && id != Guid.Empty ? id : null;
+    }
+
+    /// <summary>Oturumdaki kişinin görünen adı (öğrenci/veli adı eşleşmeleri için).</summary>
+    public static string ResolveDisplayName(ClaimsPrincipal user)
+        => (user.FindFirstValue("name") ?? user.FindFirstValue(ClaimTypes.Name) ?? string.Empty).Trim();
+
+    /// <summary>Oturumdaki kişinin kullanıcı adı.</summary>
+    public static string ResolveUsername(ClaimsPrincipal user)
+        => (user.FindFirstValue("unique_name")
+            ?? user.FindFirstValue("preferred_username")
+            ?? user.FindFirstValue(ClaimTypes.GivenName)
+            ?? string.Empty).Trim();
+
+    /// <summary>
+    /// Öğrenci/veli için erişilebilir sınıf adları (öğrencinin kendi sınıfı,
+    /// velinin çocuklarının sınıfları). null → personel, sınıf kısıtı yok.
+    /// </summary>
+    public static async Task<IReadOnlyList<string>?> ResolveAllowedClassNamesAsync(
+        ClaimsPrincipal user,
+        CourseIntellectDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        if (user.IsInRole("Student"))
+        {
+            var userId = ResolveUserId(user);
+            if (userId is null)
+            {
+                return [];
+            }
+
+            var className = await dbContext.Students
+                .AsNoTracking()
+                .Where(x => x.UserId == userId.Value)
+                .Select(x => x.ClassName)
+                .FirstOrDefaultAsync(cancellationToken);
+            return string.IsNullOrWhiteSpace(className) ? [] : [className.Trim()];
+        }
+
+        if (user.IsInRole("Parent"))
+        {
+            var names = await ResolveAllowedStudentNamesAsync(user, dbContext, cancellationToken) ?? [];
+            if (names.Count == 0)
+            {
+                return [];
+            }
+
+            var allowed = names.Select(Normalize).ToHashSet();
+            var students = await dbContext.Students
+                .AsNoTracking()
+                .Select(x => new { x.FullName, x.ClassName })
+                .ToListAsync(cancellationToken);
+            return students
+                .Where(x => allowed.Contains(Normalize(x.FullName)) && !string.IsNullOrWhiteSpace(x.ClassName))
+                .Select(x => x.ClassName.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        return null;
+    }
+
     private static string Normalize(string? value)
         => (value ?? string.Empty).Trim().ToLowerInvariant();
 
