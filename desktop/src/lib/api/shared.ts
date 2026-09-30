@@ -1,13 +1,14 @@
 // lib/api domain dosyalarının ortak yardımcıları (dışa açılmaz; modules barrel'ı bunları yayınlamaz).
 
+import { isApiError } from './client';
+
 /**
- * "Bulunamadı" hatası mı? Not: client.ts hata mesajına durum kodunu YAZMAZ
- * (describeApiError); bu yüzden kontrol yalnız sunucu mesajı "404" içerdiğinde
- * doğru döner. Davranış bilerek korunmuştur.
+ * "Bulunamadı" hatası mı? client.ts hata mesajına durum kodunu yazmaz
+ * (describeApiError); bu yüzden mesaja bakmak hiç eşleşmiyordu ve 404'te
+ * boş sonuç dönmesi gereken uçlar hata fırlatıyordu. Durum koduna bakılır.
  */
 export function isNotFoundError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : (error as { message?: unknown } | null | undefined)?.message;
-  return /404/.test(String(message || ''));
+  return isApiError(error) && error.status === 404;
 }
 
 /** Diziyse kendisi, değilse boş dizi — sayfaların beklediği liste normalizasyonu. */

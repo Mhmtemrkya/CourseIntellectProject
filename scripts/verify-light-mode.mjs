@@ -4,14 +4,17 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
-const repoRoot = '/Users/oguzhanmindivanli/Desktop/CourseIntellectProject';
+// Depo kökü betiğin konumundan çözülür (eskiden eski bir kopyaya sabitti).
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const requireFromDesktop = createRequire(path.join(repoRoot, 'desktop', 'package.json'));
 const { chromium } = requireFromDesktop('playwright');
 const buildDir = path.join(repoRoot, 'desktop', 'build');
 const outputRoot = path.join(repoRoot, 'screenshots', 'light-mode-verify');
 const port = 4193;
 const baseUrl = `http://127.0.0.1:${port}`;
+let failures = 0;
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.map': 'application/json' };
 
@@ -153,6 +156,7 @@ for (const variant of variants) {
       await page.screenshot({ path: path.join(outputRoot, `${variant.key}-${name}.png`), fullPage: false, animations: 'disabled' });
       console.log(`ok: ${variant.key} ${route}`);
     } catch (err) {
+      failures += 1;
       console.log(`FAIL: ${variant.key} ${route}: ${err.message}`);
     }
   }
@@ -163,3 +167,7 @@ for (const variant of variants) {
 await browser.close();
 server.close();
 console.log('done ->', outputRoot);
+if (failures > 0) {
+  console.error(`${failures} sayfa doğrulanamadı.`);
+  process.exit(1);
+}

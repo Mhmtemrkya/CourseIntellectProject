@@ -34,6 +34,7 @@ import { Separator } from '../components/ui/separator';
 import { useToast } from '../hooks/use-toast';
 import { removeTenantLogo, uploadTenantLogo } from '../lib/api/modules';
 import { billingEnabled } from '../lib/billing';
+import { getActiveDesktopApiBaseUrl } from '../lib/appEnv';
 import { errorMessage } from '../lib/errors';
 
 const containerVariants: Variants = {
@@ -55,7 +56,8 @@ export default function Settings() {
   const { theme, setTheme, tenantLogo, tenantName, refreshBranding } = useTheme();
   const { toast } = useToast();
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const [baseUrl, setBaseUrl] = useState('https://maydanozasist.schoolasist.com');
+  // Adres derlemede belirlenir (REACT_APP_COURSE_INTELLECT_API_URL); burada yalnız gösterilir.
+  const baseUrl = getActiveDesktopApiBaseUrl();
   const [testing, setTesting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'success' | 'error' | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -126,10 +128,17 @@ export default function Settings() {
     setTesting(true);
     setConnectionStatus(null);
     
-    // Simulate connection test
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const success = Math.random() > 0.3;
+    // Gerçek sağlık kontrolü (eskiden rastgele sonuç üreten bir benzetimdi).
+    let success = false;
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 8000);
+      const response = await fetch(`${baseUrl}/api/system/status`, { signal: controller.signal });
+      window.clearTimeout(timer);
+      success = response.ok;
+    } catch {
+      success = false;
+    }
     setConnectionStatus(success ? 'success' : 'error');
     setTesting(false);
 
@@ -413,8 +422,8 @@ export default function Settings() {
                 <Input
                   id="baseUrl"
                   value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder="https://api.example.com"
+                  readOnly
+                  className="bg-muted cursor-not-allowed"
                 />
                 <Button 
                   variant="outline" 
