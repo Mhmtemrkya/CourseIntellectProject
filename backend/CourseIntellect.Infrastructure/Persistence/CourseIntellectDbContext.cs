@@ -140,6 +140,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     public DbSet<CourseItem> CourseItems => Set<CourseItem>();
     public DbSet<LoginAttemptItem> LoginAttempts => Set<LoginAttemptItem>();
+    public DbSet<LegalConsentRecord> LegalConsentRecords => Set<LegalConsentRecord>();
     public DbSet<AuthorizationCode> AuthorizationCodes => Set<AuthorizationCode>();
     public DbSet<PlatformSubscriptionInvoice> PlatformSubscriptionInvoices => Set<PlatformSubscriptionInvoice>();
     public DbSet<PushDeviceRegistration> PushDeviceRegistrations => Set<PushDeviceRegistration>();
@@ -1293,6 +1294,19 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Duration).HasMaxLength(60).IsRequired();
             entity.Property(x => x.Level).HasMaxLength(40).IsRequired();
             entity.HasIndex(x => x.Category);
+        });
+
+        modelBuilder.Entity<LegalConsentRecord>(entity =>
+        {
+            entity.ToTable("legal_consent_records");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.ConsentVersion).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Platform).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.IpAddress).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.UserAgent).HasMaxLength(500).IsRequired();
+            entity.HasIndex(x => new { x.UserId, x.ConsentVersion, x.RecordedAtUtc });
         });
 
         modelBuilder.Entity<LoginAttemptItem>(entity =>

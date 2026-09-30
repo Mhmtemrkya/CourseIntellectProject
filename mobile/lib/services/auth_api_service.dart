@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'legal_consent_api_service.dart';
 
 class AuthApiException implements Exception {
   final String message;
@@ -294,6 +295,8 @@ class AuthApiService {
 
     final session = parseLoginResponse(response.body);
     await AuthSessionStore.instance.save(session);
+    // Girişten önce cihazda alınan KVKK kararı sunucuya kaydedilir (girişi bekletmez).
+    unawaited(LegalConsentApiService.instance.syncAfterLogin(session));
     return session;
   }
 

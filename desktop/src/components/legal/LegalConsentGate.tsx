@@ -14,6 +14,8 @@ import {
   notifyLegalConsentChanged,
   readLegalConsentStatus,
 } from "@/legal/consentState";
+import { fetchMyLegalConsent, recordLegalConsent } from "@/lib/api/legalConsent";
+import type { LegalConsentResponse } from "@/types/api/generated";
 
 type ConsentChoices = Record<OptionalConsentKey, boolean>;
 
@@ -27,32 +29,129 @@ function readState(): ConsentState {
   return { accepted: status === "accepted", declined: status === "declined" };
 }
 
-function persistDecision(status: "accepted" | "declined", choices: Partial<ConsentChoices> = {}) {
-  window.localStorage.setItem(LEGAL_CONSENT_STATUS_KEY, status);
-  window.localStorage.setItem(LEGAL_CONSENT_VERSION_KEY, legalConsentVersion);
-  window.localStorage.setItem(LEGAL_CONSENT_DECIDED_AT_KEY, new Date().toISOString());
-  Object.entries(choices).forEach(([key, value]) => {
-    window.localStorage.setItem(`courseintellect.legalConsent.${key}`, String(Boolean(value)));
-  });
+/** Gönderilemeyen kararın sahibi; sonraki açılışta sunucuya tekrar gönderilir. */
+const PENDING_SYNC_USER_KEY = "courseintellect.legalConsent.pendingUser";
+
+type ConsentStatus = "accepted" | "declined";
+
+function persistLocal(status: ConsentStatus, choices: Partial<ConsentChoices> = {}) {
+  try {
+    window.localStorage.setItem(LEGAL_CONSENT_STATUS_KEY, status);
+    window.localStorage.setItem(LEGAL_CONSENT_VERSION_KEY, legalConsentVersion);
+    window.localStorage.setItem(LEGAL_CONSENT_DECIDED_AT_KEY, new Date().toISOString());
+    Object.entries(choices).forEach(([key, value]) => {
+      window.localStorage.setItem(`courseintellect.legalConsent.${key}`, String(Boolean(value)));
+    });
+  } catch {
+    // Depolama kapalıysa karar yine sunucuya yazılır; yalnız yerel önbellek eksik kalır.
+  }
   // Onay beklerken ertelenen tanıtım turu vb. katmanlar karar sonrası açılabilsin.
   notifyLegalConsentChanged();
 }
 
+function readLocalChoice(key: OptionalConsentKey): boolean {
+  try {
+    return window.localStorage.getItem(`courseintellect.legalConsent.${key}`) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function isConsentStatus(value: string): value is ConsentStatus {
+  return value === "accepted" || value === "declined";
+}
+
+/** Kararı sunucuya yazar; başarısızsa kullanıcıya bağlı bekleyen senkron işaretlenir. */
+async function sendDecision(userId: string, status: ConsentStatus, choices: Partial<ConsentChoices>, decidedAt: string): Promise<boolean> {
+  try {
+    await recordLegalConsent({
+      version: legalConsentVersion,
+      status,
+      marketing: Boolean(choices.marketing),
+      push: Boolean(choices.push),
+      analytics: Boolean(choices.analytics),
+      platform: "desktop",
+      decidedAtUtc: decidedAt,
+    });
+    try { window.localStorage.removeItem(PENDING_SYNC_USER_KEY); } catch { /* yok say */ }
+    return true;
+  } catch {
+    try { window.localStorage.setItem(PENDING_SYNC_USER_KEY, userId); } catch { /* yok say */ }
+    return false;
+  }
+}
+
+function applyServerDecision(record: LegalConsentResponse): ConsentState | null {
+  if (!isConsentStatus(record.status)) return null;
+  persistLocal(record.status, { marketing: record.marketing, push: record.push, analytics: record.analytics });
+  return { accepted: record.status === "accepted", declined: record.status === "declined" };
+}
+
 export function LegalConsentGate({ children }: { children?: ReactNode }) {
-  const { isAuthenticated, isAuthLoading } = useApp();
+  const { isAuthenticated, isAuthLoading, user } = useApp();
+  const userId = user?.id ?? "";
   const [state, setState] = useState(() => readState());
   const [open, setOpen] = useState(false);
   const [understoodKvkk, setUnderstoodKvkk] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [choices, setChoices] = useState<ConsentChoices>({ marketing: false, push: false, analytics: false });
 
+  // Kaynak SUNUCUDUR: yerel kayıt cihaza bağlıydı (aynı bilgisayarda başka
+  // kullanıcı önceki kişinin onayını devralıyordu) ve ispat değeri yoktu.
   useEffect(() => {
-    const next = readState();
-    setState(next);
-    if (!isAuthLoading && isAuthenticated && !next.accepted && !next.declined) {
-      setOpen(true);
-    }
-  }, [isAuthenticated, isAuthLoading]);
+    if (isAuthLoading || !isAuthenticated || !userId) return undefined;
+    let cancelled = false;
+    const local = readState();
+    fetchMyLegalConsent()
+      .then(async (server) => {
+        if (cancelled) return;
+        if (server) {
+          const next = applyServerDecision(server);
+          if (next) {
+            setState(next);
+            setOpen(!next.accepted && !next.declined);
+            return;
+          }
+        }
+        // Sunucuda kayıt yok: bu kullanıcının gönderilemeyen kararı varsa gönder,
+        // yoksa onayı iste (kullanıcı başına bir kez).
+        let pendingUser: string | null = null;
+        try { pendingUser = window.localStorage.getItem(PENDING_SYNC_USER_KEY); } catch { pendingUser = null; }
+        const localStatus = local.accepted ? "accepted" : local.declined ? "declined" : null;
+        if (pendingUser === userId && localStatus) {
+          const choices: ConsentChoices = {
+            marketing: readLocalChoice("marketing"),
+            push: readLocalChoice("push"),
+            analytics: readLocalChoice("analytics"),
+          };
+          await sendDecision(userId, localStatus, choices, new Date().toISOString());
+          if (cancelled) return;
+          setState(local);
+          return;
+        }
+        // Bu cihazdaki yerel karar başka bir kullanıcıya ait olabilir: temizlenir
+        // ki tanıtım turu vb. onay alınmadan açılmasın.
+        try { window.localStorage.removeItem(LEGAL_CONSENT_STATUS_KEY); } catch { /* yok say */ }
+        notifyLegalConsentChanged();
+        setState({ accepted: false, declined: false });
+        setOpen(true);
+      })
+      .catch(() => {
+        // Sunucuya ulaşılamıyor: yerel önbelleğe düşülür, kullanım engellenmez.
+        if (cancelled) return;
+        setState(local);
+        setOpen(!local.accepted && !local.declined);
+      });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, isAuthLoading, userId]);
+
+  const decide = (status: ConsentStatus, decisionChoices: Partial<ConsentChoices>) => {
+    const decidedAt = new Date().toISOString();
+    persistLocal(status, decisionChoices);
+    setState({ accepted: status === "accepted", declined: status === "declined" });
+    setOpen(false);
+    if (userId) void sendDecision(userId, status, decisionChoices, decidedAt);
+  };
 
   if (!isAuthLoading && isAuthenticated && state.declined && !state.accepted) {
     return (
@@ -76,16 +175,8 @@ export function LegalConsentGate({ children }: { children?: ReactNode }) {
             setAcceptedTerms={setAcceptedTerms}
             choices={choices}
             setChoices={setChoices}
-            onAccept={() => {
-              persistDecision("accepted", choices);
-              setState({ accepted: true, declined: false });
-              setOpen(false);
-            }}
-            onDecline={() => {
-              persistDecision("declined");
-              setState({ accepted: false, declined: true });
-              setOpen(false);
-            }}
+            onAccept={() => decide("accepted", choices)}
+            onDecline={() => decide("declined", {})}
           />
         </div>
       </div>
@@ -105,16 +196,8 @@ export function LegalConsentGate({ children }: { children?: ReactNode }) {
           setAcceptedTerms={setAcceptedTerms}
           choices={choices}
           setChoices={setChoices}
-          onAccept={() => {
-            persistDecision("accepted", choices);
-            setState({ accepted: true, declined: false });
-            setOpen(false);
-          }}
-          onDecline={() => {
-            persistDecision("declined");
-            setState({ accepted: false, declined: true });
-            setOpen(false);
-          }}
+          onAccept={() => decide("accepted", choices)}
+          onDecline={() => decide("declined", {})}
         />
       ) : null}
     </>

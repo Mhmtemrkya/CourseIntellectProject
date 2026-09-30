@@ -52,3 +52,4 @@ export * from './cafeteria';
 export * from './guidance';
 export * from './library';
 export * from './consent';
+export * from './legalConsent';

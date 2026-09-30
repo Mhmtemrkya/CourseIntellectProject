@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../legal/legal_content.dart';
 import '../pages/legal_documents_page.dart';
+import '../services/legal_consent_api_service.dart';
 
 class LegalConsentGate extends StatefulWidget {
   final Widget child;
@@ -15,12 +16,12 @@ class LegalConsentGate extends StatefulWidget {
 }
 
 class _LegalConsentGateState extends State<LegalConsentGate> {
-  static const _statusKey = 'legal_consent_status';
-  static const _versionKey = 'legal_consent_version';
-  static const _decidedAtKey = 'legal_consent_decided_at';
-  static const _marketingKey = 'legal_consent_marketing';
-  static const _pushKey = 'legal_consent_push';
-  static const _analyticsKey = 'legal_consent_analytics';
+  static const _statusKey = LegalConsentPrefs.status;
+  static const _versionKey = LegalConsentPrefs.version;
+  static const _decidedAtKey = LegalConsentPrefs.decidedAt;
+  static const _marketingKey = LegalConsentPrefs.marketing;
+  static const _pushKey = LegalConsentPrefs.push;
+  static const _analyticsKey = LegalConsentPrefs.analytics;
 
   bool _loaded = false;
   bool _accepted = false;
@@ -60,7 +61,7 @@ class _LegalConsentGateState extends State<LegalConsentGate> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_statusKey, status);
     await prefs.setString(_versionKey, legalConsentVersion);
-    await prefs.setString(_decidedAtKey, DateTime.now().toIso8601String());
+    await prefs.setString(_decidedAtKey, DateTime.now().toUtc().toIso8601String());
     await prefs.setBool(_marketingKey, marketing);
     await prefs.setBool(_pushKey, push);
     await prefs.setBool(_analyticsKey, analytics);

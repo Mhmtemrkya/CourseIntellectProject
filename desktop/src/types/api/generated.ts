@@ -4003,6 +4003,44 @@ export interface LeaveDecisionRequest {
   note?: string | null;
 }
 
+// CourseIntellect.Api/Controllers/LegalConsentController.cs
+export interface LegalConsentDecisionRequest {
+  version?: string | null;
+  status?: string | null;
+  marketing: boolean;
+  push: boolean;
+  analytics: boolean;
+  platform?: string | null;
+  decidedAtUtc?: string | null;
+}
+
+// CourseIntellect.Domain/Entities/LegalConsentRecord.cs
+export interface LegalConsentRecord {
+  id: string;
+  tenantId: string | null;
+  userId: string;
+  consentVersion: string;
+  status: string;
+  marketing: boolean;
+  push: boolean;
+  analytics: boolean;
+  platform: string;
+  ipAddress: string;
+  userAgent: string;
+  clientDecidedAtUtc: string | null;
+  recordedAtUtc: string;
+}
+
+// CourseIntellect.Api/Controllers/LegalConsentController.cs
+export interface LegalConsentResponse {
+  version: string;
+  status: string;
+  marketing: boolean;
+  push: boolean;
+  analytics: boolean;
+  recordedAtUtc: string;
+}
+
 // CourseIntellect.Domain/Entities/LibraryEntities.cs
 export interface LibraryBook {
   id: string;
