@@ -13,14 +13,15 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class QuestionBankController(
     IQuestionBankService questionBankService,
-    CourseIntellectDbContext dbContext) : ControllerBase
+    CourseIntellectDbContext dbContext,
+    IConfiguration configuration) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] string? className, CancellationToken cancellationToken = default)
     {
         var includeDrafts = User.IsInRole("Teacher") || User.IsInRole("Admin");
         var items = await questionBankService.GetQuestionsAsync(className, includeDrafts, cancellationToken);
-        if (IsStaff())
+        if (IsStaff() || !HideAnswersFromStudents())
         {
             return Ok(items);
         }
@@ -121,6 +122,15 @@ public sealed class QuestionBankController(
         var item = await questionBankService.SubmitAttemptAsync(id, request, awardXp: isStudentAttempt, cancellationToken);
         return item is null ? NotFound() : Ok(item);
     }
+
+    /// <summary>
+    /// Cevap gizleme bayrağı ("QuestionBank:HideAnswersFromStudents", varsayılan
+    /// KAPALI). Eski mobil sürümler doğruluğu cihazda hesapladığı için cevap
+    /// gizlenirse bozulur; puanlamayı sunucudan alan mobil sürüm yayılıp
+    /// kullanıcılar güncelledikten sonra bayrak açılmalıdır.
+    /// </summary>
+    private bool HideAnswersFromStudents()
+        => bool.TryParse(configuration["QuestionBank:HideAnswersFromStudents"], out var hide) && hide;
 
     private bool IsStaff()
         => User.IsInRole("Admin") || User.IsInRole("Administrative") || User.IsInRole("Teacher");
