@@ -8,6 +8,7 @@ import { fetchUserPreferences, saveUserPreferences } from '../lib/api/modules';
 import { findPageTour, findWelcomeTour, type Tour } from './tours';
 import type { DesktopUser } from '../types/session';
 import { TourOverlay } from './TourOverlay';
+import { LEGAL_CONSENT_CHANGED_EVENT, readLegalConsentStatus } from '../legal/consentState';
 
 // Onboarding beyni:
 //  - İlk girişte role özel karşılama turunu başlatır.
@@ -74,6 +75,14 @@ export function OnboardingProvider({ children }: { children?: ReactNode }) {
   const [activeTour, setActiveTour] = useState<Tour | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const autoStartTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // KVKK/yasal onay penceresi açıkken tur onun ÜSTÜNDE açılıyordu; onay
+  // verilene kadar otomatik başlatma bekler.
+  const [legalConsentAccepted, setLegalConsentAccepted] = useState(() => readLegalConsentStatus() === 'accepted');
+  useEffect(() => {
+    const refresh = () => setLegalConsentAccepted(readLegalConsentStatus() === 'accepted');
+    window.addEventListener(LEGAL_CONSENT_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(LEGAL_CONSENT_CHANGED_EVENT, refresh);
+  }, []);
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const roles = useMemo(() => getUserRoles(user), [user]);
@@ -152,7 +161,7 @@ export function OnboardingProvider({ children }: { children?: ReactNode }) {
   // Otomatik başlatma: sayfa render olduktan sonra kısa gecikmeyle.
   // Öncelik karşılama turunda; o görüldüyse sayfa turu.
   useEffect(() => {
-    if (!isAuthenticated || !hydrated || activeTour) return undefined;
+    if (!isAuthenticated || !hydrated || activeTour || !legalConsentAccepted) return undefined;
     const candidate = (welcomeTour && !seen[welcomeTour.id])
       ? welcomeTour
       : (pageTour && !seen[pageTour.id] ? pageTour : null);
@@ -160,7 +169,7 @@ export function OnboardingProvider({ children }: { children?: ReactNode }) {
     autoStartTimer.current = setTimeout(() => startTour(candidate), 900);
     return () => clearTimeout(autoStartTimer.current);
     // seen bilinçli olarak bağımlılık: tur bitince sonraki adayı değerlendirir.
-  }, [isAuthenticated, hydrated, activeTour, welcomeTour, pageTour, seen, startTour, location.pathname]);
+  }, [isAuthenticated, hydrated, activeTour, legalConsentAccepted, welcomeTour, pageTour, seen, startTour, location.pathname]);
 
   // Rota değişince açık turu kapat (hedefler artık ekranda değil).
   useEffect(() => {

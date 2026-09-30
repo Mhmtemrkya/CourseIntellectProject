@@ -7,6 +7,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Switch } from "@/components/ui/switch";
 import { LegalDocumentsPanel } from "@/components/legal/LegalDocumentsPanel";
 import { legalConsentVersion, optionalConsentItems, type OptionalConsentKey } from "@/legal/legalContent";
+import {
+  LEGAL_CONSENT_DECIDED_AT_KEY,
+  LEGAL_CONSENT_STATUS_KEY,
+  LEGAL_CONSENT_VERSION_KEY,
+  notifyLegalConsentChanged,
+  readLegalConsentStatus,
+} from "@/legal/consentState";
 
 type ConsentChoices = Record<OptionalConsentKey, boolean>;
 
@@ -15,27 +22,20 @@ interface ConsentState {
   declined: boolean;
 }
 
-const statusKey = "courseintellect.legalConsent.status";
-const versionKey = "courseintellect.legalConsent.version";
-const decidedAtKey = "courseintellect.legalConsent.decidedAt";
-
 function readState(): ConsentState {
-  if (typeof window === "undefined") return { accepted: true, declined: false };
-  const status = window.localStorage.getItem(statusKey);
-  const version = window.localStorage.getItem(versionKey);
-  return {
-    accepted: status === "accepted" && version === legalConsentVersion,
-    declined: status === "declined" && version === legalConsentVersion,
-  };
+  const status = readLegalConsentStatus();
+  return { accepted: status === "accepted", declined: status === "declined" };
 }
 
 function persistDecision(status: "accepted" | "declined", choices: Partial<ConsentChoices> = {}) {
-  window.localStorage.setItem(statusKey, status);
-  window.localStorage.setItem(versionKey, legalConsentVersion);
-  window.localStorage.setItem(decidedAtKey, new Date().toISOString());
+  window.localStorage.setItem(LEGAL_CONSENT_STATUS_KEY, status);
+  window.localStorage.setItem(LEGAL_CONSENT_VERSION_KEY, legalConsentVersion);
+  window.localStorage.setItem(LEGAL_CONSENT_DECIDED_AT_KEY, new Date().toISOString());
   Object.entries(choices).forEach(([key, value]) => {
     window.localStorage.setItem(`courseintellect.legalConsent.${key}`, String(Boolean(value)));
   });
+  // Onay beklerken ertelenen tanıtım turu vb. katmanlar karar sonrası açılabilsin.
+  notifyLegalConsentChanged();
 }
 
 export function LegalConsentGate({ children }: { children?: ReactNode }) {
