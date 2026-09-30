@@ -24,6 +24,38 @@ public sealed class UserFriendlyExceptionMiddleware(
                 context.Request.Path,
                 context.TraceIdentifier);
         }
+        catch (CourseIntellect.Application.Exceptions.UploadRejectedException exception)
+        {
+            if (context.Response.HasStarted) throw;
+
+            context.Response.Clear();
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            context.Response.ContentType = "application/json; charset=utf-8";
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new
+            {
+                code = "UPLOAD_REJECTED",
+                message = exception.Message,
+                traceId = context.TraceIdentifier,
+            }));
+        }
+        catch (Microsoft.AspNetCore.Http.BadHttpRequestException exception)
+        {
+            // Kestrel'in istek reddi (ör. 413 gövde sınırı aşıldı): sunucu hatası
+            // değil, istemci hatasıdır; kendi durum koduyla döner.
+            if (context.Response.HasStarted) throw;
+
+            context.Response.Clear();
+            context.Response.StatusCode = exception.StatusCode;
+            context.Response.ContentType = "application/json; charset=utf-8";
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new
+            {
+                code = exception.StatusCode == StatusCodes.Status413PayloadTooLarge ? "PAYLOAD_TOO_LARGE" : "BAD_REQUEST",
+                message = exception.StatusCode == StatusCodes.Status413PayloadTooLarge
+                    ? "Gönderilen veri çok büyük."
+                    : "İstek işlenemedi.",
+                traceId = context.TraceIdentifier,
+            }));
+        }
         catch (UnauthorizedAccessException exception)
         {
             // Servis kapsamı gibi iş kuralı denetimleri bu istisnayı fırlatır

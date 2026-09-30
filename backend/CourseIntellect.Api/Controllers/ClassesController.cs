@@ -226,7 +226,8 @@ public sealed class ClassesController(
         {
             await transaction.RollbackAsync(cancellationToken);
             logger.LogError(ex, "Complete class creation failed for {ClassName}", className);
-            return BadRequest(new { message = ex.Message });
+            // Beklenmeyen hata ayrıntısı (SQL/iç durum) istemciye sızdırılmaz.
+            return BadRequest(new { message = ex is InvalidOperationException ? ex.Message : "Sınıf oluşturulamadı. Bilgileri kontrol edip tekrar deneyin." });
         }
     }
 
@@ -391,7 +392,8 @@ public sealed class ClassesController(
         {
             await transaction.RollbackAsync(cancellationToken);
             logger.LogError(ex, "Class assignment update failed for {ClassName}", className);
-            return BadRequest(new { message = ex.Message });
+            // Beklenmeyen hata ayrıntısı (SQL/iç durum) istemciye sızdırılmaz.
+            return BadRequest(new { message = ex is InvalidOperationException ? ex.Message : "Sınıf atamaları kaydedilemedi. Bilgileri kontrol edip tekrar deneyin." });
         }
     }
 

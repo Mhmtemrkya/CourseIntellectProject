@@ -29,14 +29,22 @@ JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 JsonWebTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 var builder = WebApplication.CreateBuilder(args);
-const long MaxUploadSizeBytes = 10L * 1024 * 1024 * 1024;
+// Genel istek gövdesi sınırı. Büyük dosya kabul eden uçlar (yükleme, soru içe
+// aktarma, onam belgesi, logo) kendi [RequestSizeLimit]'lerini taşır. Eskiden
+// global sınır 10 GB'tı: her uca devasa gövde gönderilerek kaynak tüketilebiliyordu.
+const long DefaultMaxRequestBodyBytes = 32L * 1024 * 1024;
 
 builder.WebHost.ConfigureKestrel(options =>
 {
     // Desktop WebView and dev proxy requests can stream small JSON bodies slowly.
-    // Disable the minimum data rate guard in development to avoid false 408 errors.
-    options.Limits.MinRequestBodyDataRate = null;
-    options.Limits.MaxRequestBodySize = MaxUploadSizeBytes;
+    // Disable the minimum data rate guard ONLY in development to avoid false 408
+    // errors; in production it protects against slow-body (slowloris) attacks.
+    if (builder.Environment.IsDevelopment())
+    {
+        options.Limits.MinRequestBodyDataRate = null;
+    }
+    options.Limits.MaxRequestBodySize = DefaultMaxRequestBodyBytes;
+    options.AddServerHeader = false;
 });
 
 if (builder.Environment.IsDevelopment()
@@ -46,11 +54,19 @@ if (builder.Environment.IsDevelopment()
     builder.WebHost.UseUrls("http://0.0.0.0:5206");
 }
 
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(730);
+    options.IncludeSubDomains = true;
+    options.Preload = true;
+});
+
 builder.Services.Configure<FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = MaxUploadSizeBytes;
-    options.ValueLengthLimit = int.MaxValue;
-    options.MultipartHeadersLengthLimit = int.MaxValue;
+    // Büyük form yükleyen uçlar [RequestFormLimits] ile kendi sınırını açar.
+    options.MultipartBodyLengthLimit = DefaultMaxRequestBodyBytes;
+    options.ValueLengthLimit = 8 * 1024 * 1024;
+    options.MultipartHeadersLengthLimit = 64 * 1024;
 });
 
 builder.Services.AddControllers(options =>
@@ -471,6 +487,29 @@ if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
 }
 
 app.UseForwardedHeaders();
+
+// HTTP güvenlik başlıkları (her yanıt). API yalnız JSON ve yüklenen dosya sunar;
+// HTML/script servis etmez → çerçeveleme, MIME tahmini ve gereksiz tarayıcı
+// yetenekleri kapatılır. Yüklenen dosyalar ek olarak sandbox CSP alır (aşağıda).
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=()";
+    headers["Cross-Origin-Opener-Policy"] = "same-origin";
+    if (!context.Request.Path.StartsWithSegments("/swagger") && !context.Request.Path.StartsWithSegments("/hangfire"))
+    {
+        headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+    }
+    await next();
+});
+if (!app.Environment.IsDevelopment())
+{
+    // Tarayıcılar yalnız HTTPS ile bağlansın (Cloudflare/Nginx arkasında da geçerli).
+    app.UseHsts();
+}
 app.UseMiddleware<CourseIntellect.Api.Middleware.UserFriendlyExceptionMiddleware>();
 app.UseStatusCodePages(async statusCodeContext =>
 {

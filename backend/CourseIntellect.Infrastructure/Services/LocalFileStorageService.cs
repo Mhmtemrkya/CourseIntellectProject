@@ -39,12 +39,24 @@ public sealed class LocalFileStorageService(IHostEnvironment environment, IConfi
         var extension = UploadPathSafety.ResolveSafeExtension(fileName);
         var safeName = UploadPathSafety.SanitizeBaseName(fileName);
 
+        // İçerik denetimi: dosyanın başı uzantının imzasıyla uyuşmalı (diske
+        // yazmadan önce). Uyuşmazsa hiçbir şey yazılmaz.
+        var header = new byte[FileSignatureValidator.HeaderLength];
+        var headerLength = await stream.ReadAtLeastAsync(header, header.Length, throwOnEndOfStream: false, cancellationToken);
+        if (headerLength == 0 || !FileSignatureValidator.Matches(extension, header.AsSpan(0, headerLength)))
+        {
+            throw new CourseIntellect.Application.Exceptions.UploadRejectedException("Dosya içeriği uzantısıyla uyuşmuyor ya da dosya boş. Geçerli bir dosya seçin.");
+        }
+
         var finalFileName = $"{safeName}-{Guid.NewGuid():N}{extension}";
         var physicalPath = Path.Combine(uploadsRoot, finalFileName);
 
-        await using var target = File.Create(physicalPath);
-        await stream.CopyToAsync(target, cancellationToken);
-        await target.FlushAsync(cancellationToken);
+        await using (var target = File.Create(physicalPath))
+        {
+            await target.WriteAsync(header.AsMemory(0, headerLength), cancellationToken);
+            await stream.CopyToAsync(target, cancellationToken);
+            await target.FlushAsync(cancellationToken);
+        }
 
         var info = new FileInfo(physicalPath);
         var relative = $"/uploads/{safeFolder}/{finalFileName}";
