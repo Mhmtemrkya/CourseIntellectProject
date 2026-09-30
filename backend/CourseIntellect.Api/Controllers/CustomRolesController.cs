@@ -138,32 +138,6 @@ public sealed class CustomRolesController(
         ? string.Join(", ", role.Modules)
         : role.ModulesRestricted ? "hiçbiri (sayfa yetkisi verilmedi)" : "tümü";
 
-    /// <summary>Oturum açan kullanıcının özel rol modülleri (UI menü filtrelemesi için).
-    /// Özel rolü yoksa <c>null</c> modules döner = kısıt yok.</summary>
-    [HttpGet("my")]
-    [Authorize] // her rol çağırabilir
-    public async Task<IActionResult> GetMy(CancellationToken cancellationToken)
-    {
-        var raw = User.FindFirstValue("custom_role_id");
-        if (!Guid.TryParse(raw, out var customRoleId))
-        {
-            return Ok(new { modules = (IReadOnlyList<string>?)null });
-        }
-
-        var role = await dbContext.CustomRoles.IgnoreQueryFilters().AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == customRoleId, cancellationToken);
-        // modulesRestricted true ise BOŞ liste de anlamlıdır ("hiçbir sayfa"),
-        // bu yüzden null'a çevrilmez — istemci menüyü buna göre kapatır.
-        var restricted = role?.ModulesRestricted ?? false;
-        return Ok(new
-        {
-            name = role?.Name,
-            modulesRestricted = restricted,
-            modules = role is null || (!restricted && role.Modules.Count == 0) ? null : role.Modules,
-            permissions = role is null || role.Permissions.Count == 0 ? null : role.Permissions,
-        });
-    }
-
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] UpsertCustomRoleRequest request, CancellationToken cancellationToken)
     {
@@ -273,5 +247,40 @@ public sealed class CustomRolesController(
             $"\"{role.Name}\" (taban: {role.BaseRole}) silindi.",
             cancellationToken);
         return NoContent();
+    }
+}
+
+// /my her oturumlu rol içindir (menü filtresi). CustomRolesController sınıf
+// düzeyinde Roles="Admin" taşıdığından, eylem düzeyindeki [Authorize] onu
+// gevşetemiyordu: admin dışı kullanıcı 403 alıyor, istemci de kısıt yok
+// sanıp menüyü tam açıyordu. Bu yüzden ayrı controller.
+[ApiController]
+[Authorize]
+[Route("api/custom-roles")]
+public sealed class MyCustomRoleController(CourseIntellectDbContext dbContext) : ControllerBase
+{
+    /// <summary>Oturum açan kullanıcının özel rol modülleri (UI menü filtrelemesi için).
+    /// Özel rolü yoksa <c>null</c> modules döner = kısıt yok.</summary>
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMy(CancellationToken cancellationToken)
+    {
+        var raw = User.FindFirstValue("custom_role_id");
+        if (!Guid.TryParse(raw, out var customRoleId))
+        {
+            return Ok(new { modules = (IReadOnlyList<string>?)null });
+        }
+
+        var role = await dbContext.CustomRoles.IgnoreQueryFilters().AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == customRoleId, cancellationToken);
+        // modulesRestricted true ise BOŞ liste de anlamlıdır ("hiçbir sayfa"),
+        // bu yüzden null'a çevrilmez — istemci menüyü buna göre kapatır.
+        var restricted = role?.ModulesRestricted ?? false;
+        return Ok(new
+        {
+            name = role?.Name,
+            modulesRestricted = restricted,
+            modules = role is null || (!restricted && role.Modules.Count == 0) ? null : role.Modules,
+            permissions = role is null || role.Permissions.Count == 0 ? null : role.Permissions,
+        });
     }
 }
