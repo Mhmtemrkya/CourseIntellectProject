@@ -10,7 +10,6 @@ import type {
   BackendCurrentUser,
   DesktopRole,
   DesktopUser,
-  InstitutionType,
   LoginPayload,
   UserLike,
 } from "../types/session";

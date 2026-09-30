@@ -9,7 +9,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchScheduleEntries, fetchStudents } from '../../lib/api/modules';
 import { filterScheduleForTeacher } from '../../lib/userMatching';
-import { deriveScheduleGrid, scheduleDayIndex, ALL_SCHEDULE_DAYS } from '../../lib/scheduleGrid';
+import { deriveScheduleGrid, ALL_SCHEDULE_DAYS } from '../../lib/scheduleGrid';
 import { errorMessage } from '../../lib/errors';
 
 interface TeacherLesson {

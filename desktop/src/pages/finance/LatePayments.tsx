@@ -3,7 +3,7 @@ import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, AlertCircle, Bell, Phone, Mail,
-  Calendar, Send, Download,
+  Calendar, Download,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { FeatureGate } from '../../components/FeatureGate';

@@ -2,13 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatMoney as formatCurrency } from '../../lib/format';
 import { motion, type Variants } from 'framer-motion';
 import {
-  Receipt, TrendingUp, TrendingDown, CreditCard, Banknote, Building2,
-  Calendar, Download, ArrowUpRight, ArrowDownRight,
+  Receipt, TrendingUp, CreditCard, Banknote, Building2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../../components/ui/select';
@@ -17,7 +15,6 @@ import {
 } from '../../components/ui/table';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { useApp } from '../../context/AppContext';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 import { filterByPeriod, isFinancePeriod, periodLabel, shiftAnchor, type FinancePeriod } from '../../lib/financePeriod';

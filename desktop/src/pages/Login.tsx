@@ -37,7 +37,6 @@ import { errorMessage } from '../lib/errors';
 // SchoolAsist marka renkleri — giriş ekranı kurum temasından bağımsız,
 // sabit marka paletiyle çizilir (mockup: lacivert + turuncu).
 const NAVY = "#15294B";
-const NAVY_SOFT = "#1E3A66";
 const ORANGE = "#F7941D";
 const LIGHT_BG = "#F4F6FA";
 

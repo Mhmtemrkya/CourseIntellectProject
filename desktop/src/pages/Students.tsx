@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Search,
   Plus,
   MoreHorizontal,
   Eye,
@@ -35,14 +34,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -4,8 +4,6 @@ import {
   AlertTriangle,
   BookOpen,
   Calendar,
-  Clock3,
-  MapPin,
   Plus,
   ShieldCheck,
   Sparkles,

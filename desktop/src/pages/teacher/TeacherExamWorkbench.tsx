@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  CheckCircle2, ClipboardCheck, FileSpreadsheet, Trophy,
+  CheckCircle2, ClipboardCheck, Trophy,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent} from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';

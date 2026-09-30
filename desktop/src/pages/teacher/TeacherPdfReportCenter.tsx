@@ -5,7 +5,7 @@ import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import {
   Archive, BarChart3, Calendar, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Download,
-  Eye, FileArchive, FilePlus2, FileText, Filter, GraduationCap, Maximize2, MessageSquare,
+  Eye, FileArchive, FilePlus2, FileText, GraduationCap, Maximize2, MessageSquare,
   Minus, MoreVertical, NotebookPen, PieChart, Printer, QrCode, Search, Sparkles, Trophy,
   TrendingUp, UserRound, Users, X, ZoomIn,
 } from 'lucide-react';

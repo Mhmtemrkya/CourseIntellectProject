@@ -18,13 +18,6 @@ import { formatDate } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
 import type { PlannedExam } from '../../lib/api/plannedExams';
 
-interface SubjectMeta {
-  gradient: string;
-  tint: string;
-  mark: string;
-  tagline: string;
-}
-
 /** Öğrenci sınav listesindeki satır (planlı sınavdan türetilir). */
 interface UpcomingExam {
   id: string;
@@ -43,24 +36,6 @@ interface UpcomingExam {
   blockTabChange: boolean;
   blockCopyPaste: boolean;
   liveLinkUrl: string;
-}
-
-const SUBJECT_COLORS: Partial<Record<string, SubjectMeta>> = {
-  Matematik: { gradient: 'from-sky-500 to-blue-600', tint: 'bg-sky-500/10 text-sky-700', mark: 'M', tagline: 'Sayısal akış ve hız kontrolü' },
-  'Türkçe': { gradient: 'from-teal-600 to-cyan-500', tint: 'bg-teal-500/10 text-teal-700', mark: 'TR', tagline: 'Dil, yorum ve paragraf odaklı set' },
-  Fizik: { gradient: 'from-violet-500 to-fuchsia-600', tint: 'bg-violet-500/10 text-violet-700', mark: 'F', tagline: 'Kuvvet ve hareket dengelemesi' },
-  Kimya: { gradient: 'from-emerald-500 to-teal-600', tint: 'bg-emerald-500/10 text-emerald-700', mark: 'K', tagline: 'Tepkime ve kavram pratiği' },
-  Biyoloji: { gradient: 'from-green-500 to-lime-600', tint: 'bg-lime-500/10 text-lime-700', mark: 'B', tagline: 'Sistemler ve süreç takibi' },
-  'İngilizce': { gradient: 'from-amber-500 to-yellow-500', tint: 'bg-amber-500/10 text-amber-700', mark: 'EN', tagline: 'Kelime ve okuma akışı' },
-};
-
-function subjectMeta(subject: string): SubjectMeta {
-  return SUBJECT_COLORS[subject] || {
-    gradient: 'from-slate-500 to-slate-700',
-    tint: 'bg-slate-500/10 text-slate-700',
-    mark: 'SN',
-    tagline: 'Planlanan sınav akışı',
-  };
 }
 
 function parseDate(value: string | null | undefined): Date | null {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
-  Settings, ToggleLeft, Shield, Server, Bell, Save, CheckCircle, AlertCircle, ScanText, CreditCard, Receipt,
+  ToggleLeft, Shield, Server, Bell, Save, CheckCircle, AlertCircle, ScanText, CreditCard, Receipt,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';

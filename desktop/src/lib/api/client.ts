@@ -1,6 +1,5 @@
 import { clearDesktopSession, desktopApiBaseUrl, loadDesktopSession } from '../auth';
 import {
-  desktopAppEnv,
   getOrderedDesktopApiCandidates,
   setActiveDesktopApiBaseUrl,
 } from '../appEnv';

@@ -237,11 +237,6 @@ export default function TeacherBulkQuestionUpload() {
     return matchesQuery && matchesDifficulty;
   }), [questions, query, difficultyFilter]);
 
-  const selectedQuestions = useMemo(
-    () => questions.filter((question) => selectedIds.includes(question.id)),
-    [questions, selectedIds],
-  );
-
   const loadHistory = useCallback(async () => {
     try {
       setHistory(await fetchQuestionImportHistory());

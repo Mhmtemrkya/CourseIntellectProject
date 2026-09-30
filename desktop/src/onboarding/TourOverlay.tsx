@@ -100,7 +100,6 @@ export function TourOverlay({ tour, stepIndex, onStepChange, onClose }: TourOver
   if (!tour || !step) return null;
 
   const isLast = stepIndex === tour.steps.length - 1;
-  const hasSpot = Boolean(spot);
 
   // Kart konumu: hedefin altı, sığmazsa üstü; yatayda ekrana sıkıştır.
   let cardStyle: CSSProperties;

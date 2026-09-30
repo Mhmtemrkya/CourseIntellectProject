@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Search,
   Eye,
   Mail,
   Phone,
   Users,
-  CalendarDays,
-  MessageSquare,
   Info,
   KeyRound,
   UserCheck,
@@ -20,18 +16,9 @@ import { FeatureGate } from '../components/FeatureGate';
 import { UserStatusButton } from '../components/UserStatusButton';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { IdentityCard } from '../components/identity/IdentityCard';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../components/ui/table';
 import { SheetDescription, SheetHeader, SheetTitle } from '../components/ui/sheet';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
@@ -66,14 +53,6 @@ interface ParentRow extends ParentGroup {
   account: ParentAccountDto | null;
   status: string | null;
 }
-
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.05 },
-  },
-};
 
 function normalizeText(value: string | null | undefined = '') {
   return String(value).trim().toLowerCase();
@@ -190,7 +169,6 @@ export default function Parents() {
   const { toast } = useToast();
   const [parents, setParents] = useState<ParentGroup[]>([]);
   const [accounts, setAccounts] = useState<ParentAccountDto[]>([]);
-  const [accountSearch, setAccountSearch] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(DIRECTORY_ALL);
   const [classFilter, setClassFilter] = useState(DIRECTORY_ALL);
@@ -282,12 +260,6 @@ export default function Parents() {
       toast({ title: 'Durum güncellenemedi', description: errorMessage(err), variant: 'destructive' });
     }
   }, [toast]);
-
-  const filteredAccounts = useMemo(() => {
-    const q = accountSearch.trim().toLowerCase();
-    if (!q) return accounts;
-    return accounts.filter((account) => `${account.fullName} ${account.username} ${(account.children || []).join(' ')}`.toLowerCase().includes(q));
-  }, [accounts, accountSearch]);
 
   if (loading) {
     return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;

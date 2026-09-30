@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, ArrowRightLeft, CircleDollarSign, Loader2, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
 import { useToast } from '../../hooks/use-toast';
 import { reconcileFinance } from '../../lib/api/modules';
 import { formatCurrency } from '../../lib/financeDocuments';

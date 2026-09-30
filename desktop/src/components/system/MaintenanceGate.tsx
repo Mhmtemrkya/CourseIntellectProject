@@ -5,7 +5,6 @@ import MaintenancePage from '../../pages/MaintenancePage';
 import type { SystemStatusDto } from '../../types/api/generated';
 
 const POLL_MS = 30_000; // 30 saniyede bir status çek
-const RETRY_BACKOFF_MS = 5_000;
 
 /**
  * Tüm uygulamayı sarar. Bakım modu açıkken:

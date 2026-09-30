@@ -263,12 +263,6 @@ function AdministrativeReportOverview() {
   }, [loadReports]);
 
   const classes = useMemo(() => [...new Set(students.map((item) => item.className).filter(Boolean))], [students]);
-  const displayClasses = useMemo(() => {
-    if (classes.length > 0) return classes;
-    if (classFilter !== 'all') return [classFilter];
-    return [];
-  }, [classes, classFilter]);
-
   const filteredStudents = useMemo(() => (
     classFilter === 'all' ? students : students.filter((student) => student.className === classFilter)
   ), [students, classFilter]);

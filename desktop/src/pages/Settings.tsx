@@ -9,7 +9,6 @@ import {
   Monitor,
   Globe,
   Bell,
-  Shield,
   Database,
   Save,
   RefreshCw,

@@ -49,8 +49,7 @@ const SCHOOL_VOCABULARY: Readonly<FinanceVocabulary> = Object.freeze({
 /**
  * Finans sözlüğü. Parametre, çağıran ekranların imzası değişmesin diye korunur.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function getFinanceVocabulary(user?: UserLike | null): Readonly<FinanceVocabulary> {
+export function getFinanceVocabulary(_user?: UserLike | null): Readonly<FinanceVocabulary> {
   return SCHOOL_VOCABULARY;
 }
 

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { formatMoney as formatCurrency } from '../../lib/format';
 import { motion, type Variants } from 'framer-motion';
 import {
-  GitBranch, Users, GraduationCap, DollarSign, TrendingUp,
+  GitBranch, Users, GraduationCap,
   BarChart3, MapPin,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -12,8 +11,7 @@ import {
 } from '../../components/ui/table';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { useApp } from '../../context/AppContext';
-import { fetchStudents, fetchStaff, fetchAccountingDashboard } from '../../lib/api/modules';
+import { fetchStudents, fetchStaff} from '../../lib/api/modules';
 import { errorMessage } from '../../lib/errors';
 
 interface BranchCounts {
@@ -44,10 +42,10 @@ export default function AdminBranchComparison() {
     try {
       setLoading(true);
       setError('');
-      const [students, staff, dashboard] = await Promise.all([
+      // Muhasebe panosu eskiden de yükleniyor ama hiç kullanılmıyordu (gereksiz istek).
+      const [students, staff] = await Promise.all([
         fetchStudents().catch(() => []),
         fetchStaff().catch(() => []),
-        fetchAccountingDashboard().catch(() => ({})),
       ]);
 
       const studentList = Array.isArray(students) ? students : [];

@@ -245,7 +245,7 @@ function FlowChart({ buckets, period }: { buckets: readonly FlowBucket[]; period
           ))}
 
           {/* Hover yakalama bantları */}
-          {buckets.map((b, i) => (
+          {buckets.map((_, i) => (
             <rect
               key={`hit-${i}`}
               x={n === 1 ? padL : x(i) - plotW / (2 * (n - 1))}

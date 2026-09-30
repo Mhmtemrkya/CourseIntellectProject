@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
   Building2, Users, CreditCard, Server, AlertTriangle,
-  TrendingUp, Activity,
+  Activity,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
+import { Card, CardContent} from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
 import { ErrorBanner } from '../../components/ui/AlertBanner';

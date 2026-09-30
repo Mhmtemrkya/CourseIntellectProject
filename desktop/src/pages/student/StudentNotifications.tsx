@@ -2,15 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
   Bell, BellRing, CheckCircle, Info, AlertTriangle, MessageSquare,
-  FileText, Calendar, BookOpen, Filter, CheckCheck,
+  FileText, Calendar, BookOpen, CheckCheck,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { useApp } from '../../context/AppContext';
 import { useToast } from '../../hooks/use-toast';
 import { fetchNotifications, markNotificationRead } from '../../lib/api/modules';
 import { errorMessage } from '../../lib/errors';
@@ -37,7 +36,6 @@ function notifIcon(type: string) {
 }
 
 export default function StudentNotifications() {
-  const { user } = useApp();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [loading, setLoading] = useState(true);

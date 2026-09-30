@@ -7,7 +7,6 @@ import {
   BriefcaseBusiness,
   GraduationCap,
   KeyRound,
-  CheckCircle2,
   LayoutGrid,
   Sparkles,
   ShieldCheck,

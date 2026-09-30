@@ -9,15 +9,10 @@ import {
   HeartHandshake,
   Library,
   Users,
-  UserPlus,
-  PhoneCall,
   UserCheck,
   GraduationCap,
-  Award,
   School,
   Calendar,
-  CalendarClock,
-  CalendarDays,
   ClipboardCheck,
   QrCode,
   HelpCircle,
@@ -37,14 +32,12 @@ import {
   Video,
   FileSignature,
   FileText,
-  FileCheck2,
   Bell,
   User,
   Gift,
   Download,
   CheckSquare,
   Ticket,
-  Sparkles,
   Brain,
   Flame,
   Star,
@@ -54,16 +47,14 @@ import {
   Bot,
   LifeBuoy,
   BusFront,
-  CarFront,
   UtensilsCrossed,
   KeyRound,
   ChevronDown,
 } from "lucide-react";
-import { Activity, Archive, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserRoundCheck, UserX, TrendingDown } from "lucide-react";
+import { Activity, Archive, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserX, TrendingDown } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import {
   Tooltip,
-  TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";

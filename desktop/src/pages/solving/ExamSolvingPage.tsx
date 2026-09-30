@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft, ArrowRight, Bookmark, CheckCircle2, ClipboardList, Clock3, Download, FileDown,
+  ArrowLeft, ArrowRight, Bookmark, CheckCircle2, ClipboardList, Download, FileDown,
   Flag, Grid2X2, Loader2, Maximize, MessageSquareText, NotebookPen, Save, Send, ShieldAlert, Sparkles, X,
 } from 'lucide-react';
 import { DrawingCanvas, type CanvasStroke } from '../../features/solving/canvas/DrawingCanvas';
@@ -81,7 +81,6 @@ export default function ExamSolvingPage() {
   const requireFullscreen = searchParams.get('requireFullscreen') === '1' && !isTeacherPreview;
   const blockTabChange = searchParams.get('blockTabChange') === '1' && !isTeacherPreview;
   const blockCopyPaste = searchParams.get('blockCopyPaste') === '1' && !isTeacherPreview;
-  const liveLinkUrl = (searchParams.get('liveLinkUrl') || '').trim();
   const examActive = session?.status === 'Active' && !summary;
 
   const loadOrStart = useCallback(async () => {

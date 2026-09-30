@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
-  Bell, Calendar, AlertCircle, Info, ChevronRight, Search,
+  Calendar, AlertCircle, Info, ChevronRight, Search,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';

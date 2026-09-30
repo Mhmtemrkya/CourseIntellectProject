@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, Clock3, FileQuestion, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import { Badge } from '../../components/ui/badge';
 import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';

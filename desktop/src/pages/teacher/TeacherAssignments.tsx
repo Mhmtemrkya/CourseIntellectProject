@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
-  FileText, Plus, Search, Calendar, CheckCircle, AlertCircle, Eye, Trash2,
+  FileText, Plus, Search, CheckCircle, AlertCircle, Eye, Trash2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { FeatureGate } from '../../components/FeatureGate';

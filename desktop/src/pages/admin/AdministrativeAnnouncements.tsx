@@ -7,7 +7,6 @@ import {
   Plus,
   ShieldCheck,
   Trash2,
-  UserRound,
   Users,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';

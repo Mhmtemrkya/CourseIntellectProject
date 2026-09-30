@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  CalendarDays, CalendarRange, ChevronRight, ChevronLeft, Landmark, Wallet,
+  CalendarRange, ChevronRight, ChevronLeft, Landmark, Wallet,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download,
+  CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Download,
   FileText, ShieldCheck, XCircle,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';

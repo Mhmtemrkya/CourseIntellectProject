@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarDays, Clock3, Video, Building2, Send, UserRound } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { CalendarDays, Clock3, Video, Building2, UserRound } from 'lucide-react';
+import { Card, CardContent} from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';

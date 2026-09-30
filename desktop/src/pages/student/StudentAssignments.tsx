@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '../../hooks/use-toast';
 import {
-  Files, Clock, AlertCircle, CheckCircle, Award, Upload, Eye, Download,
+  Files, Clock, AlertCircle, CheckCircle, Award, Upload, Download,
   Search, BookOpen, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';

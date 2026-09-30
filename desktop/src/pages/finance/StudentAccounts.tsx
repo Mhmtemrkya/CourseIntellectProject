@@ -203,7 +203,6 @@ function StudentAccountDrawer({
   const upcomingInstallments = installments
     .filter((item) => !isInstallmentPaid(item))
     .sort((a, b) => new Date(a.dueDateUtc).getTime() - new Date(b.dueDateUtc).getTime());
-  const totalFee = detail ? Number(detail.netTotal) || 0 : account.totalFee;
   const paid = detail ? Number(detail.paidTotal) || 0 : account.paid;
   const remaining = detail ? Number(detail.totalPayable) || 0 : account.remaining;
   const courseRemaining = detail ? Number(detail.courseRemaining) || 0 : 0;

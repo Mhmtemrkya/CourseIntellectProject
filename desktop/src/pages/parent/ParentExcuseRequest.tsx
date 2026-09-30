@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
-  FileText, Plus, Calendar, CheckCircle, Clock, XCircle, Upload, Send,
+  FileText, Plus, Calendar, CheckCircle, Clock, Upload, Send,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -22,7 +22,6 @@ import {
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { useApp } from '../../context/AppContext';
 import { createExcuseRequest, fetchAttendance, fetchMyExcuseRequests, fetchStudents, uploadFile } from '../../lib/api/modules';
 import { formatDate } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
@@ -49,7 +48,6 @@ const itemVariants: Variants = {
 };
 
 export default function ParentExcuseRequest() {
-  const { user } = useApp();
   const { toast } = useToast();
   const [excuses, setExcuses] = useState<ExcuseRow[]>([]);
   const [absences, setAbsences] = useState<AttendanceEntryDto[]>([]);

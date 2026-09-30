@@ -5,7 +5,7 @@ import {
   Brain, Search, Plus, Upload, Download, Trash2, BookOpen, Zap, Pencil, PenLine, Wand2, BarChart3, Users, FileText, Lightbulb, Eye, EyeOff,
 } from 'lucide-react';
 import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
+  Card, CardContent,
 } from '../../components/ui/card';
 import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
@@ -21,7 +21,6 @@ import PremiumResourceCard, { CardIconAction } from '../../components/ui/Premium
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { desktopApiBaseUrl } from '../../lib/auth';
 import {
   createQuestionBankItem,
   deleteQuestionBankItem,
@@ -177,13 +176,6 @@ function buildQuestionSets(items: readonly QuestionBankItemDto[]): QuestionSet[]
   })).sort((a, b) => new Date(b.questions[0]?.createdAt || 0).getTime() - new Date(a.questions[0]?.createdAt || 0).getTime());
 }
 
-function resolveQuestionImageUrl(path: string | null | undefined): string {
-  if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  if (path.startsWith('/')) return `${desktopApiBaseUrl}${path}`;
-  return `${desktopApiBaseUrl}/${path}`;
-}
-
 function getSubjectTheme(subject = ''): { gradient: string; accent: string; soft: string } {
   const normalized = decodeSubject(subject).toLowerCase();
   if (normalized.includes('mat')) return { gradient: 'from-blue-600 to-indigo-700', accent: 'bg-blue-600', soft: 'bg-blue-50 text-blue-700 border-blue-200' };
@@ -193,28 +185,6 @@ function getSubjectTheme(subject = ''): { gradient: string; accent: string; soft
   if (normalized.includes('türk') || normalized.includes('turk')) return { gradient: 'from-rose-500 to-red-700', accent: 'bg-rose-500', soft: 'bg-rose-50 text-rose-700 border-rose-200' };
   if (normalized.includes('ing')) return { gradient: 'from-cyan-500 to-sky-700', accent: 'bg-cyan-500', soft: 'bg-cyan-50 text-cyan-700 border-cyan-200' };
   return { gradient: 'from-teal-500 to-cyan-700', accent: 'bg-teal-500', soft: 'bg-slate-100 text-slate-700 border-slate-200' };
-}
-
-function getSubjectMark(subject = ''): string {
-  const normalized = decodeSubject(subject).toLowerCase();
-  if (normalized.includes('mat')) return 'x²';
-  if (normalized.includes('fiz')) return 'F';
-  if (normalized.includes('kim')) return 'H₂O';
-  if (normalized.includes('biy')) return 'DNA';
-  if (normalized.includes('türk') || normalized.includes('turk')) return 'Aa';
-  if (normalized.includes('ing')) return 'EN';
-  return 'QB';
-}
-
-function getSubjectTagline(subject = ''): string {
-  const normalized = decodeSubject(subject).toLowerCase();
-  if (normalized.includes('mat')) return 'FORMÜL • PROBLEM • MANTIK';
-  if (normalized.includes('fiz')) return 'HAREKET • ENERJİ • KUVVET';
-  if (normalized.includes('kim')) return 'TEPKİME • MADDE • BAĞ';
-  if (normalized.includes('biy')) return 'CANLI • HÜCRE • SİSTEM';
-  if (normalized.includes('türk') || normalized.includes('turk')) return 'DİL • ANLAM • PARAGRAF';
-  if (normalized.includes('ing')) return 'VOCAB • GRAMMAR • READING';
-  return 'SET • PRATİK • TEKRAR';
 }
 
 function decodeSubject(subject = ''): string {

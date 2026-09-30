@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import {
-  Search,
   Plus,
   MoreHorizontal,
   Eye,
@@ -31,14 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,

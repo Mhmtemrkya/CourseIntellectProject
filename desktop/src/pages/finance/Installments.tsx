@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Search, Plus, Calendar, CheckCircle, Clock,
+  Search, Plus, CheckCircle, Clock,
   AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';

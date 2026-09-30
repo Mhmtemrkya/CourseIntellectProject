@@ -77,18 +77,11 @@ function mapSessionToLesson(session: LiveRoomSession) {
   };
 }
 
-const statusConfig: Record<LessonStatus, { label: string; color: string }> = {
-  scheduled: { label: 'Planlandı', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  live: { label: 'Canlı', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-  completed: { label: 'Tamamlandı', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
-};
-
 export default function TeacherLive() {
   const { toast } = useToast();
   const { user } = useApp();
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [detailLesson, setDetailLesson] = useState<LiveLesson | null>(null);
   const [activeTab, setActiveTab] = useState<LessonTab>('upcoming');
@@ -196,10 +189,8 @@ export default function TeacherLive() {
     }
   };
 
-  const copyLink = (id: string, link: string) => {
+  const copyLink = (link: string) => {
     void navigator.clipboard.writeText(link);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
     toast({
       title: 'Link kopyalandı',
       description: 'Ders linki panoya kopyalandı.',
@@ -501,7 +492,7 @@ export default function TeacherLive() {
           <DialogFooter>
             {detailOrLive ? (
               <>
-                <Button variant="outline" onClick={() => copyLink(detailOrLive.id, detailOrLive.link)}>Bağlantıyı Kopyala</Button>
+                <Button variant="outline" onClick={() => copyLink(detailOrLive.link)}>Bağlantıyı Kopyala</Button>
                 <Button className="bg-[hsl(var(--brand-accent))] text-white hover:bg-[hsl(var(--brand-accent-hover))]" onClick={() => handleOpenLesson(detailOrLive.link)}>Dersi Başlat</Button>
                 {detailOrLive.status !== 'completed' ? (
                   <Button variant="outline" className="border-rose-500/40 text-rose-300 hover:bg-rose-500/10" onClick={() => handleDeleteLesson(detailOrLive)}>

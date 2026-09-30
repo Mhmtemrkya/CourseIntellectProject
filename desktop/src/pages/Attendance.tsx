@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertTriangle, Calendar, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight,
-  Clock, Eye, FileText, Filter, MoreVertical, Plus, RefreshCw, Save,
+  Clock, Eye, FileText, Filter, MoreVertical, Plus, Save,
   Search, Trash2, Upload, Users, X,
 } from 'lucide-react';
 import { FeatureGate } from '../components/FeatureGate';

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bus, MapPin, Clock3, CheckCircle2, Navigation } from 'lucide-react';
+import { Bus, MapPin, Clock3, Navigation } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { ErrorBanner } from '../../components/ui/AlertBanner';

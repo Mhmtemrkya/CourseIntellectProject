@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
   FileText, Video, Plus, Search, Eye, Upload, FolderOpen, CheckCircle2, Play, Pause, Download, Maximize2, Rewind, FastForward, Trash2,
-  CloudUpload, HardDrive, Sparkles, CalendarClock, Settings2, ImageIcon, X, ClipboardCheck, FileUp, ChevronLeft, ChevronRight,
+  CloudUpload, HardDrive, Sparkles, Settings2, ImageIcon, X, ClipboardCheck, FileUp, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { FeatureGate } from '../../components/FeatureGate';
@@ -14,7 +14,6 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
-import PremiumResourceCard from '../../components/ui/PremiumResourceCard';
 import { AnimatedValue, PremiumPanel } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
@@ -22,7 +21,6 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createContent, deleteContent, fetchContents, fetchStudents, saveContentExtras, updateContent, updateContentStatus, uploadFile } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
-import { formatDate } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
 import type { ContentDto, CreateContentRequest } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';

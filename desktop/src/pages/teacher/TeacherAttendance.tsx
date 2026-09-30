@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  BarChart3, CalendarDays, Check, CheckCircle2, ChevronDown, ClipboardList,
-  Clock3, Download, FileText, History, Info, MoreVertical, QrCode, RefreshCw,
-  Save, Search, Users, XCircle,
+  CalendarDays, Check, CheckCircle2, ClipboardList,
+  Clock3, Download, History, Info, MoreVertical, QrCode,
+  Save, Search, XCircle,
 } from 'lucide-react';
 import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';

@@ -2,23 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  BookOpen, Video, FileText, Play, Pause, Clock, CheckCircle, Download, Eye, Maximize2, Rewind, FastForward,
+  BookOpen, Video, FileText, Play, Pause, CheckCircle, Download, Eye, Maximize2, Rewind, FastForward,
   Star, Share2, NotebookPen, ThumbsUp, MessageCircle, ListChecks,
 } from 'lucide-react';
-import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Progress } from '../../components/ui/progress';
 import { Textarea } from '../../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
-import PremiumResourceCard from '../../components/ui/PremiumResourceCard';
 import { PremiumPanel, PremiumListRow } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import {
   addContentComment,
   fetchContentEngagement,
@@ -45,11 +41,6 @@ const SUBJECT_TONES = ['from-sky-400 to-blue-600', 'from-violet-400 to-fuchsia-6
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
 };
 
 function normalizeType(value: string | null | undefined = ''): 'video' | 'pdf' | 'file' {
@@ -97,9 +88,6 @@ export default function StudentContent() {
   const navigate = useNavigate();
   const [content, setContent] = useState<ContentDto[]>([]);
   const [examResults, setExamResults] = useState<ExamResultDto[]>([]);
-  const [search, setSearch] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('Tümü');
-  const [activeTab, setActiveTab] = useState('all');
   const [selectedItem, setSelectedItem] = useState<ContentDto | null>(null);
   const [playSelectedVideo, setPlaySelectedVideo] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -244,7 +232,6 @@ export default function StudentContent() {
     return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
   };
 
-  const subjects = useMemo(() => ['Tümü', ...new Set(content.map((item) => item.subject).filter(Boolean))], [content]);
 
   const selectedPlaylist = useMemo(() => {
     if (!selectedItem || normalizeType(selectedItem.fileType) !== 'video') {
@@ -345,18 +332,6 @@ export default function StudentContent() {
     };
     saveContentUserState(selectedItem.id, payload).catch(() => {});
   }, [favoriteIds, lessonNotes, likedIds, noteDraft, selectedItem]);
-
-  const filteredContent = useMemo(() => content.filter((item) => {
-    const normalizedType = normalizeType(item.fileType);
-    const matchesSearch = `${item.title} ${item.subject} ${item.teacher}`.toLowerCase().includes(search.toLowerCase());
-    const matchesSubject = selectedSubject === 'Tümü' || item.subject === selectedSubject;
-    const matchesTab = activeTab === 'all'
-      || (activeTab === 'video' && normalizedType === 'video')
-      || (activeTab === 'pdf' && normalizedType === 'pdf')
-      || (activeTab === 'inprogress' && Number(item.progress) > 0 && Number(item.progress) < 100)
-      || (activeTab === 'completed' && Number(item.progress) >= 100);
-    return matchesSearch && matchesSubject && matchesTab;
-  }), [activeTab, content, search, selectedSubject]);
 
   const stats = {
     total: content.length,

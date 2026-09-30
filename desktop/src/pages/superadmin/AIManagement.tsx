@@ -225,7 +225,7 @@ export default function AIManagement() {
           { label: 'Ort. Yanıt', value: `${usageStats.avgResponseTime}s`, icon: Clock, color: 'from-purple-500 to-pink-500' },
           { label: 'Toplam Maliyet', value: `$${usageStats.totalCost}`, icon: DollarSign, color: 'from-yellow-500 to-orange-500' },
           { label: 'Aktif Kullanıcı', value: usageStats.activeUsers.toLocaleString(), icon: Users, color: 'from-teal-500 to-cyan-500' },
-        ].map((stat, index) => (
+        ].map((stat) => (
           <motion.div
             key={stat.label}
             variants={itemVariants}

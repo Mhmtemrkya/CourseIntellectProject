@@ -38,7 +38,7 @@ import {
   type PillTone,
 } from './parentPremiumUi';
 import { errorMessage } from '../../lib/errors';
-import type { FinanceInstallmentDto, StudentFinanceAccountDto } from '../../types/api/generated';
+import type { StudentFinanceAccountDto } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
 
 type InstallmentStatusMeta = readonly [label: string, tone: PillTone];

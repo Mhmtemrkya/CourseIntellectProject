@@ -219,7 +219,6 @@ interface ConsentDialogProps {
 
 function ConsentDialog({
   open,
-  setOpen,
   understoodKvkk,
   setUnderstoodKvkk,
   acceptedTerms,
