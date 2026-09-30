@@ -449,6 +449,9 @@ public sealed class PlannedExamsController(
     };
 
     [HttpGet("{id:guid}/submissions")]
+    // GÜVENLİK: tüm öğrencilerin cevapları, puanları ve doğru cevaplar döner;
+    // yalnız sınavı yöneten personel görür (yalnız [Authorize] idi).
+    [Authorize(Roles = "Teacher,Admin,Administrative,BranchManager")]
     public async Task<IActionResult> GetSubmissions(Guid id, CancellationToken cancellationToken)
     {
         var items = await CompatibilitySnapshotStore.LoadListAsync<PlannedExamSnapshot>(dbContext, SectionKey, cancellationToken);

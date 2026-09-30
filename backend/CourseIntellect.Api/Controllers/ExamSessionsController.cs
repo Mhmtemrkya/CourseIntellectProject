@@ -1,3 +1,4 @@
+using CourseIntellect.Api.Security;
 using CourseIntellect.Application.DTOs.ExamSolving;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
@@ -21,6 +22,13 @@ public sealed class ExamSessionsController(
     [HttpPost("start")]
     public async Task<IActionResult> Start([FromBody] ExamSessionStartRequest request, CancellationToken cancellationToken)
     {
+        // Güvenlik: personel dışındaki kullanıcı sınavı yalnız kendi adına başlatır.
+        if (!IsStaff())
+        {
+            request.StudentUsername = StudentScope.ResolveUsername(User);
+            request.StudentName = StudentScope.ResolveDisplayName(User);
+        }
+
         var resolvedClass = await ResolveClassName(request.StudentUsername, request.ClassName, cancellationToken);
         var resolvedStudentName = await ResolveStudentName(request.StudentUsername, request.StudentName, cancellationToken);
 
@@ -127,7 +135,7 @@ public sealed class ExamSessionsController(
     {
         var sessions = await CompatibilitySnapshotStore.LoadListAsync<ExamSessionSnapshot>(dbContext, SectionKey, cancellationToken);
         var session = sessions.FirstOrDefault(item => item.Id == id);
-        return session is null ? NotFound() : Ok(MapSession(session));
+        return session is null || !CanAccess(session) ? NotFound() : Ok(MapSession(session));
     }
 
     [HttpPost("{id:guid}/answers")]
@@ -135,7 +143,7 @@ public sealed class ExamSessionsController(
     {
         var sessions = await CompatibilitySnapshotStore.LoadListAsync<ExamSessionSnapshot>(dbContext, SectionKey, cancellationToken);
         var session = sessions.FirstOrDefault(item => item.Id == id);
-        if (session is null)
+        if (session is null || !CanAccess(session))
         {
             return NotFound();
         }
@@ -196,7 +204,7 @@ public sealed class ExamSessionsController(
     {
         var sessions = await CompatibilitySnapshotStore.LoadListAsync<ExamSessionSnapshot>(dbContext, SectionKey, cancellationToken);
         var session = sessions.FirstOrDefault(item => item.Id == id);
-        if (session is null)
+        if (session is null || !CanAccess(session))
         {
             return NotFound();
         }
@@ -703,6 +711,18 @@ public sealed class ExamSessionsController(
             return targets.Contains("Tüm Sınıflar") || targets.Contains("Tum Siniflar") || targets.Contains(className.Trim());
         }).ToList();
     }
+
+    private bool IsStaff()
+        => User.IsInRole("Admin") || User.IsInRole("Administrative") || User.IsInRole("Teacher") || User.IsInRole("BranchManager");
+
+    /// <summary>
+    /// Güvenlik: oturum kimliğini bilen herkes başkasının sınavını okuyup cevap
+    /// yazabiliyordu. Personel dışındaki kullanıcı yalnız kendi oturumuna erişir.
+    /// </summary>
+    private bool CanAccess(ExamSessionSnapshot session)
+        => IsStaff()
+            || CompatibilitySnapshotStore.NormalizeText(session.StudentUsername)
+                == CompatibilitySnapshotStore.NormalizeText(StudentScope.ResolveUsername(User));
 
     private static object MapSession(ExamSessionSnapshot session)
     {
