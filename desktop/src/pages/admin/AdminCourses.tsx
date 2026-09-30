@@ -30,8 +30,27 @@ import {
   fetchCourses,
   updateCourse,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { CourseDto } from '../../types/api/generated';
 
-const emptyForm = {
+interface CourseForm {
+  name: string;
+  description: string;
+  category: string;
+  price: string;
+  duration: string;
+  level: string;
+  isActive: boolean;
+}
+
+interface CourseAnnounce {
+  enabled: boolean;
+  audiences: string[];
+  className: string;
+  message: string;
+}
+
+const emptyForm: CourseForm = {
   name: '',
   description: '',
   category: '',
@@ -48,30 +67,30 @@ const ANNOUNCE_ROLES = [
   { key: 'Ogretmen', label: 'Öğretmen', targetRole: 'Teacher' },
 ];
 
-const emptyAnnounce = {
+const emptyAnnounce: CourseAnnounce = {
   enabled: false,
   audiences: [],
   className: '',
   message: '',
 };
 
-function moneyLabel(value) {
+function moneyLabel(value: unknown): string {
   const parsed = Number(value || 0);
   return Number.isFinite(parsed) ? formatMoney(parsed) : String(value || '-');
 }
 
 export default function AdminCourses() {
   const { toast } = useToast();
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState<CourseDto[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [formOpen, setFormOpen] = useState(false);
-  const [editingCourse, setEditingCourse] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [announce, setAnnounce] = useState(emptyAnnounce);
-  const [classes, setClasses] = useState([]);
+  const [editingCourse, setEditingCourse] = useState<CourseDto | null>(null);
+  const [form, setForm] = useState<CourseForm>(emptyForm);
+  const [announce, setAnnounce] = useState<CourseAnnounce>(emptyAnnounce);
+  const [classes, setClasses] = useState<string[]>([]);
 
   const loadCourses = useCallback(async () => {
     try {
@@ -80,21 +99,21 @@ export default function AdminCourses() {
       const payload = await fetchCourses({ search: search.trim() || undefined });
       setCourses(Array.isArray(payload) ? payload : []);
     } catch (err) {
-      setError(err.message || 'Kurslar alınamadı.');
+      setError(errorMessage(err, 'Kurslar alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [search]);
 
   useEffect(() => {
-    loadCourses();
+    void loadCourses();
   }, [loadCourses]);
 
   useEffect(() => {
     fetchClasses().then((list) => setClasses(Array.isArray(list) ? list : [])).catch(() => setClasses([]));
   }, []);
 
-  const toggleAudience = (key) => {
+  const toggleAudience = (key: string) => {
     setAnnounce((prev) => ({
       ...prev,
       audiences: prev.audiences.includes(key)
@@ -116,7 +135,7 @@ export default function AdminCourses() {
     setFormOpen(true);
   };
 
-  const openEdit = (course) => {
+  const openEdit = (course: CourseDto) => {
     setEditingCourse(course);
     setAnnounce(emptyAnnounce);
     setForm({
@@ -132,7 +151,7 @@ export default function AdminCourses() {
   };
 
   // Kurs duyurusunu seçilen rollerin duyurularına ekler ve mobil bildirim olarak düşer.
-  const publishCourseAnnouncement = async (courseName) => {
+  const publishCourseAnnouncement = async (courseName: string) => {
     const title = `${courseName} kursu açıldı`;
     const detail = announce.message.trim() || `${courseName} kursumuz açıldı. Detaylar için kurum yönetimi ile iletişime geçebilirsiniz.`;
     try {
@@ -153,7 +172,7 @@ export default function AdminCourses() {
       }));
       toast({ title: 'Duyuru yayınlandı', description: 'İlgili rollere duyuru ve bildirim gönderildi.' });
     } catch (err) {
-      toast({ title: 'Duyuru gönderilemedi', description: err.message || 'Kurs kaydedildi ancak duyuru yayınlanamadı.', variant: 'destructive' });
+      toast({ title: 'Duyuru gönderilemedi', description: errorMessage(err, 'Kurs kaydedildi ancak duyuru yayınlanamadı.'), variant: 'destructive' });
     }
   };
 
@@ -195,13 +214,13 @@ export default function AdminCourses() {
       setAnnounce(emptyAnnounce);
       await loadCourses();
     } catch (err) {
-      toast({ title: err.message || 'Kurs kaydedilemedi.', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Kurs kaydedilemedi.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (course) => {
+  const handleDelete = async (course: CourseDto) => {
     const confirmed = window.confirm(`${course.name} kursu silinsin mi?`);
     if (!confirmed) return;
 
@@ -210,7 +229,7 @@ export default function AdminCourses() {
       toast({ title: 'Kurs silindi.' });
       await loadCourses();
     } catch (err) {
-      toast({ title: err.message || 'Kurs silinemedi.', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Kurs silinemedi.'), variant: 'destructive' });
     }
   };
 

@@ -12,11 +12,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchNotifications } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { NotificationDto } from '../../types/api/generated';
 
 export default function AdministrativeNotifications() {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState([]);
-  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [notifications, setNotifications] = useState<NotificationDto[]>([]);
+  const [selectedNotification, setSelectedNotification] = useState<NotificationDto | null>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,25 +27,25 @@ export default function AdministrativeNotifications() {
     try {
       setLoading(true);
       setError('');
-      setNotifications(await fetchNotifications('Administrative').catch(() => []));
+      setNotifications((await fetchNotifications('Administrative').catch(() => null)) ?? []);
     } catch (err) {
-      setError(err.message || 'İdari bildirimler alınamadı.');
+      setError(errorMessage(err, 'İdari bildirimler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadNotifications(); }, [loadNotifications]);
+  useEffect(() => { void loadNotifications(); }, [loadNotifications]);
 
-  const resolveNotificationRoute = (item) => {
-    const text = `${item?.title || ''} ${item?.detail || ''}`.toLowerCase();
+  const resolveNotificationRoute = (item: NotificationDto) => {
+    const text = `${item.title || ''} ${item.message || ''}`.toLowerCase();
     if (/finans|tahsilat|odeme|fatura/.test(text)) return '/finance/dashboard';
     if (/mesaj|gorusme|talep|iletisim/.test(text)) return '/chat';
     if (/evrak|belge|duyuru/.test(text)) return '/admin/documents';
     return '/admin/task-center';
   };
 
-  const filteredNotifications = useMemo(() => notifications.filter((item) => `${item?.title || ''} ${item?.detail || ''}`.toLowerCase().includes(search.toLowerCase())), [notifications, search]);
+  const filteredNotifications = useMemo(() => notifications.filter((item) => `${item.title || ''} ${item.message || ''}`.toLowerCase().includes(search.toLowerCase())), [notifications, search]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
@@ -58,8 +60,8 @@ export default function AdministrativeNotifications() {
         {[
           [notifications.length, 'Toplam Bildirim'],
           [notifications.filter((item) => !item.isRead).length, 'Yeni'],
-          [notifications.filter((item) => /finans|odeme|fatura/i.test(`${item.title} ${item.message || item.detail || ''}`)).length, 'Finans'],
-          [notifications.filter((item) => /mesaj|gorusme|talep/i.test(`${item.title} ${item.message || item.detail || ''}`)).length, 'Etkileşim'],
+          [notifications.filter((item) => /finans|odeme|fatura/i.test(`${item.title} ${item.message || ''}`)).length, 'Finans'],
+          [notifications.filter((item) => /mesaj|gorusme|talep/i.test(`${item.title} ${item.message || ''}`)).length, 'Etkileşim'],
         ].map(([value, label]) => (
           <Card key={label}>
             <CardContent className="p-5">
@@ -94,7 +96,7 @@ export default function AdministrativeNotifications() {
             <CardHeader><CardTitle className="text-lg flex items-center gap-2"><BellRing className="h-5 w-5 text-brand-primary" />{item.title}</CardTitle></CardHeader>
             <CardContent className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-sm text-muted-foreground">{item.message || item.detail || 'Detay yok'}</p>
+                <p className="text-sm text-muted-foreground">{item.message || 'Detay yok'}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{item.isRead ? 'Okundu' : 'Yeni'}</Badge>
@@ -115,7 +117,7 @@ export default function AdministrativeNotifications() {
           {selectedNotification ? (
             <div className="space-y-4">
               <div className="rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">
-                {selectedNotification.message || selectedNotification.detail || 'Bu bildirim için ek açıklama bulunmuyor.'}
+                {selectedNotification.message || 'Bu bildirim için ek açıklama bulunmuyor.'}
               </div>
               <div className="flex items-center justify-between gap-3 rounded-xl border p-4 text-sm">
                 <span className="text-muted-foreground">Durum</span>
@@ -124,7 +126,7 @@ export default function AdministrativeNotifications() {
             </div>
           ) : null}
           <DialogFooter>
-            <Button variant="outline" onClick={() => navigate(resolveNotificationRoute(selectedNotification))}>
+            <Button variant="outline" onClick={() => { if (selectedNotification) navigate(resolveNotificationRoute(selectedNotification)); }}>
               <ExternalLink className="mr-2 h-4 w-4" />
               İlgili Akışı Aç
             </Button>

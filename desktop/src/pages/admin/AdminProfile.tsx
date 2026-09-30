@@ -20,8 +20,11 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Switch } from '../../components/ui/switch';
 import { useApp } from '../../context/AppContext';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme, type ThemeSetting } from '../../context/ThemeContext';
 import { useToast } from '../../hooks/use-toast';
+import type { IconComponent } from '../../types/ui';
+
+type PreferenceKey = 'desktop' | 'finance' | 'announcements' | 'meetings';
 
 export default function AdminProfile() {
   const navigate = useNavigate();
@@ -34,7 +37,7 @@ export default function AdminProfile() {
     branch: user?.branch || '',
     department: user?.department || '',
   });
-  const [preferences, setPreferences] = useState({
+  const [preferences, setPreferences] = useState<Record<PreferenceKey, boolean>>({
     desktop: true,
     finance: true,
     announcements: true,
@@ -116,11 +119,11 @@ export default function AdminProfile() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {[
+            {([
               ['light', 'Açık', Sun],
               ['dark', 'Koyu', Moon],
               ['system', 'Sistem', Settings],
-            ].map(([value, label, Icon]) => (
+            ] satisfies ReadonlyArray<readonly [ThemeSetting, string, IconComponent]>).map(([value, label, Icon]) => (
               <Button
                 key={value}
                 variant={theme === value ? 'default' : 'outline'}
@@ -144,12 +147,12 @@ export default function AdminProfile() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[
+            {([
               ['desktop', 'Masaüstü bildirimleri'],
               ['finance', 'Finans uyarıları'],
               ['announcements', 'Duyuru geri bildirimleri'],
               ['meetings', 'Görüşme akışı'],
-            ].map(([key, label]) => (
+            ] satisfies ReadonlyArray<readonly [PreferenceKey, string]>).map(([key, label]) => (
               <div key={key} className="flex items-center justify-between rounded-xl border p-4">
                 <div>
                   <p className="font-medium">{label}</p>
@@ -169,11 +172,11 @@ export default function AdminProfile() {
             <CardTitle>Kurum ve Yasal Alanlar</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {[
+            {([
               ['Kurum Ayarları', 'Logo, renk, kampüs ve kurumsal kimlik', Building2, '/settings'],
               ['Yasal Dokümanlar', 'KVKK, sözleşmeler ve izin metinleri', FileText, '/admin/documents'],
               ['Bildirim Merkezi', 'Kurum yöneticisi bildirimleri', Bell, '/admin/notifications'],
-            ].map(([title, detail, Icon, path]) => (
+            ] satisfies ReadonlyArray<readonly [string, string, IconComponent, string]>).map(([title, detail, Icon, path]) => (
               <button
                 key={title}
                 type="button"

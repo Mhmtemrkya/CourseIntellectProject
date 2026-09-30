@@ -6,13 +6,16 @@ import { Card, CardContent } from '../../components/ui/card';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { fetchAdminDashboardData } from '../../lib/api/dashboardData';
+import { fetchAdminDashboardData, type AdminDashboardData } from '../../lib/api/dashboardData';
 import { fetchAdminOverview } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { AdminOverview } from '../../lib/api/adminWork';
+import type { IconComponent } from '../../types/ui';
 
 export default function AdminKpiDashboard() {
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
-  const [overview, setOverview] = useState(null);
+  const [data, setData] = useState<AdminDashboardData | null>(null);
+  const [overview, setOverview] = useState<Partial<AdminOverview> | null>(null);
   const [selectedClass, setSelectedClass] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -30,17 +33,17 @@ export default function AdminKpiDashboard() {
       setSelectedClass((current) => current || firstClass);
       setOverview(ov);
     } catch (err) {
-      setError(err.message || 'KPI verisi alınamadı.');
+      setError(errorMessage(err, 'KPI verisi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadKpi(); }, [loadKpi]);
+  useEffect(() => { void loadKpi(); }, [loadKpi]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
-  const stats = data?.stats || {};
+  const stats = data?.stats;
   const responseRows = data?.questionResponseByClass || [];
   const classOptions = responseRows.length > 0 ? responseRows.map((item) => item.className) : (data?.classOptions || []);
   const selectedResponse = responseRows.find((item) => item.className === selectedClass) || responseRows[0] || null;
@@ -52,11 +55,11 @@ export default function AdminKpiDashboard() {
       </div>
       {error ? <ErrorBanner title="Kurum özeti verisi alınamadı" message={error} onRetry={loadKpi} /> : null}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          ['Öğrenci', stats.totalStudents || 0, Users, '/students'],
-          ['Öğretmen', stats.totalTeachers || 0, School, '/teachers'],
-          ['Sınıf', stats.totalClasses || 0, BookOpen, '/classes'],
-        ].map(([label, value, Icon, route]) => (
+        {([
+          ['Öğrenci', stats?.totalStudents || 0, Users, '/students'],
+          ['Öğretmen', stats?.totalTeachers || 0, School, '/teachers'],
+          ['Sınıf', stats?.totalClasses || 0, BookOpen, '/classes'],
+        ] satisfies ReadonlyArray<readonly [string, number, IconComponent, string]>).map(([label, value, Icon, route]) => (
           <Card key={label} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(route)}><CardContent className="p-5 flex items-center gap-4"><Icon className="h-8 w-8 text-brand-primary" /><div><p className="text-2xl font-bold">{value}</p><p className="text-sm text-muted-foreground">{label}</p></div></CardContent></Card>
         ))}
       </div>
@@ -115,12 +118,12 @@ export default function AdminKpiDashboard() {
         <div>
           <h2 className="mb-3 text-lg font-bold">İdari Bekleyenler</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
+            {([
               ['Bekleyen Onay', overview.pendingApprovals || 0, ShieldCheck, '/admin/personnel-approvals'],
               ['İzin Talebi', overview.pendingLeaves || 0, CalendarClock, '/admin/staff-hr'],
               ['Açık Görev', overview.openTasks || 0, ClipboardList, '/admin/task-center'],
               ['Süresi Dolan Evrak', overview.expiringDocuments || 0, FileWarning, '/admin/documents'],
-            ].map(([label, value, Icon, route]) => (
+            ] satisfies ReadonlyArray<readonly [string, number, IconComponent, string]>).map(([label, value, Icon, route]) => (
               <Card key={label} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(route)}>
                 <CardContent className="p-5 flex items-center gap-3">
                   <Icon className="h-7 w-7 text-brand-primary" />

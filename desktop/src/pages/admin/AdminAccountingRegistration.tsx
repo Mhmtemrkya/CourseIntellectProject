@@ -29,6 +29,11 @@ import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 import {
   isValidTcKimlik, isValidTrPhone, maskPositiveInteger, maskTcKimlik, maskTrPhone,
 } from '../../lib/inputMasks';
+import { errorMessage } from '../../lib/errors';
+import type { StaffCredentialsDto } from '../../types/api/generated';
+
+type AccountingForm = typeof emptyForm;
+type IssuedCredentials = Partial<StaffCredentialsDto> & { requestedFullName: string };
 
 const emptyForm = {
   fullName: '',
@@ -47,11 +52,11 @@ export default function AdminAccountingRegistration() {
   const { toast } = useToast();
   const { user } = useApp();
   const tenantName = user?.tenant || '';
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<AccountingForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [credentials, setCredentials] = useState(null);
+  const [credentials, setCredentials] = useState<IssuedCredentials | null>(null);
 
-  const handleChange = (field, value) => {
+  const handleChange = (field: keyof AccountingForm, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -107,7 +112,7 @@ export default function AdminAccountingRegistration() {
       toast({ title: 'Muhasebe hesabı oluşturuldu.', description: 'Bilgiler PDF olarak indirildi.' });
     } catch (err) {
       toast({
-        title: err.message || 'Muhasebe kaydı oluşturulamadı.',
+        title: errorMessage(err, 'Muhasebe kaydı oluşturulamadı.'),
         variant: 'destructive',
       });
     } finally {

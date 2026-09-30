@@ -17,30 +17,33 @@ import {
 } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { AdminDocumentDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
 const CATEGORIES = ['Genel', 'Gelen Evrak', 'Giden Evrak', 'Sözleşme', 'Politika', 'Resmi Yazı'];
-const DIRECTIONS = [['Internal', 'Kurum İçi'], ['Incoming', 'Gelen'], ['Outgoing', 'Giden']];
+const DIRECTIONS: ReadonlyArray<readonly [string, string]> = [['Internal', 'Kurum İçi'], ['Incoming', 'Gelen'], ['Outgoing', 'Giden']];
 
-function fileUrl(path) {
+function fileUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
   return `${desktopApiBaseUrl}/${String(path).replace(/^\/+/, '')}`;
 }
 
-function safeName(value) {
+function safeName(value: string | null | undefined): string {
   return String(value || 'belge').replace(/[^\w\-.]+/g, '-').replace(/-+/g, '-').slice(0, 80);
 }
 
 // Belgeyi diske indirir. Sunucudan blob olarak çekilir; doğrudan <a download>
 // çapraz kaynak (farklı origin) dosyalarda tarayıcı tarafından yok sayılıyordu.
-async function downloadDocument(url, title) {
+async function downloadDocument(url: string, title: string) {
   try {
     const response = await fetch(url, { credentials: 'include' });
     const blob = await response.blob();
     const objectUrl = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = objectUrl;
-    const extension = (url.split('.').pop() || '').split('?')[0].slice(0, 5);
+    const extension = ((url.split('.').pop() || '').split('?')[0] ?? '').slice(0, 5);
     anchor.download = `${safeName(title)}${extension ? `.${extension}` : ''}`;
     document.body.appendChild(anchor);
     anchor.click();
@@ -52,7 +55,7 @@ async function downloadDocument(url, title) {
 }
 
 // Gizli iframe'e yükleyip yazdırma diyaloğunu açar (PDF ve görseller için çalışır).
-function printDocument(url, title) {
+function printDocument(url: string, title: string) {
   const frame = document.createElement('iframe');
   frame.style.position = 'fixed';
   frame.style.right = '0';
@@ -64,8 +67,8 @@ function printDocument(url, title) {
   frame.src = url;
   frame.onload = () => {
     try {
-      frame.contentWindow.focus();
-      frame.contentWindow.print();
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
     } catch {
       // Farklı origin'deki dosyaya iframe'den erişilemiyorsa yeni sekmede aç.
       window.open(url, '_blank', 'noopener,noreferrer');
@@ -75,7 +78,7 @@ function printDocument(url, title) {
   document.body.appendChild(frame);
 }
 
-function expiryInfo(value) {
+function expiryInfo(value: string | null | undefined): { tone: string; label: string; icon: IconComponent } | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
@@ -87,28 +90,28 @@ function expiryInfo(value) {
 
 export default function AdministrativeDocuments() {
   const { toast } = useToast();
-  const [docs, setDocs] = useState([]);
+  const [docs, setDocs] = useState<AdminDocumentDto[]>([]);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ title: '', category: 'Gelen Evrak', direction: 'Incoming', documentNo: '', relatedParty: '', expiryDate: '', note: '' });
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState<File | null>(null);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      setDocs(await fetchAdminDocuments(categoryFilter ? { category: categoryFilter } : undefined));
+      setDocs((await fetchAdminDocuments(categoryFilter ? { category: categoryFilter } : undefined)) ?? []);
     } catch (err) {
-      setError(err.message || 'Belgeler alınamadı.');
+      setError(errorMessage(err, 'Belgeler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [categoryFilter]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -126,7 +129,7 @@ export default function AdministrativeDocuments() {
         const fd = new FormData();
         fd.append('file', file);
         const res = await uploadFile(fd, 'admin-documents');
-        uploadedUrl = res?.fileUrl || res?.url || res?.path || '';
+        uploadedUrl = res?.fileUrl || '';
         contentType = file.type || '';
       }
       await createAdminDocument({
@@ -145,18 +148,18 @@ export default function AdministrativeDocuments() {
       setFile(null);
       await load();
     } catch (err) {
-      toast({ title: 'Belge eklenemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Belge eklenemedi', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 
-  const archive = async (item) => {
+  const archive = async (item: AdminDocumentDto) => {
     try {
       setBusy(true);
       await archiveAdminDocument(item.id);
       setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, status: 'Archived' } : d)));
       toast({ title: 'Belge arşivlendi' });
     } catch (err) {
-      toast({ title: 'İşlem başarısız', description: err.message, variant: 'destructive' });
+      toast({ title: 'İşlem başarısız', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 

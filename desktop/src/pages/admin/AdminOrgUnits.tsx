@@ -14,35 +14,37 @@ import { useToast } from '../../hooks/use-toast';
 import {
   fetchOrgUnits, createOrgUnit, updateOrgUnit, deleteOrgUnit, backfillBranch,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { OrgUnitDto } from '../../types/api/generated';
 
 const UNIT_TYPES = ['Şube', 'Kampüs', 'Birim', 'Departman'];
 const emptyForm = { name: '', unitType: 'Birim', parentUnitId: '', managerName: '', note: '' };
 
 export default function AdminOrgUnits() {
   const { toast } = useToast();
-  const [units, setUnits] = useState([]);
+  const [units, setUnits] = useState<OrgUnitDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      setUnits(await fetchOrgUnits());
+      setUnits((await fetchOrgUnits()) ?? []);
     } catch (err) {
-      setError(err.message || 'Birimler alınamadı.');
+      setError(errorMessage(err, 'Birimler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const roots = useMemo(() => units.filter((u) => !u.parentUnitId), [units]);
-  const childrenOf = useCallback((id) => units.filter((u) => u.parentUnitId === id), [units]);
+  const childrenOf = useCallback((id: string) => units.filter((u) => u.parentUnitId === id), [units]);
 
   const resetForm = () => { setForm(emptyForm); setEditingId(null); };
 
@@ -63,16 +65,16 @@ export default function AdminOrgUnits() {
       resetForm();
       await load();
     } catch (err) {
-      toast({ title: 'İşlem başarısız', description: err.message, variant: 'destructive' });
+      toast({ title: 'İşlem başarısız', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 
-  const startEdit = (u) => {
+  const startEdit = (u: OrgUnitDto) => {
     setEditingId(u.id);
     setForm({ name: u.name, unitType: u.unitType, parentUnitId: u.parentUnitId || '', managerName: u.managerName || '', note: u.note || '' });
   };
 
-  const remove = async (u) => {
+  const remove = async (u: OrgUnitDto) => {
     // eslint-disable-next-line no-alert
     if (!window.confirm(`"${u.name}" birimini silmek istediğinize emin misiniz? Alt birimler köke taşınır.`)) return;
     try {
@@ -80,11 +82,11 @@ export default function AdminOrgUnits() {
       await deleteOrgUnit(u.id);
       await load();
     } catch (err) {
-      toast({ title: 'Silinemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Silinemedi', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 
-  const handleBackfill = async (u) => {
+  const handleBackfill = async (u: OrgUnitDto) => {
     if (!window.confirm(`Şubesi atanmamış tüm kayıtlar (öğrenci, personel, finans, sınav, nöbet, devamsızlık) "${u.name}" şubesine taşınsın mı? Bu işlem geri alınamaz.`)) return;
     try {
       setBusy(true);
@@ -92,13 +94,13 @@ export default function AdminOrgUnits() {
       toast({ title: 'Şubeye taşındı', description: `${result?.updated || 0} kayıt "${u.name}" şubesine atandı.` });
       await load();
     } catch (err) {
-      toast({ title: 'İşlem başarısız', description: err?.response?.data?.message || err.message, variant: 'destructive' });
+      toast({ title: 'İşlem başarısız', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
-  const renderUnit = (u, depth = 0) => (
+  const renderUnit = (u: OrgUnitDto, depth = 0): JSX.Element => (
     <div key={u.id}>
       <div className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3" style={{ marginLeft: depth * 20 }}>
         <div className="flex items-center gap-2 min-w-0">

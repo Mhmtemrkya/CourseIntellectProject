@@ -16,16 +16,18 @@ import {
   fetchStaff, fetchLeaves, createLeave, decideLeave, fetchLeaveBalance,
   fetchStaffAssets, assignStaffAsset, returnStaffAsset,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { LeaveBalanceDto, StaffAssetDto, StaffLeaveDto, StaffSummaryDto } from '../../types/api/generated';
 
 const LEAVE_TYPES = ['Yıllık', 'Mazeret', 'Hastalık', 'Ücretsiz'];
-const STATUS_LABEL = { Pending: 'İncelemede', Approved: 'Onaylandı', Rejected: 'Reddedildi' };
+const STATUS_LABEL: Partial<Record<string, string>> = { Pending: 'İncelemede', Approved: 'Onaylandı', Rejected: 'Reddedildi' };
 
 export default function AdminStaffHr() {
   const { toast } = useToast();
-  const [staff, setStaff] = useState([]);
-  const [leaves, setLeaves] = useState([]);
-  const [assets, setAssets] = useState([]);
-  const [balance, setBalance] = useState(null);
+  const [staff, setStaff] = useState<StaffSummaryDto[]>([]);
+  const [leaves, setLeaves] = useState<StaffLeaveDto[]>([]);
+  const [assets, setAssets] = useState<StaffAssetDto[]>([]);
+  const [balance, setBalance] = useState<LeaveBalanceDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -46,17 +48,17 @@ export default function AdminStaffHr() {
       setLeaves(leaveItems);
       setAssets(assetItems);
     } catch (err) {
-      setError(err.message || 'Personel İK verileri alınamadı.');
+      setError(errorMessage(err, 'Personel İK verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const staffNames = useMemo(() => staff.map((s) => s.fullName).filter(Boolean), [staff]);
 
-  const loadBalance = useCallback(async (name) => {
+  const loadBalance = useCallback(async (name: string) => {
     if (!name) { setBalance(null); return; }
     try { setBalance(await fetchLeaveBalance(name)); } catch { setBalance(null); }
   }, []);
@@ -79,19 +81,19 @@ export default function AdminStaffHr() {
       setLeaveForm({ staffName: '', leaveType: 'Yıllık', startDate: '', endDate: '', reason: '' });
       await load();
     } catch (err) {
-      toast({ title: 'İzin oluşturulamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'İzin oluşturulamadı', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 
-  const decide = async (item, status) => {
+  const decide = async (item: StaffLeaveDto, status: string) => {
     try {
       setBusy(true);
       const updated = await decideLeave(item.id, { status });
-      setLeaves((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...updated } : row)));
+      setLeaves((prev) => prev.map((row) => (row.id === item.id && updated ? { ...row, ...updated } : row)));
       toast({ title: 'İzin güncellendi', description: `${item.staffName} → ${STATUS_LABEL[status] || status}` });
-      if (balance && item.staffName === leaveForm.staffName) loadBalance(item.staffName);
+      if (balance && item.staffName === leaveForm.staffName) void loadBalance(item.staffName);
     } catch (err) {
-      toast({ title: 'İşlem başarısız', description: err.message, variant: 'destructive' });
+      toast({ title: 'İşlem başarısız', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 
@@ -112,18 +114,18 @@ export default function AdminStaffHr() {
       setAssetForm({ staffName: '', assetName: '', assetCode: '', note: '' });
       await load();
     } catch (err) {
-      toast({ title: 'Zimmet atanamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Zimmet atanamadı', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 
-  const returnAsset = async (item) => {
+  const returnAsset = async (item: StaffAssetDto) => {
     try {
       setBusy(true);
       const updated = await returnStaffAsset(item.id);
-      setAssets((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...updated } : row)));
+      setAssets((prev) => prev.map((row) => (row.id === item.id && updated ? { ...row, ...updated } : row)));
       toast({ title: 'Zimmet iade alındı' });
     } catch (err) {
-      toast({ title: 'İşlem başarısız', description: err.message, variant: 'destructive' });
+      toast({ title: 'İşlem başarısız', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 

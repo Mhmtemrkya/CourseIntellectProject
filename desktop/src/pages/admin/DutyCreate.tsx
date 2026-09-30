@@ -16,6 +16,8 @@ import { PremiumPanel } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchStaff, createDuty } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { StaffSummaryDto } from '../../types/api/generated';
 
 const DUTY_TYPES = ['Sabah Nöbeti', 'Öğle Arası', 'İdari Nöbet', 'Diğer'];
 const LOCATIONS = [
@@ -25,20 +27,25 @@ const LOCATIONS = [
 ];
 const DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
-function teacherId(t) {
-  return String(t.id || t.userId || t.staffUserId || t.fullName || t.name || '');
+// Nöbet kaydındaki teacherUserId kullanıcı kimliğidir (sunucu "nöbetlerim"i buna göre
+// eşler). Personel listesindeki `id` profil kimliğidir; eskiden o gönderiliyordu ve
+// kimlikle eşleşme hiç çalışmıyor, yalnız ada göre eşleşme kalıyordu.
+function teacherId(t: StaffSummaryDto): string {
+  return String(t.userId || t.id || t.fullName || '');
 }
-function teacherName(t) {
-  return t.fullName || t.name || t.staffName || '';
+function teacherName(t: StaffSummaryDto): string {
+  return t.fullName || '';
 }
-function teacherBranch(t) {
-  return t.branch || t.subject || t.title || t.role || '';
+// Branş personelin departmentOrBranch alanıdır; eskiden olmayan alanlardan sonra
+// rol ("Teacher") branş diye kaydediliyordu.
+function teacherBranch(t: StaffSummaryDto): string {
+  return t.departmentOrBranch || '';
 }
-function teacherUsername(t) {
-  return t.username || t.userName || t.staffUsername || '';
+function teacherUsername(t: StaffSummaryDto): string {
+  return t.username || '';
 }
 const GUID_RE = /^[0-9a-fA-F-]{36}$/;
-function initials(name) {
+function initials(name: string): string {
   return String(name || '?').split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '?';
 }
 
@@ -55,14 +62,14 @@ export default function DutyCreate() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [form, setForm] = useState(emptyForm);
-  const [teachers, setTeachers] = useState([]);
+  const [teachers, setTeachers] = useState<StaffSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [repeatWeekly, setRepeatWeekly] = useState(false);
   const [repeatWeeks, setRepeatWeeks] = useState('4');
-  const [staged, setStaged] = useState(() => new Set()); // sol listede işaretliler
-  const [selected, setSelected] = useState([]); // seçilen öğretmenler
+  const [staged, setStaged] = useState<Set<string>>(() => new Set()); // sol listede işaretliler
+  const [selected, setSelected] = useState<StaffSummaryDto[]>([]); // seçilen öğretmenler
 
   const load = useCallback(async () => {
     try {
@@ -73,11 +80,11 @@ export default function DutyCreate() {
       setLoading(false);
     }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const day = useMemo(() => {
     const d = new Date(form.date);
-    return Number.isNaN(d.getTime()) ? '' : DAYS[d.getDay()];
+    return Number.isNaN(d.getTime()) ? '' : DAYS[d.getDay()] ?? '';
   }, [form.date]);
 
   const selectedIds = useMemo(() => new Set(selected.map((t) => teacherId(t))), [selected]);
@@ -86,7 +93,7 @@ export default function DutyCreate() {
     return teachers.filter((t) => !selectedIds.has(teacherId(t)) && (!q || teacherName(t).toLowerCase().includes(q) || teacherBranch(t).toLowerCase().includes(q)));
   }, [teachers, search, selectedIds]);
 
-  const toggleStaged = (id) => {
+  const toggleStaged = (id: string) => {
     setStaged((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -101,7 +108,7 @@ export default function DutyCreate() {
     setStaged(new Set());
   };
 
-  const removeSelected = (id) => {
+  const removeSelected = (id: string) => {
     setSelected((prev) => prev.filter((t) => teacherId(t) !== id));
   };
 
@@ -153,7 +160,7 @@ export default function DutyCreate() {
       setStaged(new Set());
       setRepeatWeekly(false);
     } catch (err) {
-      toast({ title: 'Nöbet oluşturulamadı', description: err?.response?.data?.message || err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Nöbet oluşturulamadı', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }

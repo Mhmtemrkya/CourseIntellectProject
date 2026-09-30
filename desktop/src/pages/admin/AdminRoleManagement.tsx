@@ -50,6 +50,40 @@ import {
   undoRoleAssignment,
   upsertPlatformConfiguration,
 } from '../../lib/api/modules';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { IconComponent } from '../../types/ui';
+
+type FlagMap = Record<string, boolean>;
+
+/** Kayıtlı politika JSON'undaki bayrak nesnesini yalnız boolean değerlerle alır. */
+function toFlagMap(value: unknown): FlagMap {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean'));
+}
+
+interface RolePolicy {
+  role: string;
+  modules: FlagMap;
+  actions: FlagMap;
+}
+
+interface RolePerson {
+  id: string;
+  username: string;
+  extraRoles: string[];
+  fullName: string;
+  role: string;
+  source: string;
+  detail: string;
+}
+
+interface RoleMeta {
+  icon: IconComponent;
+  accent: string;
+  surface: string;
+  ring: string;
+  copy: string;
+}
 
 const ROLE_OPTIONS = ['Admin', 'Administrative', 'Teacher', 'Student', 'Parent', 'Accounting'];
 
@@ -140,7 +174,7 @@ const ACTION_FLAGS = [
   { key: 'canAssignRoles', label: 'Rol ve yetki atayabilir' },
 ];
 
-const ACTION_PRESETS = {
+const ACTION_PRESETS: Partial<Record<string, string[]>> = {
   Admin: ['canCreate', 'canEdit', 'canDelete', 'canApprove', 'canExport', 'canAssignRoles'],
   Administrative: ['canCreate', 'canEdit', 'canApprove', 'canExport'],
   Teacher: ['canCreate', 'canEdit', 'canExport'],
@@ -149,7 +183,7 @@ const ACTION_PRESETS = {
   Accounting: ['canCreate', 'canEdit', 'canApprove', 'canExport'],
 };
 
-const ROLE_MODULE_KEYS = {
+const ROLE_MODULE_KEYS: Partial<Record<string, string[]>> = {
   Admin: ALL_MODULE_KEYS.filter((key) => !['platform', 'tenants', 'plans', 'limits', 'ai-management', 'customization', 'support'].includes(key)),
   Administrative: [
     'dashboard', 'kpi', 'students', 'parents', 'teachers', 'classes', 'schedule', 'attendance',
@@ -176,42 +210,32 @@ const ROLE_MODULE_KEYS = {
   ],
 };
 
-function modulePreset(keys = []) {
-  const modules = Object.fromEntries(ALL_MODULE_KEYS.map((key) => [key, false]));
+function modulePreset(keys: readonly string[] = []): FlagMap {
+  const modules: FlagMap = Object.fromEntries(ALL_MODULE_KEYS.map((key) => [key, false]));
   keys.forEach((key) => { modules[key] = true; });
   return modules;
 }
 
-function actionPreset(role) {
+function actionPreset(role: string): FlagMap {
   const enabled = new Set(ACTION_PRESETS[role] || []);
   return Object.fromEntries(ACTION_FLAGS.map((item) => [item.key, enabled.has(item.key)]));
 }
 
-const ROLE_PRESETS = Object.fromEntries(
-  ROLE_OPTIONS.map((role) => [
-    role,
-    {
-      modules: modulePreset(ROLE_MODULE_KEYS[role] || ROLE_MODULE_KEYS.Student),
-      actions: actionPreset(role),
-    },
-  ]),
-);
-
-function createPolicy(role = 'Student') {
-  const preset = ROLE_PRESETS[role] || ROLE_PRESETS.Student;
+// Bilinmeyen rol öğrenci modül önayarını alır (öğrenci eylem önayarı boştur).
+function createPolicy(role = 'Student'): RolePolicy {
   return {
     role,
-    modules: { ...preset.modules },
-    actions: { ...preset.actions },
+    modules: modulePreset(ROLE_MODULE_KEYS[role] ?? ROLE_MODULE_KEYS.Student ?? []),
+    actions: actionPreset(role),
   };
 }
 
-function getPersonScopeKey(person) {
+function getPersonScopeKey(person: RolePerson): string {
   return person?.username || person?.id;
 }
 
-function roleTone(role) {
-  const tones = {
+function roleTone(role: string): string {
+  const tones: Partial<Record<string, string>> = {
     Admin: 'bg-blue-100 text-blue-700',
     Administrative: 'bg-teal-100 text-teal-700',
     Teacher: 'bg-emerald-100 text-emerald-700',
@@ -222,8 +246,8 @@ function roleTone(role) {
   return tones[role] || 'bg-muted text-muted-foreground';
 }
 
-function roleMeta(role) {
-  const map = {
+function roleMeta(role: string): RoleMeta {
+  const map: Partial<Record<string, RoleMeta>> = {
     Admin: {
       icon: Crown,
       accent: 'from-blue-500 via-cyan-500 to-sky-400',
@@ -279,12 +303,12 @@ function roleMeta(role) {
 
 export default function AdminRoleManagement() {
   const { toast } = useToast();
-  const [people, setPeople] = useState([]);
+  const [people, setPeople] = useState<RolePerson[]>([]);
   const [selectedRole, setSelectedRole] = useState('');
-  const [selectedPerson, setSelectedPerson] = useState(null);
+  const [selectedPerson, setSelectedPerson] = useState<RolePerson | null>(null);
   const [search, setSearch] = useState('');
-  const [policies, setPolicies] = useState({});
-  const [draftPolicy, setDraftPolicy] = useState(null);
+  const [policies, setPolicies] = useState<Partial<Record<string, RolePolicy>>>({});
+  const [draftPolicy, setDraftPolicy] = useState<RolePolicy | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -301,8 +325,8 @@ export default function AdminRoleManagement() {
         fetchPlatformConfigurations('role-management').catch(() => []),
       ]);
 
-      const nextPeople = [
-        ...staff.map((item) => ({
+      const nextPeople: RolePerson[] = [
+        ...(staff ?? []).map((item) => ({
           id: item.id,
           username: item.username,
           extraRoles: Array.isArray(item.extraRoles) ? item.extraRoles : [],
@@ -311,7 +335,7 @@ export default function AdminRoleManagement() {
           source: 'Personel',
           detail: `${item.departmentOrBranch || item.campus || 'Birim yok'} • ${item.email || item.username || 'Hesap yok'}`,
         })),
-        ...students.map((item) => ({
+        ...(students ?? []).map((item) => ({
           id: item.id,
           username: item.username,
           extraRoles: Array.isArray(item.extraRoles) ? item.extraRoles : [],
@@ -322,14 +346,17 @@ export default function AdminRoleManagement() {
         })),
       ];
 
-      const nextPolicies = {};
+      const nextPolicies: Partial<Record<string, RolePolicy>> = {};
       (configs || []).forEach((item) => {
         try {
-          const parsed = JSON.parse(item.payloadJson || '{}');
+          const parsed: unknown = JSON.parse(item.payloadJson || '{}');
+          const record = isRecord(parsed) ? parsed : {};
+          const role = typeof record.role === 'string' && record.role ? record.role : 'Student';
+          const base = createPolicy(role);
           nextPolicies[item.scopeKey] = {
-            role: parsed.role || 'Student',
-            modules: { ...createPolicy(parsed.role || 'Student').modules, ...(parsed.modules || {}) },
-            actions: { ...createPolicy(parsed.role || 'Student').actions, ...(parsed.actions || {}) },
+            role,
+            modules: { ...base.modules, ...toFlagMap(record.modules) },
+            actions: { ...base.actions, ...toFlagMap(record.actions) },
           };
         } catch {
           nextPolicies[item.scopeKey] = createPolicy('Student');
@@ -339,18 +366,18 @@ export default function AdminRoleManagement() {
       setPeople(nextPeople);
       setPolicies(nextPolicies);
     } catch (err) {
-      setError(err.message || 'Rol yönetimi alınamadı.');
+      setError(errorMessage(err, 'Rol yönetimi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadRoles();
+    void loadRoles();
   }, [loadRoles]);
 
   const grouped = useMemo(() => {
-    return people.reduce((acc, item) => {
+    return people.reduce<Record<string, number>>((acc, item) => {
       const key = policies[getPersonScopeKey(item)]?.role || policies[item.id]?.role || item.role || 'Unassigned';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
@@ -364,7 +391,7 @@ export default function AdminRoleManagement() {
     return matchesRole && matchesSearch;
   }), [people, policies, search, selectedRole]);
 
-  const openPerson = (person) => {
+  const openPerson = (person: RolePerson) => {
     const scopeKey = getPersonScopeKey(person);
     const current = policies[scopeKey] || policies[person.id] || createPolicy(person.role);
     setSelectedPerson(person);
@@ -375,31 +402,31 @@ export default function AdminRoleManagement() {
     });
   };
 
-  const applyPreset = (role) => {
+  const applyPreset = (role: string) => {
     setDraftPolicy(createPolicy(role));
   };
 
-  const toggleModule = (key, checked) => {
-    setDraftPolicy((prev) => ({
+  const toggleModule = (key: string, checked: boolean) => {
+    setDraftPolicy((prev) => (prev ? {
       ...prev,
       modules: {
         ...prev.modules,
         [key]: checked,
       },
-    }));
+    } : prev));
   };
 
-  const toggleAction = (key, checked) => {
-    setDraftPolicy((prev) => ({
+  const toggleAction = (key: string, checked: boolean) => {
+    setDraftPolicy((prev) => (prev ? {
       ...prev,
       actions: {
         ...prev.actions,
         [key]: checked,
       },
-    }));
+    } : prev));
   };
 
-  const handleRoleChange = (role) => {
+  const handleRoleChange = (role: string) => {
     setDraftPolicy((prev) => {
       const next = createPolicy(role);
       return {
@@ -429,7 +456,7 @@ export default function AdminRoleManagement() {
     } catch (err) {
       toast({
         title: 'Rol atanamadı',
-        description: err?.response?.data?.message || err?.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -454,7 +481,7 @@ export default function AdminRoleManagement() {
     } catch (err) {
       toast({
         title: 'Geri alınamadı',
-        description: err?.response?.data?.message || err?.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -486,7 +513,7 @@ export default function AdminRoleManagement() {
     } catch (err) {
       toast({
         title: 'Yetki profili kaydedilemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -637,7 +664,7 @@ export default function AdminRoleManagement() {
           </CardHeader>
           <CardContent className="space-y-4">
             {ROLE_OPTIONS.map((role) => {
-              const preset = ROLE_PRESETS[role];
+              const preset = createPolicy(role);
               const modules = Object.values(preset.modules).filter(Boolean).length;
               const actions = Object.values(preset.actions).filter(Boolean).length;
               return (
@@ -693,11 +720,11 @@ export default function AdminRoleManagement() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
-                {[
+                {([
                   ['Rol Profili', draftPolicy.role, ShieldCheck],
                   ['Açık Modül', `${Object.values(draftPolicy.modules).filter(Boolean).length} adet`, Workflow],
                   ['Yetki Seviyesi', `${Object.values(draftPolicy.actions).filter(Boolean).length} işlem`, Sparkles],
-                ].map(([label, value, Icon]) => (
+                ] satisfies ReadonlyArray<readonly [string, string, IconComponent]>).map(([label, value, Icon]) => (
                   <Card key={label}>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between gap-3">

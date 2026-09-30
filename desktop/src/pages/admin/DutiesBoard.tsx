@@ -21,23 +21,27 @@ import { useToast } from '../../hooks/use-toast';
 import {
   fetchDuties, fetchDutyLoad, setDutyStatus, deleteDuty, cancelDutySeries, updateDuty,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { DutyResponse, TeacherDutyLoadDto } from '../../types/api/generated';
+
+type EditingDuty = DutyResponse & { date: string };
 
 const DUTY_TYPES = ['Tümü', 'Sabah Nöbeti', 'Öğle Arası', 'İdari Nöbet', 'Diğer'];
-const TYPE_COLOR = { 'Sabah Nöbeti': '#f97316', 'Öğle Arası': '#3b82f6', 'İdari Nöbet': '#a855f7' };
-const typeColor = (t) => TYPE_COLOR[t] || '#94a3b8';
+const TYPE_COLOR: Partial<Record<string, string>> = { 'Sabah Nöbeti': '#f97316', 'Öğle Arası': '#3b82f6', 'İdari Nöbet': '#a855f7' };
+const typeColor = (t: string): string => TYPE_COLOR[t] || '#94a3b8';
 
-function statusInfo(status) {
+function statusInfo(status: string): { label: string; cls: string } {
   const s = String(status || '').toLowerCase();
   if (s.includes('iptal')) return { label: 'İptal Edildi', cls: 'border-rose-500/30 bg-rose-500/12 text-rose-300' };
   if (s.includes('tamam')) return { label: 'Tamamlandı', cls: 'border-emerald-500/30 bg-emerald-500/12 text-emerald-300' };
   return { label: 'Planlandı', cls: 'border-sky-500/25 bg-sky-500/12 text-sky-300' };
 }
 
-function fmtDate(value) {
+function fmtDate(value: string | null | undefined): string {
   const d = value ? new Date(value) : null;
   return d ? d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'short' }) : '—';
 }
-function isoDay(value) {
+function isoDay(value: string | null | undefined): string {
   const d = value ? new Date(value) : null;
   return d ? d.toISOString().slice(0, 10) : '';
 }
@@ -49,19 +53,18 @@ export default function DutiesBoard() {
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(in14);
   const [dutyType, setDutyType] = useState('Tümü');
-  const [duties, setDuties] = useState([]);
-  const [load, setLoad] = useState([]);
+  const [duties, setDuties] = useState<DutyResponse[]>([]);
+  const [load, setLoad] = useState<TeacherDutyLoadDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [editing, setEditing] = useState(null);
+  const [editing, setEditing] = useState<EditingDuty | null>(null);
   const [busy, setBusy] = useState(false);
 
   const reload = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const params = { from, to };
-      if (dutyType !== 'Tümü') params.dutyType = dutyType;
+      const params = dutyType !== 'Tümü' ? { from, to, dutyType } : { from, to };
       const [list, loadList] = await Promise.all([
         fetchDuties(params),
         fetchDutyLoad().catch(() => []),
@@ -69,16 +72,16 @@ export default function DutiesBoard() {
       setDuties(Array.isArray(list) ? list : []);
       setLoad(Array.isArray(loadList) ? loadList : []);
     } catch (err) {
-      setError(err.message || 'Nöbetler alınamadı.');
+      setError(errorMessage(err, 'Nöbetler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [from, to, dutyType]);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => { void reload(); }, [reload]);
 
   const grouped = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, DutyResponse[]>();
     duties.forEach((d) => {
       const key = isoDay(d.dutyDateUtc);
       const list = map.get(key) || [];
@@ -91,7 +94,7 @@ export default function DutiesBoard() {
   // Aralıktaki nöbetçisiz (boş) günler.
   const emptyDays = useMemo(() => {
     const have = new Set(duties.filter((d) => !String(d.status).toLowerCase().includes('iptal')).map((d) => isoDay(d.dutyDateUtc)));
-    const days = [];
+    const days: string[] = [];
     const start = new Date(from);
     const end = new Date(to);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -101,18 +104,20 @@ export default function DutiesBoard() {
     return days;
   }, [duties, from, to]);
 
-  const act = async (fn, successMsg) => {
+  const act = async (fn: () => Promise<unknown>, successMsg: string) => {
     try {
       setBusy(true);
       await fn();
       toast({ title: successMsg });
       await reload();
     } catch (err) {
-      toast({ title: 'İşlem başarısız', description: err?.response?.data?.message || err.message, variant: 'destructive' });
+      toast({ title: 'İşlem başarısız', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
   };
+
+  const patchEditing = (patch: Partial<EditingDuty>) => setEditing((p) => (p ? { ...p, ...patch } : p));
 
   const saveEdit = async () => {
     if (!editing) return;
@@ -167,7 +172,7 @@ export default function DutiesBoard() {
               <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Bu aralıkta nöbet yok.</div>
             ) : grouped.map(([day, items]) => (
               <div key={day}>
-                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{fmtDate(items[0].dutyDateUtc)}</p>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{fmtDate(items[0]?.dutyDateUtc)}</p>
                 <div className="space-y-2">
                   {items.map((d) => {
                     const st = statusInfo(d.status);
@@ -234,17 +239,17 @@ export default function DutiesBoard() {
           {editing ? (
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Tür</Label>
-                <Select value={editing.dutyType} onValueChange={(v) => setEditing((p) => ({ ...p, dutyType: v }))}>
+                <Select value={editing.dutyType} onValueChange={(v) => patchEditing({ dutyType: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{DUTY_TYPES.filter((t) => t !== 'Tümü').map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Yer</Label><Input value={editing.location} onChange={(e) => setEditing((p) => ({ ...p, location: e.target.value }))} /></div>
-              <div><Label>Tarih</Label><Input type="date" value={editing.date} onChange={(e) => setEditing((p) => ({ ...p, date: e.target.value }))} /></div>
-              <div><Label>Gün</Label><Input value={editing.day} onChange={(e) => setEditing((p) => ({ ...p, day: e.target.value }))} /></div>
-              <div><Label>Başlangıç</Label><Input type="time" value={editing.startTime} onChange={(e) => setEditing((p) => ({ ...p, startTime: e.target.value }))} /></div>
-              <div><Label>Bitiş</Label><Input type="time" value={editing.endTime} onChange={(e) => setEditing((p) => ({ ...p, endTime: e.target.value }))} /></div>
-              <div className="col-span-2"><Label>Açıklama</Label><Textarea rows={2} value={editing.description || ''} onChange={(e) => setEditing((p) => ({ ...p, description: e.target.value }))} /></div>
+              <div><Label>Yer</Label><Input value={editing.location} onChange={(e) => patchEditing({ location: e.target.value })} /></div>
+              <div><Label>Tarih</Label><Input type="date" value={editing.date} onChange={(e) => patchEditing({ date: e.target.value })} /></div>
+              <div><Label>Gün</Label><Input value={editing.day} onChange={(e) => patchEditing({ day: e.target.value })} /></div>
+              <div><Label>Başlangıç</Label><Input type="time" value={editing.startTime} onChange={(e) => patchEditing({ startTime: e.target.value })} /></div>
+              <div><Label>Bitiş</Label><Input type="time" value={editing.endTime} onChange={(e) => patchEditing({ endTime: e.target.value })} /></div>
+              <div className="col-span-2"><Label>Açıklama</Label><Textarea rows={2} value={editing.description || ''} onChange={(e) => patchEditing({ description: e.target.value })} /></div>
             </div>
           ) : null}
           <DialogFooter>

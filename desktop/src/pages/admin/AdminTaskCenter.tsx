@@ -12,8 +12,11 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchAdminTasks, createAdminTask, updateAdminTaskStatus, fetchStaff } from '../../lib/api/modules';
 import { formatDate, formatDateTime } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { AdminTaskDto, StaffSummaryDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const STATUS = [
+const STATUS: ReadonlyArray<readonly [string, string]> = [
   ['PendingAcceptance', 'Kabul Bekliyor'],
   ['Accepted', 'Kabul Edildi'],
   ['Rejected', 'Kabul Edilmedi'],
@@ -23,7 +26,7 @@ const STATUS = [
 ];
 const PRIORITIES = ['Düşük', 'Normal', 'Yüksek', 'Acil'];
 
-function dueInfo(value) {
+function dueInfo(value: string | null | undefined): { tone: string; label: string; icon: IconComponent } | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
@@ -35,11 +38,11 @@ function dueInfo(value) {
 
 export default function AdminTaskCenter() {
   const { toast } = useToast();
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState<AdminTaskDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [staff, setStaff] = useState([]);
+  const [staff, setStaff] = useState<StaffSummaryDto[]>([]);
   const [form, setForm] = useState({ title: '', description: '', category: 'Genel', assignedToName: '', priority: 'Normal', startDate: '', endDate: '' });
 
   const load = useCallback(async () => {
@@ -50,26 +53,30 @@ export default function AdminTaskCenter() {
         fetchAdminTasks(),
         fetchStaff().catch(() => []),
       ]);
-      setTasks(taskItems);
+      setTasks(taskItems ?? []);
       setStaff(Array.isArray(staffItems) ? staffItems : []);
     } catch (err) {
-      setError(err.message || 'Görevler alınamadı.');
+      setError(errorMessage(err, 'Görevler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const byStatus = useMemo(() => {
-    const map = { PendingAcceptance: [], Accepted: [], Rejected: [], Open: [], InProgress: [], Done: [], Cancelled: [] };
-    tasks.forEach((t) => { (map[t.status] || (map[t.status] = [])).push(t); });
+    const map: Partial<Record<string, AdminTaskDto[]>> = { PendingAcceptance: [], Accepted: [], Rejected: [], Open: [], InProgress: [], Done: [], Cancelled: [] };
+    tasks.forEach((t) => {
+      const list = map[t.status] ?? [];
+      list.push(t);
+      map[t.status] = list;
+    });
     return map;
   }, [tasks]);
 
   const create = async () => {
     if (!form.title.trim()) { toast({ title: 'Başlık zorunlu.', variant: 'destructive' }); return; }
-    const assignee = staff.find((item) => (item.fullName || item.name || '').trim() === form.assignedToName.trim());
+    const assignee = staff.find((item) => (item.fullName || '').trim() === form.assignedToName.trim());
     try {
       setBusy(true);
       await createAdminTask({
@@ -86,17 +93,17 @@ export default function AdminTaskCenter() {
       setForm({ title: '', description: '', category: 'Genel', assignedToName: '', priority: 'Normal', startDate: '', endDate: '' });
       await load();
     } catch (err) {
-      toast({ title: 'Görev oluşturulamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Görev oluşturulamadı', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 
-  const setStatus = async (item, status) => {
+  const setStatus = async (item: AdminTaskDto, status: string) => {
     try {
       setBusy(true);
       const updated = await updateAdminTaskStatus(item.id, status);
-      setTasks((prev) => prev.map((t) => (t.id === item.id ? { ...t, ...updated } : t)));
+      setTasks((prev) => prev.map((t) => (t.id === item.id && updated ? { ...t, ...updated } : t)));
     } catch (err) {
-      toast({ title: 'Güncellenemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Güncellenemedi', description: errorMessage(err), variant: 'destructive' });
     } finally { setBusy(false); }
   };
 
@@ -117,7 +124,7 @@ export default function AdminTaskCenter() {
           <div>
             <Input list="admin-task-assignees" placeholder="Atanan kişi" value={form.assignedToName} onChange={(e) => setForm((f) => ({ ...f, assignedToName: e.target.value }))} />
             <datalist id="admin-task-assignees">
-              {staff.map((item) => <option key={item.id || item.userId || item.fullName} value={item.fullName || item.name || ''} />)}
+              {staff.map((item) => <option key={item.id || item.userId || item.fullName} value={item.fullName || ''} />)}
             </datalist>
           </div>
           <Input placeholder="Kategori" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} />
@@ -143,7 +150,7 @@ export default function AdminTaskCenter() {
             <CardHeader><CardTitle className="text-base flex items-center justify-between">{label}<Badge variant="outline">{(byStatus[key] || []).length}</Badge></CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {(byStatus[key] || []).length === 0 ? <p className="text-sm text-muted-foreground">—</p>
-                : byStatus[key].map((item) => {
+                : (byStatus[key] ?? []).map((item) => {
                   const due = dueInfo(item.endDateUtc || item.dueDateUtc);
                   return (
                     <div key={item.id} className="rounded-xl border p-3">

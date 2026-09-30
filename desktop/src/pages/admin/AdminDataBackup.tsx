@@ -8,10 +8,13 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { downloadTenantBackup, fetchTenantBackupSummary } from '../../lib/api/modules';
+import { errorMessage, isRecord } from '../../lib/errors';
+import type { TenantBackupSummary } from '../../lib/api/backup';
+import type { IconComponent } from '../../types/ui';
 
-const number = (value) => Number(value || 0).toLocaleString('tr-TR');
+const number = (value: unknown): string => Number(value || 0).toLocaleString('tr-TR');
 
-function StatTile({ icon: Icon, label, value }) {
+function StatTile({ icon: Icon, label, value }: { icon: IconComponent; label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-4">
       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
@@ -24,10 +27,10 @@ function StatTile({ icon: Icon, label, value }) {
 
 export default function AdminDataBackup() {
   const { toast } = useToast();
-  const [summary, setSummary] = useState(null);
+  const [summary, setSummary] = useState<TenantBackupSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(null); // 'full' | 'data'
+  const [busy, setBusy] = useState<'full' | 'data' | null>(null);
   const [downloaded, setDownloaded] = useState(0);
 
   const load = useCallback(async () => {
@@ -36,19 +39,22 @@ export default function AdminDataBackup() {
     try {
       setSummary(await fetchTenantBackupSummary());
     } catch (err) {
-      setError(err.message || 'Yedek bilgisi alınamadı.');
+      setError(errorMessage(err, 'Yedek bilgisi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  async function start(includeFiles) {
+  async function start(includeFiles: boolean) {
     setBusy(includeFiles ? 'full' : 'data');
     setDownloaded(0);
     try {
-      const blob = await downloadTenantBackup(includeFiles, (event) => setDownloaded(event.loaded || 0));
+      const blob = await downloadTenantBackup(includeFiles, (event) => {
+        setDownloaded(isRecord(event) && typeof event.loaded === 'number' ? event.loaded : 0);
+      });
+      if (!(blob instanceof Blob)) throw new Error('Yedek arşivi alınamadı.');
       const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
       const anchor = document.createElement('a');
       anchor.href = URL.createObjectURL(blob);
@@ -63,7 +69,7 @@ export default function AdminDataBackup() {
       });
       await load();
     } catch (err) {
-      toast({ title: 'Yedek alınamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Yedek alınamadı', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setBusy(null);
     }

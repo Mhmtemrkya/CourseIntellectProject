@@ -43,8 +43,27 @@ import {
   fetchClasses,
   fetchStudents,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { AnnouncementDto, StudentSummaryDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const emptyForm = {
+interface AnnouncementForm {
+  title: string;
+  detail: string;
+  audience: string;
+  targetClassName: string;
+  targetRecipientType: string;
+  recipientKeys: string[];
+  recipientLabels: string[];
+}
+
+interface RecipientOption {
+  key: string;
+  label: string;
+  helper: string;
+}
+
+const emptyForm: AnnouncementForm = {
   title: '',
   detail: '',
   audience: 'Tum Kurum',
@@ -54,23 +73,17 @@ const emptyForm = {
   recipientLabels: [],
 };
 
-function roleLabel(value) {
-  const normalized = String(value || '').toLowerCase();
-  if (normalized.includes('teacher') || normalized.includes('ogretmen') || normalized.includes('öğretmen')) return 'Öğretmen';
-  if (normalized.includes('veli') || normalized.includes('parent')) return 'Veli';
-  if (normalized.includes('ogrenci') || normalized.includes('öğrenci') || normalized.includes('student')) return 'Öğrenci';
-  if (normalized.includes('admin')) return 'Yönetici';
-  if (normalized.includes('administrative')) return 'İdari Birim';
-  return value || 'Sistem';
+// Duyuru DTO'sunda createdByName/createdByRole yok (her duyuru "Sistem Kaydı" görünüyordu);
+// yayınlayan öğretmense teacherName doludur.
+function publisherRole(item: AnnouncementDto): string {
+  return item.teacherName ? 'Öğretmen' : 'Sistem';
 }
 
-function publisherLabel(item) {
-  if (item.createdByName) return item.createdByName;
-  const role = roleLabel(item.createdByRole);
-  return role === 'Sistem' ? 'Sistem Kaydı' : `${role} Hesabı`;
+function publisherLabel(item: AnnouncementDto): string {
+  return item.teacherName || 'Sistem Kaydı';
 }
 
-function audienceLabel(value) {
+function audienceLabel(value: string): string {
   const normalized = String(value || '').toLowerCase();
   if (normalized.includes('tum') || normalized.includes('tüm')) return 'Tüm Kurum';
   if (normalized.includes('ogrenci') || normalized.includes('öğrenci')) return 'Öğrenci';
@@ -79,37 +92,33 @@ function audienceLabel(value) {
   return value || 'Genel';
 }
 
-function normalizeText(value = '') {
-  return String(value)
+function normalizeText(value: string | null | undefined = ''): string {
+  return String(value ?? '')
     .trim()
     .toLowerCase()
     .replaceAll(' ', '')
     .replaceAll('-', '');
 }
 
-function classNameOf(value) {
-  if (typeof value === 'string') return value;
-  return value?.name || value?.className || '';
-}
 
 export default function AdministrativeAnnouncements() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [announcements, setAnnouncements] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [announcements, setAnnouncements] = useState<AnnouncementDto[]>([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementDto | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<AnnouncementForm>(emptyForm);
 
   const loadAnnouncements = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
       const [announcementPayload, studentPayload, classPayload] = await Promise.all([
-        fetchAnnouncements({ includeAll: true }),
+        fetchAnnouncements(),
         fetchStudents().catch(() => []),
         fetchClasses().catch(() => []),
       ]);
@@ -117,33 +126,34 @@ export default function AdministrativeAnnouncements() {
       const safeStudents = Array.isArray(studentPayload) ? studentPayload : [];
       const classNames = new Set([
         ...safeStudents.map((item) => item.className).filter(Boolean),
-        ...(Array.isArray(classPayload) ? classPayload.map(classNameOf).filter(Boolean) : []),
+        ...(Array.isArray(classPayload) ? classPayload.filter(Boolean) : []),
       ]);
 
       setAnnouncements(
         safeAnnouncements
           .filter((item) => !String(item.detail || '').startsWith('LIVE_LESSON'))
-          .sort((a, b) => `${b.createdAtUtc || b.createdAt || b.dateLabel}`.localeCompare(`${a.createdAtUtc || a.createdAt || a.dateLabel}`)),
+          .sort((a, b) => `${b.dateLabel}`.localeCompare(`${a.dateLabel}`)),
       );
       setStudents(safeStudents);
       setClasses([...classNames].sort((a, b) => a.localeCompare(b, 'tr')));
     } catch (err) {
-      setError(err.message || 'Duyurular alınamadı.');
+      setError(errorMessage(err, 'Duyurular alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadAnnouncements();
+    void loadAnnouncements();
   }, [loadAnnouncements]);
 
   useEffect(() => {
-    if (form.targetClassName || classes.length === 0) return;
-    setForm((prev) => ({ ...prev, targetClassName: classes[0] }));
+    const [firstClass] = classes;
+    if (form.targetClassName || !firstClass) return;
+    setForm((prev) => ({ ...prev, targetClassName: firstClass }));
   }, [classes, form.targetClassName]);
 
-  const recipientOptions = useMemo(() => {
+  const recipientOptions = useMemo((): RecipientOption[] => {
     const needsRecipients = form.audience === 'Ogrenci' || form.audience === 'Veli';
     if (!needsRecipients) return [];
 
@@ -153,7 +163,7 @@ export default function AdministrativeAnnouncements() {
     });
 
     if (form.audience === 'Veli' && form.targetRecipientType === 'Veliler') {
-      const map = new Map();
+      const map = new Map<string, RecipientOption>();
       filteredStudents.forEach((student) => {
         const key = student.parentEmail || student.parentName || `${student.fullName}-parent`;
         if (!map.has(key)) {
@@ -178,11 +188,11 @@ export default function AdministrativeAnnouncements() {
 
   const stats = useMemo(() => ({
     total: announcements.length,
-    targeted: announcements.filter((item) => (item.recipientCount || 0) > 0 || item.targetClassName).length,
-    teachers: announcements.filter((item) => String(item.createdByRole || '').toLowerCase().includes('teacher')).length,
+    targeted: announcements.filter((item) => Boolean(item.className)).length,
+    teachers: announcements.filter((item) => Boolean(item.teacherName)).length,
   }), [announcements]);
 
-  const toggleRecipient = (option) => {
+  const toggleRecipient = (option: RecipientOption) => {
     setForm((prev) => {
       const selected = prev.recipientKeys.includes(option.key);
       return {
@@ -209,33 +219,28 @@ export default function AdministrativeAnnouncements() {
 
     try {
       setSaving(true);
+      // Sunucu yalnız başlık/metin/hedef kitle/sınıf alanlarını tanır; kişi listesi ve
+      // targetClassName yok sayılıyordu ve duyuru tüm kuruma gidiyordu. Sınıf yalnız
+      // veli/öğrenci duyurusunda gönderilir.
+      const classScoped = form.audience === 'Veli' || form.audience === 'Ogrenci';
       const created = await createAnnouncement({
         title: form.title.trim(),
         detail: form.detail.trim(),
         audience: form.audience,
-        targetClassName: form.targetClassName,
-        targetRecipientType: form.targetRecipientType,
-        recipientKeys: form.recipientKeys,
-        recipientLabels: form.recipientLabels,
+        className: classScoped && form.targetClassName ? form.targetClassName : null,
       });
-      setAnnouncements((prev) => [{
-        ...created,
-        targetClassName: form.targetClassName,
-        targetRecipientType: form.targetRecipientType,
-        recipientLabels: form.recipientLabels,
-        recipientCount: form.recipientLabels.length,
-      }, ...prev]);
+      if (created) setAnnouncements((prev) => [created, ...prev]);
       setForm(emptyForm);
       setCreateOpen(false);
       toast({ title: 'Duyuru oluşturuldu.' });
     } catch (err) {
-      toast({ title: err.message || 'Duyuru oluşturulamadı.', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Duyuru oluşturulamadı.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (item) => {
+  const handleDelete = async (item: AnnouncementDto) => {
     const confirmed = window.confirm(`${item.title} duyurusu silinsin mi?`);
     if (!confirmed) return;
     try {
@@ -243,7 +248,7 @@ export default function AdministrativeAnnouncements() {
       setAnnouncements((prev) => prev.filter((entry) => entry.id !== item.id));
       toast({ title: 'Duyuru silindi.' });
     } catch (err) {
-      toast({ title: err.message || 'Duyuru silinemedi.', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Duyuru silinemedi.'), variant: 'destructive' });
     }
   };
 
@@ -262,11 +267,11 @@ export default function AdministrativeAnnouncements() {
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="grid grid-cols-3 gap-3">
-              {[
+              {([
                 ['Toplam', stats.total, BellRing],
                 ['Hedefli', stats.targeted, Users],
                 ['Öğretmen', stats.teachers, ShieldCheck],
-              ].map(([label, value, Icon]) => (
+              ] satisfies ReadonlyArray<readonly [string, number, IconComponent]>).map(([label, value, Icon]) => (
                 <div key={label} className="rounded-2xl border bg-muted/30 px-5 py-4">
                   <Icon className="h-4 w-4 text-brand-primary" />
                   <p className="mt-2 text-2xl font-bold">{value}</p>
@@ -294,8 +299,7 @@ export default function AdministrativeAnnouncements() {
                 <div>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">{audienceLabel(item.audience)}</Badge>
-                    {item.targetClassName ? <Badge variant="outline">{item.targetClassName}</Badge> : null}
-                    {item.targetRecipientType ? <Badge variant="outline">{item.targetRecipientType}</Badge> : null}
+                    {item.className ? <Badge variant="outline">{item.className}</Badge> : null}
                   </div>
                   <h3 className="mt-3 text-2xl font-bold">{item.title}</h3>
                 </div>
@@ -308,27 +312,23 @@ export default function AdministrativeAnnouncements() {
                 <div className="rounded-2xl bg-muted/50 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Yayınlayan</p>
                   <p className="mt-2 font-semibold text-foreground">{publisherLabel(item)}</p>
-                  <p className="text-xs text-muted-foreground">{roleLabel(item.createdByRole)}</p>
+                  <p className="text-xs text-muted-foreground">{publisherRole(item)}</p>
                 </div>
                 <div className="rounded-2xl bg-muted/50 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Kime Gitti</p>
-                  <p className="mt-2 font-semibold text-foreground">{item.targetRecipientType || item.audience}</p>
+                  <p className="mt-2 font-semibold text-foreground">{item.audience}</p>
                 </div>
                 <div className="rounded-2xl bg-muted/50 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Seçili Kişi</p>
-                  <p className="mt-2 font-semibold text-foreground">{item.recipientCount || 0}</p>
+                  <p className="mt-2 font-semibold text-foreground">0</p>
                 </div>
                 <div className="rounded-2xl bg-muted/50 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Tarih</p>
-                  <p className="mt-2 font-semibold text-foreground">{item.dateLabel || item.date || 'Bugün'}</p>
+                  <p className="mt-2 font-semibold text-foreground">{item.dateLabel || 'Bugün'}</p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap gap-2">
-                  {(item.recipientLabels || []).slice(0, 4).map((label) => (
-                    <Badge key={label} variant="outline">{label}</Badge>
-                  ))}
-                  {(item.recipientLabels || []).length > 4 ? <Badge variant="outline">+{item.recipientLabels.length - 4} kişi daha</Badge> : null}
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setSelectedAnnouncement(item)}>
@@ -351,7 +351,7 @@ export default function AdministrativeAnnouncements() {
           <DialogHeader>
             <DialogTitle>{selectedAnnouncement?.title || 'Duyuru detayı'}</DialogTitle>
             <DialogDescription>
-              {selectedAnnouncement ? `${roleLabel(selectedAnnouncement.createdByRole)} - ${publisherLabel(selectedAnnouncement)} - ${selectedAnnouncement.dateLabel || selectedAnnouncement.date || ''}` : ''}
+              {selectedAnnouncement ? `${publisherRole(selectedAnnouncement)} - ${publisherLabel(selectedAnnouncement)} - ${selectedAnnouncement.dateLabel || ''}` : ''}
             </DialogDescription>
           </DialogHeader>
           {selectedAnnouncement ? (
@@ -361,15 +361,11 @@ export default function AdministrativeAnnouncements() {
                 <p className="mt-3 text-base leading-8 text-muted-foreground">{selectedAnnouncement.detail}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {(selectedAnnouncement.recipientLabels || []).map((label) => (
-                  <Badge key={label} variant="outline" className="px-3 py-1">
-                    <UserRound className="mr-2 h-3.5 w-3.5" />
-                    {label}
-                  </Badge>
-                ))}
-                {!selectedAnnouncement.recipientLabels?.length ? (
-                  <p className="text-sm text-muted-foreground">Bu duyuru genel hedef kitleye yayınlanmış.</p>
-                ) : null}
+                <p className="text-sm text-muted-foreground">
+                  {selectedAnnouncement.className
+                    ? `Bu duyuru ${selectedAnnouncement.className} sınıfına yayınlanmış.`
+                    : 'Bu duyuru genel hedef kitleye yayınlanmış.'}
+                </p>
               </div>
             </div>
           ) : null}

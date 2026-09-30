@@ -10,13 +10,26 @@ import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import RoleDashboardColumns from '../../components/dashboard/RoleDashboardColumns';
-import { fetchAdminDashboardData } from '../../lib/api/dashboardData';
+import RoleDashboardColumns, { type RoleDashboardCard, type RoleDashboardGroup } from '../../components/dashboard/RoleDashboardColumns';
+import { fetchAdminDashboardData, type AdminDashboardData } from '../../lib/api/dashboardData';
 import { fetchAccountingDashboard, fetchAdminAnalytics } from '../../lib/api/modules';
 import { useApp } from '../../context/AppContext';
 import { getUserRoles } from '../../lib/permissions';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { AdminAnalyticsResponse } from '../../types/api/generated';
 
-const PERIOD_OPTIONS = [
+type OperationsPeriod = 'day' | 'week' | 'month' | 'year';
+
+interface OperationFeedItem {
+  id: string;
+  title: string;
+  detail: string;
+  subject: string;
+  route: string;
+}
+
+const PERIOD_OPTIONS: ReadonlyArray<readonly [OperationsPeriod, string]> = [
   ['day', 'Günlük'],
   ['week', 'Haftalık'],
   ['month', 'Aylık'],
@@ -24,7 +37,7 @@ const PERIOD_OPTIONS = [
 ];
 
 const moneyFormatter = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
-function formatMoney(value) {
+function formatMoney(value: unknown): string {
   return moneyFormatter.format(Number(value) || 0);
 }
 
@@ -32,7 +45,7 @@ function formatMoney(value) {
 // gelsin — giriş kartıyla ("bugün / son 7 gün / son 30 gün / son 1 yıl") aynı
 // mantık. Aksi halde analytics.totals tüm grafik penceresini toplar ve dönemler
 // arası değişmez. UTC gün başlangıcı kullanılır (backend DateTime.UtcNow.Date ile hizalı).
-function periodRange(period) {
+function periodRange(period: OperationsPeriod): { from: string; to: string } {
   const now = new Date();
   const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const from = new Date(to);
@@ -40,7 +53,7 @@ function periodRange(period) {
   else if (period === 'month') from.setUTCDate(from.getUTCDate() - 29);
   else if (period === 'year') from.setUTCDate(from.getUTCDate() - 364);
   // 'day' → from === to (yalnızca bugün)
-  const fmt = (d) => d.toISOString().slice(0, 10);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
   return { from: fmt(from), to: fmt(to) };
 }
 
@@ -53,11 +66,11 @@ export default function AdminOperations() {
     const roles = getUserRoles(user);
     return roles.includes('administrative') && !roles.includes('admin') && !roles.includes('superadmin');
   }, [user]);
-  const [dashboard, setDashboard] = useState(null);
-  const [finance, setFinance] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [period, setPeriod] = useState('day');
+  const [dashboard, setDashboard] = useState<AdminDashboardData | null>(null);
+  const [finance, setFinance] = useState<AccountingDashboard | null>(null);
+  const [analytics, setAnalytics] = useState<AdminAnalyticsResponse | null>(null);
+  const [selectedItem, setSelectedItem] = useState<OperationFeedItem | null>(null);
+  const [period, setPeriod] = useState<OperationsPeriod>('day');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -72,7 +85,7 @@ export default function AdminOperations() {
       setDashboard(dashboardData);
       setFinance(financeData);
     } catch (err) {
-      setError(err.message || 'Operasyon görünümü alınamadı.');
+      setError(errorMessage(err, 'Operasyon görünümü alınamadı.'));
     } finally {
       setLoading(false);
     }
@@ -89,17 +102,17 @@ export default function AdminOperations() {
   }, [period]);
 
   useEffect(() => {
-    loadOperations();
+    void loadOperations();
   }, [loadOperations]);
 
   useEffect(() => {
-    loadAnalytics();
+    void loadAnalytics();
   }, [loadAnalytics]);
 
   const activeStudents = dashboard?.activeStudentStats?.[period] || { uniqueCount: 0, totalStudents: dashboard?.stats?.totalStudents || 0 };
   const totals = analytics?.totals || { revenue: 0, registrations: 0, expense: 0, net: 0 };
 
-  const operationGroups = [
+  const operationGroups: RoleDashboardGroup[] = [
     {
       key: 'students', title: 'Öğrenci İşlemleri', description: 'Seçilen dönemde öğrenci hareketleri',
       cards: [
@@ -118,7 +131,7 @@ export default function AdminOperations() {
       key: 'pending', title: 'Bekleyen İşler', description: 'Operasyon ekibinin ele alması gereken kayıtlar',
       cards: [
         { key: 'pendingItems', label: 'Bekleyen İşlem', value: dashboard?.pendingItems?.length || 0, caption: 'Geri dönüş veya işlem bekliyor', icon: Activity, tone: 'rose', path: '/admin/task-center' },
-        ...(!isAdministrativeOnly ? [{ key: 'approvals', label: 'Finans Onayı', value: finance?.approvals?.length || 0, caption: 'Karar bekleyen finans kaydı', icon: Receipt, tone: 'amber', path: '/admin/finance-approvals' }] : []),
+        ...(!isAdministrativeOnly ? [{ key: 'approvals', label: 'Finans Onayı', value: finance?.approvals?.length || 0, caption: 'Karar bekleyen finans kaydı', icon: Receipt, tone: 'amber', path: '/admin/finance-approvals' } satisfies RoleDashboardCard] : []),
       ],
     },
     ...(!isAdministrativeOnly ? [{
@@ -127,10 +140,10 @@ export default function AdminOperations() {
         { key: 'revenue', label: 'Dönem Kazancı', value: formatMoney(totals.revenue), caption: 'Tahsilat toplamı', icon: Receipt, tone: 'emerald', path: '/finance/collections' },
         { key: 'expense', label: 'Dönem Gideri', value: formatMoney(totals.expense), caption: 'Maaş ve fatura gideri', icon: Receipt, tone: 'rose', path: '/finance/expenses' },
       ],
-    }] : []),
+    } satisfies RoleDashboardGroup] : []),
   ];
 
-  const operationalFeed = useMemo(() => (
+  const operationalFeed = useMemo((): OperationFeedItem[] => (
     [
       ...(dashboard?.pendingItems || []).map((item) => ({
         id: `pending-${item.id}`,
@@ -141,8 +154,8 @@ export default function AdminOperations() {
       })),
       ...(isAdministrativeOnly ? [] : (finance?.approvals || []).slice(0, 4).map((item) => ({
         id: `finance-${item.id}`,
-        title: item.referenceNumber || 'Finans onayı',
-        detail: `${item.status || 'Bekliyor'} • ${item.type || 'Islem'}`,
+        title: item.title || 'Finans onayı',
+        detail: `${item.status || 'Bekliyor'} • ${item.category || 'Islem'}`,
         subject: 'Finans',
         route: '/admin/finance-approvals',
       }))),

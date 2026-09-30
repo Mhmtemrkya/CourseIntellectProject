@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatMoney as formatCurrency } from '../../lib/format';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import {
   GitBranch, Users, GraduationCap, DollarSign, TrendingUp,
   BarChart3, MapPin,
@@ -14,19 +14,29 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchStudents, fetchStaff, fetchAccountingDashboard } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
 
-const containerVariants = {
+interface BranchCounts {
+  name: string;
+  students: number;
+  staff: number;
+  teachers: number;
+}
+
+type BranchRow = BranchCounts & { studentTeacherRatio: number | string; totalPersonnel: number };
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
 
 export default function AdminBranchComparison() {
-  const [branches, setBranches] = useState([]);
+  const [branches, setBranches] = useState<BranchRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -44,22 +54,28 @@ export default function AdminBranchComparison() {
       const staffList = Array.isArray(staff) ? staff : [];
 
       // Group by campus/branch
-      const branchMap = new Map();
-      for (const s of studentList) {
-        const campus = s.campus || s.branch || 'Merkez Kampüs';
-        if (!branchMap.has(campus)) branchMap.set(campus, { name: campus, students: 0, staff: 0, teachers: 0 });
-        branchMap.get(campus).students++;
+      const branchMap = new Map<string, BranchCounts>();
+      const bucketFor = (campus: string): BranchCounts => {
+        const existing = branchMap.get(campus);
+        if (existing) return existing;
+        const created: BranchCounts = { name: campus, students: 0, staff: 0, teachers: 0 };
+        branchMap.set(campus, created);
+        return created;
+      };
+      // Öğrenci özetinde kampüs/şube alanı yok; öğrenciler şimdilik tek grupta sayılır.
+      if (studentList.length > 0) {
+        bucketFor('Merkez Kampüs').students += studentList.length;
       }
       for (const s of staffList) {
-        const campus = s.campus || s.branch || 'Merkez Kampüs';
-        if (!branchMap.has(campus)) branchMap.set(campus, { name: campus, students: 0, staff: 0, teachers: 0 });
-        branchMap.get(campus).staff++;
-        if (String(s.primaryRole || '').toLowerCase() === 'teacher') {
-          branchMap.get(campus).teachers++;
+        const bucket = bucketFor(s.campus || 'Merkez Kampüs');
+        bucket.staff += 1;
+        // Personel DTO'sunda rol `role` alanındadır (primaryRole yok; öğretmen sayısı hep 0 çıkıyordu).
+        if (String(s.role || '').toLowerCase() === 'teacher') {
+          bucket.teachers += 1;
         }
       }
 
-      const branchList = Array.from(branchMap.values()).map((b) => ({
+      const branchList = Array.from(branchMap.values()).map((b): BranchRow => ({
         ...b,
         studentTeacherRatio: b.teachers > 0 ? Math.round(b.students / b.teachers) : '-',
         totalPersonnel: b.staff,
@@ -67,13 +83,13 @@ export default function AdminBranchComparison() {
 
       setBranches(branchList);
     } catch (err) {
-      setError(err.message || 'Veriler yuklenemedi.');
+      setError(errorMessage(err, 'Veriler yuklenemedi.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   const totals = useMemo(() => ({
     students: branches.reduce((s, b) => s + b.students, 0),

@@ -12,6 +12,16 @@ import {
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchClasses, fetchStaff, fetchScheduleEntries, fetchTeacherTimetable, setTeacherTimetable } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { StaffSummaryDto } from '../../types/api/generated';
+
+interface EditableSlot {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  className: string;
+  lesson: string;
+}
 
 const DAYS = [
   { v: 1, label: 'Pazartesi' }, { v: 2, label: 'Salı' }, { v: 3, label: 'Çarşamba' },
@@ -21,29 +31,31 @@ const DAYS = [
 // Sistemdeki ders programı saati olmadığında kullanılacak makul varsayılan periyotlar.
 const DEFAULT_PERIODS = ['09:00-09:40', '09:50-10:30', '10:40-11:20', '11:30-12:10', '13:00-13:40', '13:50-14:30', '14:40-15:20', '15:30-16:10'];
 
-function teacherId(t) { return String(t.id || t.userId || ''); }
-function teacherName(t) { return t.fullName || t.name || ''; }
-function className(item) { return typeof item === 'string' ? item : (item.name || item.className || item.title || ''); }
+// Ders programı kaydındaki teacherUserId kullanıcı kimliğidir (nöbet çakışma denetimi
+// ve DutyCreate de bununla eşler); personel listesindeki `id` profil kimliğidir.
+// Sunucu eşleşmeyi "kimlik ya da ad" ile yaptığından eski kayıtlar da okunur.
+function teacherId(t: StaffSummaryDto): string { return String(t.userId || t.id || ''); }
+function teacherName(t: StaffSummaryDto): string { return t.fullName || ''; }
 const GUID_RE = /^[0-9a-fA-F-]{36}$/;
 
-function toMinutes(time) {
+function toMinutes(time: string | null | undefined): number | null {
   const match = String(time || '').match(/(\d{1,2}):(\d{2})/);
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
 
 // "09:00-09:40" → { start: "09:00", end: "09:40" }
-function splitRange(range) {
+function splitRange(range: string | null | undefined): { start: string | undefined; end: string | undefined } {
   const [start, end] = String(range || '').split(/[-–]/).map((part) => part.trim());
   return { start, end };
 }
 
 export default function TeacherTimetable() {
   const { toast } = useToast();
-  const [teachers, setTeachers] = useState([]);
-  const [classes, setClasses] = useState([]);
+  const [teachers, setTeachers] = useState<StaffSummaryDto[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
   const [timeOptions, setTimeOptions] = useState(DEFAULT_PERIODS);
   const [selectedId, setSelectedId] = useState('');
-  const [slots, setSlots] = useState([]);
+  const [slots, setSlots] = useState<EditableSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -57,7 +69,7 @@ export default function TeacherTimetable() {
           fetchScheduleEntries().catch(() => []),
         ]);
         setTeachers(Array.isArray(list) ? list : []);
-        setClasses(Array.isArray(classList) ? classList.map(className).filter(Boolean) : []);
+        setClasses(Array.isArray(classList) ? classList.filter(Boolean) : []);
         // Sistemdeki ders programında tanımlı saat aralıkları (tekilleştirilmiş, sıralı).
         const fromSchedule = [...new Set((Array.isArray(scheduleEntries) ? scheduleEntries : [])
           .map((entry) => String(entry.time || '').trim())
@@ -72,14 +84,14 @@ export default function TeacherTimetable() {
 
   const selectedTeacher = useMemo(() => teachers.find((t) => teacherId(t) === selectedId), [teachers, selectedId]);
   const lessonOptions = useMemo(() => {
-    const branch = selectedTeacher?.departmentOrBranch || selectedTeacher?.branch || '';
+    const branch = selectedTeacher?.departmentOrBranch || '';
     const options = [branch, selectedTeacher?.homeroomClass ? 'Rehberlik' : ''].filter(Boolean);
     return [...new Set(options)];
   }, [selectedTeacher]);
   const classOptions = useMemo(() => [...new Set([...classes, ...slots.map((slot) => slot.className).filter(Boolean)])], [classes, slots]);
   const defaultLesson = lessonOptions[0] || '';
 
-  const loadSlots = useCallback(async (teacher) => {
+  const loadSlots = useCallback(async (teacher: StaffSummaryDto | undefined) => {
     if (!teacher) { setSlots([]); return; }
     try {
       setSlotsLoading(true);
@@ -94,28 +106,30 @@ export default function TeacherTimetable() {
     }
   }, []);
 
-  useEffect(() => { if (selectedTeacher) loadSlots(selectedTeacher); }, [selectedTeacher, loadSlots]);
+  useEffect(() => { if (selectedTeacher) void loadSlots(selectedTeacher); }, [selectedTeacher, loadSlots]);
 
   const addSlot = () => {
     const firstRange = splitRange(timeOptions[0] || '09:00-09:40');
     setSlots((prev) => [...prev, { dayOfWeek: 1, startTime: firstRange.start || '09:00', endTime: firstRange.end || '09:40', className: classOptions[0] || '', lesson: defaultLesson }]);
   };
-  const removeSlot = (idx) => setSlots((prev) => prev.filter((_, i) => i !== idx));
-  const updateSlot = (idx, patch) => setSlots((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
+  const removeSlot = (idx: number) => setSlots((prev) => prev.filter((_, i) => i !== idx));
+  const updateSlot = (idx: number, patch: Partial<EditableSlot>) => setSlots((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
 
   // Aynı gün içinde saat çakışan slot çiftini bul (varsa).
-  const findConflict = (list) => {
+  const findConflict = (list: readonly EditableSlot[]) => {
     for (let i = 0; i < list.length; i += 1) {
       for (let j = i + 1; j < list.length; j += 1) {
-        if (list[i].dayOfWeek !== list[j].dayOfWeek) continue;
-        const startA = toMinutes(list[i].startTime);
-        const endA = toMinutes(list[i].endTime);
-        const startB = toMinutes(list[j].startTime);
-        const endB = toMinutes(list[j].endTime);
+        const a = list[i];
+        const b = list[j];
+        if (!a || !b || a.dayOfWeek !== b.dayOfWeek) continue;
+        const startA = toMinutes(a.startTime);
+        const endA = toMinutes(a.endTime);
+        const startB = toMinutes(b.startTime);
+        const endB = toMinutes(b.endTime);
         if (startA == null || endA == null || startB == null || endB == null) continue;
         if (startA < endB && startB < endA) {
-          const dayLabel = DAYS.find((d) => d.v === list[i].dayOfWeek)?.label || '';
-          return `${dayLabel} günü ${list[i].startTime}-${list[i].endTime} ile ${list[j].startTime}-${list[j].endTime} dersleri çakışıyor.`;
+          const dayLabel = DAYS.find((d) => d.v === a.dayOfWeek)?.label || '';
+          return `${dayLabel} günü ${a.startTime}-${a.endTime} ile ${b.startTime}-${b.endTime} dersleri çakışıyor.`;
         }
       }
     }
@@ -142,7 +156,7 @@ export default function TeacherTimetable() {
       });
       toast({ title: 'Ders programı kaydedildi', description: `${slots.length} slot · ${teacherName(selectedTeacher)}` });
     } catch (err) {
-      toast({ title: 'Kaydedilemedi', description: err?.response?.data?.message || err.message, variant: 'destructive' });
+      toast({ title: 'Kaydedilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -166,7 +180,7 @@ export default function TeacherTimetable() {
         <Select value={selectedId} onValueChange={setSelectedId}>
           <SelectTrigger className="w-full sm:w-96"><SelectValue placeholder="Öğretmen seçin" /></SelectTrigger>
           <SelectContent>
-            {teachers.map((t) => <SelectItem key={teacherId(t)} value={teacherId(t)}>{teacherName(t)}{t.departmentOrBranch || t.branch ? ` · ${t.departmentOrBranch || t.branch}` : ''}</SelectItem>)}
+            {teachers.map((t) => <SelectItem key={teacherId(t)} value={teacherId(t)}>{teacherName(t)}{t.departmentOrBranch ? ` · ${t.departmentOrBranch}` : ''}</SelectItem>)}
           </SelectContent>
         </Select>
       </PremiumPanel>

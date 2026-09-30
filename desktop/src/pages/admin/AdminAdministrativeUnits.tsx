@@ -16,20 +16,20 @@ import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAnnouncements, fetchAdminDocuments, fetchAdminOverview } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { AdminOverview } from '../../lib/api/adminWork';
+import type { IconComponent } from '../../types/ui';
+import type { AdminDocumentDto, AnnouncementDto } from '../../types/api/generated';
 
-function latestByDate(items, dateFields = ['createdAtUtc', 'createdAt', 'date']) {
-  return [...items].sort((a, b) => {
-    const left = dateFields.map((field) => a?.[field]).find(Boolean) || '';
-    const right = dateFields.map((field) => b?.[field]).find(Boolean) || '';
-    return String(right).localeCompare(String(left), 'tr');
-  });
+function latestByDate(items: readonly AdminDocumentDto[]): AdminDocumentDto[] {
+  return [...items].sort((a, b) => String(b.createdAtUtc || '').localeCompare(String(a.createdAtUtc || ''), 'tr'));
 }
 
 export default function AdminAdministrativeUnits() {
   const navigate = useNavigate();
-  const [documents, setDocuments] = useState([]);
-  const [overview, setOverview] = useState(null);
-  const [announcements, setAnnouncements] = useState([]);
+  const [documents, setDocuments] = useState<AdminDocumentDto[]>([]);
+  const [overview, setOverview] = useState<Partial<AdminOverview> | null>(null);
+  const [announcements, setAnnouncements] = useState<AnnouncementDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -40,20 +40,20 @@ export default function AdminAdministrativeUnits() {
       const [documentPayload, overviewPayload, announcementPayload] = await Promise.all([
         fetchAdminDocuments().catch(() => []),
         fetchAdminOverview().catch(() => null),
-        fetchAnnouncements({ includeAll: true }).catch(() => []),
+        fetchAnnouncements().catch(() => []),
       ]);
       setDocuments(Array.isArray(documentPayload) ? documentPayload : []);
       setOverview(overviewPayload);
       setAnnouncements(Array.isArray(announcementPayload) ? announcementPayload : []);
     } catch (err) {
-      setError(err.message || 'İdari birim verileri alınamadı.');
+      setError(errorMessage(err, 'İdari birim verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const latestDocuments = useMemo(() => latestByDate(documents).slice(0, 5), [documents]);
@@ -109,11 +109,11 @@ export default function AdminAdministrativeUnits() {
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            {[
+            {([
               ['Belge', documents.length],
               ['Bekleyen Onay', overview?.pendingApprovals || 0],
               ['Duyuru', activeAnnouncements.length],
-            ].map(([label, value]) => (
+            ] satisfies ReadonlyArray<readonly [string, number]>).map(([label, value]) => (
               <div key={label} className="rounded-2xl border bg-muted/30 px-5 py-4">
                 <p className="text-sm text-muted-foreground">{label}</p>
                 <p className="text-2xl font-bold">{value}</p>
@@ -163,11 +163,11 @@ export default function AdminAdministrativeUnits() {
             <CardTitle>İdari Özet</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {[
+            {([
               ['Bekleyen Onay', overview?.pendingApprovals || 0, ShieldCheck, '/admin/personnel-approvals'],
               ['Açık Görev', overview?.openTasks || 0, ClipboardList, '/admin/task-center'],
               ['Süresi Dolan Evrak', overview?.expiringDocuments || 0, FileWarning, '/admin/documents'],
-            ].map(([label, value, Icon, route]) => (
+            ] satisfies ReadonlyArray<readonly [string, number, IconComponent, string]>).map(([label, value, Icon, route]) => (
               <button
                 key={label}
                 type="button"
@@ -192,7 +192,7 @@ export default function AdminAdministrativeUnits() {
             {activeAnnouncements.map((item) => (
               <div key={item.id || item.title} className="rounded-xl border bg-muted/20 p-4">
                 <p className="font-semibold">{item.title || 'Duyuru'}</p>
-                <p className="text-sm text-muted-foreground">{item.audience || 'Tüm kurum'}{item.dateLabel || item.date ? ` • ${item.dateLabel || item.date}` : ''}</p>
+                <p className="text-sm text-muted-foreground">{item.audience || 'Tüm kurum'}{item.dateLabel ? ` • ${item.dateLabel}` : ''}</p>
               </div>
             ))}
             {activeAnnouncements.length === 0 ? <p className="text-sm text-muted-foreground">Yayınlanmış duyuru bulunamadı.</p> : null}

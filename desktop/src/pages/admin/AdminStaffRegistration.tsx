@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Save, Briefcase, Copy, BusFront, Route, ShieldCheck,
@@ -61,13 +61,51 @@ import {
   maskTrPlate,
   maskVehicleNumber,
 } from '../../lib/inputMasks';
+import { errorMessage } from '../../lib/errors';
+import type { CustomRoleDto, OrgUnitDto, StaffSummaryDto } from '../../types/api/generated';
 
-const containerVariants = {
+type StaffRegistrationForm = Omit<typeof emptyForm, 'childCount'> & { childCount: number | string };
+
+interface StaffEditForm {
+  fullName: string;
+  phone: string;
+  email: string;
+  departmentOrBranch: string;
+  education: string;
+  campus: string;
+  homeroomClass: string;
+  assignedClasses: string;
+  maritalStatus: string;
+  childCount: number | string;
+  note: string;
+  photoUrl: string;
+  role: string;
+  branchId: string;
+  customRoleId: string;
+}
+
+interface IssuedStaffCredentials {
+  fullName: string;
+  username: string | undefined;
+  password: string | undefined;
+  roleLabel: string;
+  branch: string;
+  email: string;
+  serviceSummary: string;
+}
+
+interface RollbackTargets {
+  driverId: string | null;
+  vehicleId: string | null;
+  staffUserId: string | null;
+}
+
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
@@ -132,7 +170,7 @@ const emptyForm = {
   routeEndTime: '09:00',
 };
 
-const buildStaffEditForm = (staff = {}) => ({
+const buildStaffEditForm = (staff: Partial<StaffSummaryDto> = {}): StaffEditForm => ({
   fullName: staff.fullName || '',
   phone: staff.phone || '',
   email: staff.email || '',
@@ -150,34 +188,34 @@ const buildStaffEditForm = (staff = {}) => ({
   customRoleId: staff.customRoleId || '',
 });
 
-export default function AdminStaffRegistration({ mode = 'registration' }) {
+export default function AdminStaffRegistration({ mode = 'registration' }: { mode?: 'registration' | 'directory' }) {
   const { toast } = useToast();
   const { user } = useApp();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const directoryMode = mode === 'directory';
   const tenantName = user?.tenant || '';
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<StaffRegistrationForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [allStaff, setAllStaff] = useState([]);
+  const [allStaff, setAllStaff] = useState<StaffSummaryDto[]>([]);
   const [roleFilter, setRoleFilter] = useState(() => (
     directoryMode ? searchParams.get('role') || 'all' : 'Teacher'
   ));
   const [staffSearch, setStaffSearch] = useState('');
-  const [branches, setBranches] = useState([]);
+  const [branches, setBranches] = useState<OrgUnitDto[]>([]);
   const [branchId, setBranchId] = useState('');
-  const [customRoles, setCustomRoles] = useState([]);
-  const [savedBranches, setSavedBranches] = useState([]);
+  const [customRoles, setCustomRoles] = useState<CustomRoleDto[]>([]);
+  const [savedBranches, setSavedBranches] = useState<string[]>([]);
   // Kayıt ekranındaki "Rol Ekle" / "Branş Ekle" pencereleri.
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [branchDialogOpen, setBranchDialogOpen] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
   const [savingBranch, setSavingBranch] = useState(false);
-  const [editStaff, setEditStaff] = useState(null);
-  const [editForm, setEditForm] = useState(() => buildStaffEditForm());
+  const [editStaff, setEditStaff] = useState<StaffSummaryDto | null>(null);
+  const [editForm, setEditForm] = useState<StaffEditForm>(() => buildStaffEditForm());
   const [editSaving, setEditSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [credentials, setCredentials] = useState(null);
+  const [credentials, setCredentials] = useState<IssuedStaffCredentials | null>(null);
 
   const loadRecent = useCallback(async () => {
     try {
@@ -201,9 +239,9 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
     }
   }, []);
 
-  useEffect(() => { loadRecent(); }, [loadRecent]);
+  useEffect(() => { void loadRecent(); }, [loadRecent]);
 
-  const handleChange = (field, value) => {
+  const handleChange = <K extends keyof StaffRegistrationForm>(field: K, value: StaffRegistrationForm[K]) => {
     setForm((prev) => ({
       ...prev,
       [field]: value,
@@ -261,9 +299,9 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
         return;
       }
     }
-    let createdStaffUserId = null;
-    let createdVehicleId = null;
-    let createdDriverId = null;
+    let createdStaffUserId: string | null = null;
+    let createdVehicleId: string | null = null;
+    let createdDriverId: string | null = null;
     try {
       setSaving(true);
       // Özel rol: taban rolü backend'e, kimliği customRoleId olarak gider.
@@ -311,17 +349,20 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
         });
         createdVehicleId = vehicle?.id || null;
         const driver = await createServiceDriver({
-          userId: response?.userId,
+          userId: response.userId,
           phoneNumber: form.phone.trim(),
           licenseNumber: form.licenseNumber.trim(),
           isActive: true,
         });
         createdDriverId = driver?.id || null;
+        if (!vehicle?.id || !driver?.id) {
+          throw new Error('Servis aracı veya şoför kaydı oluşturulamadı.');
+        }
         const route = await createServiceRoute({
           name: form.routeName.trim(),
           routeType: form.routeType,
-          vehicleId: vehicle?.id,
-          driverId: driver?.id,
+          vehicleId: vehicle.id,
+          driverId: driver.id,
           startTime: form.routeStartTime,
           endTime: form.routeEndTime,
           isActive: false,
@@ -364,7 +405,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
         description: 'Bilgiler PDF olarak indirildi.',
       });
       setForm(emptyForm);
-      loadRecent();
+      void loadRecent();
     } catch (err) {
       if (form.role === 'ServiceDriver') {
         await rollbackServiceDriverRegistration({
@@ -373,7 +414,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
           staffUserId: createdStaffUserId,
         });
       }
-      const message = err?.response?.data?.message || err?.message || 'Kayıt başarısız.';
+      const message = errorMessage(err, 'Kayıt başarısız.');
       toast({ title: message, variant: 'destructive' });
     } finally {
       setSaving(false);
@@ -399,7 +440,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
     });
   };
 
-  const rollbackServiceDriverRegistration = async ({ driverId, vehicleId, staffUserId }) => {
+  const rollbackServiceDriverRegistration = async ({ driverId, vehicleId, staffUserId }: RollbackTargets) => {
     try {
       if (driverId) await deleteServiceDriver(driverId);
     } catch (error) {
@@ -417,7 +458,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
     }
   };
 
-  const canManageAssignments = String(user?.role || user?.primaryRole || '').toLowerCase() === 'admin';
+  const canManageAssignments = String(user?.role || '').toLowerCase() === 'admin';
   const selectedEditCustomRole = customRoles.find((role) => role.id === editForm.customRoleId);
 
   const handleEditStaff = async () => {
@@ -468,7 +509,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
       setEditStaff(null);
       await loadRecent();
     } catch (err) {
-      toast({ title: err.message || 'Personel güncellenemedi.', variant: 'destructive' });
+      toast({ title: errorMessage(err, 'Personel güncellenemedi.'), variant: 'destructive' });
     } finally {
       setEditSaving(false);
     }
@@ -491,14 +532,14 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
 
   const selectedStaffRole = staffFilterOptions.find((role) => role.value === roleFilter) || staffFilterOptions[0];
   const filteredStaff = useMemo(() => {
-    const normalize = (value) => String(value || '').trim().toLocaleLowerCase('tr-TR');
+    const normalize = (value: string | null | undefined) => String(value || '').trim().toLocaleLowerCase('tr-TR');
     const query = normalize(staffSearch);
     return allStaff.filter((staff) => {
       if (directoryMode && isUserPassive(staff.status)) return false;
       const matchesRole = roleFilter === 'all'
         || (roleFilter.startsWith('custom:')
           ? String(staff.customRoleId || '') === roleFilter.slice(7)
-          : [staff.primaryRole, staff.role].some((value) => (
+          : [staff.role].some((value) => (
             normalize(value) === normalize(selectedStaffRole?.value)
             || normalize(value) === normalize(selectedStaffRole?.label)
           )));
@@ -509,7 +550,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
     });
   }, [allStaff, directoryMode, roleFilter, selectedStaffRole, staffSearch]);
 
-  const handleStaffRoleChange = (value) => {
+  const handleStaffRoleChange = (value: string) => {
     setRoleFilter(value);
     if (!directoryMode) return;
     const next = new URLSearchParams(searchParams);
@@ -519,7 +560,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
 
   const openRegistrationForm = () => navigate('/admin/staff-registration');
 
-  const createTeacherBranch = async (name) => {
+  const createTeacherBranch = async (name: string) => {
     const next = mergeBranches(savedBranches, [name]);
     try {
       await upsertPlatformConfiguration(staffBranchConfigurationPayload(next));
@@ -527,7 +568,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
       toast({ title: 'Branş oluşturuldu', description: `${name} seçim listesine eklendi.` });
       return true;
     } catch (err) {
-      toast({ title: 'Branş oluşturulamadı', description: err.message, variant: 'destructive' });
+      toast({ title: 'Branş oluşturulamadı', description: errorMessage(err), variant: 'destructive' });
       return false;
     }
   };
@@ -821,14 +862,14 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
   if (directoryMode) {
     const activeStaff = allStaff.filter((staff) => !isUserPassive(staff.status));
     const teacherCount = activeStaff.filter((staff) => (
-      String(staff.primaryRole || staff.role || '').toLowerCase() === 'teacher'
+      String(staff.role || '').toLowerCase() === 'teacher'
     )).length;
-    const roleLabelOf = (staff) => {
+    const roleLabelOf = (staff: StaffSummaryDto) => {
       const custom = customRoles.find((role) => String(role.id) === String(staff.customRoleId || ''));
       const standard = staffRoleFilters.find((role) => (
-        String(role.value).toLowerCase() === String(staff.primaryRole || staff.role || '').toLowerCase()
+        String(role.value).toLowerCase() === String(staff.role || '').toLowerCase()
       ));
-      return custom?.name || standard?.label || staff.primaryRole || staff.role || 'Rol belirtilmemiş';
+      return custom?.name || standard?.label || staff.role || 'Rol belirtilmemiş';
     };
 
     return (
@@ -958,7 +999,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
                       toast({ title: isUserPassive(staff.status) ? 'Kullanıcı aktifleştirildi.' : 'Kullanıcı pasife alındı (giriş yapamaz).' });
                       await loadRecent();
                     } catch (err) {
-                      toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' });
+                      toast({ title: errorMessage(err, 'Durum değiştirilemedi.'), variant: 'destructive' });
                     }
                   }}
                 />
@@ -1279,8 +1320,8 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
                         {filteredStaff.map((s, i) => {
                           const isPassive = isUserPassive(s.status);
                           const customRole = customRoles.find((role) => String(role.id) === String(s.customRoleId || ''));
-                          const standardRole = staffRoleFilters.find((role) => String(role.value).toLowerCase() === String(s.primaryRole || s.role || '').toLowerCase());
-                          const roleLabel = customRole?.name || standardRole?.label || s.primaryRole || s.role || 'Rol belirtilmemiş';
+                          const standardRole = staffRoleFilters.find((role) => String(role.value).toLowerCase() === String(s.role || '').toLowerCase());
+                          const roleLabel = customRole?.name || standardRole?.label || s.role || 'Rol belirtilmemiş';
                           return (
                             <div key={s.id || i} data-testid={directoryMode ? 'staff-directory-card' : 'staff-registration-role-card'} className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-foreground/10 bg-muted/30 p-3 ${isPassive ? 'opacity-60' : ''}`}>
                               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-bold text-purple-600 dark:bg-purple-900/30">
@@ -1312,7 +1353,7 @@ export default function AdminStaffRegistration({ mode = 'registration' }) {
                                         toast({ title: isPassive ? 'Kullanıcı aktifleştirildi.' : 'Kullanıcı pasife alındı (giriş yapamaz).' });
                                         await loadRecent();
                                       } catch (err) {
-                                        toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' });
+                                        toast({ title: errorMessage(err, 'Durum değiştirilemedi.'), variant: 'destructive' });
                                       }
                                     }}
                                   />

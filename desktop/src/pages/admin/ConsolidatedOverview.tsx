@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchMyScopeRollup } from '../../lib/api/modules';
 import { setActiveTenantContext } from '../../lib/api/client';
+import type { ScopeRollupResponse, ScopeRollupTotals } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const trNumber = (value) => new Intl.NumberFormat('tr-TR').format(Number(value || 0));
-const trMoney = (value) =>
+const trNumber = (value: unknown): string => new Intl.NumberFormat('tr-TR').format(Number(value || 0));
+const trMoney = (value: unknown): string =>
   new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(Number(value || 0));
 
-const TILES = [
+const TILES: ReadonlyArray<{ key: keyof ScopeRollupTotals; label: string; icon: IconComponent; fmt: (value: unknown) => string }> = [
   { key: 'students', label: 'Toplam Öğrenci', icon: GraduationCap, fmt: trNumber },
   { key: 'staff', label: 'Toplam Personel', icon: Users, fmt: trNumber },
   { key: 'branches', label: 'Toplam Şube', icon: Building2, fmt: trNumber },
@@ -20,7 +22,7 @@ const TILES = [
 
 export default function ConsolidatedOverview() {
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<ScopeRollupResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -31,7 +33,7 @@ export default function ConsolidatedOverview() {
       .finally(() => setLoading(false));
   }, []);
 
-  const openTenant = (tenantId) => {
+  const openTenant = (tenantId: string) => {
     // Seçilen kuruma drill-down: bağlamı ayarla, şubeyi sıfırla (client), panele git.
     setActiveTenantContext(tenantId);
     navigate('/dashboard');
@@ -45,7 +47,7 @@ export default function ConsolidatedOverview() {
     return <div className="py-24 text-center text-sm text-muted-foreground">{error}</div>;
   }
 
-  const totals = data?.totals || {};
+  const totals = data?.totals;
   const tenants = Array.isArray(data?.tenants) ? data.tenants : [];
 
   return (
@@ -78,7 +80,7 @@ export default function ConsolidatedOverview() {
               <Icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{fmt(totals[key])}</div>
+              <div className="text-2xl font-bold">{fmt(totals?.[key])}</div>
             </CardContent>
           </Card>
         ))}

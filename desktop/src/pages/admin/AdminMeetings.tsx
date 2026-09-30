@@ -7,8 +7,13 @@ import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchMeetingRequests } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { MeetingRequestDto } from '../../types/api/generated';
 
-function parseSlot(slotValue) {
+type MeetingTone = 'success' | 'danger' | 'warning';
+type MeetingFilter = 'all' | 'pending' | 'approved' | 'rejected';
+
+function parseSlot(slotValue: string | null | undefined): { fullLabel: string; timeLabel: string; sortable: number } {
   const raw = String(slotValue || '').trim();
   const parsed = new Date(raw.replace(' ', 'T'));
   if (!Number.isNaN(parsed.getTime())) {
@@ -21,16 +26,16 @@ function parseSlot(slotValue) {
   return { fullLabel: raw, timeLabel: raw, sortable: 0 };
 }
 
-function statusTone(status) {
+function statusTone(status: string): MeetingTone {
   const value = String(status || '').toLowerCase();
   if (value.includes('onay')) return 'success';
   if (value.includes('red')) return 'danger';
   return 'warning';
 }
 
-function badge(status) {
+function badge(status: string) {
   const tone = statusTone(status);
-  const styles = {
+  const styles: Record<MeetingTone, string> = {
     success: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     danger: 'bg-rose-100 text-rose-700 border-rose-200',
     warning: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -39,10 +44,10 @@ function badge(status) {
 }
 
 export default function AdminMeetings() {
-  const [requests, setRequests] = useState([]);
+  const [requests, setRequests] = useState<MeetingRequestDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState<MeetingFilter>('all');
 
   const loadData = useCallback(async () => {
     try {
@@ -51,16 +56,16 @@ export default function AdminMeetings() {
       const data = await fetchMeetingRequests();
       setRequests(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || 'Görüşme verileri alınamadı.');
+      setError(errorMessage(err, 'Görüşme verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   const items = useMemo(() => [...requests]
-    .map((item) => ({ ...item, slotInfo: parseSlot(item.slot || item.requestedDate) }))
+    .map((item) => ({ ...item, slotInfo: parseSlot(item.slot) }))
     .filter((item) => {
       if (filter === 'approved') return statusTone(item.status) === 'success';
       if (filter === 'pending') return statusTone(item.status) === 'warning';
@@ -103,12 +108,12 @@ export default function AdminMeetings() {
       </section>
 
       <div className="flex flex-wrap gap-2">
-        {[
+        {([
           ['all', 'Tümü'],
           ['pending', 'Bekleyen'],
           ['approved', 'Onaylanan'],
           ['rejected', 'Reddedilen'],
-        ].map(([value, label]) => (
+        ] satisfies ReadonlyArray<readonly [MeetingFilter, string]>).map(([value, label]) => (
           <Button key={value} variant={filter === value ? 'default' : 'outline'} onClick={() => setFilter(value)}>{label}</Button>
         ))}
       </div>
@@ -136,7 +141,7 @@ export default function AdminMeetings() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline">{item.advisor || item.teacherName || 'Öğretmen'}</Badge>
+                    <Badge variant="outline">{item.advisor || 'Öğretmen'}</Badge>
                     <Badge variant="outline"><Clock3 className="mr-2 h-3 w-3" />{item.slotInfo.fullLabel}</Badge>
                     <Badge variant="outline">{item.slotInfo.timeLabel}</Badge>
                     <Badge variant="outline">{item.onlineMeeting ? <><Video className="mr-2 h-3 w-3" />Online</> : <><Building2 className="mr-2 h-3 w-3" />Yüz yüze</>}</Badge>

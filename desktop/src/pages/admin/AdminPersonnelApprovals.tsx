@@ -14,30 +14,33 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { fetchApprovals, decideApproval } from '../../lib/api/modules';
 import { formatMoney } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { ApprovalRequestDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-const STATUS_LABEL = {
+const STATUS_LABEL: Partial<Record<string, string>> = {
   Pending: 'İncelemede',
   Approved: 'Onaylandı',
   Rejected: 'Reddedildi',
   Cancelled: 'İptal',
 };
 
-function statusLabel(status) {
+function statusLabel(status: string): string {
   return STATUS_LABEL[status] || status || 'İncelemede';
 }
 
 // Para biçimi ortak `lib/format.js`'ten gelir ("5.000 TL").
-function money(amount) {
+function money(amount: number | null | undefined): string | null {
   return amount == null ? null : formatMoney(amount);
 }
 
 export default function AdminPersonnelApprovals() {
   const { user } = useApp();
   const { toast } = useToast();
-  const [items, setItems] = useState([]);
-  const [selected, setSelected] = useState(null);
+  const [items, setItems] = useState<ApprovalRequestDto[]>([]);
+  const [selected, setSelected] = useState<ApprovalRequestDto | null>(null);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   const canManageApprovals = ['admin', 'administrative'].includes(String(user?.backendRole || user?.role || '').toLowerCase());
@@ -49,13 +52,13 @@ export default function AdminPersonnelApprovals() {
       const data = await fetchApprovals();
       setItems(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || 'Onaylar alınamadı.');
+      setError(errorMessage(err, 'Onaylar alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadApprovals(); }, [loadApprovals]);
+  useEffect(() => { void loadApprovals(); }, [loadApprovals]);
 
   const stats = useMemo(() => ({
     total: items.length,
@@ -64,15 +67,17 @@ export default function AdminPersonnelApprovals() {
     rejected: items.filter((item) => item.status === 'Rejected').length,
   }), [items]);
 
-  const decide = async (item, status) => {
+  const decide = async (item: ApprovalRequestDto, status: string) => {
     try {
       setBusyId(item.id);
       const updated = await decideApproval(item.id, { status });
-      setItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...updated } : row)));
-      if (selected?.id === item.id) setSelected((prev) => ({ ...prev, ...updated }));
+      if (updated) {
+        setItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...updated } : row)));
+        if (selected?.id === item.id) setSelected((prev) => (prev ? { ...prev, ...updated } : prev));
+      }
       toast({ title: 'Onay güncellendi', description: `${item.title} → ${statusLabel(status)}` });
     } catch (err) {
-      toast({ title: 'Onay güncellenemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+      toast({ title: 'Onay güncellenemedi', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
@@ -104,12 +109,12 @@ export default function AdminPersonnelApprovals() {
       </div>
       {error ? <ErrorBanner title="Onaylar alınamadı" message={error} onRetry={loadApprovals} /> : null}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        {[
+        {([
           [stats.total, 'Toplam Talep', ShieldCheck],
           [stats.pending, 'İncelemede', Clock3],
           [stats.approved, 'Onaylandı', CheckCircle2],
           [stats.rejected, 'Reddedildi', XCircle],
-        ].map(([value, label, Icon]) => (
+        ] satisfies ReadonlyArray<readonly [number, string, IconComponent]>).map(([value, label, Icon]) => (
           <Card key={label}>
             <CardContent className="p-5 flex items-center justify-between">
               <div>

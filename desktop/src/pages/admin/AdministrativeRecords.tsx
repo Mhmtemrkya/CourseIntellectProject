@@ -14,18 +14,59 @@ import { IdentityCard } from '../../components/identity/IdentityCard';
 import { fetchStudents, fetchStaff } from '../../lib/api/modules';
 import { isUserPassive } from '../../lib/userStatus';
 import { formatDateTime } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { StaffSummaryDto, StudentSummaryDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-function normalizeText(value = '') {
-  return String(value).trim().toLowerCase();
+/** Öğrenci, veli grubu ve personelin ortak görünüm alanları (her tür bir alt kümesini taşır). */
+interface RecordProfile {
+  id: string;
+  fullName: string;
+  username?: string;
+  role?: string;
+  className?: string;
+  departmentOrBranch?: string;
+  campus?: string;
+  programType?: string;
+  email?: string;
+  phone?: string;
+  parentName?: string;
+  parentEmail?: string;
+  parentPhone?: string;
+  photoUrl?: string;
+  currentSchool?: string;
+  status?: string;
+  tcNo?: string;
+  schoolNumber?: string;
+  address?: string;
+  note?: string;
+  childNames?: string[];
 }
 
-function groupParents(students) {
-  const map = new Map();
+interface ParentGroup extends RecordProfile {
+  parentName: string;
+  childNames: string[];
+  type: 'Veli';
+}
+
+interface AdminRecord {
+  id: string;
+  title: string;
+  detail: string;
+  type: string;
+  payload: RecordProfile;
+}
+
+function normalizeText(value: string | null | undefined = ''): string {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+function groupParents(students: readonly StudentSummaryDto[]): ParentGroup[] {
+  const map = new Map<string, ParentGroup>();
   students.forEach((student) => {
     if (!student.parentName) return;
     const key = `${normalizeText(student.parentName)}|${normalizeText(student.parentEmail)}`;
-    if (!map.has(key)) {
-      map.set(key, {
+    const group = map.get(key) ?? {
         id: key,
         fullName: student.parentName,
         parentName: student.parentName,
@@ -33,15 +74,15 @@ function groupParents(students) {
         phone: student.parentPhone,
         childNames: [],
         type: 'Veli',
-      });
-    }
-    map.get(key).childNames.push(student.fullName);
+      };
+    group.childNames.push(student.fullName);
+    map.set(key, group);
   });
   return Array.from(map.values());
 }
 
-function buildRecordSummary(record) {
-  const payload = record.payload || {};
+function buildRecordSummary(record: AdminRecord): string {
+  const payload = record.payload;
   const rows = [
     ['Kayıt Türü', record.type],
     ['Ad Soyad', record.title],
@@ -61,11 +102,11 @@ function buildRecordSummary(record) {
     '',
     ...rows.map(([label, value]) => `${label}: ${value}`),
     '',
-    'Oluşturulma Tarihi: ' + formatDateTime(),
+    'Oluşturulma Tarihi: ' + formatDateTime(new Date()),
   ].join('\n');
 }
 
-function downloadRecord(name, record) {
+function downloadRecord(name: string, record: AdminRecord) {
   const blob = new Blob([buildRecordSummary(record)], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -78,10 +119,10 @@ function downloadRecord(name, record) {
 }
 
 export default function AdministrativeRecords() {
-  const [students, setStudents] = useState([]);
-  const [staff, setStaff] = useState([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [staff, setStaff] = useState<StaffSummaryDto[]>([]);
   const [search, setSearch] = useState('');
-  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -90,18 +131,18 @@ export default function AdministrativeRecords() {
       setLoading(true);
       setError('');
       const [studentItems, staffItems] = await Promise.all([fetchStudents().catch(() => []), fetchStaff().catch(() => [])]);
-      setStudents(studentItems);
-      setStaff(staffItems);
+      setStudents(studentItems ?? []);
+      setStaff(staffItems ?? []);
     } catch (err) {
-      setError(err.message || 'İdari kayıtlar alınamadı.');
+      setError(errorMessage(err, 'İdari kayıtlar alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadRecords(); }, [loadRecords]);
+  useEffect(() => { void loadRecords(); }, [loadRecords]);
 
-  const records = useMemo(() => {
+  const records = useMemo((): AdminRecord[] => {
     const parents = groupParents(students);
     return [
       ...students.map((item) => ({
@@ -167,12 +208,12 @@ export default function AdministrativeRecords() {
       </div>
       {error ? <ErrorBanner title="İdari kayıtlar alınamadı" message={error} onRetry={loadRecords} /> : null}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        {[
+        {([
           [activeStudentCount, 'Öğrenci Kayıtları', Users],
           [activeParentCount, 'Veli Kayıtları', Users],
           [activeStaffCount, 'Personel Kayıtları', BriefcaseBusiness],
           [records.length, 'Toplam Dosya', FolderKanban],
-        ].map(([value, label, Icon]) => (
+        ] satisfies ReadonlyArray<readonly [number, string, IconComponent]>).map(([value, label, Icon]) => (
           <Card key={label}>
             <CardContent className="p-5 flex items-center justify-between">
               <div>
@@ -298,11 +339,11 @@ export default function AdministrativeRecords() {
                 </Card>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
-                {[
+                {([
                   ['Durum', 'Aktif ve doğrulanmış kayıt', ShieldCheck],
                   ['Kayıt Özeti', selectedRecord.detail, FolderKanban],
                   ['İşlem', 'Detay özeti indirilebilir', Download],
-                ].map(([title, value, Icon]) => (
+                ] satisfies ReadonlyArray<readonly [string, string, IconComponent]>).map(([title, value, Icon]) => (
                   <Card key={title}>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between gap-3">

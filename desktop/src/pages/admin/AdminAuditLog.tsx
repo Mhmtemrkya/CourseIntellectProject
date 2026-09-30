@@ -11,9 +11,12 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAuditBranchSummary, fetchAuditLogsPaged, fetchOrgUnits } from '../../lib/api/modules';
 import { formatDateTime } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { AuditLogPagedQuery } from '../../lib/api/audit';
+import type { AuditBranchSummaryDto, AuditLogDto, AuditLogPageDto, OrgUnitDto } from '../../types/api/generated';
 
 const CATEGORIES = ['', 'Login', 'Approval', 'HR', 'Document', 'Task', 'Admin', 'Account', 'Permission', 'Registration', 'Finance', 'OrgUnit'];
-const CATEGORY_LABEL = {
+const CATEGORY_LABEL: Partial<Record<string, string>> = {
   Login: 'Giriş',
   Approval: 'Onay',
   HR: 'Personel',
@@ -34,7 +37,7 @@ const SOURCES = [
   { value: 'Login', label: 'Yalnız girişler' },
 ];
 
-const ROLE_LABEL = {
+const ROLE_LABEL: Partial<Record<string, string>> = {
   Admin: 'Kurum Yöneticisi',
   Developer: 'Geliştirici',
   BranchManager: 'Şube Müdürü',
@@ -49,7 +52,7 @@ const PAGE_SIZE = 50;
 
 // Tarih ön ayarları. `days: null` = sınır yok. Gün sayısı bugünün başlangıcından
 // geriye sayılır ki "son 7 gün" saat farkıyla kayan bir pencere olmasın.
-const DATE_PRESETS = [
+const DATE_PRESETS: ReadonlyArray<{ value: string; label: string; days: number | null }> = [
   { value: 'all', label: 'Tüm zamanlar', days: null },
   { value: 'today', label: 'Bugün', days: 0 },
   { value: '7', label: 'Son 7 gün', days: 7 },
@@ -59,7 +62,7 @@ const DATE_PRESETS = [
 ];
 
 /** Ön ayardan ISO tarih sınırları üretir; özel aralıkta kullanıcının girdiği günler kullanılır. */
-function resolveDateRange(preset, customFrom, customTo) {
+function resolveDateRange(preset: string, customFrom: string, customTo: string): { fromUtc?: string; toUtc?: string } {
   if (preset === 'custom') {
     return {
       fromUtc: customFrom ? new Date(`${customFrom}T00:00:00`).toISOString() : undefined,
@@ -80,7 +83,7 @@ function resolveDateRange(preset, customFrom, customTo) {
  * amaç "hangi cihazdan" sorusuna tek bakışta cevap vermek. Tanınmayan istemcide
  * ham metin kısaltılarak gösterilir ki bilgi kaybolmasın.
  */
-export function describeDevice(userAgent) {
+export function describeDevice(userAgent: string | null | undefined): { label: string; mobile: boolean } | null {
   if (!userAgent) return null;
   const ua = userAgent.toLowerCase();
 
@@ -95,7 +98,7 @@ export function describeDevice(userAgent) {
   else if (ua.includes('mac os') || ua.includes('macintosh')) platform = 'macOS';
   else if (ua.includes('linux')) platform = 'Linux';
 
-  let client = null;
+  let client: string | null = null;
   if (isDesktopApp) client = 'Masaüstü uygulaması';
   else if (ua.includes('edg/')) client = 'Edge';
   else if (ua.includes('opr/') || ua.includes('opera')) client = 'Opera';
@@ -111,14 +114,14 @@ export function describeDevice(userAgent) {
   return { label: client ? `${platform} · ${client}` : platform, mobile };
 }
 
-const roleLabel = (role) => {
+const roleLabel = (role: string | null | undefined): string | null => {
   if (!role) return null;
   // Birden çok rol virgülle gelir.
   return role.split(',').map((r) => ROLE_LABEL[r.trim()] || r.trim()).join(', ');
 };
 
 /// Bir kaydın alt satırındaki bağlam rozetleri: rol, IP, cihaz.
-function ContextChips({ item }) {
+function ContextChips({ item }: { item: AuditLogDto }) {
   const device = describeDevice(item.userAgent);
   const role = roleLabel(item.actorRole);
   if (!role && !item.ipAddress && !device) return null;
@@ -136,7 +139,7 @@ function ContextChips({ item }) {
         </span>
       ) : null}
       {device ? (
-        <span className="inline-flex items-center gap-1" title={item.userAgent}>
+        <span className="inline-flex items-center gap-1" title={item.userAgent ?? undefined}>
           {device.mobile ? <Smartphone className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
           {device.label}
         </span>
@@ -146,9 +149,9 @@ function ContextChips({ item }) {
 }
 
 export default function AdminAuditLog() {
-  const [page, setPage] = useState({ items: [], totalCount: 0 });
-  const [branchSummary, setBranchSummary] = useState([]);
-  const [orgUnits, setOrgUnits] = useState([]);
+  const [page, setPage] = useState<AuditLogPageDto>({ items: [], totalCount: 0, skip: 0, take: 0 });
+  const [branchSummary, setBranchSummary] = useState<AuditBranchSummaryDto[]>([]);
+  const [orgUnits, setOrgUnits] = useState<OrgUnitDto[]>([]);
   const [category, setCategory] = useState('');
   const [branchId, setBranchId] = useState('');
   const [source, setSource] = useState('All');
@@ -168,7 +171,7 @@ export default function AdminAuditLog() {
     try {
       setLoading(true);
       setError('');
-      const params = { skip: pageIndex * PAGE_SIZE, take: PAGE_SIZE, source };
+      const params: AuditLogPagedQuery = { skip: pageIndex * PAGE_SIZE, take: PAGE_SIZE, source };
       if (category) params.category = category;
       if (branchId) params.branchId = branchId;
       if (appliedSearch) params.search = appliedSearch;
@@ -184,13 +187,13 @@ export default function AdminAuditLog() {
       setPage(result);
       setBranchSummary(summary);
     } catch (err) {
-      setError(err.message || 'Kayıt geçmişi alınamadı.');
+      setError(errorMessage(err, 'Kayıt geçmişi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [category, branchId, source, appliedSearch, appliedActor, onlyFailedLogins, datePreset, customFrom, customTo, pageIndex]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   useEffect(() => {
     fetchOrgUnits().then(setOrgUnits).catch(() => setOrgUnits([]));

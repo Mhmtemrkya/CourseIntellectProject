@@ -7,11 +7,13 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchUserRoles, updateRolePolicy } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { RoleSummaryDto } from '../../types/api/generated';
 
 // Modül anahtarları backend'den ASCII gelir ("kayit", "odeme", "icerik"...).
 // Ham hâlde basılıp CSS ile büyütülünce Türkçe bozuluyordu ("KAYİT", "ODEME",
 // hem "ICERİK" hem "ICERİKLER"). Görünen adlar burada tanımlıdır.
-const MODULE_LABELS = {
+const MODULE_LABELS: Partial<Record<string, string>> = {
   akademik: 'Akademik',
   ayarlar: 'Ayarlar',
   duyurular: 'Duyurular',
@@ -36,11 +38,11 @@ const MODULE_LABELS = {
 
 // DİKKAT: anahtar normalizasyonunda Türkçe küçültme kullanılmaz. "Icerik" değeri
 // tr-TR'de "ıcerik" (noktasız ı) olur ve haritayla eşleşmez.
-const moduleLabel = (key) => MODULE_LABELS[String(key).toLowerCase()] || key;
+const moduleLabel = (key: string): string => MODULE_LABELS[String(key).toLowerCase()] || key;
 
 export default function AdminRbacMatrix() {
   const { toast } = useToast();
-  const [roles, setRoles] = useState([]);
+  const [roles, setRoles] = useState<RoleSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [savingCell, setSavingCell] = useState('');
@@ -52,21 +54,21 @@ export default function AdminRbacMatrix() {
       const data = await fetchUserRoles();
       setRoles(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || 'Roller alınamadı.');
+      setError(errorMessage(err, 'Roller alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const modules = useMemo(() => {
-    const set = new Set();
+    const set = new Set<string>();
     roles.forEach((r) => (r.moduleAccess || []).forEach((m) => set.add(m)));
     return [...set].sort();
   }, [roles]);
 
-  const toggle = async (role, moduleKey) => {
+  const toggle = async (role: RoleSummaryDto, moduleKey: string) => {
     const has = (role.moduleAccess || []).includes(moduleKey);
     const nextModules = has
       ? role.moduleAccess.filter((m) => m !== moduleKey)
@@ -86,7 +88,7 @@ export default function AdminRbacMatrix() {
     } catch (err) {
       // Geri al
       setRoles((prev) => prev.map((r) => (r.roleName === role.roleName ? { ...r, moduleAccess: role.moduleAccess } : r)));
-      toast({ title: 'Güncellenemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Güncellenemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSavingCell('');
     }

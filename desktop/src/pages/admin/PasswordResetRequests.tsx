@@ -29,6 +29,9 @@ import {
   fetchPasswordResetRequests,
   reviewPasswordResetRequest,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { PasswordResetRequestDto, PasswordResetReviewResponse } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
 const filters = [
   { value: 'Pending', label: 'Bekleyen' },
@@ -39,7 +42,7 @@ const filters = [
   { value: 'All', label: 'Tümü' },
 ];
 
-const statusLabels = {
+const statusLabels: Partial<Record<string, string>> = {
   Pending: 'Bekliyor',
   Approved: 'Geçici Şifre Verildi',
   Rejected: 'Reddedildi',
@@ -47,7 +50,7 @@ const statusLabels = {
   Expired: 'Süresi Doldu',
 };
 
-const statusStyles = {
+const statusStyles: Partial<Record<string, string>> = {
   Pending: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300',
   Approved: 'border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-300',
   Rejected: 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300',
@@ -55,7 +58,7 @@ const statusStyles = {
   Expired: 'border-slate-500/30 bg-slate-500/10 text-slate-600 dark:text-slate-300',
 };
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   if (!value) return '-';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
@@ -67,15 +70,15 @@ function formatDate(value) {
 
 export default function PasswordResetRequests() {
   const { toast } = useToast();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState<PasswordResetRequestDto[]>([]);
   const [status, setStatus] = useState('Pending');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selected, setSelected] = useState(null);
-  const [decision, setDecision] = useState('approve');
+  const [selected, setSelected] = useState<PasswordResetRequestDto | null>(null);
+  const [decision, setDecision] = useState<'approve' | 'reject'>('approve');
   const [note, setNote] = useState('');
   const [reviewing, setReviewing] = useState(false);
-  const [approvalResult, setApprovalResult] = useState(null);
+  const [approvalResult, setApprovalResult] = useState<PasswordResetReviewResponse | null>(null);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -84,14 +87,14 @@ export default function PasswordResetRequests() {
       const records = await fetchPasswordResetRequests(status);
       setItems(records);
     } catch (err) {
-      setError(err?.message || 'Şifre talepleri alınamadı.');
+      setError(errorMessage(err, 'Şifre talepleri alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, [status]);
 
   useEffect(() => {
-    loadRequests();
+    void loadRequests();
   }, [loadRequests]);
 
   const stats = useMemo(() => ({
@@ -101,7 +104,7 @@ export default function PasswordResetRequests() {
     done: items.filter((item) => item.status === 'Used').length,
   }), [items]);
 
-  const openDecision = (item, nextDecision) => {
+  const openDecision = (item: PasswordResetRequestDto, nextDecision: 'approve' | 'reject') => {
     setSelected(item);
     setDecision(nextDecision);
     setNote('');
@@ -128,7 +131,7 @@ export default function PasswordResetRequests() {
     } catch (err) {
       toast({
         title: 'İşlem yapılamadı',
-        description: err?.message || 'Lütfen tekrar deneyin.',
+        description: errorMessage(err, 'Lütfen tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {
@@ -170,12 +173,12 @@ export default function PasswordResetRequests() {
       {error ? <ErrorBanner title="Talepler alınamadı" message={error} onRetry={loadRequests} /> : null}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        {[
+        {([
           [stats.total, 'Listelenen', KeyRound],
           [stats.pending, 'Bekleyen', Clock3],
           [stats.approved, 'Geçici Şifreli', TimerReset],
           [stats.done, 'Tamamlanan', ShieldCheck],
-        ].map(([value, label, Icon]) => (
+        ] satisfies ReadonlyArray<readonly [number, string, IconComponent]>).map(([value, label, Icon]) => (
           <Card key={label}>
             <CardContent className="flex items-center justify-between p-5">
               <div>

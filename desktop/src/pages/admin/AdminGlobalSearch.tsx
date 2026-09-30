@@ -12,14 +12,25 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAnnouncements, fetchStaff, fetchStudents } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { AnnouncementDto, StaffSummaryDto, StudentSummaryDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
+
+interface SearchResult {
+  id: string;
+  title: string;
+  detail: string;
+  type: string;
+  route: string;
+}
 
 export default function AdminGlobalSearch() {
   const navigate = useNavigate();
-  const [students, setStudents] = useState([]);
-  const [staff, setStaff] = useState([]);
-  const [announcements, setAnnouncements] = useState([]);
+  const [students, setStudents] = useState<StudentSummaryDto[]>([]);
+  const [staff, setStaff] = useState<StaffSummaryDto[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementDto[]>([]);
   const [query, setQuery] = useState('');
-  const [selectedResult, setSelectedResult] = useState(null);
+  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -32,24 +43,24 @@ export default function AdminGlobalSearch() {
         fetchStaff().catch(() => []),
         fetchAnnouncements().catch(() => []),
       ]);
-      setStudents(studentItems);
-      setStaff(staffItems);
-      setAnnouncements(announcementItems);
+      setStudents(studentItems ?? []);
+      setStaff(staffItems ?? []);
+      setAnnouncements(announcementItems ?? []);
     } catch (err) {
-      setError(err.message || 'Kurum içi arama verisi alınamadı.');
+      setError(errorMessage(err, 'Kurum içi arama verisi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadSearch(); }, [loadSearch]);
+  useEffect(() => { void loadSearch(); }, [loadSearch]);
 
   const results = useMemo(() => {
     const q = query.toLowerCase().trim();
-    const source = [
-      ...students.map((item) => ({ id: `student-${item.id}`, title: item.fullName, detail: item.className, type: 'Öğrenci', route: '/students', payload: item })),
-      ...staff.map((item) => ({ id: `staff-${item.id}`, title: item.fullName, detail: item.role, type: 'Personel', route: item.role === 'Teacher' ? '/teachers' : '/admin/records', payload: item })),
-      ...announcements.map((item) => ({ id: `ann-${item.id}`, title: item.title, detail: item.detail, type: 'Duyuru', route: '/admin/announcements', payload: item })),
+    const source: SearchResult[] = [
+      ...students.map((item) => ({ id: `student-${item.id}`, title: item.fullName, detail: item.className, type: 'Öğrenci', route: '/students' })),
+      ...staff.map((item) => ({ id: `staff-${item.id}`, title: item.fullName, detail: item.role, type: 'Personel', route: item.role === 'Teacher' ? '/teachers' : '/admin/records' })),
+      ...announcements.map((item) => ({ id: `ann-${item.id}`, title: item.title, detail: item.detail, type: 'Duyuru', route: '/admin/announcements' })),
     ];
     if (!q) return source.slice(0, 12);
     return source.filter((item) => `${item.title} ${item.detail || ''}`.toLowerCase().includes(q)).slice(0, 20);
@@ -65,11 +76,11 @@ export default function AdminGlobalSearch() {
       </div>
       {error ? <ErrorBanner title="Kurum içi arama verisi alınamadı" message={error} onRetry={loadSearch} /> : null}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {[
+        {([
           [students.length, 'Öğrenci Havuzu', Users],
           [staff.length, 'Personel Havuzu', BriefcaseBusiness],
           [announcements.length, 'Duyuru Havuzu', BellRing],
-        ].map(([value, label, Icon]) => (
+        ] satisfies ReadonlyArray<readonly [number, string, IconComponent]>).map(([value, label, Icon]) => (
           <Card key={label}>
             <CardContent className="p-5 flex items-center justify-between">
               <div>

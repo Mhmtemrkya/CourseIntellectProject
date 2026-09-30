@@ -24,6 +24,22 @@ import { formatMoney } from '../../lib/format';
 import {
   isValidEmail, isValidTcKimlik, isValidTrPhone, maskEmail, maskTcKimlik, maskTrPhone,
 } from '../../lib/inputMasks';
+import { errorMessage } from '../../lib/errors';
+import type { OrgUnitDto, StaffSummaryDto, StudentSummaryDto } from '../../types/api/generated';
+
+interface IssuedAccount {
+  fullName: string;
+  username: string;
+  password: string;
+  className?: string;
+}
+
+interface IssuedCredentials {
+  student: IssuedAccount;
+  parent: IssuedAccount | null;
+}
+
+type StudentRegistrationForm = typeof emptyForm;
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -35,7 +51,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-const STEPS = [
+const STEPS: ReadonlyArray<{ value: string; label: string }> = [
   { value: 'personal', label: 'Kişisel' },
   { value: 'parent', label: 'Veli' },
   { value: 'other', label: 'Diğer' },
@@ -70,23 +86,23 @@ export default function AdminStudentRegistration() {
   const { toast } = useToast();
   const { user } = useApp();
   const tenantName = user?.tenant || '';
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<StudentRegistrationForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [classNames, setClassNames] = useState([]);
-  const [allStudents, setAllStudents] = useState([]);
-  const [staff, setStaff] = useState([]);
+  const [classNames, setClassNames] = useState<string[]>([]);
+  const [allStudents, setAllStudents] = useState<StudentSummaryDto[]>([]);
+  const [staff, setStaff] = useState<StaffSummaryDto[]>([]);
   const [rosterClass, setRosterClass] = useState('');
-  const [branches, setBranches] = useState([]);
+  const [branches, setBranches] = useState<OrgUnitDto[]>([]);
   const [branchId, setBranchId] = useState('');
   const [loading, setLoading] = useState(true);
-  const [credentials, setCredentials] = useState(null);
+  const [credentials, setCredentials] = useState<IssuedCredentials | null>(null);
   const [activeStep, setActiveStep] = useState('personal');
 
   const currentStepIndex = STEPS.findIndex((step) => step.value === activeStep);
   const isLastStep = currentStepIndex === STEPS.length - 1;
 
   // Adimi ilerletmeden once o adimdaki zorunlu/format kontrolleri yapilir.
-  const validateStep = (step) => {
+  const validateStep = (step: string) => {
     if (step === 'personal') {
       if (!form.fullName.trim()) { toast({ title: 'Ad soyad zorunludur.', variant: 'destructive' }); return false; }
       if (!form.className) { toast({ title: 'Sınıf seçimi zorunludur.', variant: 'destructive' }); return false; }
@@ -101,11 +117,11 @@ export default function AdminStudentRegistration() {
 
   const goNext = () => {
     if (!validateStep(activeStep)) return;
-    setActiveStep(STEPS[Math.min(currentStepIndex + 1, STEPS.length - 1)].value);
+    setActiveStep(STEPS[Math.min(currentStepIndex + 1, STEPS.length - 1)]?.value ?? activeStep);
   };
 
   const goBack = () => {
-    setActiveStep(STEPS[Math.max(currentStepIndex - 1, 0)].value);
+    setActiveStep(STEPS[Math.max(currentStepIndex - 1, 0)]?.value ?? activeStep);
   };
 
   const loadData = useCallback(async () => {
@@ -131,9 +147,9 @@ export default function AdminStudentRegistration() {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
-  const handleChange = (field, value) => {
+  const handleChange = <K extends keyof StudentRegistrationForm>(field: K, value: StudentRegistrationForm[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -189,13 +205,14 @@ export default function AdminStudentRegistration() {
           ? Number(form.enrollmentScholarshipPercent)
           : null,
       }, branchId || undefined);
-      const studentInfo = {
+      if (!created) throw new Error('Kayıt yanıtı alınamadı.');
+      const studentInfo: IssuedAccount = {
         fullName: created.fullName || form.fullName.trim(),
         username: created.username,
         password: created.password,
         className: created.className || form.className,
       };
-      const parentInfo = created.parent
+      const parentInfo: IssuedAccount | null = created.parent
         ? {
           fullName: created.parent.fullName || form.parentName.trim(),
           username: created.parent.username,
@@ -233,9 +250,9 @@ export default function AdminStudentRegistration() {
       });
       setForm(emptyForm);
       setActiveStep('personal');
-      loadData();
+      void loadData();
     } catch (err) {
-      const message = err?.response?.data?.message || err?.message || 'Kayıt başarısız.';
+      const message = errorMessage(err, 'Kayıt başarısız.');
       toast({ title: message, variant: 'destructive' });
     } finally {
       setSaving(false);

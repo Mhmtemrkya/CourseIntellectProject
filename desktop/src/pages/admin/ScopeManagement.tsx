@@ -9,6 +9,8 @@ import {
   fetchScopeTenants, assignTenantGroup,
   searchScopeUsers, fetchUserGrants, addUserGrant, removeUserGrant,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { ScopeGroupDto, ScopeTenantLiteDto, ScopeUserDto, UserGrantDto } from '../../types/api/generated';
 
 const LEVELS = [
   { value: 'Group', label: 'Grup (İl/İlçe/Marka)' },
@@ -18,14 +20,14 @@ const LEVELS = [
 
 export default function ScopeManagement() {
   const { toast } = useToast();
-  const [groups, setGroups] = useState([]);
-  const [tenants, setTenants] = useState([]);
+  const [groups, setGroups] = useState<ScopeGroupDto[]>([]);
+  const [tenants, setTenants] = useState<ScopeTenantLiteDto[]>([]);
   const [newGroup, setNewGroup] = useState({ name: '', parentGroupId: '' });
 
   const [userQuery, setUserQuery] = useState('');
-  const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [grants, setGrants] = useState([]);
+  const [users, setUsers] = useState<ScopeUserDto[]>([]);
+  const [selectedUser, setSelectedUser] = useState<ScopeUserDto | null>(null);
+  const [grants, setGrants] = useState<UserGrantDto[]>([]);
   const [newGrant, setNewGrant] = useState({ level: 'Group', targetId: '', accessMode: 'Manage' });
 
   const load = useCallback(async () => {
@@ -35,9 +37,9 @@ export default function ScopeManagement() {
       setTenants(Array.isArray(t) ? t : []);
     } catch { /* ignore */ }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const groupName = (id) => groups.find((g) => g.id === id)?.name || '—';
+  const groupName = (id: string) => groups.find((g) => g.id === id)?.name || '—';
 
   // ── Gruplar ──
   const handleCreateGroup = async () => {
@@ -47,17 +49,17 @@ export default function ScopeManagement() {
       setNewGroup({ name: '', parentGroupId: '' });
       await load();
       toast({ title: 'Grup oluşturuldu.' });
-    } catch (e) { toast({ title: e.message || 'Grup oluşturulamadı.', variant: 'destructive' }); }
+    } catch (e) { toast({ title: errorMessage(e, 'Grup oluşturulamadı.'), variant: 'destructive' }); }
   };
-  const handleDeleteGroup = async (id) => {
+  const handleDeleteGroup = async (id: string) => {
     try { await deleteScopeGroup(id); await load(); toast({ title: 'Grup silindi.' }); }
-    catch (e) { toast({ title: e.message || 'Silinemedi.', variant: 'destructive' }); }
+    catch (e) { toast({ title: errorMessage(e, 'Silinemedi.'), variant: 'destructive' }); }
   };
 
   // ── Kurum → grup ──
-  const handleAssignTenant = async (tenantId, groupId) => {
+  const handleAssignTenant = async (tenantId: string, groupId: string) => {
     try { await assignTenantGroup(tenantId, groupId); await load(); }
-    catch (e) { toast({ title: e.message || 'Atanamadı.', variant: 'destructive' }); }
+    catch (e) { toast({ title: errorMessage(e, 'Atanamadı.'), variant: 'destructive' }); }
   };
 
   // ── Kullanıcı grant'ları ──
@@ -65,9 +67,9 @@ export default function ScopeManagement() {
     try { const res = await searchScopeUsers(userQuery); setUsers(Array.isArray(res) ? res : []); }
     catch { setUsers([]); }
   };
-  const selectUser = async (u) => {
+  const selectUser = async (u: ScopeUserDto) => {
     setSelectedUser(u);
-    try { setGrants(await fetchUserGrants(u.id)); } catch { setGrants([]); }
+    try { setGrants((await fetchUserGrants(u.id)) ?? []); } catch { setGrants([]); }
   };
   const handleAddGrant = async () => {
     if (!selectedUser) return;
@@ -81,13 +83,14 @@ export default function ScopeManagement() {
         accessMode: newGrant.accessMode,
       });
       setNewGrant({ level: 'Group', targetId: '', accessMode: 'Manage' });
-      setGrants(await fetchUserGrants(selectedUser.id));
+      setGrants((await fetchUserGrants(selectedUser.id)) ?? []);
       toast({ title: 'Kapsam eklendi.' });
-    } catch (e) { toast({ title: e.message || 'Eklenemedi.', variant: 'destructive' }); }
+    } catch (e) { toast({ title: errorMessage(e, 'Eklenemedi.'), variant: 'destructive' }); }
   };
-  const handleRemoveGrant = async (grantId) => {
-    try { await removeUserGrant(grantId); setGrants(await fetchUserGrants(selectedUser.id)); }
-    catch (e) { toast({ title: e.message || 'Silinemedi.', variant: 'destructive' }); }
+  const handleRemoveGrant = async (grantId: string) => {
+    if (!selectedUser) return;
+    try { await removeUserGrant(grantId); setGrants((await fetchUserGrants(selectedUser.id)) ?? []); }
+    catch (e) { toast({ title: errorMessage(e, 'Silinemedi.'), variant: 'destructive' }); }
   };
 
   const targetOptions = newGrant.level === 'Group' ? groups.map((g) => ({ id: g.id, name: g.name }))

@@ -9,9 +9,11 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchPassiveAccounts, updateUserStatus } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { PassiveAccountDto } from '../../types/api/generated';
 
 // Backend rol adı → Türkçe etiket. Pasif kayıtlar bu gruplara ayrılır.
-const ROLE_LABELS = {
+const ROLE_LABELS: Partial<Record<string, string>> = {
   Student: 'Öğrenci',
   Teacher: 'Öğretmen',
   Parent: 'Veli',
@@ -23,30 +25,30 @@ const ROLE_LABELS = {
   Developer: 'Geliştirici',
 };
 
-const roleLabel = (role) => ROLE_LABELS[role] || role || 'Diğer';
+const roleLabel = (role: string): string => ROLE_LABELS[role] || role || 'Diğer';
 
 export default function AdminPassiveRecords() {
   const { toast } = useToast();
-  const [accounts, setAccounts] = useState([]);
+  const [accounts, setAccounts] = useState<PassiveAccountDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [busyUser, setBusyUser] = useState(null);
+  const [busyUser, setBusyUser] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      setAccounts(await fetchPassiveAccounts());
+      setAccounts((await fetchPassiveAccounts()) ?? []);
     } catch (err) {
-      setError(err.message || 'Pasif kayıtlar alınamadı.');
+      setError(errorMessage(err, 'Pasif kayıtlar alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const roles = useMemo(() => {
     const set = new Set(accounts.map((a) => a.primaryRole));
@@ -62,14 +64,14 @@ export default function AdminPassiveRecords() {
     });
   }, [accounts, search, roleFilter]);
 
-  const reactivate = async (account) => {
+  const reactivate = async (account: PassiveAccountDto) => {
     setBusyUser(account.username);
     try {
       await updateUserStatus(account.username, 'Active');
       setAccounts((prev) => prev.filter((a) => a.userId !== account.userId));
       toast({ title: 'Yeniden aktifleştirildi', description: `${account.fullName} artık aktif; ilgili listelerde tekrar görünür.` });
     } catch (err) {
-      toast({ title: 'Aktifleştirilemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Aktifleştirilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setBusyUser(null);
     }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -51,6 +51,31 @@ import { serviceTrackingRealtime } from '../../lib/realtime/serviceTrackingRealt
 import {
   isValidTrPhone, isValidTrPlate, maskPositiveInteger, maskTrPhone, maskTrPlate, maskVehicleNumber,
 } from '../../lib/inputMasks';
+import { errorMessage } from '../../lib/errors';
+import type {
+  AdminServiceLiveTripDto,
+  AdminUserListItemDto,
+  AssignedStudentResponse,
+  PagedResult,
+  ServiceDriverDto,
+  ServiceRouteDetailResponse,
+  ServiceRouteListDto,
+  ServiceStudentSearchResultDto,
+  ServiceVehicleDto,
+  StopWithStudentsResponse,
+} from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
+
+type ServiceDialog = 'vehicle' | 'driver' | 'route' | 'route-detail';
+type MetricAccent = 'orange' | 'blue' | 'green' | 'purple';
+
+const TRIP_STATUS_META: Partial<Record<string, readonly [string, string]>> = {
+  NotStarted: ['Başlamadı', 'bg-slate-500/15 text-slate-500'],
+  InProgress: ['Yolda', 'bg-emerald-500/15 text-emerald-500'],
+  ArrivedSchool: ['Okulda', 'bg-blue-500/15 text-blue-500'],
+  Completed: ['Tamamlandı', 'bg-slate-500/15 text-slate-500'],
+  Cancelled: ['İptal', 'bg-red-500/15 text-red-500'],
+};
 
 const emptyVehicleForm = {
   vehicleNumber: '',
@@ -83,21 +108,18 @@ const emptyStopForm = {
   sortOrder: '1',
 };
 
-function routeTypeLabel(value) {
+function routeTypeLabel(value: string): string {
   if (value === 'Morning') return 'Sabah';
   if (value === 'Evening') return 'Akşam';
   return value || '-';
 }
 
-function normalizePagedItems(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.data)) return payload.data;
-  return [];
+function normalizePagedItems(payload: PagedResult<AdminUserListItemDto> | null): AdminUserListItemDto[] {
+  return Array.isArray(payload?.items) ? payload.items : [];
 }
 
-function getUserName(user) {
-  return user?.name || user?.fullName || user?.username || user?.email || 'Kullanıcı';
+function getUserName(user: AdminUserListItemDto): string {
+  return user.name || user.email || 'Kullanıcı';
 }
 
 export default function ServiceTrackingPage() {
@@ -106,23 +128,23 @@ export default function ServiceTrackingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [vehicles, setVehicles] = useState([]);
-  const [drivers, setDrivers] = useState([]);
-  const [routes, setRoutes] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [dialog, setDialog] = useState(null);
+  const [vehicles, setVehicles] = useState<ServiceVehicleDto[]>([]);
+  const [drivers, setDrivers] = useState<ServiceDriverDto[]>([]);
+  const [routes, setRoutes] = useState<ServiceRouteListDto[]>([]);
+  const [users, setUsers] = useState<AdminUserListItemDto[]>([]);
+  const [dialog, setDialog] = useState<ServiceDialog | null>(null);
   const [vehicleForm, setVehicleForm] = useState(emptyVehicleForm);
   const [driverForm, setDriverForm] = useState(emptyDriverForm);
   const [routeForm, setRouteForm] = useState(emptyRouteForm);
-  const [routeDetail, setRouteDetail] = useState(null);
+  const [routeDetail, setRouteDetail] = useState<ServiceRouteDetailResponse | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [stopForm, setStopForm] = useState(emptyStopForm);
   const [studentKeyword, setStudentKeyword] = useState('');
-  const [studentResults, setStudentResults] = useState([]);
+  const [studentResults, setStudentResults] = useState<ServiceStudentSearchResultDto[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [selectedStopId, setSelectedStopId] = useState('');
 
-  const [liveTrips, setLiveTrips] = useState([]);
+  const [liveTrips, setLiveTrips] = useState<AdminServiceLiveTripDto[]>([]);
 
   const loadLiveTrips = useCallback(async () => {
     try {
@@ -159,7 +181,7 @@ export default function ServiceTrackingPage() {
         driverId: previous.driverId || driverItems[0]?.id || '',
       }));
     } catch (err) {
-      setError(err.message || 'Servis takip verileri alınamadı.');
+      setError(errorMessage(err, 'Servis takip verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
@@ -167,11 +189,11 @@ export default function ServiceTrackingPage() {
 
   // SignalR: araç konumu / sefer / biniş güncellemelerinde canlı listeyi tazele.
   useEffect(() => serviceTrackingRealtime.subscribe(() => {
-    loadLiveTrips();
+    void loadLiveTrips();
   }), [loadLiveTrips]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const activeDrivers = useMemo(() => drivers.filter((item) => item.isActive), [drivers]);
@@ -194,7 +216,7 @@ export default function ServiceTrackingPage() {
     [driverForm.userId, users]
   );
 
-  function openDialog(type) {
+  function openDialog(type: ServiceDialog) {
     setSuccess('');
     setError('');
     if (type === 'vehicle') setVehicleForm(emptyVehicleForm);
@@ -216,7 +238,7 @@ export default function ServiceTrackingPage() {
     setDialog(type);
   }
 
-  async function openRouteDetail(routeId) {
+  async function openRouteDetail(routeId: string) {
     try {
       setDialog('route-detail');
       setDetailLoading(true);
@@ -232,14 +254,14 @@ export default function ServiceTrackingPage() {
         sortOrder: String((detail?.stops?.length || 0) + 1),
       });
     } catch (err) {
-      setError(err.message || 'Rota detayı alınamadı.');
+      setError(errorMessage(err, 'Rota detayı alınamadı.'));
       setDialog(null);
     } finally {
       setDetailLoading(false);
     }
   }
 
-  async function handleCreateVehicle(event) {
+  async function handleCreateVehicle(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const capacity = Number(vehicleForm.capacity);
     if (!isValidTrPlate(vehicleForm.plateNumber) || !Number.isInteger(capacity) || capacity < 2) {
@@ -259,7 +281,7 @@ export default function ServiceTrackingPage() {
     });
   }
 
-  async function handleCreateDriver(event) {
+  async function handleCreateDriver(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!driverForm.userId) {
       setError('Şoför yapılacak kullanıcıyı seçmelisin.');
@@ -280,7 +302,7 @@ export default function ServiceTrackingPage() {
     });
   }
 
-  async function handleCreateRoute(event) {
+  async function handleCreateRoute(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!routeForm.name.trim() || !routeForm.vehicleId || !routeForm.driverId) {
       setError('Rota adı, araç ve şoför seçimi zorunlu.');
@@ -300,7 +322,7 @@ export default function ServiceTrackingPage() {
     });
   }
 
-  async function handleCreateStop(event) {
+  async function handleCreateStop(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!routeDetail?.id) return;
     const latitude = Number(String(stopForm.latitude).replace(',', '.'));
@@ -310,15 +332,16 @@ export default function ServiceTrackingPage() {
       setError('Durak adı, koordinat ve sıra bilgisi geçerli olmalı.');
       return;
     }
+    const routeId = routeDetail.id;
     await submit(async () => {
-      await createServiceRouteStop(routeDetail.id, {
+      await createServiceRouteStop(routeId, {
         name: stopForm.name.trim(),
         address: stopForm.address.trim(),
         latitude,
         longitude,
         sortOrder,
       });
-      const detail = await fetchServiceRouteDetail(routeDetail.id);
+      const detail = await fetchServiceRouteDetail(routeId);
       setRouteDetail(detail);
       setSelectedStopId(detail?.stops?.[0]?.stopId || '');
       setStopForm({ ...emptyStopForm, sortOrder: String((detail?.stops?.length || 0) + 1) });
@@ -326,7 +349,7 @@ export default function ServiceTrackingPage() {
     }, { closeDialog: false });
   }
 
-  async function handleSearchStudent(event) {
+  async function handleSearchStudent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!studentKeyword.trim()) {
       setStudentResults([]);
@@ -339,43 +362,44 @@ export default function ServiceTrackingPage() {
       setStudentResults(results);
       setSelectedStudentId(results[0]?.studentId || '');
     } catch (err) {
-      setError(err.message || 'Öğrenci araması yapılamadı.');
+      setError(errorMessage(err, 'Öğrenci araması yapılamadı.'));
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleAssignStudent(event) {
+  async function handleAssignStudent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!routeDetail?.id || !selectedStudentId || !selectedStopId) {
       setError('Öğrenci ve durak seçimi zorunlu.');
       return;
     }
     const student = studentResults.find((item) => item.studentId === selectedStudentId);
+    const currentRoute = routeDetail;
     await submit(async () => {
       await assignServiceStudent({
         studentId: selectedStudentId,
         parentId: student?.parentId || null,
-        routeId: routeDetail.id,
+        routeId: currentRoute.id,
         stopId: selectedStopId,
       });
-      if (!routeDetail.isActive) {
-        await setServiceRouteActive(routeDetail.id, true);
+      if (!currentRoute.isActive) {
+        await setServiceRouteActive(currentRoute.id, true);
       }
-      const detail = await fetchServiceRouteDetail(routeDetail.id);
+      const detail = await fetchServiceRouteDetail(currentRoute.id);
       setRouteDetail(detail);
-      setSuccess(routeDetail.isActive ? 'Öğrenci servise atandı.' : 'Öğrenci servise atandı ve rota şoför ekranında görünecek şekilde aktifleştirildi.');
+      setSuccess(currentRoute.isActive ? 'Öğrenci servise atandı.' : 'Öğrenci servise atandı ve rota şoför ekranında görünecek şekilde aktifleştirildi.');
     }, { closeDialog: false });
   }
 
-  async function refreshRouteDetail(routeId = routeDetail?.id) {
+  async function refreshRouteDetail(routeId: string | undefined = routeDetail?.id) {
     if (!routeId) return;
     const detail = await fetchServiceRouteDetail(routeId);
     setRouteDetail(detail);
     setSelectedStopId(detail?.stops?.[0]?.stopId || '');
   }
 
-  async function handleDeleteStop(stop) {
+  async function handleDeleteStop(stop: StopWithStudentsResponse) {
     if (!window.confirm(`${stop.stopName} durağı silinsin mi?`)) return;
     await submit(async () => {
       await deleteServiceRouteStop(stop.stopId);
@@ -384,7 +408,7 @@ export default function ServiceTrackingPage() {
     }, { closeDialog: false });
   }
 
-  async function handleDeleteAssignment(student) {
+  async function handleDeleteAssignment(student: AssignedStudentResponse) {
     if (!window.confirm(`${student.studentFullName} servis ataması kaldırılsın mı?`)) return;
     await submit(async () => {
       await deleteServiceAssignment(student.assignmentId);
@@ -393,18 +417,22 @@ export default function ServiceTrackingPage() {
     }, { closeDialog: false });
   }
 
-  async function handleMoveStop(stop, direction) {
+  async function handleMoveStop(stop: StopWithStudentsResponse, direction: number) {
     if (!routeDetail?.stops?.length) return;
+    const routeId = routeDetail.id;
     const stops = [...routeDetail.stops].sort((a, b) => a.sortOrder - b.sortOrder);
     const index = stops.findIndex((item) => item.stopId === stop.stopId);
     const target = index + direction;
     if (index < 0 || target < 0 || target >= stops.length) return;
     const nextStops = stops.map((item) => ({ ...item }));
-    const currentOrder = nextStops[index].sortOrder;
-    nextStops[index].sortOrder = nextStops[target].sortOrder;
-    nextStops[target].sortOrder = currentOrder;
+    const current = nextStops[index];
+    const swapWith = nextStops[target];
+    if (!current || !swapWith) return;
+    const currentOrder = current.sortOrder;
+    current.sortOrder = swapWith.sortOrder;
+    swapWith.sortOrder = currentOrder;
     await submit(async () => {
-      await reorderServiceRouteStops(routeDetail.id, nextStops.map((item) => ({
+      await reorderServiceRouteStops(routeId, nextStops.map((item) => ({
         stopId: item.stopId,
         sortOrder: item.sortOrder,
       })));
@@ -413,7 +441,7 @@ export default function ServiceTrackingPage() {
     }, { closeDialog: false });
   }
 
-  async function submit(action, { closeDialog = true } = {}) {
+  async function submit(action: () => Promise<void>, { closeDialog = true }: { closeDialog?: boolean } = {}) {
     try {
       setSaving(true);
       setError('');
@@ -421,13 +449,13 @@ export default function ServiceTrackingPage() {
       if (closeDialog) setDialog(null);
       await load();
     } catch (err) {
-      setError(err.message || 'İşlem tamamlanamadı.');
+      setError(errorMessage(err, 'İşlem tamamlanamadı.'));
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDeactivateDriver(driver) {
+  async function handleDeactivateDriver(driver: ServiceDriverDto) {
     if (!window.confirm(`${driver.fullName} şoför kaydı pasifleştirilsin mi?`)) return;
     await submit(async () => {
       await deleteServiceDriver(driver.id);
@@ -435,7 +463,7 @@ export default function ServiceTrackingPage() {
     });
   }
 
-  async function handleToggleRoute(route) {
+  async function handleToggleRoute(route: ServiceRouteListDto) {
     await submit(async () => {
       await setServiceRouteActive(route.id, !route.isActive);
       setSuccess(route.isActive ? 'Rota pasifleştirildi.' : 'Rota aktifleştirildi.');
@@ -531,13 +559,7 @@ export default function ServiceTrackingPage() {
               </TableHeader>
               <TableBody>
                 {liveTrips.map((trip) => {
-                  const statusMeta = {
-                    NotStarted: ['Başlamadı', 'bg-slate-500/15 text-slate-500'],
-                    InProgress: ['Yolda', 'bg-emerald-500/15 text-emerald-500'],
-                    ArrivedSchool: ['Okulda', 'bg-blue-500/15 text-blue-500'],
-                    Completed: ['Tamamlandı', 'bg-slate-500/15 text-slate-500'],
-                    Cancelled: ['İptal', 'bg-red-500/15 text-red-500'],
-                  }[trip.status] || [trip.status, 'bg-slate-500/15 text-slate-500'];
+                  const statusMeta = TRIP_STATUS_META[trip.status] || [trip.status, 'bg-slate-500/15 text-slate-500'];
                   return (
                     <TableRow key={trip.tripId}>
                       <TableCell className="font-medium">{trip.routeName}</TableCell>
@@ -1011,8 +1033,8 @@ export default function ServiceTrackingPage() {
   );
 }
 
-function MetricCard({ icon: Icon, label, value, accent = 'orange' }) {
-  const accents = {
+function MetricCard({ icon: Icon, label, value, accent = 'orange' }: { icon: IconComponent; label: string; value: ReactNode; accent?: MetricAccent }) {
+  const accents: Record<MetricAccent, string> = {
     orange: 'bg-orange-500/10 text-orange-500 shadow-orange-500/10',
     blue: 'bg-blue-500/10 text-blue-500 shadow-blue-500/10',
     green: 'bg-emerald-500/10 text-emerald-500 shadow-emerald-500/10',
@@ -1021,7 +1043,7 @@ function MetricCard({ icon: Icon, label, value, accent = 'orange' }) {
   return (
     <Card className="border-slate-200/70 bg-foreground/85 shadow-sm backdrop-blur dark:border-foreground/10 dark:bg-foreground/5">
       <CardContent className="flex items-center gap-4 p-5">
-        <div className={`rounded-2xl p-3 shadow-lg ${accents[accent] || accents.orange}`}>
+        <div className={`rounded-2xl p-3 shadow-lg ${accents[accent]}`}>
           <Icon className="h-5 w-5" />
         </div>
         <div>
@@ -1033,7 +1055,7 @@ function MetricCard({ icon: Icon, label, value, accent = 'orange' }) {
   );
 }
 
-function EmptyCard({ title, detail }) {
+function EmptyCard({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="rounded-2xl border border-dashed bg-muted/20 p-6 text-center">
       <p className="font-semibold">{title}</p>
@@ -1042,7 +1064,7 @@ function EmptyCard({ title, detail }) {
   );
 }
 
-function Field({ label, children }) {
+function Field({ label, children }: { label: string; children?: ReactNode }) {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>

@@ -11,6 +11,8 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { fetchOrgUnits, createOrgUnit, deleteOrgUnit, fetchManagerCandidates, setOrgUnitActive } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { ManagerCandidateDto, OrgUnitDto } from '../../types/api/generated';
 
 const BRANCH_TYPES = ['şube', 'sube', 'kampüs', 'kampus'];
 
@@ -18,8 +20,8 @@ const emptyForm = { name: '', unitType: 'Şube', managerUserId: '', note: '' };
 
 export default function AdminBranchRegistration() {
   const { toast } = useToast();
-  const [units, setUnits] = useState([]);
-  const [staff, setStaff] = useState([]);
+  const [units, setUnits] = useState<OrgUnitDto[]>([]);
+  const [staff, setStaff] = useState<ManagerCandidateDto[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,16 +36,16 @@ export default function AdminBranchRegistration() {
         // Personel + kurum yöneticileri: yeni kurumda personel yokken de ilk şube açılabilsin.
         fetchManagerCandidates().catch(() => []),
       ]);
-      setUnits(unitList);
+      setUnits(unitList ?? []);
       setStaff(Array.isArray(candidates) ? candidates : []);
     } catch (err) {
-      setError(err.message || 'Şubeler alınamadı.');
+      setError(errorMessage(err, 'Şubeler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const branches = useMemo(
     () => units.filter((u) => BRANCH_TYPES.includes(String(u.unitType || '').toLowerCase())),
@@ -75,13 +77,13 @@ export default function AdminBranchRegistration() {
       await load();
       window.dispatchEvent(new Event('ci-org-units-changed'));
     } catch (err) {
-      toast({ title: 'Şube oluşturulamadı', description: err?.response?.data?.message || err.message, variant: 'destructive' });
+      toast({ title: 'Şube oluşturulamadı', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const remove = async (unit) => {
+  const remove = async (unit: OrgUnitDto) => {
     // eslint-disable-next-line no-alert
     if (!window.confirm(`"${unit.name}" şubesini silmek istediğinize emin misiniz?`)) return;
     try {
@@ -90,7 +92,7 @@ export default function AdminBranchRegistration() {
       await load();
       window.dispatchEvent(new Event('ci-org-units-changed'));
     } catch (err) {
-      toast({ title: 'Silinemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Silinemedi', description: errorMessage(err), variant: 'destructive' });
     }
   };
 
@@ -166,7 +168,7 @@ export default function AdminBranchRegistration() {
                         toast({ title: unit.isActive === false ? 'Şube aktifleştirildi.' : 'Şube pasife alındı.' });
                         await load();
                         window.dispatchEvent(new Event('ci-org-units-changed'));
-                      } catch (err) { toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' }); }
+                      } catch (err) { toast({ title: errorMessage(err, 'Durum değiştirilemedi.'), variant: 'destructive' }); }
                     }}
                   >
                     {unit.isActive === false ? 'Aktifleştir' : 'Pasife Al'}

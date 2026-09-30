@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
   LifeBuoy,
@@ -38,6 +38,8 @@ import {
   fetchMySupportTickets,
   createMySupportTicket,
 } from '../../lib/api/modules';
+import { errorMessage } from '../../lib/errors';
+import type { SupportTicketDto } from '../../types/api/generated';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -59,7 +61,7 @@ const PRIORITIES = [
   { value: 'urgent', label: 'Acil' },
 ];
 
-function StatusBadge({ status }) {
+function StatusBadge({ status }: { status: string }) {
   const v = String(status || '').toLowerCase();
   if (v === 'resolved' || v === 'closed') {
     return (
@@ -89,14 +91,14 @@ function StatusBadge({ status }) {
   );
 }
 
-function PriorityChip({ priority }) {
-  const map = {
+function PriorityChip({ priority }: { priority: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
     urgent: { label: 'Acil', cls: 'text-red-500' },
     high: { label: 'Yüksek', cls: 'text-amber-500' },
     normal: { label: 'Normal', cls: 'text-muted-foreground' },
     low: { label: 'Düşük', cls: 'text-muted-foreground/70' },
   };
-  const c = map[String(priority || '').toLowerCase()] || map.normal;
+  const c = map[String(priority || '').toLowerCase()] ?? { label: 'Normal', cls: 'text-muted-foreground' };
   return (
     <span className={`text-[10px] uppercase tracking-[0.18em] font-mono ${c.cls}`}>
       {c.label}
@@ -107,7 +109,7 @@ function PriorityChip({ priority }) {
 export default function Destek() {
   const { toast } = useToast();
   const { user } = useApp();
-  const [tickets, setTickets] = useState([]);
+  const [tickets, setTickets] = useState<SupportTicketDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -126,14 +128,14 @@ export default function Destek() {
       const list = await fetchMySupportTickets();
       setTickets(Array.isArray(list) ? list : []);
     } catch (err) {
-      setError(err.message || 'Talepler alınamadı.');
+      setError(errorMessage(err, 'Talepler alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (isTenantAdmin) loadTickets();
+    if (isTenantAdmin) void loadTickets();
     else setLoading(false);
   }, [isTenantAdmin, loadTickets]);
 
@@ -163,7 +165,7 @@ export default function Destek() {
       </div>
     );
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!subject.trim() || !summary.trim()) {
       toast({
@@ -183,7 +185,7 @@ export default function Destek() {
       });
       toast({
         title: 'Talep oluşturuldu',
-        description: `${created.ticketNumber} numaralı talebiniz alındı.`,
+        description: created ? `${created.ticketNumber} numaralı talebiniz alındı.` : 'Talebiniz alındı.',
       });
       setSubject('');
       setSummary('');
@@ -193,7 +195,7 @@ export default function Destek() {
     } catch (err) {
       toast({
         title: 'Talep gönderilemedi',
-        description: err.message || 'Tekrar deneyin.',
+        description: errorMessage(err, 'Tekrar deneyin.'),
         variant: 'destructive',
       });
     } finally {

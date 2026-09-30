@@ -21,8 +21,12 @@ import StudentFinanceAccountDialog from '../../components/finance/StudentFinance
 import { backfillDownPaymentMethod, backfillFinanceInstallments, fetchAccountingDashboard, fetchFinanceDashboard, sendFinanceReminders } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 import { formatDate } from '../../lib/format';
+import { errorMessage } from '../../lib/errors';
+import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { FinanceDashboardDto } from '../../types/api/generated';
+import type { IconComponent } from '../../types/ui';
 
-function tl(value) {
+function tl(value: unknown): string {
   const amount = Number(value || 0);
   return `${amount.toLocaleString('tr-TR', {
     minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
@@ -30,28 +34,28 @@ function tl(value) {
   })} TL`;
 }
 
-function parseMoney(value) {
+function parseMoney(value: unknown): number {
   return parseFinanceMoney(value);
 }
 
-function money(value) {
+function money(value: unknown): string {
   return tl(parseMoney(value));
 }
 
-function localDateInput(date) {
+function localDateInput(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
-function startOfLocalDay(value = new Date()) {
+function startOfLocalDay(value: Date | number = new Date()): Date {
   const date = new Date(value);
   date.setHours(0, 0, 0, 0);
   return date;
 }
 
-function periodDateRange(period, customFrom, customTo) {
+function periodDateRange(period: string, customFrom: string, customTo: string): { fromUtc: string; toUtc: string; label: string } {
   const now = new Date();
   let from = startOfLocalDay(now);
   let to = new Date(from);
@@ -85,11 +89,11 @@ function periodDateRange(period, customFrom, customTo) {
   };
 }
 
-function normalizeStatus(value = '') {
+function normalizeStatus(value = ''): string {
   return normalizeFinanceText(value);
 }
 
-function isPaidStatus(value = '') {
+function isPaidStatus(value = ''): boolean {
   const status = normalizeStatus(value);
   return status.includes('odendi') || status.includes('paid') || status.includes('completed');
 }
@@ -97,12 +101,12 @@ function isPaidStatus(value = '') {
 export default function AdminFinance() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [dashboard, setDashboard] = useState(null);
-  const [enrollmentFinance, setEnrollmentFinance] = useState(null);
+  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
+  const [enrollmentFinance, setEnrollmentFinance] = useState<FinanceDashboardDto | null>(null);
   const [sendingReminders, setSendingReminders] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
   const [convertingDownPayments, setConvertingDownPayments] = useState(false);
-  const [accountStudent, setAccountStudent] = useState(null);
+  const [accountStudent, setAccountStudent] = useState<string | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
   const [period, setPeriod] = useState('month');
   const [customFrom, setCustomFrom] = useState(() => localDateInput(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
@@ -125,7 +129,7 @@ export default function AdminFinance() {
       setDashboard(accounting);
       setEnrollmentFinance(finance);
     } catch (err) {
-      setError(err.message || 'Finans verileri alınamadı.');
+      setError(errorMessage(err, 'Finans verileri alınamadı.'));
     } finally {
       setLoading(false);
     }
@@ -140,7 +144,7 @@ export default function AdminFinance() {
         description: `${result?.notified || 0} öğrenci/veli bilgilendirildi (${result?.overdueCount || 0} geciken, ${result?.upcomingCount || 0} yaklaşan taksit).`,
       });
     } catch (err) {
-      toast({ title: 'Hatırlatma gönderilemedi', description: err.message, variant: 'destructive' });
+      toast({ title: 'Hatırlatma gönderilemedi', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setSendingReminders(false);
     }
@@ -156,7 +160,7 @@ export default function AdminFinance() {
       });
       await loadDashboard();
     } catch (err) {
-      toast({ title: 'İşlem başarısız', description: err.message, variant: 'destructive' });
+      toast({ title: 'İşlem başarısız', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setBackfilling(false);
     }
@@ -172,14 +176,14 @@ export default function AdminFinance() {
       });
       await loadDashboard();
     } catch (err) {
-      toast({ title: 'İşlem başarısız', description: err.message, variant: 'destructive' });
+      toast({ title: 'İşlem başarısız', description: errorMessage(err), variant: 'destructive' });
     } finally {
       setConvertingDownPayments(false);
     }
   }, [toast, loadDashboard]);
 
   useEffect(() => {
-    loadDashboard();
+    void loadDashboard();
   }, [loadDashboard]);
 
   const stats = useMemo(() => {
@@ -196,8 +200,7 @@ export default function AdminFinance() {
     // Üst kart toplamları otoriter sözleşme bazlı kaynaktan (fetchFinanceDashboard)
     // gelir; böylece kayıt ücreti taksitsiz de olsa "Toplam Alacak"a yansır.
     // enrollmentFinance yoksa accounting verisinden hesaplanır (geriye dönük).
-    const hasFinance = enrollmentFinance != null;
-    const totalReceivable = hasFinance
+    const totalReceivable = enrollmentFinance
       ? Number(enrollmentFinance.netTotal) || 0
       : invoices.reduce((sum, item) => sum + parseMoney(item.amount), 0);
     // Geriye dönük yolda da iadeler tahsilatı eksiye düşürmesin: brüt tahsilattan
@@ -208,16 +211,16 @@ export default function AdminFinance() {
       const refunded = amounts.filter((value) => value < 0).reduce((sum, value) => sum - value, 0);
       return gross - Math.min(gross, refunded);
     })();
-    const totalCollected = hasFinance
+    const totalCollected = enrollmentFinance
       ? Number(enrollmentFinance.collectedTotal) || 0
       : collectedFallback;
-    const pending = hasFinance
+    const pending = enrollmentFinance
       ? Number(enrollmentFinance.outstandingTotal) || 0
       : installments.filter((item) => !isPaidStatus(item.status)).reduce((sum, item) => sum + parseMoney(item.amount), 0);
-    const overdueTotal = hasFinance
+    const overdueTotal = enrollmentFinance
       ? Number(enrollmentFinance.overdueTotal) || 0
       : overdue.reduce((sum, item) => sum + parseMoney(item.amount), 0);
-    const rate = hasFinance
+    const rate = enrollmentFinance
       ? Number(enrollmentFinance.collectionRatePercent) || 0
       : (totalReceivable > 0 ? Math.min(100, Math.round((totalCollected / totalReceivable) * 100)) : 0);
 
@@ -274,13 +277,13 @@ export default function AdminFinance() {
               <p className="mt-1 text-sm text-muted-foreground">{selectedRange.label}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {[
+              {([
                 ['day', 'Günlük'],
                 ['week', 'Haftalık'],
                 ['month', 'Aylık'],
                 ['year', 'Yıllık'],
                 ['custom', 'Özel'],
-              ].map(([value, label]) => (
+              ] satisfies ReadonlyArray<readonly [string, string]>).map(([value, label]) => (
                 <Button
                   key={value}
                   size="sm"
@@ -321,12 +324,12 @@ export default function AdminFinance() {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
+        {([
           ['Toplam Alacak', money(stats.totalReceivable), Wallet, 'text-blue-600'],
           ['Tahsil Edilen', money(stats.totalCollected), CreditCard, 'text-emerald-600'],
           ['Bekleyen', money(stats.pending), Calendar, 'text-amber-600'],
           ['Geciken', money(stats.overdueTotal), AlertCircle, 'text-red-600'],
-        ].map(([label, value, Icon, color]) => (
+        ] satisfies ReadonlyArray<readonly [string, string, IconComponent, string]>).map(([label, value, Icon, color]) => (
           <Card key={label}>
             <CardContent className="p-5">
               <div className="flex items-start justify-between gap-4">
@@ -360,12 +363,12 @@ export default function AdminFinance() {
           <CardTitle>Hızlı Aksiyonlar</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
-            {[
+            {([
               ['Tahsilatlar', '/finance/collections', CreditCard],
               ['Onaylar', '/admin/finance-approvals', Receipt],
               ['Gecikenler', '/finance/late-payments', AlertCircle],
               ['Dışa Aktar', '/finance/export', Download],
-            ].map(([label, path, Icon]) => (
+            ] satisfies ReadonlyArray<readonly [string, string, IconComponent]>).map(([label, path, Icon]) => (
               <Button key={label} variant="outline" className="justify-start" onClick={() => navigate(path)}>
                 <Icon className="mr-2 h-4 w-4" />
                 {label}
@@ -380,11 +383,11 @@ export default function AdminFinance() {
           </CardHeader>
           <CardContent className="space-y-3">
             {stats.approvals.slice(0, 5).map((item) => (
-              <div key={item.id || item.referenceNumber} className="rounded-xl border bg-muted/20 p-4">
+              <div key={item.id} className="rounded-xl border bg-muted/20 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-semibold">{item.referenceNumber || item.type || 'Finans onayı'}</p>
-                    <p className="text-sm text-muted-foreground">{item.type || 'İşlem'} - {money(item.amount)}</p>
+                    <p className="font-semibold">{item.title || 'Finans onayı'}</p>
+                    <p className="text-sm text-muted-foreground">{item.category || 'İşlem'}{item.reason ? ` - ${item.reason}` : ''}</p>
                   </div>
                   <Badge variant="outline">{item.status || 'Bekliyor'}</Badge>
                 </div>
@@ -480,7 +483,7 @@ export default function AdminFinance() {
           {stats.collections.map((item) => (
             <div key={item.id || `${item.name}-${item.amount}`} className="flex items-center justify-between rounded-xl border bg-muted/20 p-4">
               <div>
-                <p className="font-semibold">{item.name || item.student || 'Tahsilat'}</p>
+                <p className="font-semibold">{item.name || 'Tahsilat'}</p>
                 <p className="text-sm text-muted-foreground">{item.method || 'Yöntem yok'} - {item.note || 'Açıklama yok'}</p>
               </div>
               <p className="font-bold text-emerald-600">{money(item.amount)}</p>

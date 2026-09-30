@@ -7,6 +7,14 @@ import { Badge } from '../../components/ui/badge';
 import { useToast } from '../../hooks/use-toast';
 import { fetchCustomRoles, createCustomRole, deleteCustomRole } from '../../lib/api/modules';
 import { MODULE_LIBRARY, ROLE_MODULES } from '../../lib/packageCatalog';
+import { errorMessage } from '../../lib/errors';
+import type { CustomRoleDto } from '../../types/api/generated';
+
+interface CustomRoleForm {
+  name: string;
+  baseRole: string;
+  modules: string[];
+}
 
 const BASE_ROLES = [
   { value: 'Administrative', label: 'İdari Personel', moduleKey: 'administrative' },
@@ -20,14 +28,14 @@ const BASE_ROLES = [
  */
 export default function CustomRolesSection() {
   const { toast } = useToast();
-  const [roles, setRoles] = useState([]);
+  const [roles, setRoles] = useState<CustomRoleDto[]>([]);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '', baseRole: 'Administrative', modules: [] });
+  const [form, setForm] = useState<CustomRoleForm>({ name: '', baseRole: 'Administrative', modules: [] });
 
   const load = useCallback(async () => {
-    try { setRoles(await fetchCustomRoles()); } catch { setRoles([]); }
+    try { setRoles((await fetchCustomRoles()) ?? []); } catch { setRoles([]); }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const moduleOptions = (BASE_ROLES.find((r) => r.value === form.baseRole)?.moduleKey || 'administrative');
   const availableModules = (ROLE_MODULES[moduleOptions] || []).map((key) => ({
@@ -35,7 +43,7 @@ export default function CustomRolesSection() {
     label: MODULE_LIBRARY[key]?.label || key,
   }));
 
-  const toggleModule = (key) => setForm((f) => ({
+  const toggleModule = (key: string) => setForm((f) => ({
     ...f,
     modules: f.modules.includes(key) ? f.modules.filter((m) => m !== key) : [...f.modules, key],
   }));
@@ -56,13 +64,13 @@ export default function CustomRolesSection() {
       await load();
       toast({ title: 'Özel rol oluşturuldu.' });
     } catch (e) {
-      toast({ title: e.message || 'Rol oluşturulamadı.', variant: 'destructive' });
+      toast({ title: errorMessage(e, 'Rol oluşturulamadı.'), variant: 'destructive' });
     }
   };
 
-  const handleDelete = async (role) => {
+  const handleDelete = async (role: CustomRoleDto) => {
     try { await deleteCustomRole(role.id); await load(); toast({ title: 'Rol silindi.' }); }
-    catch (e) { toast({ title: e.message || 'Silinemedi (atanmış kullanıcı olabilir).', variant: 'destructive' }); }
+    catch (e) { toast({ title: errorMessage(e, 'Silinemedi (atanmış kullanıcı olabilir).'), variant: 'destructive' }); }
   };
 
   return (
