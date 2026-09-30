@@ -1,3 +1,4 @@
+using CourseIntellect.Api.Security;
 using CourseIntellect.Application.DTOs.Announcements;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
@@ -21,6 +22,28 @@ public sealed class AnnouncementsController(IAnnouncementQueryService announceme
         CancellationToken cancellationToken)
     {
         var list = await announcementQueryService.GetAnnouncementsAsync(audience, className, teacherName, cancellationToken);
+
+        // Güvenlik: kitle/sınıf süzgeci istemciye bırakılmıştı; öğrenci ve veli
+        // öğretmenlere yönelik ya da başka sınıfa özel duyuruları da görebiliyordu.
+        // Öğrenci: "Ogrenci" + tüm kurum duyuruları, sınıfsız ya da kendi sınıfı.
+        // Veli: "Veli" + tüm kurum duyuruları, sınıfsız ya da çocuklarının sınıfı.
+        var isStudent = User.IsInRole("Student");
+        var isParent = User.IsInRole("Parent");
+        var isStaff = User.IsInRole("Admin") || User.IsInRole("Administrative") || User.IsInRole("Teacher");
+        if (!isStaff && (isStudent || isParent))
+        {
+            var roleAudience = isStudent ? "ogrenci" : "veli";
+            var allowedClasses = await StudentScope.ResolveAllowedClassNamesAsync(User, dbContext, cancellationToken) ?? [];
+            var classKeys = allowedClasses.Select(CompatibilitySnapshotStore.NormalizeText).ToHashSet();
+            list = list
+                .Where(item =>
+                    (CompatibilitySnapshotStore.NormalizeText(item.Audience) == "tumkurum"
+                        || CompatibilitySnapshotStore.NormalizeText(item.Audience).Contains(roleAudience))
+                    && (string.IsNullOrWhiteSpace(item.ClassName)
+                        || classKeys.Contains(CompatibilitySnapshotStore.NormalizeText(item.ClassName))))
+                .ToList();
+        }
+
         return Ok(list);
     }
 
