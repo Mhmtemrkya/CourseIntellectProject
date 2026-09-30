@@ -44,6 +44,20 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "../ui/breadcrumb";
+import { menuConfigs } from "./ModernSidebar";
+
+// Menüde tanımlı her sayfanın Türkçe adı (tam yol → etiket). Gezinme yolu önce
+// buradan okur; sözlükte olmayan rotalar eskiden ham URL parçası ("payments")
+// olarak görünüyordu.
+const menuPathLabels: ReadonlyMap<string, string> = new Map(
+  Object.values(menuConfigs).flatMap((items) => (items ?? []).map((item): [string, string] => [item.path, item.label])),
+);
+
+/** Bilinmeyen parçayı okunur hâle getirir ("attendance-qr" → "Attendance qr"). */
+function humanizeSegment(segment: string): string {
+  const text = segment.replace(/-/g, " ");
+  return text.charAt(0).toLocaleUpperCase("tr-TR") + text.slice(1);
+}
 
 const pathLabels: Record<string, string> = {
   dashboard: "Dashboard",
@@ -181,6 +195,11 @@ export function Topbar() {
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
 
   const pathSegments = location.pathname.split("/").filter(Boolean);
+  const crumbLabel = (index: number): string => {
+    const segment = pathSegments[index] ?? "";
+    const href = `/${pathSegments.slice(0, index + 1).join("/")}`;
+    return menuPathLabels.get(href) ?? pathLabels[segment] ?? humanizeSegment(segment);
+  };
   const backendRoleMap = useMemo((): Partial<Record<DesktopRole, string>> => ({
     admin: "Admin",
     administrative: "Administrative",
@@ -256,13 +275,13 @@ export function Topbar() {
               <BreadcrumbSeparator />
               {index === pathSegments.length - 1 ? (
                 <BreadcrumbPage>
-                  {pathLabels[segment] || segment}
+                  {crumbLabel(index)}
                 </BreadcrumbPage>
               ) : (
                 <BreadcrumbLink
                   href={`/${pathSegments.slice(0, index + 1).join("/")}`}
                 >
-                  {pathLabels[segment] || segment}
+                  {crumbLabel(index)}
                 </BreadcrumbLink>
               )}
             </BreadcrumbItem>

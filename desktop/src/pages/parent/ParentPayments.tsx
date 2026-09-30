@@ -197,7 +197,7 @@ export default function ParentPayments() {
             </Panel>
 
             <Panel title="Ödeme Yöntemleri">
-              <p className="mb-4 text-sm text-slate-400">Güvenli ödeme seçeneklerimizle kolayca ödeme yapın.</p>
+              <p className="mb-4 text-sm text-slate-400">Ödemenizi kuruma havale/EFT ile ya da elden yapabilirsiniz; tahsilat kurum tarafından kaydedilir.</p>
               <div className="grid gap-4 md:grid-cols-3">
                 {([
                   ['Kredi / Banka Kartı', 'Çevrimiçi kart ödemesi henüz kullanılamıyor; ödemenizi kuruma yapabilirsiniz.', CreditCard, 'purple', 'Bilgi Al', explainOfflinePayment],
@@ -208,7 +208,7 @@ export default function ParentPayments() {
                     <IconTile icon={Icon} tone={tone} />
                     <p className="mt-4 font-black text-white">{title}</p>
                     <p className="mt-2 min-h-[42px] text-sm text-slate-400">{text}</p>
-                    <Button className="mt-4 h-10 w-full rounded-[10px] bg-foreground/[0.06] text-slate-100 hover:bg-purple-500/20" onClick={action}>{button}</Button>
+                    <Button className="mt-4 h-10 w-full rounded-[10px] bg-foreground/[0.06] text-foreground hover:bg-purple-500/20" onClick={action}>{button}</Button>
                   </motion.div>
                 ))}
               </div>
