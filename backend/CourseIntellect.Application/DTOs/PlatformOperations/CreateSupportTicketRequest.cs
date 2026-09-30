@@ -8,5 +8,8 @@ public sealed record CreateSupportTicketRequest(
     string Category,
     string Priority,
     string Summary,
-    string LastMessage
+    string LastMessage,
+    Guid? TenantId = null,
+    string? CustomerNumber = null,
+    string? ContactEmail = null
 );

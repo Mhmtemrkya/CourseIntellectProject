@@ -520,7 +520,7 @@ public sealed class TenantSelfRegistrationTests : IDisposable
         Assert.Equal("info@abckoleji.com", email.Sent[0].To);
 
         // Onay kuyruğunun spam ile dolmasını asıl engelleyen davranış.
-        Assert.Empty(await service.GetTenantsAsync());
+        Assert.Equal("awaiting", Assert.Single(await service.GetTenantsAsync()).VerificationState);
 
         Assert.True(await service.VerifyRegistrationContactAsync(email.ExtractToken()));
 
@@ -731,13 +731,112 @@ public sealed class TenantSelfRegistrationTests : IDisposable
 
     // --- Yanıt hijyeni: bu davranış controller'da yaşıyor, orada kilitlenmeli ---
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Approval_assigns_customer_number_and_reports_email_delivery(bool sendSucceeds)
+    {
+        var email = new StubEmailSender(true, sendSucceeds);
+        var service = CreateService(email: email);
+        await service.RegisterTenantAsync(ValidRequest(), Context);
+        var application = await db.Context.TenantRegistrationApplications.SingleAsync();
+        var result = await service.ApproveTenantAsync(application.Id);
+        Assert.NotNull(result);
+        Assert.Matches("^SA-[0-9]{12}$", result!.CustomerNumber!);
+        Assert.Equal(string.Empty, result.Plan);
+        Assert.Equal(0, result.MonthlyFee);
+        Assert.Equal(sendSucceeds, result.ApprovalEmailSentAtUtc.HasValue);
+        if (sendSucceeds)
+        {
+            var mail = Assert.Single(email.Sent.Where(e => e.Subject.Contains("onaylandı")));
+            Assert.Contains(result.CustomerNumber!, mail.Body);
+            Assert.Contains(result.AdminUsername!, mail.Body);
+            Assert.Contains(result.TemporaryPassword!, mail.Body);
+        }
+        Assert.Single(await db.Context.TenantWorkspaces.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Support_uses_tenant_identity_and_accepts_disabled_customer_without_exposing_details()
+    {
+        var first = new TenantWorkspace { Name = "Aynı Ad", Slug = "bir", Status = "suspended" };
+        var second = new TenantWorkspace { Name = "Aynı Ad", Slug = "iki", Status = "active" };
+        db.Context.TenantWorkspaces.AddRange(first, second);
+        await db.Context.SaveChangesAsync();
+        var service = CreateService();
+        var controller = new PublicSupportController(db.Context, service, new StubCaptcha(CaptchaVerificationStatus.Success))
+        { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() } };
+        var body = new PublicSupportRequest(first.CustomerNumber, "Ayşe Yılmaz", "ayse@example.com", "Giriş sorunu", "Kurum hesabına giriş yapamıyoruz.", "Erişim", "test");
+        var known = await controller.Create(body, CancellationToken.None);
+        var unknown = await controller.Create(body with { CustomerNumber = "SA-000000000000" }, CancellationToken.None);
+        Assert.Equal(SerializeBody(known), SerializeBody(unknown));
+        var ticket = Assert.Single(await service.GetSupportTicketsByTenantAsync(first.Id));
+        Assert.Equal(first.CustomerNumber, ticket.CustomerNumber);
+        Assert.Equal(body.Email, ticket.ContactEmail);
+        Assert.Empty(await service.GetSupportTicketsByTenantAsync(second.Id));
+    }
+
+    [Fact]
+    public async Task Access_control_is_platform_only_and_revokes_all_institution_sessions()
+    {
+        var tenant = new TenantWorkspace { Name = "Okul", Slug = "okul", Status = "active" };
+        db.Context.TenantWorkspaces.Add(tenant);
+        await db.Context.SaveChangesAsync();
+        var admin = new AppUser { Username = "kurum.admin", FullName = "Yönetici", PasswordHash = "x", TenantId = tenant.Id, PrimaryRole = UserRole.Admin };
+        var teacher = new AppUser { Username = "kurum.teacher", FullName = "Öğretmen", PasswordHash = "x", TenantId = tenant.Id, PrimaryRole = UserRole.Teacher };
+        db.Context.Users.AddRange(admin, teacher);
+        await db.Context.SaveChangesAsync();
+        db.Context.RefreshTokenSessions.AddRange(new RefreshTokenSession { UserId = admin.Id, TokenHash = "first", ExpiresAtUtc = DateTime.UtcNow.AddDays(1) },
+            new RefreshTokenSession { UserId = teacher.Id, TokenHash = "second", ExpiresAtUtc = DateTime.UtcNow.AddDays(1) });
+        await db.Context.SaveChangesAsync();
+        var controller = CreateController();
+        controller.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+            new[] { new System.Security.Claims.Claim("role", "Admin") }, "test", "sub", "role"));
+        Assert.IsType<ForbidResult>(await controller.SetAccess(tenant.Id, new TenantAccessRequest(false), CancellationToken.None));
+        Assert.Equal("active", tenant.Status);
+        controller.HttpContext.User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+            new[] { new System.Security.Claims.Claim("role", "Developer"), new System.Security.Claims.Claim("platform_admin", "true") }, "test", "sub", "role"));
+        Assert.IsType<OkObjectResult>(await controller.SetAccess(tenant.Id, new TenantAccessRequest(false), CancellationToken.None));
+        Assert.Equal("suspended", tenant.Status);
+        Assert.All(await db.Context.RefreshTokenSessions.ToListAsync(), session => Assert.NotNull(session.RevokedAtUtc));
+        Assert.IsType<OkObjectResult>(await controller.SetAccess(tenant.Id, new TenantAccessRequest(true), CancellationToken.None));
+        Assert.Equal("active", tenant.Status);
+        Assert.All(await db.Context.RefreshTokenSessions.ToListAsync(), session => Assert.NotNull(session.RevokedAtUtc));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Support_reply_is_saved_and_email_delivery_result_is_reported(bool succeeds)
+    {
+        var email = new StubEmailSender(true, succeeds);
+        var service = CreateService(email: email);
+        var ticket = await service.CreateSupportTicketAsync(new CreateSupportTicketRequest("Destek", "Okul", "Ayşe", "Harici başvuru", "Destek", "normal", "Sorun", "Sorun", ContactEmail: "ayse@example.com"));
+        var reply = await service.UpdateSupportTicketAsync(ticket.Id, new UpdateSupportTicketRequest("resolved", null, "Sorununuz giderildi <script>", null));
+        Assert.Equal(succeeds, reply!.ReplyEmailSent);
+        Assert.Equal("resolved", reply.Status);
+        var stored = await db.Context.SupportTickets.SingleAsync();
+        Assert.Equal("Sorununuz giderildi <script>", stored.LastMessage);
+        if (succeeds) Assert.Contains("&lt;script&gt;", Assert.Single(email.Sent).Body);
+    }
+
+    [Fact]
+    public async Task Public_support_rejects_failed_captcha_without_creating_ticket()
+    {
+        var controller = new PublicSupportController(db.Context, CreateService(), new StubCaptcha(CaptchaVerificationStatus.Failed))
+        { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() } };
+        var result = await controller.Create(new PublicSupportRequest("SA-000000000000", "Ayşe", "ayse@example.com", "Sorun", "Giriş yapamıyoruz", "Erişim", null), CancellationToken.None);
+        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Empty(await db.Context.SupportTickets.ToListAsync());
+    }
+
     private PlatformOperationsController CreateController(
         CaptchaVerificationStatus captcha = CaptchaVerificationStatus.Success,
         IEmailSender? email = null)
     {
         var controller = new PlatformOperationsController(
             CreateService(captcha, email: email),
-            email ?? new StubEmailSender(isConfigured: false))
+            email ?? new StubEmailSender(isConfigured: false), db.Context)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
         };

@@ -41,7 +41,7 @@ public sealed class InstitutionMovedLoginTests : IDisposable
     private async Task SeedAsync()
     {
         db.Context.TenantWorkspaces.AddRange(
-            new TenantWorkspace { Id = SchoolTenant, Name = "Okul", Slug = "okul", InstitutionType = InstitutionType.PrivateSchool },
+            new TenantWorkspace { Id = SchoolTenant, Name = "Okul", Slug = "okul", Status = "active", InstitutionType = InstitutionType.PrivateSchool },
             new TenantWorkspace { Id = DrivingTenant, Name = "Kurs", Slug = "kurs", InstitutionType = InstitutionType.DrivingSchool });
         db.Context.Users.AddRange(
             NewUser("okul.admin", SchoolTenant),
@@ -109,6 +109,38 @@ public sealed class InstitutionMovedLoginTests : IDisposable
         var result = await BuildService().RefreshAsync(new RefreshTokenRequest("eski-oturum"));
 
         Assert.Null(result);
+    }
+
+    [Theory]
+    [InlineData("suspended", UserRole.Admin)]
+    [InlineData("rejected", UserRole.Teacher)]
+    [InlineData("pending", UserRole.Student)]
+    [InlineData("suspended", UserRole.Parent)]
+    public async Task Disabled_institution_blocks_login_refresh_and_existing_access(string status, UserRole role)
+    {
+        await SeedAsync();
+        var user = await db.Context.Users.SingleAsync(u => u.Username == "okul.admin");
+        user.PrimaryRole = role;
+        await db.Context.SaveChangesAsync();
+        var login = await BuildService().LoginAsync(new LoginRequest("okul.admin", "Parola123"));
+        Assert.NotNull(login);
+        var tenant = await db.Context.TenantWorkspaces.SingleAsync(t => t.Id == SchoolTenant);
+        tenant.Status = status;
+        await db.Context.SaveChangesAsync();
+        await Assert.ThrowsAsync<TenantDisabledException>(() => BuildService().LoginAsync(new LoginRequest("okul.admin", "Parola123")));
+        Assert.Null(await BuildService().RefreshAsync(new RefreshTokenRequest(login!.RefreshToken)));
+        var called = false;
+        var middleware = new CourseIntellect.Api.Middleware.TenantAccessMiddleware(_ => { called = true; return Task.CompletedTask; });
+        var context = new DefaultHttpContext { User = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(new[] { new System.Security.Claims.Claim("sub", user.Id.ToString()) }, "test")) };
+        context.Response.Body = new MemoryStream();
+        await middleware.InvokeAsync(context, db.Context, new ActiveScope());
+        Assert.False(called);
+        Assert.Equal(403, context.Response.StatusCode);
+        Assert.NotNull(await BuildService().LoginAsync(new LoginRequest("platform", "Parola123")));
+        tenant.Status = "active";
+        await db.Context.SaveChangesAsync();
+        Assert.NotNull(await BuildService().LoginAsync(new LoginRequest("okul.admin", "Parola123")));
     }
 
     private sealed class FakeJwt : IJwtTokenService

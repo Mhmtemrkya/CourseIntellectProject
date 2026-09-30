@@ -59,6 +59,9 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/logo/school_asist_icon.png
+  # iOS şeffaflığa izin vermez; boşluk beyaza boyanıyordu. Turuncu kutuya
+  # kırpılmış tam kare kaynak (köşeleri iOS maskesi yuvarlar).
+  image_path_ios: assets/logo/school_asist_icon_ios.png
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: assets/logo/school_asist_adaptive_fg.png
   remove_alpha_ios: true
@@ -76,10 +79,11 @@ flutter_launcher_icons:
     theme_color: "#F59E0B"
 
 flutter_native_splash:
-  color: "#F4F6FA"
+  web: false
+  color: "#08111F"
   image: assets/logo/course_intellect2.png
   android: true
   ios: true
   android_12:
-    color: "#F4F6FA"
+    color: "#08111F"
     image: assets/logo/school_asist_icon.png

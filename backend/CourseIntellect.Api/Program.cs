@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.SignalR;
 using CourseIntellect.Infrastructure;
 using CourseIntellect.Infrastructure.Persistence;
 using CourseIntellect.Infrastructure.Services;
@@ -112,11 +113,14 @@ else
     builder.Services.AddSingleton<Hangfire.IBackgroundJobClient, CourseIntellect.Infrastructure.Services.NoOpBackgroundJobClient>();
 }
 
+builder.Services.AddSingleton<TenantAccessHubFilter>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TenantAccessHubFilter>());
 builder.Services.AddSignalR(options =>
 {
     // Sınav canlı kamera kareleri (küçük JPEG data URL) varsayılan 32 KB sınırını
     // aşabildiği için izin verilen mesaj boyutunu yükseltiyoruz.
     options.MaximumReceiveMessageSize = 512 * 1024;
+    options.AddFilter<TenantAccessHubFilter>();
 });
 builder.Services.AddSingleton<IMessageRealtimeNotifier, SignalRMessageRealtimeNotifier>();
 builder.Services.AddSingleton<IServiceTrackingRealtimeNotifier, SignalRServiceTrackingRealtimeNotifier>();
@@ -682,6 +686,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthorization();
 // Kimlik + yetki sonrası aktif kurum/şube bağlamını istek başına bir kez çöz.
 app.UseMiddleware<CourseIntellect.Api.Middleware.ActiveScopeMiddleware>();
+app.UseMiddleware<TenantAccessMiddleware>();
 app.MapControllers();
 app.MapHub<MessagesHub>("/hubs/messages");
 app.MapHub<ServiceTrackingHub>("/hubs/service-tracking");

@@ -45,8 +45,8 @@ export default function TranslationsPage() {
 
   // Build translation items from defaults and custom
   const getTranslationItems = (category: string): TranslationItem[] => {
-    const defaultTr = (defaultTranslations.tr as Record<string, Record<string, string>>)[category] || {}
-    const defaultEn = (defaultTranslations.en as Record<string, Record<string, string>>)[category] || {}
+    const defaultTr = Object.fromEntries(Object.entries(defaultTranslations.tr))[category] || {}
+    const defaultEn = Object.fromEntries(Object.entries(defaultTranslations.en))[category] || {}
     const customTr = (customTranslations.tr as Record<string, Record<string, string>>)[category] || {}
     const customEn = (customTranslations.en as Record<string, Record<string, string>>)[category] || {}
 

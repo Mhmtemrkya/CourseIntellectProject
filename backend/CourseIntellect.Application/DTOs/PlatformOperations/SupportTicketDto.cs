@@ -14,5 +14,8 @@ public sealed record SupportTicketDto(
     string LastMessage,
     int Messages,
     DateTime CreatedAtUtc,
-    DateTime UpdatedAtUtc
+    DateTime UpdatedAtUtc,
+    string? CustomerNumber = null,
+    string? ContactEmail = null,
+    bool? ReplyEmailSent = null
 );

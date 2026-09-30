@@ -34,7 +34,9 @@ public sealed record TenantWorkspaceDto(
     /// <summary>Kurulum belgesi (PDF), base64. Yalnız onay ve belge yenileme
     /// yanıtlarında dolu; listeleme uçlarında hep null.</summary>
     string? SetupDocumentBase64 = null,
-    string? SetupDocumentFileName = null
+    string? SetupDocumentFileName = null,
+    string? CustomerNumber = null,
+    DateTime? ApprovalEmailSentAtUtc = null
 );
 
 public enum SetupDocumentOutcome

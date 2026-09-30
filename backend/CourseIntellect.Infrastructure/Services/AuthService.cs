@@ -130,6 +130,11 @@ public sealed class AuthService(
             throw new InstitutionMovedException(DrivingSchoolProductName);
         }
 
+        if (!await IsTenantActiveAsync(user, cancellationToken))
+        {
+            throw new TenantDisabledException();
+        }
+
         // Bakım modu açıksa sadece platform admin (Developer + tenantId yok) login olabilir
         var isPlatformAdmin = user.PrimaryRole == UserRole.Developer && user.TenantId is null;
         if (!isPlatformAdmin)
@@ -218,11 +223,18 @@ public sealed class AuthService(
             return null;
         }
 
+        if (!await IsTenantActiveAsync(user, cancellationToken)) return null;
+
         session.RevokedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return await CreateLoginResponseAsync(user, cancellationToken);
     }
+
+    private Task<bool> IsTenantActiveAsync(AppUser user, CancellationToken cancellationToken)
+        => user.TenantId is not Guid tenantId ? Task.FromResult(true)
+            : dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+                .AnyAsync(t => t.Id == tenantId && t.Status == "active", cancellationToken);
 
     private const string DrivingSchoolProductName = "DrivingAsist";
 

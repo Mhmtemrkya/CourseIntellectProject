@@ -16,7 +16,9 @@ interface TenantData {
   name: string
   email: string
   plan: string
-  status: "active" | "pending" | "rejected"
+  customerNumber?: string
+  approvalEmailSentAtUtc?: string | null
+  status: "active" | "pending" | "rejected" | "suspended"
   users: number
   branches: number
   monthlyFee: number
@@ -50,6 +52,7 @@ interface TenantCredentials {
 }
 
 const statusConfig = {
+  suspended: { label: "Erişim kapalı", color: "bg-red-100 text-red-700" },
   active: { label: "Aktif", color: "bg-green-100 text-green-700" },
   pending: { label: "Onay Bekliyor", color: "bg-yellow-100 text-yellow-700" },
   rejected: { label: "Reddedildi", color: "bg-red-100 text-red-700" },
@@ -267,6 +270,8 @@ export default function KurumlarPage() {
   }
 
   const columns: Column<TenantData>[] = [
+    { key: "customerNumber", label: "Müşteri numarası", render: (_, row) => <span>{row.customerNumber || "Onay bekliyor"}</span> },
+    { key: "approvalEmailSentAtUtc", label: "Onay e-postası", render: (_, row) => <span>{row.approvalEmailSentAtUtc ? "Gönderildi" : row.status === "active" ? "Gönderilmedi; kurulum belgesini yenileyin" : "—"}</span> },
     {
       key: "name",
       label: "Kurum Adı",
@@ -284,7 +289,7 @@ export default function KurumlarPage() {
       sortable: true,
       render: (value) => (
         <span className={cn("px-2 py-1 rounded-full text-xs font-medium", planConfig[value as string] ?? "bg-gray-100 text-gray-700")}>
-          {value as string}
+          {(value as string) || "Ücretsiz"}
         </span>
       ),
     },
@@ -297,12 +302,12 @@ export default function KurumlarPage() {
         return (
           <div className="flex items-center gap-1">
             <span className={cn("px-2 py-1 rounded-full text-xs font-medium", cfg.color)}>{cfg.label}</span>
-            {row.verificationState === "unproven" && (
+            {(row.verificationState === "unproven" || row.verificationState === "awaiting") && (
               <span
                 className="px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground inline-flex items-center gap-1"
                 title="İletişim adresi doğrulanmadı (doğrulama e-postası gönderilemedi)."
               >
-                <MailWarning className="w-3 h-3" />Adres doğrulanmadı
+                <MailWarning className="w-3 h-3" />{row.verificationState === "awaiting" ? "Doğrulama bekleniyor" : "Adres doğrulanmadı"}
               </span>
             )}
             {row.isSuspicious && (
@@ -333,7 +338,18 @@ export default function KurumlarPage() {
     },
   ]
 
+  const handleAccess = async (tenant: TenantData, enabled: boolean) => {
+    setActionLoading(tenant.id)
+    try {
+      await apiRequest(`/api/platformops/tenants/${tenant.id}/access`, { method: "PUT", body: { enabled } })
+      setTenants(await apiRequest<TenantData[]>("/api/platformops/tenants"))
+    } catch (error) { setLoadError(error instanceof Error ? error.message : "İşlem tamamlanamadı") }
+    finally { setActionLoading(null) }
+  }
+
   const actions: Action<TenantData>[] = [
+    { label: "Erişimi kapat", icon: <XCircle className="w-4 h-4" />, onClick: row => void handleAccess(row, false), hidden: row => row.status !== "active", variant: "destructive" },
+    { label: "Erişimi aç", icon: <CheckCircle className="w-4 h-4" />, onClick: row => void handleAccess(row, true), hidden: row => row.status !== "suspended" },
     {
       label: "Görüntüle",
       icon: <Eye className="w-4 h-4" />,
@@ -424,7 +440,7 @@ export default function KurumlarPage() {
             columns={columns}
             actions={actions}
             searchPlaceholder="Kurum ara..."
-            searchKeys={["name", "email", "plan"]}
+            searchKeys={["name", "email", "plan", "customerNumber"]}
             pageSize={10}
             emptyMessage="Kurum bulunamadı"
           />
@@ -530,7 +546,7 @@ export default function KurumlarPage() {
                 </div>
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <p className="text-xs text-muted-foreground">Plan</p>
-                  <p className="font-medium">{viewingTenant.plan}</p>
+                  <p className="font-medium">{viewingTenant.plan || "Ücretsiz"}</p>
                 </div>
                 {viewingTenant.adminUsername && (
                   <div className="col-span-2 p-3 bg-muted/50 rounded-lg">

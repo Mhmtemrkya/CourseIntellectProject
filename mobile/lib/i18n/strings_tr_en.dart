@@ -1,6 +1,8 @@
 // TR→EN sözlüğü (desktop sözlüğünden üretildi + mobil ekleri).
 // Otomatik üretim: desktop/src/lib/i18n/dictionary*.js kaynak alınır.
 const Map<String, String> kTrEn = {
+  'Eğitimin her adımında.': 'Every step of education.',
+  'Hazırlanıyor…': 'Getting ready…',
   'Kurum Seçin': 'Select Institution',
   'Yönetmek istediğiniz kurumu seçin':
       'Select the institution you want to manage',

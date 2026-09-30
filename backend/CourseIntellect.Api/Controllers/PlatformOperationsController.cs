@@ -1,3 +1,5 @@
+using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using CourseIntellect.Application.DTOs.PlatformOperations;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -12,20 +14,21 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/platformops")]
 public sealed class PlatformOperationsController(
     IPlatformOperationsService platformOperationsService,
-    IEmailSender emailSender) : ControllerBase
+    IEmailSender emailSender,
+    CourseIntellectDbContext db) : ControllerBase
 {
-    private bool HasTenantContext()
+    private bool DenyPlatformAccess()
     {
         var isPlatformAdmin = string.Equals(User.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase)
-                              || User.IsInRole("Developer");
-        return !isPlatformAdmin && !string.IsNullOrWhiteSpace(User.FindFirstValue("tenant_id"));
+                              || (User.IsInRole("Developer") && string.IsNullOrWhiteSpace(User.FindFirstValue("tenant_id")));
+        return !isPlatformAdmin;
     }
 
     [HttpGet("overview")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetOverview(CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         var overview = await platformOperationsService.GetOverviewAsync(cancellationToken);
         return Ok(overview);
     }
@@ -34,7 +37,7 @@ public sealed class PlatformOperationsController(
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetTenants(CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         var items = await platformOperationsService.GetTenantsAsync(cancellationToken);
         return Ok(items);
     }
@@ -43,7 +46,7 @@ public sealed class PlatformOperationsController(
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpsertTenant([FromQuery] Guid? id, [FromBody] UpsertTenantWorkspaceRequest request, CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         var item = await platformOperationsService.UpsertTenantAsync(id, request, cancellationToken);
         return Ok(item);
     }
@@ -52,7 +55,7 @@ public sealed class PlatformOperationsController(
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetSupportTickets(CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         var items = await platformOperationsService.GetSupportTicketsAsync(cancellationToken);
         return Ok(items);
     }
@@ -61,7 +64,7 @@ public sealed class PlatformOperationsController(
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreateSupportTicket([FromBody] CreateSupportTicketRequest request, CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         var item = await platformOperationsService.CreateSupportTicketAsync(request, cancellationToken);
         return Ok(item);
     }
@@ -140,7 +143,7 @@ public sealed class PlatformOperationsController(
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ApproveTenant(Guid id, CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         var item = await platformOperationsService.ApproveTenantAsync(id, cancellationToken);
         return item is null ? NotFound() : Ok(item);
     }
@@ -150,7 +153,7 @@ public sealed class PlatformOperationsController(
     [Authorize(Roles = "Admin,Developer")]
     public async Task<IActionResult> RegenerateSetupDocument(Guid id, CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
 
         var result = await platformOperationsService.RegenerateSetupDocumentAsync(id, cancellationToken);
 
@@ -167,6 +170,27 @@ public sealed class PlatformOperationsController(
         };
     }
 
+    [HttpPut("tenants/{id:guid}/access")]
+    [Authorize(Roles = "Admin,Developer")]
+    public async Task<IActionResult> SetAccess(Guid id, [FromBody] TenantAccessRequest request, CancellationToken ct)
+    {
+        if (DenyPlatformAccess()) return Forbid();
+        var tenant = await db.TenantWorkspaces.IgnoreQueryFilters().SingleOrDefaultAsync(t => t.Id == id, ct);
+        if (tenant is null) return NotFound();
+        if (tenant.Status is not ("active" or "suspended"))
+            return BadRequest(new { message = "Önce kurum başvurusunu onaylayın." });
+        tenant.Status = request.Enabled ? "active" : "suspended";
+        if (!request.Enabled)
+        {
+            var users = db.Users.IgnoreQueryFilters().Where(u => u.TenantId == id).Select(u => u.Id);
+            var sessions = await db.RefreshTokenSessions
+                .Where(s => users.Contains(s.UserId) && s.RevokedAtUtc == null).ToListAsync(ct);
+            foreach (var session in sessions) session.RevokedAtUtc = DateTime.UtcNow;
+        }
+        await db.SaveChangesAsync(ct);
+        return Ok(new { tenant.Id, tenant.Status });
+    }
+
     [HttpPut("tenants/{id:guid}/reject")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RejectTenant(
@@ -174,7 +198,7 @@ public sealed class PlatformOperationsController(
         [FromQuery] string? reason,
         CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         // Gerekçe isteğe bağlı ve query'den okunur: mevcut paneller gövdesiz PUT atıyor.
         var item = await platformOperationsService.RejectTenantAsync(id, reason, cancellationToken);
         return item is null ? NotFound() : Ok(item);
@@ -184,7 +208,7 @@ public sealed class PlatformOperationsController(
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteTenant(Guid id, CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         var deleted = await platformOperationsService.DeleteTenantAsync(id, cancellationToken);
         return deleted ? NoContent() : NotFound();
     }
@@ -196,7 +220,7 @@ public sealed class PlatformOperationsController(
         [FromBody] ResetTenantDataRequest request,
         CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
 
         var expectedConfirmation = $"RESET:{id:D}";
         if (!string.Equals(request.Confirmation?.Trim(), expectedConfirmation, StringComparison.Ordinal))
@@ -227,7 +251,7 @@ public sealed class PlatformOperationsController(
     [Authorize(Roles = "Admin,Developer")]
     public async Task<IActionResult> GetRegistrationBlocklist(CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         var items = await platformOperationsService.GetRegistrationBlocklistAsync(cancellationToken);
         return Ok(items);
     }
@@ -238,7 +262,7 @@ public sealed class PlatformOperationsController(
         [FromBody] AddRegistrationBlocklistRequest request,
         CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
 
         Guid? actorUserId = Guid.TryParse(User.FindFirstValue("nameid") ?? User.FindFirstValue("sub"), out var parsed)
             ? parsed
@@ -257,7 +281,7 @@ public sealed class PlatformOperationsController(
     [Authorize(Roles = "Admin,Developer")]
     public async Task<IActionResult> RemoveRegistrationBlocklistEntry(Guid id, CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         var removed = await platformOperationsService.RemoveRegistrationBlocklistEntryAsync(id, cancellationToken);
         return removed ? NoContent() : NotFound();
     }
@@ -270,7 +294,7 @@ public sealed class PlatformOperationsController(
         [FromQuery] string? reason,
         CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         var item = await platformOperationsService.SetApplicationSuspiciousAsync(id, value, reason, cancellationToken);
         return item is null ? NotFound() : Ok(item);
     }
@@ -279,8 +303,10 @@ public sealed class PlatformOperationsController(
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateSupportTicket(Guid id, [FromBody] UpdateSupportTicketRequest request, CancellationToken cancellationToken)
     {
-        if (HasTenantContext()) return Forbid();
+        if (DenyPlatformAccess()) return Forbid();
         var item = await platformOperationsService.UpdateSupportTicketAsync(id, request, cancellationToken);
         return item is null ? NotFound() : Ok(item);
     }
 }
+
+public sealed record TenantAccessRequest(bool Enabled);

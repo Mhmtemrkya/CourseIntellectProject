@@ -355,6 +355,9 @@ export async function loginWithBackend(username: string, password: string): Prom
   // Sürücü kursu kurumları DrivingAsist'e taşındı — 403 + code INSTITUTION_MOVED
   if (response.status === 403) {
     const body = await readErrorBody(response);
+    if (body?.code === "TENANT_DISABLED") {
+      throw createCodedError(body.message || "Kurumunuzun erişimi kapalı. Destek sayfasından bize ulaşın.", "TENANT_DISABLED");
+    }
     if (body?.code === "INSTITUTION_MOVED") {
       throw createCodedError(body.message || "Kurumunuz artık DrivingAsist uygulamasını kullanıyor.", "INSTITUTION_MOVED");
     }

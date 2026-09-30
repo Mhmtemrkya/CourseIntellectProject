@@ -164,7 +164,9 @@ class AuthApiService {
         if (decoded is Map<String, dynamic> && decoded['message'] is String) {
           message = decoded['message'] as String;
         }
-      } catch (e) { logIgnored('auth_api_service', e); }
+      } catch (e) {
+        logIgnored('auth_api_service', e);
+      }
       throw AuthApiException(message);
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -225,9 +227,7 @@ class AuthApiService {
             decoded['code']?.toString() == 'TEMPORARY_PASSWORD_EXPIRED') {
           final m = decoded['message']?.toString();
           throw AuthApiException(
-            m != null && m.isNotEmpty
-                ? m
-                : 'Geçici parolanızın süresi doldu.',
+            m != null && m.isNotEmpty ? m : 'Geçici parolanızın süresi doldu.',
             code: 'TEMPORARY_PASSWORD_EXPIRED',
           );
         }
@@ -250,6 +250,14 @@ class AuthApiService {
                 ? m
                 : 'Bu parola güvenlik nedeniyle kullanılamaz. Parolanızı sıfırlatın.',
             code: 'PUBLIC_DEMO_PASSWORD',
+          );
+        }
+        if (decoded is Map<String, dynamic> &&
+            decoded['code']?.toString() == 'TENANT_DISABLED') {
+          throw AuthApiException(
+            decoded['message']?.toString() ??
+                'Kurumunuzun erişimi kapalı. Destek sayfasından bize ulaşın.',
+            code: 'TENANT_DISABLED',
           );
         }
         if (decoded is Map<String, dynamic> &&
@@ -279,7 +287,9 @@ class AuthApiService {
           final m = decoded['message']?.toString();
           if (m != null && m.isNotEmpty) message = m;
         }
-      } catch (e) { logIgnored('auth_api_service', e); }
+      } catch (e) {
+        logIgnored('auth_api_service', e);
+      }
       throw AuthApiException(message, code: code ?? 'MAINTENANCE_MODE');
     }
 
@@ -295,7 +305,9 @@ class AuthApiService {
           final m = decoded['message']?.toString();
           if (m != null && m.isNotEmpty) message = m;
         }
-      } catch (e) { logIgnored('auth_api_service', e); }
+      } catch (e) {
+        logIgnored('auth_api_service', e);
+      }
       throw AuthApiException(message, code: code ?? 'RATE_LIMITED');
     }
 
@@ -416,7 +428,9 @@ class AuthApiService {
         if (decoded is Map<String, dynamic> && decoded['message'] is String) {
           message = decoded['message'] as String;
         }
-      } catch (e) { logIgnored('auth_api_service', e); }
+      } catch (e) {
+        logIgnored('auth_api_service', e);
+      }
       throw AuthApiException(message);
     }
 

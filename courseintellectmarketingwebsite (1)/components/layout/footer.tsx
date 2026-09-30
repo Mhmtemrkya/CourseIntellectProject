@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import type { LucideIcon } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
@@ -19,7 +19,7 @@ import { useSectionContent } from "@/context/content-context"
 import { useLanguage } from "@/context/language-context"
 import { isHiddenBillingPath } from "@/lib/billing"
 
-const iconMap: Record<string, React.ElementType> = {
+const iconMap: Record<string, LucideIcon> = {
   Twitter,
   Linkedin,
   Instagram,

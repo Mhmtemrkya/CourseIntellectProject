@@ -1,3 +1,4 @@
+import { api } from '../../lib/api/client';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -114,6 +115,7 @@ export default function Destek() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const [customerNumber, setCustomerNumber] = useState('');
   const [subject, setSubject] = useState('');
   const [category, setCategory] = useState('Genel');
   const [priority, setPriority] = useState('normal');
@@ -125,6 +127,8 @@ export default function Destek() {
     try {
       setLoading(true);
       setError('');
+      const customer = await api.get<{customerNumber: string}>('/api/support-tickets/customer');
+      setCustomerNumber(customer?.customerNumber || '');
       const list = await fetchMySupportTickets();
       setTickets(Array.isArray(list) ? list : []);
     } catch (err) {
@@ -212,7 +216,7 @@ export default function Destek() {
       data-testid="admin-destek-page"
     >
       <div>
-        <h1 className="text-3xl font-bold font-heading">Destek</h1>
+        <h1 className="text-3xl font-bold font-heading">Destek</h1><p className="text-sm text-muted-foreground">Müşteri numaranız: <span className="select-all font-semibold">{customerNumber || "—"}</span></p>
         <p className="text-muted-foreground mt-1">
           Bir sorun ya da talebiniz mi var? SchoolAsist ekibine ulaşın.
         </p>

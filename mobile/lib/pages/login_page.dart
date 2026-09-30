@@ -1,3 +1,5 @@
+import 'package:url_launcher/url_launcher.dart';
+import '../services/api_config.dart';
 import 'dart:async';
 
 import 'package:student/i18n/app_locale.dart';
@@ -15,6 +17,7 @@ import 'package:student/theme_provider.dart';
 import 'package:student/widgets/course_intellect_logo.dart';
 import 'package:student/widgets/notification_primer_sheet.dart';
 import 'package:provider/provider.dart';
+import '../services/push_navigation.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -129,7 +132,10 @@ class _LoginPageState extends State<LoginPage> {
       _showUnsupportedRole(session);
       return;
     }
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => page));
+    final navigator = Navigator.of(context);
+    navigator.pushReplacement(MaterialPageRoute(builder: (_) => page));
+    // Bekleyen bildirim dokunuşu (uygulama kapalıyken) artık açılabilir.
+    PushNavigation.instance.markPanelReady(navigator);
   }
 
   void _showUnsupportedRole(AuthSession session) {
@@ -424,7 +430,21 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   Center(
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        final opened = await launchUrl(
+                          Uri.parse('${ApiConfig.marketingBaseUrl}/destek'),
+                          mode: LaunchMode.externalApplication,
+                        );
+                        if (!opened && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Destek sayfası açılamadı. Lütfen tekrar deneyin.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
                       style: TextButton.styleFrom(foregroundColor: _orange),
                       child: Text(
                         'İletişime geçin'.tr,

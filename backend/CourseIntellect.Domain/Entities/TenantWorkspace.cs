@@ -10,6 +10,9 @@ public sealed class TenantWorkspace
     /// grant ile altındaki tüm kurumları tek ekrandan görür.</summary>
     public Guid? GroupId { get; set; }
 
+    public string CustomerNumber { get; set; } = "SA-" + System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 1000000).ToString() + System.Security.Cryptography.RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+    public DateTime? ApprovalEmailSentAtUtc { get; set; }
+
     public string Name { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public string ContactEmail { get; set; } = string.Empty;

@@ -3,6 +3,9 @@ namespace CourseIntellect.Domain.Entities;
 public sealed class SupportTicket
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
+    public string? CustomerNumber { get; set; }
+    public string? ContactEmail { get; set; }
     public string TicketNumber { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
     public string TenantName { get; set; } = string.Empty;

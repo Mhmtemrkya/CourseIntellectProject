@@ -50,11 +50,10 @@ class _SupportPalette {
   /// saydamlık aynen uygulanır.
   Color subtle(double opacity) => dark
       ? Colors.white.withValues(alpha: opacity)
-      : const Color(0xFF0F172A).withValues(
-          alpha: (opacity + 0.35).clamp(0.55, 1.0),
-        );
+      : const Color(
+          0xFF0F172A,
+        ).withValues(alpha: (opacity + 0.35).clamp(0.55, 1.0));
 }
-
 
 class SupportPage extends StatefulWidget {
   const SupportPage({super.key});
@@ -76,6 +75,7 @@ class _SupportPageState extends State<SupportPage> {
   AuthSession? _session;
   List<SupportTicketRecord> _tickets = [];
   String? _error;
+  String _customerNumber = '';
 
   static const List<MapEntry<String, String>> _categories = [
     MapEntry('Genel', 'Genel'),
@@ -100,6 +100,7 @@ class _SupportPageState extends State<SupportPage> {
 
   Future<void> _bootstrap() async {
     final session = await AuthSessionStore.instance.load();
+    if (!mounted) return;
     setState(() {
       _session = session;
       _isTenantAdmin =
@@ -115,17 +116,22 @@ class _SupportPageState extends State<SupportPage> {
   }
 
   Future<void> _loadTickets() async {
+    if (!mounted) return;
     setState(() {
       _loadingTickets = true;
       _error = null;
     });
     try {
+      final customer = await SupportTicketsApiService.instance
+          .fetchCustomerNumber();
       final list = await SupportTicketsApiService.instance.fetchMine();
+      if (!mounted) return;
+      _customerNumber = customer;
       setState(() => _tickets = list);
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = e.toString());
     } finally {
-      setState(() => _loadingTickets = false);
+      if (mounted) setState(() => _loadingTickets = false);
     }
   }
 
@@ -140,6 +146,7 @@ class _SupportPageState extends State<SupportPage> {
         category: _category,
         priority: _priority,
       );
+      if (!mounted) return;
       _subjectCtrl.clear();
       _summaryCtrl.clear();
       setState(() {
@@ -211,6 +218,13 @@ class _SupportPageState extends State<SupportPage> {
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                   children: [
                     _buildHeader(),
+                    if (_customerNumber.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: SelectableText(
+                          'Müşteri numaranız: $_customerNumber',
+                        ),
+                      ),
                     const SizedBox(height: 20),
                     _buildForm(),
                     const SizedBox(height: 28),
@@ -273,7 +287,8 @@ class _SupportPageState extends State<SupportPage> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Bir sorun ya da öneriniz mi var? Talebinizi açın, ekibimiz dönsün.'.tr,
+          'Bir sorun ya da öneriniz mi var? Talebinizi açın, ekibimiz dönsün.'
+              .tr,
           style: TextStyle(
             color: supportPalette.subtle(0.65),
             fontSize: 14,
@@ -576,9 +591,7 @@ class _TicketCard extends StatelessWidget {
                         ),
                         Text(
                           '  ·  ',
-                          style: TextStyle(
-                            color: supportPalette.subtle(0.3),
-                          ),
+                          style: TextStyle(color: supportPalette.subtle(0.3)),
                         ),
                         Text(
                           ticket.category,
@@ -806,7 +819,8 @@ class _NotAdminMessage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Destek talebi yalnızca kurum yöneticisi tarafından oluşturulabilir.\nLütfen kurumunuzun yöneticisine ulaşın.'.tr,
+              'Destek talebi yalnızca kurum yöneticisi tarafından oluşturulabilir.\nLütfen kurumunuzun yöneticisine ulaşın.'
+                  .tr,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: supportPalette.subtle(0.65),
@@ -842,10 +856,7 @@ class _EmptyTickets extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             'Henüz talep oluşturmadınız.'.tr,
-            style: TextStyle(
-              color: supportPalette.subtle(0.55),
-              fontSize: 13,
-            ),
+            style: TextStyle(color: supportPalette.subtle(0.55), fontSize: 13),
           ),
         ],
       ),

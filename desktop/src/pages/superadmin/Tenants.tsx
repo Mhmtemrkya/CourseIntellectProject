@@ -1,3 +1,4 @@
+import { api } from '../../lib/api/client';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { Search, Building2, Users, CheckCircle, XCircle, Clock, ShieldAlert, Trash2, Flag, MailWarning, FileDown } from 'lucide-react';
@@ -31,6 +32,7 @@ import type { RegistrationBlocklistEntryDto, TenantWorkspaceDto } from '../../ty
 const containerVariants: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 
 function statusBadge(status: string) {
+  if (status === 'suspended') return <Badge className="bg-red-100 text-red-700">Erişim kapalı</Badge>;
   if (status === 'active') return <Badge className="bg-green-100 text-green-700">Aktif</Badge>;
   if (status === 'pending') return <Badge className="bg-yellow-100 text-yellow-700 gap-1"><Clock className="h-3 w-3" />Onay Bekliyor</Badge>;
   if (status === 'rejected') return <Badge className="bg-red-100 text-red-700">Reddedildi</Badge>;
@@ -183,13 +185,23 @@ export default function Tenants() {
 
   const filteredTenants = useMemo(() => {
     return visibleTenants.filter((tenant) => {
-      const matchesSearch = tenant.name.toLowerCase().includes(search.toLowerCase())
+      const matchesSearch = (tenant.customerNumber || '').toLowerCase().includes(search.toLowerCase()) || tenant.name.toLowerCase().includes(search.toLowerCase())
         || tenant.email.toLowerCase().includes(search.toLowerCase());
       const matchesPlan = planFilter === 'all' || tenant.plan === planFilter;
       const matchesStatus = statusFilter === 'all' || tenant.status === statusFilter;
       return matchesSearch && matchesPlan && matchesStatus;
     });
   }, [visibleTenants, search, planFilter, statusFilter]);
+
+  const handleAccess = async (tenant: TenantWorkspaceDto) => {
+    setActionLoading(tenant.id);
+    try {
+      await api.put(`/api/platformops/tenants/${tenant.id}/access`, { enabled: tenant.status !== 'active' });
+      await loadTenants();
+      toast({ title: tenant.status === 'active' ? 'Kurumun tüm kullanıcılarının erişimi kapatıldı' : 'Kurum erişimi açıldı' });
+    } catch (err) { toast({ title: 'İşlem başarısız', description: errorMessage(err), variant: 'destructive' }); }
+    finally { setActionLoading(null); }
+  };
 
   const handleApprove = async (tenant: TenantWorkspaceDto) => {
     setActionLoading(tenant.id);
@@ -204,7 +216,7 @@ export default function Tenants() {
         ? ` Admin: ${updated.adminUsername} / Gecici sifre: ${updated.temporaryPassword}`
         : '';
       toast({
-        title: 'Kurum Onaylandi',
+        title: updated?.approvalEmailSentAtUtc ? 'Kurum onaylandı, e-posta gönderildi' : 'Kurum onaylandı; e-posta gönderilemedi',
         description: downloaded
           ? `${tenant.name} aktif. Kurulum belgesi indirildi — kuruma teslim edin, sonra imha edin.`
           : `${tenant.name} aktif olarak isaretlendi.${credentialsNote}`,
@@ -303,6 +315,7 @@ export default function Tenants() {
                 <SelectItem value="all">Tüm Durumlar</SelectItem>
                 <SelectItem value="active">Aktif</SelectItem>
                 <SelectItem value="pending">Onay Bekliyor</SelectItem>
+                <SelectItem value="suspended">Erişim kapalı</SelectItem>
               </SelectContent>
             </Select>
             <Select value={planFilter} onValueChange={setPlanFilter}>
@@ -341,23 +354,23 @@ export default function Tenants() {
                       <div className="p-2 rounded-lg bg-brand-primary/10"><Building2 className="h-5 w-5 text-brand-primary" /></div>
                       <div>
                         <p className="font-medium">{tenant.name}</p>
-                        <p className="text-sm text-muted-foreground">{tenant.email}</p>
+                        <p className="text-sm text-muted-foreground">{tenant.email}</p><p className="text-xs text-muted-foreground">{tenant.customerNumber}</p>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell><Badge variant="outline">{tenant.plan}</Badge></TableCell>
+                  <TableCell><Badge variant="outline">{tenant.plan || "Ücretsiz"}</Badge></TableCell>
                   <TableCell><div className="flex items-center gap-1"><Users className="h-4 w-4 text-muted-foreground" /><span>{tenant.users}</span></div></TableCell>
                   <TableCell>{tenant.branches}</TableCell>
                   <TableCell><span className="font-medium">{formatMoney(Number(tenant.monthlyFee || 0))}</span></TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       {statusBadge(tenant.status)}
-                      {tenant.verificationState === 'unproven' && (
+                      {(tenant.verificationState === 'unproven' || tenant.verificationState === 'awaiting') && (
                         <Badge
                           className="bg-slate-100 text-slate-700 gap-1"
                           title="İletişim adresi doğrulanmadı (doğrulama e-postası gönderilemedi)."
                         >
-                          <MailWarning className="h-3 w-3" />Adres doğrulanmadı
+                          <MailWarning className="h-3 w-3" />{tenant.verificationState === 'awaiting' ? 'Doğrulama bekleniyor' : 'Adres doğrulanmadı'}
                         </Badge>
                       )}
                       {tenant.isSuspicious && (
@@ -371,6 +384,7 @@ export default function Tenants() {
                     </div>
                   </TableCell>
                   <TableCell>
+                    {(tenant.status === 'active' || tenant.status === 'suspended') && <Button size="sm" variant="outline" disabled={actionLoading === tenant.id} onClick={() => handleAccess(tenant)}>{tenant.status === 'active' ? 'Erişimi kapat' : 'Erişimi aç'}</Button>}
                     {tenant.status === 'pending' ? (
                       <div className="flex gap-1">
                         <Button
@@ -521,8 +535,8 @@ export default function Tenants() {
           {selectedTenant ? (
             <div className="space-y-3 text-sm">
               <div><p className="font-medium">Kurum</p><p className="text-muted-foreground">{selectedTenant.name}</p></div>
-              <div><p className="font-medium">İletişim</p><p className="text-muted-foreground">{selectedTenant.email}</p></div>
-              <div><p className="font-medium">Plan</p><p className="text-muted-foreground">{selectedTenant.plan}</p></div>
+              <div><p className="font-medium">Müşteri numarası</p><p>{selectedTenant.customerNumber || "Onaydan sonra oluşturulur"}</p></div><div><p className="font-medium">Onay e-postası</p><p>{selectedTenant.approvalEmailSentAtUtc ? "Gönderildi" : "Gönderilmedi — kurulum belgesini yenileyerek tekrar gönderin"}</p></div><div><p className="font-medium">İletişim</p><p className="text-muted-foreground">{selectedTenant.email}</p></div>
+              <div><p className="font-medium">Plan</p><p className="text-muted-foreground">{selectedTenant.plan || "Ücretsiz"}</p></div>
               <div><p className="font-medium">Durum</p>{statusBadge(selectedTenant.status)}</div>
               <div><p className="font-medium">Kullanıcı / Şube</p><p className="text-muted-foreground">{selectedTenant.users} kullanıcı · {selectedTenant.branches} şube</p></div>
               <div><p className="font-medium">Aylık Tutar</p><p className="text-muted-foreground">{formatMoney(Number(selectedTenant.monthlyFee || 0))}</p></div>

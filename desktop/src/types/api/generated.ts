@@ -2058,6 +2058,9 @@ export interface CreateSupportTicketRequest {
   priority: string;
   summary: string;
   lastMessage: string;
+  tenantId?: string | null;
+  customerNumber?: string | null;
+  contactEmail?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Admin/AdminTaskDtos.cs
@@ -5012,6 +5015,17 @@ export interface PromoteStudentsResult {
   notFound: string[];
 }
 
+// CourseIntellect.Api/Controllers/PublicSupportController.cs
+export interface PublicSupportRequest {
+  customerNumber: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  category: string;
+  captchaToken?: string | null;
+}
+
 // CourseIntellect.Domain/Entities/PushDeviceRegistration.cs
 export interface PushDeviceRegistration {
   id: string;
@@ -6860,6 +6874,9 @@ export interface SubmitQuestionPracticeAttemptRequest {
 // CourseIntellect.Domain/Entities/SupportTicket.cs
 export interface SupportTicket {
   id: string;
+  tenantId: string | null;
+  customerNumber: string | null;
+  contactEmail: string | null;
   ticketNumber: string;
   subject: string;
   tenantName: string;
@@ -6891,6 +6908,9 @@ export interface SupportTicketDto {
   messages: number;
   createdAtUtc: string;
   updatedAtUtc: string;
+  customerNumber: string | null;
+  contactEmail: string | null;
+  replyEmailSent: boolean | null;
 }
 
 // CourseIntellect.Application/DTOs/System/SystemStatusDto.cs
@@ -7018,6 +7038,11 @@ export interface TeacherWeeklyReportCreateRequest {
   attachments?: TeacherWeeklyReportAttachmentRequest[] | null;
 }
 
+// CourseIntellect.Api/Controllers/PlatformOperationsController.cs
+export interface TenantAccessRequest {
+  enabled: boolean;
+}
+
 // CourseIntellect.Application/Interfaces/ITenantBackupService.cs
 export interface TenantBackupResult {
   tableCount: number;
@@ -7115,6 +7140,8 @@ export interface TenantSetupDocumentModel {
 export interface TenantWorkspace {
   id: string;
   groupId: string | null;
+  customerNumber: string;
+  approvalEmailSentAtUtc: string | null;
   name: string;
   slug: string;
   contactEmail: string;
@@ -7176,6 +7203,8 @@ export interface TenantWorkspaceDto {
   temporaryPasswordExpiresAtUtc: string | null;
   setupDocumentBase64: string | null;
   setupDocumentFileName: string | null;
+  customerNumber: string | null;
+  approvalEmailSentAtUtc: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Timetable/TimetableDtos.cs

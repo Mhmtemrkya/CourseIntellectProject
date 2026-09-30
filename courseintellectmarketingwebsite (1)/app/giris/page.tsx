@@ -275,6 +275,8 @@ export default function LoginPage() {
                     </Link>
                   </p>
 
+                  <p className="text-center text-sm"><Link href="/destek" className="text-primary hover:underline">{language === "tr" ? "İletişime geçin / Destek" : "Contact / Support"}</Link></p>
+
                   <div className="text-center pt-1">
                     <Link
                       href="/admin/login"
@@ -392,6 +394,8 @@ export default function LoginPage() {
                         )}
                       </Button>
 
+
+                      <p className="text-center text-sm"><Link href="/destek" className="text-primary hover:underline">{language === "tr" ? "İletişime geçin / Destek" : "Contact / Support"}</Link></p>
 
                       {selectedRole === "admin" ? (
                         <div className="text-center text-sm">

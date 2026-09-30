@@ -104,83 +104,9 @@ public sealed class PlatformOperationsService(
             .OrderByDescending(x => x.CreatedAtUtc)
             .ToListAsync(cancellationToken);
 
-        // Doğrulama e-postası gönderilmiş ama henüz yanıtlanmamış başvurular kuyruğa
-        // DÜŞMEZ: onay kuyruğunun spam ile dolmasını asıl engelleyen şey bu. E-posta
-        // hiç gönderilemediyse (SMTP yok) başvuru görünür kalır, kanıtlanmamış işaretiyle.
-        var visibleApplications = applications
-            .Where(x => x.VerifiedAtUtc is not null || x.VerificationSentAtUtc is null)
-            .ToList();
-
-        if (storedEntities.Count > 0)
-        {
-            var mapped = await MapTenantDtosAsync(storedEntities, cancellationToken);
-            return visibleApplications.Count == 0
-                ? mapped
-                : [.. visibleApplications.Select(ToApplicationDto), .. mapped];
-        }
-
-        // Hiç kurum yokken sentetik kampüs satırları üretilir (demo/boş kurulum).
-        // Ölçüt GÖRÜNEN değil, VAR OLAN başvurudur: hepsi doğrulama beklerken sahte
-        // kampüs satırları basmak, boş bir kuyruğu uydurma veriyle doldururdu.
-        if (applications.Count > 0)
-        {
-            return [.. visibleApplications.Select(ToApplicationDto)];
-        }
-
-        var students = await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken);
-        var staff = await dbContext.Staff.AsNoTracking().ToListAsync(cancellationToken);
-        var invoices = await dbContext.AccountingInvoices.AsNoTracking().ToListAsync(cancellationToken);
-        var collections = await dbContext.FinancePayments.AsNoTracking().ToListAsync(cancellationToken);
-        var campuses = staff.Select(x => string.IsNullOrWhiteSpace(x.DepartmentOrBranch) ? "Merkez Kampus" : x.DepartmentOrBranch)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (campuses.Count == 0)
-        {
-            campuses.Add("Merkez Kampus");
-        }
-
-        return campuses.Select((campus, index) =>
-        {
-            var campusStaff = staff.Where(x => string.Equals(x.DepartmentOrBranch, campus, StringComparison.OrdinalIgnoreCase)).ToList();
-            var classNames = campusStaff
-                .SelectMany(x => x.AssignedClasses)
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            var campusStudents = classNames.Count > 0
-                ? students.Where(x => classNames.Contains(x.ClassName, StringComparer.OrdinalIgnoreCase)).ToList()
-                : students;
-
-            var fee = invoices.Where((_, invoiceIndex) => invoiceIndex % campuses.Count == index).Sum(x => ParseDecimal(x.Amount));
-            var collected = collections.Where((_, collectionIndex) => collectionIndex % campuses.Count == index).Sum(x => x.Amount);
-            var slug = NormalizeSlug(campus);
-
-            return new TenantWorkspaceDto(
-                Guid.NewGuid(),
-                campus,
-                $"{slug}@courseintellect.local",
-                campusStudents.Count > 300 ? "Enterprise" : campusStudents.Count > 120 ? "Business" : "Starter",
-                "active",
-                campusStudents.Count + campusStaff.Count,
-                Math.Max(1, classNames.Count),
-                campusStudents.Count,
-                campusStaff.Count,
-                fee > 0 ? fee : Math.Max(850, campusStudents.Count * 15),
-                collected,
-                Math.Max(1, decimal.Round((decimal)(campusStudents.Count * 0.03 + campusStaff.Count * 0.02), 1)),
-                (campusStudents.Count + campusStaff.Count) * 180,
-                DateTime.UtcNow,
-                slug,
-                string.Empty,
-                string.Empty,
-                null,
-                null,
-                null,
-                null,
-                InstitutionType.PrivateSchool.ToString(),
-                false);
-        }).ToList();
+        // Every application is visible to platform staff, with its verification state.
+        var mapped = await MapTenantDtosAsync(storedEntities, cancellationToken);
+        return [.. applications.Select(ToApplicationDto), .. mapped];
     }
 
     public async Task<TenantWorkspaceDto> UpsertTenantAsync(Guid? id, UpsertTenantWorkspaceRequest request, CancellationToken cancellationToken = default)
@@ -223,39 +149,14 @@ public sealed class PlatformOperationsService(
             .OrderBy(x => x.Status)
             .ThenByDescending(x => x.UpdatedAtUtc)
             .ToListAsync(cancellationToken);
-        var stored = storedEntities.Select(ToTicketDto).ToList();
-
-        if (stored.Count > 0)
-        {
-            return stored;
-        }
-
-        var notifications = await dbContext.Notifications.AsNoTracking().OrderBy(x => x.IsRead).ToListAsync(cancellationToken);
-        var tenants = await GetTenantsAsync(cancellationToken);
-        return notifications.Select((notification, index) => new SupportTicketDto(
-            Guid.NewGuid(),
-            $"SUP-{index + 1:000}",
-            notification.Title,
-            tenants.Count > 0 ? tenants[index % tenants.Count].Name : "Merkez Kampus",
-            notification.TargetRole,
-            notification.TargetRole,
-            string.IsNullOrWhiteSpace(notification.Category) ? "Genel" : notification.Category,
-            index % 3 == 0 ? "high" : index % 3 == 1 ? "medium" : "low",
-            notification.IsRead ? "resolved" : "open",
-            notification.Message,
-            notification.Message,
-            1,
-            DateTime.UtcNow.AddHours(-(index + 1)),
-            DateTime.UtcNow.AddHours(-(index + 1))
-        )).ToList();
+        return storedEntities.Select(ToTicketDto).ToList();
     }
 
-    public async Task<IReadOnlyList<SupportTicketDto>> GetSupportTicketsByTenantAsync(string tenantName, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<SupportTicketDto>> GetSupportTicketsByTenantAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(tenantName)) return Array.Empty<SupportTicketDto>();
-        var trimmed = tenantName.Trim();
+        if (tenantId == Guid.Empty) return Array.Empty<SupportTicketDto>();
         var rows = await dbContext.Set<SupportTicket>()
-            .Where(x => x.TenantName == trimmed)
+            .Where(x => x.TenantId == tenantId)
             .OrderByDescending(x => x.CreatedAtUtc)
             .ToListAsync(cancellationToken);
         return rows.Select(ToTicketDto).ToList();
@@ -263,10 +164,12 @@ public sealed class PlatformOperationsService(
 
     public async Task<SupportTicketDto> CreateSupportTicketAsync(CreateSupportTicketRequest request, CancellationToken cancellationToken = default)
     {
-        var sequence = await dbContext.Set<SupportTicket>().CountAsync(cancellationToken) + 1;
         var entity = new SupportTicket
         {
-            TicketNumber = $"SUP-{sequence:000}",
+            TicketNumber = $"SUP-{Guid.NewGuid():N}",
+            TenantId = request.TenantId,
+            CustomerNumber = request.CustomerNumber,
+            ContactEmail = request.ContactEmail,
             Subject = request.Subject,
             TenantName = request.Tenant,
             RequestedBy = request.User,
@@ -316,7 +219,14 @@ public sealed class PlatformOperationsService(
 
         entity.UpdatedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
-        return ToTicketDto(entity);
+        bool? replySent = null;
+        if (!string.IsNullOrWhiteSpace(request.LastMessage) && !string.IsNullOrWhiteSpace(entity.ContactEmail))
+        {
+            replySent = await emailSender.SendAsync(entity.ContactEmail, $"SchoolAsist destek — {entity.TicketNumber}",
+                "<h2>Destek talebinize yanıt</h2><p>" + System.Net.WebUtility.HtmlEncode(entity.Subject)
+                + "</p><p>" + System.Net.WebUtility.HtmlEncode(request.LastMessage).Replace("\n", "<br>") + "</p>", cancellationToken);
+        }
+        return ToTicketDto(entity) with { ReplyEmailSent = replySent };
     }
 
     /// <summary>
@@ -630,6 +540,7 @@ public sealed class PlatformOperationsService(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await SendApprovalEmailAsync(entity, adminUser, temporaryPassword, cancellationToken);
         return ToTenantDto(entity, adminUser.Username, temporaryPassword);
     }
 
@@ -640,10 +551,15 @@ public sealed class PlatformOperationsService(
 
         if (application is not null)
         {
-            application.Status = "rejected";
-            application.RejectedAtUtc = DateTime.UtcNow;
-            application.RejectionReason = string.IsNullOrWhiteSpace(reason) ? null : Truncate(reason.Trim(), 500);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            var rejectedAt = DateTime.UtcNow;
+            var rejectionReason = string.IsNullOrWhiteSpace(reason) ? null : Truncate(reason.Trim(), 500);
+            var affected = await dbContext.TenantRegistrationApplications
+                .Where(a => a.Id == id && (a.Status == "pending" || a.Status == "rejected"))
+                .ExecuteUpdateAsync(setters => setters.SetProperty(a => a.Status, "rejected")
+                    .SetProperty(a => a.RejectedAtUtc, rejectedAt)
+                    .SetProperty(a => a.RejectionReason, rejectionReason), cancellationToken);
+            if (affected == 0) return null;
+            await dbContext.Entry(application).ReloadAsync(cancellationToken);
             return ToApplicationDto(application);
         }
 
@@ -1139,6 +1055,7 @@ public sealed class PlatformOperationsService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        await SendApprovalEmailAsync(tenant, adminUser, temporaryPassword, cancellationToken);
         var document = BuildSetupDocument(tenant, adminUser, temporaryPassword);
 
         await auditLog.LogAsync(
@@ -1158,6 +1075,22 @@ public sealed class PlatformOperationsService(
                 adminUser.TemporaryPasswordExpiresAtUtc,
                 document.Base64,
                 document.FileName));
+    }
+
+    private async Task SendApprovalEmailAsync(TenantWorkspace tenant, AppUser admin, string? password, CancellationToken ct)
+    {
+        static string E(string? value) => System.Net.WebUtility.HtmlEncode(value ?? "");
+        var loginUrl = configuration["Registration:LoginUrl"] ?? "https://schoolasist.com/giris";
+        var credentials = password is null ? "<p>Mevcut parolanızla giriş yapabilirsiniz.</p>"
+            : $"<p>Geçici parolanız: <strong>{E(password)}</strong></p><p>İlk girişte parolanızı değiştirin. Son kullanım: {admin.TemporaryPasswordExpiresAtUtc:dd.MM.yyyy HH:mm} UTC.</p>";
+        var sent = emailSender.IsConfigured && await emailSender.SendAsync(tenant.ContactEmail, "SchoolAsist — Kurumunuz onaylandı",
+            $"<h2>Kurumunuz onaylandı</h2><p>{E(tenant.Name)}, SchoolAsist'e hoş geldiniz.</p>"
+            + $"<p>Müşteri numaranız: <strong>{E(tenant.CustomerNumber)}</strong></p>"
+            + $"<p>Kullanıcı adınız: <strong>{E(admin.Username)}</strong></p>{credentials}"
+            + $"<p><a href=\"{E(loginUrl)}\">Giriş yapın</a></p><p>Ücretsiz kullanım için paket seçmeniz veya ödeme yapmanız gerekmez.</p>", ct);
+        tenant.ApprovalEmailSentAtUtc = sent ? DateTime.UtcNow : null;
+        await dbContext.SaveChangesAsync(ct);
+        if (!sent) logger.LogWarning("Kurum onay e-postası gönderilemedi. KurumId={TenantId}", tenant.Id);
     }
 
     private (string Base64, string FileName) BuildSetupDocument(
@@ -1515,6 +1448,10 @@ public sealed class PlatformOperationsService(
         };
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var claimed = await dbContext.TenantRegistrationApplications
+            .Where(a => a.Id == application.Id && (a.Status == "pending" || a.Status == "rejected"))
+            .ExecuteUpdateAsync(setters => setters.SetProperty(a => a.Status, "approving"), cancellationToken);
+        if (claimed != 1) throw new InvalidOperationException("Başvuru başka bir yönetici tarafından işlenmiş. Listeyi yenileyin.");
 
         // İKİ AŞAMALI KAYIT ŞART: kurum ile yönetici birbirini işaret ediyor
         // (tenant.AdminUserId → user, user.TenantId → tenant). İkisi tek SaveChanges'te
@@ -1541,6 +1478,7 @@ public sealed class PlatformOperationsService(
             tenant.Id,
             tenant.Slug);
 
+        await SendApprovalEmailAsync(tenant, created.User, created.TemporaryPassword, cancellationToken);
         var document = BuildSetupDocument(tenant, created.User, created.TemporaryPassword);
 
         await auditLog.LogAsync(
@@ -1706,7 +1644,9 @@ public sealed class PlatformOperationsService(
         "verified",
         temporaryPasswordExpiresAtUtc,
         setupDocumentBase64,
-        setupDocumentFileName);
+        setupDocumentFileName,
+        entity.CustomerNumber,
+        entity.ApprovalEmailSentAtUtc);
 
     private static InstitutionType ParseInstitutionType(string? value)
     {
@@ -1731,7 +1671,9 @@ public sealed class PlatformOperationsService(
         entity.LastMessage,
         entity.MessageCount,
         entity.CreatedAtUtc,
-        entity.UpdatedAtUtc);
+        entity.UpdatedAtUtc,
+        entity.CustomerNumber,
+        entity.ContactEmail);
 
     private static IReadOnlyList<PlatformAiModelDto> BuildAiModels(int notifications, int threads, int homework, int contents, int meetings)
     {

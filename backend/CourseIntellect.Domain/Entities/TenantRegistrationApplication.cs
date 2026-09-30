@@ -74,7 +74,7 @@ public sealed class TenantRegistrationApplication
 
     /// <summary>
     /// verified — adres kanıtlandı.
-    /// awaiting — doğrulama e-postası gitti, yanıt bekleniyor (kuyrukta gösterilmez).
+    /// awaiting — doğrulama e-postası gitti, yanıt bekleniyor; panelde ayrıca işaretlenir.
     /// unproven — e-posta hiç gönderilemedi (SMTP yok); kuyrukta GÖRÜNÜR ama adres
     /// kanıtlanmamış olarak işaretlenir. Gönderilemeyen bir doğrulama, gerçek bir
     /// kurumu görünmez yapmamalı.

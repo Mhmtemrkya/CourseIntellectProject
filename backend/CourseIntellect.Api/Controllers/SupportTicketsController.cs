@@ -22,7 +22,17 @@ public sealed class SupportTicketsController(
     IPlatformOperationsService platformOperationsService,
     CourseIntellectDbContext dbContext) : ControllerBase
 {
+    [HttpGet("customer")]
+    public async Task<IActionResult> Customer(CancellationToken ct)
+    {
+        var (_, tenantId, _) = ReadClaims();
+        var customer = await dbContext.TenantWorkspaces.Where(t => t.Id == tenantId)
+            .Select(t => new { t.CustomerNumber }).SingleOrDefaultAsync(ct);
+        return customer is null ? NotFound() : Ok(customer);
+    }
+
     [HttpGet("mine")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetMine(CancellationToken cancellationToken)
     {
         var (_, tenantId, _) = ReadClaims();
@@ -40,7 +50,7 @@ public sealed class SupportTicketsController(
             return Ok(Array.Empty<SupportTicketDto>());
         }
 
-        var list = await platformOperationsService.GetSupportTicketsByTenantAsync(tenantName, cancellationToken);
+        var list = await platformOperationsService.GetSupportTicketsByTenantAsync(tenantId, cancellationToken);
         return Ok(list);
     }
 
@@ -80,24 +90,27 @@ public sealed class SupportTicketsController(
             return Unauthorized(new { message = "Kurum bilgisi bulunamadı." });
         }
 
-        var tenantName = await dbContext.TenantWorkspaces
+        var tenant = await dbContext.TenantWorkspaces
             .Where(t => t.Id == user.TenantId.Value)
-            .Select(t => t.Name)
+            .Select(t => new { t.Name, t.CustomerNumber, t.ContactEmail })
             .FirstOrDefaultAsync(cancellationToken);
-        if (string.IsNullOrWhiteSpace(tenantName))
+        if (tenant is null)
         {
             return Unauthorized(new { message = "Kurum bilgisi bulunamadı." });
         }
 
         var request = new CreateSupportTicketRequest(
             Subject: body.Subject.Trim(),
-            Tenant: tenantName,
+            Tenant: tenant.Name,
             User: user.FullName,
             UserRole: "Kurum Yöneticisi",
             Category: string.IsNullOrWhiteSpace(body.Category) ? "Genel" : body.Category.Trim(),
             Priority: NormalizePriority(body.Priority),
             Summary: body.Summary.Trim(),
-            LastMessage: body.Summary.Trim());
+            LastMessage: body.Summary.Trim(),
+            TenantId: user.TenantId,
+            CustomerNumber: tenant.CustomerNumber,
+            ContactEmail: tenant.ContactEmail);
 
         var ticket = await platformOperationsService.CreateSupportTicketAsync(request, cancellationToken);
         return Ok(ticket);
@@ -128,8 +141,8 @@ public sealed class SupportTicketsController(
 }
 
 public sealed record CreateSupportTicketBody(
-    string Subject,
-    string Summary,
-    string? Category,
+    [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(180)] string Subject,
+    [System.ComponentModel.DataAnnotations.Required, System.ComponentModel.DataAnnotations.StringLength(2000)] string Summary,
+    [System.ComponentModel.DataAnnotations.StringLength(80)] string? Category,
     string? Priority
 );

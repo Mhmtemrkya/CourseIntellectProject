@@ -51,6 +51,10 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
                 message = ex.Message,
             });
         }
+        catch (TenantDisabledException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { code = "TENANT_DISABLED", message = ex.Message });
+        }
         catch (InstitutionMovedException ex)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new

@@ -8,6 +8,7 @@ import { LanguageProvider } from "./lib/i18n/LanguageContext";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { Toaster } from "./components/ui/toaster";
 import { DesktopUpdater } from "./components/system/DesktopUpdater";
+import { StartupGate } from "./components/system/StartupGate";
 
 // Auth Pages
 import Login from "./pages/Login";
@@ -258,6 +259,7 @@ function App() {
     <LanguageProvider>
     <ThemeProvider defaultTheme="system" storageKey="courseintellect-theme">
       <AppProvider>
+        <StartupGate>
         <MaintenanceGate>
         <LegalConsentGate>
         <RouterComponent>
@@ -491,6 +493,7 @@ function App() {
         <Toaster />
         <DesktopUpdater />
         </MaintenanceGate>
+        </StartupGate>
       </AppProvider>
     </ThemeProvider>
     </LanguageProvider>

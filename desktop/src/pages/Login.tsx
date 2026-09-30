@@ -1,3 +1,4 @@
+import { openExternalUrl } from '../lib/tauri';
 import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -450,11 +451,12 @@ export default function Login() {
             <p className="mt-8 text-center text-sm" style={{ color: "#6B7A93" }}>
               Hesabınız yok mu?{" "}
               <a
-                href="mailto:destek@schoolasist.com"
+                href={`${process.env.REACT_APP_MARKETING_URL || "https://schoolasist.com"}/destek`}
+                onClick={(e) => { e.preventDefault(); void openExternalUrl(`${process.env.REACT_APP_MARKETING_URL || "https://schoolasist.com"}/destek`); }}
                 className="font-semibold hover:underline"
                 style={{ color: ORANGE }}
               >
-                İletişime geçin
+                İletişime geçin / Destek
               </a>
             </p>
           </div>

@@ -158,7 +158,7 @@ export default function Support() {
   const filteredTickets = useMemo(
     () =>
       tickets.filter((ticket) => {
-        const haystack = `${ticket.subject || ''} ${ticket.tenant || ''} ${ticket.ticketNumber || ''} ${ticket.user || ''}`.toLowerCase();
+        const haystack = `${ticket.subject || ''} ${ticket.tenant || ''} ${ticket.ticketNumber || ''} ${ticket.user || ''} ${ticket.customerNumber || ''} ${ticket.contactEmail || ''}`.toLowerCase();
         const matchesSearch = haystack.includes(search.toLowerCase());
         const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
         const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
@@ -330,7 +330,7 @@ export default function Support() {
                       <div className="space-y-0.5">
                         <p className="font-medium leading-tight">{ticket.subject}</p>
                         <p className="text-xs text-muted-foreground">
-                          {ticket.tenant} · {ticket.user || '—'}
+                          {ticket.tenant} · {ticket.user || '—'} · {ticket.customerNumber}
                         </p>
                       </div>
                     </TableCell>
@@ -436,11 +436,11 @@ function TicketDetailDialog({ ticket, open, onClose, onUpdated, toast }: TicketD
         status: status === 'open' ? 'in-progress' : status,
       });
       toast({
-        title: 'Yanıt eklendi',
-        description: 'Talebe son mesaj olarak işlendi.',
+        title: updated?.replyEmailSent === false ? 'Yanıt kaydedildi; e-posta gönderilemedi' : 'Yanıt eklendi',
+        description: updated?.replyEmailSent === false ? 'E-posta yapılandırmasını kontrol edip yeniden gönderin.' : 'Yanıt talebe kaydedildi.',
       });
       if (updated) onUpdated(updated);
-      setReply('');
+      if (updated?.replyEmailSent !== false) setReply('');
       setStatus(updated?.status || status);
     } catch (err) {
       toast({
@@ -493,7 +493,7 @@ function TicketDetailDialog({ ticket, open, onClose, onUpdated, toast }: TicketD
               <div className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-2">
                 Açıklama
               </div>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{ticket.summary || '—'}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{ticket.summary || '—'}</p><p className="mt-3 text-sm">Müşteri: {ticket.customerNumber || '—'} · E-posta: {ticket.contactEmail || '—'}</p>
               {ticket.lastMessage && ticket.lastMessage !== ticket.summary && (
                 <div className="mt-4 pt-4 border-t">
                   <div className="text-[11px] font-mono uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center gap-2">

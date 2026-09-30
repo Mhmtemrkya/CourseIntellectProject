@@ -54,9 +54,11 @@ class SupportTicketRecord {
       summary: m['summary']?.toString() ?? '',
       lastMessage: m['lastMessage']?.toString() ?? '',
       messages: (m['messages'] is num) ? (m['messages'] as num).toInt() : 0,
-      createdAtUtc: DateTime.tryParse(m['createdAtUtc']?.toString() ?? '') ??
+      createdAtUtc:
+          DateTime.tryParse(m['createdAtUtc']?.toString() ?? '') ??
           DateTime.now(),
-      updatedAtUtc: DateTime.tryParse(m['updatedAtUtc']?.toString() ?? '') ??
+      updatedAtUtc:
+          DateTime.tryParse(m['updatedAtUtc']?.toString() ?? '') ??
           DateTime.now(),
     );
   }
@@ -74,6 +76,22 @@ class SupportTicketsApiService {
   SupportTicketsApiService._();
 
   static final SupportTicketsApiService instance = SupportTicketsApiService._();
+
+  Future<String> fetchCustomerNumber() async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) {
+      throw const SupportTicketException('Oturum bulunamadı.');
+    }
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/support-tickets/customer'),
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
+    if (response.statusCode != 200) {
+      throw const SupportTicketException('Müşteri numarası alınamadı.');
+    }
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return data['customerNumber']?.toString() ?? '';
+  }
 
   Future<List<SupportTicketRecord>> fetchMine() async {
     final session = await AuthSessionStore.instance.load();
@@ -93,11 +111,17 @@ class SupportTicketsApiService {
     }
 
     final decoded = jsonDecode(response.body);
-    final list = decoded is List ? decoded : (decoded is Map && decoded['data'] is List ? decoded['data'] as List : <dynamic>[]);
+    final list = decoded is List
+        ? decoded
+        : (decoded is Map && decoded['data'] is List
+              ? decoded['data'] as List
+              : <dynamic>[]);
     return list
-        .map((item) => SupportTicketRecord.fromMap(
-              Map<String, dynamic>.from(item as Map),
-            ))
+        .map(
+          (item) => SupportTicketRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
         .toList();
   }
 
@@ -135,7 +159,9 @@ class SupportTicketsApiService {
           message = body['message']?.toString() ?? message;
           code = body['code']?.toString() ?? code;
         }
-      } catch (e) { logIgnored('support_tickets_api_service', e); }
+      } catch (e) {
+        logIgnored('support_tickets_api_service', e);
+      }
       throw SupportTicketException(message, code: code);
     }
 
@@ -146,13 +172,17 @@ class SupportTicketsApiService {
         if (body is Map && body['message'] != null) {
           message = body['message'].toString();
         }
-      } catch (e) { logIgnored('support_tickets_api_service', e); }
+      } catch (e) {
+        logIgnored('support_tickets_api_service', e);
+      }
       throw SupportTicketException(message);
     }
 
     final decoded = jsonDecode(response.body);
     final raw = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
-    final map = raw['data'] is Map<String, dynamic> ? raw['data'] as Map<String, dynamic> : raw;
+    final map = raw['data'] is Map<String, dynamic>
+        ? raw['data'] as Map<String, dynamic>
+        : raw;
     return SupportTicketRecord.fromMap(map);
   }
 }

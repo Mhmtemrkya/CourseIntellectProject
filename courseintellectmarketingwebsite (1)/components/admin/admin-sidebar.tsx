@@ -61,6 +61,7 @@ const navItems: NavItem[] = [
   { label: "Kurumlar", href: "/admin/kurumlar", icon: Building2 },
   { label: "Çeviriler", href: "/admin/ceviriler", icon: Languages },
   { label: "Kurslar", href: "/admin/kurslar", icon: BookOpen },
+  { label: "Destek ve Şikayetler", href: "/admin/destek", icon: Mail },
   { label: "Mesajlar", href: "/admin/mesajlar", icon: Mail },
   { label: "Ayarlar", href: "/admin/ayarlar", icon: Settings },
 ]
