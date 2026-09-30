@@ -29,7 +29,7 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
         .where((item) => item.imagePath != null && item.imagePath!.isNotEmpty)
         .length;
     final solutionCount = questions
-        .where((item) => item.solutionAssetPath != null)
+        .where((item) => item.solutionAssetPath != null || item.solutionAssetType != null)
         .length;
     final visibleClasses = {
       for (final item in questions) ...item.classTargets,

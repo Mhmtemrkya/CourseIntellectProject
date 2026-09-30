@@ -32,7 +32,10 @@ class _StudentQuestionBankSolvePageState
   final TextEditingController _answerController = TextEditingController();
   final Map<String, int> _selectedOptions = {};
   final Map<String, String> _typedAnswers = {};
-  final Set<String> _submittedAttemptIds = <String>{};
+  // Sunucuya gönderilen cevap ve sunucunun değerlendirmesi (soru kimliğine göre).
+  // Doğru cevap öğrenciye gelmediği için doğruluk sunucudan okunur.
+  final Map<String, String> _submittedAnswers = {};
+  final Map<String, bool> _serverCorrect = {};
   int _currentIndex = 0;
   bool _finished = false;
 
@@ -117,6 +120,10 @@ class _StudentQuestionBankSolvePageState
     if (_finished) return;
     _finished = true;
 
+    for (final question in widget.questions) {
+      await _submitAttemptFor(question);
+    }
+
     int correctCount = 0;
     int totalXp = 0;
     final bonuses = <String>[];
@@ -133,7 +140,8 @@ class _StudentQuestionBankSolvePageState
       final reward = StudentXpService.buildQuestionBankSolveReward(
         isCorrect: isCorrect,
         hasImage: question.imagePath != null,
-        hasSolutionAsset: question.solutionAssetPath != null,
+        // Çözüm yolu öğrenciye gönderilmez; varlığı türünden anlaşılır.
+        hasSolutionAsset: question.solutionAssetPath != null || question.solutionAssetType != null,
       );
       totalXp += reward.amount;
       bonuses.addAll(reward.bonuses);
@@ -156,8 +164,17 @@ class _StudentQuestionBankSolvePageState
     await BadgeUnlockService.checkAndCelebrate(context, xp: newTotalXp);
   }
 
-  Future<void> _submitCurrentAttemptIfNeeded() async {
-    if (_submittedAttemptIds.contains(_currentQuestion.id)) {
+  Future<void> _submitCurrentAttemptIfNeeded() => _submitAttemptFor(_currentQuestion);
+
+  Future<void> _submitAttemptFor(QuestionBankRecord question) async {
+    final answerText = _usesOptions(question)
+        ? (_selectedOptions[question.id] != null
+              ? question.options[_selectedOptions[question.id]!]
+              : '')
+        : (_typedAnswers[question.id] ?? '').trim();
+
+    // Boş cevap gönderilmez; aynı cevap tekrar gönderilmez (değiştiyse yeniden).
+    if (answerText.isEmpty || _submittedAnswers[question.id] == answerText) {
       return;
     }
 
@@ -166,30 +183,26 @@ class _StudentQuestionBankSolvePageState
       return;
     }
 
-    final answerText = _usesOptions(_currentQuestion)
-        ? (_selectedOptions[_currentQuestion.id] != null
-              ? _currentQuestion.options[_selectedOptions[_currentQuestion.id]!]
-              : '')
-        : (_typedAnswers[_currentQuestion.id] ?? '').trim();
-
-    if (answerText.isEmpty) {
-      return;
-    }
-
     try {
-      await QuestionBankApiService.instance.submitAttempt(
-        questionId: _currentQuestion.id,
+      final isCorrect = await QuestionBankApiService.instance.submitAttempt(
+        questionId: question.id,
         studentName: session.fullName,
         studentUsername: session.username,
         answerText: answerText,
       );
-      _submittedAttemptIds.add(_currentQuestion.id);
+      _submittedAnswers[question.id] = answerText;
+      _serverCorrect[question.id] = isCorrect;
     } catch (_) {
-      // ignore sync failures for now
+      // Ağ hatası: yerel kontrole düşülür (yalnız öğretmen cevabı açtıysa mümkün).
     }
   }
 
   bool _isCorrectFor(QuestionBankRecord question) {
+    final serverResult = _serverCorrect[question.id];
+    if (serverResult != null) {
+      return serverResult;
+    }
+
     final expected = (question.expectedAnswer ?? '').trim().toLowerCase();
     if (_usesOptions(question)) {
       return _selectedOptions[question.id] == question.correctOptionIndex;

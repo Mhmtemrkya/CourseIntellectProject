@@ -106,7 +106,8 @@ export default function StudentQuestionPractice() {
         const xpAmount = buildQuestionBankSolveReward({
           isCorrect: Boolean(saved.isCorrect),
           hasImage: Boolean(question.imagePath),
-          hasSolutionAsset: Boolean(question.solutionAssetPath),
+          // Çözüm yolu öğrenciye gönderilmez; varlığı türünden anlaşılır.
+          hasSolutionAsset: Boolean(question.solutionAssetPath || question.solutionAssetType),
         });
         await addStudyPlanXp(xpAmount).catch(() => null);
       }
@@ -172,7 +173,7 @@ export default function StudentQuestionPractice() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="rounded-lg bg-muted/40 p-4 text-sm text-muted-foreground">Açık uçlu soru. Beklenen cevap: {item.expectedAnswer || 'Öğretmen açıklayacak.'}</div>
+                  <div className="rounded-lg bg-muted/40 p-4 text-sm text-muted-foreground">Açık uçlu soru. Cevabınızı yazıp gönderin; değerlendirme sunucuda yapılır.</div>
                   <Textarea
                     value={writtenAnswers[item.id] || ''}
                     onChange={(event) => setWrittenAnswers((prev) => ({ ...prev, [item.id]: event.target.value }))}

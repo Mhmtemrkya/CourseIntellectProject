@@ -21,6 +21,8 @@ class _TopicTestPageState extends State<TopicTestPage>
 
   int currentQuestion = 0;
   int selectedOption = -1;
+  // Sunucunun değerlendirmesi; doğru şık öğrenciye gönderilmez.
+  bool? _lastAnswerCorrect;
   int correctCount = 0;
   int wrongCount = 0;
   bool _loading = true;
@@ -50,9 +52,7 @@ class _TopicTestPageState extends State<TopicTestPage>
       final items = QuestionBankStore.instance.questions
           .where(
             (item) =>
-                !item.isExamOnly &&
-                item.options.isNotEmpty &&
-                item.correctOptionIndex != null,
+                !item.isExamOnly && item.options.isNotEmpty,
           )
           .take(5)
           .toList();
@@ -80,37 +80,47 @@ class _TopicTestPageState extends State<TopicTestPage>
 
     final question = _questions[currentQuestion];
     final selectedText = question.options[index];
-    setState(() {
-      selectedOption = index;
+    final knownCorrect = question.correctOptionIndex;
+    setState(() => selectedOption = index);
 
-      if (index == question.correctOptionIndex) {
+    // Puanlama sunucudadır; ağ hatasında yalnız öğretmen cevabı açtıysa yerel
+    // kontrole düşülür.
+    var isCorrect = knownCorrect != null && knownCorrect == index;
+    try {
+      final session = await AuthSessionStore.instance.load();
+      if (session != null) {
+        isCorrect = await QuestionBankApiService.instance.submitAttempt(
+          questionId: question.id,
+          studentName: session.fullName,
+          studentUsername: session.username,
+          answerText: selectedText,
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cevap kaydı senkronize edilemedi.'.tr)),
+        );
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _lastAnswerCorrect = isCorrect;
+      if (isCorrect) {
         correctCount++;
       } else {
         wrongCount++;
         _wrongQuestions.add({
           "question": question.questionText,
           "selected": selectedText,
-          "correct": question.options[question.correctOptionIndex!],
+          "correct": knownCorrect != null
+              ? question.options[knownCorrect]
+              : 'Öğretmen açıklayacak',
           "note": 'Konu: ${question.topic} • Zorluk: ${question.difficulty}',
         });
       }
     });
-
-    try {
-      final session = await AuthSessionStore.instance.load();
-      if (session == null) return;
-      await QuestionBankApiService.instance.submitAttempt(
-        questionId: question.id,
-        studentName: session.fullName,
-        studentUsername: session.username,
-        answerText: selectedText,
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cevap kaydı senkronize edilemedi.'.tr)),
-      );
-    }
   }
 
   void nextQuestion() {
@@ -120,6 +130,7 @@ class _TopicTestPageState extends State<TopicTestPage>
       setState(() {
         currentQuestion++;
         selectedOption = -1;
+        _lastAnswerCorrect = null;
       });
     } else {
       final reward = StudentXpService.buildTopicTestReward(
@@ -258,15 +269,17 @@ class _TopicTestPageState extends State<TopicTestPage>
     return Column(
       children: List.generate(options.length, (index) {
         final isSelected = selectedOption == index;
-        final isCorrect =
-            _questions[currentQuestion].correctOptionIndex == index;
+        final knownCorrect = _questions[currentQuestion].correctOptionIndex;
 
         var color = Colors.white;
         if (selectedOption != -1) {
-          if (isCorrect) {
+          if (knownCorrect != null && knownCorrect == index) {
             color = Colors.green;
           } else if (isSelected) {
-            color = Colors.red;
+            // Doğru şık bilinmiyorsa seçilen şık sunucu sonucuna göre boyanır.
+            color = _lastAnswerCorrect == null
+                ? Colors.white
+                : (_lastAnswerCorrect! ? Colors.green : Colors.red);
           }
         }
 

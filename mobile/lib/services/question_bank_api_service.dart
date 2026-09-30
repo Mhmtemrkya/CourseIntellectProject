@@ -268,7 +268,9 @@ class QuestionBankApiService {
         file.uri.pathSegments.last;
   }
 
-  Future<void> submitAttempt({
+  /// Denemeyi kaydeder ve sunucunun değerlendirmesini döndürür (doğru mu?).
+  /// Doğru cevap öğrenciye gönderilmediği için puanlama sunucudadır.
+  Future<bool> submitAttempt({
     required String questionId,
     required String studentName,
     required String studentUsername,
@@ -299,6 +301,9 @@ class QuestionBankApiService {
         'Soru denemesi kaydedilemedi (${response.statusCode}).',
       );
     }
+
+    final decoded = jsonDecode(response.body);
+    return decoded is Map && decoded['isCorrect'] == true;
   }
 
   static QuestionBankRecord _mapRecord(Map<String, dynamic> map) {
