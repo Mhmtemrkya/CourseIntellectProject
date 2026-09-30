@@ -23,12 +23,26 @@ class RemotePushService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  bool _initialized = false;
+  // Başlatma tek sefer yapılır ve herkes AYNI Future'ı bekler: main() bunu
+  // unawaited çağırdığı için refreshRegistration/unregister daha önce
+  // koşup "[core/no-app]" ile düşüyordu.
+  Future<bool>? _initFuture;
 
   Future<void> initialize() async {
-    if (_initialized) return;
+    await _ensureInitialized();
+  }
+
+  Future<bool> _ensureInitialized() {
+    return _initFuture ??= _doInitialize().then((ok) {
+      // Başarısız başlatma bir sonraki çağrıda yeniden denenebilsin.
+      if (!ok) _initFuture = null;
+      return ok;
+    });
+  }
+
+  Future<bool> _doInitialize() async {
     try {
-      await Firebase.initializeApp();
+      if (Firebase.apps.isEmpty) await Firebase.initializeApp();
       await _initializeLocalNotifications();
       await FirebaseMessaging.instance.requestPermission(
         alert: true,
@@ -44,18 +58,34 @@ class RemotePushService {
 
       FirebaseMessaging.onMessage.listen(_showForegroundNotification);
       FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
-        await _registerToken(token);
+        try {
+          await _registerToken(token);
+        } catch (e) { logIgnored('remote_push_service', e); }
       });
-
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null && token.isNotEmpty) {
-        await _registerToken(token);
-      }
-
-      _initialized = true;
-    } catch (_) {
-      // Firebase config dosyalari yoksa uygulamayi bozma.
+    } catch (e) {
+      // Firebase yapılandırması yoksa uygulama bozulmaz; yalnız push kapalı kalır.
+      logIgnored('remote_push_service', e);
+      return false;
     }
+    await refreshRegistration();
+    return true;
+  }
+
+  // iOS'ta FCM token'ı APNs token'ı gelmeden alınamaz ("apns-token-not-set");
+  // ilk açılışta APNs birkaç saniye gecikebilir.
+  Future<String?> _currentToken() async {
+    if (Platform.isIOS) {
+      String? apns;
+      for (var attempt = 0; attempt < 10 && apns == null; attempt++) {
+        apns = await FirebaseMessaging.instance.getAPNSToken();
+        if (apns == null) await Future<void>.delayed(const Duration(seconds: 1));
+      }
+      if (apns == null) {
+        logIgnored('remote_push_service', 'APNs token alınamadı');
+        return null;
+      }
+    }
+    return FirebaseMessaging.instance.getToken();
   }
 
   Future<void> _initializeLocalNotifications() async {
@@ -112,7 +142,8 @@ class RemotePushService {
 
   Future<void> refreshRegistration() async {
     try {
-      final token = await FirebaseMessaging.instance.getToken();
+      if (Firebase.apps.isEmpty && !await _ensureInitialized()) return;
+      final token = await _currentToken();
       if (token != null && token.isNotEmpty) {
         await _registerToken(token);
       }
@@ -121,8 +152,9 @@ class RemotePushService {
 
   Future<void> unregister() async {
     try {
+      if (Firebase.apps.isEmpty) return;
       final session = await AuthSessionStore.instance.load();
-      final token = await FirebaseMessaging.instance.getToken();
+      final token = await _currentToken();
       if (session == null || token == null || token.isEmpty) return;
 
       await http.post(
@@ -140,7 +172,7 @@ class RemotePushService {
     final session = await AuthSessionStore.instance.load();
     if (session == null || session.accessToken.isEmpty) return;
 
-    await http.post(
+    final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/push/register'),
       headers: {
         'Content-Type': 'application/json',
@@ -158,5 +190,8 @@ class RemotePushService {
         'role': session.primaryRole,
       }),
     );
+    if (response.statusCode >= 300) {
+      logIgnored('remote_push_service', 'push kaydı reddedildi: HTTP ${response.statusCode}');
+    }
   }
 }

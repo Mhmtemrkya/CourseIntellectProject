@@ -28,10 +28,9 @@ public sealed class GuidanceController(
     IStudyPlanService studyPlanService,
     IPushNotificationService pushNotificationService) : ControllerBase
 {
+    // Türkçe "İ" dahil ortak isim anahtarı (push eşleşmesiyle aynı kural).
     private static string Normalize(string? value)
-        => (value ?? string.Empty).Trim().ToLowerInvariant()
-            .Replace("ı", "i").Replace("ğ", "g").Replace("ü", "u")
-            .Replace("ş", "s").Replace("ö", "o").Replace("ç", "c");
+        => CourseIntellect.Infrastructure.Services.FcmPushNotificationService.NormalizeName(value);
 
     private static bool IsCounselorUser(AppUser user)
         => user.PrimaryRole == UserRole.Admin

@@ -69,8 +69,13 @@ public sealed class FcmPushNotificationService(
         }
     }
 
-    private static string NormalizeName(string? value)
-        => (value ?? string.Empty).Trim().ToLowerInvariant()
+    // ToLowerInvariant Türkçe "İ"yi (U+0130) küçültmez; "Ali YİLMAZ" ile
+    // "Ali Yilmaz" eşleşmiyor ve isimle gönderilen push sessizce düşüyordu.
+    // Birleşik nokta (U+0307) da atılır.
+    public static string NormalizeName(string? value)
+        => (value ?? string.Empty).Trim()
+            .Replace("İ", "i").Replace("\u0307", string.Empty)
+            .ToLowerInvariant()
             .Replace("ı", "i").Replace("ğ", "g").Replace("ü", "u")
             .Replace("ş", "s").Replace("ö", "o").Replace("ç", "c");
 
@@ -225,7 +230,12 @@ public sealed class FcmPushNotificationService(
 
             using var response = await httpClient.SendAsync(request, cancellationToken);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                // Google hata gövdesi (ör. invalid_grant açıklaması) gizli bilgi içermez.
+                throw new HttpRequestException(
+                    $"FCM OAuth token isteği başarısız: {(int)response.StatusCode} {body}", null, response.StatusCode);
+            }
 
             using var json = JsonDocument.Parse(body);
             accessToken = json.RootElement.GetProperty("access_token").GetString()
@@ -251,9 +261,12 @@ public sealed class FcmPushNotificationService(
         var token = new JwtSecurityToken(
             issuer: options.Value.ClientEmail,
             audience: options.Value.TokenUri,
+            // Google "iat" ister; JwtSecurityToken bunu kendiliğinden eklemez ve
+            // eksikken token uç noktası invalid_grant (400) döner — push hiç gitmiyordu.
             claims:
             [
                 new Claim("scope", "https://www.googleapis.com/auth/firebase.messaging"),
+                new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(now).ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture), ClaimValueTypes.Integer64),
             ],
             notBefore: now.AddMinutes(-1),
             expires: now.AddMinutes(55),
