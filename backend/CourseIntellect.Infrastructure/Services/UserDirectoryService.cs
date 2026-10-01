@@ -192,7 +192,7 @@ public sealed class UserDirectoryService(
     public async Task<IReadOnlyList<RoleSummaryDto>> GetRolesAsync(CancellationToken cancellationToken = default)
     {
         var users = await ApplyTenantScope(dbContext.Users).ToListAsync(cancellationToken);
-        var policies = await dbContext.RolePolicies.ToDictionaryAsync(x => x.RoleName, cancellationToken);
+        var policies = await ScopedRolePolicies().ToDictionaryAsync(x => x.RoleName, cancellationToken);
 
         return
         [
@@ -208,6 +208,14 @@ public sealed class UserDirectoryService(
         ];
     }
 
+    // Rol politikası kuruma aittir: kurum yöneticisi kurum filtresiyle yalnız
+    // kendi kurumununkini görür/yazar (eskiden tablo ortaktı ve bir okulun
+    // ayarı tüm okullarda o rolün girişini etkiliyordu). Kurum bağlamı olmayan
+    // platform yöneticisi yalnız platform kayıtlarıyla çalışır.
+    private IQueryable<RolePolicy> ScopedRolePolicies() => dbContext.CurrentTenantId is null
+        ? dbContext.RolePolicies.IgnoreQueryFilters().Where(x => x.TenantId == null)
+        : dbContext.RolePolicies;
+
     public async Task UpdateRolePolicyAsync(string roleName, RolePolicyUpdateRequest request, CancellationToken cancellationToken = default)
     {
         if (!Enum.TryParse<UserRole>(roleName, true, out var parsedRole))
@@ -216,7 +224,7 @@ public sealed class UserDirectoryService(
         }
         EnsureRoleAssignable(parsedRole);
 
-        var policy = await dbContext.RolePolicies.SingleOrDefaultAsync(x => x.RoleName == parsedRole.ToString(), cancellationToken);
+        var policy = await ScopedRolePolicies().SingleOrDefaultAsync(x => x.RoleName == parsedRole.ToString(), cancellationToken);
         if (policy is null)
         {
             policy = new RolePolicy { RoleName = parsedRole.ToString() };

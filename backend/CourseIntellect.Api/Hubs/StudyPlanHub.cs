@@ -19,12 +19,17 @@ public sealed class StudyPlanHub : Hub
             ?? Context.User?.FindFirstValue(ClaimTypes.Name);
         if (!string.IsNullOrWhiteSpace(fullName))
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, BuildStudentGroup(fullName));
+            await Groups.AddToGroupAsync(
+                Context.ConnectionId,
+                BuildStudentGroup(Context.User?.FindFirstValue("tenant_id"), fullName));
         }
 
         await base.OnConnectedAsync();
     }
 
-    public static string BuildStudentGroup(string studentName) =>
-        $"studyplan-{studentName.Trim().ToLowerInvariant()}";
+    // Grup kurum + ad ile kurulur. Eskiden yalnız ad kullanılıyordu: başka
+    // kurumda aynı ad-soyadlı bir kullanıcı bu öğrencinin plan güncellemelerini
+    // canlı olarak alıyordu (plan verisi kurum filtreli olsa da yayın değildi).
+    public static string BuildStudentGroup(string? tenantId, string studentName) =>
+        $"studyplan-{(string.IsNullOrWhiteSpace(tenantId) ? "platform" : tenantId.Trim().ToLowerInvariant())}-{studentName.Trim().ToLowerInvariant()}";
 }

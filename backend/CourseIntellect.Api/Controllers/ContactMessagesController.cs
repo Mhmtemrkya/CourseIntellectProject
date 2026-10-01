@@ -8,6 +8,8 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
+// Pazarlama sitesinin iletişim mesajları platforma aittir (aday müşteri ad/e-posta/
+// telefon). Eskiden her kurum yöneticisi tüm mesajları okuyup silebiliyordu.
 public sealed class ContactMessagesController(IContactMessageService contactMessageService) : ControllerBase
 {
     [HttpPost]
@@ -20,7 +22,7 @@ public sealed class ContactMessagesController(IContactMessageService contactMess
     }
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? search,
         [FromQuery] string? status,
@@ -32,7 +34,7 @@ public sealed class ContactMessagesController(IContactMessageService contactMess
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var item = await contactMessageService.GetByIdAsync(id, cancellationToken);
@@ -40,7 +42,7 @@ public sealed class ContactMessagesController(IContactMessageService contactMess
     }
 
     [HttpPut("{id:guid}/status")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateContactMessageStatusRequest request, CancellationToken cancellationToken)
     {
         var updated = await contactMessageService.UpdateStatusAsync(id, request, cancellationToken);
@@ -48,7 +50,7 @@ public sealed class ContactMessagesController(IContactMessageService contactMess
     }
 
     [HttpPut("{id:guid}/read")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> MarkAsRead(Guid id, CancellationToken cancellationToken)
     {
         var updated = await contactMessageService.MarkAsReadAsync(id, cancellationToken);
@@ -56,7 +58,7 @@ public sealed class ContactMessagesController(IContactMessageService contactMess
     }
 
     [HttpPut("{id:guid}/star")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> ToggleStar(Guid id, [FromBody] ToggleStarRequest request, CancellationToken cancellationToken)
     {
         var updated = await contactMessageService.ToggleStarAsync(id, request.IsStarred, cancellationToken);
@@ -64,7 +66,7 @@ public sealed class ContactMessagesController(IContactMessageService contactMess
     }
 
     [HttpPut("{id:guid}/reply")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> MarkAsReplied(Guid id, CancellationToken cancellationToken)
     {
         var updated = await contactMessageService.MarkAsRepliedAsync(id, cancellationToken);
@@ -72,7 +74,7 @@ public sealed class ContactMessagesController(IContactMessageService contactMess
     }
 
     [HttpPut("{id:guid}/archive")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> Archive(Guid id, CancellationToken cancellationToken)
     {
         var updated = await contactMessageService.ArchiveAsync(id, cancellationToken);
@@ -80,7 +82,7 @@ public sealed class ContactMessagesController(IContactMessageService contactMess
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await contactMessageService.DeleteAsync(id, cancellationToken);

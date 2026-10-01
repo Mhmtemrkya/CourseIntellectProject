@@ -8,6 +8,7 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
+// Herkese açık sitenin içeriği; yalnız platform yöneticisi yazar/yayımlar.
 public sealed class SiteContentsController(ISiteContentService siteContentService) : ControllerBase
 {
     [HttpGet("{sectionKey}")]
@@ -19,7 +20,7 @@ public sealed class SiteContentsController(ISiteContentService siteContentServic
     }
 
     [HttpPut("{sectionKey}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> CreateOrUpdate(string sectionKey, [FromBody] UpdateSiteContentRequest request, CancellationToken cancellationToken = default)
     {
         var item = await siteContentService.CreateOrUpdateAsync(sectionKey, request, cancellationToken);
@@ -27,7 +28,7 @@ public sealed class SiteContentsController(ISiteContentService siteContentServic
     }
 
     [HttpPost("{sectionKey}/publish")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> Publish(string sectionKey, [FromQuery] string language = "tr", CancellationToken cancellationToken = default)
     {
         var item = await siteContentService.PublishLatestAsync(sectionKey, language, cancellationToken);
@@ -35,7 +36,7 @@ public sealed class SiteContentsController(ISiteContentService siteContentServic
     }
 
     [HttpGet("history/{sectionKey}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> GetHistory(string sectionKey, [FromQuery] string language = "tr", CancellationToken cancellationToken = default)
     {
         var items = await siteContentService.GetHistoryAsync(sectionKey, language, cancellationToken);

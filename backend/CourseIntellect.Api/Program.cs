@@ -634,7 +634,13 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = context =>
     {
         var request = context.Context.Request;
-        context.Context.Response.Headers.TryAdd("Cache-Control", "public, max-age=604800");
+        // Yalnız kurum logoları ortak önbelleğe (Cloudflare) alınabilir. Öğrenci/
+        // personel fotoğrafı, mazeret belgesi gibi dosyalar "private": CDN'de
+        // tutulmaz, dosya silinince kenar sunucularda kopyası kalmaz.
+        var isPublicAsset = request.Path.StartsWithSegments("/uploads/tenant-branding", StringComparison.OrdinalIgnoreCase);
+        context.Context.Response.Headers.TryAdd(
+            "Cache-Control",
+            isPublicAsset ? "public, max-age=604800" : "private, max-age=86400");
         context.Context.Response.Headers.TryAdd("Access-Control-Allow-Headers", "Range, Authorization, Content-Type");
         context.Context.Response.Headers.TryAdd("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
 

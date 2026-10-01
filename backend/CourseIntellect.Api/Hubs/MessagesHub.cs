@@ -16,12 +16,13 @@ public sealed class MessagesHub(CourseIntellectDbContext dbContext) : Hub
     public override async Task OnConnectedAsync()
     {
         var actorKeys = BuildActorKeys(Context.User);
+        var tenantId = ResolveTenantId();
         foreach (var actorKey in actorKeys)
         {
-            PresenceCounts.AddOrUpdate(actorKey, 1, (_, count) => count + 1);
+            PresenceCounts.AddOrUpdate(PresenceKey(tenantId, actorKey), 1, (_, count) => count + 1);
         }
 
-        var userGroups = BuildUserGroups(Context.User, actorKeys);
+        var userGroups = BuildUserGroups(Context.User);
         foreach (var group in userGroups)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, group);
@@ -29,7 +30,7 @@ public sealed class MessagesHub(CourseIntellectDbContext dbContext) : Hub
 
         foreach (var actorKey in actorKeys)
         {
-            await Clients.Group(BuildPresenceGroup(actorKey)).SendAsync("presenceChanged", new
+            await Clients.Group(BuildPresenceGroup(tenantId, actorKey)).SendAsync("presenceChanged", new
             {
                 actorKey,
                 isOnline = true,
@@ -42,13 +43,15 @@ public sealed class MessagesHub(CourseIntellectDbContext dbContext) : Hub
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var actorKeys = BuildActorKeys(Context.User);
+        var tenantId = ResolveTenantId();
         foreach (var actorKey in actorKeys)
         {
-            var next = PresenceCounts.AddOrUpdate(actorKey, 0, (_, count) => Math.Max(0, count - 1));
+            var presenceKey = PresenceKey(tenantId, actorKey);
+            var next = PresenceCounts.AddOrUpdate(presenceKey, 0, (_, count) => Math.Max(0, count - 1));
             if (next == 0)
             {
-                PresenceCounts.TryRemove(actorKey, out _);
-                await Clients.Group(BuildPresenceGroup(actorKey)).SendAsync("presenceChanged", new
+                PresenceCounts.TryRemove(presenceKey, out _);
+                await Clients.Group(BuildPresenceGroup(tenantId, actorKey)).SendAsync("presenceChanged", new
                 {
                     actorKey,
                     isOnline = false,
@@ -119,12 +122,15 @@ public sealed class MessagesHub(CourseIntellectDbContext dbContext) : Hub
             return;
         }
 
+        // Yalnız çağıranın kendi kurumundaki kişilerin durumu izlenebilir.
+        var tenantId = ResolveTenantId();
+        if (tenantId is null) return;
         var normalized = NormalizeKey(actorKey);
-        await Groups.AddToGroupAsync(Context.ConnectionId, BuildPresenceGroup(normalized));
+        await Groups.AddToGroupAsync(Context.ConnectionId, BuildPresenceGroup(tenantId, normalized));
         await Clients.Caller.SendAsync("presenceChanged", new
         {
             actorKey = normalized,
-            isOnline = PresenceCounts.TryGetValue(normalized, out var count) && count > 0,
+            isOnline = PresenceCounts.TryGetValue(PresenceKey(tenantId, normalized), out var count) && count > 0,
         });
     }
 
@@ -135,7 +141,7 @@ public sealed class MessagesHub(CourseIntellectDbContext dbContext) : Hub
             return Task.CompletedTask;
         }
 
-        return Groups.RemoveFromGroupAsync(Context.ConnectionId, BuildPresenceGroup(actorKey));
+        return Groups.RemoveFromGroupAsync(Context.ConnectionId, BuildPresenceGroup(ResolveTenantId(), actorKey));
     }
 
     // actorName parametresi geriye uyumluluk için imzada DURUR ama KULLANILMAZ:
@@ -177,17 +183,37 @@ public sealed class MessagesHub(CourseIntellectDbContext dbContext) : Hub
 
     public static string BuildThreadGroup(string threadId) => $"messages:thread:{threadId.Trim().ToLowerInvariant()}";
 
-    public static string BuildUserGroup(string actorKey) => $"messages:user:{NormalizeKey(actorKey)}";
+    /// <summary>Kişisel grup; anahtar <see cref="MessageParticipantKey"/> ile üretilir.</summary>
+    public static string BuildUserGroup(string realtimeKey) => $"messages:user:{realtimeKey}";
 
-    public static string BuildPresenceGroup(string actorKey) => $"messages:presence:{NormalizeKey(actorKey)}";
+    // Çevrimiçi durum kurum içindedir: başka kurumdaki aynı adlı kişi bu grubu
+    // ve sayacı paylaşmaz.
+    public static string BuildPresenceGroup(Guid? tenantId, string actorKey) =>
+        $"messages:presence:{PresenceKey(tenantId, actorKey)}";
 
-    public static IReadOnlyCollection<string> BuildUserGroups(ClaimsPrincipal? user, IReadOnlyCollection<string>? actorKeys = null)
+    private static string PresenceKey(Guid? tenantId, string actorKey) =>
+        $"{tenantId?.ToString("N") ?? "none"}:{NormalizeKey(actorKey)}";
+
+    /// <summary>
+    /// Bağlanan kullanıcının kişisel grupları: kullanıcı kimliği (küresel tekil) ve
+    /// kurumla nitelenmiş ad/kullanıcı adı/e-posta anahtarları. Gönderen servis aynı
+    /// biçimi kullanır (MessageParticipantKey.RealtimeParticipantKey).
+    /// </summary>
+    public static IReadOnlyCollection<string> BuildUserGroups(ClaimsPrincipal? user)
     {
         var groups = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var resolvedActorKeys = actorKeys ?? BuildActorKeys(user);
-        foreach (var actorKey in resolvedActorKeys)
+        if (user is null) return groups.ToArray();
+
+        var rawUserId = user.FindFirstValue("sub") ?? user.FindFirstValue("nameid") ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (Guid.TryParse(rawUserId, out var userId))
         {
-            groups.Add(BuildUserGroup(actorKey));
+            groups.Add(BuildUserGroup(MessageParticipantKey.RealtimeUserKey(userId)));
+        }
+
+        Guid? tenantId = Guid.TryParse(user.FindFirstValue("tenant_id"), out var parsedTenant) ? parsedTenant : null;
+        foreach (var actorKey in BuildActorKeys(user))
+        {
+            groups.Add(BuildUserGroup(MessageParticipantKey.RealtimeNameKey(tenantId, actorKey)));
         }
 
         return groups.ToArray();

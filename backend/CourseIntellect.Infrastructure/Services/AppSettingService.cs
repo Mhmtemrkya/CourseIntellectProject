@@ -8,9 +8,17 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class AppSettingService(CourseIntellectDbContext dbContext) : IAppSettingService
 {
+    // Kurum kullanıcısı kurum filtresiyle yalnız kendi kurumunun ayarlarını görür
+    // (yeni kayıtlar SaveChanges'te kuruma damgalanır). Kurum bağlamı olmayan
+    // platform yöneticisi yalnız platform ayarlarıyla (TenantId null) çalışır;
+    // kurumların aynı anahtarlı kayıtları ona karışmaz.
+    private IQueryable<AppSetting> Scoped() => dbContext.CurrentTenantId is null
+        ? dbContext.AppSettings.IgnoreQueryFilters().Where(x => x.TenantId == null)
+        : dbContext.AppSettings;
+
     public async Task<IReadOnlyList<AppSettingDto>> GetAllAsync(string? category, CancellationToken cancellationToken = default)
     {
-        var query = dbContext.AppSettings.AsQueryable();
+        var query = Scoped();
 
         if (!string.IsNullOrWhiteSpace(category))
         {
@@ -26,7 +34,7 @@ public sealed class AppSettingService(CourseIntellectDbContext dbContext) : IApp
 
     public async Task<AppSettingDto?> GetByKeyAsync(string key, CancellationToken cancellationToken = default)
     {
-        var entity = await dbContext.AppSettings
+        var entity = await Scoped()
             .FirstOrDefaultAsync(x => x.Key == key.Trim(), cancellationToken);
 
         return entity is null ? null : ToDto(entity);
@@ -40,7 +48,7 @@ public sealed class AppSettingService(CourseIntellectDbContext dbContext) : IApp
         {
             var key = item.Key.Trim();
 
-            var entity = await dbContext.AppSettings
+            var entity = await Scoped()
                 .FirstOrDefaultAsync(x => x.Key == key, cancellationToken);
 
             if (entity is null)

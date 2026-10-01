@@ -37,4 +37,22 @@ public static class MessageParticipantKey
         if (key.Length == 0) return false;
         return key == Compare(participantOne) || key == Compare(participantTwo);
     }
+
+    // ---- SignalR kişisel grup anahtarları ----
+    // Gönderen servis ve hub AYNI biçimi kullanır. Ad tabanlı anahtar kurumla
+    // nitelenir: eskiden yalnız ad kullanılıyordu ve başka kurumda aynı adlı
+    // kullanıcı mesaj içeriğini (messageReceived) canlı olarak alıyordu.
+
+    /// <summary>Kullanıcı kimliği küresel olarak tekildir; kurum gerekmez.</summary>
+    public static string RealtimeUserKey(Guid userId) => $"id:{userId:N}";
+
+    /// <summary>Kimliği olmayan (eski) kayıtlar için kurum + ad anahtarı.</summary>
+    public static string RealtimeNameKey(Guid? tenantId, string? name) =>
+        // "İ".ToLowerInvariant() "i" + U+0307 üretir; hub anahtarı küçültülmüş geldiği
+        // için birleşik nokta atılır, aksi hâlde "İsmail" iki tarafta farklı anahtar olurdu.
+        $"t:{tenantId?.ToString("N") ?? "none"}:{Compare(name).Replace("\u0307", string.Empty)}";
+
+    /// <summary>Thread katılımcısı için anahtar: kimlik varsa kimlik, yoksa kurum + ad.</summary>
+    public static string RealtimeParticipantKey(Guid? tenantId, Guid? userId, string? name) =>
+        userId is Guid id ? RealtimeUserKey(id) : RealtimeNameKey(tenantId, name);
 }

@@ -23,7 +23,7 @@ public sealed class StudyPlansController(
     private Task BroadcastAsync(string studentName, StudyPlanStateDto state, CancellationToken cancellationToken)
     {
         return studyPlanHub.Clients
-            .Group(StudyPlanHub.BuildStudentGroup(studentName))
+            .Group(StudyPlanHub.BuildStudentGroup(User.FindFirstValue("tenant_id"), studentName))
             .SendAsync("studyPlanUpdated", state, cancellationToken);
     }
 

@@ -11,12 +11,21 @@ internal static class CompatibilitySnapshotStore
     private const string Language = "tr";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
+    // Kurum kullanıcısı kurum filtresiyle kendi anlık görüntülerini görür. Kurum
+    // bağlamı yokken (platform yöneticisi) filtre tüm kurumları döndürüyordu:
+    // okuma başka kurumun kaydını alabiliyor, yazma tüm kurumların yayınını
+    // kapatabiliyordu. O durumda yalnız platform kayıtları kullanılır.
+    private static IQueryable<SiteContentItem> Scoped(CourseIntellectDbContext dbContext) =>
+        dbContext.CurrentTenantId is null
+            ? dbContext.SiteContentItems.IgnoreQueryFilters().Where(item => item.TenantId == null)
+            : dbContext.SiteContentItems;
+
     public static async Task<List<T>> LoadListAsync<T>(
         CourseIntellectDbContext dbContext,
         string sectionKey,
         CancellationToken cancellationToken = default)
     {
-        var raw = await dbContext.SiteContentItems
+        var raw = await Scoped(dbContext)
             .AsNoTracking()
             .Where(item => item.SectionKey == sectionKey && item.Language == Language)
             .OrderByDescending(item => item.Version)
@@ -45,7 +54,7 @@ internal static class CompatibilitySnapshotStore
         string updatedBy,
         CancellationToken cancellationToken = default)
     {
-        var publishedItems = await dbContext.SiteContentItems
+        var publishedItems = await Scoped(dbContext)
             .Where(item => item.SectionKey == sectionKey && item.Language == Language && item.IsPublished)
             .ToListAsync(cancellationToken);
 
@@ -56,7 +65,7 @@ internal static class CompatibilitySnapshotStore
             published.UpdatedBy = updatedBy;
         }
 
-        var latestVersion = await dbContext.SiteContentItems
+        var latestVersion = await Scoped(dbContext)
             .Where(item => item.SectionKey == sectionKey && item.Language == Language)
             .MaxAsync(item => (int?)item.Version, cancellationToken) ?? 0;
 

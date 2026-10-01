@@ -8,6 +8,8 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
+// Çeviriler tüm kurumlar ve herkese açık site için ortaktır; yalnız platform
+// yöneticisi değiştirir (eskiden her kurum yöneticisi değiştirebiliyordu).
 public sealed class TranslationsController(ITranslationService translationService) : ControllerBase
 {
     [HttpGet]
@@ -23,7 +25,7 @@ public sealed class TranslationsController(ITranslationService translationServic
     }
 
     [HttpPut]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> Upsert([FromBody] BulkUpsertTranslationRequest request, CancellationToken cancellationToken)
     {
         var items = await translationService.UpsertManyAsync(request.Items, cancellationToken);
@@ -31,7 +33,7 @@ public sealed class TranslationsController(ITranslationService translationServic
     }
 
     [HttpGet("export")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> Export([FromQuery] string language = "tr", CancellationToken cancellationToken = default)
     {
         var items = await translationService.ExportAsync(language, cancellationToken);

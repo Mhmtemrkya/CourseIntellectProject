@@ -66,7 +66,11 @@ public sealed class MessageService(
             .OrderBy(x => x.SentAtUtc)
             .ToListAsync(cancellationToken);
 
-        var participantKeys = new[] { thread.ParticipantOneName, thread.ParticipantTwoName };
+        var participantKeys = new[]
+        {
+            MessageParticipantKey.RealtimeParticipantKey(thread.TenantId, thread.ParticipantOneUserId, thread.ParticipantOneName),
+            MessageParticipantKey.RealtimeParticipantKey(thread.TenantId, thread.ParticipantTwoUserId, thread.ParticipantTwoName),
+        };
         var updatedAny = false;
         foreach (var item in items.Where(x => !x.IsRead && x.SenderName != normalizedCurrentName))
         {
@@ -217,8 +221,8 @@ public sealed class MessageService(
             attachments);
         var participantKeys = new[]
         {
-            thread.ParticipantOneUserId?.ToString() ?? thread.ParticipantOneName,
-            thread.ParticipantTwoUserId?.ToString() ?? thread.ParticipantTwoName,
+            MessageParticipantKey.RealtimeParticipantKey(thread.TenantId, thread.ParticipantOneUserId, thread.ParticipantOneName),
+            MessageParticipantKey.RealtimeParticipantKey(thread.TenantId, thread.ParticipantTwoUserId, thread.ParticipantTwoName),
         };
 
         await realtimeNotifier.NotifyMessageReceivedAsync(thread.Id, participantKeys, messageDto, cancellationToken);

@@ -44,16 +44,22 @@ public sealed class SystemService(
 
     public async Task<bool> IsMaintenanceActiveAsync(CancellationToken cancellationToken = default)
     {
-        var setting = await dbContext.AppSettings
+        var setting = await PlatformSettings()
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Key == MaintenanceModeKey, cancellationToken);
         return ParseBool(setting?.Value);
     }
 
+    // Bakım modu platform ayarıdır (TenantId null). Giriş anında kurum bağlamı
+    // olmadığından filtre açıkça verilir; aksi halde bir kurumun aynı anahtarlı
+    // kaydı platformun bakım durumunu belirleyebilirdi.
+    private IQueryable<AppSetting> PlatformSettings() =>
+        dbContext.AppSettings.IgnoreQueryFilters().Where(s => s.TenantId == null);
+
     private async Task<Dictionary<string, string>> GetSettingsAsync(CancellationToken cancellationToken)
     {
         var keys = new[] { MaintenanceModeKey, MaintenanceMessageKey, MaintenanceSinceKey };
-        var rows = await dbContext.AppSettings
+        var rows = await PlatformSettings()
             .AsNoTracking()
             .Where(s => keys.Contains(s.Key))
             .ToListAsync(cancellationToken);
@@ -62,7 +68,7 @@ public sealed class SystemService(
 
     private async Task UpsertAsync(string key, string value, string type, string category, string description, CancellationToken cancellationToken)
     {
-        var existing = await dbContext.AppSettings.FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
+        var existing = await PlatformSettings().FirstOrDefaultAsync(s => s.Key == key, cancellationToken);
         if (existing is null)
         {
             dbContext.AppSettings.Add(new AppSetting

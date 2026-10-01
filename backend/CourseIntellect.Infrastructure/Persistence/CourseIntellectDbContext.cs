@@ -1193,7 +1193,9 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("role_policies");
             entity.HasKey(x => x.Id);
-            entity.HasIndex(x => x.RoleName).IsUnique();
+            ConfigureTenantScope(entity);
+            entity.HasIndex(x => new { x.TenantId, x.RoleName }).IsUnique().HasFilter("tenant_id IS NOT NULL");
+            entity.HasIndex(x => x.RoleName).IsUnique().HasFilter("tenant_id IS NULL");
             entity.Property(x => x.RoleName).HasMaxLength(40).IsRequired();
             entity.Property(x => x.MessagingScope).HasMaxLength(200).IsRequired();
             entity.Property(x => x.ModuleAccessSerialized).HasColumnName("module_access").HasMaxLength(1000).IsRequired();
@@ -1307,11 +1309,14 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Type).HasMaxLength(40).IsRequired();
             entity.Property(x => x.Category).HasMaxLength(80).IsRequired();
             entity.Property(x => x.Description).HasMaxLength(500).IsRequired();
-            entity.HasIndex(x => x.Key).IsUnique();
+            ConfigureTenantScope(entity);
+            entity.HasIndex(x => new { x.TenantId, x.Key }).IsUnique().HasFilter("tenant_id IS NOT NULL");
+            entity.HasIndex(x => x.Key).IsUnique().HasFilter("tenant_id IS NULL");
         });
 
         modelBuilder.Entity<CourseItem>(entity =>
         {
+            ConfigureTenantScope(entity);
             entity.ToTable("course_items");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Name).HasMaxLength(200).IsRequired();

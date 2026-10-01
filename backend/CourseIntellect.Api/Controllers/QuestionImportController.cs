@@ -26,7 +26,7 @@ public sealed partial class QuestionImportController(
     IHubContext<QuestionImportHub> hubContext,
     IDocumentIntelligenceService documentIntelligence) : ControllerBase
 {
-    private const string SectionKey = "question-import-jobs";
+    public const string SectionKey = "question-import-jobs";
     private const int MaxPreviewQuestions = 10000;
 
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)

@@ -8,9 +8,17 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class CourseService(CourseIntellectDbContext dbContext) : ICourseService
 {
+    // Kurum kullanıcısı kurum filtresiyle kendi kayıtlarını görür; kurum bağlamı
+    // olmayan istek (herkese açık site, platform yöneticisi) yalnız platform
+    // kayıtlarını (TenantId null) görür. Eskiden kurum bağlamı yokken filtre
+    // tüm kurumların kayıtlarını döndürüyordu.
+    private IQueryable<CourseItem> Scoped() => dbContext.CurrentTenantId is null
+        ? dbContext.CourseItems.IgnoreQueryFilters().Where(x => x.TenantId == null)
+        : dbContext.CourseItems;
+
     public async Task<IReadOnlyList<CourseDto>> GetAllAsync(string? search, bool? isActive, CancellationToken cancellationToken = default)
     {
-        var query = dbContext.CourseItems.AsQueryable();
+        var query = Scoped();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -33,7 +41,7 @@ public sealed class CourseService(CourseIntellectDbContext dbContext) : ICourseS
 
     public async Task<CourseDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await dbContext.CourseItems.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var entity = await Scoped().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         return entity is null ? null : ToDto(entity);
     }
 
@@ -52,7 +60,7 @@ public sealed class CourseService(CourseIntellectDbContext dbContext) : ICourseS
 
     public async Task<CourseDto?> UpdateAsync(Guid id, UpdateCourseRequest request, CancellationToken cancellationToken = default)
     {
-        var entity = await dbContext.CourseItems.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var entity = await Scoped().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
         {
             return null;
@@ -73,7 +81,7 @@ public sealed class CourseService(CourseIntellectDbContext dbContext) : ICourseS
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entity = await dbContext.CourseItems.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var entity = await Scoped().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
         {
             return false;

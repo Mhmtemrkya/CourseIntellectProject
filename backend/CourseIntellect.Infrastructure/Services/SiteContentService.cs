@@ -9,6 +9,14 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class SiteContentService(CourseIntellectDbContext dbContext) : ISiteContentService
 {
+    // Kurum kullanıcısı kurum filtresiyle kendi kayıtlarını görür; kurum bağlamı
+    // olmayan istek (herkese açık site, platform yöneticisi) yalnız platform
+    // kayıtlarını (TenantId null) görür. Eskiden kurum bağlamı yokken filtre
+    // tüm kurumların kayıtlarını döndürüyordu.
+    private IQueryable<SiteContentItem> Scoped() => dbContext.CurrentTenantId is null
+        ? dbContext.SiteContentItems.IgnoreQueryFilters().Where(x => x.TenantId == null)
+        : dbContext.SiteContentItems;
+
     private static readonly JsonDocumentOptions DocumentOptions = new()
     {
         AllowTrailingCommas = true,
@@ -17,7 +25,14 @@ public sealed class SiteContentService(CourseIntellectDbContext dbContext) : ISi
 
     public async Task<SiteContentDto?> GetPublishedAsync(string sectionKey, string language, CancellationToken cancellationToken = default)
     {
+        // Herkese açık uç: çağırandan bağımsız YALNIZ platform içeriği. Aynı
+        // tablo kurumların iç anlık görüntülerini de (sınav oturumları, içe
+        // aktarma işleri…) tutar; bunlar bu uçtan asla dönmemeli. Eskiden
+        // kimliksiz istek başka kurumların, öğrenci kendi okulunun bu
+        // kayıtlarını bölüm adıyla okuyabiliyordu.
         var entity = await dbContext.SiteContentItems
+            .IgnoreQueryFilters()
+            .Where(x => x.TenantId == null)
             .Where(x => x.SectionKey == sectionKey.Trim() && x.Language == language.Trim() && x.IsPublished)
             .OrderByDescending(x => x.Version)
             .FirstOrDefaultAsync(cancellationToken);
@@ -27,7 +42,7 @@ public sealed class SiteContentService(CourseIntellectDbContext dbContext) : ISi
 
     public async Task<IReadOnlyList<SiteContentDto>> GetHistoryAsync(string sectionKey, string language, CancellationToken cancellationToken = default)
     {
-        var entities = await dbContext.SiteContentItems
+        var entities = await Scoped()
             .Where(x => x.SectionKey == sectionKey.Trim() && x.Language == language.Trim())
             .OrderByDescending(x => x.Version)
             .ToListAsync(cancellationToken);
@@ -40,13 +55,13 @@ public sealed class SiteContentService(CourseIntellectDbContext dbContext) : ISi
         var key = sectionKey.Trim();
         var lang = request.Language.Trim();
 
-        var latestVersion = await dbContext.SiteContentItems
+        var latestVersion = await Scoped()
             .Where(x => x.SectionKey == key && x.Language == lang)
             .MaxAsync(x => (int?)x.Version, cancellationToken) ?? 0;
 
         if (request.Publish)
         {
-            var previouslyPublished = await dbContext.SiteContentItems
+            var previouslyPublished = await Scoped()
                 .Where(x => x.SectionKey == key && x.Language == lang && x.IsPublished)
                 .ToListAsync(cancellationToken);
             foreach (var item in previouslyPublished)
@@ -77,7 +92,7 @@ public sealed class SiteContentService(CourseIntellectDbContext dbContext) : ISi
         var key = sectionKey.Trim();
         var lang = language.Trim();
 
-        var latest = await dbContext.SiteContentItems
+        var latest = await Scoped()
             .Where(x => x.SectionKey == key && x.Language == lang)
             .OrderByDescending(x => x.Version)
             .FirstOrDefaultAsync(cancellationToken);
@@ -87,7 +102,7 @@ public sealed class SiteContentService(CourseIntellectDbContext dbContext) : ISi
             return null;
         }
 
-        var allVersions = await dbContext.SiteContentItems
+        var allVersions = await Scoped()
             .Where(x => x.SectionKey == key && x.Language == lang && x.IsPublished)
             .ToListAsync(cancellationToken);
 

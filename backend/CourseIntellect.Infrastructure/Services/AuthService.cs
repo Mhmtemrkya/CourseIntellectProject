@@ -54,6 +54,10 @@ public sealed class AuthService(
         }
     }
 
+    // Gerçek bir parolaya ait olmayan, üretim maliyetiyle aynı (100k tur) özet.
+    private const string TimingEqualizerHash =
+        "100000.AAAAAAAAAAAAAAAAAAAAAA==.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
     // Hesap kilitleme: bir kullanıcı adı için pencere içinde eşik kadar başarısız
     // deneme olursa geçici olarak kilitlenir. Son başarılı girişten sonrası sayılır.
     private readonly int _lockoutMaxFailed =
@@ -101,7 +105,11 @@ public sealed class AuthService(
             user = null;
         }
 
-        if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
+        // Kullanıcı yokken de aynı maliyette bir doğrulama yapılır: eskiden özet hiç
+        // hesaplanmadığı için yanıt süresinden kullanıcı adının var olup olmadığı
+        // anlaşılabiliyordu.
+        var passwordMatches = passwordHasher.Verify(request.Password, user?.PasswordHash ?? TimingEqualizerHash);
+        if (user is null || !passwordMatches)
         {
             await RecordLoginAttemptAsync(login, user?.Id, user?.PrimaryRole.ToString() ?? string.Empty, false, user?.TenantId, cancellationToken);
             return null;
@@ -818,8 +826,10 @@ public sealed class AuthService(
             || await IsMovedDrivingSchoolUserAsync(user, cancellationToken)) return false;
         if ((user.PrimaryRole != UserRole.Developer || user.TenantId is not null)
             && await systemService.IsMaintenanceActiveAsync(cancellationToken)) return false;
-        var policy = await dbContext.RolePolicies.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.RoleName == user.PrimaryRole.ToString(), cancellationToken);
+        // Giriş anında kurum bağlamı yok: yalnız kullanıcının kendi kurumunun
+        // politikası uygulanır (başka kurumun ayarı bu kullanıcıyı etkilemez).
+        var policy = await dbContext.RolePolicies.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(x => x.TenantId == user.TenantId && x.RoleName == user.PrimaryRole.ToString(), cancellationToken);
         return policy is null || (policy.IsActive && policy.LoginEnabled);
     }
 
