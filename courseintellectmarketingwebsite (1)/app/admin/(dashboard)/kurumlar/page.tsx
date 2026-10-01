@@ -271,7 +271,7 @@ export default function KurumlarPage() {
 
   const columns: Column<TenantData>[] = [
     { key: "customerNumber", label: "Müşteri numarası", render: (_, row) => <span>{row.customerNumber || "Onay bekliyor"}</span> },
-    { key: "approvalEmailSentAtUtc", label: "Onay e-postası", render: (_, row) => <span>{row.approvalEmailSentAtUtc ? "Gönderildi" : row.status === "active" ? "Gönderilmedi; kurulum belgesini yenileyin" : "—"}</span> },
+    { key: "approvalEmailSentAtUtc", label: "Onay e-postası", render: (_, row) => <span>{row.approvalEmailSentAtUtc ? "Gönderildi" : row.status === "active" ? "Gönderim bekliyor; durumunu kontrol edin" : "—"}</span> },
     {
       key: "name",
       label: "Kurum Adı",
@@ -359,7 +359,7 @@ export default function KurumlarPage() {
       label: "Onayla",
       icon: <CheckCircle className="w-4 h-4" />,
       onClick: (row) => void handleApprove(row),
-      hidden: (row) => row.status !== "pending",
+      hidden: (row) => row.status !== "pending" || row.verificationState !== "verified",
     },
     {
       label: "Reddet",
@@ -577,7 +577,7 @@ export default function KurumlarPage() {
                 <div className="flex gap-3 pt-2">
                   <Button
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
-                    disabled={actionLoading === viewingTenant.id}
+                    disabled={actionLoading === viewingTenant.id || viewingTenant.verificationState !== "verified"}
                     onClick={() => { void handleApprove(viewingTenant); setViewingTenant(null) }}
                   >
                     <CheckCircle className="w-4 h-4" />

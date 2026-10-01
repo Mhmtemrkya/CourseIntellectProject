@@ -1,0 +1,578 @@
+[
+  {
+    "asset": "home-device.webp",
+    "reference": "anasayfa.png",
+    "crop": [
+      0,
+      228,
+      972,
+      674
+    ],
+    "width": 972,
+    "height": 446
+  },
+  {
+    "asset": "home-ecosystem.webp",
+    "reference": "anasayfa.png",
+    "crop": [
+      0,
+      1216,
+      972,
+      1432
+    ],
+    "width": 972,
+    "height": 216
+  },
+  {
+    "asset": "home-lessons.webp",
+    "reference": "anasayfa.png",
+    "crop": [
+      38,
+      785,
+      607,
+      1045
+    ],
+    "width": 569,
+    "height": 260
+  },
+  {
+    "asset": "home-messages.webp",
+    "reference": "anasayfa.png",
+    "crop": [
+      623,
+      785,
+      972,
+      1045
+    ],
+    "width": 349,
+    "height": 260
+  },
+  {
+    "asset": "platform-device.webp",
+    "reference": "platform.png",
+    "crop": [
+      0,
+      214,
+      1024,
+      681
+    ],
+    "width": 1024,
+    "height": 467
+  },
+  {
+    "asset": "platform-lessons.webp",
+    "reference": "platform.png",
+    "crop": [
+      39,
+      746,
+      427,
+      1000
+    ],
+    "width": 388,
+    "height": 254
+  },
+  {
+    "asset": "platform-student.webp",
+    "reference": "platform.png",
+    "crop": [
+      441,
+      746,
+      800,
+      1000
+    ],
+    "width": 359,
+    "height": 254
+  },
+  {
+    "asset": "platform-finance.webp",
+    "reference": "platform.png",
+    "crop": [
+      815,
+      746,
+      1024,
+      1000
+    ],
+    "width": 209,
+    "height": 254
+  },
+  {
+    "asset": "platform-flow.webp",
+    "reference": "platform.png",
+    "crop": [
+      60,
+      1170,
+      965,
+      1398
+    ],
+    "width": 905,
+    "height": 228
+  },
+  {
+    "asset": "roles-device.webp",
+    "reference": "deneyim.png",
+    "crop": [
+      0,
+      254,
+      1024,
+      715
+    ],
+    "width": 1024,
+    "height": 461
+  },
+  {
+    "asset": "roles-teacher.webp",
+    "reference": "deneyim.png",
+    "crop": [
+      68,
+      912,
+      355,
+      1207
+    ],
+    "width": 287,
+    "height": 295
+  },
+  {
+    "asset": "roles-parent.webp",
+    "reference": "deneyim.png",
+    "crop": [
+      373,
+      912,
+      657,
+      1207
+    ],
+    "width": 284,
+    "height": 295
+  },
+  {
+    "asset": "roles-admin.webp",
+    "reference": "deneyim.png",
+    "crop": [
+      675,
+      912,
+      957,
+      1207
+    ],
+    "width": 282,
+    "height": 295
+  },
+  {
+    "asset": "yonetici-device.webp",
+    "reference": "yonetici.png",
+    "crop": [
+      0,
+      221,
+      1024,
+      719
+    ],
+    "width": 1024,
+    "height": 498
+  },
+  {
+    "asset": "yonetici-branches.webp",
+    "reference": "yonetici.png",
+    "crop": [
+      37,
+      779,
+      510,
+      1072
+    ],
+    "width": 473,
+    "height": 293
+  },
+  {
+    "asset": "yonetici-reports.webp",
+    "reference": "yonetici.png",
+    "crop": [
+      524,
+      779,
+      994,
+      1072
+    ],
+    "width": 470,
+    "height": 293
+  },
+  {
+    "asset": "yonetici-access.webp",
+    "reference": "yonetici.png",
+    "crop": [
+      0,
+      1187,
+      1024,
+      1435
+    ],
+    "width": 1024,
+    "height": 248
+  },
+  {
+    "asset": "ogretmen-device.webp",
+    "reference": "ogretmen.png",
+    "crop": [
+      0,
+      230,
+      1024,
+      790
+    ],
+    "width": 1024,
+    "height": 560
+  },
+  {
+    "asset": "ogretmen-materials.webp",
+    "reference": "ogretmen.png",
+    "crop": [
+      36,
+      854,
+      578,
+      1147
+    ],
+    "width": 542,
+    "height": 293
+  },
+  {
+    "asset": "ogretmen-homework.webp",
+    "reference": "ogretmen.png",
+    "crop": [
+      591,
+      854,
+      995,
+      1147
+    ],
+    "width": 404,
+    "height": 293
+  },
+  {
+    "asset": "veli-phone.webp",
+    "reference": "veli.png",
+    "crop": [
+      0,
+      46,
+      490,
+      746
+    ],
+    "width": 490,
+    "height": 700
+  },
+  {
+    "asset": "veli-notification.webp",
+    "reference": "veli.png",
+    "crop": [
+      490,
+      260,
+      1024,
+      746
+    ],
+    "width": 534,
+    "height": 486
+  },
+  {
+    "asset": "veli-lessons.webp",
+    "reference": "veli.png",
+    "crop": [
+      33,
+      829,
+      507,
+      1058
+    ],
+    "width": 474,
+    "height": 229
+  },
+  {
+    "asset": "veli-messages.webp",
+    "reference": "veli.png",
+    "crop": [
+      520,
+      829,
+      994,
+      1058
+    ],
+    "width": 474,
+    "height": 229
+  },
+  {
+    "asset": "veli-students.webp",
+    "reference": "veli.png",
+    "crop": [
+      430,
+      1095,
+      1024,
+      1370
+    ],
+    "width": 594,
+    "height": 275
+  },
+  {
+    "asset": "ogrenci-device.webp",
+    "reference": "ogrenci.png",
+    "crop": [
+      380,
+      52,
+      1024,
+      594
+    ],
+    "width": 644,
+    "height": 542
+  },
+  {
+    "asset": "ogrenci-homework.webp",
+    "reference": "ogrenci.png",
+    "crop": [
+      38,
+      663,
+      502,
+      1001
+    ],
+    "width": 464,
+    "height": 338
+  },
+  {
+    "asset": "ogrenci-schedule.webp",
+    "reference": "ogrenci.png",
+    "crop": [
+      520,
+      663,
+      987,
+      1001
+    ],
+    "width": 467,
+    "height": 338
+  },
+  {
+    "asset": "muhasebe-device.webp",
+    "reference": "muhasebe.png",
+    "crop": [
+      0,
+      218,
+      1024,
+      722
+    ],
+    "width": 1024,
+    "height": 504
+  },
+  {
+    "asset": "muhasebe-payment.webp",
+    "reference": "muhasebe.png",
+    "crop": [
+      38,
+      813,
+      507,
+      1030
+    ],
+    "width": 469,
+    "height": 217
+  },
+  {
+    "asset": "muhasebe-plan.webp",
+    "reference": "muhasebe.png",
+    "crop": [
+      518,
+      813,
+      989,
+      1030
+    ],
+    "width": 471,
+    "height": 217
+  },
+  {
+    "asset": "personel-device.webp",
+    "reference": "personel.png",
+    "crop": [
+      0,
+      223,
+      1024,
+      710
+    ],
+    "width": 1024,
+    "height": 487
+  },
+  {
+    "asset": "personel-tasks.webp",
+    "reference": "personel.png",
+    "crop": [
+      49,
+      821,
+      513,
+      1017
+    ],
+    "width": 464,
+    "height": 196
+  },
+  {
+    "asset": "personel-announcements.webp",
+    "reference": "personel.png",
+    "crop": [
+      527,
+      821,
+      984,
+      1017
+    ],
+    "width": 457,
+    "height": 196
+  },
+  {
+    "asset": "personel-access.webp",
+    "reference": "personel.png",
+    "crop": [
+      0,
+      1149,
+      1024,
+      1418
+    ],
+    "width": 1024,
+    "height": 269
+  },
+  {
+    "asset": "apps-device.webp",
+    "reference": "uygulamalar.png",
+    "crop": [
+      0,
+      222,
+      1024,
+      702
+    ],
+    "width": 1024,
+    "height": 480
+  },
+  {
+    "asset": "apps-desktop.webp",
+    "reference": "uygulamalar.png",
+    "crop": [
+      26,
+      789,
+      563,
+      1090
+    ],
+    "width": 537,
+    "height": 301
+  },
+  {
+    "asset": "apps-mobile.webp",
+    "reference": "uygulamalar.png",
+    "crop": [
+      573,
+      789,
+      998,
+      1090
+    ],
+    "width": 425,
+    "height": 301
+  },
+  {
+    "asset": "apps-web-option.webp",
+    "reference": "uygulamalar.png",
+    "crop": [
+      119,
+      1238,
+      306,
+      1340
+    ],
+    "width": 187,
+    "height": 102
+  },
+  {
+    "asset": "apps-mobile-option.webp",
+    "reference": "uygulamalar.png",
+    "crop": [
+      436,
+      1238,
+      591,
+      1340
+    ],
+    "width": 155,
+    "height": 102
+  },
+  {
+    "asset": "apps-desktop-option.webp",
+    "reference": "uygulamalar.png",
+    "crop": [
+      756,
+      1238,
+      917,
+      1340
+    ],
+    "width": 161,
+    "height": 102
+  },
+  {
+    "asset": "support-symbol.webp",
+    "reference": "destek.png",
+    "crop": [
+      0,
+      65,
+      468,
+      366
+    ],
+    "width": 468,
+    "height": 301
+  },
+  {
+    "asset": "support-laptop.webp",
+    "reference": "destek.png",
+    "crop": [
+      1090,
+      65,
+      1536,
+      366
+    ],
+    "width": 446,
+    "height": 301
+  },
+  {
+    "asset": "registration-brand.webp",
+    "reference": "kurum_kaydi.png",
+    "crop": [
+      0,
+      70,
+      644,
+      334
+    ],
+    "width": 644,
+    "height": 264
+  },
+  {
+    "asset": "login-device.webp",
+    "reference": "giris.png",
+    "crop": [
+      0,
+      396,
+      952,
+      965
+    ],
+    "width": 952,
+    "height": 569
+  },
+  {
+    "asset": "ogrenci-device-tail.webp",
+    "reference": "ogrenci.png",
+    "crop": [
+      0,
+      500,
+      380,
+      594
+    ],
+    "width": 380,
+    "height": 94
+  },
+  {
+    "asset": "home-floor.webp",
+    "reference": "anasayfa.png",
+    "crop": [
+      0,
+      711,
+      972,
+      722
+    ],
+    "width": 972,
+    "height": 11
+  },
+  {
+    "asset": "registration-floor.webp",
+    "reference": "kurum_kaydi.png",
+    "crop": [
+      0,
+      848,
+      644,
+      965
+    ],
+    "width": 644,
+    "height": 117
+  }
+]

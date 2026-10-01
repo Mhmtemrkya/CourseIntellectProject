@@ -3,19 +3,19 @@
 import { useState } from "react"
 import { motion } from "framer-motion"
 import {
-  Building2, Mail, Phone, Users, CheckCircle, Loader2, ArrowLeft,
-  ShieldCheck, BarChart3, Sparkles, MapPin, FileText, Globe, Hash, Briefcase,
+  Building2, Mail, Phone, Users, CheckCircle, Loader2, ArrowRight,
+  ShieldCheck, MapPin, FileText, Globe, Hash, Briefcase,
 } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
+import { ApplicationStatus } from "@/components/site/application-status"
+import { SceneImage } from "@/components/site/product-story"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
-  TURKISH_PROVINCES, maskTrPhone, maskTc, maskMebCode, maskTaxNumber,
+  TURKISH_PROVINCES, maskTrPhone, maskMebCode, maskTaxNumber,
   maskPostalCode, phoneDigits, isValidTrMobile, isValidTrPhone, isValidEmail,
   isValidWebsite, isValidTaxNumber,
 } from "@/lib/form-rules"
@@ -31,21 +31,9 @@ const plans = [
 ]
 
 const features = [
-  {
-    icon: ShieldCheck,
-    title: { tr: "Güvenli Altyapı", en: "Secure Infrastructure" },
-    desc: { tr: "Verileriniz şifreli ve güvende", en: "Your data is encrypted and safe" },
-  },
-  {
-    icon: BarChart3,
-    title: { tr: "Detaylı Raporlama", en: "Detailed Reporting" },
-    desc: { tr: "Gerçek zamanlı analitik paneli", en: "Real-time analytics dashboard" },
-  },
-  {
-    icon: Sparkles,
-    title: { tr: "AI Destekli Araçlar", en: "AI-Powered Tools" },
-    desc: { tr: "Yapay zeka ile eğitimi güçlendirin", en: "Enhance education with AI" },
-  },
+ {icon:Mail,title:{tr:"Kurum bilgileri",en:"01 · Verify your email"},desc:{tr:"Kurumunuzu tanıyın.",en:"Confirm your address using the emailed link."}},
+ {icon:ShieldCheck,title:{tr:"E-posta doğrulama",en:"02 · Application review"},desc:{tr:"Bilgilerinizi doğrulayın.",en:"The platform administrator reviews your application."}},
+ {icon:CheckCircle,title:{tr:"Yönetici onayı",en:"03 · Sign in"},desc:{tr:"Başvurunuz incelensin.",en:"Start using the temporary password in your approval email."}},
 ]
 
 function FieldErr({ msg }: { msg?: string }) {
@@ -98,19 +86,19 @@ export default function KurumKaydiPage() {
   const [captchaResetKey, setCaptchaResetKey] = useState(0)
 
   const t = {
-    title: { tr: "Kurumunuzu Kaydedin", en: "Register Your Institution" },
+    title: { tr: "Ücretsiz Kurum Kaydı", en: "Register Your Institution" },
     subtitle: billingEnabled
       ? {
           tr: "Formu doldurun, ekibimiz en kısa sürede sizinle iletişime geçsin.",
           en: "Fill out the form and our team will contact you shortly.",
         }
       : {
-          tr: "Formu doldurun; kurumunuz onaylandığında platformu ücretsiz kullanmaya başlayın.",
+          tr: "Kurum bilgilerinizi girin, yönetici onayından sonra kullanmaya başlayın.",
           en: "Fill out the form and start using the platform for free once your institution is approved.",
         },
-    leftHeading: { tr: "Kurumunuzu Dijital Geleceğe Taşıyın", en: "Take Your Institution to the Digital Future" },
+    leftHeading: { tr: "Kurumunuz için yeni bir başlangıç.", en: "Take Your Institution to the Digital Future" },
     leftSubtitle: {
-      tr: "Öğrenci, öğretmen ve veliler için tasarlanmış eksiksiz eğitim yönetim platformu.",
+      tr: "Paket seçmeden ücretsiz başvurun.",
       en: "A complete education management platform designed for students, teachers and parents.",
     },
     institutionName: { tr: "Kurum Adı", en: "Institution Name" },
@@ -134,8 +122,8 @@ export default function KurumKaydiPage() {
     institutionPhone: { tr: "Kurum Telefonu", en: "Institution Phone" },
     institutionEmail: { tr: "Kurum E-postası", en: "Institution Email" },
     website: { tr: "Web Sitesi", en: "Website" },
-    submit: { tr: "Başvuruyu Gönder", en: "Submit Application" },
-    successTitle: { tr: "Başvurunuz Alındı!", en: "Application Received!" },
+    submit: { tr: "Ücretsiz başvuru oluştur", en: "Submit Application" },
+    successTitle: { tr: "İlk adım tamamlandı.", en: "First step complete." },
     successDesc: {
       tr: "Başvurunuz platform yönetimine iletildi. Onaylandıktan sonra kurum admin giriş bilgileriniz size iletilecek.",
       en: "Your application has been sent to platform management. After approval, your institution admin credentials will be shared with you.",
@@ -145,8 +133,8 @@ export default function KurumKaydiPage() {
       en: "We sent a verification link to your email address. Click it so your application can be reviewed.",
     },
     kvkk: {
-      tr: "Kişisel verilerimin aydınlatma metni kapsamında işlenmesini kabul ediyorum.",
-      en: "I consent to the processing of my personal data as described in the privacy notice.",
+      tr: "Kurum başvurusu aydınlatma metnini okudum.",
+      en: "I have read the institution application privacy notice.",
     },
     kvkkRequired: {
       tr: "Devam etmek için aydınlatma metnini onaylamanız gerekir.",
@@ -282,127 +270,30 @@ export default function KurumKaydiPage() {
   }
 
   if (submitted) {
-    return (
-      <div className="min-h-screen flex">
-        <div className="hidden lg:flex lg:w-1/2 bg-primary p-12 flex-col justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <Image src="/images/logo.png" alt="SchoolAsist" width={48} height={48} className="brightness-0 invert" />
-            <span className="text-2xl font-bold text-primary-foreground">
-              Course<span className="text-accent">Intellect</span>
-            </span>
-          </Link>
-          <div className="space-y-6">
-            <h1 className="text-4xl font-bold text-primary-foreground leading-tight">{t.leftHeading[language]}</h1>
-            <p className="text-lg text-primary-foreground/80">{t.leftSubtitle[language]}</p>
-          </div>
-          <div className="flex gap-4 text-primary-foreground/60 text-sm">
-            <Link href="/kvkk" className="hover:text-primary-foreground">{t.privacy[language]}</Link>
-            <Link href="/kullanim-sartlari" className="hover:text-primary-foreground">{t.terms[language]}</Link>
-          </div>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-6 bg-background">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center max-w-md"
-          >
-            <div className="flex justify-center mb-6">
-              <div className="p-4 rounded-full bg-green-100">
-                <CheckCircle className="w-12 h-12 text-green-600" />
-              </div>
-            </div>
-            <h2 className="text-2xl font-bold mb-3">{t.successTitle[language]}</h2>
-            <p className="text-muted-foreground mb-8">{verificationRequired ? t.successVerifyDesc[language] : t.successDesc[language]}</p>
-            <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              <Link href="/">{t.backHome[language]}</Link>
-            </Button>
-          </motion.div>
-        </div>
-      </div>
-    )
+    return <ApplicationStatus phase={verificationRequired ? "verify" : "success"} institution={form.institutionName} email={form.email} />
   }
 
   return (
-    <div data-registration-enabled={registrationEnabled} className="min-h-screen flex">
-      {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary p-12 flex-col justify-between">
-        <div>
-          <Link href="/" className="flex items-center gap-3">
-            <Image src="/images/logo.png" alt="SchoolAsist" width={48} height={48} className="brightness-0 invert" />
-            <span className="text-2xl font-bold text-primary-foreground">
-              Course<span className="text-accent">Intellect</span>
-            </span>
-          </Link>
-        </div>
-
-        <div className="space-y-8">
-          <div className="space-y-4">
-            <h1 className="text-4xl font-bold text-primary-foreground leading-tight">{t.leftHeading[language]}</h1>
-            <p className="text-lg text-primary-foreground/80">{t.leftSubtitle[language]}</p>
-          </div>
-          <div className="space-y-4">
-            {features.map((f, i) => {
-              const Icon = f.icon
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 + i * 0.1 }}
-                  className="flex items-start gap-4"
-                >
-                  <div className="p-2 rounded-lg bg-white/10 shrink-0">
-                    <Icon className="w-5 h-5 text-accent" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-primary-foreground">{f.title[language]}</p>
-                    <p className="text-sm text-primary-foreground/70">{f.desc[language]}</p>
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="flex gap-4 text-primary-foreground/60 text-sm">
-          <Link href="/kvkk" className="hover:text-primary-foreground">{t.privacy[language]}</Link>
-          <Link href="/kullanim-sartlari" className="hover:text-primary-foreground">{t.terms[language]}</Link>
-        </div>
-      </div>
+    <div data-registration-enabled={registrationEnabled} className="sa-auth ref-registration">
+      <aside className="ref-registration-brand">
+        <SceneImage asset="registration-brand" alt="SchoolAsist logo sahnesi" priority />
+        <h1>{language === "tr" ? <>Kurumunuz için<br /><span>yeni bir başlangıç.</span></> : t.leftHeading[language]}</h1>
+        <p>{t.leftSubtitle[language]}</p>
+        <div className="ref-registration-steps">{features.map((feature, index) => <div key={index}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{feature.title[language]}</strong><p>{feature.desc[language]}</p></div></div>)}</div>
+      </aside>
 
       {/* Right side - Form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-background">
+      <div className="sa-auth-form flex-1 flex items-center justify-center p-6 bg-background">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex justify-center mb-8">
-            <Link href="/" className="flex items-center gap-2">
-              <Image src="/images/logo.png" alt="SchoolAsist" width={40} height={40} />
-              <span className="text-xl font-bold">Course<span className="text-accent">Intellect</span></span>
-            </Link>
-          </div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Link
-              href={billingEnabled ? "/fiyatlar" : "/"}
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {t.back[language]}
-            </Link>
-
+          <motion.div initial={false} animate={{ opacity: 1, y: 0 }}>
             <Card className="border-0 shadow-lg">
               <CardHeader>
-                <div className="flex items-center gap-3 mb-1">
-                  <div className="p-2 rounded-lg bg-accent/10">
-                    <Building2 className="w-6 h-6 text-accent" />
-                  </div>
-                  <div>
-                    <CardTitle>{t.title[language]}</CardTitle>
-                    <CardDescription>{t.subtitle[language]}</CardDescription>
-                  </div>
-                </div>
+                <CardTitle>{t.title[language]}</CardTitle>
+                <CardDescription>{t.subtitle[language]}</CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form aria-label="Kurum başvuru formu" onSubmit={handleSubmit} className="space-y-4">
                   {/* Honeypot: insanlar görmez, botlar doldurur */}
                   <input
                     type="text"
@@ -414,15 +305,16 @@ export default function KurumKaydiPage() {
                     aria-hidden="true"
                     className="absolute -left-[9999px] h-0 w-0 opacity-0"
                   />
+                  <div className="ref-registration-group"><h3><Building2 size={23} />Kurum bilgileri</h3><div className="ref-registration-primary">
                   <div className="space-y-2">
                     <Label htmlFor="institutionName">{t.institutionName[language]}</Label>
                     <div className="relative">
                       <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
-                        id="institutionName"
+                        id="institutionName" maxLength={150} autoComplete="organization"
                         value={form.institutionName}
                         onChange={(e) => setForm((p) => ({ ...p, institutionName: e.target.value }))}
-                        placeholder="Örn: ABC Eğitim Kurumu"
+                        placeholder="Örn. Demo Kurum"
                         className="pl-10"
                         required
                       />
@@ -434,10 +326,10 @@ export default function KurumKaydiPage() {
                     <div className="space-y-2">
                       <Label htmlFor="contactName">{t.contactName[language]}</Label>
                       <Input
-                        id="contactName"
+                        id="contactName" maxLength={150} autoComplete="name"
                         value={form.contactName}
                         onChange={(e) => setForm((p) => ({ ...p, contactName: e.target.value }))}
-                        placeholder="Örn: Ahmet Yılmaz"
+                        placeholder={language === "tr" ? "Yetkili adı soyadı" : "Contact person"}
                         required
                       />
                       <FieldErr msg={fieldErrors.contactName} />
@@ -464,7 +356,7 @@ export default function KurumKaydiPage() {
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
-                          id="email"
+                          id="email" maxLength={180} autoComplete="email"
                           type="email"
                           value={form.email}
                           onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
@@ -496,16 +388,13 @@ export default function KurumKaydiPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>{t.institutionType[language]}</Label>
-                      <Select value={form.institutionType} onValueChange={(v) => setForm((p) => ({ ...p, institutionType: v }))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PrivateSchool">{language === "tr" ? "Özel Okul" : "Private School"}</SelectItem>
-                          <SelectItem value="CourseCenter">{language === "tr" ? "Kurs Merkezi" : "Course Center"}</SelectItem>
-                          <SelectItem value="StudyCenter">{language === "tr" ? "Etüt Merkezi" : "Study Center"}</SelectItem>
-                          <SelectItem value="Other">{language === "tr" ? "Diğer" : "Other"}</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="institutionType">{t.institutionType[language]}</Label>
+                      <select id="institutionType" className="sa-native-select" value={form.institutionType} onChange={e=>setForm(p=>({...p,institutionType:e.target.value}))}>
+                        <option value="PrivateSchool">{language === "tr" ? "Özel Okul" : "Private School"}</option>
+                        <option value="CourseCenter">{language === "tr" ? "Kurs Merkezi" : "Course Center"}</option>
+                        <option value="StudyCenter">{language === "tr" ? "Etüt Merkezi" : "Study Center"}</option>
+                        <option value="Other">{language === "tr" ? "Diğer" : "Other"}</option>
+                      </select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="students">{t.students[language]}</Label>
@@ -526,24 +415,20 @@ export default function KurumKaydiPage() {
                     </div>
                   </div>
 
+                  </div></div>
+
                   {billingEnabled && (
                   <div className="space-y-2">
-                    <Label>{t.plan[language]}</Label>
-                    <Select value={form.plan} onValueChange={(v) => setForm((p) => ({ ...p, plan: v }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {plans.map((p) => (
-                          <SelectItem key={p.value} value={p.value}>
-                            {p.label[language]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="plan">{t.plan[language]}</Label>
+                    <select id="plan" className="sa-native-select" value={form.plan}
+                      onChange={(e) => setForm((p) => ({ ...p, plan: e.target.value }))}>
+                      {plans.map((p) => <option key={p.value} value={p.value}>{p.label[language]}</option>)}
+                    </select>
                   </div>
                   )}
 
+                  <details className="sa-registration-details" open={Object.keys(fieldErrors).some(key => ["taxNumber","mebCode","postalCode"].includes(key)) ? true : undefined}>
+                    <summary>{language === "tr" ? "Kurumsal bilgiler ve adres (isteğe bağlı)" : "Corporate details and address (optional)"}</summary><div className="space-y-4 pt-5">
                   {/* ── Kurumsal bilgiler (opsiyonel) ── */}
                   <SectionHead icon={<FileText className="w-4 h-4" />} label={t.sectionCorporate[language]} />
                   <div className="grid grid-cols-2 gap-4">
@@ -576,15 +461,11 @@ export default function KurumKaydiPage() {
                   <SectionHead icon={<MapPin className="w-4 h-4" />} label={t.sectionAddress[language]} />
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>{t.city[language]}</Label>
-                      <Select value={form.city} onValueChange={(v) => setForm((p) => ({ ...p, city: v }))}>
-                        <SelectTrigger><SelectValue placeholder={language === "tr" ? "İl seçin" : "Select"} /></SelectTrigger>
-                        <SelectContent className="max-h-72">
-                          {TURKISH_PROVINCES.map((prov) => (
-                            <SelectItem key={prov} value={prov}>{prov}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="city">{t.city[language]}</Label>
+                      <select id="city" className="sa-native-select" value={form.city} onChange={e=>setForm(p=>({...p,city:e.target.value}))}>
+                        <option value="">{language === "tr" ? "İl seçin" : "Select province"}</option>
+                        {TURKISH_PROVINCES.map(prov=><option key={prov} value={prov}>{prov}</option>)}
+                      </select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="district">{t.district[language]}</Label>
@@ -609,6 +490,9 @@ export default function KurumKaydiPage() {
                     </div>
                   </div>
 
+                  </div></details>
+                  <details className="sa-registration-details" open={Object.keys(fieldErrors).some(key => ["institutionPhone", "institutionEmail", "website"].includes(key)) ? true : undefined}>
+                    <summary>Ek iletişim bilgileri</summary><div className="space-y-4 pt-5">
                   {/* ── Kurum iletişimi (opsiyonel) ── */}
                   <SectionHead icon={<Globe className="w-4 h-4" />} label={t.sectionContact[language]} />
                   <div className="grid grid-cols-2 gap-4">
@@ -644,6 +528,7 @@ export default function KurumKaydiPage() {
                     <FieldErr msg={fieldErrors.website} />
                   </div>
 
+                  </div></details>
                   <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
                     <Checkbox
                       id="kvkk"
@@ -663,22 +548,25 @@ export default function KurumKaydiPage() {
                     </Label>
                   </div>
 
+                  <div className="ref-registration-notice"><ShieldCheck size={25} /><div><strong>Başvurunuz yönetici onayından sonra etkinleştirilir.</strong><p>Sonuç e-posta ile bildirilir.</p></div></div>
+                  <div className="ref-form-security"><ShieldCheck size={27} /><div><strong>Güvenlik doğrulaması</strong><p>Lütfen doğrulama işlemini tamamlayın.</p></div>
                   <TurnstileWidget
                     language={language}
                     resetKey={captchaResetKey}
                     onToken={setCaptchaToken}
                     onError={() => setError(t.captchaUnavailable[language])}
                   />
+                  </div>
 
                   {error && <p className="text-sm text-destructive">{error}</p>}
 
                   <Button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || (turnstileEnabled && !captchaToken)}
                     className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    {t.submit[language]}
+                    {t.submit[language]} <ArrowRight size={17} />
                   </Button>
                 </form>
               </CardContent>

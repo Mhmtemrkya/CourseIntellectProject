@@ -216,7 +216,7 @@ export default function Tenants() {
         ? ` Admin: ${updated.adminUsername} / Gecici sifre: ${updated.temporaryPassword}`
         : '';
       toast({
-        title: updated?.approvalEmailSentAtUtc ? 'Kurum onaylandı, e-posta gönderildi' : 'Kurum onaylandı; e-posta gönderilemedi',
+        title: updated?.approvalEmailSentAtUtc ? 'Kurum onaylandı, e-posta gönderildi' : 'Kurum onaylandı; e-posta gönderim bekliyor',
         description: downloaded
           ? `${tenant.name} aktif. Kurulum belgesi indirildi — kuruma teslim edin, sonra imha edin.`
           : `${tenant.name} aktif olarak isaretlendi.${credentialsNote}`,
@@ -390,7 +390,8 @@ export default function Tenants() {
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white px-2"
-                          disabled={actionLoading === tenant.id}
+                          disabled={actionLoading === tenant.id || tenant.verificationState !== 'verified'}
+                          title={tenant.verificationState === 'verified' ? 'Kurumu onayla' : 'Önce e-posta doğrulaması tamamlanmalı'}
                           onClick={() => handleApprove(tenant)}
                         >
                           <CheckCircle className="h-4 w-4" />

@@ -1,17 +1,13 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { FileText, ChevronRight } from "lucide-react"
-import { cn } from "@/lib/utils"
-
+import { LegalDocument } from "@/components/site/legal-document"
 const sections = [
   {
     id: "giris",
     title: "1. Giriş",
     content: `Bu Kullanım Şartları ("Şartlar"), SchoolAsist platformunu ("Platform") kullanımınızı düzenlemektedir. Platformu kullanarak bu Şartları kabul etmiş olursunuz.
 
-Platform, SchoolAsist Eğitim Teknolojileri A.Ş. ("Şirket") tarafından işletilmektedir. Platform, web sitesi, masaüstü uygulamaları ve mobil uygulamaları kapsamaktadır.`,
+Platform, Maydanoz Yazılım ("Şirket") tarafından işletilmektedir. Platform, web sitesi, masaüstü uygulamaları ve mobil uygulamaları kapsamaktadır.
+
+Kurum başvurusu şu anda paket seçmeden ücretsiz yapılır. E-posta doğrulaması ve platform yöneticisinin onayından sonra kurum kullanımı başlar. Kurum erişimi kapatıldığında o kuruma bağlı kullanıcıların erişimi de engellenir.`,
   },
   {
     id: "tanimlar",
@@ -77,15 +73,9 @@ Platformu kullanarak, Gizlilik Politikamızda belirtilen şekilde kişisel veril
   {
     id: "odeme-iade",
     title: "7. Ödeme ve İade Politikası",
-    content: `Ücretli Hizmetler:
-• Bazı özellikler ücretli paketler dahilinde sunulmaktadır
-• Fiyatlar web sitemizde belirtilmektedir ve değişiklik gösterebilir
-• Ödemeler güvenli ödeme altyapımız üzerinden gerçekleştirilir
+    content: `Kurum başvurusu ve mevcut kullanım için paket seçimi veya ödeme istenmez. Başvurular e-posta doğrulamasından sonra platform yöneticisi tarafından değerlendirilir.
 
-İade Politikası:
-• Yıllık aboneliklerde 14 gün içinde tam iade
-• Aylık aboneliklerde iade yapılmamaktadır
-• Teknik sorunlar nedeniyle hizmet alınamadığı durumlarda orantılı iade`,
+İleride ücretli bir hizmet sunulursa kapsamı, fiyatı ve uygulanacak koşullar kullanım öncesinde ayrıca bildirilir. Bu başvuru üzerinden ödeme veya abonelik başlatılmaz.`,
   },
   {
     id: "sorumluluk-siniri",
@@ -136,110 +126,10 @@ Uyuşmazlıkların çözümünde İstanbul Mahkemeleri ve İcra Daireleri yetkil
     title: "12. İletişim",
     content: `Bu Kullanım Şartları hakkında sorularınız için:
 
-E-posta: legal@schoolasist.com
-Adres: Levent, Büyükdere Cad. No:123, 34330 Beşiktaş/İstanbul
-Telefon: +90 (212) 555 0123
+E-posta: info@schoolasist.com
+Telefon: 0850 242 84 25
 
 Son güncelleme: 15 Ocak 2026`,
   },
 ]
-
-export default function TermsPage() {
-  const [activeSection, setActiveSection] = useState("giris")
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const sectionElements = sections.map((s) => ({
-        id: s.id,
-        element: document.getElementById(s.id),
-      }))
-
-      for (const section of sectionElements) {
-        if (section.element) {
-          const rect = section.element.getBoundingClientRect()
-          if (rect.top <= 150 && rect.bottom >= 150) {
-            setActiveSection(section.id)
-            break
-          }
-        }
-      }
-    }
-
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
-
-  return (
-    <div className="pt-20">
-      {/* Hero Section */}
-      <section className="py-16 bg-gradient-to-b from-secondary/50 to-background">
-        <div className="container mx-auto px-4 lg:px-8">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
-              <FileText className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-4xl font-bold text-foreground mb-4">Kullanım Şartları</h1>
-            <p className="text-muted-foreground">Son güncelleme: 15 Ocak 2026</p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Content */}
-      <section className="py-16">
-        <div className="container mx-auto px-4 lg:px-8">
-          <div className="flex gap-12 max-w-6xl mx-auto">
-            {/* Sticky TOC */}
-            <aside className="hidden lg:block w-64 shrink-0">
-              <div className="sticky top-24">
-                <h3 className="text-sm font-semibold text-foreground mb-4">İçindekiler</h3>
-                <nav className="space-y-1">
-                  {sections.map((section) => (
-                    <a
-                      key={section.id}
-                      href={`#${section.id}`}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth" })
-                      }}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors",
-                        activeSection === section.id
-                          ? "bg-accent/10 text-accent font-medium"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary",
-                      )}
-                    >
-                      <ChevronRight
-                        className={cn("w-4 h-4 transition-transform", activeSection === section.id && "rotate-90")}
-                      />
-                      <span className="truncate">{section.title}</span>
-                    </a>
-                  ))}
-                </nav>
-              </div>
-            </aside>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <div className="prose prose-gray max-w-none">
-                {sections.map((section, index) => (
-                  <motion.div
-                    key={section.id}
-                    id={section.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ delay: index * 0.05 }}
-                    className="mb-12 scroll-mt-24"
-                  >
-                    <h2 className="text-xl font-bold text-foreground mb-4">{section.title}</h2>
-                    <div className="text-muted-foreground whitespace-pre-line leading-relaxed">{section.content}</div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  )
-}
+export default function Page() { return <LegalDocument kind="terms" title="Kullanım Koşulları" introduction="SchoolAsist platformunun kullanımı, hesaplar ve kurum onayına ilişkin koşullar." sections={sections} /> }

@@ -2,6 +2,7 @@ using CourseIntellect.Application.DTOs.ContactMessages;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CourseIntellect.Api.Controllers;
 
@@ -10,13 +11,16 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/[controller]")]
 // Pazarlama sitesinin iletişim mesajları platforma aittir (aday müşteri ad/e-posta/
 // telefon). Eskiden her kurum yöneticisi tüm mesajları okuyup silebiliyordu.
-public sealed class ContactMessagesController(IContactMessageService contactMessageService) : ControllerBase
+public sealed class ContactMessagesController(IContactMessageService contactMessageService, ICaptchaVerificationService captcha) : ControllerBase
 {
     [HttpPost]
     [AllowAnonymous]
+    [EnableRateLimiting("public-form")]
     public async Task<IActionResult> Create([FromBody] CreateContactMessageRequest request, CancellationToken cancellationToken)
     {
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var verification = await captcha.VerifyAsync(request.CaptchaToken, ipAddress, cancellationToken);
+        if (!verification.IsAllowed) return BadRequest(new { message = "Lütfen güvenlik doğrulamasını tamamlayın." });
         var created = await contactMessageService.CreateAsync(request, ipAddress, cancellationToken);
         return Ok(created);
     }

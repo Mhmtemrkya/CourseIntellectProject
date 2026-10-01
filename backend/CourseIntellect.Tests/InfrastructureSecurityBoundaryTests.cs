@@ -38,14 +38,16 @@ public sealed class InfrastructureSecurityBoundaryTests
         Assert.Equal(IPAddress.Parse("198.51.100.99"), observed);
     }
 
-    [Fact]
-    public void Production_rejects_authenticated_smtp_without_tls()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Production_rejects_smtp_without_tls(bool authenticated)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Email:Smtp:Host"] = "smtp.example.test",
-            ["Email:Smtp:User"] = "mailer",
-            ["Email:Smtp:Password"] = "not-a-production-secret",
+            ["Email:Smtp:User"] = authenticated ? "mailer" : null,
+            ["Email:Smtp:Password"] = authenticated ? "not-a-production-secret" : null,
             ["Email:Smtp:UseSsl"] = "false",
             ["Email:From"] = "no-reply@example.test"
         }).Build();

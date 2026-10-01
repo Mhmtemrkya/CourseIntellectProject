@@ -16,7 +16,7 @@ interface UserAuthContextValue {
     email: string,
     password: string,
     role: UserRole,
-  ) => Promise<{ success: boolean; error?: string; errorCode?: string }>
+  ) => Promise<{ success: boolean; error?: string; errorCode?: string; mustChangePassword?: boolean }>
   logout: () => void
   register: (
     email: string,
@@ -38,6 +38,7 @@ interface AuthApiUser {
   campus: string
   departmentOrBranch: string
   tenantId?: string | null
+  mustChangePassword?: boolean
   isPlatformAdmin?: boolean
 }
 
@@ -103,6 +104,16 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
             throw new Error("Unauthorized role")
           }
 
+          if (apiUser.mustChangePassword) {
+            localStorage.removeItem(USER_AUTH_KEY)
+            sessionStorage.setItem("schoolasist_bootstrap_auth", JSON.stringify({
+              accessToken: parsed.accessToken, refreshToken: parsed.refreshToken,
+            }))
+            setUser(null)
+            router.replace("/giris/parola")
+            return
+          }
+
           const mappedUser: User = {
             id: apiUser.id,
             email: apiUser.username,
@@ -141,6 +152,16 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
           throw new Error("Unauthorized role")
         }
 
+        if (refreshed.user.mustChangePassword) {
+          localStorage.removeItem(USER_AUTH_KEY)
+          sessionStorage.setItem("schoolasist_bootstrap_auth", JSON.stringify({
+            accessToken: refreshed.accessToken, refreshToken: refreshed.refreshToken,
+          }))
+          setUser(null)
+          router.replace("/giris/parola")
+          return
+        }
+
         const refreshedUser: User = {
           id: refreshed.user.id,
           email: refreshed.user.username,
@@ -170,7 +191,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     void initialize()
-  }, [])
+  }, [router])
 
   const addLoginAttempt = useCallback(
     (attempt: Omit<LoginAttempt, "id" | "timestamp">) => {
@@ -205,7 +226,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
       email: string,
       password: string,
       role: UserRole,
-    ): Promise<{ success: boolean; error?: string; errorCode?: string }> => {
+    ): Promise<{ success: boolean; error?: string; errorCode?: string; mustChangePassword?: boolean }> => {
       try {
         const response = await apiRequest<AuthResponse>("/api/auth/login", {
           method: "POST",
@@ -224,6 +245,17 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
             normalizedRole !== role.toLowerCase()) {
           return { success: false, error: "Unauthorized role" }
         }
+
+        if (response.user.mustChangePassword) {
+          // Bootstrap credentials never create a full marketing session or persist across tabs.
+          localStorage.removeItem(USER_AUTH_KEY)
+          setUser(null)
+          sessionStorage.setItem("schoolasist_bootstrap_auth", JSON.stringify({
+            accessToken: response.accessToken, refreshToken: response.refreshToken,
+          }))
+          return { success: true, mustChangePassword: true }
+        }
+        sessionStorage.removeItem("schoolasist_bootstrap_auth")
 
         const userWithLogin: User = {
           id: response.user.id,

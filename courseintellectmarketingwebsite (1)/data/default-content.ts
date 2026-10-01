@@ -361,8 +361,8 @@ export const defaultContent: SiteContent = {
     },
     info: {
       email: "info@schoolasist.com",
-      phone: "+90 (212) 555 0123",
-      address: "Levent, Büyükdere Cad. No:123, 34330 Beşiktaş/İstanbul",
+      phone: "0850 242 84 25",
+      address: "",
       workingHours: "Pazartesi - Cuma: 09:00 - 18:00",
     },
     form: {

@@ -27,7 +27,8 @@ public sealed class PlatformOperationsService(
     IEmailSender emailSender,
     IHostEnvironment environment,
     IConfiguration configuration,
-    ILogger<PlatformOperationsService> logger) : IPlatformOperationsService
+    ILogger<PlatformOperationsService> logger,
+    IOnboardingEmailDelivery? emailDelivery = null) : IPlatformOperationsService
 {
     /// <summary>Halka açık kayıt formunda kabul edilen planlar.</summary>
     private static readonly string[] PublicPlans = ["Starter", "Business", "Enterprise"];
@@ -40,7 +41,7 @@ public sealed class PlatformOperationsService(
     private bool BillingEnabled => configuration.GetValue<bool>("Billing:Enabled");
 
     /// <summary>Onaylanan aydınlatma/açık rıza metninin sürümü. İstemciden ALINMAZ.</summary>
-    private const string CurrentKvkkConsentVersion = "2026-08-kurum-kaydi-v1";
+    private const string CurrentKvkkConsentVersion = "2026-10-kurum-kaydi-v2";
 
     private static readonly Regex EmailPattern = new(
         @"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$",
@@ -1118,7 +1119,7 @@ public sealed class PlatformOperationsService(
 
         var document = BuildSetupDocument(tenant, adminUser, temporaryPassword);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        if (emailDelivery is null) await dbContext.SaveChangesAsync(cancellationToken);
         await SendApprovalEmailAsync(tenant, adminUser, temporaryPassword, cancellationToken);
 
         await auditLog.LogAsync(
@@ -1143,14 +1144,28 @@ public sealed class PlatformOperationsService(
     private async Task SendApprovalEmailAsync(TenantWorkspace tenant, AppUser admin, string? password, CancellationToken ct)
     {
         static string E(string? value) => System.Net.WebUtility.HtmlEncode(value ?? "");
-        var loginUrl = configuration["Registration:LoginUrl"] ?? "https://schoolasist.com/giris";
+        var loginUrl = RegistrationUrl("Registration:LoginUrl", "https://schoolasist.com/giris");
         var credentials = password is null ? "<p>Mevcut parolanızla giriş yapabilirsiniz.</p>"
             : $"<p>Geçici parolanız: <strong>{E(password)}</strong></p><p>İlk girişte parolanızı değiştirin. Son kullanım: {admin.TemporaryPasswordExpiresAtUtc:dd.MM.yyyy HH:mm} UTC.</p>";
-        var sent = emailSender.IsConfigured && await emailSender.SendAsync(tenant.ContactEmail, "SchoolAsist — Kurumunuz onaylandı",
-            $"<h2>Kurumunuz onaylandı</h2><p>{E(tenant.Name)}, SchoolAsist'e hoş geldiniz.</p>"
+        var html = $"<h2>Kurumunuz onaylandı</h2><p>{E(tenant.Name)}, SchoolAsist'e hoş geldiniz.</p>"
             + $"<p>Müşteri numaranız: <strong>{E(tenant.CustomerNumber)}</strong></p>"
             + $"<p>Kullanıcı adınız: <strong>{E(admin.Username)}</strong></p>{credentials}"
-            + $"<p><a href=\"{E(loginUrl)}\">Giriş yapın</a></p><p>Ücretsiz kullanım için paket seçmeniz veya ödeme yapmanız gerekmez.</p>", ct);
+            + $"<p><a href=\"{E(loginUrl)}\">Giriş yapın</a></p><p>Ücretsiz kullanım için paket seçmeniz veya ödeme yapmanız gerekmez.</p>";
+        html = OnboardingEmailTemplate.Wrap("Kurumunuz onaylandı", html);
+        if (emailDelivery is not null && password is not null)
+        {
+            tenant.ApprovalEmailSentAtUtc = null;
+            emailDelivery.Queue($"approval:{admin.Id}:{admin.SecurityVersion}", "approval", admin.Id,
+                admin.SecurityVersion.ToString(), admin.TemporaryPasswordExpiresAtUtc ?? DateTime.UtcNow.AddDays(7),
+                tenant.ContactEmail, "SchoolAsist — Kurumunuz onaylandı", html);
+            await dbContext.SaveChangesAsync(ct);
+            await TryDispatchOnboardingAsync(ct);
+            // Dispatcher uses ExecuteUpdate; refresh delivery status without overwriting tracked fields.
+            if (dbContext.Database.CurrentTransaction is null) await dbContext.Entry(tenant).ReloadAsync(ct);
+            return;
+        }
+        var sent = emailSender.IsConfigured && await emailSender.SendAsync(tenant.ContactEmail,
+            "SchoolAsist — Kurumunuz onaylandı", html, ct);
         tenant.ApprovalEmailSentAtUtc = sent ? DateTime.UtcNow : null;
         await dbContext.SaveChangesAsync(ct);
         if (!sent) logger.LogWarning("Kurum onay e-postası gönderilemedi. KurumId={TenantId}", tenant.Id);
@@ -1203,6 +1218,8 @@ public sealed class PlatformOperationsService(
             return;
         }
 
+        await using var transaction = emailDelivery is null ? null
+            : await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var token = GenerateVerificationToken();
         application.VerificationTokenHash = HashVerificationToken(token);
         application.VerificationExpiresAtUtc = DateTime.UtcNow.AddHours(
@@ -1221,6 +1238,13 @@ public sealed class PlatformOperationsService(
             application.VerificationSentAtUtc = null;
             await dbContext.SaveChangesAsync(cancellationToken);
         }
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            await transaction.DisposeAsync();
+            await TryDispatchOnboardingAsync(cancellationToken);
+        }
+
     }
 
     /// <summary>
@@ -1237,6 +1261,8 @@ public sealed class PlatformOperationsService(
             return;
         }
 
+        await using var transaction = emailDelivery is null ? null
+            : await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var now = DateTime.UtcNow;
         var token = GenerateVerificationToken();
         var tokenHash = HashVerificationToken(token);
@@ -1270,6 +1296,12 @@ public sealed class PlatformOperationsService(
 
         if (await SendContactVerificationEmailAsync(application, token, cancellationToken))
         {
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                await transaction.DisposeAsync();
+                await TryDispatchOnboardingAsync(cancellationToken);
+            }
             return;
         }
 
@@ -1294,23 +1326,40 @@ public sealed class PlatformOperationsService(
         string token,
         CancellationToken cancellationToken)
     {
-        var baseUrl = (configuration["Registration:VerificationUrl"]
-                       ?? "https://schoolasist.com/kurum-kaydi/dogrula").TrimEnd('/');
-        var link = $"{baseUrl}?token={Uri.EscapeDataString(token)}";
+        var baseUrl = RegistrationUrl("Registration:VerificationUrl", "https://schoolasist.com/kurum-kaydi/dogrula").TrimEnd('/');
+        var link = $"{baseUrl}#token={Uri.EscapeDataString(token)}";
 
-        return await emailSender.SendAsync(
-            application.ContactEmail,
-            "Kurum kaydı başvurunuzu doğrulayın",
-            $"""
-            <p>Merhaba {System.Net.WebUtility.HtmlEncode(application.ContactName)},</p>
-            <p><strong>{System.Net.WebUtility.HtmlEncode(application.InstitutionName)}</strong> için
-            kurum kaydı başvurusu aldık. Başvurunun incelemeye alınabilmesi için bu adresin
-            size ait olduğunu doğrulayın:</p>
-            <p><a href="{link}">Başvurumu doğrula</a></p>
-            <p>Bağlantı {configuration.GetValue<int?>("Registration:VerificationValidHours") ?? 48} saat geçerlidir.
-            Bu başvuruyu siz yapmadıysanız bu e-postayı yok sayabilirsiniz.</p>
-            """,
-            cancellationToken);
+        var html = $"<p>Merhaba {System.Net.WebUtility.HtmlEncode(application.ContactName)},</p>"
+            + $"<p><strong>{System.Net.WebUtility.HtmlEncode(application.InstitutionName)}</strong> için kurum başvurunuzu doğrulayın.</p>"
+            + $"<p><a href=\"{System.Net.WebUtility.HtmlEncode(link)}\">E-posta adresimi doğrula</a></p>"
+            + $"<p>Bağlantı {configuration.GetValue<int?>("Registration:VerificationValidHours") ?? 48} saat geçerlidir. Başvuruyu siz yapmadıysanız e-postayı yok sayın.</p>";
+        html = OnboardingEmailTemplate.Wrap("E-posta doğrulaması", html);
+        if (emailDelivery is null) return await emailSender.SendAsync(application.ContactEmail,
+            "Kurum kaydı başvurunuzu doğrulayın", html, cancellationToken);
+        emailDelivery.Queue($"verification:{application.Id}:{application.VerificationTokenHash}", "verification",
+            application.Id, application.VerificationTokenHash, application.VerificationExpiresAtUtc!.Value,
+            application.ContactEmail, "Kurum kaydı başvurunuzu doğrulayın", html);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await TryDispatchOnboardingAsync(cancellationToken);
+        return true;
+    }
+
+    private string RegistrationUrl(string key, string fallback)
+    {
+        var value = configuration[key] ?? fallback;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            || !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment)
+            || (uri.Scheme != Uri.UriSchemeHttps && !(environment.IsDevelopment() && uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
+            throw new InvalidOperationException($"{key} güvenli ve mutlak bir web adresi olmalıdır.");
+        return uri.AbsoluteUri;
+    }
+
+    private async Task TryDispatchOnboardingAsync(CancellationToken cancellationToken)
+    {
+        if (emailDelivery is null) return;
+        try { await emailDelivery.DispatchAsync(cancellationToken); }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        { logger.LogWarning(ex, "Onboarding mail is queued; background worker will retry."); }
     }
 
     /// <summary>
@@ -1321,7 +1370,7 @@ public sealed class PlatformOperationsService(
         string? token,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(token))
+        if (string.IsNullOrWhiteSpace(token) || token.Trim().Length != 43)
         {
             return false;
         }
@@ -1357,8 +1406,35 @@ public sealed class PlatformOperationsService(
             return false;
         }
 
-        application.VerifiedAtUtc = DateTime.UtcNow;
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var now = DateTime.UtcNow;
+        var claimed = await dbContext.TenantRegistrationApplications
+            .Where(x => x.Id == application.Id && x.VerificationTokenHash == hash
+                && x.Status == "pending" && x.VerifiedAtUtc == null && x.VerificationExpiresAtUtc >= now)
+            .ExecuteUpdateAsync(update => update.SetProperty(x => x.VerifiedAtUtc, now), cancellationToken);
+        if (claimed == 0)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            await dbContext.Entry(application).ReloadAsync(cancellationToken);
+            return application.VerifiedAtUtc != null && application.VerificationTokenHash == hash;
+        }
+        application.VerifiedAtUtc = now;
+        dbContext.Entry(application).State = EntityState.Unchanged;
+        var receiptHtml = $"<h2>Başvurunuz başarıyla alınmıştır</h2><p>Merhaba {System.Net.WebUtility.HtmlEncode(application.ContactName)},</p>"
+            + $"<p>{System.Net.WebUtility.HtmlEncode(application.InstitutionName)} için e-posta adresiniz doğrulandı. Başvurunuz platform yöneticisinin incelemesine alındı.</p>"
+            + "<p>Onaydan sonra müşteri numaranız, kullanıcı adınız ve süreli geçici parolanız ayrı bir e-posta ile gönderilecektir. Şu anda ödeme veya paket seçimi gerekmez.</p>";
+        receiptHtml = OnboardingEmailTemplate.Wrap("Başvurunuz alındı", receiptHtml);
+        if (emailDelivery is not null)
+        {
+            emailDelivery.Queue($"received:{application.Id}", "received", application.Id, null,
+                now.AddDays(7), application.ContactEmail, "SchoolAsist — Başvurunuz başarıyla alınmıştır", receiptHtml);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        await transaction.CommitAsync(cancellationToken);
+        await transaction.DisposeAsync();
+        if (emailDelivery is not null) await TryDispatchOnboardingAsync(cancellationToken);
+        else if (emailSender.IsConfigured) await emailSender.SendAsync(application.ContactEmail,
+            "SchoolAsist — Başvurunuz başarıyla alınmıştır", receiptHtml, cancellationToken);
 
         logger.LogInformation("Kurum kaydı iletişim adresi doğrulandı. Id={Id}", application.Id);
         return true;
@@ -1572,6 +1648,9 @@ public sealed class PlatformOperationsService(
         TenantRegistrationApplication application,
         CancellationToken cancellationToken)
     {
+        // Anonymous contact ownership must be proven before activating a production tenant.
+        if (environment.IsProduction() && application.VerifiedAtUtc is null) return null;
+
         var tenantId = Guid.NewGuid();
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
@@ -1637,6 +1716,7 @@ public sealed class PlatformOperationsService(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var created = await CreateTenantAdminUserAsync(tenant, cancellationToken);
+        created.User.IsEmailVerified = application.VerifiedAtUtc is not null;
         await dbContext.SaveChangesAsync(cancellationToken);
 
         tenant.AdminUserId = created.User.Id;
@@ -1650,9 +1730,17 @@ public sealed class PlatformOperationsService(
         // back and no unusable bootstrap password or claim is persisted.
         var document = BuildSetupDocument(tenant, created.User, created.TemporaryPassword);
 
+        if (emailDelivery is not null)
+            await SendApprovalEmailAsync(tenant, created.User, created.TemporaryPassword, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        await SendApprovalEmailAsync(tenant, created.User, created.TemporaryPassword, cancellationToken);
+        await transaction.DisposeAsync();
+        if (emailDelivery is not null)
+        {
+            await TryDispatchOnboardingAsync(cancellationToken);
+            await dbContext.Entry(tenant).ReloadAsync(cancellationToken);
+        }
+        else await SendApprovalEmailAsync(tenant, created.User, created.TemporaryPassword, cancellationToken);
 
         logger.LogInformation(
             "Kurum başvurusu onaylandı. BasvuruId={ApplicationId} KurumId={TenantId} Slug={Slug}",

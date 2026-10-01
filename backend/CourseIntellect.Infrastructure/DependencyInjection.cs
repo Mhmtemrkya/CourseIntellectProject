@@ -3,6 +3,7 @@ using CourseIntellect.Infrastructure.Auth;
 using CourseIntellect.Infrastructure.Persistence;
 using CourseIntellect.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -42,6 +43,19 @@ public static class DependencyInjection
         services.AddHttpClient<ICaptchaVerificationService, CaptchaVerificationService>();
         // Giden e-posta (düz SMTP; sağlayıcı bağımsız).
         services.AddScoped<IEmailSender, SmtpEmailSender>();
+        // A stable application name and path preserve queued credentials across deployments.
+        var keyPath = configuration["Email:Outbox:KeyDirectory"]
+            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SchoolAsist", "DataProtectionKeys");
+        if (OperatingSystem.IsWindows()) Directory.CreateDirectory(keyPath);
+        else
+        {
+            Directory.CreateDirectory(keyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            File.SetUnixFileMode(keyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+        services.AddDataProtection().SetApplicationName("SchoolAsist.Onboarding")
+            .PersistKeysToFileSystem(new DirectoryInfo(keyPath));
+        services.AddScoped<IOnboardingEmailDelivery, OnboardingEmailDelivery>();
+        services.AddHostedService<OnboardingEmailWorker>();
         services.AddScoped<ITenantSetupDocumentService, TenantSetupDocumentPdfService>();
 
         services.AddScoped<DatabaseSeeder>();

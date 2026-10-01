@@ -5,14 +5,15 @@ import { useEffect, useRef } from "react"
 /**
  * Cloudflare Turnstile widget'ı.
  *
- * Kayıt build-time bayrağı kapalıysa widget ve Cloudflare betiği hiç yüklenmez.
+ * Site anahtarı yoksa widget ve Cloudflare betiği yüklenmez.
  * Bayrak açıkken üretim derlemesi site anahtarını zorunlu tutar.
  */
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""
 const SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
 
 export const registrationEnabled = process.env.NEXT_PUBLIC_REGISTRATION_ENABLED === "true"
-export const turnstileEnabled = registrationEnabled && SITE_KEY.length > 0
+// Support and contact forms need CAPTCHA even when institution registration is closed.
+export const turnstileEnabled = SITE_KEY.length > 0
 
 type TurnstileApi = {
   render: (el: HTMLElement, options: Record<string, unknown>) => string

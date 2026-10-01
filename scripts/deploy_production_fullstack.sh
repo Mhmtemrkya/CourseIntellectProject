@@ -26,6 +26,8 @@ Required production settings include COURSE_INTELLECT_DB,
 COURSE_INTELLECT_UPLOADS_ROOT, Registration__Enabled, and
 TenantCleanup__Enabled=false. Captcha credentials and a valid SMTP setup are
 required only when public registration is explicitly enabled.
+Optional COURSE_INTELLECT_DOTNET_RUNTIME selects a root-owned executable for this
+service only; the runtime override is restored together with pointers on failure.
 USAGE
 }
 
@@ -45,6 +47,7 @@ unset COURSE_INTELLECT_DEPLOY_LOCK_WRAPPED
 : "${COURSE_INTELLECT_UPLOADS_BACKUP_ROOT:=/var/backups/courseintellect/uploads}"
 : "${COURSE_INTELLECT_EF_TOOL:=/opt/courseintellect-tools/dotnet-ef}"
 : "${COURSE_INTELLECT_NGINX_SNIPPET_DIR:=/etc/nginx/snippets}"
+: "${COURSE_INTELLECT_SYSTEMD_ROOT:=/etc/systemd/system}"
 
 # Load assignment-only environment files without shell evaluation. This accepts
 # KEY=value plus single/double-quoted values (including spaces), but never executes
@@ -198,6 +201,24 @@ git -C "$ROOT_DIR" cat-file -e "$TARGET_SHA^{commit}"
 
 uploads_inode_before="$(stat -c '%d:%i' "$COURSE_INTELLECT_UPLOADS_ROOT")"
 
+# Optional runtime switch is part of activation and rollback, never a global
+# runtime replacement. Existing service overrides are left intact.
+runtime_override=""
+if [[ -n "${COURSE_INTELLECT_DOTNET_RUNTIME:-}" ]]; then
+  [[ "$COURSE_INTELLECT_DOTNET_RUNTIME" =~ ^/[A-Za-z0-9_./-]+$ \
+     && -x "$COURSE_INTELLECT_DOTNET_RUNTIME" && -f "$COURSE_INTELLECT_DOTNET_RUNTIME" \
+     && ! -L "$COURSE_INTELLECT_DOTNET_RUNTIME" \
+     && "$(stat -c '%u:%g' "$COURSE_INTELLECT_DOTNET_RUNTIME")" == 0:0 ]] \
+    || { echo "Runtime must be a root-owned absolute executable regular file." >&2; exit 2; }
+  runtime_mode="$(stat -c '%a' "$COURSE_INTELLECT_DOTNET_RUNTIME")"
+  (( (8#$runtime_mode & 0022) == 0 )) || { echo "Runtime must not be group/world writable." >&2; exit 2; }
+  [[ "$COURSE_INTELLECT_SYSTEMD_ROOT" == /* && "$COURSE_INTELLECT_BACKEND_SERVICE" =~ ^[A-Za-z0-9_.@-]+\.service$ \
+     && "$COURSE_INTELLECT_BACKEND_CURRENT" =~ ^/[A-Za-z0-9_./-]+$ ]] \
+    || { echo "Unsafe systemd runtime configuration." >&2; exit 2; }
+  runtime_override="$COURSE_INTELLECT_SYSTEMD_ROOT/$COURSE_INTELLECT_BACKEND_SERVICE.d/zz-release-runtime.conf"
+  [[ ! -L "$runtime_override" ]] || { echo "Runtime override must not be a symbolic link." >&2; exit 2; }
+fi
+
 RELEASE_ID="$(date -u +%Y%m%dT%H%M%SZ)-${TARGET_SHA:0:12}"
 BACKEND_RELEASE="$COURSE_INTELLECT_RELEASES_ROOT/backend/$RELEASE_ID"
 MARKETING_RELEASE="$COURSE_INTELLECT_RELEASES_ROOT/marketing/$RELEASE_ID"
@@ -213,6 +234,9 @@ BUILD_ROOT="$(mktemp -d)"
 SOURCE_ROOT="$BUILD_ROOT/source"
 NGINX_BACKUP="$BUILD_ROOT/nginx-backup"
 mkdir -p "$SOURCE_ROOT" "$NGINX_BACKUP" "$BACKEND_RELEASE" "$MARKETING_RELEASE"
+if [[ -n "$runtime_override" && -f "$runtime_override" ]]; then
+  cp -a "$runtime_override" "$BUILD_ROOT/runtime-backup.conf"
+fi
 old_backend=""
 old_marketing=""
 if [[ -L "$COURSE_INTELLECT_BACKEND_CURRENT" ]]; then
@@ -223,6 +247,7 @@ if [[ -L "$COURSE_INTELLECT_MARKETING_CURRENT" ]]; then
 fi
 activation_started=0
 nginx_changed=0
+runtime_changed=0
 
 atomic_link() {
   local target="$1" pointer="$2" temporary
@@ -272,6 +297,14 @@ rollback_activation() {
   local rc="${1:-1}" rollback_failed=0
   trap - ERR INT TERM
   set +e
+  if (( runtime_changed == 1 )); then
+    if [[ -f "$BUILD_ROOT/runtime-backup.conf" ]]; then
+      install -m 0644 "$BUILD_ROOT/runtime-backup.conf" "$runtime_override" || rollback_failed=1
+    else
+      rm -f "$runtime_override" || rollback_failed=1
+    fi
+    systemctl daemon-reload || rollback_failed=1
+  fi
   if (( activation_started == 1 )); then
     if [[ -n "$old_backend" ]]; then
       atomic_link "$old_backend" "$COURSE_INTELLECT_BACKEND_CURRENT" || rollback_failed=1
@@ -466,6 +499,15 @@ COURSE_INTELLECT_BACKUP_CONFIRMED=YES CONFIRM_PRODUCTION_MIGRATION=APPLY \
 external_state_unchanged
 
 activation_started=1
+if [[ -n "$runtime_override" ]]; then
+  mkdir -p "$(dirname "$runtime_override")"
+  runtime_changed=1
+  printf '[Service]\nExecStart=\nExecStart=%s %s/CourseIntellect.Api.dll\nEnvironment=DOTNET_ROOT=%s\n' \
+    "$COURSE_INTELLECT_DOTNET_RUNTIME" "$COURSE_INTELLECT_BACKEND_CURRENT" \
+    "$(dirname "$COURSE_INTELLECT_DOTNET_RUNTIME")" > "$BUILD_ROOT/runtime-new.conf"
+  install -m 0644 "$BUILD_ROOT/runtime-new.conf" "$runtime_override"
+  systemctl daemon-reload
+fi
 atomic_link "$BACKEND_RELEASE" "$COURSE_INTELLECT_BACKEND_CURRENT"
 atomic_link "$MARKETING_RELEASE" "$COURSE_INTELLECT_MARKETING_CURRENT"
 systemctl restart "$COURSE_INTELLECT_BACKEND_SERVICE"

@@ -93,7 +93,8 @@ public sealed class TenantSelfRegistrationTests : IDisposable
         Dictionary<string, string?>? settings = null,
         IEmailSender? email = null,
         string environmentName = "Development",
-        ITenantSetupDocumentService? setupDocument = null)
+        ITenantSetupDocumentService? setupDocument = null,
+        IOnboardingEmailDelivery? delivery = null)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(settings ?? [])
@@ -108,7 +109,75 @@ public sealed class TenantSelfRegistrationTests : IDisposable
             email ?? new StubEmailSender(isConfigured: false),
             new StubEnvironment(environmentName),
             configuration,
-            NullLogger<PlatformOperationsService>.Instance);
+            NullLogger<PlatformOperationsService>.Instance, delivery);
+    }
+
+    [Fact]
+    public async Task Verified_application_sends_receipt_once_then_approval_credentials_via_outbox()
+    {
+        var email = new StubEmailSender(true);
+        var protection = new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider();
+        var delivery = new OnboardingEmailDelivery(db.Context, email, protection, NullLogger<OnboardingEmailDelivery>.Instance);
+        var service = CreateService(email: email, delivery: delivery, environmentName: "Production", settings: ProductionRegistrationEnabled());
+        await service.RegisterTenantAsync(ValidRequest(), Context);
+        var application = await db.Context.TenantRegistrationApplications.SingleAsync();
+        var token = email.ExtractToken();
+        Assert.Contains("#token=", Assert.Single(email.Sent).Body);
+        Assert.Null(await service.ApproveTenantAsync(application.Id));
+        Assert.Empty(await db.Context.TenantWorkspaces.ToListAsync());
+        Assert.True(await service.VerifyRegistrationContactAsync(token));
+        Assert.True(await service.VerifyRegistrationContactAsync(token));
+        Assert.Single(email.Sent.Where(x => x.Subject.Contains("başarıyla alınmıştır")));
+        var approved = await service.ApproveTenantAsync(application.Id);
+        Assert.NotNull(approved);
+        Assert.NotNull(approved!.ApprovalEmailSentAtUtc);
+        var mail = Assert.Single(email.Sent.Where(x => x.Subject.Contains("onaylandı")));
+        Assert.Contains(approved.CustomerNumber!, mail.Body);
+        Assert.Contains(approved.TemporaryPassword!, mail.Body);
+        Assert.All(await db.Context.Set<OnboardingEmail>().AsNoTracking().ToListAsync(), x =>
+        {
+            Assert.True(x.Delivered);
+            Assert.Empty(x.ProtectedPayload);
+        });
+    }
+
+    [Fact]
+    public async Task Outbox_retains_encrypted_verification_on_transport_failure_and_retries()
+    {
+        var protection = new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider();
+        var failed = new StubEmailSender(true, false);
+        var delivery = new OnboardingEmailDelivery(db.Context, failed, protection, NullLogger<OnboardingEmailDelivery>.Instance);
+        await CreateService(email: failed, delivery: delivery).RegisterTenantAsync(ValidRequest(), Context);
+        var queued = await db.Context.Set<OnboardingEmail>().AsNoTracking().SingleAsync();
+        Assert.Null(queued.CompletedAtUtc);
+        Assert.Equal(1, queued.Attempts);
+        Assert.DoesNotContain("abckoleji", queued.ProtectedPayload);
+        Assert.DoesNotContain("token=", queued.ProtectedPayload);
+        Assert.NotNull((await db.Context.TenantRegistrationApplications.SingleAsync()).VerificationTokenHash);
+        await db.Context.Set<OnboardingEmail>().ExecuteUpdateAsync(s => s.SetProperty(x => x.NextAttemptAtUtc, DateTime.UtcNow.AddMinutes(-1)));
+        var successful = new StubEmailSender(true);
+        await new OnboardingEmailDelivery(db.Context, successful, protection, NullLogger<OnboardingEmailDelivery>.Instance).DispatchAsync();
+        Assert.Single(successful.Sent);
+        queued = await db.Context.Set<OnboardingEmail>().AsNoTracking().SingleAsync();
+        Assert.True(queued.Delivered);
+        Assert.Empty(queued.ProtectedPayload);
+    }
+
+    [Fact]
+    public async Task Outbox_discards_expired_or_rotated_verification_without_sending()
+    {
+        var email = new StubEmailSender(true);
+        var delivery = new OnboardingEmailDelivery(db.Context, email,
+            new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider(), NullLogger<OnboardingEmailDelivery>.Instance);
+        delivery.Queue("stale-test", "verification", Guid.NewGuid(), "old-hash", DateTime.UtcNow.AddHours(1),
+            "test@example.com", "stale", "secret token");
+        delivery.Queue("expired-test", "verification", Guid.NewGuid(), "old-hash", DateTime.UtcNow.AddHours(-1),
+            "test@example.com", "expired", "secret token");
+        await db.Context.SaveChangesAsync();
+        await delivery.DispatchAsync();
+        Assert.Empty(email.Sent);
+        Assert.All(await db.Context.Set<OnboardingEmail>().AsNoTracking().ToListAsync(), x =>
+        { Assert.NotNull(x.CompletedAtUtc); Assert.False(x.Delivered); Assert.Empty(x.ProtectedPayload); });
     }
 
     private static RegisterTenantRequest ValidRequest(string email = "info@abckoleji.com") => new(

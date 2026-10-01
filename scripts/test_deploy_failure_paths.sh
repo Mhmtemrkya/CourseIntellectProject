@@ -237,6 +237,26 @@ migration_line="$(grep -n 'dotnet database update' "$success/actions.log" | cut 
   || fail "database and uploads backups did not both complete before migration"
 
 uploads_failure="$work/uploads-backup-failure"
+runtime_success="$work/runtime-success"
+make_fixture "$runtime_success"
+run_deploy "$runtime_success" COURSE_INTELLECT_DOTNET_RUNTIME="$runtime_success/bin/dotnet" \
+  COURSE_INTELLECT_SYSTEMD_ROOT="$runtime_success/systemd" >/dev/null
+runtime_file="$runtime_success/systemd/courseintellect-backend.service.d/zz-release-runtime.conf"
+grep -Fq "ExecStart=$runtime_success/bin/dotnet $runtime_success/backend-current/CourseIntellect.Api.dll" "$runtime_file" \
+  || fail "runtime did not switch with the release"
+
+runtime_failure="$work/runtime-failure"
+make_fixture "$runtime_failure"
+mkdir -p "$runtime_failure/systemd/courseintellect-backend.service.d"
+runtime_file="$runtime_failure/systemd/courseintellect-backend.service.d/zz-release-runtime.conf"
+printf 'old runtime override\n' > "$runtime_file"
+if run_deploy "$runtime_failure" COURSE_INTELLECT_DOTNET_RUNTIME="$runtime_failure/bin/dotnet" \
+  COURSE_INTELLECT_SYSTEMD_ROOT="$runtime_failure/systemd" MOCK_FAIL_NEW_HEALTH=1; then
+  fail "runtime health failure unexpectedly succeeded"
+fi
+assert_old_state "$runtime_failure"
+[[ "$(<"$runtime_file")" == "old runtime override" ]] || fail "old runtime override was not restored"
+
 make_fixture "$uploads_failure"
 if run_deploy "$uploads_failure" MOCK_UPLOADS_BACKUP_FAIL=1; then fail "uploads backup failure unexpectedly succeeded"; fi
 assert_old_state "$uploads_failure"

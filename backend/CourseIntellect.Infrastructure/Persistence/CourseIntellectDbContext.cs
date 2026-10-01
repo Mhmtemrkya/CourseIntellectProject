@@ -1024,6 +1024,17 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ContactTitle).HasColumnName("contact_title").HasMaxLength(80);
         });
 
+        modelBuilder.Entity<OnboardingEmail>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.EventKey).HasMaxLength(180).IsRequired();
+            entity.HasIndex(x => x.EventKey).IsUnique();
+            entity.Property(x => x.Kind).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Version).HasMaxLength(100);
+            entity.Property(x => x.ProtectedPayload).IsRequired();
+            entity.HasIndex(x => new { x.CompletedAtUtc, x.NextAttemptAtUtc });
+        });
+
         modelBuilder.Entity<TenantRegistrationApplication>(entity =>
         {
             entity.ToTable("tenant_registration_applications");

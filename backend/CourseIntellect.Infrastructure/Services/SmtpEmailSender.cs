@@ -79,10 +79,10 @@ public sealed class SmtpEmailSender : IEmailSender
                 throw new InvalidOperationException("Email:From geçerli bir e-posta adresi olmalıdır.", exception);
             }
 
-            if (user is not null && !useSsl)
+            if (!useSsl)
             {
                 throw new InvalidOperationException(
-                    "Production ortamında kimlik doğrulamalı SMTP bağlantısı TLS olmadan kullanılamaz.");
+                    "Production ortamında SMTP bağlantısı TLS olmadan kullanılamaz.");
             }
         }
     }
@@ -126,7 +126,8 @@ public sealed class SmtpEmailSender : IEmailSender
         {
             // Çağıran, gönderilemedi bilgisine göre davranışını değiştirir; istisna
             // yayılıp asıl işlemi (kayıt/onay) düşürmemeli.
-            logger.LogError(exception, "E-posta gönderilemedi: {Subject}", subject);
+            logger.LogError("E-posta gönderilemedi. Type={ErrorType} SmtpStatus={SmtpStatus}",
+                exception.GetType().Name, exception is SmtpException smtp ? smtp.StatusCode.ToString() : "transport");
             return false;
         }
     }

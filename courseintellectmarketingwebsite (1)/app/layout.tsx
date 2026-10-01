@@ -1,12 +1,16 @@
 import type React from "react";
 import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
-import { Analytics } from "@vercel/analytics/next";
+import { PublicAnalytics } from "@/components/site/public-analytics";
 import { ContentProvider } from "@/context/content-context";
 import { LanguageProvider } from "@/context/language-context";
 import { PageTransitionProvider } from "@/components/layout/page-transition";
 import { SmoothScrollProvider } from "@/components/layout/smooth-scroll-provider";
 import "./globals.css";
+import "@fontsource-variable/inter/wght.css";
+import "./site.css";
+import "./reference.css";
+import "./presentation.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.schoolasist.com"),
@@ -15,7 +19,7 @@ export const metadata: Metadata = {
     template: "%s | SchoolAsist",
   },
   description:
-    "Okulunuzun ve kurumunuzun tüm süreçleri tek platformda: yoklama, sınav, finans, rehberlik, kütüphane, veli iletişimi. Masaüstü + mobil, KVKK uyumlu.",
+    "Okulunuzun ve kurumunuzun tüm süreçleri tek platformda: yoklama, sınav, finans, rehberlik, kütüphane, veli iletişimi. Masaüstü, web ve mobilde rol bazlı erişim.",
   keywords: [
     "okul yönetim sistemi",
     "kurs yönetim programı",
@@ -35,7 +39,7 @@ export const metadata: Metadata = {
     siteName: "SchoolAsist",
     title: "SchoolAsist — Eğitimi Kolaylaştıran Akıllı Çözümler",
     description:
-      "Yoklama, sınav, finans, rehberlik ve kütüphane tek platformda. Masaüstü + mobil, KVKK uyumlu.",
+      "Yoklama, sınav, finans, rehberlik ve kütüphane tek platformda. Masaüstü, web ve mobilde rol bazlı erişim.",
     images: [{ url: "/images/logo.png", width: 512, height: 512, alt: "SchoolAsist" }],
   },
   twitter: {
@@ -49,7 +53,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#15294B",
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -58,7 +62,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr">
+    <html lang="tr" data-scroll-behavior="smooth">
       <body className="font-sans antialiased">
         <LanguageProvider>
           <ContentProvider>
@@ -69,7 +73,7 @@ export default function RootLayout({
             </Suspense>
           </ContentProvider>
         </LanguageProvider>
-        <Analytics />
+        <PublicAnalytics />
       </body>
     </html>
   );

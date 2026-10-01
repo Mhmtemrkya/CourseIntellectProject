@@ -109,7 +109,7 @@ assert_contains "$MARKETING_CONFIG" 'registrationEnabled && !process.env.NEXT_PU
 assert_contains "$REGISTRATION_PAGE" 'data-registration-enabled={registrationEnabled}'
 assert_contains "$REGISTRATION_PAGE" 'Kurum kaydı şu anda geçici olarak kapalıdır.'
 assert_contains "$REGISTRATION_PAGE" 'if (!registrationEnabled)'
-assert_contains "$TURNSTILE" 'registrationEnabled && SITE_KEY.length > 0'
+assert_contains "$TURNSTILE" 'turnstileEnabled = SITE_KEY.length > 0'
 assert_contains "$REGISTRATION_CONTROLLER" 'StatusCodes.Status503ServiceUnavailable'
 assert_contains "$REGISTRATION_CONTROLLER" 'code = "REGISTRATION_DISABLED"'
 

@@ -1,0 +1,9 @@
+import { LegalDocument } from "@/components/site/legal-document"
+const sections = [
+  { id: "giris", title: "1. Giriş", content: "Bu sayfa SchoolAsist web sitesindeki kurum başvurusu, hesap erişimi ve destek taleplerinde paylaşılan bilgilerin kullanımını açıklar. Veri sorumlusu Maydanoz Yazılım’dır. Ayrıntılı veri işleme bilgileri ve haklarınız için KVKK aydınlatma metnini inceleyin." },
+  { id: "kullanim", title: "2. Verilerin kullanımı", content: "Başvuruda paylaştığınız kurum ve yetkili bilgileri, başvurunuzun değerlendirilmesi ve kurum hesabının oluşturulması için kullanılır. E-posta adresiniz doğrulama, başvurunun alındığı ve yönetici onayı bildirimleri için gereklidir. Destek talepleri, müşteri numarasıyla ilgili kurumun destek sürecine yönlendirilir." },
+  { id: "saklama", title: "3. Saklama", content: "Başvuru ve destek kayıtları hizmetin yürütülmesi ve ilgili yükümlülüklerin karşılanması amacıyla saklanır. Doğrulama bağlantıları ve geçici parolalar sürelidir. E-posta kuyruğundaki gönderim içeriği, gönderim tamamlandığında veya geçersiz olduğunda temizlenir." },
+  { id: "guvenlik", title: "4. Güvenlik", content: "Kurum erişimi platform yöneticisinin onayından sonra açılır. Kullanıcıların erişimi kurum durumuna ve tanımlanan yetkilere bağlıdır. Geçici parola ilk girişte değiştirilmelidir. Destek mesajlarına parola veya öğrencilere ait özel bilgileri eklemeyin." },
+  { id: "iletisim", title: "5. İletişim", content: "Kişisel veri başvurularınız ve gizlilikle ilgili sorularınız için Maydanoz Yazılım’a info@schoolasist.com adresinden ulaşabilirsiniz. Telefon: 0850 242 84 25." },
+]
+export default function Page() { return <LegalDocument kind="privacy" title="Gizlilik Politikası" introduction="Bilgilerinizin kullanımı, saklanması ve başvuru yollarınız." sections={sections} /> }
