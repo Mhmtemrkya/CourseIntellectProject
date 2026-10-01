@@ -5,6 +5,7 @@ using CourseIntellect.Application.DTOs.PlatformOperations;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
+using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Auth;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -375,6 +376,17 @@ public sealed class PlatformOperationsService(
             Plan = validation.Plan,
             InstitutionType = validation.InstitutionType,
             EstimatedStudents = request.EstimatedStudents,
+            MebCode = validation.Extended?.MebCode,
+            TaxOffice = validation.Extended?.TaxOffice,
+            TaxNumber = validation.Extended?.TaxNumber,
+            City = validation.Extended?.City,
+            District = validation.Extended?.District,
+            AddressLine = validation.Extended?.AddressLine,
+            PostalCode = validation.Extended?.PostalCode,
+            InstitutionPhone = validation.Extended?.InstitutionPhone,
+            InstitutionEmail = validation.Extended?.InstitutionEmail,
+            Website = validation.Extended?.Website,
+            ContactTitle = validation.Extended?.ContactTitle,
             Status = "pending",
             RegistrationIp = clientIp,
             RegistrationUserAgent = Truncate(context.UserAgent, 300),
@@ -416,6 +428,11 @@ public sealed class PlatformOperationsService(
         return new RegisterTenantResult(TenantRegistrationOutcome.Accepted);
     }
 
+    private sealed record ExtendedInstitutionInfo(
+        string? MebCode, string? TaxOffice, string? TaxNumber,
+        string? City, string? District, string? AddressLine, string? PostalCode,
+        string? InstitutionPhone, string? InstitutionEmail, string? Website, string? ContactTitle);
+
     private sealed record RegistrationValidation(
         string? Error,
         string InstitutionName = "",
@@ -423,7 +440,8 @@ public sealed class PlatformOperationsService(
         string Email = "",
         string? Phone = null,
         string Plan = "",
-        InstitutionType InstitutionType = InstitutionType.PrivateSchool);
+        InstitutionType InstitutionType = InstitutionType.PrivateSchool,
+        ExtendedInstitutionInfo? Extended = null);
 
     private static RegistrationValidation ValidateRegistration(RegisterTenantRequest request, bool billingEnabled)
     {
@@ -495,7 +513,30 @@ public sealed class PlatformOperationsService(
             return new RegistrationValidation("Sürücü kursu kayıtları DrivingAsist üzerinden alınmaktadır.");
         }
 
-        return new RegistrationValidation(null, institutionName, contactName, email, phone, plan, institutionType);
+        // Genişletilmiş alanlar opsiyoneldir; dolu gelenler biçim/checksum doğrulamasından
+        // geçer. Geçersiz bir alan varsa tüm başvuru reddedilir (istemci de doğrular).
+        ExtendedInstitutionInfo extended;
+        try
+        {
+            extended = new ExtendedInstitutionInfo(
+                InstitutionFieldRules.NormalizeMebCode(request.MebCode),
+                InstitutionFieldRules.NormalizeText(request.TaxOffice, 120, label: "Vergi dairesi"),
+                InstitutionFieldRules.NormalizeTaxNumber(request.TaxNumber),
+                InstitutionFieldRules.NormalizeProvince(request.City),
+                InstitutionFieldRules.NormalizeText(request.District, 80, label: "İlçe"),
+                InstitutionFieldRules.NormalizeText(request.AddressLine, 400, label: "Adres"),
+                InstitutionFieldRules.NormalizePostalCode(request.PostalCode),
+                InstitutionFieldRules.NormalizeInstitutionPhone(request.InstitutionPhone),
+                InstitutionFieldRules.NormalizeEmail(request.InstitutionEmail, label: "Kurum e-postası"),
+                InstitutionFieldRules.NormalizeWebsite(request.Website),
+                InstitutionFieldRules.NormalizeText(request.ContactTitle, 80, label: "Yetkili görevi"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return new RegistrationValidation(ex.Message);
+        }
+
+        return new RegistrationValidation(null, institutionName, contactName, email, phone, plan, institutionType, extended);
     }
 
     /// <summary>Kontrol karakterlerini atar, kırpar. Serbest metin alanları için.</summary>
@@ -1571,6 +1612,18 @@ public sealed class PlatformOperationsService(
             RegistrationUserAgent = application.RegistrationUserAgent,
             RegistrationReferer = application.RegistrationReferer,
             RegistrationEstimatedStudents = application.EstimatedStudents,
+            // Başvuruda toplanan genişletilmiş kurum bilgileri kuruma taşınır.
+            MebCode = application.MebCode,
+            TaxOffice = application.TaxOffice,
+            TaxNumber = application.TaxNumber,
+            City = application.City,
+            District = application.District,
+            AddressLine = application.AddressLine,
+            PostalCode = application.PostalCode,
+            InstitutionPhone = application.InstitutionPhone,
+            InstitutionEmail = application.InstitutionEmail,
+            Website = application.Website,
+            ContactTitle = application.ContactTitle,
             KvkkConsentVersion = application.KvkkConsentVersion,
             KvkkConsentAtUtc = application.KvkkConsentAtUtc,
             CreatedAtUtc = DateTime.UtcNow,

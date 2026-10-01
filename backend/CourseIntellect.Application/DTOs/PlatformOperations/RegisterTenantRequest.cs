@@ -18,7 +18,22 @@ public sealed record RegisterTenantRequest(
     int EstimatedStudents,
     string InstitutionType = "PrivateSchool",
     string? CaptchaToken = null,
-    bool KvkkAccepted = false
+    bool KvkkAccepted = false,
+    // ── Genişletilmiş kurum bilgileri (hepsi opsiyonel; dolu gelince biçim+checksum doğrulanır) ──
+    // Kurumsal/yasal
+    string? MebCode = null,
+    string? TaxOffice = null,
+    string? TaxNumber = null,
+    // Adres
+    string? City = null,
+    string? District = null,
+    string? AddressLine = null,
+    string? PostalCode = null,
+    // Kurum iletişimi + yetkili detayı
+    string? InstitutionPhone = null,
+    string? InstitutionEmail = null,
+    string? Website = null,
+    string? ContactTitle = null
 );
 
 /// <summary>Anonim isteğin kötüye kullanım triyajı için taşınan HTTP bağlamı.</summary>

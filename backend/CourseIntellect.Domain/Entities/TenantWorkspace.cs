@@ -44,6 +44,18 @@ public sealed class TenantWorkspace
     /// <summary>Formda beyan edilen öğrenci sayısı. Bilgi amaçlıdır; platform
     /// KPI toplamlarına GİRMEZ (anonim girdi olduğu için).</summary>
     public int? RegistrationEstimatedStudents { get; set; }
+    // Genişletilmiş kurum bilgileri (kayıt formundan; onayda kuruma taşınır).
+    public string? MebCode { get; set; }
+    public string? TaxOffice { get; set; }
+    public string? TaxNumber { get; set; }
+    public string? City { get; set; }
+    public string? District { get; set; }
+    public string? AddressLine { get; set; }
+    public string? PostalCode { get; set; }
+    public string? InstitutionPhone { get; set; }
+    public string? InstitutionEmail { get; set; }
+    public string? Website { get; set; }
+    public string? ContactTitle { get; set; }
 
     /// <summary>Onaylanan aydınlatma/açık rıza metninin sürümü.</summary>
     public string? KvkkConsentVersion { get; set; }

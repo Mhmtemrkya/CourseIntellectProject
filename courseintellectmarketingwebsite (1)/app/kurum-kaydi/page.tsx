@@ -4,7 +4,7 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import {
   Building2, Mail, Phone, Users, CheckCircle, Loader2, ArrowLeft,
-  ShieldCheck, BarChart3, Sparkles,
+  ShieldCheck, BarChart3, Sparkles, MapPin, FileText, Globe, Hash, Briefcase,
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -14,6 +14,11 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  TURKISH_PROVINCES, maskTrPhone, maskTc, maskMebCode, maskTaxNumber,
+  maskPostalCode, phoneDigits, isValidTrMobile, isValidTrPhone, isValidEmail,
+  isValidWebsite, isValidTaxNumber,
+} from "@/lib/form-rules"
 import { useLanguage } from "@/context/language-context"
 import { apiRequest, ApiRequestError } from "@/lib/api-client"
 import { registrationEnabled, TurnstileWidget, turnstileEnabled } from "@/components/turnstile-widget"
@@ -43,6 +48,21 @@ const features = [
   },
 ]
 
+function FieldErr({ msg }: { msg?: string }) {
+  if (!msg) return null
+  return <p className="text-xs font-medium text-destructive">{msg}</p>
+}
+
+function SectionHead({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-2 pt-2 text-sm font-semibold text-foreground/70">
+      {icon}
+      <span>{label}</span>
+      <span className="ml-1 h-px flex-1 bg-border" />
+    </div>
+  )
+}
+
 export default function KurumKaydiPage() {
   const { language } = useLanguage()
   const [submitted, setSubmitted] = useState(false)
@@ -52,12 +72,27 @@ export default function KurumKaydiPage() {
   const [form, setForm] = useState({
     institutionName: "",
     contactName: "",
+    contactTitle: "",
     email: "",
     phone: "",
     plan: "Starter",
     estimatedStudents: 50,
     institutionType: "PrivateSchool",
+    // Kurumsal/yasal
+    mebCode: "",
+    taxOffice: "",
+    taxNumber: "",
+    // Adres
+    city: "",
+    district: "",
+    addressLine: "",
+    postalCode: "",
+    // Kurum iletişimi
+    institutionPhone: "",
+    institutionEmail: "",
+    website: "",
   })
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [kvkkAccepted, setKvkkAccepted] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [captchaResetKey, setCaptchaResetKey] = useState(0)
@@ -85,6 +120,20 @@ export default function KurumKaydiPage() {
     plan: { tr: "İlgilendiğiniz Plan", en: "Plan of Interest" },
     students: { tr: "Tahmini Öğrenci Sayısı", en: "Estimated Student Count" },
     institutionType: { tr: "Kurum Türü", en: "Institution Type" },
+    contactTitle: { tr: "Yetkili Görevi", en: "Title" },
+    sectionCorporate: { tr: "Kurumsal Bilgiler (isteğe bağlı)", en: "Corporate Details (optional)" },
+    sectionAddress: { tr: "Adres (isteğe bağlı)", en: "Address (optional)" },
+    sectionContact: { tr: "Kurum İletişimi (isteğe bağlı)", en: "Institution Contact (optional)" },
+    mebCode: { tr: "MEB Kurum Kodu", en: "MEB Institution Code" },
+    taxNumber: { tr: "Vergi / TC No", en: "Tax / ID Number" },
+    taxOffice: { tr: "Vergi Dairesi", en: "Tax Office" },
+    city: { tr: "İl", en: "Province" },
+    district: { tr: "İlçe", en: "District" },
+    addressLine: { tr: "Açık Adres", en: "Street Address" },
+    postalCode: { tr: "Posta Kodu", en: "Postal Code" },
+    institutionPhone: { tr: "Kurum Telefonu", en: "Institution Phone" },
+    institutionEmail: { tr: "Kurum E-postası", en: "Institution Email" },
+    website: { tr: "Web Sitesi", en: "Website" },
     submit: { tr: "Başvuruyu Gönder", en: "Submit Application" },
     successTitle: { tr: "Başvurunuz Alındı!", en: "Application Received!" },
     successDesc: {
@@ -133,6 +182,25 @@ export default function KurumKaydiPage() {
       setSubmitted(true)
       return
     }
+    const errs: Record<string, string> = {}
+    const req = language === "tr" ? "Bu alan zorunludur." : "This field is required."
+    if (form.institutionName.trim().length < 3) errs.institutionName = language === "tr" ? "Kurum adı en az 3 karakter olmalıdır." : "At least 3 characters."
+    if (form.contactName.trim().length < 3) errs.contactName = req
+    if (!isValidEmail(form.email)) errs.email = language === "tr" ? "Geçerli bir e-posta girin." : "Enter a valid email."
+    if (!isValidTrMobile(form.phone)) errs.phone = language === "tr" ? "Cep telefonu 5xx ile başlayan 10 hane olmalıdır." : "Mobile must be 10 digits starting with 5."
+    if (!(form.estimatedStudents >= 1 && form.estimatedStudents <= 100000)) errs.estimatedStudents = language === "tr" ? "1-100.000 aralığında olmalıdır." : "Must be 1-100,000."
+    // Opsiyonel alanlar: yalnız dolu gelince biçim doğrulanır.
+    if (form.taxNumber && !isValidTaxNumber(form.taxNumber)) errs.taxNumber = language === "tr" ? "Vergi no 10 haneli (ya da 11 haneli geçerli TC) olmalıdır." : "Tax number must be 10 digits (or a valid 11-digit ID)."
+    if (form.mebCode && (form.mebCode.length < 6 || form.mebCode.length > 8)) errs.mebCode = language === "tr" ? "MEB kodu 6-8 haneli olmalıdır." : "MEB code must be 6-8 digits."
+    if (form.postalCode && form.postalCode.length !== 5) errs.postalCode = language === "tr" ? "Posta kodu 5 haneli olmalıdır." : "Postal code must be 5 digits."
+    if (form.institutionPhone && !isValidTrPhone(form.institutionPhone)) errs.institutionPhone = language === "tr" ? "Telefon 10 haneli olmalıdır." : "Phone must be 10 digits."
+    if (form.institutionEmail && !isValidEmail(form.institutionEmail)) errs.institutionEmail = language === "tr" ? "Geçerli bir e-posta girin." : "Enter a valid email."
+    if (form.website && !isValidWebsite(form.website)) errs.website = language === "tr" ? "Geçerli bir web adresi girin." : "Enter a valid website."
+    setFieldErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      setError(language === "tr" ? "Lütfen işaretli alanları düzeltin." : "Please fix the highlighted fields.")
+      return
+    }
     if (!kvkkAccepted) {
       setError(t.kvkkRequired[language])
       return
@@ -147,14 +215,26 @@ export default function KurumKaydiPage() {
         method: "POST",
         token: null,
         body: {
-          institutionName: form.institutionName,
-          contactName: form.contactName,
-          email: form.email,
-          phone: form.phone,
+          institutionName: form.institutionName.trim(),
+          contactName: form.contactName.trim(),
+          contactTitle: form.contactTitle.trim() || undefined,
+          email: form.email.trim(),
+          phone: phoneDigits(form.phone),
           // Ücretsiz dönemde plan gönderilmez; backend de yok sayar.
           ...(billingEnabled ? { plan: form.plan } : {}),
           estimatedStudents: Number(form.estimatedStudents),
           institutionType: form.institutionType,
+          // Genişletilmiş kurum bilgileri (opsiyonel; boşlar gönderilmez)
+          mebCode: form.mebCode || undefined,
+          taxOffice: form.taxOffice.trim() || undefined,
+          taxNumber: form.taxNumber || undefined,
+          city: form.city || undefined,
+          district: form.district.trim() || undefined,
+          addressLine: form.addressLine.trim() || undefined,
+          postalCode: form.postalCode || undefined,
+          institutionPhone: form.institutionPhone ? phoneDigits(form.institutionPhone) : undefined,
+          institutionEmail: form.institutionEmail.trim() || undefined,
+          website: form.website.trim() || undefined,
           captchaToken,
           kvkkAccepted,
         },
@@ -347,17 +427,35 @@ export default function KurumKaydiPage() {
                         required
                       />
                     </div>
+                    <FieldErr msg={fieldErrors.institutionName} />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="contactName">{t.contactName[language]}</Label>
-                    <Input
-                      id="contactName"
-                      value={form.contactName}
-                      onChange={(e) => setForm((p) => ({ ...p, contactName: e.target.value }))}
-                      placeholder="Örn: Ahmet Yılmaz"
-                      required
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contactName">{t.contactName[language]}</Label>
+                      <Input
+                        id="contactName"
+                        value={form.contactName}
+                        onChange={(e) => setForm((p) => ({ ...p, contactName: e.target.value }))}
+                        placeholder="Örn: Ahmet Yılmaz"
+                        required
+                      />
+                      <FieldErr msg={fieldErrors.contactName} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="contactTitle">{t.contactTitle[language]}</Label>
+                      <div className="relative">
+                        <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="contactTitle"
+                          value={form.contactTitle}
+                          onChange={(e) => setForm((p) => ({ ...p, contactTitle: e.target.value }))}
+                          placeholder={language === "tr" ? "Örn: Kurucu, Müdür" : "e.g. Founder"}
+                          className="pl-10"
+                          maxLength={80}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -375,6 +473,7 @@ export default function KurumKaydiPage() {
                           required
                         />
                       </div>
+                      <FieldErr msg={fieldErrors.email} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">{t.phone[language]}</Label>
@@ -383,27 +482,48 @@ export default function KurumKaydiPage() {
                         <Input
                           id="phone"
                           type="tel"
+                          inputMode="numeric"
                           value={form.phone}
-                          onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-                          placeholder="05xx xxx xx xx"
+                          onChange={(e) => setForm((p) => ({ ...p, phone: maskTrPhone(e.target.value) }))}
+                          placeholder="+90 5xx xxx xx xx"
                           className="pl-10"
                           required
                         />
                       </div>
+                      <FieldErr msg={fieldErrors.phone} />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>{t.institutionType[language]}</Label>
-                    <Select value={form.institutionType} onValueChange={(v) => setForm((p) => ({ ...p, institutionType: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="PrivateSchool">{language === "tr" ? "Özel Okul" : "Private School"}</SelectItem>
-                        <SelectItem value="CourseCenter">{language === "tr" ? "Kurs Merkezi" : "Course Center"}</SelectItem>
-                        <SelectItem value="StudyCenter">{language === "tr" ? "Etüt Merkezi" : "Study Center"}</SelectItem>
-                        <SelectItem value="Other">{language === "tr" ? "Diğer" : "Other"}</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{t.institutionType[language]}</Label>
+                      <Select value={form.institutionType} onValueChange={(v) => setForm((p) => ({ ...p, institutionType: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PrivateSchool">{language === "tr" ? "Özel Okul" : "Private School"}</SelectItem>
+                          <SelectItem value="CourseCenter">{language === "tr" ? "Kurs Merkezi" : "Course Center"}</SelectItem>
+                          <SelectItem value="StudyCenter">{language === "tr" ? "Etüt Merkezi" : "Study Center"}</SelectItem>
+                          <SelectItem value="Other">{language === "tr" ? "Diğer" : "Other"}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="students">{t.students[language]}</Label>
+                      <div className="relative">
+                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="students"
+                          type="number"
+                          min={1}
+                          max={100000}
+                          value={form.estimatedStudents}
+                          onChange={(e) => setForm((p) => ({ ...p, estimatedStudents: Number(e.target.value) }))}
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                      <FieldErr msg={fieldErrors.estimatedStudents} />
+                    </div>
                   </div>
 
                   {billingEnabled && (
@@ -424,20 +544,104 @@ export default function KurumKaydiPage() {
                   </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="students">{t.students[language]}</Label>
-                    <div className="relative">
-                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="students"
-                        type="number"
-                        min={1}
-                        value={form.estimatedStudents}
-                        onChange={(e) => setForm((p) => ({ ...p, estimatedStudents: Number(e.target.value) }))}
-                        className="pl-10"
-                        required
-                      />
+                  {/* ── Kurumsal bilgiler (opsiyonel) ── */}
+                  <SectionHead icon={<FileText className="w-4 h-4" />} label={t.sectionCorporate[language]} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="mebCode">{t.mebCode[language]}</Label>
+                      <div className="relative">
+                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input id="mebCode" inputMode="numeric" value={form.mebCode}
+                          onChange={(e) => setForm((p) => ({ ...p, mebCode: maskMebCode(e.target.value) }))}
+                          placeholder={language === "tr" ? "6-8 haneli" : "6-8 digits"} className="pl-10" />
+                      </div>
+                      <FieldErr msg={fieldErrors.mebCode} />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="taxNumber">{t.taxNumber[language]}</Label>
+                      <Input id="taxNumber" inputMode="numeric" value={form.taxNumber}
+                        onChange={(e) => setForm((p) => ({ ...p, taxNumber: maskTaxNumber(e.target.value) }))}
+                        placeholder={language === "tr" ? "10 haneli VKN" : "10-digit tax no"} />
+                      <FieldErr msg={fieldErrors.taxNumber} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="taxOffice">{t.taxOffice[language]}</Label>
+                    <Input id="taxOffice" value={form.taxOffice} maxLength={120}
+                      onChange={(e) => setForm((p) => ({ ...p, taxOffice: e.target.value }))}
+                      placeholder={language === "tr" ? "Örn: Kadıköy V.D." : "Tax office"} />
+                  </div>
+
+                  {/* ── Adres (opsiyonel) ── */}
+                  <SectionHead icon={<MapPin className="w-4 h-4" />} label={t.sectionAddress[language]} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{t.city[language]}</Label>
+                      <Select value={form.city} onValueChange={(v) => setForm((p) => ({ ...p, city: v }))}>
+                        <SelectTrigger><SelectValue placeholder={language === "tr" ? "İl seçin" : "Select"} /></SelectTrigger>
+                        <SelectContent className="max-h-72">
+                          {TURKISH_PROVINCES.map((prov) => (
+                            <SelectItem key={prov} value={prov}>{prov}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="district">{t.district[language]}</Label>
+                      <Input id="district" value={form.district} maxLength={80}
+                        onChange={(e) => setForm((p) => ({ ...p, district: e.target.value }))}
+                        placeholder={language === "tr" ? "Örn: Kadıköy" : "District"} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-[1fr_120px] gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="addressLine">{t.addressLine[language]}</Label>
+                      <Input id="addressLine" value={form.addressLine} maxLength={400}
+                        onChange={(e) => setForm((p) => ({ ...p, addressLine: e.target.value }))}
+                        placeholder={language === "tr" ? "Mahalle, cadde, no" : "Street address"} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="postalCode">{t.postalCode[language]}</Label>
+                      <Input id="postalCode" inputMode="numeric" value={form.postalCode}
+                        onChange={(e) => setForm((p) => ({ ...p, postalCode: maskPostalCode(e.target.value) }))}
+                        placeholder="34710" />
+                      <FieldErr msg={fieldErrors.postalCode} />
+                    </div>
+                  </div>
+
+                  {/* ── Kurum iletişimi (opsiyonel) ── */}
+                  <SectionHead icon={<Globe className="w-4 h-4" />} label={t.sectionContact[language]} />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="institutionPhone">{t.institutionPhone[language]}</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input id="institutionPhone" type="tel" inputMode="numeric" value={form.institutionPhone}
+                          onChange={(e) => setForm((p) => ({ ...p, institutionPhone: maskTrPhone(e.target.value) }))}
+                          placeholder="+90 2xx xxx xx xx" className="pl-10" />
+                      </div>
+                      <FieldErr msg={fieldErrors.institutionPhone} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="institutionEmail">{t.institutionEmail[language]}</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input id="institutionEmail" type="email" value={form.institutionEmail}
+                          onChange={(e) => setForm((p) => ({ ...p, institutionEmail: e.target.value }))}
+                          placeholder="iletisim@kurum.com" className="pl-10" />
+                      </div>
+                      <FieldErr msg={fieldErrors.institutionEmail} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="website">{t.website[language]}</Label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input id="website" value={form.website} maxLength={200}
+                        onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))}
+                        placeholder="https://kurum.com" className="pl-10" />
+                    </div>
+                    <FieldErr msg={fieldErrors.website} />
                   </div>
 
                   <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">

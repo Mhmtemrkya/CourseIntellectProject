@@ -1011,6 +1011,17 @@ public sealed class CourseIntellectDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.GroupId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.Property(x => x.MebCode).HasColumnName("meb_code").HasMaxLength(8);
+            entity.Property(x => x.TaxOffice).HasColumnName("tax_office").HasMaxLength(120);
+            entity.Property(x => x.TaxNumber).HasColumnName("tax_number").HasMaxLength(11);
+            entity.Property(x => x.City).HasColumnName("city").HasMaxLength(60);
+            entity.Property(x => x.District).HasColumnName("district").HasMaxLength(80);
+            entity.Property(x => x.AddressLine).HasColumnName("address_line").HasMaxLength(400);
+            entity.Property(x => x.PostalCode).HasColumnName("postal_code").HasMaxLength(5);
+            entity.Property(x => x.InstitutionPhone).HasColumnName("institution_phone").HasMaxLength(20);
+            entity.Property(x => x.InstitutionEmail).HasColumnName("institution_email").HasMaxLength(180);
+            entity.Property(x => x.Website).HasColumnName("website").HasMaxLength(200);
+            entity.Property(x => x.ContactTitle).HasColumnName("contact_title").HasMaxLength(80);
         });
 
         modelBuilder.Entity<TenantRegistrationApplication>(entity =>
@@ -1041,6 +1052,17 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.VerificationExpiresAtUtc).HasColumnName("verification_expires_at_utc");
             entity.Property(x => x.VerificationSentAtUtc).HasColumnName("verification_sent_at_utc");
             entity.Property(x => x.VerifiedAtUtc).HasColumnName("verified_at_utc");
+            entity.Property(x => x.MebCode).HasColumnName("meb_code").HasMaxLength(8);
+            entity.Property(x => x.TaxOffice).HasColumnName("tax_office").HasMaxLength(120);
+            entity.Property(x => x.TaxNumber).HasColumnName("tax_number").HasMaxLength(11);
+            entity.Property(x => x.City).HasColumnName("city").HasMaxLength(60);
+            entity.Property(x => x.District).HasColumnName("district").HasMaxLength(80);
+            entity.Property(x => x.AddressLine).HasColumnName("address_line").HasMaxLength(400);
+            entity.Property(x => x.PostalCode).HasColumnName("postal_code").HasMaxLength(5);
+            entity.Property(x => x.InstitutionPhone).HasColumnName("institution_phone").HasMaxLength(20);
+            entity.Property(x => x.InstitutionEmail).HasColumnName("institution_email").HasMaxLength(180);
+            entity.Property(x => x.Website).HasColumnName("website").HasMaxLength(200);
+            entity.Property(x => x.ContactTitle).HasColumnName("contact_title").HasMaxLength(80);
             entity.Ignore(x => x.VerificationState);
             entity.HasIndex(x => x.VerificationTokenHash);
             entity.Property(x => x.SuspiciousReason).HasColumnName("suspicious_reason").HasMaxLength(300);

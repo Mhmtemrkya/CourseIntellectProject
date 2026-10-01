@@ -473,6 +473,7 @@ export interface ApprovalRequestDto {
 // CourseIntellect.Domain/Entities/AppSetting.cs
 export interface AppSetting {
   id: string;
+  tenantId: string | null;
   key: string;
   value: string;
   type: string;
@@ -1551,6 +1552,7 @@ export interface CourseDto {
 // CourseIntellect.Domain/Entities/CourseItem.cs
 export interface CourseItem {
   id: string;
+  tenantId: string | null;
   name: string;
   description: string;
   category: string;
@@ -3651,6 +3653,21 @@ export interface ExpenseRequest {
   parsedCategory?: DrivingExpenseCategory | null;
 }
 
+// CourseIntellect.Infrastructure/Services/PlatformOperationsService.cs
+export interface ExtendedInstitutionInfo {
+  mebCode: string | null;
+  taxOffice: string | null;
+  taxNumber: string | null;
+  city: string | null;
+  district: string | null;
+  addressLine: string | null;
+  postalCode: string | null;
+  institutionPhone: string | null;
+  institutionEmail: string | null;
+  website: string | null;
+  contactTitle: string | null;
+}
+
 // CourseIntellect.Infrastructure/Services/TenantBackupService.cs
 export interface FileReference {
   relativePath: string;
@@ -5457,6 +5474,17 @@ export interface RegisterTenantRequest {
   institutionType?: string;
   captchaToken?: string | null;
   kvkkAccepted?: boolean;
+  mebCode?: string | null;
+  taxOffice?: string | null;
+  taxNumber?: string | null;
+  city?: string | null;
+  district?: string | null;
+  addressLine?: string | null;
+  postalCode?: string | null;
+  institutionPhone?: string | null;
+  institutionEmail?: string | null;
+  website?: string | null;
+  contactTitle?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/PlatformOperations/RegisterTenantRequest.cs
@@ -5506,6 +5534,7 @@ export interface RegistrationValidation {
   phone: string | null;
   plan: string;
   institutionType: InstitutionType;
+  extended: ExtendedInstitutionInfo | null;
 }
 
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
@@ -5585,6 +5614,7 @@ export interface ReviewPasswordResetRequest {
 // CourseIntellect.Domain/Entities/RolePolicy.cs
 export interface RolePolicy {
   id: string;
+  tenantId: string | null;
   roleName: string;
   isActive: boolean;
   loginEnabled: boolean;
@@ -7122,6 +7152,17 @@ export interface TenantRegistrationApplication {
   kvkkConsentVersion: string | null;
   kvkkConsentAtUtc: string | null;
   createdAtUtc: string;
+  mebCode: string | null;
+  taxOffice: string | null;
+  taxNumber: string | null;
+  city: string | null;
+  district: string | null;
+  addressLine: string | null;
+  postalCode: string | null;
+  institutionPhone: string | null;
+  institutionEmail: string | null;
+  website: string | null;
+  contactTitle: string | null;
   approvedAtUtc: string | null;
   rejectedAtUtc: string | null;
   rejectionReason: string | null;
@@ -7196,6 +7237,17 @@ export interface TenantWorkspace {
   registrationUserAgent: string | null;
   registrationReferer: string | null;
   registrationEstimatedStudents: number | null;
+  mebCode: string | null;
+  taxOffice: string | null;
+  taxNumber: string | null;
+  city: string | null;
+  district: string | null;
+  addressLine: string | null;
+  postalCode: string | null;
+  institutionPhone: string | null;
+  institutionEmail: string | null;
+  website: string | null;
+  contactTitle: string | null;
   kvkkConsentVersion: string | null;
   kvkkConsentAtUtc: string | null;
   approvedAtUtc: string | null;

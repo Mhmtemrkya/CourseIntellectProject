@@ -43,6 +43,18 @@ public sealed class TenantRegistrationApplication
     public DateTime? KvkkConsentAtUtc { get; set; }
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    // Genişletilmiş kurum bilgileri (kayıt formundan; onayda kuruma taşınır).
+    public string? MebCode { get; set; }
+    public string? TaxOffice { get; set; }
+    public string? TaxNumber { get; set; }
+    public string? City { get; set; }
+    public string? District { get; set; }
+    public string? AddressLine { get; set; }
+    public string? PostalCode { get; set; }
+    public string? InstitutionPhone { get; set; }
+    public string? InstitutionEmail { get; set; }
+    public string? Website { get; set; }
+    public string? ContactTitle { get; set; }
     public DateTime? ApprovedAtUtc { get; set; }
     public DateTime? RejectedAtUtc { get; set; }
 
