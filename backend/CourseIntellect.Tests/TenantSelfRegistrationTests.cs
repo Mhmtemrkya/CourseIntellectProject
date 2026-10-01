@@ -408,6 +408,13 @@ public sealed class TenantSelfRegistrationTests : IDisposable
         await service.RegisterTenantAsync(ValidRequest(), Context);
         var application = await db.Context.TenantRegistrationApplications.SingleAsync();
 
+        application.City = "İstanbul";
+        application.District = "Kadıköy";
+        application.ContactTitle = "Kurum müdürü";
+        application.VerifiedAtUtc = DateTime.UtcNow.AddMinutes(-5);
+        application.CreatedAtUtc = DateTime.UtcNow.AddDays(-2);
+        await db.Context.SaveChangesAsync();
+
         var beforeApproval = await service.GetTenantsAsync();
         Assert.Single(beforeApproval);
         Assert.Equal("pending", beforeApproval[0].Status);
@@ -418,6 +425,17 @@ public sealed class TenantSelfRegistrationTests : IDisposable
         var afterApproval = await service.GetTenantsAsync();
         Assert.Single(afterApproval);
         Assert.Equal("active", afterApproval[0].Status);
+        foreach (var row in new[] { beforeApproval[0], afterApproval[0] })
+        {
+            Assert.Equal("İstanbul", row.City);
+            Assert.Equal("Kadıköy", row.District);
+            Assert.Equal("Kurum müdürü", row.ContactTitle);
+            Assert.Equal(application.VerifiedAtUtc, row.VerifiedAtUtc);
+            Assert.Equal(application.CreatedAtUtc, row.RegistrationCreatedAtUtc);
+            Assert.Equal(application.EstimatedStudents, row.EstimatedStudents);
+            Assert.Null(row.TemporaryPassword);
+            Assert.Null(row.SetupDocumentBase64);
+        }
     }
 
     [Fact]

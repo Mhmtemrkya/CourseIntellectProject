@@ -36,7 +36,16 @@ public sealed record TenantWorkspaceDto(
     string? SetupDocumentBase64 = null,
     string? SetupDocumentFileName = null,
     string? CustomerNumber = null,
-    DateTime? ApprovalEmailSentAtUtc = null
+    DateTime? ApprovalEmailSentAtUtc = null,
+    string? City = null,
+    string? District = null,
+    string? AddressLine = null,
+    int? EstimatedStudents = null,
+    string? ContactTitle = null,
+    DateTime? VerifiedAtUtc = null,
+    DateTime? RejectedAtUtc = null,
+    string? RejectionReason = null,
+    DateTime? RegistrationCreatedAtUtc = null
 );
 
 public enum SetupDocumentOutcome

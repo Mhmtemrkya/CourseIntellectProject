@@ -108,7 +108,19 @@ public sealed class PlatformOperationsService(
 
         // Every application is visible to platform staff, with its verification state.
         var mapped = await MapTenantDtosAsync(storedEntities, cancellationToken);
-        return [.. applications.Select(ToApplicationDto), .. mapped];
+        // Preserve the original application dates after approval without duplicating rows.
+        var tenantIds = storedEntities.Select(x => x.Id).ToArray();
+        var approvedApplications = await dbContext.TenantRegistrationApplications
+            .AsNoTracking()
+            .Where(x => x.Status == "approved" && x.CreatedTenantId != null && tenantIds.Contains(x.CreatedTenantId.Value))
+            .Select(x => new { x.CreatedTenantId, x.CreatedAtUtc, x.VerifiedAtUtc })
+            .ToListAsync(cancellationToken);
+        var datesByTenant = approvedApplications.GroupBy(x => x.CreatedTenantId!.Value)
+            .ToDictionary(x => x.Key, x => x.OrderByDescending(a => a.CreatedAtUtc).First());
+        var enriched = mapped.Select(x => datesByTenant.TryGetValue(x.Id, out var dates)
+            ? x with { RegistrationCreatedAtUtc = dates.CreatedAtUtc, VerifiedAtUtc = dates.VerifiedAtUtc }
+            : x);
+        return [.. applications.Select(ToApplicationDto), .. enriched];
     }
 
     public async Task<TenantWorkspaceDto> UpsertTenantAsync(Guid? id, UpsertTenantWorkspaceRequest request, CancellationToken cancellationToken = default)
@@ -1874,7 +1886,16 @@ public sealed class PlatformOperationsService(
         entity.InstitutionType == InstitutionType.DrivingSchool,
         entity.IsSuspicious,
         entity.SuspiciousReason,
-        entity.VerificationState);
+        entity.VerificationState,
+        City: entity.City,
+        District: entity.District,
+        AddressLine: entity.AddressLine,
+        EstimatedStudents: entity.EstimatedStudents,
+        ContactTitle: entity.ContactTitle,
+        VerifiedAtUtc: entity.VerifiedAtUtc,
+        RejectedAtUtc: entity.RejectedAtUtc,
+        RejectionReason: entity.RejectionReason,
+        RegistrationCreatedAtUtc: entity.CreatedAtUtc);
 
     private static TenantWorkspaceDto ToTenantDto(
         TenantWorkspace entity,
@@ -1913,7 +1934,13 @@ public sealed class PlatformOperationsService(
         setupDocumentBase64,
         setupDocumentFileName,
         entity.CustomerNumber,
-        entity.ApprovalEmailSentAtUtc);
+        entity.ApprovalEmailSentAtUtc,
+        City: entity.City,
+        District: entity.District,
+        AddressLine: entity.AddressLine,
+        EstimatedStudents: entity.RegistrationEstimatedStudents,
+        ContactTitle: entity.ContactTitle,
+        RejectedAtUtc: entity.RejectedAtUtc);
 
     private static InstitutionType ParseInstitutionType(string? value)
     {

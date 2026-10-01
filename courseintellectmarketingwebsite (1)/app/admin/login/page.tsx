@@ -86,7 +86,7 @@ export default function AdminLoginPage() {
               alt="SchoolAsist"
               width={80}
               height={80}
-              className="brightness-0 invert mb-8"
+              className="object-contain mb-8"
             />
           </motion.div>
 
