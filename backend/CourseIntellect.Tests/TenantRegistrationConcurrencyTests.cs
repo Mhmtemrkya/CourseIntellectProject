@@ -11,6 +11,8 @@ using CourseIntellect.Infrastructure.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -63,8 +65,12 @@ public sealed class TenantRegistrationConcurrencyTests : IDisposable
 
         await using (var setupDb = Context(connectionString))
         {
-            await setupDb.Database.EnsureDeletedAsync();
-            await setupDb.Database.EnsureCreatedAsync();
+            // The release check uses a pre-created disposable database. Never
+            // grant the application role CREATEDB or reset an existing schema.
+            Assert.StartsWith("schoolasist_test_", setupDb.Database.GetDbConnection().Database);
+            var creator = setupDb.GetService<IRelationalDatabaseCreator>();
+            Assert.False(await creator.HasTablesAsync());
+            await creator.CreateTablesAsync();
             setupDb.TenantRegistrationApplications.Add(PendingApplication());
             await setupDb.SaveChangesAsync();
         }
