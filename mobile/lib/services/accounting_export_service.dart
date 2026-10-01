@@ -10,6 +10,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
 import 'accounting_finance_store.dart';
+import 'pdf_fonts.dart';
 
 class AccountingExportFile {
   final File file;
@@ -89,7 +90,7 @@ class AccountingExportService {
 
   Future<AccountingExportFile> _buildPdf(AccountingFinanceStore store) async {
     final regularFont = await _loadPdfFont();
-    final document = pw.Document();
+    final document = pw.Document(theme: await turkishPdfTheme());
     document.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -150,7 +151,7 @@ class AccountingExportService {
     AccountingFinanceStore store,
   ) async {
     final regularFont = await _loadPdfFont();
-    final document = pw.Document();
+    final document = pw.Document(theme: await turkishPdfTheme());
     document.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,

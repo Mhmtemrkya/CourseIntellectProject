@@ -15,6 +15,7 @@ import 'package:student/services/school_feed_api_service.dart';
 import 'package:student/services/student_registry_store.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:student/widgets/teacher_header.dart';
+import '../services/pdf_fonts.dart';
 
 class TeacherAttendancePage extends StatefulWidget {
   final String? initialLessonTitle;
@@ -532,7 +533,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
       );
 
       try {
-        final document = pw.Document();
+        final document = pw.Document(theme: await turkishPdfTheme());
         document.addPage(
           pw.MultiPage(
             build: (_) => [
@@ -596,13 +597,13 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
   String _pdfStatusLabel(String value) {
     switch (value) {
       case 'present':
-        return 'Katildi';
+        return 'Katıldı';
       case 'late':
-        return 'Gec';
+        return 'Geç';
       case 'excuse':
-        return 'Izinli';
+        return 'İzinli';
       default:
-        return 'Devamsiz';
+        return 'Devamsız';
     }
   }
 
@@ -1116,9 +1117,9 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
       case "absent":
         return "Gelmedi";
       case "late":
-        return "Gec";
+        return "Geç";
       case "excuse":
-        return "Izinli";
+        return "İzinli";
       default:
         return "-";
     }

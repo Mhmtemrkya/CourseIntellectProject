@@ -19,6 +19,7 @@ import '../services/teacher_weekly_report_api_service.dart';
 import '../widgets/app_header.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/responsive_overlays.dart';
+import '../services/pdf_fonts.dart';
 
 class VeliWeeklyReportPage extends StatefulWidget {
   const VeliWeeklyReportPage({super.key});
@@ -842,8 +843,13 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                               ),
                         ),
                         const SizedBox(height: 3),
+                        // Eskiden her veliye sabit bir örnek adres gösteriliyordu.
                         Text(
-                          'mehmet.yilmaz.veli@example.com'.tr,
+                          _parentEmail.isEmpty
+                              ? 'Kayıtlı e-posta yok'.tr
+                              : _parentEmail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
@@ -889,8 +895,19 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
     );
   }
 
+  /// Seçili çocuğun bağlı veli kaydındaki e-posta.
+  String get _parentEmail =>
+      _children
+          .where((item) => item.fullName == _selectedChild)
+          .firstOrNull
+          ?.parentEmail
+          .trim() ??
+      '';
+
   Future<void> _openEmail(BuildContext context) async {
-    const email = 'veli@courseintellect.app';
+    // Rapor velinin kendi kayıtlı adresine gönderilir (eskiden eski markanın
+    // var olmayan bir adresi açılıyordu).
+    final email = _parentEmail;
     final uri = Uri(
       scheme: 'mailto',
       path: email,
@@ -916,7 +933,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
   }
 
   Future<void> _downloadPdf(BuildContext context) async {
-    final document = pw.Document();
+    final document = pw.Document(theme: await turkishPdfTheme());
     document.addPage(
       pw.MultiPage(
         build: (_) => [

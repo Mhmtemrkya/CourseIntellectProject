@@ -14,6 +14,7 @@ import '../services/exam_results_store.dart';
 import '../services/planned_exam_api_service.dart';
 import '../services/school_feed_api_service.dart';
 import '../widgets/responsive_overlays.dart';
+import '../services/pdf_fonts.dart';
 
 /// Masaüstündeki "Yönet" penceresinin mobil karşılığı.
 ///
@@ -226,14 +227,14 @@ class _ExamManageSheetState extends State<_ExamManageSheet> {
   Future<void> _sharePdf() => _run(() async {
     final rows = _rows..sort((a, b) => b.score.compareTo(a.score));
     final stats = _Stats.from(rows);
-    final document = pw.Document();
+    final document = pw.Document(theme: await turkishPdfTheme());
     document.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(28),
         build: (_) => [
           pw.Text(
-            'SINAV SONUC RAPORU',
+            'SINAV SONUÇ RAPORU',
             style: pw.TextStyle(
               fontSize: 10,
               letterSpacing: 2,
@@ -252,29 +253,29 @@ class _ExamManageSheetState extends State<_ExamManageSheet> {
             runSpacing: 10,
             children: [
               _pdfChip('Ders', widget.exam.subject),
-              _pdfChip('Sinif', widget.exam.className),
+              _pdfChip('Sınıf', widget.exam.className),
               _pdfChip('Tur', widget.exam.type),
               _pdfChip(
                 'Tarih',
                 '${widget.exam.dateLabel} ${widget.exam.startTime}'.trim(),
               ),
-              _pdfChip('Sure', widget.exam.duration),
+              _pdfChip('Süre', widget.exam.duration),
               _pdfChip('Soru', '${widget.exam.questionCount}'),
             ],
           ),
           pw.SizedBox(height: 18),
           pw.Row(
             children: [
-              _pdfStat('Katilim', '${stats.count}'),
+              _pdfStat('Katılım', '${stats.count}'),
               _pdfStat('Ortalama', '${stats.average}'),
-              _pdfStat('En yuksek', '${stats.highest}'),
-              _pdfStat('En dusuk', '${stats.lowest}'),
-              _pdfStat('Gecen', '${stats.passed}'),
+              _pdfStat('En yüksek', '${stats.highest}'),
+              _pdfStat('En düşük', '${stats.lowest}'),
+              _pdfStat('Geçen', '${stats.passed}'),
             ],
           ),
           pw.SizedBox(height: 18),
           pw.TableHelper.fromTextArray(
-            headers: ['#', 'Ogrenci', 'Sinif', 'Net', 'Puan'],
+            headers: ['#', 'Öğrenci', 'Sınıf', 'Net', 'Puan'],
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
             cellStyle: const pw.TextStyle(fontSize: 10),
@@ -317,7 +318,7 @@ class _ExamManageSheetState extends State<_ExamManageSheet> {
 
   Future<void> _shareCsv() => _run(() async {
     final rows = _rows..sort((a, b) => b.score.compareTo(a.score));
-    final buffer = StringBuffer('﻿Ogrenci,Sinif,Sinav,Ders,Net,Puan\n');
+    final buffer = StringBuffer('﻿Öğrenci,Sınıf,Sınav,Ders,Net,Puan\n');
     for (final row in rows) {
       buffer.writeln(
         '"${row.studentName}","${row.className}","${widget.exam.title}",'

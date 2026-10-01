@@ -124,7 +124,9 @@ public sealed class ReportsController(
                 average = classExams.Any() ? (int)Math.Round(classExams.Average(item => item.Score)) : 0,
                 attendance = attendanceRate,
                 completion = completionRate,
-                trend = classExams.Count >= 2 ? BuildTrend(classExams) : $"+{Math.Max(1, classStudents.Count % 4)}",
+                // Karşılaştırılacak iki sınav yokken eğilim uydurulmaz (eskiden öğrenci
+                // sayısından "+1..+3" üretiliyordu).
+                trend = classExams.Count >= 2 ? BuildTrend(classExams) : "+0",
                 topTopic = topicPerformance.OrderByDescending(item => item.Average).FirstOrDefault()?.Subject ?? "Veri Yok",
                 supportTopic = topicPerformance.OrderBy(item => item.Average).FirstOrDefault()?.Subject ?? "Veri Yok",
             };
@@ -139,7 +141,9 @@ public sealed class ReportsController(
             {
                 name = group.Key,
                 success = group.Any() ? (int)Math.Round(group.Average(item => item.Score)) : 0,
-                questionCount = group.Sum(item => Math.Max(item.Net, 0)),
+                // Net toplamı (≈ doğru çözülen soru). Tam sayıya yuvarlanır: ondalık
+                // gelince mobil rapor ekranı tip hatasıyla açılmıyordu.
+                questionCount = (int)Math.Round(group.Sum(item => Math.Max(item.Net, 0))),
                 riskLevel = group.Any() && group.Average(item => item.Score) >= 80
                     ? "Düşük Risk"
                     : group.Any() && group.Average(item => item.Score) >= 65

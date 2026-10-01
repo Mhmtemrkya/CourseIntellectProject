@@ -127,7 +127,7 @@ class _AdminStudentEditPageState extends State<AdminStudentEditPage> {
                   _field(_className, 'Sınıf', required: true),
                   _field(_currentSchool, 'Okudugu Okul'),
                   _field(_schoolNumber, 'Okul No'),
-                  _field(_birthDate, 'Dogum Tarihi (gg.aa.yyyy)'),
+                  _field(_birthDate, 'Doğum Tarihi (gg.aa.yyyy)'),
                   _field(_programType, 'Alan / Program'),
                 ],
               ),

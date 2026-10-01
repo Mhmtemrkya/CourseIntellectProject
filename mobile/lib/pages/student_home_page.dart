@@ -323,6 +323,7 @@ class _StudentHomePageState extends State<StudentHomePage>
                   icon: Icons.menu_book_outlined,
                   color: const Color(0xFFEF4444),
                   onTap: goToWrongAnswers,
+                  stacked: true,
                 ),
               ),
               const SizedBox(width: 10),
@@ -332,6 +333,7 @@ class _StudentHomePageState extends State<StudentHomePage>
                   icon: Icons.notifications_active_outlined,
                   color: const Color(0xFF7C3AED),
                   onTap: goToNotifications,
+                  stacked: true,
                 ),
               ),
               const SizedBox(width: 10),
@@ -341,6 +343,7 @@ class _StudentHomePageState extends State<StudentHomePage>
                   icon: Icons.event_busy_outlined,
                   color: const Color(0xFFB42318),
                   onTap: goToAttendanceHistory,
+                  stacked: true,
                 ),
               ),
             ],
@@ -500,9 +503,11 @@ class _StudentHomePageState extends State<StudentHomePage>
             ),
           ),
           const SizedBox(height: 16),
-          Wrap(
+          ResponsiveGrid(
             spacing: 10,
-            runSpacing: 10,
+            phone: 2,
+            tablet: 3,
+            largeTablet: 4,
             children: [
               _miniAction(
                 title: "Soru Sor",
@@ -573,18 +578,51 @@ class _StudentHomePageState extends State<StudentHomePage>
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    // Üçlü satır gibi dar yerlerde simge üstte, ad altta: yatay düzen metne
+    // ~38 pt bırakıyor, "Devamsızlık" harf harf bölünüyordu.
+    bool stacked = false,
   }) {
+    final decoration = BoxDecoration(
+      color: color.withValues(alpha: 0.10),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: color.withValues(alpha: 0.24)),
+    );
+    if (stacked) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          height: 84,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+          decoration: decoration,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color),
+              const SizedBox(height: 6),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        width: 150,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color.withValues(alpha: 0.24)),
-        ),
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: decoration,
         child: Row(
           children: [
             Icon(icon, color: color),
@@ -592,7 +630,9 @@ class _StudentHomePageState extends State<StudentHomePage>
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w700, height: 1.2),
               ),
             ),
           ],

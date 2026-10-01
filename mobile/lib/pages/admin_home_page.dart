@@ -1364,8 +1364,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
           ),
           child: AdminPanel(
             padding: const EdgeInsets.fromLTRB(8, 12, 8, 10),
+            // Simge (38) + boşluk (8) + iki satır başlık için yer; sabit
+            // yükseklik kutucukları eşit boyda tutar.
             child: SizedBox(
-              height: 72,
+              height: 82,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

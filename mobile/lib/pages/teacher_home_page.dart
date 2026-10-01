@@ -1669,9 +1669,13 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       },
     ];
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+    // Sabit 112 pt kartlar telefonda 3'ü yan yana sığmıyordu (2'şer dizilip
+    // sağda boşluk kalıyordu); ızgara genişliği gerçek alandan hesaplar.
+    return ResponsiveGrid(
+      spacing: 10,
+      phone: 3,
+      tablet: 5,
+      largeTablet: 6,
       children: actions
           .map(
             (item) => _quickActionCard(
@@ -1697,8 +1701,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       behavior: HitTestBehavior.opaque,
       onTap: () => _openPage(page),
       child: Container(
-        width: 112,
-        padding: const EdgeInsets.all(16),
+        height: 104,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
@@ -1706,16 +1710,23 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           ),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white, size: 30),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+            Icon(icon, color: Colors.white, size: 28),
+            const SizedBox(height: 8),
+            // Tek kelimelik uzun başlık ("Öğrencilerim") kelime ortasından
+            // bölünmesin: sığmazsa hafifçe küçülür.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  height: 1.2,
+                ),
               ),
             ),
           ],

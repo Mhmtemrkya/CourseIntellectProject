@@ -7,6 +7,7 @@ import '../services/student_registry_store.dart';
 import 'accounting_discount_form_page.dart';
 import '../widgets/app_header.dart';
 import '../widgets/accounting_ui.dart';
+import '../widgets/responsive_layout.dart';
 
 class AccountingDiscountPage extends StatefulWidget {
   const AccountingDiscountPage({super.key});
@@ -137,17 +138,19 @@ class _AccountingDiscountPageState extends State<AccountingDiscountPage> {
     int beneficiaries,
     int totalRecords,
   ) {
+    // Telefonda dört gösterge tek satırda ~75 pt'ye sıkışıp etiketler harf
+    // harf bölünüyordu; telefonda 2×2, tablette tek satır.
     return AccountingPanel(
-      child: Row(
+      child: ResponsiveGrid(
+        spacing: 12,
+        phone: 2,
+        tablet: 4,
+        largeTablet: 4,
         children: [
-          Expanded(child: _metric(context, 'Aktif İndirim', '$activeDiscount')),
-          Expanded(child: _metric(context, 'Aktif Burs', '$activeScholarship')),
-          Expanded(
-            child: _metric(context, 'Yararlanan', '$beneficiaries öğrenci'),
-          ),
-          Expanded(
-            child: _metric(context, 'Toplam Tanım', '$totalRecords kayıt'),
-          ),
+          _metric(context, 'Aktif İndirim', '$activeDiscount'),
+          _metric(context, 'Aktif Burs', '$activeScholarship'),
+          _metric(context, 'Yararlanan', '$beneficiaries öğrenci'),
+          _metric(context, 'Toplam Tanım', '$totalRecords kayıt'),
         ],
       ),
     );

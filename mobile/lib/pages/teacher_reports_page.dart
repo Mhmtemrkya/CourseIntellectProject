@@ -15,6 +15,7 @@ import 'package:student/services/reports_analytics_api_service.dart';
 import 'package:student/services/teacher_weekly_report_api_service.dart';
 import 'package:student/widgets/responsive_layout.dart';
 import 'package:student/widgets/responsive_overlays.dart';
+import '../services/pdf_fonts.dart';
 
 class TeacherReportsPage extends StatefulWidget {
   const TeacherReportsPage({super.key});
@@ -305,12 +306,18 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
         .firstOrNull;
   }
 
+  /// Sunucu ortalama/oranları ondalıklı döndürebilir (85.5); `as int?`
+  /// dönüşümü bu durumda çalışma hatasıyla ekranı düşürüyordu.
+  static int _reportInt(Object? value) => value is num
+      ? value.round()
+      : int.tryParse('${value ?? ''}') ?? 0;
+
   int _studentAverage(TeacherWeeklyReportStudentRecord student) {
-    return (_classReportForStudent(student)?["average"] as int?) ?? 0;
+    return _reportInt(_classReportForStudent(student)?["average"]);
   }
 
   int _studentAttendance(TeacherWeeklyReportStudentRecord student) {
-    return (_classReportForStudent(student)?["attendance"] as int?) ?? 0;
+    return _reportInt(_classReportForStudent(student)?["attendance"]);
   }
 
   Map<String, dynamic> _studentReportMap(
@@ -319,7 +326,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
   ) {
     final classReport = _classReportForStudent(student);
     final average =
-        analytics?.averageScore ?? classReport?["average"] as int? ?? 0;
+        analytics?.averageScore ?? _reportInt(classReport?["average"]);
     return {
       "className": student.className.isEmpty
           ? "Sınıf bilgisi yok"
@@ -328,8 +335,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
       "studentNo": student.username,
       "studentCount": 1,
       "average": average,
-      "attendance": classReport?["attendance"] as int? ?? 0,
-      "completion": classReport?["completion"] as int? ?? 0,
+      "attendance": _reportInt(classReport?["attendance"]),
+      "completion": _reportInt(classReport?["completion"]),
       "trend": classReport?["trend"] as String? ?? "+0",
       "topTopic":
           analytics?.strongestSubject ??
@@ -369,7 +376,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
   }
 
   Future<File> _createReportPdfFile(Map<String, dynamic> report) async {
-    final document = pw.Document();
+    final document = pw.Document(theme: await turkishPdfTheme());
     final isStudentReport =
         (report['studentName']?.toString() ?? '').isNotEmpty;
     final title = isStudentReport
@@ -794,8 +801,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                 final classReport = _classReportForStudent(student);
                 final average =
                     analytics?.averageScore ?? _studentAverage(student);
-                final attendance = classReport?["attendance"] as int? ?? 0;
-                final completion = classReport?["completion"] as int? ?? 0;
+                final attendance = _reportInt(classReport?["attendance"]);
+                final completion = _reportInt(classReport?["completion"]);
                 final riskScore =
                     analytics?.riskScore ?? (100 - average).clamp(0, 100);
                 final reportMap = _studentReportMap(student, analytics);
@@ -3004,7 +3011,7 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
   }
 
   Future<File> _createPdfFile() async {
-    final document = pw.Document();
+    final document = pw.Document(theme: await turkishPdfTheme());
     final isStudentReport = _text('studentName') != '-';
     document.addPage(
       pw.MultiPage(

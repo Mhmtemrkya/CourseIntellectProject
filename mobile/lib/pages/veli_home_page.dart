@@ -30,6 +30,9 @@ import 'veli_weekly_report_page.dart';
 import 'cafeteria_weekly_menu_page.dart';
 import 'service_live_status_page.dart';
 import '../widgets/responsive_layout.dart';
+import '../services/school_feed_api_service.dart';
+import '../services/exam_results_store.dart';
+import '../utils/log_ignored.dart';
 
 class VeliHomePage extends StatefulWidget {
   const VeliHomePage({super.key});
@@ -40,6 +43,7 @@ class VeliHomePage extends StatefulWidget {
 
 class _VeliHomePageState extends State<VeliHomePage> {
   String _selectedChild = 'Öğrenci';
+  List<ExamScoreRecord> _examRecords = const [];
   List<LinkedChildRecord> _linkedChildren = const [];
   List<Map<String, dynamic>> _weeklySchedule = const [];
   List<TeacherWeeklyReportRecord> _teacherReports = const [];
@@ -127,8 +131,37 @@ class _VeliHomePageState extends State<VeliHomePage> {
     }
     await AttendanceService.instance.refresh(studentName: _selectedChild);
     await _loadTeacherReports();
+    await _loadExamRecords();
     _weeklySchedule = _buildWeeklySchedule();
     if (mounted) setState(() {});
+  }
+
+  /// Gerçek sınav sonuçları (sunucu velinin kendi çocuklarıyla sınırlar).
+  Future<void> _loadExamRecords() async {
+    try {
+      _examRecords = await SchoolFeedApiService.instance.fetchExamResults();
+    } catch (e) {
+      logIgnored('veli_home_page', e);
+      _examRecords = const [];
+    }
+  }
+
+  static String _nameKey(String value) => value
+      .trim()
+      .replaceAll('İ', 'i')
+      .replaceAll('I', 'ı')
+      .toLowerCase()
+      .replaceAll(RegExp(r'\s+'), ' ');
+
+  /// Seçili çocuğun sınav ortalaması; sınavı yoksa null ("—" gösterilir).
+  int? _childExamAverage() {
+    final key = _nameKey(_selectedChild);
+    final scores = _examRecords
+        .where((item) => _nameKey(item.studentName) == key)
+        .map((item) => item.score)
+        .toList();
+    if (scores.isEmpty) return null;
+    return (scores.reduce((a, b) => a + b) / scores.length).round();
   }
 
   Future<void> _loadTeacherReports() async {
@@ -587,13 +620,15 @@ class _VeliHomePageState extends State<VeliHomePage> {
                   children: [
                     Text(
                       _selectedChild.replaceAll('Yilmaz', 'Yılmaz'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${_classForChild(_selectedChild)} • Sayısal • Son güncelleme bugün',
+                      _classForChild(_selectedChild),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.textTheme.bodySmall?.color?.withValues(
                           alpha: 0.7,
@@ -603,13 +638,21 @@ class _VeliHomePageState extends State<VeliHomePage> {
                   ],
                 ),
               ),
+            ],
+          ),
+          // Düğmeler başlıkla aynı satırdayken telefonda öğrenci adına ~35 pt
+          // kalıyor, ad harf harf bölünüyordu.
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
               FilledButton.tonalIcon(
                 onPressed: () =>
                     _openPage(context, const VeliExamResultsPage()),
                 icon: const Icon(Icons.analytics_outlined),
                 label: Text('Sonuçlar'.tr),
               ),
-              const SizedBox(width: 8),
               FilledButton.tonalIcon(
                 onPressed: () => _openPage(context, const ExamAnalysisPage()),
                 icon: const Icon(Icons.insights_rounded),
@@ -624,7 +667,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
                 child: _metricBox(
                   context,
                   title: 'Ortalama',
-                  value: '${(84 - (absent * 2)).clamp(55, 100)}',
+                  // Eskiden "84 - devamsızlık×2" ile uydurulan bir sayıydı;
+                  // artık çocuğun gerçek sınav ortalaması.
+                  value: _childExamAverage()?.toString() ?? '—',
                   color: const Color(0xFF0F766E),
                 ),
               ),
@@ -1724,6 +1769,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
           if (value == null) return;
           setState(() => _selectedChild = value);
           await AttendanceService.instance.refresh(studentName: value);
+          // Öğretmen raporları da seçilen çocuğa göre yenilenir; eskiden
+          // önceki çocuğun raporu ekranda kalıyordu.
+          await _loadTeacherReports();
           _weeklySchedule = _buildWeeklySchedule();
           if (mounted) setState(() {});
         },

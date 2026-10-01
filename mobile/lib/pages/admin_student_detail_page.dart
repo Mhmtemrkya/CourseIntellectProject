@@ -226,7 +226,7 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
                 _infoRow('Sınıf', student.className),
                 _infoRow('Okudugu Okul', student.currentSchool),
                 _infoRow('Okul No', student.schoolNumber),
-                _infoRow('Dogum Tarihi', student.birthDate),
+                _infoRow('Doğum Tarihi', student.birthDate),
                 _infoRow('Alan / Program', student.programType),
               ],
             ),

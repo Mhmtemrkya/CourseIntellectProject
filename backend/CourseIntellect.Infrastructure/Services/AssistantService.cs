@@ -651,7 +651,7 @@ public sealed class AssistantService(
     private async Task<AssistantResponseDto> AttendanceAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
     {
         var rows = await db.AttendanceEntries.AsNoTracking().Where(x => x.StudentName == student.FullName).OrderByDescending(x => x.LessonDate).Take(30).Select(x => new { date = x.LessonDate, x.Status, x.Lesson }).ToListAsync(ct);
-        var data = new { studentId = student.Id, student.FullName, total = rows.Count, absent = rows.Count(x => x.Status.Contains("Gelmedi", StringComparison.OrdinalIgnoreCase)), late = rows.Count(x => x.Status.Contains("Geç", StringComparison.OrdinalIgnoreCase)), recent = rows };
+        var data = new { studentId = student.Id, student.FullName, total = rows.Count, absent = rows.Count(x => AttendanceStatusMatcher.IsAbsent(x.Status)), late = rows.Count(x => AttendanceStatusMatcher.IsLate(x.Status)), recent = rows };
         return Build(conversationId, "attendance_summary", $"{student.FullName} için devamsızlık özeti hazırlandı.", data, AssistantIntent.GetAttendance, StudentActions(student.Id));
     }
 
@@ -763,7 +763,7 @@ public sealed class AssistantService(
             .Select(x => x.Status)
             .ToListAsync(ct);
 
-        var absences = rows.Count(x => x.Contains("Gelmedi", StringComparison.OrdinalIgnoreCase));
+        var absences = rows.Count(AttendanceStatusMatcher.IsAbsent);
         if (absences == 0)
             return Build(conversationId, "text",
                 $"{student.FullName} için son kayıtlarda devamsızlık yok — bilgilendirme gönderilmedi.",

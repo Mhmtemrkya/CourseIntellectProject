@@ -188,7 +188,7 @@ export default function Settings() {
               </Avatar>
               <div className="flex-1">
                 <h3 className="text-xl font-semibold">{user?.name || 'Kullanıcı'}</h3>
-                <p className="text-muted-foreground">{user?.email || 'email@example.com'}</p>
+                <p className="text-muted-foreground">{user?.email || 'Kayıtlı e-posta yok'}</p>
                 <div className="flex gap-2 mt-2">
                   <Badge className="bg-brand-primary text-white">{user?.role === 'admin' ? 'Yönetici' : user?.role}</Badge>
                   <Badge variant="outline">{user?.tenant || 'Kurum'}</Badge>

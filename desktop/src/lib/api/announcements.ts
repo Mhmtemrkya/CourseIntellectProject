@@ -18,7 +18,16 @@ export async function fetchAnnouncements(
   const response = await api.get<AnnouncementDto[]>('/api/announcements', {
     params: Object.keys(options).length > 0 ? options : undefined,
   });
-  return response;
+  return response ? response.filter(isVisibleAnnouncement) : response;
+}
+
+/**
+ * Eski sürüm canlı dersleri duyuru olarak "LIVE_LESSON / teacher=…" biçiminde
+ * saklıyordu; canlı dersler artık kendi ucundan gelir. Bu kayıtlar hiçbir
+ * duyuru listesinde ham metin olarak gösterilmez (mobil de aynı kuralı uygular).
+ */
+export function isVisibleAnnouncement(item: Pick<AnnouncementDto, 'detail'>): boolean {
+  return !String(item.detail || '').startsWith('LIVE_LESSON');
 }
 
 export async function createAnnouncement(payload: CreateAnnouncementRequest): Promise<AnnouncementDto | null> {

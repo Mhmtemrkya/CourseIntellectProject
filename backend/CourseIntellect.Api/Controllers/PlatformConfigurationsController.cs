@@ -23,10 +23,23 @@ public sealed class PlatformConfigurationsController(
     private const int MaxLogoEdgePixels = 4096;
     private const long MaxLogoPixels = 16_000_000;
 
+    // İdari personel menüsündeki "Personel Kaydı" ekranı kurumun branş listesine
+    // ihtiyaç duyar; eskiden 403 alıyor, form kurumun kendi branşlarını
+    // gösteremiyordu. İdari personel yalnız bu türleri OKUYABİLİR; tür vermeden
+    // tüm yapılandırmayı okumak ve yazmak yöneticiye kalır.
+    private static readonly HashSet<string> AdministrativeReadableTypes =
+        new(StringComparer.OrdinalIgnoreCase) { "staff-branches", "class-management" };
+
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Administrative")]
     public async Task<IActionResult> Get([FromQuery] string? configurationType, CancellationToken cancellationToken)
     {
+        if (!User.IsInRole("Admin")
+            && (string.IsNullOrWhiteSpace(configurationType) || !AdministrativeReadableTypes.Contains(configurationType)))
+        {
+            return Forbid();
+        }
+
         var items = await platformConfigurationService.GetAsync(configurationType, cancellationToken);
         return Ok(items);
     }

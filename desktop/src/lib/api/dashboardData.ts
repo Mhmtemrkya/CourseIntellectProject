@@ -1,4 +1,5 @@
 import { api } from './client';
+import { isVisibleAnnouncement } from './announcements';
 import { isUserPassive } from '../userStatus';
 import type { PlannedExam } from './plannedExams';
 import type { UserLike } from '../../types/session';
@@ -286,7 +287,7 @@ export async function fetchAdminDashboardData(): Promise<AdminDashboardData> {
   const students = safeData(studentsResult, []).filter((item) => !isUserPassive(item.status));
   const staff = safeData(staffResult, []).filter((item) => !isUserPassive(item.status));
   const attendance = safeData(attendanceResult, []);
-  const announcements = safeData(announcementsResult, []);
+  const announcements = safeData(announcementsResult, []).filter(isVisibleAnnouncement);
   const threads = safeData(threadsResult, []);
   const notifications = safeData(notificationsResult, []);
   const leaves = safeData(leavesResult, []);
@@ -610,7 +611,7 @@ export async function fetchStudentDashboardData(user: UserLike | null | undefine
   const contents = safeData(contentsResult, []);
   const studyPlan = settledValue(studyPlanResult);
   const homework = safeData(homeworkResult, []);
-  const announcements = safeData(announcementsResult, []);
+  const announcements = safeData(announcementsResult, []).filter(isVisibleAnnouncement);
   const threads = safeData(threadsResult, []);
   const attendance = safeData(attendanceResult, []);
   const scheduleEntries = safeData(scheduleResult, []);
@@ -849,7 +850,7 @@ export async function fetchTeacherDashboardData(user: UserLike | null | undefine
   const scheduleEntries = safeData(scheduleResult, []);
   const examResults = safeData(examResultsResult, []);
   const plannedExams = safeData(plannedExamsResult, []);
-  const announcements = safeData(announcementsResult, []);
+  const announcements = safeData(announcementsResult, []).filter(isVisibleAnnouncement);
 
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -1034,7 +1035,7 @@ export async function fetchParentDashboardData(user: UserLike | null | undefined
     api.get<StudentFinanceAccountDto[]>('/api/parent/finance/children'),
   ]);
 
-  const announcements = safeData(announcementsResult, []);
+  const announcements = safeData(announcementsResult, []).filter(isVisibleAnnouncement);
   const threads = safeData(threadsResult, []);
   const attendance = safeData(attendanceResult, []);
   const homework = safeData(homeworkResult, []);

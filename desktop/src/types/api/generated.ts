@@ -510,6 +510,7 @@ export interface AppUser {
   photoUrl: string;
   isEmailVerified: boolean;
   mustChangePassword: boolean;
+  securityVersion: number;
   temporaryPasswordExpiresAtUtc: string | null;
   createdAtUtc: string;
   lastLoginAtUtc: string | null;
@@ -861,6 +862,7 @@ export interface AuthorizationCode {
   id: string;
   code: string;
   userId: string;
+  securityVersion: number;
   clientId: string;
   redirectUri: string;
   codeChallengeHash: string;
@@ -1006,6 +1008,17 @@ export interface ChunkedFileUploadRequest {
   totalSize: number;
   chunkIndex: number;
   totalChunks: number;
+}
+
+// CourseIntellect.Api/Controllers/UploadsController.cs
+export interface ChunkUploadState {
+  fileName: string;
+  contentType: string;
+  folder: string;
+  totalSize: number;
+  totalChunks: number;
+  nextChunkIndex: number;
+  nextByte: number;
 }
 
 // CourseIntellect.Api/Controllers/ClassesController.cs
@@ -2714,6 +2727,7 @@ export interface DrivingLessonLedgerEntry {
   studentDrivingProfileId: string;
   drivingLessonId: string | null;
   appointmentId: string | null;
+  drivingChargeId: string | null;
   minutesDelta: number;
   entryType: DrivingLedgerEntryType;
   description: string;
@@ -3760,6 +3774,14 @@ export interface FinancePaymentDto {
   branchName: string;
 }
 
+// CourseIntellect.Domain/Entities/FinancePayment.cs
+export interface FinanceReceiptSequence {
+  id: string;
+  tenantId: string | null;
+  period: string;
+  lastValue: number;
+}
+
 // CourseIntellect.Application/DTOs/Auth/PasswordResetDtos.cs
 export interface ForgotPasswordRequest {
   email: string;
@@ -3892,6 +3914,7 @@ export interface HomeworkSubmission {
   id: string;
   tenantId: string | null;
   assignmentId: string;
+  studentUserId: string | null;
   studentName: string;
   note: string;
   filesSerialized: string;
@@ -4334,6 +4357,7 @@ export interface MessageItem {
   id: string;
   tenantId: string | null;
   threadId: string;
+  senderUserId: string | null;
   senderName: string;
   senderRole: string;
   text: string;
@@ -4369,6 +4393,8 @@ export interface MessageStatusChangedDto {
 export interface MessageThread {
   id: string;
   tenantId: string | null;
+  participantOneUserId: string | null;
+  participantTwoUserId: string | null;
   participantOneName: string;
   participantOneRole: string;
   participantTwoName: string;
@@ -5402,6 +5428,7 @@ export interface RefreshTokenRequest {
 export interface RefreshTokenSession {
   id: string;
   userId: string;
+  securityVersion: number;
   tokenHash: string;
   expiresAtUtc: string;
   createdAtUtc: string;
@@ -6725,6 +6752,7 @@ export interface StudentQuestionReply {
   id: string;
   tenantId: string | null;
   threadId: string;
+  senderUserId: string | null;
   senderName: string;
   senderRole: string;
   messageText: string;
@@ -6736,6 +6764,8 @@ export interface StudentQuestionReply {
 export interface StudentQuestionThread {
   id: string;
   tenantId: string | null;
+  studentUserId: string | null;
+  teacherUserId: string | null;
   title: string;
   subject: string;
   studentName: string;
@@ -7114,12 +7144,13 @@ export interface TenantRegistrationContext {
 
 // CourseIntellect.Application/DTOs/PlatformOperations/RegisterTenantRequest.cs
 export const TenantRegistrationOutcome = {
-  Accepted: 0,
-  Duplicate: 1,
-  Invalid: 2,
-  CaptchaFailed: 3,
-  Throttled: 4,
-  Blocked: 5,
+  Disabled: 0,
+  Accepted: 1,
+  Duplicate: 2,
+  Invalid: 3,
+  CaptchaFailed: 4,
+  Throttled: 5,
+  Blocked: 6,
 } as const;
 export type TenantRegistrationOutcome = (typeof TenantRegistrationOutcome)[keyof typeof TenantRegistrationOutcome];
 

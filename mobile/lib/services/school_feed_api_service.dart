@@ -178,6 +178,12 @@ class SchoolFeedApiService {
 
     final list = (jsonDecode(response.body) as List<dynamic>)
         .map((item) => Map<String, dynamic>.from(item as Map))
+        // Eski sürümün canlı dersleri duyuru olarak "LIVE_LESSON / teacher=…"
+        // biçiminde saklanıyordu; canlı dersler artık kendi ucundan gelir.
+        // Masaüstü gibi bu kayıtlar duyuru listesinde gösterilmez.
+        .where(
+          (map) => !((map['detail'] as String?) ?? '').startsWith('LIVE_LESSON'),
+        )
         .map(
           (map) => AnnouncementFeedItem(
             id: '${map['id'] ?? ''}',

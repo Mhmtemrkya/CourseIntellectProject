@@ -3,11 +3,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 
 import 'package:student/i18n/app_locale.dart';
+import '../services/admin_workflow_api_service.dart';
 import '../services/app_settings_api_service.dart';
 import '../services/auth_session_store.dart';
 import '../services/branding_service.dart';
 import '../services/institution_profile_api_service.dart';
 import '../theme_provider.dart';
+import '../utils/log_ignored.dart';
 import '../widgets/admin_ui.dart';
 import 'consent_station_page.dart';
 import 'school_contract_forms_page.dart';
@@ -39,6 +41,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   bool financeApprovals = true;
 
   bool _loading = true;
+  int? _activeBranchCount;
   bool _saving = false;
   bool _logoBusy = false;
   bool _canManageLogo = false;
@@ -77,6 +80,15 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       );
       final profile = await InstitutionProfileApiService.instance.fetch();
       final session = await AuthSessionStore.instance.load();
+      // Şube sayısı kurumun gerçek organizasyon birimlerinden gelir (eskiden
+      // her kurumda sabit "4" yazıyordu). Uç erişilemezse "-" gösterilir.
+      int? activeBranches;
+      try {
+        final units = await AdminWorkflowApiService.instance.getOrgUnits();
+        activeBranches = units.where((unit) => unit['isActive'] != false).length;
+      } catch (e) {
+        logIgnored('admin_settings_page', e);
+      }
       if (!mounted) return;
       final map = {for (final item in items) item.key: item.value};
       _schoolNameController.text = '${profile['name'] ?? ''}';
@@ -90,6 +102,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       _taxNumberController.text = '${profile['taxNumber'] ?? ''}';
       _footerNoteController.text = '${profile['documentFooterNote'] ?? ''}';
       _quotaController.text = map['institution_quota'] ?? '';
+      _activeBranchCount = activeBranches;
       autoReports = map['auto_reports'] != 'false';
       parentNotifications = map['parent_notifications'] != 'false';
       financeApprovals = map['finance_approvals'] != 'false';
@@ -288,7 +301,10 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                   description:
                       'Yönetici tarafında rapor, iletişim ve kapasite ayarları merkezi olarak güncellenir.',
                   metrics: [
-                    AdminHeroMetric(label: 'Aktif Şube'.tr, value: '4'),
+                    AdminHeroMetric(
+                      label: 'Aktif Şube'.tr,
+                      value: _activeBranchCount?.toString() ?? '-',
+                    ),
                     AdminHeroMetric(
                       label: 'Kapasite',
                       value: _quotaController.text.isEmpty

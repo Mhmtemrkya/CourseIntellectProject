@@ -188,6 +188,8 @@ class _AdminBranchRegistrationPageState
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
                           initialValue: _managerUserId,
+                          // Uzun "Ad · Rol" seçimi alana sığsın (… ile kısalır).
+                          isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Şube sorumlusu',
                             border: OutlineInputBorder(),

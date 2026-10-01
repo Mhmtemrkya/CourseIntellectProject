@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'card_system.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 
 import 'admin_ui.dart';
+import 'responsive_layout.dart';
 
 /// Masaüstündeki `DirectoryPage` bileşeninin mobil karşılığı.
 ///
@@ -163,13 +166,14 @@ class _DirectoryListState<T> extends State<DirectoryList<T>> {
             ),
           ?widget.banner,
           if (widget.stats.isNotEmpty) ...[
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              childAspectRatio: 2.5,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
+            // Sabit en-boy oranlı GridView kutuyu genişliğe göre boyluyordu;
+            // telefonda açıklama satırı sığmayıp kesiliyordu. Kutu içeriğe
+            // göre boylanır.
+            ResponsiveGrid(
+              spacing: 10,
+              phone: 2,
+              tablet: 2,
+              largeTablet: 4,
               children: widget.stats
                   .map((stat) => _statTile(theme, stat))
                   .toList(),
@@ -374,7 +378,12 @@ class DirectoryRowCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
-        decoration: contentCardDecoration(context, title: title, accent: color, radius: 20),
+        decoration: contentCardDecoration(
+          context,
+          title: title,
+          accent: color,
+          radius: 20,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -444,46 +453,63 @@ class DirectoryRowCard extends StatelessWidget {
             ),
             if (metrics.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Row(
-                children: metrics
-                    .map(
-                      (metric) => Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+              // Dar ekranda üç sütun sığmıyor: telefon numarası sütunu tamamen
+              // doldurup e-postaya bitişiyordu. Telefonda iki sütun, aralarında
+              // boşluk; genişte tek satır.
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const gap = 12.0;
+                  final columns = constraints.maxWidth < 420
+                      ? math.min(2, metrics.length)
+                      : metrics.length;
+                  final width =
+                      ((constraints.maxWidth - gap * (columns - 1)) / columns)
+                          .floorToDouble();
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: 10,
+                    children: metrics
+                        .map(
+                          (metric) => SizedBox(
+                            width: width,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  metric.icon,
-                                  size: 13,
-                                  color: theme.textTheme.bodySmall?.color,
+                                Row(
+                                  children: [
+                                    Icon(
+                                      metric.icon,
+                                      size: 13,
+                                      color: theme.textTheme.bodySmall?.color,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        metric.label.tr,
+                                        style: theme.textTheme.labelSmall,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    metric.label.tr,
-                                    style: theme.textTheme.labelSmall,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                const SizedBox(height: 2),
+                                Text(
+                                  metric.value.isEmpty ? '—' : metric.value,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              metric.value.isEmpty ? '—' : metric.value,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 12,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
+                          ),
+                        )
+                        .toList(),
+                  );
+                },
               ),
             ],
             if (actions.isNotEmpty) ...[

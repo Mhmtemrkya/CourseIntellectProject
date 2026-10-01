@@ -264,7 +264,7 @@ class _AdminCoursesPageState extends State<AdminCoursesPage> {
                         ],
                         const SizedBox(height: 8),
                         Text(
-                          'Ucret: ${course.price}',
+                          'Ücret: ${course.price}',
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
@@ -371,7 +371,7 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
             const SizedBox(height: 10),
             TextField(
               controller: _price,
-              decoration: const InputDecoration(labelText: 'Ucret'),
+              decoration: const InputDecoration(labelText: 'Ücret'),
             ),
             const SizedBox(height: 10),
             TextField(

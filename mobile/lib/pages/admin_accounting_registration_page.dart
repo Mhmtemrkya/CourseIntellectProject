@@ -117,7 +117,7 @@ class _AdminAccountingRegistrationPageState
                       Expanded(
                         child: _field(
                           controller: _startDateController,
-                          label: 'Ise Baslama Tarihi',
+                          label: 'İşe Başlama Tarihi',
                         ),
                       ),
                       const SizedBox(width: 12),

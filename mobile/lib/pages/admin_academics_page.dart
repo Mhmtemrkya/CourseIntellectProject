@@ -95,7 +95,7 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
             ],
           ),
           const SizedBox(height: 16),
-          const AdminSectionTitle(title: 'Brans Durumu'),
+          const AdminSectionTitle(title: 'Branş Durumu'),
           const SizedBox(height: 12),
           ...branchCards.map(
             (item) => AdminPanel(

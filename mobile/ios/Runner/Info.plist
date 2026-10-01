@@ -49,19 +49,19 @@
 			<true/>
 		</dict>
 		<key>NSCameraUsageDescription</key>
-		<string>QR yoklama ve soru gorseli icin kamera kullanilir.</string>
+		<string>QR yoklama ve soru görseli için kamera kullanılır.</string>
 		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-		<string>Servis aktifken telefon kilitli olsa bile sofor konumunu veli ve okul ile paylasmak icin kullanilir.</string>
+		<string>Servis aktifken telefon kilitli olsa bile şoför konumunu veli ve okul ile paylaşmak için kullanılır.</string>
 		<key>NSLocationAlwaysUsageDescription</key>
-		<string>Servis aktifken arka planda anlik rota takibi yapmak icin konum izni gerekir.</string>
+		<string>Servis aktifken arka planda anlık rota takibi yapmak için konum izni gerekir.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>Servis soforu rotadayken anlik konumunu veli ve okul ile paylasmak icin kullanilir.</string>
+		<string>Servis şoförü rotadayken anlık konumunu veli ve okul ile paylaşmak için kullanılır.</string>
 		<key>NSMicrophoneUsageDescription</key>
-		<string>Sesli soru kaydi ozelligi icin mikrofon kullanilir.</string>
+		<string>Sesli soru kaydı özelliği için mikrofon kullanılır.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
-		<string>Odev ve soru eklerini kaydetmek icin fotograf erisimi gerekir.</string>
+		<string>Ödev ve soru eklerini kaydetmek için fotoğraf erişimi gerekir.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>Odev ve soru ekleri icin fotograflara erisim gerekir.</string>
+		<string>Ödev ve soru ekleri için fotoğraflara erişim gerekir.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

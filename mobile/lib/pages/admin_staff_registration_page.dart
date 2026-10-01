@@ -448,6 +448,8 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: _teacherBranch,
+                    // Yarım genişlikte uzun branş adı sağa taşıyordu.
+                    isExpanded: true,
                     decoration: InputDecoration(
                       labelText: 'Branş'.tr,
                       border: OutlineInputBorder(),
@@ -456,7 +458,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                         .map(
                           (branch) => DropdownMenuItem(
                             value: branch,
-                            child: Text(branch),
+                            child: Text(
+                              branch,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         )
                         .toList(),
@@ -497,7 +502,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 Expanded(
                   child: _field(
                     controller: _teacherStartDateController,
-                    label: 'Ise Baslama Tarihi',
+                    label: 'İşe Başlama Tarihi',
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -906,7 +911,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 Expanded(
                   child: _field(
                     controller: _personnelStartDateController,
-                    label: 'Ise Baslama Tarihi',
+                    label: 'İşe Başlama Tarihi',
                   ),
                 ),
                 const SizedBox(width: 12),

@@ -96,6 +96,11 @@ class TeacherAnalyticsRecord {
 }
 
 class ReportsAnalyticsApiService {
+  /// Sayısal alanlar ondalık gelebilir (ör. net toplamı); `as int?` bu durumda
+  /// rapor ekranını tip hatasıyla düşürüyordu.
+  static int _asInt(Object? value) =>
+      value is num ? value.round() : int.tryParse('${value ?? ''}') ?? 0;
+
   ReportsAnalyticsApiService._();
 
   static final ReportsAnalyticsApiService instance =
@@ -119,10 +124,10 @@ class ReportsAnalyticsApiService {
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
     return ExamAnalyticsRecord(
       studentName: map['studentName'] as String? ?? studentName,
-      averageScore: map['averageScore'] as int? ?? 0,
-      netAverage: map['netAverage'] as int? ?? 0,
-      riskScore: map['riskScore'] as int? ?? 0,
-      examCount: map['examCount'] as int? ?? 0,
+      averageScore: _asInt(map['averageScore']),
+      netAverage: _asInt(map['netAverage']),
+      riskScore: _asInt(map['riskScore']),
+      examCount: _asInt(map['examCount']),
       strongestSubject: map['strongestSubject'] as String?,
       weakestSubject: map['weakestSubject'] as String?,
       subjects: (map['subjects'] as List<dynamic>? ?? const [])
@@ -130,8 +135,8 @@ class ReportsAnalyticsApiService {
           .map(
             (item) => ExamAnalyticsSubjectRecord(
               subject: item['subject'] as String? ?? 'Genel',
-              averageScore: item['averageScore'] as int? ?? 0,
-              examCount: item['examCount'] as int? ?? 0,
+              averageScore: _asInt(item['averageScore']),
+              examCount: _asInt(item['examCount']),
             ),
           )
           .toList(),
@@ -164,10 +169,10 @@ class ReportsAnalyticsApiService {
           .map(
             (item) => TeacherAnalyticsClassRecord(
               className: item['className'] as String? ?? 'Tanımsiz',
-              studentCount: item['studentCount'] as int? ?? 0,
-              average: item['average'] as int? ?? 0,
-              attendance: item['attendance'] as int? ?? 0,
-              completion: item['completion'] as int? ?? 0,
+              studentCount: _asInt(item['studentCount']),
+              average: _asInt(item['average']),
+              attendance: _asInt(item['attendance']),
+              completion: _asInt(item['completion']),
               trend: item['trend'] as String? ?? '+0',
               topTopic: item['topTopic'] as String? ?? 'Veri Yok',
               supportTopic: item['supportTopic'] as String? ?? 'Veri Yok',
@@ -179,8 +184,8 @@ class ReportsAnalyticsApiService {
           .map(
             (item) => TeacherAnalyticsTopicRecord(
               name: item['name'] as String? ?? 'Genel',
-              success: item['success'] as int? ?? 0,
-              questionCount: item['questionCount'] as int? ?? 0,
+              success: _asInt(item['success']),
+              questionCount: _asInt(item['questionCount']),
               riskLevel: item['riskLevel'] as String? ?? 'Bekleniyor',
             ),
           )
