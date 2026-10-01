@@ -20,19 +20,32 @@ public sealed class TenantAccessHubFilter(IServiceScopeFactory scopes, ILogger<T
         return Guid.TryParse(raw, out var userId) ? userId : null;
     }
 
-    private static IQueryable<Guid> AllowedUsers(CourseIntellectDbContext db, Guid[] userIds)
+    private static long? TokenSecurityVersion(HubCallerContext context)
+        => long.TryParse(context.User?.FindFirstValue("security_version"), out var v) ? v : null;
+
+    // Aktif kullanıcı + aktif kurum koşulunu geçen kullanıcıların güncel
+    // SecurityVersion'ını döndürür. SecurityVersion'ı burada süzmeyiz: bağlantı
+    // başına token claim'iyle karşılaştırılır (bir kullanıcının farklı
+    // sürümlerde birden çok açık soketi olabilir).
+    private static IQueryable<(Guid Id, long SecurityVersion)> AllowedUsers(CourseIntellectDbContext db, Guid[] userIds)
         => db.Users.IgnoreQueryFilters().AsNoTracking()
             .Where(u => userIds.Contains(u.Id) && u.Status == UserStatus.Active
                 && (u.TenantId == null || db.TenantWorkspaces.IgnoreQueryFilters()
                     .Any(t => t.Id == u.TenantId && t.Status == "active")))
-            .Select(u => u.Id);
+            .Select(u => new ValueTuple<Guid, long>(u.Id, u.SecurityVersion));
 
     private async Task<bool> Allowed(HubCallerContext context, CancellationToken ct)
     {
         if (UserId(context) is not Guid userId) return false;
         using var scope = scopes.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CourseIntellectDbContext>();
-        return await AllowedUsers(db, [userId]).AnyAsync(ct);
+        var row = await AllowedUsers(db, [userId]).FirstOrDefaultAsync(ct);
+        if (row.Id == Guid.Empty) return false;
+        // Parola reseti / oturum iptali SecurityVersion'ı artırır; açık soketin
+        // token'ındaki sürüm eskiyse bağlantı artık geçerli değildir. Eskiden
+        // yalnız Status/kurum aktifliğine bakılıyor, iptal edilmiş oturumun soketi
+        // mesaj almayı sürdürebiliyordu.
+        return TokenSecurityVersion(context) is long tokenVersion && tokenVersion == row.SecurityVersion;
     }
 
     public async ValueTask<object?> InvokeMethodAsync(HubInvocationContext invocation, Func<HubInvocationContext, ValueTask<object?>> next)
@@ -77,16 +90,22 @@ public sealed class TenantAccessHubFilter(IServiceScopeFactory scopes, ILogger<T
                     using var scope = scopes.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<CourseIntellectDbContext>();
                     var ids = snapshot.Select(c => UserId(c.Value)).OfType<Guid>().Distinct().ToArray();
-                    var allowed = new HashSet<Guid>();
-                    // Share checks across all hubs and connections instead of polling for every socket.
+                    // Kullanıcı başına GÜNCEL SecurityVersion. Her socket için ayrı
+                    // sorgu yerine toplu okunur; sürüm karşılaştırması bağlantı başına.
+                    var current = new Dictionary<Guid, long>();
                     foreach (var batch in ids.Chunk(1000))
-                        allowed.UnionWith(await AllowedUsers(db, batch).ToListAsync(stoppingToken));
+                        foreach (var row in await AllowedUsers(db, batch).ToListAsync(stoppingToken))
+                            current[row.Id] = row.SecurityVersion;
                     foreach (var (connectionId, context) in snapshot)
                     {
                         if (context.ConnectionAborted.IsCancellationRequested)
                             connections.TryRemove(connectionId, out _);
-                        else if (UserId(context) is not Guid userId || !allowed.Contains(userId))
+                        else if (UserId(context) is not Guid userId
+                            || !current.TryGetValue(userId, out var version)
+                            || TokenSecurityVersion(context) != version)
                         {
+                            // Status/kurum geçersiz VEYA token'ın SecurityVersion'ı
+                            // artık eski (parola reseti / oturum iptali) → soket düşer.
                             context.Abort();
                             connections.TryRemove(connectionId, out _);
                         }

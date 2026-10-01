@@ -101,19 +101,62 @@ public sealed class MessagesHub(CourseIntellectDbContext dbContext) : Hub
             .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(x => x.Id == parsedThreadId && x.TenantId == tenantId)
-            .Select(x => new { x.ParticipantOneName, x.ParticipantTwoName })
+            .Select(x => new
+            {
+                x.ParticipantOneUserId,
+                x.ParticipantTwoUserId,
+                x.ParticipantOneName,
+                x.ParticipantTwoName,
+            })
             .FirstOrDefaultAsync();
         if (thread is null) return false;
 
-        // Kullanıcının ad/e-posta/kullanıcı adı adaylarından herhangi biri
-        // katılımcı adıyla eşleşmeli. Karşılaştırma servisle AYNI normalizasyonu
-        // kullanır (MessageParticipantKey) — aksi hâlde kapı yanlış yerde açılır.
-        return BuildActorKeys(Context.User).Any(actorKey =>
-            MessageParticipantKey.IsParticipant(actorKey, thread.ParticipantOneName, thread.ParticipantTwoName));
+        return IsThreadParticipant(
+            ResolveUserId(Context.User),
+            BuildActorKeys(Context.User),
+            thread.ParticipantOneUserId,
+            thread.ParticipantTwoUserId,
+            thread.ParticipantOneName,
+            thread.ParticipantTwoName);
+    }
+
+    /// <summary>
+    /// Çağıran, thread'in katılımcılarından biri mi? Birincil kontrol DEĞİŞMEZ
+    /// kullanıcı kimliği üzerinden (thread katılımcı ID'lerini tutar, REST servisi
+    /// de ID ile kontrol eder). Ad eşleşmesi kimlik sahteciliğine açık bir yetki
+    /// kapısıdır — aynı kurumda adı/kullanıcı adı katılımcıyla çakışan yabancı bir
+    /// kullanıcı, thread GUID'ini bilirse gruba girip sonraki mesajları alabiliyordu.
+    /// Ada yalnız her iki ID de null olan ESKİ kayıtlarda (kimlik tabanlı kayda
+    /// geçmeden önce oluşturulmuş thread'ler) düşülür.
+    /// </summary>
+    public static bool IsThreadParticipant(
+        Guid? callerId,
+        IReadOnlyCollection<string> callerActorKeys,
+        Guid? participantOneUserId,
+        Guid? participantTwoUserId,
+        string participantOneName,
+        string participantTwoName)
+    {
+        if (participantOneUserId is not null || participantTwoUserId is not null)
+        {
+            return callerId is Guid id
+                && (participantOneUserId == id || participantTwoUserId == id);
+        }
+
+        return callerActorKeys.Any(actorKey =>
+            MessageParticipantKey.IsParticipant(actorKey, participantOneName, participantTwoName));
     }
 
     private Guid? ResolveTenantId()
         => Guid.TryParse(Context.User?.FindFirstValue("tenant_id"), out var tenantId) ? tenantId : null;
+
+    /// <summary>Token'daki değişmez kullanıcı kimliği (sub/nameid).</summary>
+    private static Guid? ResolveUserId(ClaimsPrincipal? user)
+    {
+        var raw = user?.FindFirstValue("sub") ?? user?.FindFirstValue("nameid")
+            ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(raw, out var id) ? id : null;
+    }
 
     public async Task SubscribePresence(string actorKey)
     {

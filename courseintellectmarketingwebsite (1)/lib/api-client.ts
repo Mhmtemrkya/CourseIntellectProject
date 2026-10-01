@@ -89,6 +89,19 @@ function buildUrl(path: string, query?: ApiRequestOptions["query"]) {
   return url.toString()
 }
 
+/**
+ * İstek, API ile AYNI origin'e mi gidiyor? Depolanan bearer token yalnız bu
+ * durumda eklenir — mutlak URL kabul ettiğimiz için (buildUrl), yanlışlıkla
+ * dış bir origin'e token sızdırmamanın savunma hattıdır.
+ */
+function isApiOrigin(targetUrl: string): boolean {
+  try {
+    return new URL(targetUrl).origin === new URL(API_BASE_URL).origin
+  } catch {
+    return false
+  }
+}
+
 function readStoredAccessToken(): string | null {
   if (typeof window === "undefined") {
     return null
@@ -134,9 +147,16 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     requestHeaders["Content-Type"] = "application/json"
   }
 
+  const targetUrl = buildUrl(path, query)
+  // Bearer yalnız API origin'ine giden isteklere eklenir. Çağrı yeri mutlak bir
+  // dış URL verirse (ya da origin çözülemezse) token gönderilmez.
+  if (requestHeaders.Authorization && !isApiOrigin(targetUrl)) {
+    delete requestHeaders.Authorization
+  }
+
   let response: Response
   try {
-    response = await fetch(buildUrl(path, query), {
+    response = await fetch(targetUrl, {
       method,
       headers: requestHeaders,
       body: isJsonBody ? JSON.stringify(body) : (body as BodyInit | null | undefined),

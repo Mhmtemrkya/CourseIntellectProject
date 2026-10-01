@@ -53,6 +53,46 @@ public sealed class TenantAccessHubFilterTests
         finally { await filter.StopAsync(CancellationToken.None); }
     }
 
+    [Fact]
+    public async Task Bumping_security_version_closes_a_previously_connected_socket()
+    {
+        using var db = new TestDb();
+        var (_, user) = await Seed(db, "active");
+        using var provider = new ServiceCollection().AddSingleton(db.Context).BuildServiceProvider();
+        using var filter = new TenantAccessHubFilter(provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<TenantAccessHubFilter>.Instance);
+        // Soket token'ı SecurityVersion=1 ile açıldı.
+        using var caller = new TestCaller(user.Id, securityVersion: 1);
+        var lifetime = new HubLifetimeContext(caller, provider, new TestHub());
+        await filter.StartAsync(CancellationToken.None);
+        try
+        {
+            await filter.OnConnectedAsync(lifetime, _ => Task.CompletedTask);
+            Assert.False(caller.ConnectionAborted.IsCancellationRequested);
+            // Parola reseti / oturum iptali → SecurityVersion artar; eski soket düşmeli.
+            user.SecurityVersion = 2;
+            await db.Context.SaveChangesAsync();
+            await caller.Aborted.Task.WaitAsync(TimeSpan.FromSeconds(12));
+            Assert.True(caller.ConnectionAborted.IsCancellationRequested);
+        }
+        finally { await filter.StopAsync(CancellationToken.None); }
+    }
+
+    [Fact]
+    public async Task Stale_token_version_cannot_invoke()
+    {
+        using var db = new TestDb();
+        var (_, user) = await Seed(db, "active");
+        user.SecurityVersion = 5;
+        await db.Context.SaveChangesAsync();
+        using var provider = new ServiceCollection().AddSingleton(db.Context).BuildServiceProvider();
+        using var filter = new TenantAccessHubFilter(provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<TenantAccessHubFilter>.Instance);
+        // Token eski sürümle (2) geldi; DB'de 5.
+        using var caller = new TestCaller(user.Id, securityVersion: 2);
+        var invocation = new HubInvocationContext(caller, provider, new TestHub(), typeof(TestHub).GetMethod(nameof(TestHub.Ping))!, []);
+        await Assert.ThrowsAsync<HubException>(async () => await filter.InvokeMethodAsync(invocation, _ => ValueTask.FromResult<object?>(null)));
+        Assert.True(caller.ConnectionAborted.IsCancellationRequested);
+    }
+
     private static async Task<(TenantWorkspace, AppUser)> Seed(TestDb db, string status)
     {
         var tenant = new TenantWorkspace { Name = "Okul", Slug = "okul", Status = status };
@@ -65,13 +105,14 @@ public sealed class TenantAccessHubFilterTests
     }
 
     private sealed class TestHub : Hub { public Task Ping() => Task.CompletedTask; }
-    private sealed class TestCaller(Guid userId) : HubCallerContext, IDisposable
+    private sealed class TestCaller(Guid userId, long securityVersion = 1) : HubCallerContext, IDisposable
     {
         private readonly CancellationTokenSource cancellation = new();
         public readonly TaskCompletionSource Aborted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public override string ConnectionId { get; } = Guid.NewGuid().ToString();
         public override string? UserIdentifier => userId.ToString();
-        public override ClaimsPrincipal User { get; } = new(new ClaimsIdentity([new Claim("sub", userId.ToString())], "test"));
+        public override ClaimsPrincipal User { get; } = new(new ClaimsIdentity(
+            [new Claim("sub", userId.ToString()), new Claim("security_version", securityVersion.ToString())], "test"));
         public override IDictionary<object, object?> Items { get; } = new Dictionary<object, object?>();
         public override IFeatureCollection Features { get; } = new FeatureCollection();
         public override CancellationToken ConnectionAborted => cancellation.Token;
