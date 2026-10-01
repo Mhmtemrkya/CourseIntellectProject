@@ -73,7 +73,8 @@ bu çalışma hukuki uygunluk denetimi veya güvenlik sertifikasyonu değildir.
 
 ## Doğrulama (1 Ekim 2026)
 
-- Backend derlemesi: 0 hata, 0 uyarı. Tam test paketi: 569 başarılı, 0 başarısız.
+- Backend test paketi: 572 başarılı, 3 PostgreSQL ortamı gerektiren test atlandı,
+  0 başarısız. Sağlayıcı testlerinin eski dinamik skip keşif sorunu kaldırıldı.
   Gerçek PostgreSQL testleri ayrı test veritabanı gerektirir; yerel toplam bunların
   çalıştığını kanıtlamaz. Yeni kontroller e-posta kuyruğu, eski kodların gönderilmemesi, doğrulama sonrası
   tek bildirim, CAPTCHA, SMTP TLS ve MVC alan doğrulamasını kapsar.

@@ -49,12 +49,10 @@ public sealed class TenantRegistrationConcurrencyTests : IDisposable
         Assert.Equal("approved", application.Status);
     }
 
-    [SkippableFact]
+    [PostgreSqlFact("COURSE_INTELLECT_TEST_POSTGRES")]
     public async Task PostgreSql_simultaneous_approval_has_exactly_one_atomic_claimant()
     {
         var connectionString = Environment.GetEnvironmentVariable("COURSE_INTELLECT_TEST_POSTGRES");
-        Skip.If(string.IsNullOrWhiteSpace(connectionString),
-            "COURSE_INTELLECT_TEST_POSTGRES tanımlı değil — gerçek PostgreSQL eşzamanlılık testi atlandı.");
 
         static CourseIntellectDbContext Context(string value, DbCommandInterceptor? interceptor = null)
         {

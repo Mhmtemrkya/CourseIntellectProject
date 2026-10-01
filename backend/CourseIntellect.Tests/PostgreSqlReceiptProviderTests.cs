@@ -12,11 +12,9 @@ public sealed class PostgreSqlReceiptProviderTests
     private static string? ConnectionString =>
         Environment.GetEnvironmentVariable("COURSE_INTELLECT_POSTGRES_TEST");
 
-    [SkippableFact]
+    [PostgreSqlFact("COURSE_INTELLECT_POSTGRES_TEST")]
     public async Task LatestMigration_IsAppliedAndCreatesReceiptAndIdentitySchema()
     {
-        Skip.If(string.IsNullOrEmpty(ConnectionString),
-            "COURSE_INTELLECT_POSTGRES_TEST tanımlı değil — gerçek PostgreSQL testi atlandı.");
         var connectionString = ConnectionString!;
 
         await using var connection = new NpgsqlConnection(connectionString);
@@ -53,11 +51,9 @@ public sealed class PostgreSqlReceiptProviderTests
         Assert.True(reader.GetBoolean(4));
     }
 
-    [SkippableFact]
+    [PostgreSqlFact("COURSE_INTELLECT_POSTGRES_TEST")]
     public async Task SeparateNpgsqlContexts_AllocateUniqueContiguousReceiptNumbersConcurrently()
     {
-        Skip.If(string.IsNullOrEmpty(ConnectionString),
-            "COURSE_INTELLECT_POSTGRES_TEST tanımlı değil — gerçek PostgreSQL testi atlandı.");
         var connectionString = ConnectionString!;
         var month = DateTime.UtcNow.ToString("yyyyMM");
 
