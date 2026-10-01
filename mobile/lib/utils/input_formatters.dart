@@ -41,6 +41,56 @@ class AppInputFormatters {
     return null;
   }
 
+  /// E-posta: boş opsiyoneldir; dolu gelince biçim doğrulanır.
+  static String? validateEmail(String? value, {bool required = false}) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) {
+      return required ? 'E-posta zorunludur' : null;
+    }
+    final lower = text.toLowerCase();
+    if (lower.length < 6 ||
+        lower.length > 180 ||
+        !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$').hasMatch(lower)) {
+      return 'Geçerli bir e-posta girin';
+    }
+    return null;
+  }
+
+  /// Doğum tarihi gg.aa.yyyy: geçerli tarih, gelecekte değil, son 120 yıl içinde.
+  static String? validateBirthDate(String? value, {bool required = false}) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) {
+      return required ? 'Doğum tarihi zorunludur' : null;
+    }
+    final m = RegExp(r'^(\d{2})\.(\d{2})\.(\d{4})$').firstMatch(text);
+    if (m == null) {
+      return 'gg.aa.yyyy biçiminde girin';
+    }
+    final day = int.parse(m.group(1)!);
+    final month = int.parse(m.group(2)!);
+    final year = int.parse(m.group(3)!);
+    final parsed = DateTime(year, month, day);
+    // DateTime taşmayı sessizce düzeltir (32.01 → 01.02); gerçek tarih mi kontrol.
+    if (parsed.year != year || parsed.month != month || parsed.day != day) {
+      return 'Geçersiz tarih';
+    }
+    final now = DateTime.now();
+    if (parsed.isAfter(now)) {
+      return 'Doğum tarihi gelecekte olamaz';
+    }
+    if (parsed.isBefore(DateTime(now.year - 120))) {
+      return 'Doğum tarihi geçersiz';
+    }
+    return null;
+  }
+
+  /// gg.aa.yyyy maskesi: yalnız rakam, otomatik nokta.
+  static List<TextInputFormatter> birthDate() => [
+    FilteringTextInputFormatter.digitsOnly,
+    LengthLimitingTextInputFormatter(8),
+    _DateTextFormatter(),
+  ];
+
   static bool _isValidTcChecksum(String digits) {
     final d = digits.split('').map(int.parse).toList();
     final odd = d[0] + d[2] + d[4] + d[6] + d[8];
@@ -63,5 +113,26 @@ class AppInputFormatters {
       return 'Cep telefonu 5 ile başlamalıdır';
     }
     return null;
+  }
+}
+
+/// Rakamları gg.aa.yyyy olarak biçimler; kullanıcı nokta yazmak zorunda kalmaz.
+class _DateTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length && i < 8; i++) {
+      if (i == 2 || i == 4) buffer.write('.');
+      buffer.write(digits[i]);
+    }
+    final text = buffer.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
   }
 }

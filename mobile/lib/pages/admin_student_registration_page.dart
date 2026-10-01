@@ -247,6 +247,11 @@ class _AdminStudentRegistrationPageState
                         child: _buildField(
                           controller: _birthDateController,
                           label: 'Doğum Tarihi'.tr,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: AppInputFormatters.birthDate(),
+                          hintText: 'gg.aa.yyyy',
+                          required: false,
+                          validator: AppInputFormatters.validateBirthDate,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -340,6 +345,7 @@ class _AdminStudentRegistrationPageState
                           label: 'Veli E-Posta',
                           keyboardType: TextInputType.emailAddress,
                           required: false,
+                          validator: AppInputFormatters.validateEmail,
                         ),
                       ),
                     ],
@@ -601,6 +607,7 @@ class _AdminStudentRegistrationPageState
     bool readOnly = false,
     List<TextInputFormatter>? inputFormatters,
     String? prefixText,
+    String? hintText,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
@@ -622,6 +629,7 @@ class _AdminStudentRegistrationPageState
               : null),
       decoration: InputDecoration(
         labelText: label,
+        hintText: hintText,
         prefixText: prefixText,
         border: const OutlineInputBorder(),
         filled: readOnly,
