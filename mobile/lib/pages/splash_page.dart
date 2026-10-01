@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:student/i18n/app_locale.dart';
+import '../services/session_launcher.dart';
+import '../services/start_route.dart';
 import 'login_page.dart';
 
 /// Lightweight vector artwork and the official logo; no video or remote assets.
@@ -17,6 +19,7 @@ class _SplashPageState extends State<SplashPage>
   late final AnimationController _motion;
   Timer? _timer;
   bool _started = false;
+  late final Future<StartRoute> _route;
 
   @override
   void initState() {
@@ -38,7 +41,20 @@ class _SplashPageState extends State<SplashPage>
     } else {
       _motion.forward();
     }
-    _timer = Timer(Duration(milliseconds: reduced ? 150 : 1200), _openLogin);
+    // Karar animasyonla paralel verilir; oturum yenileme açılışı uzatmasın.
+    _route = decideStartRoute().catchError((_) => const StartRoute.login());
+    _timer = Timer(Duration(milliseconds: reduced ? 150 : 1200), _proceed);
+  }
+
+  Future<void> _proceed() async {
+    final route = await _route;
+    if (!mounted) return;
+    final session = route.session;
+    if (session != null) {
+      await enterSession(context, session);
+      return;
+    }
+    _openLogin();
   }
 
   void _openLogin() {

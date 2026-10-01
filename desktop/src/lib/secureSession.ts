@@ -11,6 +11,14 @@ import { logIgnored } from './logIgnored';
 const LEGACY_STORAGE_KEY = 'courseintellect-desktop-session';
 const ENCRYPTED_STORAGE_KEY = 'courseintellect-desktop-session-v2';
 const KEYCHAIN_ACCOUNT = 'session-encryption-key';
+// "Beni hatırla": '1' açık, '0' kapalı. Hiç seçim yapılmamış (eski sürüm)
+// kurulumlarda anahtar yoktur ve oturum eskisi gibi geri yüklenir.
+const REMEMBER_KEY = 'ci-remember-session';
+const REMEMBER_USERNAME_KEY = 'ci-remember-username';
+// Bu çalıştırmada oturum açıldı işareti. sessionStorage uygulama kapanınca
+// silinir ama sayfa yeniden yüklenince (kurum değiştirme) kalır; böylece
+// "hatırla" kapalıyken yeniden yükleme oturumu düşürmez, yeniden açılış düşürür.
+const SESSION_ALIVE_KEY = 'ci-session-alive';
 
 let sessionCache: DesktopSession | null = null;
 let secureMode = false;
@@ -106,38 +114,76 @@ async function decryptFromStorage(): Promise<DesktopSession | null> {
   }
 }
 
+function safeStorage(kind: 'local' | 'session'): Storage | null {
+  try {
+    return kind === 'local' ? globalThis.localStorage ?? null : globalThis.sessionStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Girişte seçilen "Beni hatırla" durumu; açıksa kullanıcı adı da saklanır. */
+export function setRememberSession(enabled: boolean, username: string): void {
+  const local = safeStorage('local');
+  local?.setItem(REMEMBER_KEY, enabled ? '1' : '0');
+  const trimmed = username.trim();
+  if (enabled && trimmed) local?.setItem(REMEMBER_USERNAME_KEY, trimmed);
+  else local?.removeItem(REMEMBER_USERNAME_KEY);
+  safeStorage('session')?.setItem(SESSION_ALIVE_KEY, '1');
+}
+
+/** Son seçim; hiç seçim yapılmadıysa null. */
+export function getRememberSession(): boolean | null {
+  const value = safeStorage('local')?.getItem(REMEMBER_KEY);
+  return value === '1' ? true : value === '0' ? false : null;
+}
+
+export function getRememberedUsername(): string {
+  if (getRememberSession() !== true) return '';
+  return safeStorage('local')?.getItem(REMEMBER_USERNAME_KEY) ?? '';
+}
+
+/** "Hatırla" kapalıyken önceki çalıştırmadan kalan oturum açılışta düşer. */
+function dropSessionIfNotRemembered(): void {
+  if (getRememberSession() !== false) return;
+  if (safeStorage('session')?.getItem(SESSION_ALIVE_KEY) === '1') return;
+  clearDesktopSession();
+}
+
 // Uygulama açılışında bir kez await edilmelidir; idempotenttir.
 export function initDesktopSessionStore(): Promise<void> {
   if (!initPromise) {
-    initPromise = (async () => {
-      if (!isTauriRuntime() || !globalThis.crypto?.subtle) {
-        sessionCache = readPlainLocal();
-        return;
-      }
-      try {
-        cryptoKey = await getOrCreateCryptoKey();
-        secureMode = true;
-      } catch (error) {
-        console.warn('Keychain erişilemedi, oturum localStorage üzerinde tutulacak:', error);
-        sessionCache = readPlainLocal();
-        return;
-      }
-      sessionCache = await decryptFromStorage();
-      // Eski sürüm migrasyonu: düz metin oturum şifreli depoya taşınır ve
-      // düz kopya ancak şifreli yazma başarılı olursa silinir.
-      const legacy = readPlainLocal();
-      if (legacy) {
-        if (!sessionCache) sessionCache = legacy;
-        try {
-          await encryptToStorage(sessionCache);
-          localStorage.removeItem(LEGACY_STORAGE_KEY);
-        } catch (error) {
-          console.warn('Oturum şifreli depoya taşınamadı:', error);
-        }
-      }
-    })();
+    initPromise = openStore().then(dropSessionIfNotRemembered);
   }
   return initPromise;
+}
+
+async function openStore(): Promise<void> {
+  if (!isTauriRuntime() || !globalThis.crypto?.subtle) {
+    sessionCache = readPlainLocal();
+    return;
+  }
+  try {
+    cryptoKey = await getOrCreateCryptoKey();
+    secureMode = true;
+  } catch (error) {
+    console.warn('Keychain erişilemedi, oturum localStorage üzerinde tutulacak:', error);
+    sessionCache = readPlainLocal();
+    return;
+  }
+  sessionCache = await decryptFromStorage();
+  // Eski sürüm migrasyonu: düz metin oturum şifreli depoya taşınır ve
+  // düz kopya ancak şifreli yazma başarılı olursa silinir.
+  const legacy = readPlainLocal();
+  if (legacy) {
+    if (!sessionCache) sessionCache = legacy;
+    try {
+      await encryptToStorage(sessionCache);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch (error) {
+      console.warn('Oturum şifreli depoya taşınamadı:', error);
+    }
+  }
 }
 
 export function persistDesktopSession(session: DesktopSession): void {

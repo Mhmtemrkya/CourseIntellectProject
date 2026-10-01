@@ -10,8 +10,8 @@ import {
   type SetStateAction,
 } from 'react';
 import {
+  buildDesktopSession,
   clearDesktopSession,
-  createDesktopUser,
   desktopApiBaseUrl,
   initDesktopSessionStore,
   loadDesktopSession,
@@ -19,6 +19,13 @@ import {
   persistDesktopSession,
 } from '../lib/auth';
 import { startPkceLogin, exchangePkceCode } from '../lib/auth/pkce';
+import { setRememberSession } from '../lib/secureSession';
+import {
+  REFRESH_SKEW_MS,
+  ensureFreshDesktopSession,
+  onSessionRefreshed,
+  parseUtcMs,
+} from '../lib/sessionRefresh';
 import { setActiveBranchFilter, setActiveTenantContext } from '../lib/api/client';
 import { resetEntitlementCache } from '../lib/entitlements';
 import { resetTenantFeatureCache } from '../lib/tenantFeatures';
@@ -32,6 +39,8 @@ export interface DrawerOptions {
 export interface LoginCredentials {
   username: string;
   password: string;
+  /** "Beni hatırla": kapalıysa oturum uygulama kapanınca düşer. */
+  remember?: boolean;
 }
 
 export interface AppContextValue {
@@ -42,7 +51,7 @@ export interface AppContextValue {
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<DesktopUser>;
-  loginWithBrowser: () => Promise<DesktopUser>;
+  loginWithBrowser: (remember?: boolean) => Promise<DesktopUser>;
   logout: () => void;
   markPasswordChanged: () => void;
   sidebarCollapsed: boolean;
@@ -70,16 +79,6 @@ function enforceActiveSubscription(payload: LoginPayload | null | undefined): vo
   }
 }
 
-function buildSession(payload: LoginPayload): DesktopSession {
-  return {
-    accessToken: payload.accessToken,
-    refreshToken: payload.refreshToken,
-    expiresAtUtc: payload.expiresAtUtc,
-    refreshTokenExpiresAtUtc: payload.refreshTokenExpiresAtUtc,
-    user: createDesktopUser(payload),
-  };
-}
-
 function resetTenantAccessCaches(): void {
   resetEntitlementCache();
   resetTenantFeatureCache();
@@ -105,7 +104,14 @@ export function AppProvider({ children }: { children?: ReactNode }) {
     void (async () => {
       await initDesktopSessionStore();
       if (!active) return;
-      const savedSession = loadDesktopSession();
+      // Geri yüklenen oturum panel açılmadan tazelenir; aksi halde süresi
+      // dolmuş token'la ilk istek 401 alıp kullanıcıyı çıkışa atıyordu.
+      const outcome = loadDesktopSession()?.user ? await ensureFreshDesktopSession() : null;
+      if (!active) return;
+      const savedSession = outcome?.status === 'fresh'
+        || (outcome?.status === 'unavailable' && parseUtcMs(outcome.session?.expiresAtUtc) > Date.now())
+        ? outcome.session
+        : null;
       if (savedSession?.user) {
         // Açılışta kurum bağlamını ana kuruma sıfırla. Aksi halde önceki bir
         // oturumdan localStorage'da kalan X-Tenant-Context (ör. bir okul kurumu)
@@ -123,16 +129,17 @@ export function AppProvider({ children }: { children?: ReactNode }) {
     return () => { active = false; };
   }, []);
 
-  const login = useCallback(async ({ username, password }: LoginCredentials): Promise<DesktopUser> => {
+  const login = useCallback(async ({ username, password, remember = false }: LoginCredentials): Promise<DesktopUser> => {
     const payload = await loginWithBackend(username, password);
     enforceActiveSubscription(payload);
+    setRememberSession(remember, username);
     // Taze giriş ana kuruma başlar; önceki oturumdan kalan kurum bağlamı
     // (X-Tenant-Context) temizlenir ki yanlış kuruma çözülmesin.
     setActiveTenantContext(null);
     setActiveBranchFilter(null);
     if (typeof localStorage !== 'undefined') localStorage.removeItem('ci-branch-selected');
     resetTenantAccessCaches();
-    const nextSession = buildSession(payload);
+    const nextSession = buildDesktopSession(payload);
 
     persistDesktopSession(nextSession);
     setSession(nextSession);
@@ -140,15 +147,16 @@ export function AppProvider({ children }: { children?: ReactNode }) {
     return nextSession.user;
   }, []);
 
-  const loginWithBrowser = useCallback(async (): Promise<DesktopUser> => {
+  const loginWithBrowser = useCallback(async (remember = false): Promise<DesktopUser> => {
     const pkceResult = await startPkceLogin(desktopApiBaseUrl);
     const payload = await exchangePkceCode(desktopApiBaseUrl, pkceResult);
     enforceActiveSubscription(payload);
+    setRememberSession(remember, payload.user?.username ?? '');
     setActiveTenantContext(null);
     setActiveBranchFilter(null);
     if (typeof localStorage !== 'undefined') localStorage.removeItem('ci-branch-selected');
     resetTenantAccessCaches();
-    const nextSession = buildSession(payload);
+    const nextSession = buildDesktopSession(payload);
 
     persistDesktopSession(nextSession);
     setSession(nextSession);
@@ -186,6 +194,40 @@ export function AppProvider({ children }: { children?: ReactNode }) {
       return next;
     });
   }, []);
+
+  // Yenilenen oturum (istemci ya da zamanlayıcı) bağlama yansır.
+  useEffect(() => onSessionRefreshed((next) => {
+    setSession(next);
+    setUser(next.user);
+  }), []);
+
+  // Token süresi dolmadan önce ve pencereye geri dönülünce tazelenir; uyku
+  // modundan dönüşte zamanlayıcı gecikmiş olabilir. Sunucu reddederse çıkılır.
+  const expiresAtUtc = session?.expiresAtUtc;
+  useEffect(() => {
+    if (!expiresAtUtc) return undefined;
+    const refresh = () => {
+      void ensureFreshDesktopSession().then((outcome) => {
+        if (outcome.status === 'unauthorized') {
+          setSession(null);
+          setUser(null);
+        }
+      });
+    };
+    const delay = Math.max(0, parseUtcMs(expiresAtUtc) - REFRESH_SKEW_MS - Date.now());
+    // setTimeout üst sınırı ~24,8 gün; access token zaten saatlerle ölçülür.
+    const timer = window.setTimeout(refresh, Math.min(delay, 2_147_000_000));
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [expiresAtUtc]);
 
   const openDrawer = (content: ReactNode, options: DrawerOptions | null = null): void => {
     setDrawerContent(content);

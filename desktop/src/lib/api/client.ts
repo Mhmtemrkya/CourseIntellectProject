@@ -1,4 +1,5 @@
 import { clearDesktopSession, desktopApiBaseUrl, loadDesktopSession } from '../auth';
+import { ensureFreshDesktopSession } from '../sessionRefresh';
 import {
   getOrderedDesktopApiCandidates,
   setActiveDesktopApiBaseUrl,
@@ -196,6 +197,17 @@ export function describeApiError(rawBody: unknown, status: number, method = ''):
 async function request(method: HttpMethod, url: string, data: unknown, config: BlobRequestConfig): Promise<Blob | null>;
 async function request<T = unknown>(method: HttpMethod, url: string, data?: unknown, config?: RequestConfig): Promise<T | null>;
 async function request<T = unknown>(method: HttpMethod, url: string, data: unknown, config: RequestConfig = {}): Promise<T | Blob | null> {
+  return send<T>(method, url, data, config, false);
+}
+
+// Kimlik uçları kendi token akışını yönetir; burada yenileme/yeniden deneme yok.
+function isAuthEndpoint(url: string): boolean {
+  return /\/api\/auth\/(?:login|refresh|pkce|forgot-password)/i.test(String(url));
+}
+
+async function send<T>(method: HttpMethod, url: string, data: unknown, config: RequestConfig, retried: boolean): Promise<T | Blob | null> {
+  // Access token dolmak üzereyse istekten önce tazelenir (tek uçuş; geçerliyse ağa çıkmaz).
+  if (!isAuthEndpoint(url)) await ensureFreshDesktopSession();
   const session = loadDesktopSession();
   const headers: Record<string, string> = { ...(config.headers || {}) };
   if (session?.accessToken) {
@@ -263,6 +275,16 @@ async function request<T = unknown>(method: HttpMethod, url: string, data: unkno
       new Error('Sunucuya bağlantı kurulamadı. İnternet bağlantınızı kontrol edin, ardından işlemi tekrar deneyin.'),
       { cause: lastConnectionError },
     );
+  }
+
+  if (response.status === 401 && !retried && session && !isAuthEndpoint(url)) {
+    // Token sunucuda erken geçersizleşmiş olabilir: bir kez yenileyip tekrar dene.
+    const outcome = await ensureFreshDesktopSession({ force: true });
+    if (outcome.status === 'fresh') return send<T>(method, url, data, config, true);
+    if (outcome.status === 'unavailable') {
+      // Sunucuya ulaşılamadı: oturum (ve "beni hatırla") korunur, işlem başarısız sayılır.
+      throw new Error('Oturum yenilenemedi. Bağlantınızı kontrol edip işlemi tekrar deneyin.');
+    }
   }
 
   if (response.status === 401) {

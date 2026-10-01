@@ -8,6 +8,7 @@ import 'i18n/app_locale.dart';
 import 'pages/splash_page.dart';
 import 'services/live_notification_bridge.dart';
 import 'services/remote_push_service.dart';
+import 'services/session_refresher.dart';
 import 'theme_provider.dart';
 import 'widgets/legal_consent_gate.dart';
 import 'widgets/maintenance_gate.dart';
@@ -27,6 +28,8 @@ Future<void> main() async {
   );
   unawaited(LiveNotificationBridge.instance.initialize());
   unawaited(RemotePushService.instance.initialize());
+  // Access token'ı öne dönüşte ve süresi dolmadan önce yeniler.
+  SessionRefresher.instance.start();
 }
 
 class MyApp extends StatefulWidget {

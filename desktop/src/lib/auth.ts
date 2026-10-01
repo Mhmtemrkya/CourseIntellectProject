@@ -9,6 +9,7 @@ import { isLoginPayload } from "./loginPayload";
 import type {
   BackendCurrentUser,
   DesktopRole,
+  DesktopSession,
   DesktopUser,
   LoginPayload,
   UserLike,
@@ -285,6 +286,23 @@ async function getTauriFetch(): Promise<FetchFn | null> {
       .catch(() => null);
   }
   return _tauriFetchPromise;
+}
+
+/** Kimlik uçları için fetch: Tauri'de eklenti fetch'i (CORS/CSP dışı), yoksa tarayıcı. */
+export async function authFetch(input: string, init: RequestInit): Promise<Response> {
+  const tauriFetch = await getTauriFetch();
+  return (tauriFetch || fetch)(input, init);
+}
+
+/** Giriş/yenileme yanıtından saklanacak oturum. */
+export function buildDesktopSession(payload: LoginPayload): DesktopSession {
+  return {
+    accessToken: payload.accessToken,
+    refreshToken: payload.refreshToken,
+    expiresAtUtc: payload.expiresAtUtc,
+    refreshTokenExpiresAtUtc: payload.refreshTokenExpiresAtUtc,
+    user: createDesktopUser(payload),
+  };
 }
 
 interface LoginErrorBody {

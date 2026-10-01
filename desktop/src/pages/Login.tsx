@@ -17,6 +17,7 @@ import { useApp } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { getUserHomePath } from "../lib/auth";
+import { getRememberSession, getRememberedUsername } from "../lib/secureSession";
 import { requestPasswordReset } from "../lib/api/modules";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -102,10 +103,11 @@ export default function Login() {
   const { refreshBranding } = useTheme();
   const { language, setLanguage } = useLanguage();
   const { toast } = useToast();
-  const [username, setUsername] = useState("");
+  // "Beni hatırla" açıksa kullanıcı adı ve son seçim hazır gelir.
+  const [username, setUsername] = useState(() => getRememberedUsername());
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(() => getRememberSession() === true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -125,7 +127,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const loggedUser = await login({ username, password });
+      const loggedUser = await login({ username, password, remember });
       refreshBranding();
       navigate(getUserHomePath(loggedUser), { replace: true });
     } catch (err) {

@@ -4,20 +4,12 @@ import 'dart:async';
 
 import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
-import 'package:student/pages/change_password_page.dart';
 import 'package:student/services/auth_api_service.dart';
-import 'package:student/services/auth_session_store.dart';
-import 'package:student/services/branding_service.dart';
 import 'package:student/services/branch_scope_store.dart';
-import 'package:student/services/live_notification_bridge.dart';
-import 'package:student/services/remote_push_service.dart';
-import 'package:student/services/role_router.dart';
+import 'package:student/services/remember_me_store.dart';
+import 'package:student/services/session_launcher.dart';
 import 'package:student/services/tenant_scope_store.dart';
-import 'package:student/theme_provider.dart';
 import 'package:student/widgets/course_intellect_logo.dart';
-import 'package:student/widgets/notification_primer_sheet.dart';
-import 'package:provider/provider.dart';
-import '../services/push_navigation.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -49,7 +41,12 @@ class _LoginPageState extends State<LoginPage> {
       // ekranından bağlamını açıkça yeniden belirler.
       await TenantScopeStore.instance.clear();
       await BranchScopeStore.instance.clear();
-      await _handleSuccessfulSession(session);
+      await RememberMeStore.instance.saveChoice(
+        enabled: _rememberMe,
+        username: username,
+      );
+      if (!mounted) return;
+      await enterSession(context, session);
     } on AuthApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -93,61 +90,6 @@ class _LoginPageState extends State<LoginPage> {
     ).showSnackBar(SnackBar(content: Text(successMessage)));
   }
 
-  Future<void> _handleSuccessfulSession(AuthSession session) async {
-    if (!mounted) return;
-
-    final themeProvider = context.read<ThemeProvider>();
-    await BrandingService.instance.applyBranding(themeProvider);
-    if (!mounted) return;
-    await NotificationPrimer.showIfFirstTime(context);
-    if (!mounted) return;
-    _openRolePanel(session);
-    unawaited(LiveNotificationBridge.instance.startForCurrentSession());
-    unawaited(RemotePushService.instance.refreshRegistration());
-  }
-
-  void _openRolePanel(AuthSession session) {
-    if (session.mustChangePassword) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChangePasswordPage(
-            forceMode: true,
-            onSuccess: () async {
-              await AuthSessionStore.instance.clear();
-              if (!mounted) return;
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-                (_) => false,
-              );
-            },
-          ),
-        ),
-      );
-      return;
-    }
-    final page = RoleRouter.panelFor(session);
-    if (page == null) {
-      _showUnsupportedRole(session);
-      return;
-    }
-    final navigator = Navigator.of(context);
-    navigator.pushReplacement(MaterialPageRoute(builder: (_) => page));
-    // Bekleyen bildirim dokunuşu (uygulama kapalıyken) artık açılabilir.
-    PushNavigation.instance.markPanelReady(navigator);
-  }
-
-  void _showUnsupportedRole(AuthSession session) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${RoleRouter.displayLabel(session.primaryRole)} rolü için mobil panel bulunamadı.',
-        ),
-      ),
-    );
-  }
-
   @override
   void dispose() {
     usernameController.dispose();
@@ -157,6 +99,25 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _obscurePassword = true;
   bool _rememberMe = true;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_restoreRememberChoice());
+  }
+
+  /// Son seçim ve (hatırla açıksa) kullanıcı adı hazır gelir.
+  Future<void> _restoreRememberChoice() async {
+    final enabled = await RememberMeStore.instance.isEnabled();
+    final username = await RememberMeStore.instance.rememberedUsername();
+    if (!mounted) return;
+    setState(() {
+      _rememberMe = enabled;
+      if (username != null && usernameController.text.isEmpty) {
+        usernameController.text = username;
+      }
+    });
+  }
 
   static const _navy = Color(0xFF15294B);
   static const _orange = Color(0xFFF7941D);
