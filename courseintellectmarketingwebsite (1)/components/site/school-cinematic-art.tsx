@@ -35,11 +35,22 @@ function Flow({ process, progress, index, compact, prefix }: {process:BrainProce
   const x=index<3?100:290,y=442+index%3*133
   const d=compact?`M195 330 C195 ${y-40} ${x+Math.sign(195-x)*40} ${y-70} ${x} ${y}`:paths[index]
   const blue=process.id==="students"||process.id==="parents"||process.id==="management"
+  const grad=`url(#${prefix}-${blue ? "blue" : "orange"})`
+  const nx=compact?x:index<3?355:1085, ny=compact?y:index%3===0?365:index%3===1?540:715
   return <motion.g style={{opacity}}>
-    <motion.path d={d} stroke={blue?"#1256d0":"#d57112"} strokeWidth={compact?5:8} opacity=".17" fill="none" strokeLinecap="round" style={{pathLength:length}}/>
-    <motion.path d={d} stroke={`url(#${prefix}-${blue ? "blue" : "orange"})`} strokeWidth={compact?2:3.5} fill="none" strokeLinecap="round" style={{pathLength:length}}/>
-    <path className="standalone-flow-packet" d={d} pathLength="100" stroke="#fff9d9" strokeWidth={compact?3:4} strokeDasharray="3 100" fill="none" strokeLinecap="round" style={{animationDelay:`${index*-.7}s`}}/>
-    <circle cx={compact?x:index<3?355:1085} cy={compact?y:index%3===0?365:index%3===1?540:715} r={compact?3:5} fill={blue?"#418bff":"#ffad35"}/>
+    {/* 1) Dış ışık halesi — fiber kablonun yaydığı parıltı */}
+    <motion.path d={d} stroke={blue?"#3b86ff":"#ff9f32"} strokeWidth={compact?9:14} opacity=".42" fill="none" strokeLinecap="round" filter={`url(#${prefix}-bloom2)`} style={{pathLength:length}}/>
+    {/* 2) Kablo gövdesi — renkli, hafif parlak */}
+    <motion.path d={d} stroke={grad} strokeWidth={compact?3.4:5.4} opacity=".95" fill="none" strokeLinecap="round" filter={`url(#${prefix}-bloom)`} style={{pathLength:length}}/>
+    {/* 3) İçteki ışık çekirdeği — kablonun içinden geçen ışık */}
+    <motion.path d={d} stroke="#fffef9" strokeWidth={compact?1.3:2.1} opacity="1" fill="none" strokeLinecap="round" style={{pathLength:length}}/>
+    {/* 4) Akan ışık darbeleri — iki hızda, glow CSS'te */}
+    <path className="standalone-flow-packet" d={d} pathLength="100" stroke="#ffffff" strokeWidth={compact?3.4:4.6} strokeDasharray="2 100" fill="none" strokeLinecap="round" style={{animationDelay:`${index*-.7}s`}}/>
+    <path className="standalone-flow-packet standalone-flow-packet-b" d={d} pathLength="100" stroke={blue?"#cde6ff":"#ffe4b4"} strokeWidth={compact?2:2.8} strokeDasharray="1.4 100" fill="none" strokeLinecap="round" style={{animationDelay:`${index*-.7-1.9}s`}}/>
+    {/* uç düğümü — parlayan uç */}
+    <circle cx={nx} cy={ny} r={compact?5:8} fill={blue?"#6fa8ff":"#ffc158"} opacity=".55" filter={`url(#${prefix}-bloom)`}/>
+    <circle cx={nx} cy={ny} r={compact?2.6:4} fill={blue?"#cfe4ff":"#ffe6bd"}/>
+    <circle cx={nx} cy={ny} r={compact?1.1:1.8} fill="#fff"/>
   </motion.g>
 }
 
@@ -68,7 +79,7 @@ export default function SchoolCinematicArt({ progress, compact, running, onReady
   return <div className={`brain-cinematic standalone-cinematic${running ? "" : " is-paused"}`}>
     <Image className="standalone-hall" src={`${root}hall.webp`} alt="" fill sizes="100vw" priority onLoad={()=>loaded("hall")} onError={onFailure}/>
     <div className="standalone-floor-light" aria-hidden="true"/>
-    {story && preloadIslands && <><svg className="standalone-flows" viewBox={compact?"0 0 390 780":"0 0 1440 830"} preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id={`${id}-orange`}><stop stopColor="#ffa41b"/><stop offset=".48" stopColor="#fff0af"/><stop offset="1" stopColor="#ff7d00"/></linearGradient><linearGradient id={`${id}-blue`}><stop stopColor="#004ef8"/><stop offset=".5" stopColor="#a3e0ff"/><stop offset="1" stopColor="#006bff"/></linearGradient></defs>{ordered.map((process,index)=><Flow key={process.id} process={process} index={index} progress={progress} compact={compact} prefix={id}/>)}</svg><nav className="standalone-islands" aria-label="Okul süreçleri">{ordered.map((process,index)=><Tile key={process.id} process={process} index={index} progress={progress} interactive={interactive} onFailure={onFailure}/>)}</nav></>}
+    {story && preloadIslands && <><svg className="standalone-flows" viewBox={compact?"0 0 390 780":"0 0 1440 830"} preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id={`${id}-orange`}><stop stopColor="#ff8f12"/><stop offset=".3" stopColor="#ffd27a"/><stop offset=".5" stopColor="#fff6e0"/><stop offset=".7" stopColor="#ffbe46"/><stop offset="1" stopColor="#ff7d00"/></linearGradient><linearGradient id={`${id}-blue`}><stop stopColor="#0a4bf2"/><stop offset=".3" stopColor="#5aa6ff"/><stop offset=".5" stopColor="#eaf6ff"/><stop offset=".7" stopColor="#3f8cff"/><stop offset="1" stopColor="#0060ff"/></linearGradient><filter id={`${id}-bloom`} x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation={compact?3:5} result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/></feMerge></filter><filter id={`${id}-bloom2`} x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation={compact?6:10}/></filter></defs>{ordered.map((process,index)=><Flow key={process.id} process={process} index={index} progress={progress} compact={compact} prefix={id}/>)}</svg><nav className="standalone-islands" aria-label="Okul süreçleri">{ordered.map((process,index)=><Tile key={process.id} process={process} index={index} progress={progress} interactive={interactive} onFailure={onFailure}/>)}</nav></>}
     <div className="standalone-core-anchor" aria-hidden="true">
       <motion.div className="standalone-core" style={{x:coreX,y:coreY,scale:coreScale,opacity:coreOpacity}}>
         <Image className="standalone-platform" src={`${root}core-platform.webp`} alt="" fill sizes="(max-width:760px) 82vw, 35vw" priority onLoad={()=>loaded("platform")} onError={onFailure}/>

@@ -195,7 +195,8 @@
 .standalone-island-0,.standalone-island-1,.standalone-island-2 { left:5%; }.standalone-island-3,.standalone-island-4,.standalone-island-5 { right:5%; }
 .standalone-island-0,.standalone-island-3 { top:20%; }.standalone-island-1,.standalone-island-4 { top:43%; }.standalone-island-2,.standalone-island-5 { top:65%; }
 .standalone-flows { position:absolute; inset:0; width:100%; height:100%; z-index:2; overflow:visible; pointer-events:none; }
-.standalone-flow-packet { animation:standalone-current 3.7s linear infinite; }
+.standalone-flow-packet { animation:standalone-current 3.7s linear infinite; filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #ffd98f) drop-shadow(0 0 9px #ffb74d); }
+.standalone-flow-packet-b { animation-duration:5.3s; filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 6px #bcd9ff); }
 @keyframes standalone-current { from {stroke-dashoffset:102;} to {stroke-dashoffset:0;} }
 .standalone-cinematic.is-paused :is(.standalone-logo,.standalone-orbit,.standalone-flow-packet) { animation-play-state:paused; }
 .standalone-role-layer,.standalone-role-composition { position:absolute; inset:0; pointer-events:none; }
