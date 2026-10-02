@@ -141,12 +141,12 @@
 .standalone-core-anchor { position:absolute; max-width:510px; aspect-ratio:1; transform:translate(-50%,-50%); z-index:4; will-change:left,top,width; pointer-events:none; }
 .standalone-core { position:relative; width:100%; height:100%; }
 .standalone-platform { object-fit:contain; }
-.standalone-logo-rise { position:absolute; width:58%; left:21%; top:1%; z-index:2; transform-origin:50% 112%; }
+.standalone-logo-rise { position:absolute; width:58%; left:21%; top:1%; z-index:2; transform-origin:50% 77%; }
 .standalone-logo { width:100%; height:auto; filter:drop-shadow(0 12px 14px #ad661029); animation:standalone-float 7s ease-in-out infinite; }
 
 /* Işınlanma: logo podyumdan belirirken yukarı fırlayan ışık huzmesi (tek seferlik). */
 .standalone-teleport-beam {
-  position:absolute; left:50%; bottom:3%; width:52%; height:104%; z-index:1;
+  position:absolute; left:50%; bottom:52%; width:26%; height:50%; z-index:1;
   transform:translateX(-50%); transform-origin:50% 100%; pointer-events:none;
   background:linear-gradient(to top,#ff9d1e00 0%,#ff9d1ecc 12%,#ffd57aee 40%,#fffdf5ff 66%,#ffffffcc 84%,#ffffff00 100%);
   filter:blur(6px) saturate(1.3); opacity:0;
@@ -161,7 +161,7 @@
 }
 /* Podyum üzerinde belirme anında tek seferlik parlama halkası. */
 .standalone-teleport-flash {
-  position:absolute; left:50%; bottom:14%; width:52%; aspect-ratio:1; z-index:1;
+  position:absolute; left:50%; bottom:54%; width:34%; aspect-ratio:1; z-index:1;
   transform:translate(-50%,50%); pointer-events:none; border-radius:50%;
   background:radial-gradient(circle,#fffaeeee 0%,#ffcf8f88 34%,#ffcf8700 70%);
   mix-blend-mode:screen; opacity:0;
