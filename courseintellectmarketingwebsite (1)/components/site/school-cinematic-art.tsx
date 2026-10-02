@@ -77,9 +77,9 @@ export default function SchoolCinematicArt({ progress, compact, running, onReady
         {!reduced && <div className="standalone-teleport-flash" aria-hidden="true"/>}
         <motion.div
           className="standalone-logo-rise"
-          initial={reduced ? false : {scale:.04,opacity:0,filter:"blur(14px)"}}
-          animate={reduced ? {} : {scale:[.04,1.1,.98,1],opacity:[0,.7,1,1],filter:["blur(14px)","blur(2px)","blur(0px)","blur(0px)"]}}
-          transition={{duration:1.6,delay:.2,ease:[.16,1,.3,1],times:[0,.6,.82,1]}}>
+          initial={reduced ? false : {scale:.03,opacity:0,y:16,filter:"blur(16px)"}}
+          animate={reduced ? {} : {scale:[.03,.5,1.08,.98,1],opacity:[0,.85,1,1,1],y:[16,2,-8,2,0],filter:["blur(16px)","blur(6px)","blur(1px)","blur(0px)","blur(0px)"]}}
+          transition={{duration:2.3,delay:.55,ease:[.2,.75,.2,1],times:[0,.4,.7,.86,1]}}>
           <Image className="standalone-logo" src="/images/logo.png" alt="" width={945} height={955} priority/>
         </motion.div>
       </motion.div>

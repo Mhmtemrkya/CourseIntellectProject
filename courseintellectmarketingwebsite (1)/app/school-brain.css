@@ -150,7 +150,7 @@
   transform:translateX(-50%); transform-origin:50% 100%; pointer-events:none;
   background:linear-gradient(to top,#ff9d1e00 0%,#ff9d1ecc 12%,#ffd57aee 40%,#fffdf5ff 66%,#ffffffcc 84%,#ffffff00 100%);
   filter:blur(6px) saturate(1.3); opacity:0;
-  animation:standalone-beam 1.8s cubic-bezier(.16,1,.3,1) .16s 1 both;
+  animation:standalone-beam 1.9s cubic-bezier(.16,1,.3,1) .5s 1 both;
 }
 /* Dar, keskin ve çok parlak çekirdek sütun — beam'in belkemiği. */
 .standalone-teleport-beam::before {
@@ -165,7 +165,7 @@
   transform:translate(-50%,50%); pointer-events:none; border-radius:50%;
   background:radial-gradient(circle,#fffaeeee 0%,#ffcf8f88 34%,#ffcf8700 70%);
   mix-blend-mode:screen; opacity:0;
-  animation:standalone-teleport-flash 1.3s ease-out .2s 1 both;
+  animation:standalone-teleport-flash 1.5s ease-out .55s 1 both;
 }
 @keyframes standalone-beam {
   0% { opacity:0; transform:translateX(-50%) scaleY(.1) scaleX(.6); }
