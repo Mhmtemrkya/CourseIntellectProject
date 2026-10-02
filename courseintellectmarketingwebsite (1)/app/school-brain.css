@@ -141,7 +141,7 @@
 .standalone-core-anchor { position:absolute; max-width:510px; aspect-ratio:1; transform:translate(-50%,-50%); z-index:4; will-change:left,top,width; pointer-events:none; }
 .standalone-core { position:relative; width:100%; height:100%; }
 .standalone-platform { object-fit:contain; }
-.standalone-logo-rise { position:absolute; width:58%; left:21%; top:1%; z-index:2; transform-origin:50% 90%; }
+.standalone-logo-rise { position:absolute; width:58%; left:21%; top:1%; z-index:2; transform-origin:50% 112%; }
 .standalone-logo { width:100%; height:auto; filter:drop-shadow(0 12px 14px #ad661029); animation:standalone-float 7s ease-in-out infinite; }
 
 /* Işınlanma: logo podyumdan belirirken yukarı fırlayan ışık huzmesi (tek seferlik). */
