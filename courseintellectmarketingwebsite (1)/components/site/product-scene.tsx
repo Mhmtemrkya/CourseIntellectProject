@@ -16,7 +16,6 @@ const menuByRole: Record<RoleId, string[]> = {
   "sube-muduru": ["Şube özeti", "Öğrenciler", "Ekibim", "Program", "Görevler", "Finans", "Raporlar"],
   yemekhane: ["Yemek programı", "Hafta seçimi", "Kahvaltı", "Öğle yemeği", "Besin değerleri", "Alerjenler", "Özet"],
   "servis-soforu": ["Bugünkü rota", "Öğrenci listesi", "Sefer", "Öğrenci durumu", "Konum", "Bildirimler", "Özet"],
-  "platform-yoneticisi": ["Platform özeti", "Kurumlar", "Başvurular", "Paketler", "Limitler", "Destek", "Sistem"],
   yonetici: ["Ana sayfa", "Şubeler", "Öğrenciler", "Ekibim", "İletişim", "Finans", "Ayarlar"],
   ogretmen: ["Ana sayfa", "Dersler", "Öğrenciler", "Yoklama", "Ödevler", "Raporlar", "Materyaller"],
   veli: ["Genel bakış", "Öğrencilerim", "Dersler", "Devam", "Duyurular", "Mesajlar", "Ödemeler"],
@@ -115,8 +114,8 @@ function ContentPanel({ kind, width = 480 }: { kind: Preview; width?: number }) 
 
 function Dashboard({ role = "ogretmen" }: { role?: RoleId }) {
   const selected = roles.find(r => r.id === role)!
-  const kind: Preview = role === "rehberlik" ? "guidance" : role === "yemekhane" ? "meals" : role === "servis-soforu" ? "route" : role === "platform-yoneticisi" ? "platform" : role === "sube-muduru" ? "reports" : role === "muhasebe" ? "finance" : role === "personel" ? "tasks" : role === "veli" ? "students" : role === "ogrenci" ? "homework" : role === "yonetici" ? "reports" : "lessons"
-  const metrics = role === "rehberlik" ? [["Görüşme", "8", "#fff0e2"], ["Takipteki öğrenci", "24", "#e3f8f0"], ["Randevu", "3", "#e8f0ff"]] : role === "yemekhane" ? [["Planlanan öğün", "14", "#fff0e2"], ["Eksik menü", "0", "#e3f8f0"], ["Alerjen türü", "3", "#e8f0ff"]] : role === "servis-soforu" ? [["Bugünkü rota", "2", "#fff0e2"], ["Öğrenci", "18", "#e3f8f0"], ["Binen", "12", "#e8f0ff"]] : role === "platform-yoneticisi" ? [["Aktif kurum", "24", "#e3f8f0"], ["Başvuru", "3", "#fff0e2"], ["Destek", "8", "#e8f0ff"]] : role === "muhasebe" ? [["Tahsilat", "₺48.200", "#e3f8f0"], ["Gider", "₺12.600", "#fff0e2"], ["Bakiye", "₺35.600", "#e8f0ff"]] : role === "personel" ? [["Bugünkü görev", "8", "#fff0e2"], ["Tamamlanan", "5", "#e3f8f0"], ["Yeni duyuru", "3", "#e8f0ff"]] : [["Bugünkü ders", "8", "#fff0e2"], ["Katılım oranı", "%92", "#e3f8f0"], ["Yeni bildirim", "3", "#e8f0ff"]]
+  const kind: Preview = role === "rehberlik" ? "guidance" : role === "yemekhane" ? "meals" : role === "servis-soforu" ? "route" : role === "sube-muduru" ? "reports" : role === "muhasebe" ? "finance" : role === "personel" ? "tasks" : role === "veli" ? "students" : role === "ogrenci" ? "homework" : role === "yonetici" ? "reports" : "lessons"
+  const metrics = role === "rehberlik" ? [["Görüşme", "8", "#fff0e2"], ["Takipteki öğrenci", "24", "#e3f8f0"], ["Randevu", "3", "#e8f0ff"]] : role === "yemekhane" ? [["Planlanan öğün", "14", "#fff0e2"], ["Eksik menü", "0", "#e3f8f0"], ["Alerjen türü", "3", "#e8f0ff"]] : role === "servis-soforu" ? [["Bugünkü rota", "2", "#fff0e2"], ["Öğrenci", "18", "#e3f8f0"], ["Binen", "12", "#e8f0ff"]] : role === "muhasebe" ? [["Tahsilat", "₺48.200", "#e3f8f0"], ["Gider", "₺12.600", "#fff0e2"], ["Bakiye", "₺35.600", "#e8f0ff"]] : role === "personel" ? [["Bugünkü görev", "8", "#fff0e2"], ["Tamamlanan", "5", "#e3f8f0"], ["Yeni duyuru", "3", "#e8f0ff"]] : [["Bugünkü ders", "8", "#fff0e2"], ["Katılım oranı", "%92", "#e3f8f0"], ["Yeni bildirim", "3", "#e8f0ff"]]
   return <svg viewBox="0 0 720 412" x={0} y={0} width={720} height={412} overflow="hidden">
     <rect width={720} height={412} fill="#f6f8fb" /><rect width={720} height={49} fill="#fff" /><path d="M0 49h720" stroke="#e6eaf0" />
     <Logo x={16} y={12} /><Text x={49} y={29} size={14} weight={750}>SchoolAsist</Text><rect x={349} y={14} width={185} height={25} rx={7} fill="#f5f7fa" /><Text x={362} y={31} size={10} fill={muted}>Öğrenci, ders veya kayıt ara…</Text><circle cx={627} cy={25} r={13} fill="#fff0df" /><Text x={619} y={29} fill={orange} size={10} weight={750}>D1</Text><Text x={649} y={22} size={11} weight={700}>Demo 1</Text><Text x={649} y={36} size={9} fill={muted}>{selected.name}</Text>
@@ -140,8 +139,8 @@ function Laptop({ id, x = 0, y = 0, scale = 1, role = "ogretmen", desktop = fals
 }
 
 function Phone({ id, x = 0, y = 0, scale = 1, role = "ogretmen", notification = false }: { id: string; x?: number; y?: number; scale?: number; role?: RoleId; notification?: boolean }) {
-  const special = role === "rehberlik" ? "guidance" : role === "yemekhane" ? "meals" : role === "servis-soforu" ? "route" : role === "platform-yoneticisi" ? "platform" : null
-  const heading = role === "rehberlik" ? "Görüşmeler" : role === "yemekhane" ? "Yemek menüsü" : role === "servis-soforu" ? "Bugünkü rota" : role === "platform-yoneticisi" ? "Kurumlar" : role === "sube-muduru" || role === "yonetici" ? "Kurum özeti" : role === "veli" ? "Öğrencim" : role === "personel" ? "Görevlerim" : role === "muhasebe" ? "Tahsilatlar" : "Derslerim"
+  const special = role === "rehberlik" ? "guidance" : role === "yemekhane" ? "meals" : role === "servis-soforu" ? "route" : null
+  const heading = role === "rehberlik" ? "Görüşmeler" : role === "yemekhane" ? "Yemek menüsü" : role === "servis-soforu" ? "Bugünkü rota" : role === "sube-muduru" || role === "yonetici" ? "Kurum özeti" : role === "veli" ? "Öğrencim" : role === "personel" ? "Görevlerim" : role === "muhasebe" ? "Tahsilatlar" : "Derslerim"
   return <g className="scene-phone" transform={`translate(${x} ${y}) scale(${scale})`}>
     <rect x={-4} y={77} width={4} height={39} rx={2} fill="#686c72" /><rect x={210} y={82} width={4} height={53} rx={2} fill="#83878f" />
     <rect width={213} height={430} rx={33} fill={`url(#${id}-edge)`} stroke="#8c9098" strokeWidth={1.5} /><rect x={4} y={4} width={205} height={422} rx={30} fill="#0b0c0f" /><rect x={10} y={10} width={193} height={410} rx={26} fill={notification ? "#12151c" : "#f8fafc"} />

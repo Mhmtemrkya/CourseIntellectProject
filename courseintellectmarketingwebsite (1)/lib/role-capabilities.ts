@@ -252,22 +252,4 @@ export const roleCapabilities: Record<RoleId, RoleCapabilities> = {
       ["Sefer tamamlama", "Tamamlanan yolculuğun durumunu güncelleyin."],
     ] },
   ] },
-  "platform-yoneticisi": { scope: "Platform yöneticisi SchoolAsist işletim ekibine ait ayrı roldür; kurum kayıtlarıyla gelen bir kullanıcı yetkisi değildir.", groups: [
-    { title: "Kurum yaşam döngüsü", summary: "Başvurudan aktif kullanıma kadar.", items: [
-      ["Platform özeti", "Platformun kurum ve kullanım göstergelerini inceleyin."],
-      ["Kurumlar ve başvurular", "Kurum başvurularını inceleyin, onaylayın veya reddedin."],
-      ["Kurum erişimi", "Kurumun kullanımını etkinleştirin veya engelleyin; kurumun kullanıcı erişimini kontrol edin."],
-      ["Paketler", "Platform paketlerini ve paket tanımlarını yönetin."],
-      ["Faturalama ve abonelik", "Kurumların abonelik ve faturalama kayıtlarını takip edin."],
-      ["Limitler", "Kurumların kullanım limitlerini ve kaynak sınırlarını yönetin."],
-      ["Kurum özelleştirme", "Kurumlara ait görünüm ve yapılandırma seçeneklerini düzenleyin."],
-    ] },
-    { title: "İşletim ve destek", summary: "Platformun günlük kontrol alanı.", items: [
-      ["Sistem", "Platformun sistem yapılandırmalarını ve durumunu takip edin."],
-      ["AI yönetimi", "Mevcut AI entegrasyonlarının platform yapılandırma alanını yönetin."],
-      ["Log merkezi", "Platform işlem kayıtlarını ve denetim bilgilerini inceleyin."],
-      ["Destek", "Müşteri numarasıyla ilişkilendirilen destek kayıtlarını ve kurum taleplerini yönetin."],
-      ["Ayarlar", "Platform hesabınıza açılan tercihleri düzenleyin."],
-    ] },
-  ] },
 }

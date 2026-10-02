@@ -9,6 +9,5 @@ export const roles = [
   { id: "sube-muduru", name: "Şube Müdürü", title: "Şubenizin bütün akışı.", accent: "Kontrolünüzde.", description: "Yönetim araçları, kendi şubenizin güvenli veri kapsamında.", screen: "Şube özeti", features: ["Şube operasyonu", "Ekip ve akademik yönetim", "Şubeye ait finans ve raporlar"] },
   { id: "yemekhane", name: "Yemekhane", title: "Her öğün planlı.", accent: "Her ayrıntı görünür.", description: "Haftalık menü, besin değerleri ve alerjen bilgileri bir arada.", screen: "Haftalık yemek programı", features: ["Haftalık menü", "Öğün ve besin değerleri", "Alerjen bilgisi"] },
   { id: "servis-soforu", name: "Servis Şoförü", title: "Her yolculuk.", accent: "Takip altında.", description: "Size atanan rotalar, öğrenciler ve sefer durumu mobilde.", screen: "Bugünkü rota", features: ["Atanan rotalar", "Öğrenci alım listesi", "Sefer ve konum paylaşımı"] },
-  { id: "platform-yoneticisi", name: "Platform Yöneticisi", title: "Platformun bütün akışı.", accent: "Tek merkezden.", description: "Kurum başvuruları, erişim, yapılandırma ve destek yönetimi.", screen: "Platform özeti", features: ["Kurum onayı ve erişim", "Yapılandırma ve limitler", "Platform desteği ve denetim"] },
 ] as const
 export type RoleId = typeof roles[number]["id"]

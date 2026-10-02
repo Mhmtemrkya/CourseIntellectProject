@@ -13,6 +13,7 @@ import { highlightHeadline, highlightTopic, productHighlights } from "@/lib/prod
 import { roleCapabilities } from "@/lib/role-capabilities"
 import { RoleCapabilityList } from "./role-capability-list"
 import { ScrollExperience } from "./scroll-experience"
+import { SchoolBrainExperience } from "./school-brain-experience"
 export { roles } from "@/lib/site-experience-data"
 export type { RoleId } from "@/lib/site-experience-data"
 
@@ -139,7 +140,7 @@ function RoleTabs({ active, onSelect, dark = false }: { active: RoleId; onSelect
   }}>{role.name}{role.id === active && <motion.span className="ref-tab-indicator" layoutId="role-tab-indicator" transition={{ type: "spring", stiffness: 400, damping: 35 }} />}</button>)}</div>
 }
 
-const roleScene: Record<RoleId, ShowcaseAsset> = { rehberlik: "roles-device", "sube-muduru": "yonetici-device", yemekhane: "roles-device", "servis-soforu": "roles-device", "platform-yoneticisi": "roles-device", yonetici: "yonetici-device", ogretmen: "ogretmen-device", veli: "veli-phone", ogrenci: "ogrenci-device", muhasebe: "muhasebe-device", personel: "personel-device" }
+const roleScene: Record<RoleId, ShowcaseAsset> = { rehberlik: "roles-device", "sube-muduru": "yonetici-device", yemekhane: "roles-device", "servis-soforu": "roles-device", yonetici: "yonetici-device", ogretmen: "ogretmen-device", veli: "veli-phone", ogrenci: "ogrenci-device", muhasebe: "muhasebe-device", personel: "personel-device" }
 
 function RoleDiscoveryCard({ role }: { role: (typeof roles)[number] }) {
   const profile = roleCapabilities[role.id]
@@ -154,13 +155,15 @@ function RoleDiscoveryCard({ role }: { role: (typeof roles)[number] }) {
 
 export function HomeStory() {
   const [active, setActive] = useState<RoleId>("ogretmen")
-  return <div className="ref-story"><ReferenceHero title="Bütün kurum." accent="Tek bir deneyim." description="Yönetim, eğitim ve iletişim. Birlikte." eyebrow="SchoolAsist" asset="home-device" explore />
-    <ReferenceGallery title="Yakından keşfedin." canvas={972} cards={[
+  const [featureRole, setFeatureRole] = useState<RoleId>("ogretmen")
+  return <div className="ref-story brain-home-story"><SchoolBrainExperience onRoleChange={setActive} />
+    <section className="brain-all-features"><nav className="brain-feature-selector" aria-label="Özelliklerini incelemek istediğiniz rol">{roles.map(role => <button key={role.id} onClick={() => setFeatureRole(role.id)} aria-pressed={featureRole === role.id}>{role.name}</button>)}</nav><RoleCapabilityList key={featureRole} id={featureRole}/></section>
+    <ReferenceGallery title="Daha verimli okullar." accent="Birlikte çalışan süreçler." canvas={972} cards={[
       { asset: "home-lessons", title: "Ders akışı.", description: "Planlama, yoklama ve gelişim.", href: "/deneyim/ogretmen" },
       { asset: "home-messages", title: "İletişim.", description: "Her an yanında.", href: "/deneyim/veli" },
       { asset: "muhasebe-plan", title: "Finansal görünüm.", description: "Her hareket net.", href: "/deneyim/muhasebe" },
     ]} />
-    <ScrollExperience /><section className="ref-home-ecosystem"><Reveal><h2>Her ekranda.<br /><span>Aynı bütünlük.</span></h2><p>Masaüstü, web ve mobilde SchoolAsist.</p></Reveal><div role="tabpanel" id="role-preview" aria-labelledby={`tab-${active}`}><div key={active} className="ref-scene-swap"><SceneImage asset="home-ecosystem" role={active} alt={`${roles.find(r => r.id === active)?.name} deneyimi; temsili demo ekranları`} /></div></div><RoleTabs active={active} onSelect={setActive} /><Link href={`/deneyim/${active}`} className="ref-selected-role">{roles.find(r => r.id === active)?.name} deneyimini incele <ArrowRight size={15} /></Link><small className="ref-demo-note">Temsili demo verileri</small></section><SiteCTA /></div>
+    <section className="ref-home-ecosystem"><Reveal><h2>Her ekranda.<br /><span>Aynı bütünlük.</span></h2><p>Masaüstü, web ve mobilde SchoolAsist.</p></Reveal><div role="tabpanel" id="role-preview" aria-labelledby={`tab-${active}`}><div key={active} className="ref-scene-swap"><SceneImage asset="home-ecosystem" role={active} alt={`${roles.find(r => r.id === active)?.name} deneyimi; temsili demo ekranları`} /></div></div><RoleTabs active={active} onSelect={setActive} /><Link href={`/deneyim/${active}`} className="ref-selected-role">{roles.find(r => r.id === active)?.name} deneyimini incele <ArrowRight size={15} /></Link><small className="ref-demo-note">Temsili demo verileri</small></section><SiteCTA /></div>
 }
 
 export function PlatformStory() {
@@ -172,9 +175,7 @@ export function PlatformStory() {
 }
 
 export function RolesStory() {
-  const [active, setActive] = useState<RoleId>("ogretmen")
-  const selected = roles.find(r => r.id === active)!
-  return <div className="ref-story"><div className="ref-roles-hero"><ReferenceHero title="Aynı kurum." accent="Her role özel." description="İhtiyacınız olan bilgi, size ait çalışma alanında." asset="roles-device" role={active} /><div role="tabpanel" id="role-preview" aria-labelledby={`tab-${active}`} className="sr-only">{selected.name}: {selected.description}</div><RoleTabs active={active} onSelect={setActive} dark /></div><ScrollExperience role={active} /><section className="ref-role-directory"><h2>Kendi deneyiminizi <span>keşfedin.</span></h2><div className="ref-role-cards">{roles.map(role => <RoleDiscoveryCard key={role.id} role={role} />)}</div><div className="ref-access-note"><LockKeyhole /><div><strong>Erişimler rol ve kurum yetkilerine göre belirlenir.</strong><p>Her kullanıcı yalnızca kendisine tanımlanan alanlara erişir. Ek ve özel roller, kurum yöneticisinin tanımladığı modül ve işlem izinleriyle şekillenir; herkese aynı yetki verilmez.</p></div></div></section></div>
+  return <div className="ref-story brain-home-story"><SchoolBrainExperience /><section className="ref-role-directory"><h2>Kendi deneyiminizi <span>keşfedin.</span></h2><div className="ref-role-cards">{roles.map(role => <RoleDiscoveryCard key={role.id} role={role} />)}</div><div className="ref-access-note"><LockKeyhole /><div><strong>Erişimler rol ve kurum yetkilerine göre belirlenir.</strong><p>Her kullanıcı yalnızca kendisine tanımlanan alanlara erişir. Ek ve özel roller, kurum yöneticisinin tanımladığı modül ve işlem izinleriyle şekillenir; herkese aynı yetki verilmez.</p></div></div></section></div>
 }
 
 const roleGalleries: Partial<Record<RoleId, { title: string; accent?: string; assets: [ShowcaseAsset, string, string][] }>> = {
@@ -196,12 +197,10 @@ function FinanceHistory() {
 }
 
 export function RoleStory({ id }: { id: RoleId }) {
-  const role = roles.find(r => r.id === id)!
   const gallery = roleGalleries[id]
-  return <div className={`ref-story ref-role-${id}`}>
-    {id === "veli" ? <section className="ref-parent-hero"><SceneImage asset="veli-phone" alt="Veli portalı telefon ekranı; temsili demo verileri" priority /><div><p className="ref-eyebrow">VELİ</p><h1>{role.title}<br /><span>{role.accent}</span></h1><p>{role.description}</p><a className="ref-explore" href="#tum-ozellikler">Bütün özellikleri görün <ArrowDown size={16} /></a><SceneImage asset="veli-notification" alt="Demo 1 matematik dersine katıldı bildirim sahnesi" priority /></div></section> : id === "ogrenci" ? <section className="ref-student-hero"><div><p className="ref-eyebrow">ÖĞRENCİ</p><h1>Sıradaki <br />hedefin.<br /><span>Önünde.</span></h1><p>{role.description}</p><a className="ref-explore" href="#tum-ozellikler">Bütün özelliklerini keşfet <ArrowDown size={16} /></a></div><SceneImage asset="ogrenci-device" alt="Öğrenci ders ve ödev programı; temsili demo ekranı" priority /></section> : <ReferenceHero eyebrow={role.name.toLocaleUpperCase("tr-TR")} title={role.title} accent={role.accent} description={role.description} asset={roleScene[id]} role={id} explore exploreHref="#tum-ozellikler" exploreLabel="Bütün özellikleri görün" />}
+  return <div className={`ref-story brain-role-story ref-role-${id}`}>
+    <SchoolBrainExperience role={id} />
     {gallery && <ReferenceGallery title={gallery.title} accent={gallery.accent} href="#tum-ozellikler" linkLabel="Bütün özellikleri incele" cards={gallery.assets.map(([asset, title, description]) => ({ asset, title, description, href: "#tum-ozellikler" }))} />}
-    <ScrollExperience role={id} />
     <RoleCapabilityList id={id} />
     {gallery && <section id="rol-detay" className="ref-light-showcase">
       {id === "yonetici" && <><h2>Yetkiyi doğru kişiye verin.</h2><p>Her rol için ihtiyaç olan erişim. Güvenli ve düzenli.</p><SceneImage asset="yonetici-access" alt="Öğretmen, veli ve muhasebe için ayrı erişim kapsamları; temsili demo verileri" /></>}
