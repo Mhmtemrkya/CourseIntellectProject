@@ -61,9 +61,11 @@ export type TurnstileWidgetProps = {
   language?: string
   /** Sıfırlama tetikleyicisi: değeri değişince widget yenilenir. */
   resetKey?: number
+  /** Dar form alanlarında sabit 300px genişliğin taşmasını önler. */
+  size?: "normal" | "compact" | "flexible"
 }
 
-export function TurnstileWidget({ onToken, onError, language, resetKey = 0 }: TurnstileWidgetProps) {
+export function TurnstileWidget({ onToken, onError, language, resetKey = 0, size = "normal" }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const widgetIdRef = useRef<string | null>(null)
   const onTokenRef = useRef(onToken)
@@ -81,6 +83,7 @@ export function TurnstileWidget({ onToken, onError, language, resetKey = 0 }: Tu
         if (cancelled || !containerRef.current || !window.turnstile) return
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: SITE_KEY,
+          size,
           language: language === "en" ? "en" : "tr",
           callback: (token: string) => onTokenRef.current(token),
           "expired-callback": () => onTokenRef.current(null),
@@ -106,7 +109,7 @@ export function TurnstileWidget({ onToken, onError, language, resetKey = 0 }: Tu
         widgetIdRef.current = null
       }
     }
-  }, [language])
+  }, [language, size])
 
   useEffect(() => {
     if (!resetKey || !widgetIdRef.current || !window.turnstile) return

@@ -89,7 +89,7 @@ public sealed class InstitutionMovedLoginTests : IDisposable
         var service = BuildService();
 
         Assert.NotNull(await service.LoginAsync(new LoginRequest("okul.admin", "Parola123")));
-        Assert.NotNull(await service.LoginAsync(new LoginRequest("platform", "Parola123")));
+        Assert.Null(await service.LoginAsync(new LoginRequest("platform", "Parola123"))); // Platform management requires Access + MFA.
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class InstitutionMovedLoginTests : IDisposable
         await middleware.InvokeAsync(context, db.Context, new ActiveScope());
         Assert.False(called);
         Assert.Equal(403, context.Response.StatusCode);
-        Assert.NotNull(await BuildService().LoginAsync(new LoginRequest("platform", "Parola123")));
+        Assert.Null(await BuildService().LoginAsync(new LoginRequest("platform", "Parola123"))); // Platform management requires Access + MFA.
         tenant.Status = "active";
         await db.Context.SaveChangesAsync();
         Assert.NotNull(await BuildService().LoginAsync(new LoginRequest("okul.admin", "Parola123")));

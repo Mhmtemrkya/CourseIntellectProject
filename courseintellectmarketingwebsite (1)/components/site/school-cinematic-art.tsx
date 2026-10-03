@@ -4,9 +4,9 @@ import { useId, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useTransform, type MotionValue } from "framer-motion"
-import { ArrowUpRight, Bell, BookOpen, Check, GraduationCap, PieChart, TrendingUp, Users } from "lucide-react"
+import { Bell, BookOpen, BriefcaseBusiness, Bus, CalendarCheck, GraduationCap, HeartHandshake, MapPin, PieChart, TrendingUp, Users, Utensils } from "lucide-react"
 import { brainProcesses, smoothRange, type BrainProcess } from "@/lib/school-brain"
-import { roles, type RoleId } from "@/lib/site-experience-data"
+import { type RoleId } from "@/lib/site-experience-data"
 
 const root = "/images/brain-cinematic-v3/"
 const icons = {lessons:BookOpen,students:Users,teachers:GraduationCap,parents:Bell,finance:TrendingUp,management:PieChart}
@@ -54,6 +54,31 @@ function Flow({ process, progress, index, compact, prefix }: {process:BrainProce
   </motion.g>
 }
 
+const roleIllustrations = {
+  ogretmen: { label:"Öğretmenler", file:`${root}teachers.webp`, icon:GraduationCap },
+  yonetici: { label:"Yönetim", file:"/images/brain-role-art/yonetici.webp", icon:PieChart },
+  veli: { label:"Veliler", file:"/images/brain-role-art/veli.webp", icon:HeartHandshake },
+  ogrenci: { label:"Öğrenciler", file:"/images/brain-role-art/ogrenci.webp", icon:GraduationCap },
+  muhasebe: { label:"Muhasebe", file:"/images/brain-role-art/muhasebe.webp", icon:TrendingUp },
+  personel: { label:"İdari Personel", file:"/images/brain-role-art/personel.webp", icon:BriefcaseBusiness },
+  rehberlik: { label:"Rehberlik", file:"/images/brain-role-art/rehberlik.webp", icon:HeartHandshake },
+  "sube-muduru": { label:"Şube Yönetimi", file:"/images/brain-role-art/sube-muduru.webp", icon:MapPin },
+  yemekhane: { label:"Yemekhane", file:"/images/brain-role-art/yemekhane.webp", icon:Utensils },
+  "servis-soforu": { label:"Servis", file:"/images/brain-role-art/servis-soforu.webp", icon:Bus },
+} satisfies Record<RoleId, {label:string;file:string;icon:typeof CalendarCheck}>
+
+function RoleIllustration({illustration,onFailure}: {illustration:typeof roleIllustrations[RoleId];onFailure:()=>void}) {
+  const [loaded,setLoaded] = useState(false)
+  const reduced = useReducedMotion()
+  const Icon = illustration.icon
+  return <div className="standalone-role-sculpture">
+    <span className="standalone-role-art-label"><i><Icon size={20}/></i>{illustration.label}</span>
+    <motion.div className="standalone-role-art-object" initial={false} animate={{opacity:loaded?1:0,y:loaded?0:10}} transition={{duration:reduced?0:.45}}>
+      <Image src={illustration.file} alt="" fill sizes="(max-width:760px) 96vw, 59vw" onLoad={()=>setLoaded(true)} onError={onFailure}/>
+    </motion.div>
+  </div>
+}
+
 export default function SchoolCinematicArt({ progress, compact, running, onReady, onFailure, role, story }: {progress:MotionValue<number>; compact:boolean; running:boolean; onReady:()=>void; onFailure:()=>void; role:RoleId; story:boolean}) {
   const reduced = useReducedMotion()
   const id = useId().replace(/:/g,"")
@@ -74,7 +99,7 @@ export default function SchoolCinematicArt({ progress, compact, running, onReady
   const coreOpacity=useTransform(progress,[.72,.93],compact?[1,0]:[1,1])
   const roleOpacity=useTransform(progress,[.69,.92],[0,1])
   const roleScale=useTransform(progress,[.69,.94],[.86,1])
-  const selected=roles.find(item=>item.id===role)!
+  const illustration = roleIllustrations[role]
   const ordered=[brainProcesses[0],brainProcesses[1],brainProcesses[4],brainProcesses[2],brainProcesses[3],brainProcesses[5]]
   return <div className={`brain-cinematic standalone-cinematic${running ? "" : " is-paused"}`}>
     <Image className="standalone-hall" src={`${root}hall.webp`} alt="" fill sizes="100vw" priority onLoad={()=>loaded("hall")} onError={onFailure}/>
@@ -96,11 +121,11 @@ export default function SchoolCinematicArt({ progress, compact, running, onReady
       </motion.div>
     </div>
     <motion.div className="standalone-role-layer" style={{opacity:roleOpacity,scale:roleScale}} aria-hidden="true">
-      <AnimatePresence initial={false}><motion.div key={role==="ogretmen"?"teacher":"workspace"} className="standalone-role-composition" initial={reduced?false:{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:reduced?0:.55}}>
-        {role==="ogretmen" ? <div className="standalone-teacher-book"><span className="standalone-book-label"><i><GraduationCap size={20}/></i>Öğretmenler</span><Image src={`${root}teachers.webp`} alt="" fill sizes="(max-width:760px) 94vw, 56vw" onError={onFailure}/></div> : <div className="standalone-workspace-shell"><Image src={`${root}workspace${compact ? "-mobile" : ""}.webp`} alt="" fill sizes="(max-width:760px) 94vw, 56vw" onError={onFailure}/><motion.div key={role} className="standalone-workspace-content" initial={reduced?false:{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{duration:.35}} aria-label={`${selected.name} için temsili çalışma alanı`}>
-          <div className="standalone-workspace-heading"><span>{selected.name}</span><small>Demo 1</small></div><h3>{selected.screen}</h3><div className="standalone-workspace-status"><i/> Günün akışı hazır</div><div className="standalone-workspace-tasks">{selected.features.slice(0,3).map((item,index)=><div key={item}><i><Check size={14}/></i><span>{item}</span><ArrowUpRight size={15}/><b style={{width:`${85-index*18}%`}}/></div>)}</div><div className="standalone-workspace-footer"><span>SchoolAsist</span><span>Temsili demo</span></div>
-        </motion.div></div>}
-      </motion.div></AnimatePresence>
+      <AnimatePresence initial={false}>
+        <motion.div key={role} className="standalone-role-composition" initial={reduced?false:{opacity:0,y:12}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}} transition={{duration:reduced?0:.6,ease:[.22,1,.36,1]}}>
+          <RoleIllustration illustration={illustration} onFailure={onFailure}/>
+        </motion.div>
+      </AnimatePresence>
     </motion.div>
   </div>
 }

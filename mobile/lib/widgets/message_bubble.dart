@@ -22,8 +22,26 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bubbleColor = isMe ? const Color(0xFF0F766E) : Colors.white;
-    final textColor = isMe ? Colors.white : const Color(0xFF0F172A);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bubbleColor = isMe
+        ? (isDark ? const Color(0xFF115E52) : const Color(0xFF0F766E))
+        : (isDark ? const Color(0xFF17253C) : Colors.white);
+    final textColor = isMe
+        ? Colors.white
+        : (isDark ? const Color(0xFFE8EEF6) : const Color(0xFF0F172A));
+    final senderNameColor = isDark
+        ? const Color(0xFF5EEAD4)
+        : const Color(0xFF0F766E);
+    final avatarBg = isDark
+        ? const Color(0xFF22324C)
+        : const Color(0xFFE2E8F0);
+    final avatarFg = isDark ? const Color(0xFFE8EEF6) : const Color(0xFF0F172A);
+    final incomingMuted = isDark
+        ? Colors.white.withValues(alpha: 0.56)
+        : const Color(0xFF64748B);
+    final incomingHint = isDark
+        ? Colors.white.withValues(alpha: 0.42)
+        : const Color(0xFF94A3B8);
     final statusColor = _statusColor(message.status, isMe);
 
     return Padding(
@@ -37,14 +55,14 @@ class MessageBubble extends StatelessWidget {
           if (!isMe) ...[
             CircleAvatar(
               radius: 16,
-              backgroundColor: const Color(0xFFE2E8F0),
+              backgroundColor: avatarBg,
               child: Text(
                 message.senderName.trim().isEmpty
                     ? '?'
                     : message.senderName.trim()[0].toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
+                  color: avatarFg,
                 ),
               ),
             ),
@@ -72,11 +90,13 @@ class MessageBubble extends StatelessWidget {
                       bottomLeft: Radius.circular(isMe ? 20 : 6),
                       bottomRight: Radius.circular(isMe ? 6 : 20),
                     ),
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
-                        color: Color(0x12000000),
+                        color: isDark
+                            ? const Color(0x33000000)
+                            : const Color(0x12000000),
                         blurRadius: 12,
-                        offset: Offset(0, 5),
+                        offset: const Offset(0, 5),
                       ),
                     ],
                   ),
@@ -88,10 +108,10 @@ class MessageBubble extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Text(
                             message.senderName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F766E),
+                              color: senderNameColor,
                             ),
                           ),
                         ),
@@ -125,9 +145,7 @@ class MessageBubble extends StatelessWidget {
                             timeLabel,
                             style: TextStyle(
                               fontSize: 11.5,
-                              color: isMe
-                                  ? Colors.white70
-                                  : const Color(0xFF64748B),
+                              color: isMe ? Colors.white70 : incomingMuted,
                             ),
                           ),
                           if (isMe) ...[
@@ -147,9 +165,7 @@ class MessageBubble extends StatelessWidget {
                               child: Icon(
                                 Icons.delete_outline_rounded,
                                 size: 16,
-                                color: isMe
-                                    ? Colors.white70
-                                    : const Color(0xFF94A3B8),
+                                color: isMe ? Colors.white70 : incomingHint,
                               ),
                             ),
                           ),
@@ -201,6 +217,7 @@ class _AttachmentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (attachment.isImage) {
       final localPath = attachment.localFilePath;
       final localFile = localPath == null || localPath.isEmpty
@@ -231,7 +248,9 @@ class _AttachmentTile extends StatelessWidget {
                         return Container(
                           height: 120,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
+                            color: isDark
+                                ? const Color(0xFF22324C)
+                                : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: const Center(
@@ -244,7 +263,7 @@ class _AttachmentTile extends StatelessWidget {
                         );
                       },
                       errorBuilder: (context, error, stackTrace) {
-                        return _fileTile();
+                        return _fileTile(isDark);
                       },
                     ),
             ),
@@ -253,10 +272,18 @@ class _AttachmentTile extends StatelessWidget {
       );
     }
 
-    return _fileTile();
+    return _fileTile(isDark);
   }
 
-  Widget _fileTile() {
+  Widget _fileTile(bool isDark) {
+    final tileBg = isDark ? const Color(0xFF22324C) : const Color(0xFFF8FAFC);
+    final tileBorder = isDark ? const Color(0x1FFFFFFF) : const Color(0x14000000);
+    final iconBg = isDark ? const Color(0xFF0B3A52) : const Color(0xFFE0F2FE);
+    final iconColor = isDark ? const Color(0xFF7DD3FC) : const Color(0xFF0369A1);
+    final nameColor = isDark ? const Color(0xFFE8EEF6) : const Color(0xFF0F172A);
+    final metaColor = isDark
+        ? Colors.white.withValues(alpha: 0.56)
+        : const Color(0xFF64748B);
     final type = attachment.fileType.toLowerCase();
     final icon = switch (type) {
       'image' || String() when type.startsWith('image/') => Icons.image_rounded,
@@ -275,9 +302,9 @@ class _AttachmentTile extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
+            color: tileBg,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0x14000000)),
+            border: Border.all(color: tileBorder),
           ),
           child: Row(
             children: [
@@ -285,10 +312,10 @@ class _AttachmentTile extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE0F2FE),
+                  color: iconBg,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: const Color(0xFF0369A1)),
+                child: Icon(icon, color: iconColor),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -299,23 +326,26 @@ class _AttachmentTile extends StatelessWidget {
                       attachment.originalFileName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: nameColor,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       attachment.fileType.toUpperCase(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
-                        color: Color(0xFF64748B),
+                        color: metaColor,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.arrow_outward_rounded,
                 size: 18,
-                color: Color(0xFF64748B),
+                color: metaColor,
               ),
             ],
           ),

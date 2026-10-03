@@ -29,8 +29,13 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
         SetDefaultTimesOnTokenCreation = false
     };
 
-    public string CreateToken(AppUser user)
+    public string CreateToken(AppUser user) => CreateToken(user, null);
+    public string CreateAdminMfaToken(AppUser user, Guid sessionId) => CreateToken(user, sessionId);
+
+    private string CreateToken(AppUser user, Guid? sessionId)
     {
+        var isAdmin = user.PrimaryRole == Domain.Enums.UserRole.Developer && user.TenantId is null;
+        if (isAdmin && (sessionId is null || sessionId == Guid.Empty)) throw new InvalidOperationException("Platform admin requires MFA.");
         var claims = new Dictionary<string, object>
         {
             [JwtRegisteredClaimNames.Sub] = user.Id.ToString(),
@@ -41,6 +46,12 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
             ["security_version"] = user.SecurityVersion,
             ["bootstrap_only"] = user.MustChangePassword,
         };
+
+        if (isAdmin)
+        {
+            claims["admin_mfa"] = true;
+            claims["admin_session"] = sessionId!.Value.ToString();
+        }
 
         if (user.TenantId.HasValue)
         {
@@ -86,7 +97,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
         {
             Issuer = _options.Issuer,
             Audience = _options.Audience,
-            Expires = DateTime.UtcNow.AddMinutes(_options.AccessTokenMinutes),
+            Expires = DateTime.UtcNow.AddMinutes(isAdmin ? Math.Min(15, _options.AccessTokenMinutes) : _options.AccessTokenMinutes),
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256),
             Claims = claims
         };

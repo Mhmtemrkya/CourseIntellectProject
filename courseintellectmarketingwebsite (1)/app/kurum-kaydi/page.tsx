@@ -1,18 +1,17 @@
 "use client"
 
-import { useState } from "react"
-import { motion } from "framer-motion"
+import { useRef, useState, type InputHTMLAttributes } from "react"
+import { motion, useReducedMotion } from "framer-motion"
+import Image from "next/image"
+import styles from "./registration.module.css"
 import {
-  Building2, Mail, Phone, Users, CheckCircle, Loader2, ArrowRight,
-  ShieldCheck, MapPin, FileText, Globe, Hash, Briefcase,
+  Building2, Mail, Loader2, ArrowRight, ArrowUpRight,
+  ShieldCheck, MapPin, Plus, Monitor, Smartphone,
 } from "lucide-react"
 import Link from "next/link"
 import { ApplicationStatus } from "@/components/site/application-status"
-import { SceneImage } from "@/components/site/product-story"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   TURKISH_PROVINCES, maskTrPhone, maskMebCode, maskTaxNumber,
@@ -30,29 +29,14 @@ const plans = [
   { value: "Enterprise", label: { tr: "Enterprise — Büyük Kurumlar", en: "Enterprise — Large Institutions" } },
 ]
 
-const features = [
- {icon:Mail,title:{tr:"Kurum bilgileri",en:"01 · Verify your email"},desc:{tr:"Kurumunuzu tanıyın.",en:"Confirm your address using the emailed link."}},
- {icon:ShieldCheck,title:{tr:"E-posta doğrulama",en:"02 · Application review"},desc:{tr:"Bilgilerinizi doğrulayın.",en:"The platform administrator reviews your application."}},
- {icon:CheckCircle,title:{tr:"Yönetici onayı",en:"03 · Sign in"},desc:{tr:"Başvurunuz incelensin.",en:"Start using the temporary password in your approval email."}},
-]
-
-function FieldErr({ msg }: { msg?: string }) {
-  if (!msg) return null
-  return <p className="text-xs font-medium text-destructive">{msg}</p>
-}
-
-function SectionHead({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div className="flex items-center gap-2 pt-2 text-sm font-semibold text-foreground/70">
-      {icon}
-      <span>{label}</span>
-      <span className="ml-1 h-px flex-1 bg-border" />
-    </div>
-  )
+function Field({ label, error, helper, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string; helper?: string }) {
+  return <div className={styles.field}><label htmlFor={props.id}>{label}</label><input {...props} aria-invalid={error ? true : undefined} aria-describedby={error ? `${props.id}-error` : helper ? `${props.id}-help` : undefined}/>{error ? <p id={`${props.id}-error`} className={styles.fieldError}>{error}</p> : helper ? <p id={`${props.id}-help`} className={styles.helper}>{helper}</p> : null}</div>
 }
 
 export default function KurumKaydiPage() {
   const { language } = useLanguage()
+  const reduced = useReducedMotion()
+  const formRef = useRef<HTMLFormElement>(null)
   const [submitted, setSubmitted] = useState(false)
   const [verificationRequired, setVerificationRequired] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -164,6 +148,7 @@ export default function KurumKaydiPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (loading) return
     setError("")
     if (!registrationEnabled) return
     if (website.trim() !== "") {
@@ -187,10 +172,12 @@ export default function KurumKaydiPage() {
     setFieldErrors(errs)
     if (Object.keys(errs).length > 0) {
       setError(language === "tr" ? "Lütfen işaretli alanları düzeltin." : "Please fix the highlighted fields.")
+      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
       return
     }
     if (!kvkkAccepted) {
       setError(t.kvkkRequired[language])
+      document.getElementById("kvkk")?.focus()
       return
     }
     if (turnstileEnabled && !captchaToken) {
@@ -247,333 +234,56 @@ export default function KurumKaydiPage() {
     }
   }
 
-  if (!registrationEnabled) {
-    return (
-      <main
-        data-registration-enabled={registrationEnabled}
-        className="min-h-screen flex items-center justify-center bg-background p-6"
-      >
-        <Card className="w-full max-w-lg border-0 shadow-lg">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-3 rounded-full bg-muted p-3">
-              <Building2 className="h-7 w-7 text-muted-foreground" />
-            </div>
-            <CardTitle>{t.unavailableTitle[language]}</CardTitle>
-            <CardDescription className="text-base">{t.unavailable[language]}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Button asChild variant="outline"><Link href="/">{t.backHome[language]}</Link></Button>
-          </CardContent>
-        </Card>
-      </main>
-    )
+  const tr = language === "tr"
+  const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
+    setForm(previous => ({ ...previous, [key]: value }))
+    setFieldErrors(previous => { const next = { ...previous }; delete next[key]; return next })
   }
+  const corporateErrors = ["taxNumber", "mebCode"].some(key => fieldErrors[key])
+  const addressErrors = ["postalCode", "institutionPhone", "institutionEmail", "website"].some(key => fieldErrors[key])
 
   if (submitted) {
-    return <ApplicationStatus phase={verificationRequired ? "verify" : "success"} institution={form.institutionName} email={form.email} />
+    return <ApplicationStatus phase={verificationRequired ? "verify" : "received"} institution={form.institutionName} email={form.email} />
   }
 
-  return (
-    <div data-registration-enabled={registrationEnabled} className="sa-auth ref-registration">
-      <aside className="ref-registration-brand">
-        <SceneImage asset="registration-brand" alt="SchoolAsist logo sahnesi" priority />
-        <h1>{language === "tr" ? <>Kurumunuz için<br /><span>yeni bir başlangıç.</span></> : t.leftHeading[language]}</h1>
-        <p>{t.leftSubtitle[language]}</p>
-        <div className="ref-registration-steps">{features.map((feature, index) => <div key={index}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{feature.title[language]}</strong><p>{feature.desc[language]}</p></div></div>)}</div>
-      </aside>
+  return <div className={`${styles.page} sa-registration-v2`} data-registration-enabled={registrationEnabled}>
+    <section className={styles.intro} aria-labelledby="registration-heading">
+      <motion.div initial={false} animate={reduced ? undefined : { y: [14, 0], opacity: [.8, 1] }} transition={{ duration: .7 }}>
+        <p className={styles.eyebrow}>{tr ? "Ücretsiz kurum başvurusu" : "Free institution application"}</p>
+        <h1 id="registration-heading">{tr ? <>Kurumunuz için<br/><span>yeni bir başlangıç.</span></> : <>A new beginning.<br/><span>For your institution.</span></>}</h1>
+        <p className={styles.lead}>{tr ? "Paket seçmeden, ücretsiz başvurun." : "Apply for free, without choosing a plan."}</p>
+        <p className={styles.description}>{tr ? "E-posta doğrulaması ve yönetici onayından sonra masaüstü ve mobil uygulamalarımızla kullanmaya başlayın." : "Start using our desktop and mobile apps after email verification and administrator approval."}</p>
+      </motion.div>
+      <div className={styles.art}><picture><source media="(max-width:600px)" srcSet="/images/registration-art/application-mobile.webp"/><Image src="/images/registration-art/application.webp" width={1536} height={1024} alt={tr ? "SchoolAsist kurum başvuru dosyası, e-posta zarfı ve onay sürecini anlatan özel görsel" : "SchoolAsist institution application folder, email envelope and approval process"} loading="eager" fetchPriority="high" sizes="(max-width:900px) 100vw, 48vw"/></picture></div>
+      <ol className={styles.steps} aria-label={tr ? "Başvuru süreci" : "Application process"}>{(tr ? [["Kurum bilgileri", "Başvurunuzu oluşturun"], ["E-posta doğrulama", "Adresinizi doğrulayın"], ["Yönetici onayı", "Sonucu e-posta ile alın"]] : [["Institution details", "Submit your application"], ["Verify email", "Confirm your address"], ["Administrator approval", "Receive the result by email"]]).map(([title, description]) => <li key={title}><i aria-hidden="true"/><strong>{title}</strong><span>{description}</span></li>)}</ol>
+      <Link href="/destek" className={styles.help}>{tr ? "Sorunuz mu var?" : "Have a question?"}<span>{tr ? "Destek merkezine ulaşın" : "Visit the support center"}</span><ArrowRight size={18}/></Link>
+    </section>
 
-      {/* Right side - Form */}
-      <div className="sa-auth-form flex-1 flex items-center justify-center p-6 bg-background">
-        <div className="w-full max-w-md">
-
-          <motion.div initial={false} animate={{ opacity: 1, y: 0 }}>
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>{t.title[language]}</CardTitle>
-                <CardDescription>{t.subtitle[language]}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form aria-label="Kurum başvuru formu" onSubmit={handleSubmit} className="space-y-4">
-                  {/* Honeypot: insanlar görmez, botlar doldurur */}
-                  <input
-                    type="text"
-                    name="website"
-                    value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
-                    tabIndex={-1}
-                    autoComplete="off"
-                    aria-hidden="true"
-                    className="absolute -left-[9999px] h-0 w-0 opacity-0"
-                  />
-                  <div className="ref-registration-group"><h3><Building2 size={23} />Kurum bilgileri</h3><div className="ref-registration-primary">
-                  <div className="space-y-2">
-                    <Label htmlFor="institutionName">{t.institutionName[language]}</Label>
-                    <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="institutionName" maxLength={150} autoComplete="organization"
-                        value={form.institutionName}
-                        onChange={(e) => setForm((p) => ({ ...p, institutionName: e.target.value }))}
-                        placeholder="Örn. Demo Kurum"
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                    <FieldErr msg={fieldErrors.institutionName} />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="contactName">{t.contactName[language]}</Label>
-                      <Input
-                        id="contactName" maxLength={150} autoComplete="name"
-                        value={form.contactName}
-                        onChange={(e) => setForm((p) => ({ ...p, contactName: e.target.value }))}
-                        placeholder={language === "tr" ? "Yetkili adı soyadı" : "Contact person"}
-                        required
-                      />
-                      <FieldErr msg={fieldErrors.contactName} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="contactTitle">{t.contactTitle[language]}</Label>
-                      <div className="relative">
-                        <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="contactTitle"
-                          value={form.contactTitle}
-                          onChange={(e) => setForm((p) => ({ ...p, contactTitle: e.target.value }))}
-                          placeholder={language === "tr" ? "Örn: Kurucu, Müdür" : "e.g. Founder"}
-                          className="pl-10"
-                          maxLength={80}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">{t.email[language]}</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="email" maxLength={180} autoComplete="email"
-                          type="email"
-                          value={form.email}
-                          onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                          placeholder="info@kurum.com"
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                      <FieldErr msg={fieldErrors.email} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">{t.phone[language]}</Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="phone"
-                          type="tel"
-                          inputMode="numeric"
-                          value={form.phone}
-                          onChange={(e) => setForm((p) => ({ ...p, phone: maskTrPhone(e.target.value) }))}
-                          placeholder="+90 5xx xxx xx xx"
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                      <FieldErr msg={fieldErrors.phone} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="institutionType">{t.institutionType[language]}</Label>
-                      <select id="institutionType" className="sa-native-select" value={form.institutionType} onChange={e=>setForm(p=>({...p,institutionType:e.target.value}))}>
-                        <option value="PrivateSchool">{language === "tr" ? "Özel Okul" : "Private School"}</option>
-                        <option value="CourseCenter">{language === "tr" ? "Kurs Merkezi" : "Course Center"}</option>
-                        <option value="StudyCenter">{language === "tr" ? "Etüt Merkezi" : "Study Center"}</option>
-                        <option value="Other">{language === "tr" ? "Diğer" : "Other"}</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="students">{t.students[language]}</Label>
-                      <div className="relative">
-                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="students"
-                          type="number"
-                          min={1}
-                          max={100000}
-                          value={form.estimatedStudents}
-                          onChange={(e) => setForm((p) => ({ ...p, estimatedStudents: Number(e.target.value) }))}
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                      <FieldErr msg={fieldErrors.estimatedStudents} />
-                    </div>
-                  </div>
-
-                  </div></div>
-
-                  {billingEnabled && (
-                  <div className="space-y-2">
-                    <Label htmlFor="plan">{t.plan[language]}</Label>
-                    <select id="plan" className="sa-native-select" value={form.plan}
-                      onChange={(e) => setForm((p) => ({ ...p, plan: e.target.value }))}>
-                      {plans.map((p) => <option key={p.value} value={p.value}>{p.label[language]}</option>)}
-                    </select>
-                  </div>
-                  )}
-
-                  <details className="sa-registration-details" open={Object.keys(fieldErrors).some(key => ["taxNumber","mebCode","postalCode"].includes(key)) ? true : undefined}>
-                    <summary>{language === "tr" ? "Kurumsal bilgiler ve adres (isteğe bağlı)" : "Corporate details and address (optional)"}</summary><div className="space-y-4 pt-5">
-                  {/* ── Kurumsal bilgiler (opsiyonel) ── */}
-                  <SectionHead icon={<FileText className="w-4 h-4" />} label={t.sectionCorporate[language]} />
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="mebCode">{t.mebCode[language]}</Label>
-                      <div className="relative">
-                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input id="mebCode" inputMode="numeric" value={form.mebCode}
-                          onChange={(e) => setForm((p) => ({ ...p, mebCode: maskMebCode(e.target.value) }))}
-                          placeholder={language === "tr" ? "6-8 haneli" : "6-8 digits"} className="pl-10" />
-                      </div>
-                      <FieldErr msg={fieldErrors.mebCode} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="taxNumber">{t.taxNumber[language]}</Label>
-                      <Input id="taxNumber" inputMode="numeric" value={form.taxNumber}
-                        onChange={(e) => setForm((p) => ({ ...p, taxNumber: maskTaxNumber(e.target.value) }))}
-                        placeholder={language === "tr" ? "10 haneli VKN" : "10-digit tax no"} />
-                      <FieldErr msg={fieldErrors.taxNumber} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="taxOffice">{t.taxOffice[language]}</Label>
-                    <Input id="taxOffice" value={form.taxOffice} maxLength={120}
-                      onChange={(e) => setForm((p) => ({ ...p, taxOffice: e.target.value }))}
-                      placeholder={language === "tr" ? "Örn: Kadıköy V.D." : "Tax office"} />
-                  </div>
-
-                  {/* ── Adres (opsiyonel) ── */}
-                  <SectionHead icon={<MapPin className="w-4 h-4" />} label={t.sectionAddress[language]} />
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="city">{t.city[language]}</Label>
-                      <select id="city" className="sa-native-select" value={form.city} onChange={e=>setForm(p=>({...p,city:e.target.value}))}>
-                        <option value="">{language === "tr" ? "İl seçin" : "Select province"}</option>
-                        {TURKISH_PROVINCES.map(prov=><option key={prov} value={prov}>{prov}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="district">{t.district[language]}</Label>
-                      <Input id="district" value={form.district} maxLength={80}
-                        onChange={(e) => setForm((p) => ({ ...p, district: e.target.value }))}
-                        placeholder={language === "tr" ? "Örn: Kadıköy" : "District"} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-[1fr_120px] gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="addressLine">{t.addressLine[language]}</Label>
-                      <Input id="addressLine" value={form.addressLine} maxLength={400}
-                        onChange={(e) => setForm((p) => ({ ...p, addressLine: e.target.value }))}
-                        placeholder={language === "tr" ? "Mahalle, cadde, no" : "Street address"} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="postalCode">{t.postalCode[language]}</Label>
-                      <Input id="postalCode" inputMode="numeric" value={form.postalCode}
-                        onChange={(e) => setForm((p) => ({ ...p, postalCode: maskPostalCode(e.target.value) }))}
-                        placeholder="34710" />
-                      <FieldErr msg={fieldErrors.postalCode} />
-                    </div>
-                  </div>
-
-                  </div></details>
-                  <details className="sa-registration-details" open={Object.keys(fieldErrors).some(key => ["institutionPhone", "institutionEmail", "website"].includes(key)) ? true : undefined}>
-                    <summary>Ek iletişim bilgileri</summary><div className="space-y-4 pt-5">
-                  {/* ── Kurum iletişimi (opsiyonel) ── */}
-                  <SectionHead icon={<Globe className="w-4 h-4" />} label={t.sectionContact[language]} />
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="institutionPhone">{t.institutionPhone[language]}</Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input id="institutionPhone" type="tel" inputMode="numeric" value={form.institutionPhone}
-                          onChange={(e) => setForm((p) => ({ ...p, institutionPhone: maskTrPhone(e.target.value) }))}
-                          placeholder="+90 2xx xxx xx xx" className="pl-10" />
-                      </div>
-                      <FieldErr msg={fieldErrors.institutionPhone} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="institutionEmail">{t.institutionEmail[language]}</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input id="institutionEmail" type="email" value={form.institutionEmail}
-                          onChange={(e) => setForm((p) => ({ ...p, institutionEmail: e.target.value }))}
-                          placeholder="iletisim@kurum.com" className="pl-10" />
-                      </div>
-                      <FieldErr msg={fieldErrors.institutionEmail} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="website">{t.website[language]}</Label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input id="website" value={form.website} maxLength={200}
-                        onChange={(e) => setForm((p) => ({ ...p, website: e.target.value }))}
-                        placeholder="https://kurum.com" className="pl-10" />
-                    </div>
-                    <FieldErr msg={fieldErrors.website} />
-                  </div>
-
-                  </div></details>
-                  <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
-                    <Checkbox
-                      id="kvkk"
-                      checked={kvkkAccepted}
-                      onCheckedChange={(checked) => setKvkkAccepted(checked === true)}
-                      className="mt-0.5"
-                    />
-                    <Label htmlFor="kvkk" className="text-xs font-normal leading-relaxed text-muted-foreground">
-                      {t.kvkk[language]}{" "}
-                      <Link href="/kvkk" className="underline hover:text-foreground">
-                        {t.privacy[language]}
-                      </Link>
-                      {" · "}
-                      <Link href="/kullanim-sartlari" className="underline hover:text-foreground">
-                        {t.terms[language]}
-                      </Link>
-                    </Label>
-                  </div>
-
-                  <div className="ref-registration-notice"><ShieldCheck size={25} /><div><strong>Başvurunuz yönetici onayından sonra etkinleştirilir.</strong><p>Sonuç e-posta ile bildirilir.</p></div></div>
-                  <div className="ref-form-security"><ShieldCheck size={27} /><div><strong>Güvenlik doğrulaması</strong><p>Lütfen doğrulama işlemini tamamlayın.</p></div>
-                  <TurnstileWidget
-                    language={language}
-                    resetKey={captchaResetKey}
-                    onToken={setCaptchaToken}
-                    onError={() => setError(t.captchaUnavailable[language])}
-                  />
-                  </div>
-
-                  {error && <p className="text-sm text-destructive">{error}</p>}
-
-                  <Button
-                    type="submit"
-                    disabled={loading || (turnstileEnabled && !captchaToken)}
-                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                  >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                    {t.submit[language]} <ArrowRight size={17} />
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-      </div>
-    </div>
-  )
+    <section className={styles.formPanel} aria-labelledby="application-form-title">
+      <header><div><h2 id="application-form-title">{tr ? "Kurum başvurusu" : "Institution application"}</h2><span>{tr ? "Ücretsiz" : "Free"}</span></div><p>{tr ? "Kurum ve yetkili bilgilerinizi paylaşın." : "Share institution and contact details."}</p></header>
+      {!registrationEnabled && <div className={styles.unavailable} role="status"><ShieldCheck size={21}/><p><strong>{t.unavailableTitle[language]}</strong>{t.unavailable[language]}</p><Link href="/destek">{tr ? "Destek" : "Support"}<ArrowUpRight size={14}/></Link></div>}
+      <form ref={formRef} onSubmit={handleSubmit} aria-label={tr ? "Kurum başvuru formu" : "Institution application form"} aria-busy={loading} noValidate>
+        <input type="text" name="website" value={website} onChange={e => setWebsite(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" className={styles.honeypot}/>
+        <fieldset disabled={loading || !registrationEnabled} className={styles.primaryFields}>
+          <legend>{tr ? "Kurum bilgileri" : "Institution details"}</legend>
+          <Field id="institutionName" label={t.institutionName[language]} value={form.institutionName} onChange={e=>update("institutionName",e.target.value)} maxLength={150} autoComplete="organization" required placeholder={tr ? "Kurumunuzun adı" : "Institution name"} error={fieldErrors.institutionName}/>
+          <div className={styles.fieldGrid}><div className={styles.field}><label htmlFor="institutionType">{t.institutionType[language]}</label><select id="institutionType" value={form.institutionType} onChange={e=>update("institutionType",e.target.value)}>{[["PrivateSchool","Özel Okul","Private School"],["CourseCenter","Kurs Merkezi","Course Center"],["StudyCenter","Etüt Merkezi","Study Center"],["Other","Diğer","Other"]].map(([value,turkish,english])=><option key={value} value={value}>{tr?turkish:english}</option>)}</select></div><Field id="students" label={t.students[language]} type="number" min={1} max={100000} value={form.estimatedStudents} onChange={e=>update("estimatedStudents",Number(e.target.value))} required error={fieldErrors.estimatedStudents}/></div>
+        </fieldset>
+        <fieldset disabled={loading || !registrationEnabled} className={styles.contactFields}>
+          <legend>{tr ? "Yetkili bilgileri" : "Contact details"}</legend>
+          <div className={styles.fieldGrid}><Field id="contactName" label={tr ? "Ad soyad" : "Full name"} value={form.contactName} onChange={e=>update("contactName",e.target.value)} maxLength={150} autoComplete="name" placeholder={tr ? "Adınız ve soyadınız" : "Your full name"} required error={fieldErrors.contactName}/><Field id="contactTitle" label={tr ? "Görevi" : "Title"} value={form.contactTitle} onChange={e=>update("contactTitle",e.target.value)} maxLength={80} autoComplete="organization-title" placeholder={tr ? "Örn. Kurum yöneticisi" : "e.g. Institution manager"}/></div>
+          <div className={styles.fieldGrid}><Field id="email" label={tr ? "E-posta adresi" : "Email address"} type="email" value={form.email} onChange={e=>update("email",e.target.value)} maxLength={180} autoComplete="email" placeholder="ornek@kurum.com" required error={fieldErrors.email} helper={tr ? "Doğrulama bağlantısını bu adrese göndereceğiz." : "We will send a verification link to this address."}/><Field id="phone" label={tr ? "Cep telefonu" : "Mobile phone"} type="tel" inputMode="tel" value={form.phone} onChange={e=>update("phone",maskTrPhone(e.target.value))} autoComplete="tel" placeholder="05xx xxx xx xx" required error={fieldErrors.phone}/></div>
+        </fieldset>
+        {billingEnabled && <div className={styles.field}><label htmlFor="plan">{t.plan[language]}</label><select id="plan" value={form.plan} onChange={e=>update("plan",e.target.value)} disabled={loading || !registrationEnabled}>{plans.map(plan=><option key={plan.value} value={plan.value}>{plan.label[language]}</option>)}</select></div>}
+        <details className={styles.optional} open={corporateErrors ? true : undefined}><summary><Building2 size={18}/><span>{tr ? "Kurumsal bilgiler" : "Corporate details"}</span><small>{tr ? "İsteğe bağlı" : "Optional"}</small><Plus size={18}/></summary><fieldset disabled={loading || !registrationEnabled}><legend className="sr-only">{t.sectionCorporate[language]}</legend><div className={styles.fieldGrid}><Field id="mebCode" label={t.mebCode[language]} inputMode="numeric" value={form.mebCode} onChange={e=>update("mebCode",maskMebCode(e.target.value))} placeholder={tr ? "6–8 haneli" : "6–8 digits"} error={fieldErrors.mebCode}/><Field id="taxNumber" label={t.taxNumber[language]} inputMode="numeric" value={form.taxNumber} onChange={e=>update("taxNumber",maskTaxNumber(e.target.value))} placeholder={tr ? "10 haneli VKN" : "10-digit tax number"} error={fieldErrors.taxNumber}/></div><Field id="taxOffice" label={t.taxOffice[language]} value={form.taxOffice} onChange={e=>update("taxOffice",e.target.value)} maxLength={120}/></fieldset></details>
+        <details className={styles.optional} open={addressErrors ? true : undefined}><summary><MapPin size={18}/><span>{tr ? "Adres ve kurum iletişimi" : "Address and institution contact"}</span><small>{tr ? "İsteğe bağlı" : "Optional"}</small><Plus size={18}/></summary><fieldset disabled={loading || !registrationEnabled}><legend className="sr-only">{t.sectionAddress[language]}</legend><div className={styles.fieldGrid}><div className={styles.field}><label htmlFor="city">{t.city[language]}</label><select id="city" value={form.city} onChange={e=>update("city",e.target.value)} autoComplete="address-level1"><option value="">{tr ? "İl seçin" : "Select province"}</option>{TURKISH_PROVINCES.map(province=><option key={province}>{province}</option>)}</select></div><Field id="district" label={t.district[language]} value={form.district} onChange={e=>update("district",e.target.value)} maxLength={80} autoComplete="address-level2"/></div><Field id="addressLine" label={t.addressLine[language]} value={form.addressLine} onChange={e=>update("addressLine",e.target.value)} maxLength={400} autoComplete="street-address"/><Field id="postalCode" label={t.postalCode[language]} inputMode="numeric" value={form.postalCode} onChange={e=>update("postalCode",maskPostalCode(e.target.value))} autoComplete="postal-code" error={fieldErrors.postalCode}/><div className={styles.fieldGrid}><Field id="institutionPhone" label={t.institutionPhone[language]} type="tel" inputMode="tel" value={form.institutionPhone} onChange={e=>update("institutionPhone",maskTrPhone(e.target.value))} error={fieldErrors.institutionPhone}/><Field id="institutionEmail" label={t.institutionEmail[language]} type="email" maxLength={180} value={form.institutionEmail} onChange={e=>update("institutionEmail",e.target.value)} error={fieldErrors.institutionEmail}/></div><Field id="website" label={t.website[language]} type="url" maxLength={200} value={form.website} onChange={e=>update("website",e.target.value)} placeholder="https://kurum.com" error={fieldErrors.website}/></fieldset></details>
+        {turnstileEnabled && <div className={styles.security}><div><ShieldCheck size={24}/><span><strong>{tr ? "Güvenlik doğrulaması" : "Security verification"}</strong><small>{tr ? "Başvurunuzun güvenliği için doğrulamayı tamamlayın." : "Complete verification to protect your application."}</small></span></div><TurnstileWidget language={language} size="flexible" resetKey={captchaResetKey} onToken={setCaptchaToken} onError={()=>setError(t.captchaUnavailable[language])}/></div>}
+        <div className={styles.consent}><Checkbox id="kvkk" checked={kvkkAccepted} disabled={loading || !registrationEnabled} onCheckedChange={checked=>setKvkkAccepted(checked===true)}/><Label htmlFor="kvkk">{tr ? <>Kurum başvurusu <Link href="/kvkk">aydınlatma metnini</Link> okudum.</> : <>I have read the institution application <Link href="/kvkk">privacy notice</Link>.</>} <Link href="/kullanim-sartlari">{t.terms[language]}</Link></Label></div>
+        {error && <p className={styles.error} role="alert">{error}</p>}
+        <Button type="submit" disabled={loading || !registrationEnabled || (turnstileEnabled && !captchaToken)} className={styles.submit}>{loading ? <Loader2 size={18} className="animate-spin"/> : null}{loading ? (tr ? "Başvurunuz gönderiliyor…" : "Submitting…") : t.submit[language]}<ArrowRight size={18}/></Button>
+        <p className={styles.approval}><Mail size={18}/>{tr ? "Onaydan sonra giriş bilgileriniz e-posta ile gönderilir." : "After approval, your sign-in details are sent by email."}</p>
+      </form>
+      <div className={styles.apps}><p>{tr ? "Hesabınıza uygulamalarımızdan erişin." : "Access your account through our apps."}</p><Link href="/indir"><Monitor size={15}/><Smartphone size={15}/>{tr ? "Masaüstü ve mobil uygulamalar" : "Desktop and mobile apps"}<ArrowUpRight size={15}/></Link></div>
+    </section>
+  </div>
 }

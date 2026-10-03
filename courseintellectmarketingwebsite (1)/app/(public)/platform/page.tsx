@@ -1,2 +1,2 @@
-import { PlatformStory } from "@/components/site/product-story"
+import { PlatformStory } from "@/components/site/platform-story"
 export default function Page(){return <PlatformStory/>}

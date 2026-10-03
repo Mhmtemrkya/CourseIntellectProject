@@ -179,7 +179,7 @@ export const defaultContent: SiteContent = {
           id: "2",
           question: "Hangi cihazlarda kullanabilirim?",
           answer:
-            "Windows, macOS masaüstü uygulamalarımız ve iOS, Android mobil uygulamalarımız mevcuttur. Ayrıca web tarayıcınızdan da erişebilirsiniz.",
+            "Windows, macOS masaüstü uygulamalarımız ve iOS, Android mobil uygulamalarımız mevcuttur. Hesabınıza bu uygulamalardan giriş yapabilirsiniz.",
         },
         {
           id: "3",

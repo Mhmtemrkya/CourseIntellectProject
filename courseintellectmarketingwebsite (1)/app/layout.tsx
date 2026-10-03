@@ -11,6 +11,7 @@ import "@fontsource-variable/inter/wght.css";
 import "./site.css";
 import "./reference.css";
 import "./presentation.css";
+import "./school-brain.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.schoolasist.com"),
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s | SchoolAsist",
   },
   description:
-    "Okulunuzun ve kurumunuzun tüm süreçleri tek platformda: yoklama, sınav, finans, rehberlik, kütüphane, veli iletişimi. Masaüstü, web ve mobilde rol bazlı erişim.",
+    "Okulunuzun ve kurumunuzun tüm süreçleri tek platformda: yoklama, sınav, finans, rehberlik, kütüphane, veli iletişimi. Masaüstü ve mobil uygulamalarda rol bazlı erişim.",
   keywords: [
     "okul yönetim sistemi",
     "kurs yönetim programı",
@@ -39,7 +40,7 @@ export const metadata: Metadata = {
     siteName: "SchoolAsist",
     title: "SchoolAsist — Eğitimi Kolaylaştıran Akıllı Çözümler",
     description:
-      "Yoklama, sınav, finans, rehberlik ve kütüphane tek platformda. Masaüstü, web ve mobilde rol bazlı erişim.",
+      "Yoklama, sınav, finans, rehberlik ve kütüphane tek platformda. Masaüstü ve mobil uygulamalarda rol bazlı erişim.",
     images: [{ url: "/images/logo.png", width: 512, height: 512, alt: "SchoolAsist" }],
   },
   twitter: {

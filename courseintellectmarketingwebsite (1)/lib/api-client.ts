@@ -50,7 +50,13 @@ const DEFAULT_API_URL =
     ? "https://maydanozasist.schoolasist.com"
     : "https://maydanozasist.schoolasist.com"
 
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/$/, "")
+// The management origin serves its own /api for the email-code login.
+// Admin calls must not switch to the publicly reachable school API.
+export const API_BASE_URL = (
+  typeof window !== "undefined" && window.location.hostname === "yonetim.schoolasist.com"
+    ? window.location.origin
+    : process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL
+).replace(/\/$/, "")
 
 function friendlyApiError(status: number, payload: ApiErrorPayload | null): string {
   const trace = payload?.traceId ? ` Takip kodu: ${payload.traceId}.` : ""

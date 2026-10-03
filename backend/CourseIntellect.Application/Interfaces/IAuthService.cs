@@ -4,6 +4,10 @@ namespace CourseIntellect.Application.Interfaces;
 
 public interface IAuthService
 {
+    Task<AdminMfaStartResponse?> BeginAdminLoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+    Task<AdminMfaLoginResponse?> CompleteAdminLoginAsync(AdminMfaVerifyRequest request, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
     Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
     Task<LoginResponse?> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default);
     Task<CurrentUserDto?> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken = default);

@@ -1,233 +1,105 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { Eye, EyeOff, Lock, User, AlertCircle } from "lucide-react"
+import { ShieldCheck, Eye, EyeOff, ArrowRight, KeyRound, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { useAuth } from "@/context/auth-context"
+import { useAuth, type AdminChallenge } from "@/context/auth-context"
 
 export default function AdminLoginPage() {
   const router = useRouter()
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth()
-
-  const [email, setEmail] = useState("")
+  const { login, verifyLogin, finishLogin, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
+  const [challenge, setChallenge] = useState<AdminChallenge | null>(null)
+  const [code, setCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      router.push("/admin")
-    }
+    if (isAuthenticated && !authLoading) router.replace("/admin")
   }, [isAuthenticated, authLoading, router])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+  useEffect(() => {
+    if (!challenge) return
+    const expire = window.setTimeout(() => {
+      setChallenge(null)
+      setCode("")
+      setError("Doğrulama süresi doldu. Kullanıcı adı ve şifrenizle yeniden başlayın.")
+    }, Math.max(0, Date.parse(challenge.expiresAtUtc) - Date.now()))
+    return () => window.clearTimeout(expire)
+  }, [challenge])
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (isLoading) return
     setIsLoading(true)
-
-    const result = await login(email, password, rememberMe)
-
-    if (result.success) {
-      router.push("/admin")
-    } else {
-      setError(result.error || "Kullanıcı adı veya şifre hatalı")
-    }
-
-    setIsLoading(false)
+    setError("")
+    try {
+      if (!challenge) {
+        const result = await login(username, password)
+        if (result.challenge) {
+          setChallenge(result.challenge)
+          setPassword("")
+          setShowPassword(false)
+        } else setError(result.error || "Giriş tamamlanamadı.")
+      } else {
+        const result = await verifyLogin(challenge.challengeToken, code)
+        setCode("")
+        if (!result.session) setError(result.error || "Doğrulama tamamlanamadı.")
+        else {
+          finishLogin(result.session)
+          router.replace("/admin")
+        }
+      }
+    } finally { setIsLoading(false) }
   }
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
+  if (authLoading) return <div className="min-h-screen grid place-items-center bg-background" role="status">Yönetim oturumu kontrol ediliyor…</div>
+
+  const title = challenge ? "E-postanızdaki güvenlik kodu" : "Platform yönetimi"
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary relative overflow-hidden">
-        <div className="absolute inset-0">
-          {/* Decorative elements */}
-          <motion.div
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.1, 0.2, 0.1],
-            }}
-            transition={{ duration: 8, repeat: Number.POSITIVE_INFINITY }}
-            className="absolute top-1/4 -left-20 w-96 h-96 bg-accent/20 rounded-full blur-3xl"
-          />
-          <motion.div
-            animate={{
-              scale: [1.2, 1, 1.2],
-              opacity: [0.1, 0.15, 0.1],
-            }}
-            transition={{ duration: 10, repeat: Number.POSITIVE_INFINITY, delay: 1 }}
-            className="absolute bottom-1/4 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl"
-          />
+    <div className="min-h-screen grid lg:grid-cols-2 bg-[#f5f6fa] text-[#101d3b]">
+      <aside className="hidden lg:flex flex-col justify-between p-12 xl:p-20 bg-[#101d3b] text-white relative overflow-hidden">
+        <div aria-hidden="true" className="absolute w-[500px] h-[500px] rounded-full bg-orange-500/10 -bottom-40 -left-40 blur-3xl" />
+        <div className="flex items-center gap-3 relative"><Image src="/images/logo.png" alt="SchoolAsist logosu" width={52} height={52} /><span className="text-2xl font-semibold tracking-tight">SchoolAsist</span></div>
+        <div className="relative max-w-lg py-20">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white/80"><ShieldCheck size={18} /> Yetkili yönetim alanı</span>
+          <h1 className="mt-8 text-5xl xl:text-6xl font-semibold tracking-tight leading-[1.08]">Platformun kontrolü.<br /><span className="text-orange-400">Güvenli erişim.</span></h1>
+          <p className="mt-6 text-lg text-white/65 leading-relaxed">Kurum başvuruları, erişim yetkileri ve platform işlemleri tek bir yönetim alanında.</p>
+          <ol className="mt-10 space-y-4 text-sm text-white/75">
+            <li className="flex items-center gap-3"><ShieldCheck className="text-orange-400" size={18} /> Yetkilendirilmiş iki yönetici hesabı</li>
+            <li className="flex items-center gap-3"><KeyRound className="text-orange-400" size={18} /> Yönetici hesabı ve şifre</li>
+            <li className="flex items-center gap-3"><ShieldCheck className="text-orange-400" size={18} /> E-postayla tek kullanımlık kod</li>
+          </ol>
         </div>
-
-        <div className="relative z-10 flex flex-col items-center justify-center w-full p-12 text-white">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <Image
-              src="/images/logo.png"
-              alt="SchoolAsist"
-              width={80}
-              height={80}
-              className="object-contain mb-8"
-            />
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-4xl font-bold mb-4 text-center"
-          >
-            Geliştirici Paneli
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="text-lg text-white/70 text-center max-w-md"
-          >
-            SchoolAsist platform yönetimi. Bu alan sadece geliştirici ekibi kullanımı içindir.
-          </motion.p>
+        <p className="relative text-xs text-white/45">Yalnızca yetkilendirilmiş platform yöneticileri için.</p>
+      </aside>
+      <main className="flex items-center justify-center p-5 sm:p-10 lg:p-12">
+        <div className="w-full max-w-md py-8">
+          <div className="lg:hidden flex items-center gap-3 mb-10"><Image src="/images/logo.png" alt="SchoolAsist logosu" width={44} height={44} /><span className="text-xl font-semibold">SchoolAsist</span></div>
+          <div className="mb-8"><div className="w-12 h-12 grid place-items-center rounded-2xl bg-white shadow-sm mb-5"><ShieldCheck className="text-orange-500" /></div><h2 className="text-3xl font-semibold tracking-tight">{title}</h2><p className="text-sm text-slate-500 mt-3 leading-relaxed">{challenge ? `${challenge.emailHint} adresine gönderdiğimiz 6 haneli kodu girin.` : "Yönetici e-postanız ve şifrenizle başlayın. Panel, e-posta kodunu doğruladıktan sonra açılır."}</p></div>
+          {error && <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {!challenge ? <>
+                <div className="space-y-2"><Label htmlFor="username">Yönetici e-posta adresi</Label><Input id="username" type="email" autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={254} value={username} onChange={e => setUsername(e.target.value)} disabled={isLoading} required className="bg-white h-12" /></div>
+                <div className="space-y-2"><Label htmlFor="password">Şifre</Label><div className="relative"><Input id="password" type={showPassword ? "text" : "password"} autoComplete="current-password" maxLength={1024} value={password} onChange={e => setPassword(e.target.value)} disabled={isLoading} required className="bg-white h-12 pr-12" /><button type="button" aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"} onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-slate-500">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></div>
+              </> : <>
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 flex items-start gap-3"><Mail className="text-orange-500 shrink-0" size={22} /><p className="text-sm text-slate-600 leading-relaxed">Kod 5 dakika geçerlidir. E-postayı göremiyorsanız gereksiz posta klasörünü de kontrol edin.</p></div>
+                <div className="space-y-2"><Label htmlFor="security-code">E-posta doğrulama kodu</Label><Input id="security-code" autoFocus autoComplete="one-time-code" type="text" inputMode="numeric" pattern="[0-9]{6}" minLength={6} maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ""))} disabled={isLoading} required className="bg-white h-14 text-lg tracking-widest" /></div>
+              </>}
+              <Button type="submit" disabled={isLoading} className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white">{isLoading ? "Kontrol ediliyor…" : challenge ? "Kodu doğrula" : "Güvenli girişe devam et"}<ArrowRight className="ml-2" size={16} /></Button>
+              {challenge && <button type="button" disabled={isLoading} onClick={() => { setChallenge(null); setCode(""); setError("") }} className="text-sm text-slate-600 underline underline-offset-4">Yeniden başla</button>}
+            </form>
+          <p className="mt-8 text-xs text-slate-500 leading-relaxed">Bu alan kurum kullanıcılarının giriş ekranı değildir. Yönetici oturumu bu tarayıcı oturumunda tutulur; 15 dakika işlem yapılmazsa kapatılır.</p>
         </div>
-      </div>
-
-      {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="w-full max-w-md space-y-8"
-        >
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center">
-            <Link href="/" className="inline-flex items-center gap-2">
-              <Image src="/images/logo.png" alt="SchoolAsist" width={48} height={48} />
-              <span className="text-xl font-bold text-primary">
-                Course<span className="text-accent">Intellect</span>
-              </span>
-            </Link>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">Giriş Yap</h2>
-            <p className="text-muted-foreground mt-2">Geliştirici yönetim paneline erişmek için giriş yapın</p>
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 text-destructive"
-            >
-              <AlertCircle className="w-5 h-5" />
-              <span className="text-sm">{error}</span>
-            </motion.div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Kullanıcı adı</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="text"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Geliştirici kullanıcı adı"
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Şifre</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  className="pl-10 pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                />
-                <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
-                  Beni hatırla
-                </Label>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-            >
-              {isLoading ? (
-                <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-                    className="w-4 h-4 border-2 border-accent-foreground/30 border-t-accent-foreground rounded-full mr-2"
-                  />
-                  Giriş yapılıyor...
-                </>
-              ) : (
-                "Giriş Yap"
-              )}
-            </Button>
-          </form>
-
-          <div className="text-center">
-            <Link href="/" className="text-sm text-muted-foreground hover:text-accent">
-              Ana sayfaya dön
-            </Link>
-          </div>
-        </motion.div>
-      </div>
+      </main>
     </div>
   )
 }

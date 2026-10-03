@@ -1,0 +1,16 @@
+{
+  "mode": "builtin-imagegen",
+  "reference": "public/images/logo.png",
+  "assets": [
+    {
+      "name": "support-headset",
+      "prompt": "Generate ONE independent premium transparent-background website illustration, NOT a full webpage or screenshot. A cinematic orange and white customer-support headset with deep cobalt blue cushions and microphone, beautifully realistic brushed metal details and soft padded fabric, front three-quarter view. It rests on an elegant thin round ivory glass and satin-silver pedestal with a subtle glowing orange edge. To its right sits a SMALL exact supplied SchoolAsist logo tile; behind that a clear frosted glass speech pane with three small cobalt/cobalt/orange dots. One thin graceful luminous orange ribbon arcs behind headset and pane, with restrained cobalt highlight. Preserve the supplied official logo faithfully: orange rounded square, white Sa, green parsley leaf, blue SCHOOL, white asist. No other text, no people, no UI page, no rectangular background, no floor across canvas. Warm directional studio lighting, extraordinary material quality and clean high-end silhouette, all objects fully visible with 5% margin, wide landscape 3:2 composition approximately1536x1024. True alpha transparent background, soft local contact shadow only. Designed to composite seamlessly into a pale warm ivory website hero.",
+      "source": "/Users/oguzhanmindivanli/.codex/generated_images/01a0ed54-d984-7560-b5ec-0dafde399263/exec-a0f177a6-3699-4a28-a3a7-e438eabcfcf2.png"
+    },
+    {
+      "name": "footer-logo",
+      "prompt": "Generate ONE independent premium transparent-background website illustration, NOT a footer mockup or webpage. Recreate the supplied official SchoolAsist orange 3D logo tile faithfully with white Sa, parsley green leaf, blue SCHOOL and white asist lettering. Tile in front three-quarter view, floating just above a slim round satin-silver and ivory pedestal with a fine glowing orange base rim. A restrained transparent frosted glass education pane BEHIND and to the left has three simple embossed icons: graduation cap, calendar, small column chart, each with short pale decorative lines. One very thin graceful orange-gold ribbon curves behind tile and off toward the sides but keeps entire illustration in frame. Warm studio lighting and polished premium product render, rich but tasteful orange material, realistic glass, crisp legible logo. All objects complete and fully visible, 5% outer margin. No people, no buildings, no other text, no UI labels, no page composition, no rectangular background or floor across canvas. 3:2 landscape approximately1536x1024 true transparent alpha background, subtle local shadow. Intended to composite onto a warm ivory registration CTA right above a dark navy footer.",
+      "source": "/Users/oguzhanmindivanli/.codex/generated_images/01a0ed54-d984-7560-b5ec-0dafde399263/exec-c87bca10-7588-4b5e-897b-b03e7617d74d.png"
+    }
+  ]
+}

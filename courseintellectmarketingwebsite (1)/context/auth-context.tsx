@@ -3,7 +3,7 @@
 import type React from "react"
 import { createContext, useContext, useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { apiRequest } from "@/lib/api-client"
+import { apiRequest, ApiRequestError } from "@/lib/api-client"
 
 interface User {
   id: string
@@ -26,7 +26,7 @@ interface AuthApiUser {
   isPlatformAdmin?: boolean
 }
 
-interface AuthResponse {
+export interface AuthResponse {
   user: AuthApiUser
   accessToken: string
   refreshToken: string
@@ -41,8 +41,18 @@ interface StoredAuth {
   expiresAt: string
 }
 
+export interface AdminChallenge {
+  challengeToken: string
+  expiresAtUtc: string
+  emailHint: string
+}
 interface LoginResult {
   success: boolean
+  error?: string
+  challenge?: AdminChallenge
+}
+interface VerifyResult {
+  session?: AuthResponse
   error?: string
 }
 
@@ -54,7 +64,9 @@ interface AuthContextValue {
   extraRoles: string[]
   activeRole: string | null
   switchRole: (role: string) => void
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<LoginResult>
+  login: (email: string, password: string) => Promise<LoginResult>
+  verifyLogin: (challengeToken: string, code: string) => Promise<VerifyResult>
+  finishLogin: (session: AuthResponse) => void
   logout: () => void
 }
 
@@ -65,10 +77,18 @@ const STORAGE_KEY = "courseintellect_auth"
 function clearStoredAuth() {
   window.sessionStorage.removeItem(STORAGE_KEY)
   window.localStorage.removeItem(STORAGE_KEY)
+  window.sessionStorage.removeItem("schoolasist_admin_activity")
 }
 
 function readStoredAuth(): { auth: StoredAuth; storage: Storage } | null {
-  for (const storage of [window.sessionStorage, window.localStorage]) {
+  // Admin sessions never persist in localStorage. Old password-only sessions are discarded.
+  window.localStorage.removeItem(STORAGE_KEY)
+  const lastActivity = Number(window.sessionStorage.getItem("schoolasist_admin_activity") || 0)
+  if (!lastActivity || Date.now() - lastActivity > 15 * 60 * 1000) {
+    clearStoredAuth()
+    return null
+  }
+  for (const storage of [window.sessionStorage]) {
     const stored = storage.getItem(STORAGE_KEY)
     if (!stored) continue
 
@@ -85,6 +105,7 @@ function readStoredAuth(): { auth: StoredAuth; storage: Storage } | null {
 function saveStoredAuth(auth: StoredAuth, storage: Storage) {
   clearStoredAuth()
   storage.setItem(STORAGE_KEY, JSON.stringify(auth))
+  window.sessionStorage.setItem("schoolasist_admin_activity", String(Date.now()))
 }
 
 function isDeveloperPanelUser(apiUser: AuthApiUser) {
@@ -200,58 +221,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void initialize()
   }, [])
 
-  const login = useCallback(async (email: string, password: string, rememberMe = false): Promise<LoginResult> => {
+  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
     try {
-      const response = await apiRequest<AuthResponse>("/api/auth/login", {
-        method: "POST",
-        token: null,
-        body: {
-          username: email.trim(),
-          password,
-        },
+      const challenge = await apiRequest<AdminChallenge>("/api/admin-auth/start", {
+        method: "POST", token: null, body: { username: email.trim(), password },
       })
-
-      const role = response.user.primaryRole?.toLowerCase()
-      if (!isDeveloperPanelUser(response.user)) {
-        void apiRequest("/api/auth/logout", {
-          method: "POST",
-          token: response.accessToken,
-          body: {
-            refreshToken: response.refreshToken,
-          },
-        }).catch(() => undefined)
-
-        return {
-          success: false,
-          error: "Bu hesap geliştirici/platform paneline erişim yetkisine sahip değil.",
-        }
-      }
-
-      const mappedUser: User = {
-        id: response.user.id,
-        name: response.user.fullName,
-        email: response.user.username,
-        role: role as "developer",
-      }
-
-      setUser(mappedUser)
-      setAccessToken(response.accessToken)
-      setExtraRoles(response.user.extraRoles ?? [])
-      setActiveRole(role)
-      saveStoredAuth(
-        {
-          user: mappedUser,
-          accessToken: response.accessToken,
-          refreshToken: response.refreshToken,
-          expiresAt: response.expiresAtUtc,
-        },
-        rememberMe ? window.localStorage : window.sessionStorage,
-      )
-
-      return { success: true }
-    } catch {
-      return { success: false, error: "Kullanıcı adı veya şifre hatalı." }
+      return { success: false, challenge }
+    } catch (error) {
+      return { success: false, error: error instanceof ApiRequestError ? error.message : "Giriş tamamlanamadı." }
     }
+  }, [])
+
+  const verifyLogin = useCallback(async (challengeToken: string, code: string): Promise<VerifyResult> => {
+    try {
+      return await apiRequest<VerifyResult>("/api/admin-auth/verify", {
+        method: "POST", token: null, body: { challengeToken, code },
+      })
+    } catch (error) {
+      return { error: error instanceof ApiRequestError ? error.message : "Doğrulama tamamlanamadı." }
+    }
+  }, [])
+
+  const finishLogin = useCallback((response: AuthResponse) => {
+    if (!isDeveloperPanelUser(response.user)) throw new Error("Bu hesabın yönetim erişimi yok.")
+    const role = response.user.primaryRole.toLowerCase()
+    const mappedUser: User = { id: response.user.id, name: response.user.fullName, email: response.user.username, role: "developer" }
+    setUser(mappedUser)
+    setAccessToken(response.accessToken)
+    setExtraRoles(response.user.extraRoles ?? [])
+    setActiveRole(role)
+    saveStoredAuth({ user: mappedUser, accessToken: response.accessToken, refreshToken: response.refreshToken, expiresAt: response.expiresAtUtc }, window.sessionStorage)
   }, [])
 
   const logout = useCallback(() => {
@@ -281,6 +280,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/admin/login")
   }, [router])
 
+  useEffect(() => {
+    if (!user) return
+    let lastSaved = 0
+    const activity = () => {
+      if (Date.now() - lastSaved < 30_000) return
+      lastSaved = Date.now()
+      window.sessionStorage.setItem("schoolasist_admin_activity", String(lastSaved))
+    }
+    const check = () => {
+      const last = Number(window.sessionStorage.getItem("schoolasist_admin_activity") || 0)
+      if (Date.now() - last >= 15 * 60 * 1000) logout()
+    }
+    const events = ["pointerdown", "keydown", "touchstart"] as const
+    events.forEach(event => window.addEventListener(event, activity, { passive: true }))
+    window.addEventListener("focus", check)
+    const interval = window.setInterval(check, 15_000)
+    return () => {
+      events.forEach(event => window.removeEventListener(event, activity))
+      window.removeEventListener("focus", check)
+      window.clearInterval(interval)
+    }
+  }, [user, logout])
+
+  useEffect(() => {
+    if (!user) return
+    let refreshing = false
+    let disposed = false
+    const refreshIfNeeded = async () => {
+      if (refreshing) return
+      const stored = readStoredAuth()
+      if (!stored || Date.parse(stored.auth.expiresAt) - Date.now() > 60_000) return
+      const lastActivity = window.sessionStorage.getItem("schoolasist_admin_activity")
+      refreshing = true
+      try {
+        const response = await apiRequest<AuthResponse>("/api/auth/refresh", {
+          method: "POST", token: null, body: { refreshToken: stored.auth.refreshToken },
+        })
+        if (disposed) return
+        finishLogin(response)
+        // Background rotation is not user activity and must not extend idle timeout.
+        if (lastActivity) window.sessionStorage.setItem("schoolasist_admin_activity", lastActivity)
+      } catch {
+        if (!disposed) logout()
+      } finally { refreshing = false }
+    }
+    const interval = window.setInterval(() => { void refreshIfNeeded() }, 30_000)
+    const focus = () => { void refreshIfNeeded() }
+    window.addEventListener("focus", focus)
+    return () => { disposed = true; window.clearInterval(interval); window.removeEventListener("focus", focus) }
+  }, [user, finishLogin, logout])
+
   const switchRole = useCallback((role: string) => {
     setActiveRole(role.toLowerCase())
   }, [])
@@ -296,6 +346,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         activeRole,
         switchRole,
         login,
+        verifyLogin,
+        finishLogin,
         logout,
       }}
     >

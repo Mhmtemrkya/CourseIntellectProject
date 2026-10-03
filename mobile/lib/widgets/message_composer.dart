@@ -66,13 +66,19 @@ class _MessageComposerState extends State<MessageComposer> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fieldFill = isDark
+        ? const Color(0xFF17253C)
+        : const Color(0xFFF5F7FB);
+    final topBorder = isDark ? const Color(0x1FFFFFFF) : const Color(0x14000000);
+
     return SafeArea(
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          border: const Border(top: BorderSide(color: Color(0x14000000))),
+          border: Border(top: BorderSide(color: topBorder)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -120,7 +126,7 @@ class _MessageComposerState extends State<MessageComposer> {
                       decoration: InputDecoration(
                         hintText: 'Mesaj yaz...',
                         filled: true,
-                        fillColor: const Color(0xFFF5F7FB),
+                        fillColor: fieldFill,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 14,
@@ -310,13 +316,19 @@ class _AttachmentChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final chipBg = isDark ? const Color(0xFF17253C) : const Color(0xFFF5F7FB);
+    final thumbBg = isDark ? const Color(0xFF123A33) : const Color(0xFFE6FFFA);
+    final tagBg = isDark ? const Color(0xFF0E1A2F) : Colors.white;
+    final closeBg = isDark ? const Color(0xFF22324C) : Colors.white;
+
     return Stack(
       children: [
         Container(
           width: 176,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F7FB),
+            color: chipBg,
             borderRadius: BorderRadius.circular(18),
           ),
           child: Row(
@@ -325,15 +337,17 @@ class _AttachmentChip extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE6FFFA),
+                  color: thumbBg,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: _isImage
                     ? Image.file(item.file, fit: BoxFit.cover)
-                    : const Icon(
+                    : Icon(
                         Icons.insert_drive_file_rounded,
-                        color: Color(0xFF128C7E),
+                        color: isDark
+                            ? const Color(0xFF5EEAD4)
+                            : const Color(0xFF128C7E),
                       ),
               ),
               const SizedBox(width: 10),
@@ -357,14 +371,16 @@ class _AttachmentChip extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: tagBg,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         _attachmentTag(),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFF128C7E),
+                          color: isDark
+                              ? const Color(0xFF5EEAD4)
+                              : const Color(0xFF128C7E),
                         ),
                       ),
                     ),
@@ -381,7 +397,8 @@ class _AttachmentChip extends StatelessWidget {
             onPressed: onRemove,
             icon: const Icon(Icons.close_rounded, size: 18),
             style: IconButton.styleFrom(
-              backgroundColor: Colors.white,
+              backgroundColor: closeBg,
+              foregroundColor: isDark ? Colors.white : null,
               minimumSize: const Size(28, 28),
               padding: EdgeInsets.zero,
             ),

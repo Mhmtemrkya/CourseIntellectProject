@@ -95,6 +95,7 @@ class _ChatConversationViewState extends State<ChatConversationView> {
     }
 
     final displayItems = _messages.reversed.toList();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       children: [
@@ -107,9 +108,11 @@ class _ChatConversationViewState extends State<ChatConversationView> {
         Expanded(
           child: Container(
             padding: widget.padding,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFFEFF8F5), Color(0xFFF9FBFF)],
+                colors: isDark
+                    ? const [Color(0xFF0A1322), Color(0xFF08111F)]
+                    : const [Color(0xFFEFF8F5), Color(0xFFF9FBFF)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -607,23 +610,34 @@ class _ConversationStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final subtitle = isTyping
         ? 'Yazıyor...'
         : isOnline
         ? 'Çevrimiçi'
         : contactRole;
+    final mutedColor = isDark
+        ? Colors.white.withValues(alpha: 0.60)
+        : const Color(0xFF64748B);
+    final typingColor = isDark
+        ? const Color(0xFF5EEAD4)
+        : const Color(0xFF0F766E);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 14, 14, 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
+        border: isDark
+            ? Border.all(color: Colors.white.withValues(alpha: 0.06))
+            : null,
+        boxShadow: [
           BoxShadow(
-            color: Color(0x12000000),
+            color: isDark ? const Color(0x33000000) : const Color(0x12000000),
             blurRadius: 16,
-            offset: Offset(0, 6),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -631,14 +645,18 @@ class _ConversationStatusCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: const Color(0xFFDCFCE7),
+            backgroundColor: isDark
+                ? const Color(0xFF123A33)
+                : const Color(0xFFDCFCE7),
             child: Text(
               contactName.trim().isEmpty
                   ? '?'
                   : contactName.trim()[0].toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF0F766E),
+                color: isDark
+                    ? const Color(0xFF5EEAD4)
+                    : const Color(0xFF0F766E),
               ),
             ),
           ),
@@ -672,9 +690,7 @@ class _ConversationStatusCard extends StatelessWidget {
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: isTyping
-                            ? const Color(0xFF0F766E)
-                            : const Color(0xFF64748B),
+                        color: isTyping ? typingColor : mutedColor,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

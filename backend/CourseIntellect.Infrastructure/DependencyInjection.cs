@@ -69,6 +69,10 @@ public static class DependencyInjection
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IEntitlementService, EntitlementService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<AdminEmailAccessPolicy>();
+        services.AddScoped<IAdminMfaService, AdminMfaService>();
+        services.AddScoped<AdminSessionGuard>();
         services.AddScoped<IUserDirectoryService, UserDirectoryService>();
         services.AddScoped<IAcademicQueryService, AcademicQueryService>();
         services.AddScoped<ITeacherDutyService, TeacherDutyService>();

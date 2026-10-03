@@ -92,3 +92,16 @@ backend/CourseIntellect.Api/wwwroot/uploads/
 *.tgz
 *.zip
 .dotnet-home/
+
+# Local presentation preview build (reproducible; final decks/assets are tracked)
+/presentation_workspace/webbuild/
+# Temporary website layout/scroll captures
+/courseintellectmarketingwebsite (1)/lf_*.png
+/courseintellectmarketingwebsite (1)/s_s*.png
+# Finder-created duplicates of generated Flutter registrants
+/mobile/ios/Runner/GeneratedPluginRegistrant 2.h
+/mobile/ios/Runner/GeneratedPluginRegistrant 2.m
+# Private operator-generated administrator access material
+**/yonetici-sifreleri.txt
+**/provision-managers.sql
+**/admin-email.env

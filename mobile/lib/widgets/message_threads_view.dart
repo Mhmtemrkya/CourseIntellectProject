@@ -43,6 +43,10 @@ class MessageThreadsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = isDark
+        ? Colors.white.withValues(alpha: 0.60)
+        : const Color(0xFF64748B);
     final sortedThreads = [...threads];
     if (highlightedContact != null && highlightedContact!.trim().isNotEmpty) {
       sortedThreads.sort((a, b) {
@@ -133,8 +137,12 @@ class MessageThreadsView extends StatelessWidget {
                             radius: 24,
                             backgroundColor: _roleColor(
                               thread.contactRole,
-                            ).withValues(alpha: 0.14),
-                            foregroundColor: _roleColor(thread.contactRole),
+                              isDark: isDark,
+                            ).withValues(alpha: isDark ? 0.18 : 0.14),
+                            foregroundColor: _roleColor(
+                              thread.contactRole,
+                              isDark: isDark,
+                            ),
                             child: Icon(_roleIcon(thread.contactRole)),
                           ),
                           const SizedBox(width: 12),
@@ -170,11 +178,7 @@ class MessageThreadsView extends StatelessWidget {
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodyMedium
-                                            ?.copyWith(
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.onSurfaceVariant,
-                                            ),
+                                            ?.copyWith(color: mutedColor),
                                       ),
                                     ),
                                   ],
@@ -192,9 +196,7 @@ class MessageThreadsView extends StatelessWidget {
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       fontWeight: FontWeight.w700,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
+                                      color: mutedColor,
                                     ),
                               ),
                               const SizedBox(height: 8),
@@ -262,8 +264,17 @@ class MessageThreadsView extends StatelessWidget {
                 leading: CircleAvatar(
                   backgroundColor: _roleColor(
                     recipient.role,
-                  ).withValues(alpha: 0.14),
-                  foregroundColor: _roleColor(recipient.role),
+                    isDark: Theme.of(context).brightness == Brightness.dark,
+                  ).withValues(
+                    alpha:
+                        Theme.of(context).brightness == Brightness.dark
+                        ? 0.18
+                        : 0.14,
+                  ),
+                  foregroundColor: _roleColor(
+                    recipient.role,
+                    isDark: Theme.of(context).brightness == Brightness.dark,
+                  ),
                   child: Icon(_roleIcon(recipient.role)),
                 ),
                 title: Text(recipient.name),
@@ -298,21 +309,21 @@ class MessageThreadsView extends StatelessWidget {
     }
   }
 
-  static Color _roleColor(String role) {
+  static Color _roleColor(String role, {bool isDark = false}) {
     switch (role) {
       case 'Teacher':
-        return const Color(0xFF0F766E);
+        return isDark ? const Color(0xFF2DD4BF) : const Color(0xFF0F766E);
       case 'Student':
-        return const Color(0xFF2563EB);
+        return isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
       case 'Parent':
-        return const Color(0xFF7C3AED);
+        return isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED);
       case 'Accounting':
-        return const Color(0xFF15803D);
+        return isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D);
       case 'Administrative':
       case 'Admin':
-        return const Color(0xFFB45309);
+        return isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309);
       default:
-        return const Color(0xFF475467);
+        return isDark ? const Color(0xFF94A3B8) : const Color(0xFF475467);
     }
   }
 

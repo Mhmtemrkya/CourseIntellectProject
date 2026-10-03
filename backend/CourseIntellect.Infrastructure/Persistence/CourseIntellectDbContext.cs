@@ -78,6 +78,7 @@ public sealed class CourseIntellectDbContext : DbContext
         }
     }
 
+    public DbSet<AdminMfaChallenge> AdminMfaChallenges => Set<AdminMfaChallenge>();
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<StudentProfile> Students => Set<StudentProfile>();
     public DbSet<StaffProfile> Staff => Set<StaffProfile>();
@@ -254,6 +255,8 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Username).HasMaxLength(80).IsRequired();
             entity.HasIndex(x => x.Username).IsUnique();
             entity.Property(x => x.PasswordHash).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.PlatformAccessEmail).HasMaxLength(254);
+            entity.Property(x => x.AdminMfaVersion).IsConcurrencyToken();
             entity.Property(x => x.Campus).HasMaxLength(80);
             entity.Property(x => x.DepartmentOrBranch).HasMaxLength(120);
             entity.Property(x => x.TcNo).HasMaxLength(11);
@@ -1255,9 +1258,24 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasIndex(x => new { x.DedupeKey, x.CreatedAtUtc });
         });
 
+        modelBuilder.Entity<AdminMfaChallenge>(entity =>
+        {
+            entity.ToTable("admin_mfa_challenges");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.HasIndex(x => x.ExpiresAtUtc);
+            entity.Property(x => x.TokenHash).HasMaxLength(64);
+            entity.Property(x => x.AccessEmail).HasMaxLength(254);
+            entity.Property(x => x.CodeHash).HasMaxLength(64);
+            entity.HasIndex(x => new { x.UserId, x.CreatedAtUtc });
+            entity.Property(x => x.Version).IsConcurrencyToken();
+            entity.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<RefreshTokenSession>(entity =>
         {
             entity.ToTable("refresh_token_sessions");
+            entity.Property(x => x.AdminVerificationMethod).HasMaxLength(20);
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.TokenHash).IsUnique();
             entity.Property(x => x.TokenHash).HasMaxLength(300).IsRequired();

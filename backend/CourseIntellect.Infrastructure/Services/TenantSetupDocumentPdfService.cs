@@ -54,8 +54,8 @@ public sealed class TenantSetupDocumentPdfService : ITenantSetupDocumentService
                 });
 
                 column.Item().Text(
-                    "Kurum başvurunuz onaylandı. Aşağıdaki bilgilerle giriş yaparak kurumunuzun " +
-                    "yönetici hesabını kullanmaya başlayabilirsiniz.")
+                    "Kurum başvurunuz onaylandı. SchoolAsist masaüstü veya mobil uygulamasını indirip " +
+                    "aşağıdaki bilgilerle uygulamadan giriş yaparak kurumunuzun yönetici hesabını kullanabilirsiniz.")
                     .FontSize(10);
 
                 column.Item().Border(1).BorderColor("#E5E7EB").Padding(14).Column(box =>
@@ -64,7 +64,7 @@ public sealed class TenantSetupDocumentPdfService : ITenantSetupDocumentService
                     Field(box, "Kurum", model.InstitutionName);
                     Field(box, "Paket", model.Plan);
                     Field(box, "Kurum türü", model.InstitutionType);
-                    Field(box, "Giriş adresi", model.LoginUrl);
+                    Field(box, "Uygulama indirme adresi", model.LoginUrl);
 
                     box.Item().PaddingTop(4).Text("Giriş bilgileri").FontSize(11).Bold();
                     Field(box, "Kullanıcı adı", model.Username, mono: true);

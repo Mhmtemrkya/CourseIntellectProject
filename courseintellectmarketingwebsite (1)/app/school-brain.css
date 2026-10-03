@@ -265,3 +265,16 @@
  .standalone-workspace-content h3 { font-size:26px; margin:9px 0 7px; }
  .standalone-workspace-footer { margin-top:11px; }
 }
+
+/* Every role presents its own independently generated physical illustration. */
+.standalone-role-sculpture { position:absolute; width:59%; height:77%; right:0; top:13%; }
+.standalone-role-art-object { position:absolute; inset:0; }
+.standalone-role-art-object img { object-fit:contain; }
+.standalone-role-art-label { display:flex; align-items:center; gap:10px; color:#071b4b; font-size:21px; font-weight:750; position:absolute; z-index:2; top:3%; left:18%; }
+.standalone-role-art-label i { background:linear-gradient(135deg,#ffac19,#ff7800); color:white; border-radius:50%; display:grid; place-items:center; width:35px; height:35px; border:1px solid #ffcd70; }
+@media (max-width:760px) {
+ .standalone-role-sculpture { width:96%; height:57%; top:35%; right:2%; }
+ .standalone-role-art-label { top:3%; font-size:15px; left:13%; }
+ .standalone-role-art-label i { width:28px; height:28px; }
+ .standalone-role-art-label svg { width:17px; }
+}

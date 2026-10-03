@@ -1,0 +1,14 @@
+{
+  "mode": "builtin-imagegen",
+  "assets": [
+    {
+      "name": "application",
+      "prompt": "Use case: precise-object-edit. Supporting reference image 1 is the approved SchoolAsist registration-page mockup; image 2 is the OFFICIAL SchoolAsist logo that must remain exact. Create a separate freshly rendered, very high quality illustration matching ONLY the sculpted application-folder art in the lower left of reference image 1. Do NOT crop the screenshot. Re-render this single product illustration from scratch as a genuine transparent background PNG asset to place under real HTML text in the registration page. NO webpage UI, no form, no header, no buttons, no floor photograph, no scene background.\nSubject: tactile ivory application folder standing tilted backwards slightly, softly rounded corners and cream paper grain, slim cobalt blue leather strap with brass snap, orange open envelope behind it, flowing ivory paper ribbon swooping across foreground, three little orange route dots connected by a fine orange thread, small tasteful green approval wax seal with check. Match the reference art direction and proportions, premium realistic 3D product photography under soft warm daylight, carefully detailed paper texture, rich cobalt strap and vivid SchoolAsist orange envelope. Official supplied orange logo inset on the folio, preserve Sa / SCHOOL / asist / green parsley exactly, no alternate logo. Folder text only 'Kurum' then 'Başvuru Dosyası', beautifully typeset navy. The ribbon is BLANK except three minimalist navy icons: document at left, envelope center, people on right. No words on ribbon: step labels will be actual HTML. No logos elsewhere. Scene consists of folder, envelope, ribbon and approval seal with subtle contact shadows included in alpha. Everything fully contained within transparent margins, polished composition, cream details clearly visible, no clipped objects. Wide composition 3:2, approximately 1536x1024; hero quality, crisp edges, no watermark.",
+      "source": "/Users/oguzhanmindivanli/.codex/generated_images/01a0ed54-d984-7560-b5ec-0dafde399263/exec-3f89d331-5ef2-407b-b99f-f595639b2ea7.png",
+      "outputs": [
+        "public/images/registration-art/application.webp",
+        "public/images/registration-art/application-mobile.webp"
+      ]
+    }
+  ]
+}

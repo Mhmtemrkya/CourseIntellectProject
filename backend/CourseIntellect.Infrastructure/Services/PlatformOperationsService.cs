@@ -1156,13 +1156,14 @@ public sealed class PlatformOperationsService(
     private async Task SendApprovalEmailAsync(TenantWorkspace tenant, AppUser admin, string? password, CancellationToken ct)
     {
         static string E(string? value) => System.Net.WebUtility.HtmlEncode(value ?? "");
-        var loginUrl = RegistrationUrl("Registration:LoginUrl", "https://schoolasist.com/giris");
+        var downloadUrl = RegistrationUrl("Registration:ApplicationDownloadUrl", "https://schoolasist.com/indir");
         var credentials = password is null ? "<p>Mevcut parolanızla giriş yapabilirsiniz.</p>"
             : $"<p>Geçici parolanız: <strong>{E(password)}</strong></p><p>İlk girişte parolanızı değiştirin. Son kullanım: {admin.TemporaryPasswordExpiresAtUtc:dd.MM.yyyy HH:mm} UTC.</p>";
         var html = $"<h2>Kurumunuz onaylandı</h2><p>{E(tenant.Name)}, SchoolAsist'e hoş geldiniz.</p>"
             + $"<p>Müşteri numaranız: <strong>{E(tenant.CustomerNumber)}</strong></p>"
             + $"<p>Kullanıcı adınız: <strong>{E(admin.Username)}</strong></p>{credentials}"
-            + $"<p><a href=\"{E(loginUrl)}\">Giriş yapın</a></p><p>Ücretsiz kullanım için paket seçmeniz veya ödeme yapmanız gerekmez.</p>";
+            + "<p>Hesabınıza SchoolAsist masaüstü veya mobil uygulamasından giriş yapın.</p>"
+            + $"<p><a href=\"{E(downloadUrl)}\">Masaüstü ve mobil uygulamaları indirin</a></p><p>Ücretsiz kullanım için paket seçmeniz veya ödeme yapmanız gerekmez.</p>";
         html = OnboardingEmailTemplate.Wrap("Kurumunuz onaylandı", html);
         if (emailDelivery is not null && password is not null)
         {
@@ -1192,7 +1193,7 @@ public sealed class PlatformOperationsService(
             tenant.Name,
             tenant.Plan,
             tenant.InstitutionType.ToString(),
-            configuration["Registration:LoginUrl"] ?? "https://schoolasist.com/giris",
+            RegistrationUrl("Registration:ApplicationDownloadUrl", "https://schoolasist.com/indir"),
             adminUser.Username,
             temporaryPassword,
             adminUser.TemporaryPasswordExpiresAtUtc,

@@ -21,7 +21,9 @@ public sealed class AuthService(
     ILoginAttemptService loginAttemptService,
     ISystemService systemService,
     IHttpContextAccessor httpContextAccessor,
-    Microsoft.Extensions.Configuration.IConfiguration configuration) : IAuthService
+    Microsoft.Extensions.Configuration.IConfiguration configuration,
+    IAdminMfaService? adminMfaService = null,
+    AdminEmailAccessPolicy? adminEmailPolicy = null) : IAuthService
 {
     private const string PasswordResetPending = "Pending";
     private const string PasswordResetApproved = "Approved";
@@ -71,6 +73,37 @@ public sealed class AuthService(
         int.TryParse(configuration["Registration:TemporaryPasswordValidDays"], out var d) ? d : 7;
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await ValidatePasswordAsync(request, cancellationToken);
+        if (user is null || AdminMfaService.IsPlatformAdmin(user)) return null;
+        await RecordLoginAttemptAsync(user.Username, user.Id, user.PrimaryRole.ToString(), true, user.TenantId, cancellationToken);
+        user.LastLoginAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await CreateLoginResponseAsync(user, cancellationToken, user.MustChangePassword);
+    }
+
+    public async Task<AdminMfaStartResponse?> BeginAdminLoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    {
+        var policy = adminEmailPolicy ?? new AdminEmailAccessPolicy(configuration);
+        if (adminMfaService is null || !policy.IsManagementRequest(httpContextAccessor.HttpContext)
+            || !policy.IsAllowedEmail(request.Username)) return null;
+        var user = await ValidatePasswordAsync(request, cancellationToken);
+        return user is null ? null : await adminMfaService.StartAsync(user, cancellationToken);
+    }
+
+    public async Task<AdminMfaLoginResponse?> CompleteAdminLoginAsync(AdminMfaVerifyRequest request, CancellationToken cancellationToken = default)
+    {
+        if (adminMfaService is null) return null;
+        var verified = await adminMfaService.VerifyAsync(request, cancellationToken);
+        if (verified is null) return null;
+        var user = verified;
+        await RecordLoginAttemptAsync(user.Username, user.Id, user.PrimaryRole.ToString(), true, null, cancellationToken);
+        user.LastLoginAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return new(await CreateLoginResponseAsync(user, cancellationToken, adminMfaVerifiedAtUtc: DateTime.UtcNow));
+    }
+
+    private async Task<AppUser?> ValidatePasswordAsync(LoginRequest request, CancellationToken cancellationToken)
     {
         var login = request.Username.Trim().ToLowerInvariant();
 
@@ -155,13 +188,7 @@ public sealed class AuthService(
             }
         }
 
-        await RecordLoginAttemptAsync(login, user.Id, user.PrimaryRole.ToString(), true, user.TenantId, cancellationToken);
-
-        user.LastLoginAtUtc = DateTime.UtcNow;
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        var response = await CreateLoginResponseAsync(user, cancellationToken, user.MustChangePassword);
-        return response;
+        return user;
     }
 
     // Kilit anahtarı: denenen (normalize edilmiş) kullanıcı adı/e-posta.
@@ -233,10 +260,30 @@ public sealed class AuthService(
 
         if (!await IsTenantActiveAsync(user, cancellationToken)) return null;
 
-        session.RevokedAtUtc = DateTime.UtcNow;
-        await dbContext.SaveChangesAsync(cancellationToken);
+        if (AdminMfaService.IsPlatformAdmin(user))
+        {
+            var policy = adminEmailPolicy ?? new AdminEmailAccessPolicy(configuration);
+            if (!policy.IsManagementRequest(httpContextAccessor.HttpContext) || !policy.IsAllowed(user)
+                || session.AdminVerificationMethod != "email" || session.AdminMfaVerifiedAtUtc is null
+                || session.AdminMfaVerifiedAtUtc <= DateTime.UtcNow.AddHours(-8)
+                || session.AdminLastActivityAtUtc is null || session.AdminLastActivityAtUtc <= DateTime.UtcNow.AddMinutes(-15)) return null;
+        }
 
-        return await CreateLoginResponseAsync(user, cancellationToken);
+        if (AdminMfaService.IsPlatformAdmin(user))
+        {
+            var now = DateTime.UtcNow;
+            var revoked = await dbContext.RefreshTokenSessions.Where(x => x.Id == session.Id && x.RevokedAtUtc == null
+                && x.ExpiresAtUtc > now && x.AdminLastActivityAtUtc > now.AddMinutes(-15))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.RevokedAtUtc, now), cancellationToken);
+            if (revoked != 1) return null;
+        }
+        else
+        {
+            session.RevokedAtUtc = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return await CreateLoginResponseAsync(user, cancellationToken, adminMfaVerifiedAtUtc: session.AdminMfaVerifiedAtUtc);
     }
 
     private Task<bool> IsTenantActiveAsync(AppUser user, CancellationToken cancellationToken)
@@ -260,16 +307,24 @@ public sealed class AuthService(
             .AnyAsync(x => x.Id == tenantId && x.InstitutionType == InstitutionType.DrivingSchool, cancellationToken);
     }
 
-    private async Task<LoginResponse> CreateLoginResponseAsync(AppUser user, CancellationToken cancellationToken, bool bootstrapOnly = false)
+    private async Task<LoginResponse> CreateLoginResponseAsync(AppUser user, CancellationToken cancellationToken, bool bootstrapOnly = false, DateTime? adminMfaVerifiedAtUtc = null)
     {
-        var accessToken = jwtTokenService.CreateToken(user);
-        var expiresAtUtc = DateTime.UtcNow.AddMinutes(jwtTokenService.AccessTokenMinutes);
+        var isAdmin = AdminMfaService.IsPlatformAdmin(user);
+        if (isAdmin && adminMfaVerifiedAtUtc is null) throw new InvalidOperationException("Platform admin requires MFA.");
+        var sessionId = Guid.NewGuid();
+        var accessToken = isAdmin ? jwtTokenService.CreateAdminMfaToken(user, sessionId) : jwtTokenService.CreateToken(user);
+        var expiresAtUtc = DateTime.UtcNow.AddMinutes(isAdmin ? Math.Min(15, jwtTokenService.AccessTokenMinutes) : jwtTokenService.AccessTokenMinutes);
         var refreshToken = bootstrapOnly ? string.Empty : Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         var refreshTokenExpiresAtUtc = bootstrapOnly ? DateTime.UtcNow : DateTime.UtcNow.AddDays(jwtTokenService.RefreshTokenDays);
 
+        if (isAdmin) refreshTokenExpiresAtUtc = adminMfaVerifiedAtUtc!.Value.AddHours(8);
         if (!bootstrapOnly) dbContext.RefreshTokenSessions.Add(new RefreshTokenSession
         {
+            Id = sessionId,
             UserId = user.Id,
+            AdminLastActivityAtUtc = isAdmin ? DateTime.UtcNow : null,
+            AdminMfaVerifiedAtUtc = adminMfaVerifiedAtUtc,
+            AdminVerificationMethod = isAdmin ? "email" : null,
             SecurityVersion = user.SecurityVersion,
             TokenHash = HashRefreshToken(refreshToken),
             ExpiresAtUtc = refreshTokenExpiresAtUtc,
@@ -821,7 +876,7 @@ public sealed class AuthService(
 
     private async Task<bool> IsUserEligibleForOrdinaryLoginAsync(AppUser user, CancellationToken cancellationToken)
     {
-        if (user.Status != UserStatus.Active || user.MustChangePassword
+        if (AdminMfaService.IsPlatformAdmin(user) || user.Status != UserStatus.Active || user.MustChangePassword
             || !await IsTenantActiveAsync(user, cancellationToken)
             || await IsMovedDrivingSchoolUserAsync(user, cancellationToken)) return false;
         if ((user.PrimaryRole != UserRole.Developer || user.TenantId is not null)

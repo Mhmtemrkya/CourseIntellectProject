@@ -3,17 +3,15 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { motion, useInView, useReducedMotion, useScroll, useTransform } from "framer-motion"
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, BookOpen, CheckCircle2, FileText, LockKeyhole, Pause, Play, Plus, X, BarChart3 } from "lucide-react"
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Pause, Play, Plus, X } from "lucide-react"
 import * as Dialog from "@radix-ui/react-dialog"
 import { type ShowcaseAsset } from "@/lib/showcase-assets"
-import { roles, type RoleId } from "@/lib/site-experience-data"
-import { SiteCTA } from "./site-shell"
+import { type RoleId } from "@/lib/site-experience-data"
 import { HighlightArtwork, ProductScene } from "./product-scene"
 import { highlightHeadline, highlightTopic, productHighlights } from "@/lib/product-highlights"
-import { roleCapabilities } from "@/lib/role-capabilities"
-import { RoleCapabilityList } from "./role-capability-list"
-import { ScrollExperience } from "./scroll-experience"
+import { ExperienceDirectory, RoleExperience } from "./role-experience"
 import { SchoolBrainExperience } from "./school-brain-experience"
+import { HomeContinuation } from "./home-continuation"
 export { roles } from "@/lib/site-experience-data"
 export type { RoleId } from "@/lib/site-experience-data"
 
@@ -127,89 +125,14 @@ export function ReferenceGallery({ title, accent, cards, linkLabel = "Deneyimi i
   </section>
 }
 
-function RoleTabs({ active, onSelect, dark = false }: { active: RoleId; onSelect: (id: RoleId) => void; dark?: boolean }) {
-  return <div className={`ref-role-tabs ${dark ? "ref-role-tabs-dark" : ""}`} role="tablist" aria-label="Rol deneyimi">{roles.map((role, i) => <button key={role.id} id={`tab-${role.id}`} role="tab" aria-selected={role.id === active} aria-controls="role-preview" tabIndex={role.id === active ? 0 : -1} onClick={e => { onSelect(role.id); e.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" }) }} onKeyDown={e => {
-    let next = i
-    if (e.key === "ArrowRight") next = (i + 1) % roles.length
-    else if (e.key === "ArrowLeft") next = (i - 1 + roles.length) % roles.length
-    else if (e.key === "Home") next = 0
-    else if (e.key === "End") next = roles.length - 1
-    else return
-    e.preventDefault(); onSelect(roles[next].id)
-    ;(e.currentTarget.parentElement?.querySelectorAll("button")[next] as HTMLButtonElement)?.focus()
-  }}>{role.name}{role.id === active && <motion.span className="ref-tab-indicator" layoutId="role-tab-indicator" transition={{ type: "spring", stiffness: 400, damping: 35 }} />}</button>)}</div>
-}
-
-const roleScene: Record<RoleId, ShowcaseAsset> = { rehberlik: "roles-device", "sube-muduru": "yonetici-device", yemekhane: "roles-device", "servis-soforu": "roles-device", yonetici: "yonetici-device", ogretmen: "ogretmen-device", veli: "veli-phone", ogrenci: "ogrenci-device", muhasebe: "muhasebe-device", personel: "personel-device" }
-
-function RoleDiscoveryCard({ role }: { role: (typeof roles)[number] }) {
-  const profile = roleCapabilities[role.id]
-  const count = profile.groups.reduce((total, group) => total + group.items.length, 0)
-  const topic = role.id === "muhasebe" ? "finance" : role.id === "veli" ? "communication" : role.id === "ogrenci" || role.id === "rehberlik" ? "progress" : role.id === "ogretmen" ? "learning" : "operations"
-  return <Link href={`/deneyim/${role.id}`} className="sa-role-editorial" data-topic={topic}>
-    <div className="sa-role-card-copy"><span className="sa-role-category">Size özel çalışma alanı</span><h3>{role.name}</h3><p>{role.description}</p><ul>{role.features.map(feature => <li key={feature}>{feature}</li>)}</ul></div>
-    <div className="sa-role-card-art" aria-hidden="true"><ProductScene asset={roleScene[role.id]} role={role.id} alt="" transparent /></div>
-    <span className="sa-role-card-action">{count} özellik başlığını keşfet <ArrowUpRight size={18} /></span>
-  </Link>
-}
-
 export function HomeStory() {
-  const [active, setActive] = useState<RoleId>("ogretmen")
-  const [featureRole, setFeatureRole] = useState<RoleId>("ogretmen")
-  return <div className="ref-story brain-home-story"><SchoolBrainExperience onRoleChange={setActive} />
-    <section className="brain-all-features"><nav className="brain-feature-selector" aria-label="Özelliklerini incelemek istediğiniz rol">{roles.map(role => <button key={role.id} onClick={() => setFeatureRole(role.id)} aria-pressed={featureRole === role.id}>{role.name}</button>)}</nav><RoleCapabilityList key={featureRole} id={featureRole}/></section>
-    <ReferenceGallery title="Daha verimli okullar." accent="Birlikte çalışan süreçler." canvas={972} cards={[
-      { asset: "home-lessons", title: "Ders akışı.", description: "Planlama, yoklama ve gelişim.", href: "/deneyim/ogretmen" },
-      { asset: "home-messages", title: "İletişim.", description: "Her an yanında.", href: "/deneyim/veli" },
-      { asset: "muhasebe-plan", title: "Finansal görünüm.", description: "Her hareket net.", href: "/deneyim/muhasebe" },
-    ]} />
-    <section className="ref-home-ecosystem"><Reveal><h2>Her ekranda.<br /><span>Aynı bütünlük.</span></h2><p>Masaüstü, web ve mobilde SchoolAsist.</p></Reveal><div role="tabpanel" id="role-preview" aria-labelledby={`tab-${active}`}><div key={active} className="ref-scene-swap"><SceneImage asset="home-ecosystem" role={active} alt={`${roles.find(r => r.id === active)?.name} deneyimi; temsili demo ekranları`} /></div></div><RoleTabs active={active} onSelect={setActive} /><Link href={`/deneyim/${active}`} className="ref-selected-role">{roles.find(r => r.id === active)?.name} deneyimini incele <ArrowRight size={15} /></Link><small className="ref-demo-note">Temsili demo verileri</small></section><SiteCTA /></div>
-}
-
-export function PlatformStory() {
-  return <div className="ref-story"><ReferenceHero title="Kurumunuzun bütün gücü." accent="Tek platformda." description="Dersler, öğrenciler, iletişim ve finans bir arada." asset="platform-device" /><ReferenceGallery title="Her süreci yakından görün." compact linkLabel="Platformu keşfet" href="/deneyim" cards={[
-    { asset: "platform-lessons", title: "Ders ve yoklama", description: "Planlayın, işleyin, anında kaydedin.", href: "/deneyim/ogretmen" },
-    { asset: "platform-student", title: "Öğrenci gelişimi", description: "Devamsızlık, notlar ve daha fazlası.", href: "/deneyim/ogrenci" },
-    { asset: "platform-finance", title: "Finansal takip", description: "Gelir, gider ve raporlar tek yerde.", href: "/deneyim/muhasebe" },
-  ]} /><ScrollExperience platform /><section className="ref-light-showcase"><Reveal><h2>Bilgi bir kez girilir.<br /><span>Akış birlikte ilerler.</span></h2><p>Aynı bilgi, herkes için doğru yerde, doğru zamanda.</p></Reveal><SceneImage asset="platform-flow" alt="Öğretmen yoklamayı kaydeder, veli bilgilendirme alır ve yönetici günlük özeti görür. Temsili demo ekranları." /></section><SiteCTA title="Kurumunuzla başlayın." description="Formu doldurun, ekibimiz sizinle iletişime geçsin." support={false} /></div>
+  return <div className="ref-story brain-home-story sa-home-redesign"><SchoolBrainExperience /><HomeContinuation /></div>
 }
 
 export function RolesStory() {
-  return <div className="ref-story brain-home-story"><SchoolBrainExperience /><section className="ref-role-directory"><h2>Kendi deneyiminizi <span>keşfedin.</span></h2><div className="ref-role-cards">{roles.map(role => <RoleDiscoveryCard key={role.id} role={role} />)}</div><div className="ref-access-note"><LockKeyhole /><div><strong>Erişimler rol ve kurum yetkilerine göre belirlenir.</strong><p>Her kullanıcı yalnızca kendisine tanımlanan alanlara erişir. Ek ve özel roller, kurum yöneticisinin tanımladığı modül ve işlem izinleriyle şekillenir; herkese aynı yetki verilmez.</p></div></div></section></div>
-}
-
-const roleGalleries: Partial<Record<RoleId, { title: string; accent?: string; assets: [ShowcaseAsset, string, string][] }>> = {
-  yonetici: { title: "Gününüz tek bakışta.", assets: [["yonetici-branches", "Şube ve ekip yönetimi.", "Tüm şubeleriniz, ekipleriniz ve kullanıcılarınız tek ekranda."], ["yonetici-reports", "Günlük raporlar.", "Yoklama, ders ve iletişim raporlarına hızlıca ulaşın."]] },
-  ogretmen: { title: "Hazırlıktan değerlendirmeye.", assets: [["ogretmen-materials", "Ders materyalleri.", "Zengin içerikle daha etkili dersler."], ["ogretmen-homework", "Ödev takibi.", "Teslimleri kolayca izleyin."]] },
-  veli: { title: "İhtiyacınız olan bilgi.", accent: "Yanınızda.", assets: [["veli-lessons", "Ders ve devam.", "Günlük akışı kolayca takip edin."], ["veli-messages", "Öğretmen iletişimi.", "Önemli bilgiler size ulaşsın."]] },
-  ogrenci: { title: "Bugünden yarına.", assets: [["ogrenci-homework", "Ödevlerini takip et.", "Çalışmaların ve teslimlerin tek yerde."], ["ogrenci-schedule", "Ders programın her zaman yanında.", "Günün programını gör."]] },
-  muhasebe: { title: "Kaydı tamamlayın.", accent: "Akışı izleyin.", assets: [["muhasebe-payment", "Tahsilat kaydedin.", "Ödemeler anında kayıt altında."], ["muhasebe-plan", "Taksit planını takip edin.", "Ödeme durumlarını kolayca görün."]] },
-  personel: { title: "Görevden iletişime.", assets: [["personel-tasks", "Görevleri kolayca tamamlayın.", "Size verilen görevleri takip edin ve tamamlayın."], ["personel-announcements", "Önemli duyuruları kaçırmayın.", "Kurum duyuruları her zaman yanınızda."]] },
-}
-
-function FinanceHistory() {
-  const [search, setSearch] = useState("")
-  const [status, setStatus] = useState("Tüm durumlar")
-  const [type, setType] = useState("Tüm türler")
-  const rows = [["12 Mar 2024", "Demo 1", "Taksit 1", "Tahsilat", "+₺10.400", "Ödendi"], ["08 Mar 2024", "Demo 2", "Taksit 1", "Tahsilat", "+₺9.800", "Bekliyor"], ["05 Mar 2024", "Demo 3", "Taksit 2", "Tahsilat", "+₺10.400", "Gecikti"], ["01 Mar 2024", "—", "Kırtasiye gideri", "Gider", "−₺2.300", "Ödendi"]]
-  const filtered = rows.filter(row => row.join(" ").toLocaleLowerCase("tr-TR").includes(search.toLocaleLowerCase("tr-TR")) && (status === "Tüm durumlar" || row[5] === status) && (type === "Tüm türler" || row[3] === type))
-  return <div className="ref-finance-table"><div className="ref-table-toolbar"><strong>Tüm Hareketler</strong><input aria-label="Demo öğrenci adıyla ara" placeholder="Öğrenci adıyla ara…" value={search} onChange={e => setSearch(e.target.value)} /><select aria-label="Demo işlem türü" value={type} onChange={e => setType(e.target.value)}>{["Tüm türler", "Tahsilat", "Gider"].map(option => <option key={option}>{option}</option>)}</select><select aria-label="Demo ödeme durumu" value={status} onChange={e => setStatus(e.target.value)}>{["Tüm durumlar", "Ödendi", "Bekliyor", "Gecikti"].map(option => <option key={option}>{option}</option>)}</select></div><div className="ref-table-scroll"><table><thead><tr>{["Tarih", "Öğrenci", "Açıklama", "Tür", "Tutar", "Durum"].map(title => <th key={title}>{title}</th>)}</tr></thead><tbody>{filtered.map(row => <tr key={row[0]}>{row.map((cell, i) => <td key={i} className={i === 4 && row[3] === "Gider" ? "ref-amount-out" : undefined}>{i === 5 ? <span className={`ref-status ref-status-${cell === "Ödendi" ? "paid" : cell === "Bekliyor" ? "pending" : "late"}`}>{cell}</span> : cell}</td>)}</tr>)}</tbody></table>{filtered.length === 0 && <p role="status">Bu filtrelerle eşleşen demo kayıt bulunamadı.</p>}</div><small>Temsili demo verileri</small></div>
+  return <ExperienceDirectory />
 }
 
 export function RoleStory({ id }: { id: RoleId }) {
-  const gallery = roleGalleries[id]
-  return <div className={`ref-story brain-role-story ref-role-${id}`}>
-    <SchoolBrainExperience role={id} />
-    {gallery && <ReferenceGallery title={gallery.title} accent={gallery.accent} href="#tum-ozellikler" linkLabel="Bütün özellikleri incele" cards={gallery.assets.map(([asset, title, description]) => ({ asset, title, description, href: "#tum-ozellikler" }))} />}
-    <RoleCapabilityList id={id} />
-    {gallery && <section id="rol-detay" className="ref-light-showcase">
-      {id === "yonetici" && <><h2>Yetkiyi doğru kişiye verin.</h2><p>Her rol için ihtiyaç olan erişim. Güvenli ve düzenli.</p><SceneImage asset="yonetici-access" alt="Öğretmen, veli ve muhasebe için ayrı erişim kapsamları; temsili demo verileri" /></>}
-      {id === "ogretmen" && <><h2>Gelişimi <span>görünür kılın.</span></h2><p>Her öğrencinin yolculuğunu kolayca takip edin.</p><div className="ref-teacher-progress"><div className="ref-progress-track">{[["Başlangıç", "Mevcut durumu görün."], ["Süreç", "Ders içi katılımı izleyin."], ["Çalışma", "Ödev ve etkinlikleri takip edin."], ["Gelişim", "İlerlemesini değerlendirin."]].map(([title, description], index) => <div key={title}><b>{index + 1}</b><strong>{title}</strong><p>{description}</p></div>)}</div><div className="ref-feedback"><strong>Öğretmen Geri Bildirimi</strong><small>12 Mart 2024</small><div><b>D1</b><span><strong>Demo 1</strong><p>Denklem çözme çalışması</p></span></div><p>Doğru yaklaşım sergiliyor. İşlem adımlarını daha detaylı göstermesi faydalı olacaktır.</p></div></div><Link className="sa-button" href="/giris">Öğretmen deneyimini keşfet <ArrowRight size={17} /></Link><small className="ref-demo-note">Temsili demo verileri</small></>}
-      {id === "veli" && <div className="ref-parent-detail"><div><h2>Birden fazla öğrenci.<br /><span>Tek görünüm.</span></h2><p>Tüm çocuklarınızın bilgilerini takip edin, karışıklık yaşamayın.</p></div><SceneImage asset="veli-students" alt="Veli portalında Demo 1 ve Demo 2 öğrenci seçimi; temsili demo verileri" /></div>}
-      {id === "ogrenci" && <><h2>Ne yaptığını gör.<br /><span>Ne yapacağını bil.</span></h2><p>Adım adım planla, düzenli çalış, ödevlerini tamamla, gelişimini takip et.</p><div className="ref-student-steps">{[[BookOpen, "Konu", "Ders içeriklerini inceler, konuları öğrenirsin."], [FileText, "Çalışma", "Kendi planına göre düzenli çalışırsın."], [CheckCircle2, "Ödev", "Ödevlerini tamamlar ve teslim edersin."], [BarChart3, "Değerlendirme", "Sonuçlarını görür, gelişimini takip edersin."]].map(([Icon, title, text], i) => { const I = Icon as typeof BookOpen; return <div key={String(title)}><I size={35} /><h3>{i + 1}. {String(title)}</h3><p>{String(text)}</p></div> })}</div></>}
-      {id === "muhasebe" && <><h2>Geçmişi görün.<br /><em>Bekleyeni takip edin.</em></h2><p>Tüm tahsilat, taksit ve gider hareketleri tek listede.</p><FinanceHistory /></>}
-      {id === "personel" && <><h2>İhtiyacınıza göre <span>erişim.</span></h2><p>Her rol, kendi yetkisi dahilinde bilgiye ve işlemlere ulaşır.</p><SceneImage asset="personel-access" alt="İdari, bilgi işlem ve kurum ekibi ekranları; temsili demo verileri" /></>}
-    </section>}
-    {id === "ogretmen" ? null : ["veli", "ogrenci", "muhasebe"].includes(id) ? <SiteCTA title={id === "veli" ? "Kurumunuzun paylaştığı hesapla giriş yapın." : id === "ogrenci" ? "Kurum hesabınla giriş yap." : "Kurum yetkinizle giriş yapın."} description={id === "veli" ? "Çocuğunuzun bilgilerine kurumunuzun sağladığı hesapla güvenle erişin." : id === "ogrenci" ? "Tüm özelliklere kurum hesabınla güvenle eriş." : "Finansal süreçleri SchoolAsist ile kolayca yönetin."} login support={id === "ogrenci"} /> : <SiteCTA />}
-  </div>
+  return <RoleExperience id={id} />
 }

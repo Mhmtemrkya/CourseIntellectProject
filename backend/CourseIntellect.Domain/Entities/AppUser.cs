@@ -1,5 +1,6 @@
 using CourseIntellect.Domain.Enums;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CourseIntellect.Domain.Entities;
@@ -30,6 +31,12 @@ public sealed class AppUser : IBranchScopedEntity
     public bool MustChangePassword { get; set; }
     /// <summary>Security-sensitive mutation version; embedded in every access credential.</summary>
     public long SecurityVersion { get; set; } = 1;
+    // Provisioned by an operator; binds this account to its allowlisted login-code recipient.
+    [JsonIgnore]
+    public string? PlatformAccessEmail { get; set; }
+    [JsonIgnore]
+    public long AdminMfaVersion { get; set; }
+
 
     /// <summary>
     /// Geçici parolanın son kullanma anı. <see cref="MustChangePassword"/> true iken

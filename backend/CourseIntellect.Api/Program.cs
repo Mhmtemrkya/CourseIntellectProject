@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using CourseIntellect.Infrastructure;
+using CourseIntellect.Infrastructure.Auth;
 using CourseIntellect.Infrastructure.Persistence;
 using CourseIntellect.Infrastructure.Services;
 using CourseIntellect.Api.Hubs;
@@ -343,6 +344,16 @@ builder.Services
                     return;
                 }
 
+                if (CourseIntellect.Infrastructure.Services.AdminMfaService.IsPlatformAdmin(user))
+                {
+                    var guard = context.HttpContext.RequestServices.GetRequiredService<AdminSessionGuard>();
+                    if (!await guard.ValidateAsync(user, context.Principal!, context.HttpContext.RequestAborted))
+                    {
+                        context.Fail("Platform management requires Access, MFA and an active session.");
+                        return;
+                    }
+                }
+
                 if (!jwtDiagnosticsVerbose) return;
 
                 var logger = context.HttpContext
@@ -388,6 +399,7 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("PlatformAdmin", policy => policy.RequireAssertion(context =>
         string.Equals(context.User.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(context.User.FindFirstValue("admin_mfa"), "true", StringComparison.OrdinalIgnoreCase)
         && string.IsNullOrWhiteSpace(context.User.FindFirstValue("tenant_id"))));
 });
 

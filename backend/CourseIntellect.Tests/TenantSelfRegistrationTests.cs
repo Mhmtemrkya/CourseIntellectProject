@@ -936,6 +936,9 @@ public sealed class TenantSelfRegistrationTests : IDisposable
             Assert.Contains(result.CustomerNumber!, mail.Body);
             Assert.Contains(result.AdminUsername!, mail.Body);
             Assert.Contains(result.TemporaryPassword!, mail.Body);
+            Assert.Contains("https://schoolasist.com/indir", mail.Body);
+            Assert.Contains("masaüstü veya mobil uygulamasından", mail.Body);
+            Assert.DoesNotContain("schoolasist.com/giris", mail.Body);
         }
         Assert.Single(await db.Context.TenantWorkspaces.ToListAsync());
     }

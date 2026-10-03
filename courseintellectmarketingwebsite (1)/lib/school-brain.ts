@@ -9,7 +9,7 @@ export const brainChapters = [
 ] as const
 
 export const brainIntroEnd = .36
-export const brainRoleOrder = ["ogretmen", "yonetici", "veli", "ogrenci", "muhasebe", "personel", "rehberlik", "sube-muduru", "yemekhane", "servis-soforu"] as const satisfies readonly RoleId[]
+export const brainRoleOrder = ["yonetici", "ogretmen", "veli", "ogrenci", "muhasebe", "personel", "rehberlik", "sube-muduru", "yemekhane", "servis-soforu"] as const satisfies readonly RoleId[]
 export const brainRolePresentation: Record<RoleId, { title: string; accent: string }> = {
   ogretmen: { title: "Öğretmenin günü,", accent: "tek bir akışta." },
   yonetici: { title: "Bütün kurum.", accent: "Tek merkezde." },
