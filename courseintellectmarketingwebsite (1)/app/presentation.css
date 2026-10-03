@@ -26,8 +26,10 @@
 .sa-site .sa-button svg,.sa-site .sa-text-link svg { transition:transform .3s var(--sa-ease); }
 .sa-site :is(.sa-button,.sa-text-link):hover svg { transform:translateX(3px); }
 .sa-site .sa-text-link { color:#dd6100; }
-.ref-story { max-width:1440px; margin:auto; }
-.sa-site:has(.ref-story) #main-content { background:#000; }
+/* Section backgrounds fill the viewport; readable content is bounded inside
+   each section rather than constraining the entire animated page. */
+.ref-story { width:100%; min-width:0; }
+.sa-site:has(.ref-story) #main-content { background:#fffdf8; }
 .ref-scene { display:block; width:100%; height:auto; }
 .vector-scene { overflow:hidden; }
 .ref-hero { background:#000; color:#fff; text-align:center; overflow:hidden; position:relative; }

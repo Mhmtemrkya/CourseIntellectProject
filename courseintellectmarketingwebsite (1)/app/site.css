@@ -1616,7 +1616,6 @@ html:has(.sa-site){
 .sa-native-select {width:100%;border:1px solid #dedee3;background:#fafafa;border-radius:8px;padding:11px 12px;min-height:44px;font-size:14px;color:#171717;}
 
 /* Homepage and platform shell surface colors. */
-.sa-home-redesign { max-width:none; }
 .sa-site:has(.sa-home-redesign) .sa-footer { color:#071b50; background:#fffcf7; border-color:#e6dfd5; }
 .sa-site:has(.sa-home-redesign) .sa-footer-links,.sa-site:has(.sa-home-redesign) .ref-footer-product { color:#536582; }
 .sa-site:has(.sa-platform-page) #main-content { background:#fffdf9; }
