@@ -61,5 +61,6 @@ public sealed class ChunkUploadSecurityTests
         { SaveCount++; return Task.FromResult(new UploadedAssetDto(fileName, "/x", contentType, stream.Length)); }
         public Task<byte[]?> ReadBytesAsync(string fileUrl, CancellationToken cancellationToken = default) => Task.FromResult<byte[]?>(null);
         public Task<StoredFilePrefixDto?> ReadPrefixAsync(string fileUrl, int maxBytes, CancellationToken cancellationToken = default) => Task.FromResult<StoredFilePrefixDto?>(null);
+        public Task<bool> DeleteAsync(string fileUrl, CancellationToken cancellationToken = default) => Task.FromResult(false);
     }
 }

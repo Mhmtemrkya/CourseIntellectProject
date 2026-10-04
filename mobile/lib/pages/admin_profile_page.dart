@@ -13,6 +13,8 @@ import '../theme_provider.dart';
 import '../utils/session_navigation.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/legal_profile_tile.dart';
+import '../widgets/account_deletion_tile.dart';
+import 'institution_deletion_page.dart';
 
 class AdminProfilePage extends StatefulWidget {
   const AdminProfilePage({super.key});
@@ -217,6 +219,15 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
                     ),
                   ),
                   const LegalProfileTile(contentPadding: EdgeInsets.zero),
+                  const AccountDeletionTile(contentPadding: EdgeInsets.zero),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.domain_disabled_rounded, color: Color(0xFFDC2626)),
+                    title: Text('Kurumu Sil'.tr),
+                    subtitle: Text('Kurumun tamamen silinmesini talep edin (platform onaylı).'.tr),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InstitutionDeletionPage())),
+                  ),
                 ],
               ),
             ),

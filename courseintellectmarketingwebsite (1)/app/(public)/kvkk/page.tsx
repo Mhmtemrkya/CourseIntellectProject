@@ -97,8 +97,22 @@ Bu tedbirler, risklerin tamamen ortadan kalktığı anlamına gelmez. Hesap paro
 • Kanuna aykırı olarak işlenmesi sebebiyle zarara uğramanız hâlinde zararın giderilmesini talep etme`,
   },
   {
+    id: "hesap-kurum-silme",
+    title: "8. Hesap ve Kurum Silme",
+    content: `Hesabınızı uygulama içinden (Ayarlar > Hesabımı Sil) silebilirsiniz. İşlem öncesinde kimliğinizi parolanızla yeniden doğrularsınız ve silmeyi açıkça onaylarsınız.
+
+Verileriniz, hesabınız etkin olduğu (uygulamayı kullandığınız) sürece saklanır. Silme talebinden sonra 30 günlük iptal edilebilir bir bekleme süresi başlar; bu süre içinde talebi iptal edip hesabınızı geri alabilirsiniz. 30 gün dolduğunda silme otomatik ve kalıcı olarak tamamlanır. Kurum yöneticisi talebiniz platform yöneticisi tarafından; sıradan kullanıcı talepleri ise kurum yöneticisi tarafından keyfî olarak reddedilemez.
+
+Silme tamamlandığında (talepten 30 gün sonra):
+• Profil bilgileriniz, mesajlarınız, bildirimleriniz, yüklediğiniz dosyalar, profil görseliniz ve uygulama tercihleriniz kalıcı olarak silinir.
+• Oturumlarınız ve bildirim cihaz kayıtlarınız iptal edilir; hesaba artık giriş yapılamaz.
+• Finans (tahsilat, fatura, makbuz) ve eğitim (not, devamsızlık, sınav) kayıtlarındaki kişisel tanımlayıcılarınız (ad, kimlik no, iletişim, imza) silinir; geriye kalan tutar/sonuç satırları sizi tanımlamayan anonim kayıtlara dönüştürülür ve bu haliyle artık kişisel veri niteliği taşımaz.
+
+Kurum (tenant) silme, kurum yöneticisinin talebi ve platform yöneticisinin onayıyla yapılır; işlem öncesinde etkilenecek kullanıcı, dosya ve kayıt sayıları gösterilir. Onaylanınca kurumdaki tüm kullanıcıların kişisel bilgileri temizlenir, erişim kapatılır ve kurum devre dışı bırakılır; finans ve eğitim kayıtları yukarıdaki esaslarla anonim saklanır. Kurum silme süreci, kullanıcıların kendi hesaplarını silme taleplerini engellemez.`,
+  },
+  {
     id: "cerezler",
-    title: "8. Çerez Politikası",
+    title: "9. Çerez Politikası",
     content: `Web sitemiz ve uygulamamız çerezler kullanmaktadır. Çerezler, aşağıdaki amaçlarla kullanılmaktadır:
 
 Zorunlu Çerezler:
@@ -117,14 +131,14 @@ Tarayıcı ayarlarınızdan çerezleri devre dışı bırakabilirsiniz, ancak bu
   },
   {
     id: "degisiklikler",
-    title: "9. Politika Değişiklikleri",
+    title: "10. Politika Değişiklikleri",
     content: `Bu Gizlilik Politikası zaman zaman güncellenebilir. Önemli değişiklikler yapıldığında, web sitemiz ve uygulamamız üzerinden bilgilendirileceksiniz.
 
 Son güncelleme: 1 Ekim 2026`,
   },
   {
     id: "iletisim",
-    title: "10. İletişim",
+    title: "11. İletişim",
     content: `KVKK kapsamındaki haklarınızı kullanmak veya sorularınız için bizimle iletişime geçebilirsiniz:
 
 E-posta: info@schoolasist.com

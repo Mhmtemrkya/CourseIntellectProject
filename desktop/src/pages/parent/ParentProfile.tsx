@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AccountDeletionSection } from '../settings/AccountDeletionSection';
 import { motion, type Variants } from 'framer-motion';
 import {
   User, Mail, Phone, MapPin, Shield, Bell, Users,
@@ -174,6 +175,7 @@ export default function ParentProfile() {
           </Card>
 
           <LegalDocumentsPanel compact />
+          <div className="mt-4"><AccountDeletionSection /></div>
         </div>
       </div>
     </motion.div>

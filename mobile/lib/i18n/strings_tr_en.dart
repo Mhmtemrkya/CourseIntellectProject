@@ -3047,4 +3047,52 @@ const Map<String, String> kTrEn = {
   'Veli listesi ve iletişim': 'Parent list and contact',
   '• Gider defteri': '• Expense ledger',
   'Gider defteri': 'Expense ledger',
+  // Hesap & kurum silme akışı
+  'Hesabımı Sil': 'Delete My Account',
+  'Hesabınızı ve kişisel verilerinizi kalıcı olarak silin.':
+      'Permanently delete your account and personal data.',
+  'Hesabı kalıcı olarak sil': 'Permanently delete account',
+  'Hesabımı silmek istiyorum': 'I want to delete my account',
+  'Hesabımı ve kişisel verilerimi silmeyi onaylıyorum.':
+      'I confirm deleting my account and personal data.',
+  'Bu işlem geri alınamaz. Aşağıdakiler olur:':
+      'This action cannot be undone. The following will happen:',
+  'Devam etmek için parolanızı girin ve silmeyi onaylayın. Bekleme süresi dolana kadar iptal edebilirsiniz.':
+      'Enter your password and confirm deletion to continue. You can cancel until the waiting period ends.',
+  'Parola': 'Password',
+  'Silme talebini gönder': 'Submit deletion request',
+  'Silme talebiniz alındı.': 'Your deletion request was received.',
+  'Silme talebiniz iptal edildi.': 'Your deletion request was cancelled.',
+  'Silme talebiniz işleniyor': 'Your deletion request is being processed',
+  'Kalan süre:': 'Time remaining:',
+  'gün': 'days',
+  'Tamamlanma:': 'Completion:',
+  'Bu süre dolmadan talebinizi iptal edebilirsiniz. Süre dolunca hesabınız ve kişisel verileriniz otomatik silinir.':
+      'You can cancel before this period ends. When it ends, your account and personal data are deleted automatically.',
+  'Talebi iptal et': 'Cancel request',
+  'Yönetimi devredeceğiniz kişi (tek yöneticiyseniz zorunlu)':
+      'Person to transfer administration to (required if you are the sole admin)',
+  'Seçiniz…': 'Select…',
+  'Kurumdaki silme talepleri (yalnız görüntüleme)':
+      'Deletion requests in the institution (view only)',
+  // Kurum silme
+  'Kurumu Sil': 'Delete Institution',
+  'Kurumun tamamen silinmesini talep edin (platform onaylı).':
+      'Request full deletion of the institution (platform-approved).',
+  'Kurumun tamamen silinmesini talep ediyorum.':
+      'I request full deletion of the institution.',
+  'Bu talep platform yöneticisinin onayına düşer. Onaylanırsa kurumun verileri temizlenir; finans ve eğitim kayıtları kişisel bilgiler silinerek anonim saklanır.':
+      'This request goes to platform admin approval. If approved, the institution data is cleaned; finance and education records are kept anonymized with personal identifiers removed.',
+  'Talebi gönder': 'Submit request',
+  'Kurum silme talebi oluştur': 'Create institution deletion request',
+  'Kurum silme talebiniz platform onayına gönderildi.':
+      'Your institution deletion request was sent for platform approval.',
+  'Etkilenecek kayıtlar': 'Affected records',
+  'Kullanıcılar': 'Users',
+  'Dosya/belge': 'Files/documents',
+  'Finans kaydı': 'Finance records',
+  'Eğitim kaydı': 'Education records',
+  'Platform onayı bekleniyor': 'Awaiting platform approval',
+  'Onaylandı — silme zamanlandı': 'Approved — deletion scheduled',
+  'Red gerekçesi:': 'Rejection reason:',
 };

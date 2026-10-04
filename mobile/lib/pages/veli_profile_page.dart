@@ -13,6 +13,7 @@ import '../utils/session_navigation.dart';
 import '../widgets/adaptive_scaffold.dart';
 import '../widgets/app_header.dart';
 import '../widgets/legal_profile_tile.dart';
+import '../widgets/account_deletion_tile.dart';
 
 class VeliProfilPage extends StatefulWidget {
   const VeliProfilPage({super.key});
@@ -160,6 +161,7 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
                   ),
                 ),
                 const LegalProfileTile(),
+                const AccountDeletionTile(),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Colors.red),
                   title: Text(

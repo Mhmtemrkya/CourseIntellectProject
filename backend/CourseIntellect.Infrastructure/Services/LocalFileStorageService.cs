@@ -93,6 +93,43 @@ public sealed class LocalFileStorageService(IHostEnvironment environment, IConfi
         return await File.ReadAllBytesAsync(physicalPath, cancellationToken);
     }
 
+    public Task<bool> DeleteAsync(string fileUrl, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(fileUrl)) return Task.FromResult(false);
+
+        var relativePath = Uri.TryCreate(fileUrl, UriKind.Absolute, out var absoluteUri)
+            ? absoluteUri.AbsolutePath
+            : fileUrl;
+        relativePath = relativePath.Replace('\\', '/').TrimStart('/');
+        if (!relativePath.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase)) return Task.FromResult(false);
+
+        var uploadsRoot = UploadStoragePathResolver.ResolveUploadsRoot(environment, configuration);
+        var physicalPath = Path.GetFullPath(Path.Combine(uploadsRoot, relativePath["uploads/".Length..].Replace('/', Path.DirectorySeparatorChar)));
+        var uploadsRootWithSeparator = Path.EndsInDirectorySeparator(uploadsRoot)
+            ? uploadsRoot
+            : uploadsRoot + Path.DirectorySeparatorChar;
+        // Kök dışına çıkış koruması — asla uploads kökü dışında silme.
+        if (!physicalPath.StartsWith(uploadsRootWithSeparator, StringComparison.OrdinalIgnoreCase)
+            || !File.Exists(physicalPath))
+        {
+            return Task.FromResult(false);
+        }
+
+        try
+        {
+            File.Delete(physicalPath);
+            return Task.FromResult(true);
+        }
+        catch (IOException)
+        {
+            return Task.FromResult(false);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Task.FromResult(false);
+        }
+    }
+
     public async Task<StoredFilePrefixDto?> ReadPrefixAsync(string fileUrl, int maxBytes, CancellationToken cancellationToken = default)
     {
         if (maxBytes is < 1 or > 1024 * 1024 || string.IsNullOrWhiteSpace(fileUrl)) return null;

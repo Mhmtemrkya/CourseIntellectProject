@@ -40,7 +40,7 @@ public sealed class UserDirectoryService(
     public async Task<IReadOnlyList<PassiveAccountDto>> GetPassiveAccountsAsync(CancellationToken cancellationToken = default)
     {
         var users = await ApplyTenantScope(dbContext.Users)
-            .Where(x => x.Status == UserStatus.Passive)
+            .Where(x => x.Status == UserStatus.Passive && x.DeletedAtUtc == null)
             .OrderBy(x => x.FullName)
             .ToListAsync(cancellationToken);
         if (users.Count == 0) return [];
@@ -249,6 +249,12 @@ public sealed class UserDirectoryService(
     {
         var user = await ApplyTenantScope(dbContext.Users).SingleOrDefaultAsync(x => x.Username == username, cancellationToken)
             ?? throw new InvalidOperationException("Kullanici bulunamadi.");
+
+        // Silinmiş (anonimleştirilmiş) hesap yeniden aktifleştirilemez.
+        if (user.DeletedAtUtc != null)
+        {
+            throw new InvalidOperationException("Silinmiş hesap yeniden aktifleştirilemez.");
+        }
 
         var makePassive = request.Status.Equals("Passive", StringComparison.OrdinalIgnoreCase) ||
                           request.Status.Equals("Pasif", StringComparison.OrdinalIgnoreCase);

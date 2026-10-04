@@ -12,6 +12,7 @@ import '../theme_provider.dart';
 import '../utils/session_navigation.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/legal_profile_tile.dart';
+import '../widgets/account_deletion_tile.dart';
 
 class AdministrativeProfilePage extends StatefulWidget {
   const AdministrativeProfilePage({super.key});
@@ -218,6 +219,7 @@ class _AdministrativeProfilePageState extends State<AdministrativeProfilePage> {
                     ),
                   ),
                   const LegalProfileTile(contentPadding: EdgeInsets.zero),
+                  const AccountDeletionTile(contentPadding: EdgeInsets.zero),
                 ],
               ),
             ),

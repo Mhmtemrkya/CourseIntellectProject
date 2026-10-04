@@ -21,6 +21,15 @@ public interface IFileStorageService
         string fileUrl,
         int maxBytes,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Verilen /uploads URL'sine karşılık gelen fiziksel dosyayı güvenli şekilde siler
+    /// (kök dışına çıkış engellenir). Hesap/kurum silmede kişisel medyayı diskten kaldırmak için.
+    /// Dosya yoksa veya URL depo dışıysa false döner (hata atmaz).
+    /// </summary>
+    Task<bool> DeleteAsync(
+        string fileUrl,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record StoredFilePrefixDto(byte[] Bytes, long Length);

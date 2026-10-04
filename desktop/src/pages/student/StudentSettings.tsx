@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AccountDeletionSection } from '../settings/AccountDeletionSection';
 import { motion, type Variants } from 'framer-motion';
 import {
   Settings, Lock, Bell, User, Eye, EyeOff, Save, Shield,
@@ -311,6 +312,7 @@ export default function StudentSettings() {
           </motion.div>
         </TabsContent>
       </Tabs>
+      <div className="mt-6"><AccountDeletionSection /></div>
     </motion.div>
   );
 }

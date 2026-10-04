@@ -146,6 +146,8 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<AuthorizationCode> AuthorizationCodes => Set<AuthorizationCode>();
     public DbSet<PlatformSubscriptionInvoice> PlatformSubscriptionInvoices => Set<PlatformSubscriptionInvoice>();
     public DbSet<PushDeviceRegistration> PushDeviceRegistrations => Set<PushDeviceRegistration>();
+    public DbSet<AccountDeletionRequest> AccountDeletionRequests => Set<AccountDeletionRequest>();
+    public DbSet<InstitutionDeletionRequest> InstitutionDeletionRequests => Set<InstitutionDeletionRequest>();
     public DbSet<ServiceVehicle> ServiceVehicles => Set<ServiceVehicle>();
     public DbSet<ServiceDriver> ServiceDrivers => Set<ServiceDriver>();
     public DbSet<ServiceRoute> ServiceRoutes => Set<ServiceRoute>();
@@ -268,6 +270,8 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.RoleHistorySerialized).HasColumnName("role_history").HasMaxLength(4000);
             entity.Property(x => x.MustChangePassword).HasColumnName("must_change_password").HasDefaultValue(false);
             entity.Property(x => x.SecurityVersion).HasColumnName("security_version").HasDefaultValue(1L);
+            entity.Property(x => x.DeletedAtUtc).HasColumnName("deleted_at_utc");
+            entity.HasIndex(x => x.DeletedAtUtc);
             entity.Property(x => x.TemporaryPasswordExpiresAtUtc).HasColumnName("temporary_password_expires_at_utc");
             entity.Property(x => x.CustomRoleId).HasColumnName("custom_role_id");
             entity.HasIndex(x => x.CustomRoleId);
@@ -275,6 +279,33 @@ public sealed class CourseIntellectDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.CustomRoleId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<AccountDeletionRequest>(entity =>
+        {
+            entity.ToTable("account_deletion_requests");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.HasIndex(x => x.UserId);
+            entity.Property(x => x.RequesterRole).HasMaxLength(40);
+            entity.Property(x => x.FailureReason).HasMaxLength(200);
+            // Kullanıcı başına tek AKTİF talep (Pending=1 / Scheduled=2).
+            entity.HasIndex(x => x.UserId)
+                .IsUnique()
+                .HasFilter("\"Status\" IN (1, 2)");
+        });
+
+        modelBuilder.Entity<InstitutionDeletionRequest>(entity =>
+        {
+            entity.ToTable("institution_deletion_requests");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.RejectReason).HasMaxLength(500);
+            entity.Property(x => x.FailureReason).HasMaxLength(200);
+            // Tenant başına tek AKTİF talep (PendingPlatformApproval=1 / Approved=2 / Scheduled=4).
+            entity.HasIndex(x => x.TenantId)
+                .IsUnique()
+                .HasFilter("\"Status\" IN (1, 2, 4)");
         });
 
         modelBuilder.Entity<CustomRole>(entity =>

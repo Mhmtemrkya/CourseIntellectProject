@@ -10,6 +10,7 @@ import '../theme_provider.dart';
 import '../utils/session_navigation.dart';
 import '../widgets/adaptive_scaffold.dart';
 import '../widgets/legal_profile_tile.dart';
+import '../widgets/account_deletion_tile.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -153,6 +154,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 const LegalProfileTile(),
+                const AccountDeletionTile(),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Colors.red),
                   title: Text(

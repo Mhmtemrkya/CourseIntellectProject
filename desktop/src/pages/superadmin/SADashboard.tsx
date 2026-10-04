@@ -10,6 +10,7 @@ import { Progress } from '../../components/ui/progress';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchPlatformOverview } from '../../lib/api/modules';
+import { DeletionReviewPanel } from './DeletionReviewPanel';
 import {
   MiniBarChart,
   MiniDonut,
@@ -174,6 +175,8 @@ export default function SADashboard() {
           </CardContent>
         </Card>
       ) : null}
+
+      <DeletionReviewPanel />
     </motion.div>
   );
 }

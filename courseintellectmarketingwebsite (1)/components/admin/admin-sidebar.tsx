@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Building2, Users, MessageSquare, FileText, Languages, LogIn, Settings, BookOpen, Mail, ExternalLink, ChevronDown } from "lucide-react"
+import { LayoutDashboard, Building2, Users, MessageSquare, FileText, Languages, LogIn, Settings, BookOpen, Mail, ExternalLink, ChevronDown, Trash2 } from "lucide-react"
 
 export const adminNavigation = [
   { label: "Genel bakış", href: "/admin", icon: LayoutDashboard },
@@ -18,6 +18,7 @@ export const adminNavigation = [
   { label: "Kayıt listesi", href: "/admin/kullanicilar/kayitlar", icon: Users },
   { label: "Kurslar", href: "/admin/kurslar", icon: BookOpen },
   { label: "Mesajlar", href: "/admin/mesajlar", icon: Mail },
+  { label: "Silme talepleri", href: "/admin/silme-talepleri", icon: Trash2 },
 ]
 const contentPages = [
   ["Anasayfa", "anasayfa"], ["Özellikler", "ozellikler"], ["Fiyatlar", "fiyatlar"],

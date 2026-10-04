@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { AccountDeletionSection } from '../settings/AccountDeletionSection';
 import { motion, type Variants } from 'framer-motion';
 import {
   User, Mail, MapPin, BookOpen, Award, Calendar, Eye, EyeOff, Lock, ShieldCheck,
@@ -332,6 +333,7 @@ export default function TeacherProfile() {
 
       <motion.div variants={itemVariants}>
         <LegalDocumentsPanel compact />
+        <div className="mt-4"><AccountDeletionSection /></div>
       </motion.div>
     </motion.div>
   );

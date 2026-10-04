@@ -35,6 +35,7 @@ import { removeTenantLogo, uploadTenantLogo } from '../lib/api/modules';
 import { billingEnabled } from '../lib/billing';
 import { getActiveDesktopApiBaseUrl } from '../lib/appEnv';
 import { errorMessage } from '../lib/errors';
+import { AccountDeletionSection } from './settings/AccountDeletionSection';
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -497,6 +498,11 @@ export default function Settings() {
         </Card>
       </motion.div>
       )}
+
+      {/* Hesap / Kurum silme (tehlikeli bölge) */}
+      <motion.div variants={itemVariants}>
+        <AccountDeletionSection />
+      </motion.div>
 
       {/* Save Button */}
       <motion.div variants={itemVariants} className="flex justify-end">

@@ -60,6 +60,13 @@ public static class DependencyInjection
 
         services.AddScoped<DatabaseSeeder>();
         services.AddHostedService<RejectedTenantCleanupService>();
+
+        // Hesap / kurum silme akışları. Finalizer YIKICI olduğundan config bayrağıyla
+        // opt-in (AccountDeletion:Enabled / InstitutionDeletion:Enabled) ve üretimde kapalı.
+        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
+        services.AddScoped<IInstitutionDeletionService, InstitutionDeletionService>();
+        services.AddScoped<IAccountLifecycleService, AccountLifecycleService>();
+        services.AddHostedService<AccountDeletionFinalizerService>();
         services.AddScoped<ITenantContext, HttpTenantContext>();
         services.AddScoped<IActiveScope, ActiveScope>();
         services.AddScoped<IUserScopeService, UserScopeService>();

@@ -46,6 +46,14 @@ public sealed class AppUser : IBranchScopedEntity
     public DateTime? TemporaryPasswordExpiresAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAtUtc { get; set; }
+
+    /// <summary>
+    /// Hesap silme tamamlandığında (anonimleştirme sonrası) doldurulur. Pasiflikten
+    /// AYRIDIR: pasif kullanıcı "Pasif Kayıtlar"da görünür, silinmiş kullanıcı HİÇBİR
+    /// listede görünmez ve yeniden aktifleştirilemez. PII kolonları bu anda temizlenir;
+    /// satır yalnızca korunan finans/eğitim kayıtlarının FK bütünlüğü için tutulur.
+    /// </summary>
+    public DateTime? DeletedAtUtc { get; set; }
     public string ExtraRolesSerialized { get; set; } = string.Empty;
     public string RoleHistorySerialized { get; set; } = "[]";
 
