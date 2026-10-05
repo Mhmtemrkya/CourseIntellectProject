@@ -1,7 +1,6 @@
 import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
-import 'package:student/pages/veli_online_odeme_page.dart';
 import 'package:student/services/accounting_finance_store.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/linked_children_service.dart';
@@ -75,8 +74,6 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
                     _installmentPlan(context, installments),
                     const SizedBox(height: 16),
                     _paymentHistory(context, store, _studentName),
-                    const SizedBox(height: 20),
-                    _payButton(context),
                   ],
                 ),
               ),
@@ -258,28 +255,6 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
                   ),
                 ),
         ],
-      ),
-    );
-  }
-
-  // ================= PAY BUTTON =================
-  Widget _payButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton.icon(
-        onPressed: _loading
-            ? null
-            : () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const VeliOnlineOdemePage(),
-                  ),
-                );
-              },
-        icon: const Icon(Icons.credit_card),
-        label: Text("Online Ödeme Yap".tr),
       ),
     );
   }

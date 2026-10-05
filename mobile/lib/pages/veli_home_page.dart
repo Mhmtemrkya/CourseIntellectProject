@@ -22,7 +22,6 @@ import 'veli_finance_page.dart';
 import 'veli_requests_page.dart';
 import 'veli_academic_page.dart';
 import 'veli_meetings_list_page.dart';
-import 'veli_online_odeme_page.dart';
 import 'veli_receipt_archive_page.dart';
 import 'veli_support_plan_page.dart';
 import 'veli_teacher_feedback_page.dart';
@@ -1137,12 +1136,6 @@ class _VeliHomePageState extends State<VeliHomePage> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              FilledButton.icon(
-                onPressed: () =>
-                    _openPage(context, const VeliOnlineOdemePage()),
-                icon: const Icon(Icons.credit_card_rounded),
-                label: Text('Online Ödeme'.tr),
-              ),
               OutlinedButton.icon(
                 onPressed: () => _openPage(context, const VeliOdemePage()),
                 icon: const Icon(Icons.receipt_long_outlined),

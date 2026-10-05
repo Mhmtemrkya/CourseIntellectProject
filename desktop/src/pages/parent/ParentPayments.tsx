@@ -198,11 +198,10 @@ export default function ParentPayments() {
 
             <Panel title="Ödeme Yöntemleri">
               <p className="mb-4 text-sm text-slate-400">Ödemenizi kuruma havale/EFT ile ya da elden yapabilirsiniz; tahsilat kurum tarafından kaydedilir.</p>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2">
                 {([
                   ['Kredi / Banka Kartı', 'Çevrimiçi kart ödemesi henüz kullanılamıyor; ödemenizi kuruma yapabilirsiniz.', CreditCard, 'purple', 'Bilgi Al', explainOfflinePayment],
                   ['Banka Havalesi', 'Banka hesabımıza havale/EFT ile ödeme yapabilirsiniz.', Building2, 'blue', 'Havale Bilgileri', () => toast({ title: 'Havale bilgileri', description: 'Kurum banka bilgileri finans birimi tarafından paylaşılır.' })],
-                  ['Kayıtlı Kartlarım', 'Kayıtlı kartlarınızla hızlı ve güvenli ödeme yapın.', Wallet, 'green', 'Kartlarımı Yönet', () => toast({ title: 'Kart yönetimi', description: 'Kart saklama sağlayıcısı yapılandırıldığında aktif olur.' })],
                 ] satisfies ReadonlyArray<readonly [string, string, IconComponent, ParentTone, string, () => unknown]>).map(([title, text, Icon, tone, button, action]) => (
                   <motion.div variants={itemMotion} key={title} className="rounded-[12px] border border-foreground/[0.08] bg-foreground/[0.035] p-4">
                     <IconTile icon={Icon} tone={tone} />
