@@ -112,9 +112,18 @@ public sealed class MessageService(
         CancellationToken cancellationToken = default)
     {
         var currentName = Normalize(currentUserName);
+        // Türkçe "İ"/"I" tuzağı: .NET ToLower ile SQL LOWER aynı karakteri farklı küçültür
+        // (örn. "İ" → .NET "i" vs PG "i̇"), bu yüzden tek-taraf-SQL/tek-taraf-.NET karşılaştırması
+        // adları eşleştiremiyordu. İki tarafı da PostgreSQL ILIKE ile karşılaştırıyoruz; böylece
+        // case-folding tek motorda (PG) ve tutarlı. Ad tam eşleşmesi için joker karakterler kaçırılır.
+        var contactNameQuery = request.ContactName.Trim();
+        var contactNamePattern = contactNameQuery
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
         var contacts = await dbContext.Users.AsNoTracking()
             .Where(x => x.Status == CourseIntellect.Domain.Enums.UserStatus.Active
-                && x.FullName.ToLower() == request.ContactName.Trim().ToLower())
+                && EF.Functions.ILike(x.FullName, contactNamePattern, "\\"))
             .ToListAsync(cancellationToken);
         var matchingContacts = contacts.Where(x => x.PrimaryRole.ToString().Equals(request.ContactRole.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
         if (matchingContacts.Count != 1) throw new InvalidOperationException("Kişi bulunamadı veya kurum içinde tekil değil.");
