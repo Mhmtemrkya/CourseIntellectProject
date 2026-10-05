@@ -22,7 +22,12 @@ public sealed class PushController(CourseIntellectDbContext dbContext) : Control
         var userId = RequireCurrentUserId();
         var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
         var normalizedToken = request.Token.Trim();
+        // Push token'ı FİZİKSEL cihaza özgüdür ve tablodaki benzersiz kısıt GLOBAL'dir.
+        // Aynı cihaz farklı kurum/kullanıcı olarak giriş yapabildiğinden, mevcut kaydı
+        // tenant sorgu filtresine TAKILMADAN aramalıyız; aksi halde başka kurumdaki aynı
+        // token görülmez, INSERT denenir ve unique constraint (23505) ihlal edilir.
         var device = await dbContext.PushDeviceRegistrations
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.Token == normalizedToken, cancellationToken);
 
         if (device is null)
@@ -61,6 +66,7 @@ public sealed class PushController(CourseIntellectDbContext dbContext) : Control
         var userId = RequireCurrentUserId();
         var token = request.Token.Trim();
         var device = await dbContext.PushDeviceRegistrations
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.Token == token && x.UserId == userId, cancellationToken);
         if (device is not null)
         {
