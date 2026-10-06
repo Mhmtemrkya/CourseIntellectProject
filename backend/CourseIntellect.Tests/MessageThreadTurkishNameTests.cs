@@ -27,14 +27,18 @@ public sealed class MessageThreadTurkishNameTests
         var tenant = Guid.NewGuid();
         var adminId = Guid.NewGuid();
         var veliId = Guid.NewGuid();
+        var teacherId = Guid.NewGuid();
         // Formatlayıcının ürettiği gibi SOYAD büyük + Türkçe İ: "Demo VELİ".
         const string veliName = "Demo VELİ";
+        // Diakritikli ad (Ö, Ğ): mobil bunu "Demo OGRETMEN"e katlayıp gönderir.
+        const string teacherName = "Demo ÖĞRETMEN";
 
         await using (var db = NewContext())
         {
             db.Set<TenantWorkspace>().Add(new TenantWorkspace { Id = tenant, Name = "T", Slug = $"t-{Guid.NewGuid():N}"[..18], ContactEmail = "t@e.co", Plan = "free", Status = "active" });
             db.Users.Add(new AppUser { Id = adminId, TenantId = tenant, FullName = "Demo YÖNETİCİ", Username = $"a-{Guid.NewGuid():N}"[..16], PasswordHash = "h", PrimaryRole = UserRole.Admin, Status = UserStatus.Active });
             db.Users.Add(new AppUser { Id = veliId, TenantId = tenant, FullName = veliName, Username = $"v-{Guid.NewGuid():N}"[..16], PasswordHash = "h", PrimaryRole = UserRole.Parent, Status = UserStatus.Active });
+            db.Users.Add(new AppUser { Id = teacherId, TenantId = tenant, FullName = teacherName, Username = $"o-{Guid.NewGuid():N}"[..16], PasswordHash = "h", PrimaryRole = UserRole.Teacher, Status = UserStatus.Active });
             await db.SaveChangesAsync();
         }
 
@@ -60,6 +64,25 @@ public sealed class MessageThreadTurkishNameTests
                 adminId, "Demo YÖNETİCİ", "Admin",
                 new CreateThreadRequest("DEMO VELİ", "Parent", null));
             Assert.Equal(thread.Id, upper.Id);
+
+            // GERÇEK İSTEMCİ YOLU (regresyon): mobil, kişi adını ASCII'ye katlayarak
+            // gönderir ("Demo VELİ" → "Demo VELI"). Backend aynı normalizasyonla
+            // eşleşmeli; eski ILIKE-ham-ad yaklaşımı bunu bulamıyordu.
+            var asciiVeli = await svc.CreateOrGetThreadAsync(
+                adminId, "Demo YÖNETİCİ", "Admin",
+                new CreateThreadRequest("Demo VELI", "Parent", null));
+            Assert.Equal(thread.Id, asciiVeli.Id);
+
+            // Diakritikli ad: mobil "Demo ÖĞRETMEN"i "Demo OGRETMEN" olarak gönderir
+            // (Ö→O, Ğ→G). ILIKE bunu asla eşleştiremezdi (prod 500'ün gerçek nedeni).
+            var asciiTeacher = await svc.CreateOrGetThreadAsync(
+                adminId, "Demo YÖNETİCİ", "Admin",
+                new CreateThreadRequest("Demo OGRETMEN", "Teacher", null));
+            Assert.NotNull(asciiTeacher);
+            var asciiTeacherAgain = await svc.CreateOrGetThreadAsync(
+                adminId, "Demo YÖNETİCİ", "Admin",
+                new CreateThreadRequest("Demo OGRETMEN", "Teacher", null));
+            Assert.Equal(asciiTeacher.Id, asciiTeacherAgain.Id);
         }
 
         // Temizlik

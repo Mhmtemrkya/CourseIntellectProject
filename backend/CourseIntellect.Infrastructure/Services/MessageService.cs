@@ -112,20 +112,23 @@ public sealed class MessageService(
         CancellationToken cancellationToken = default)
     {
         var currentName = Normalize(currentUserName);
-        // Türkçe "İ"/"I" tuzağı: .NET ToLower ile SQL LOWER aynı karakteri farklı küçültür
-        // (örn. "İ" → .NET "i" vs PG "i̇"), bu yüzden tek-taraf-SQL/tek-taraf-.NET karşılaştırması
-        // adları eşleştiremiyordu. İki tarafı da PostgreSQL ILIKE ile karşılaştırıyoruz; böylece
-        // case-folding tek motorda (PG) ve tutarlı. Ad tam eşleşmesi için joker karakterler kaçırılır.
-        var contactNameQuery = request.ContactName.Trim();
-        var contactNamePattern = contactNameQuery
-            .Replace("\\", "\\\\")
-            .Replace("%", "\\%")
-            .Replace("_", "\\_");
-        var contacts = await dbContext.Users.AsNoTracking()
+        // Ad eşleştirme tuzağı: mobil istemci kişi adını ASCII'ye KATLAYARAK gönderir
+        // (ç→c, Ö→O, Ğ→G, İ→I, ş→s, ü→u...), oysa kayıttaki FullName ham Türkçe'dir.
+        // PostgreSQL ILIKE yalnız büyük/küçük harf katlar (Ö≠O, Ğ≠G), bu yüzden ham ada
+        // ILIKE ile bakmak diakritikli adları (ör. "Demo ÖĞRETMEN") hiç eşleştiremiyordu.
+        // Çözüm: iki tarafı da MessageParticipantKey.Compare ile (Türkçe-katlamalı +
+        // küçültülmüş) karşılaştır — mobil _normalize ile backend AYNI normalizasyonu
+        // kullanır. Rol SQL'de süzülür (küme sınırlı kalsın), ad eşitliği bellekte yapılır.
+        if (!Enum.TryParse<CourseIntellect.Domain.Enums.UserRole>(request.ContactRole.Trim(), ignoreCase: true, out var contactRole))
+            throw new InvalidOperationException("Kişi bulunamadı veya kurum içinde tekil değil.");
+        var contactNameKey = MessageParticipantKey.Compare(request.ContactName);
+        var candidates = await dbContext.Users.AsNoTracking()
             .Where(x => x.Status == CourseIntellect.Domain.Enums.UserStatus.Active
-                && EF.Functions.ILike(x.FullName, contactNamePattern, "\\"))
+                && x.PrimaryRole == contactRole)
             .ToListAsync(cancellationToken);
-        var matchingContacts = contacts.Where(x => x.PrimaryRole.ToString().Equals(request.ContactRole.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+        var matchingContacts = candidates
+            .Where(x => MessageParticipantKey.Compare(x.FullName) == contactNameKey)
+            .ToList();
         if (matchingContacts.Count != 1) throw new InvalidOperationException("Kişi bulunamadı veya kurum içinde tekil değil.");
         var contact = matchingContacts[0];
         var contactName = Normalize(contact.FullName);
