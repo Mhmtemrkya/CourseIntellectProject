@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { FeatureGate } from '../../components/FeatureGate';
+import { ServiceLiveMap } from '../../components/ServiceLiveMap';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -663,17 +664,13 @@ export default function ServiceTrackingPage() {
                 <div>
                   <p className="text-sm font-bold">Canlı araç konumları</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Admin canlı konum endpointi yoksa harita boş durum gösterir.
+                    Seferlerden alınan son araç konumunu haritada görüntüleyin.
                   </p>
                 </div>
-                <Badge className="bg-orange-500/10 text-orange-500 hover:bg-orange-500/10">API bekliyor</Badge>
+                <Badge className="bg-orange-500/10 text-orange-500 hover:bg-orange-500/10">Son konum</Badge>
               </div>
-              <div className="mt-4 flex h-44 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-[radial-gradient(circle_at_top_left,rgba(255,157,46,0.18),transparent_35%),linear-gradient(135deg,rgba(8,17,31,0.04),rgba(77,163,255,0.08))] dark:border-foreground/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(255,157,46,0.20),transparent_35%),linear-gradient(135deg,#07111F,#10223C)]">
-                <div className="text-center">
-                  <Navigation className="mx-auto h-9 w-9 text-orange-500" />
-                  <p className="mt-3 text-sm font-bold">Konum verisi gelmedi</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Şoför GPS gönderimi veli/öğrenci canlı takipte çalışır.</p>
-                </div>
+              <div className="mt-4">
+                <ServiceLiveMap trips={liveTrips} />
               </div>
             </div>
             <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/staff-registration')}>

@@ -14,16 +14,23 @@ import '../widgets/service_tracking_ui.dart';
 
 class ServiceLiveStatusPage extends StatefulWidget {
   final bool parentMode;
+  final ServiceTrackingApiService? api;
+  final ServiceTrackingRealtimeService? realtime;
 
-  const ServiceLiveStatusPage({super.key, required this.parentMode});
+  const ServiceLiveStatusPage({
+    super.key,
+    required this.parentMode,
+    this.api,
+    this.realtime,
+  });
 
   @override
   State<ServiceLiveStatusPage> createState() => _ServiceLiveStatusPageState();
 }
 
 class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
-  final _api = ServiceTrackingApiService.instance;
-  final _realtime = ServiceTrackingRealtimeService();
+  late final _api = widget.api ?? ServiceTrackingApiService.instance;
+  late final _realtime = widget.realtime ?? ServiceTrackingRealtimeService();
   bool _loading = true;
   String? _error;
   List<ServiceLiveStatusRecord> _statuses = const [];
@@ -254,7 +261,7 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
                 ),
               ),
               ServiceStatusPill(
-                label: item.tripStatus.isEmpty ? 'Bekliyor' : item.tripStatus,
+                label: _tripStatusLabel(item.tripStatus),
                 color: serviceBlue,
                 icon: Icons.sensors_rounded,
               ),
@@ -528,9 +535,7 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
                       .toList(),
                   onChanged: (value) =>
                       setDialogState(() => selected = value ?? selected),
-                  decoration: InputDecoration(
-                    labelText: 'Öğrenci / Rota'.tr,
-                  ),
+                  decoration: InputDecoration(labelText: 'Öğrenci / Rota'.tr),
                 ),
                 DropdownButtonFormField<String>(
                   initialValue: tripType,
@@ -742,13 +747,61 @@ class _MapLegendDot extends StatelessWidget {
   }
 }
 
-class _OpenStreetServiceMap extends StatelessWidget {
+class _OpenStreetServiceMap extends StatefulWidget {
   final ServiceLiveStatusRecord item;
 
   const _OpenStreetServiceMap({required this.item});
 
   @override
+  State<_OpenStreetServiceMap> createState() => _OpenStreetServiceMapState();
+}
+
+class _OpenStreetServiceMapState extends State<_OpenStreetServiceMap> {
+  final _controller = MapController();
+  bool _ready = false;
+  static const _cameraPadding = EdgeInsets.fromLTRB(42, 90, 42, 36);
+
+  @override
+  void didUpdateWidget(covariant _OpenStreetServiceMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final old = oldWidget.item;
+    final item = widget.item;
+    if (old.vehicleLatitude == item.vehicleLatitude &&
+        old.vehicleLongitude == item.vehicleLongitude &&
+        old.stopLatitude == item.stopLatitude &&
+        old.stopLongitude == item.stopLongitude) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_ready) return;
+      final current = widget.item;
+      final stop = LatLng(current.stopLatitude, current.stopLongitude);
+      if (!current.hasVehicleLocation) {
+        _controller.move(stop, 15);
+        return;
+      }
+      _controller.fitCamera(
+        CameraFit.bounds(
+          bounds: LatLngBounds.fromPoints([
+            stop,
+            LatLng(current.vehicleLatitude!, current.vehicleLongitude!),
+          ]),
+          padding: _cameraPadding,
+          maxZoom: 15,
+        ),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final stopPoint = LatLng(item.stopLatitude, item.stopLongitude);
     final vehiclePoint = item.hasVehicleLocation
         ? LatLng(item.vehicleLatitude!, item.vehicleLongitude!)
@@ -762,14 +815,17 @@ class _OpenStreetServiceMap extends StatelessWidget {
           );
 
     return FlutterMap(
+      mapController: _controller,
       options: MapOptions(
+        onMapReady: () => _ready = true,
         initialCenter: center,
         initialZoom: vehiclePoint == null ? 15 : 14,
         initialCameraFit: vehiclePoint == null
             ? null
             : CameraFit.bounds(
                 bounds: LatLngBounds.fromPoints(points),
-                padding: const EdgeInsets.fromLTRB(42, 54, 42, 58),
+                padding: _cameraPadding,
+                maxZoom: 15,
               ),
         minZoom: 4,
         maxZoom: 18,
@@ -803,8 +859,8 @@ class _OpenStreetServiceMap extends StatelessWidget {
           markers: [
             Marker(
               point: stopPoint,
-              width: 58,
-              height: 68,
+              width: 72,
+              height: 82,
               alignment: Alignment.topCenter,
               child: const _ServiceMapMarker(
                 color: serviceOrange,
@@ -815,8 +871,8 @@ class _OpenStreetServiceMap extends StatelessWidget {
             if (vehiclePoint != null)
               Marker(
                 point: vehiclePoint,
-                width: 58,
-                height: 68,
+                width: 72,
+                height: 82,
                 alignment: Alignment.topCenter,
                 child: const _ServiceMapMarker(
                   color: serviceGreen,
@@ -873,6 +929,8 @@ class _ServiceMapMarker extends StatelessWidget {
           ),
           child: Text(
             label,
+            maxLines: 1,
+            softWrap: false,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 10,
@@ -932,6 +990,25 @@ String _attendanceLabel(String value) {
       return 'Eve ulaştı';
     default:
       return value.isEmpty ? 'Bekliyor' : value;
+  }
+}
+
+String _tripStatusLabel(String value) {
+  switch (value) {
+    case 'InProgress':
+      return 'Sefer sürüyor';
+    case 'ArrivedSchool':
+      return 'Okula ulaştı';
+    case 'Completed':
+      return 'Tamamlandı';
+    case 'Cancelled':
+      return 'İptal';
+    case 'NotStarted':
+    case 'Scheduled':
+    case '':
+      return 'Bekliyor';
+    default:
+      return value;
   }
 }
 
