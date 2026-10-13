@@ -1,0 +1,33 @@
+Hello App Review,
+
+Thank you. Here is the requested information for SchoolAsist iOS 1.0.0 (5).
+
+1. Physical-device recording
+The attached original recording is 5 min 14 sec, 1180x2556, captured on a physical iPhone 15 on 6 October 2026. The device is running iOS 26.7.1 (verified). It begins with launching SchoolAsist from the Home Screen, then login, populated dashboards, staff, attendance, class schedules, service route/stop management, exam results, tuition/installment records, announcements and student reports. It also shows Profile > Delete My Account, password reauthentication and explicit confirmation, successful request submission, the 30-day cancellation period, and cancellation of the request. This is a test account; no real institution or student data is used.
+
+2. Purpose and audience
+SchoolAsist helps schools and education centers manage daily academics, attendance, results, family communication, tuition records and school transport in one place. Users include institution administrators, teachers, administrative/accounting/cafeteria staff, parents and students. Parents and students access their own institution-linked information; the app is not limited to employees of one business.
+
+3. Access and setup
+Demo institution: SchoolAsist Demo Okulu. All accounts use password <App Review Information alanındaki parola>:
+Admin: apple.admin
+Recording/deletion demo admin: apple.video
+Administrative: apple.muduryrd
+Branch manager: apple.sube
+Teacher: apple.ogretmen
+Accounting: apple.muhasebe
+Cafeteria: apple.yemekhane
+Parent: apple.veli
+Student: apple.ogrenci
+Accounts are provisioned by institutions; the iOS app has no public self-registration. Enter the username/password on the login screen. No sample file is required. The demo includes 9-A, a linked student/parent/teacher, 10 weekly lesson entries, attendance, two exam results, announcements, a meal menu and six simulated tuition installments. Open Dashboard > Academics/Schedule/Reports, Finance > Current Accounts/Installments, or Service Tracking. Parent apple.veli can open Service Tracking for their linked child. Map positions are synthetic TEST data, not an actual child's location. Trips are date-dependent; the driver profile on apple.admin can start the TEST route for a new day. For deletion use apple.video > Profile > Delete My Account. Please preserve apple.admin for continued review.
+
+4. Services and integrations
+Our HTTPS backend at maydanozasist.schoolasist.com provides authentication and institution-scoped data, with PostgreSQL storage. Notifications use Apple APNs/Firebase Cloud Messaging. Bus maps use OpenStreetMap tiles. Optional meetings use our Jitsi service at meet.schoolasist.com. The backend also supports configurable document recognition (Azure Document Intelligence), a local Ollama intent assistant, and institution-configured finance integrations; these are not needed for the demonstrated core flow. Tuition screens are institutional ledger records; the recording makes no real payment and shows no purchase of digital content.
+
+5. Regional behavior
+Feature access depends on institution and user role rather than country. The app is designed for Turkish institutions with Turkish as the default language and an English UI option. Educational content and institutional records depend on the institution, not a regional content catalogue.
+
+6. Content and authorization
+SchoolAsist is education-management software. Lesson documents, announcements and private messages are institution/user supplied; there is no public anonymous social feed. The developer confirms necessary rights and permissions for third-party material used in the app. OpenStreetMap attribution is provided in the map view. Review data is synthetic. Support: info@schoolasist.com, +90 850 242 84 25.
+
+Thank you.

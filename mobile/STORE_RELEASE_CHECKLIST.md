@@ -1,5 +1,8 @@
 # Store Release Checklist
 
+> Apple status updated 2026-10-05: signed iOS 1.0.0 (5) passed Apple validation and was uploaded via Xcode Organizer; TestFlight processing completed (Ready to Submit), build 5 is Testing in the internal group, and App Store Connect reports installation on iPhone 15. Build 5 screen verification remains pending. Build 4 was installed on a physical iPhone 15 and service map, automatic location updates, boarding status and real GPS submission were verified. GPS was stopped after testing. Background continuous GPS and device push delivery remain unverified. Live deletion endpoints return HTTP 404. Backend deployment and Mac PKG remain pending.
+> See [current audit](../docs/apple-store-preparation-2026-10-05.md) and [signing guide](IOS_SIGNING_GUIDE.md).
+
 ## Flutter Build Environments
 
 Use `dart-define` with one of these values:
@@ -88,9 +91,9 @@ flutter build ipa \
 
 ## iOS Notes
 
-- Bundle identifier set to `com.courseintellect.student`
+- Bundle identifier set to `com.schoolasist.app`
 - Display name set to `CourseIntellect`
 - Arbitrary loads removed from ATS
-- Push entitlement is set to production
+- Final exported IPA must have `aps-environment=production` (verified after distribution export)
 - Privacy manifest includes the UserDefaults required-reason API declaration
 - App Store Connect still requires a public privacy policy URL and privacy nutrition label answers

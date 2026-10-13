@@ -14,6 +14,7 @@ class ChildSelector extends StatefulWidget {
 class _ChildSelectorState extends State<ChildSelector> {
   String? selectedChild;
   bool _loading = true;
+  bool _loadFailed = false;
   List<LinkedChildRecord> _children = const [];
 
   @override
@@ -23,7 +24,23 @@ class _ChildSelectorState extends State<ChildSelector> {
   }
 
   Future<void> _loadChildren() async {
-    final children = await LinkedChildrenService.instance.loadLinkedChildren();
+    setState(() {
+      _loading = true;
+      _loadFailed = false;
+    });
+    List<LinkedChildRecord> children;
+    try {
+      children = await LinkedChildrenService.instance.loadLinkedChildren();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _children = const [];
+        selectedChild = null;
+        _loading = false;
+        _loadFailed = true;
+      });
+      return;
+    }
     if (!mounted) return;
     setState(() {
       _children = children;
@@ -44,6 +61,14 @@ class _ChildSelectorState extends State<ChildSelector> {
       return const SizedBox(
         width: 150,
         child: LinearProgressIndicator(minHeight: 2),
+      );
+    }
+
+    if (_loadFailed) {
+      return IconButton(
+        tooltip: 'Çocuk listesi yüklenemedi. Yeniden dene.',
+        onPressed: _loadChildren,
+        icon: const Icon(Icons.refresh_rounded),
       );
     }
 
@@ -93,9 +118,7 @@ class _ChildSelectorState extends State<ChildSelector> {
                 children: [
                   const CircleAvatar(
                     radius: 10,
-                    backgroundImage: NetworkImage(
-                      "https://i.pravatar.cc/150?img=3",
-                    ),
+                    child: Icon(Icons.person_outline, size: 14),
                   ),
                   const SizedBox(width: 6),
                   Expanded(

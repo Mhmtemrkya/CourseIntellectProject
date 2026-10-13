@@ -51,7 +51,7 @@ export default function RoleDashboardColumns({ groups = [], navigate, testId = '
           className="contents"
           data-testid={`${testId}-${group.key}`}
         >
-          {group.cards.map((card, index) => (
+          {group.cards.map((card) => (
             <KpiCard
               key={card.key}
               testId={`${testId}-card-${card.key}`}
@@ -60,8 +60,8 @@ export default function RoleDashboardColumns({ groups = [], navigate, testId = '
               caption={card.caption}
               icon={card.icon || card.Icon}
               tone={card.tone}
-              containerClassName={index === 0 && group.key !== 'collection' ? 'h-full min-w-0 lg:col-span-2' : 'h-full min-w-0'}
-              className={index === 0 && group.key !== 'collection' ? 'ci-metric-featured min-h-[172px] justify-between' : 'min-h-[172px] justify-between'}
+              containerClassName="h-full min-w-0"
+              className="min-h-[172px] justify-between"
               onClick={card.onClick || (card.path && navigate ? () => navigate(card.path ?? '') : undefined)}
             />
           ))}

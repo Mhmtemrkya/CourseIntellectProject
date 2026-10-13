@@ -25,7 +25,7 @@ export function DesktopUpdater() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (!isDesktopApp() || checked.current) return undefined;
+    if (process.env.REACT_APP_DISTRIBUTION_CHANNEL === 'mac-app-store' || !isDesktopApp() || checked.current) return undefined;
     checked.current = true;
     const timer = window.setTimeout(async () => {
       try {

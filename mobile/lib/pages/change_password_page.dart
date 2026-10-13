@@ -39,21 +39,27 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       newPass.text.isNotEmpty && newPass.text == newPassAgain.text;
   bool get _allRulesValid =>
       _ruleLength && _ruleUpper && _ruleLower && _ruleDigit && _ruleMatch;
+  // Mevcut/geçici şifre her iki modda da zorunlu (backend bootstrap dahil doğrular).
+  bool get _canSubmit => _allRulesValid && oldPass.text.trim().isNotEmpty;
 
   Future<void> _handleSubmit() async {
     if (!_allRulesValid) {
       _showError('Şifre kurallarını kontrol edin.');
       return;
     }
-    if (!widget.forceMode && oldPass.text.isEmpty) {
-      _showError('Mevcut şifre boş olamaz.');
+    if (oldPass.text.trim().isEmpty) {
+      _showError(
+        widget.forceMode ? 'Geçici şifrenizi girin.' : 'Mevcut şifre boş olamaz.',
+      );
       return;
     }
 
     setState(() => _saving = true);
     try {
+      // Backend bootstrap (ilk giriş) dahil her değişimde mevcut/geçici şifreyi
+      // doğrular; force modda da geçici şifre gönderilmeli (null → "Mevcut şifre hatalı").
       await AuthApiService.instance.changePassword(
-        currentPassword: widget.forceMode ? null : oldPass.text,
+        currentPassword: oldPass.text.trim(),
         newPassword: newPass.text,
       );
       if (!mounted) return;
@@ -188,6 +194,20 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 24),
+                  _passwordField(
+                    label: 'Mevcut Geçici Şifre'.tr,
+                    controller: oldPass,
+                    obscureText: hideOld,
+                    onToggle: () => setState(() => hideOld = !hideOld),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Giriş yaparken kullandığınız geçici şifreyi girin.'.tr,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.hintColor,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                 ] else ...[
                   Text(
                     'Şifre Güvenliği'.tr,
@@ -234,7 +254,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: (_saving || !_allRulesValid)
+                    onPressed: (_saving || !_canSubmit)
                         ? null
                         : _handleSubmit,
                     child: _saving

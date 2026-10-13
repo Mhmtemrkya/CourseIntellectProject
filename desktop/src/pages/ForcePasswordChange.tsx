@@ -32,6 +32,7 @@ export default function ForcePasswordChange() {
   const { setUser, setSession } = useApp();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -47,7 +48,7 @@ export default function ForcePasswordChange() {
     match: newPassword.length > 0 && newPassword === confirm,
   }), [newPassword, confirm]);
 
-  const allValid = Object.values(validations).every(Boolean);
+  const allValid = currentPassword.trim().length > 0 && Object.values(validations).every(Boolean);
 
   const handleBackToLogin = () => {
     clearDesktopSession();
@@ -59,12 +60,12 @@ export default function ForcePasswordChange() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!allValid) {
-      toast({ title: 'Şifre kuralları sağlanmadı', description: 'Tüm gereksinimleri karşılayın.', variant: 'destructive' });
+      toast({ title: 'Şifre kuralları sağlanmadı', description: 'Geçici şifrenizi girin ve tüm gereksinimleri karşılayın.', variant: 'destructive' });
       return;
     }
     try {
       setSaving(true);
-      await changePassword({ currentPassword: null, newPassword });
+      await changePassword({ currentPassword: currentPassword.trim(), newPassword });
       clearDesktopSession();
       setUser(null);
       setSession(null);
@@ -93,16 +94,34 @@ export default function ForcePasswordChange() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label className="text-slate-800 dark:text-slate-300">Yeni Şifre</Label>
+              <Label htmlFor="temporary-password" className="text-slate-800 dark:text-slate-300">Mevcut Geçici Şifre</Label>
+              <Input
+                id="temporary-password"
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                autoComplete="current-password"
+                aria-describedby="temporary-password-help"
+                className="border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                required
+                autoFocus
+              />
+              <p id="temporary-password-help" className="text-xs text-slate-500 dark:text-slate-400">
+                Giriş yaparken kullandığınız geçici şifreyi girin.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password" className="text-slate-800 dark:text-slate-300">Yeni Şifre</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <Input
+                  id="new-password"
                   type={showPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
                   placeholder="••••••••"
                   className="border-slate-300 bg-white pl-9 pr-10 text-slate-950 placeholder:text-slate-400 focus-visible:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  autoFocus
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"
@@ -125,20 +144,21 @@ export default function ForcePasswordChange() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-800 dark:text-slate-300">Şifreyi Doğrula</Label>
+              <Label htmlFor="confirm-password" className="text-slate-800 dark:text-slate-300">Şifreyi Doğrula</Label>
               <Input
+                id="confirm-password"
                 type={showPassword ? 'text' : 'password'}
                 value={confirm}
                 onChange={(event) => setConfirm(event.target.value)}
                 placeholder="••••••••"
+                autoComplete="new-password"
                 className="border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
             </div>
 
             {!allValid && (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-100">
-                Butonun açılması için aşağıdaki tüm maddeler yeşil olmalı. Örnek güçlü şifre:
-                <span className="font-semibold text-amber-950 dark:text-amber-50"> Course2026</span>
+                Geçici şifrenizi girin. Yeni şifreniz aşağıdaki tüm kuralları sağlamalıdır.
               </div>
             )}
 

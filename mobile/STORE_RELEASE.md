@@ -1,23 +1,25 @@
 # Mağaza Yükleme Kılavuzu (App Store + Google Play)
 
-Uygulamanın teknik yapılandırması yüklemeye hazırdır. Kalan adımlar **sizin
-Apple/Google hesaplarınıza ait imza kimlikleri** ve mağaza panellerindeki
-listeleme bilgileridir — bunlar koda gömülemez, siz sağlarsınız.
+> 2026-10-04 Apple denetimi: iOS imzalı IPA hazır; Mac PKG ve hesap silme henüz tamamlanmadı.
+> Güncel durum için [Apple hazırlık raporu](../docs/apple-store-preparation-2026-10-04.md)
+> ve [iOS imzalama kılavuzu](IOS_SIGNING_GUIDE.md) geçerlidir. Aşağıdaki eski
+> genel liste tek başına gönderime hazır olunduğu anlamına gelmez.
 
 ## Mevcut durum (denetlendi)
 
 | Öğe | Android | iOS |
 |-----|---------|-----|
-| Paket / Bundle kimliği | `com.courseintellect.student` ✓ | `com.courseintellect.student` ✓ |
+| Paket / Bundle kimliği | `com.courseintellect.student` ✓ | `com.schoolasist.app` |
 | Görünen ad | SchoolAsist ✓ | SchoolAsist ✓ |
-| Sürüm | `0.1.0+1` (pubspec) ✓ | 1.0 (build 1) ✓ |
+| Sürüm | `0.1.0+1` (pubspec) ✓ | Yerel archive: 0.1.0 (build 2) |
 | Hedef SDK / min sürüm | targetSdk 36 ✓ / min Flutter | iOS 15.0 ✓ |
 | Launcher ikonları | üretildi ✓ | üretildi ✓ |
 | İzin açıklamaları | manifest tam ✓ | Info.plist tam ✓ |
 | Şifreleme beyanı | — | `ITSAppUsesNonExemptEncryption=false` ✓ |
 | **Release imzası** | **keystore GEREKLİ** ⚠ | Distribution profili GEREKLİ ⚠ |
 
-> **Paket adı notu:** Kimlik `com.courseintellect.student` (eski marka) —
+> **Paket adı notu:** Android kimliği `com.courseintellect.student`; iOS kimliği
+> `com.schoolasist.app`. Android'in eski marka kimliği —
 > derin link şeması, API ve dahili anahtarlarla tutarlı. Mağazada kullanıcı
 > **SchoolAsist** adını görür; paket adı iç kimliktir. **İlk yüklemeden sonra
 > paket adı DEĞİŞTİRİLEMEZ**, o yüzden şimdiden değiştirmek isterseniz (ör.
@@ -89,7 +91,7 @@ flutter build ipa --release
 
 ### 3. App Store Connect
 
-- Yeni uygulama → SchoolAsist, bundle `com.courseintellect.student`.
+- Yeni uygulama → SchoolAsist, bundle `com.schoolasist.app`.
 - Ekran görüntüleri (6.7", 6.5", iPad), açıklama, anahtar kelimeler,
   destek/gizlilik URL'leri, **App Privacy** (toplanan veriler) formu.
 - Konum "Always" ve kamera kullanımı review'da gerekçelendirilir

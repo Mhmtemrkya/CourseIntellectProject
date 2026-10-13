@@ -1,48 +1,56 @@
-# iOS Signing Guide
+# SchoolAsist iOS / TestFlight
 
-This project is prepared for release, but iOS signing still requires an Apple Developer account in Xcode.
+Bundle ID: `com.schoolasist.app`; Apple Team: `RM53R2ZT6Q`; minimum iOS: 15.0.
+Developer ID signs the desktop DMG, not TestFlight IPAs.
 
-## Required Values
+## Signing prerequisites
 
-- Bundle Identifier: `com.courseintellect.student`
-- Display Name: `CourseIntellect`
+Xcode > Settings > Apple Accounts: refresh the existing account's session and
+select team `RM53R2ZT6Q`. Manage Certificates needs an **Apple Distribution**
+certificate with its private key. Also obtain an **iOS App Store Connect**
+provisioning profile for `com.schoolasist.app` with Push Notifications enabled.
+Automatic signing can download this when the account is usable.
 
-## Xcode Steps
+Open `ios/Runner.xcworkspace`; Runner > Signing & Capabilities must use that team
+and automatic signing. Archive/debug push entitlement can be `development`; the
+exported distribution IPA must have `aps-environment=production`. The verifier
+checks the final IPA.
 
-1. Open:
-   - `ios/Runner.xcworkspace`
-2. Select:
-   - `Runner` target
-3. In `Signing & Capabilities`:
-   - choose your Apple Developer Team
-   - enable `Automatically manage signing`
-   - confirm Bundle Identifier is `com.courseintellect.student`
-4. Create or select:
-   - iOS Distribution certificate
-   - App Store provisioning profile
-5. Build archive:
-   - `Product > Archive`
-
-## Flutter CLI Alternative
-
-After signing is configured in Xcode:
+From the repository root:
 
 ```bash
-../scripts/build_ios_release.sh https://api.example.com
+bash scripts/check_ios_signing.sh
+bash scripts/build_ios_release.sh 2
 ```
 
-## Quick Diagnostic
+Choose a build number not already uploaded to App Store Connect. Build `2` was
+only archived locally on 2026-10-04; its availability in App Store Connect is
+unverified. The script explicitly builds `lib/main.dart` with production HTTPS
+configuration and rejects missing/stale IPAs, wrong bundle/team, development
+signing, a missing manifest and a non-production APNs entitlement.
 
-If CLI build still says `No Account for Team` or `No profiles were found`, run:
+## Existing archive
+
+`build/ios/archive/Runner.xcarchive` was built as `0.1.0 (2)`. Initial exports failed
+with missing distribution assets. After the user created Apple Distribution,
+Xcode Organizer obtained the App Store profile and exported the signed IPA.
+CLI export then also succeeded using the local Xcode-managed profile.
+
+Verified package: `../outputs/app-store/SchoolAsist-iOS-0.1.0-2/SchoolAsist.ipa`.
+Its Apple Distribution signature, store profile, bundle/team, production APNs,
+disabled debug access and privacy manifest were checked. It was not uploaded.
+
+To export the archive again without rebuilding:
 
 ```bash
-../scripts/check_ios_signing.sh
+bash scripts/export_ios_testflight.sh
 ```
 
-If `0 valid identities found` appears, Xcode account/certificate state is still incomplete.
-
-## Notes
-
-- Production build should use only HTTPS backend URLs
-- Demo autofill is disabled in production env
-- ATS arbitrary loads were removed from `Info.plist`
+The verified IPA will be under `build/ios/ipa/`. These scripts do not upload.
+`prepare_ios_export_options.py` can select a matching local manually managed
+distribution profile; Xcode-managed profiles retain automatic signing. Version
+and build number are preserved during export.
+See `../docs/apple-store-preparation-2026-10-04.md` for submission gaps and Mac
+packaging. Deploy the matching backend legal consent version before testing
+production consent synchronization. Test production push and background GPS on
+a real iPhone; an archive does not prove either works.

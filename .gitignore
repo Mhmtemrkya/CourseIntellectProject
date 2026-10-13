@@ -111,3 +111,6 @@ backend/CourseIntellect.Api/wwwroot/uploads/
 **/yonetici-sifreleri.txt
 **/provision-managers.sql
 **/admin-email.env
+
+# Tanıtım videosu render çıktıları (GB boyutunda)
+output/video-*/

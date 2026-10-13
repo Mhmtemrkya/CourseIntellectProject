@@ -1,0 +1,26 @@
+SchoolAsist Apple dağıtım görevine kaldığın yerden devam et. Proje: /Users/oguzhanmindivanli/Developer/CourseIntellectProject. Önce docs/apple-submission-readiness-latest.md ve outputs/apple-submission-readiness-latest.json dosyalarını oku. Mevcut dirty worktree değişikliklerini KORU, geri alma. Backend deploy/restart/servis durdurma YAPMA. Gerçek hesap/kurum silme çalıştırma. Gizli anahtarları paylaşma/commit etme. Apple onayını garanti etme.
+
+## iOS — DOKUNMA
+SchoolAsist iOS 1.0.0 (5), ASC 6819080463, bundle com.schoolasist.app, 5 Ekim 2026'da incelemeye gönderildi; durum Waiting for Review. Değiştirme/geri çekme. Kullanıcı kararı: veli online ödeme kaldırması bu build'e GİRMEYECEK; incelemede kalır, kaldırma bir SONRAKİ iOS sürümünde yayınlanır (Apple'a verilen demo hesap apple.admin=Yönetici, veli ödeme ekranına ulaşamaz, ekran görüntülerinde yok → bu sorundan red riski düşük).
+
+## Bu oturumda TAMAMLANANLAR
+1. Veli online (kart) ödeme KALDIRILDI (kod, worktree'de commit edilmemiş, gelecek build için):
+   - Mobil: silindi mobile/lib/pages/veli_online_odeme_page.dart ve veli_odeme_makbuz_page.dart; butonlar kaldırıldı veli_home_page.dart ("Online Ödeme") ve veli_odeme_page.dart ("Online Ödeme Yap" + _payButton + import). Ödeme sekmesi (özet/taksit/geçmiş) ve VeliFinancePage korundu. flutter analyze temiz.
+   - Desktop: desktop/src/pages/parent/ParentPayments.tsx "Kayıtlı Kartlarım" kart-ödeme placeholder tile kaldırıldı (grid md:grid-cols-2). tsc temiz. "Kredi/Banka Kartı" tile dürüstçe "kullanılamıyor" diyor, korundu.
+2. Mac build 2 Apple VALIDATE + UPLOAD başarılı: desktop/dist/appstore/SchoolAsist-2.pkg (1.2.4 build 2, SHA256 b578356556ce80cb533e97127c61e460d10e3f89d6735e1a13a3a68443d5ee8b). UPLOAD SUCCEEDED, Delivery UUID c17c066a-5328-45a6-90b5-675f6d8e422f. İşlenmesi ~15-60 dk; ASC'de sürüme bağlanabilmesi için işlemenin bitmesini bekle. Desktop kod değişikliği build 2'yi geçersiz kılmaz (reviewer apple.admin=Yönetici ParentPayments'a ulaşamaz); desktop veli değişikliği sonraki desktop build'ine girer.
+3. Servis haritası RUNTIME doğrulandı (dev-imzalı test kopyası outputs/mac-sandbox-test/build-2/SchoolAsist.app, apple.admin/<App Review Information alanındaki parola>): Servis Takip ekranında gömülü OpenStreetMap gerçek İstanbul karoları + yeşil araç işareti + OSM telifi + "Son konum: 5.10.2026 12:10:05" ile yüklendi; rota "TEST • Apple İnceleme Sabah Rotası (simülasyon)" etiketli. Kanıt: outputs/app-store/mac-build2-runtime-2026-10-05/.
+4. 5 Mac ekran görüntüsü alındı (2880×1800, 16:10, geçerli boyut): outputs/app-store/mac-screenshots-2026-10-05/ → 01_panel.png, 02_akademik.png, 03_operasyon.png, 04_finans.png, 05_servis.png (+SHA256SUMS.txt). Veri seyrek (apple.admin demo). HENÜZ ASC'ye yüklenmedi.
+
+## Mac kaydı (değişmedi)
+Ayrı kayıt SchoolAsist Desktop, ASC 6819349061, bundle com.courseintellect.desktop, 1.2.4, team RM53R2ZT6Q. Build 1 teslim UUID 0ede7895-7869-42b6-a9f9-6c9ae294c739 (eski). Türkçe metadata/inceleme hesabı/iletişim/Education/4+/ücretsiz/Türkiye/manuel yayın kaydedildi. Content Rights=Yes. Kullanıcının Mac başvuruyu tamamlama + test cihazı/profil/sertifika onayları mevcut; tekrar sorma. Signing kimlikleri: desktop/scripts/signing.env.local (APPLE_ID/APPLE_PASSWORD app-specific/APPLE_TEAM_ID) — dosyayı yazdırma, secret çıktısı verme.
+
+## KALAN İŞLER (ASC — tarayıcı)
+Tarayıcı DOM otomasyonu için Claude-in-Chrome eklentisi GEREKLİ (geçen oturumda bağlı DEĞİLDİ; kullanıcı bağlayacak). Bağlıysa tabs_context_mcp ile doğrula, kendi sekmeni aç, appstoreconnect.apple.com'a git (aynı Chrome profilinde ASC oturumu açık). Eklenti yoksa ekran-GUI (screencapture + Quartz; /tmp/mac_input.py helper'ı: `python3 /tmp/mac_input.py click X Y` ve `scroll X Y AMOUNT STEPS`, koordinatlar logical nokta = retina px/2; her tıktan önce hedef uygulamayı öne getir).
+1. 5 Mac ekran görüntüsünü ASC'ye (SchoolAsist Desktop 6819349061, sürüm 1.2.4, Mac) yükle; sayıyı UI'da doğrula.
+2. App Privacy: şu an taslak; 15 veri türü seçili ama amaç/linked/tracking eksik. Manifest desktop/src-tauri/PrivacyInfo.appstore.xcprivacy ile birebir yap (tüm amaçlar App Functionality, linked=true, tracking=false; Device ID iOS'ta var ama Mac'te yok). Formu doldur. PUBLISH ÖNCESİ kullanıcıdan AÇIK ONAY iste (son hukuki kabul). Gizlilik URL: https://schoolasist.com/gizlilik/.
+3. Build 2 işlenince (Delivery UUID c17c066a...) sürüm 1.2.4 için build 2'yi seç; export compliance / eksik metadata uyarılarını doğru tamamla.
+4. Zorunlu alanlar + runtime doğrulandıktan sonra Add for Review + Submit. SUBMIT ÖNCESİ kullanıcıdan AÇIK ONAY iste. "Waiting for Review"ı UI'da görmeden gönderildi deme. Red garantisi verme.
+5. outputs/apple-submission-readiness-latest.json + docs/apple-submission-readiness-latest.md + bu devam promptunu güncelle.
+
+## GUI ipuçları (native app testi için, gerekirse)
+Tauri webview odak değişince blank olabilir → her tıktan önce `osascript -e 'tell application "System Events" to set frontmost of first process whose name is "app" to true'`. Keyboard/System Events scroll webview'i kaydırmaz → Quartz scroll kullan. Türkçe klavye nedeniyle metin girişi için pbcopy + cmd+v (layout-bağımsız). Her sayfa ilk ziyarette onboarding turu açar (başlık+1/N, "Turu atla"/X ile kapat), navigasyonu bloklar.

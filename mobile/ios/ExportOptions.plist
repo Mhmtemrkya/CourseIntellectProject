@@ -3,16 +3,16 @@
 <plist version="1.0">
 <dict>
 	<key>method</key>
-	<string>app-store</string>
+	<string>app-store-connect</string>
 	<key>signingStyle</key>
 	<string>automatic</string>
 	<key>stripSwiftSymbols</key>
 	<true/>
-	<key>compileBitcode</key>
+	<key>manageAppVersionAndBuildNumber</key>
 	<false/>
 	<key>destination</key>
 	<string>export</string>
 	<key>teamID</key>
-	<string>N9H93ZUD86</string>
+	<string>RM53R2ZT6Q</string>
 </dict>
 </plist>

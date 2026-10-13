@@ -1,5 +1,5 @@
 import 'auth_session_store.dart';
-import 'student_registry_store.dart';
+import 'admin_directory_api_service.dart';
 
 class LinkedChildRecord {
   final String fullName;
@@ -26,78 +26,23 @@ class LinkedChildrenService {
 
   Future<List<LinkedChildRecord>> loadLinkedChildren() async {
     final session = await AuthSessionStore.instance.load();
-    await StudentRegistryStore.instance.ensureLoaded();
-
-    final students = StudentRegistryStore.instance.students;
-    if (students.isEmpty) {
+    if (session == null || session.primaryRole != 'Parent') {
       return const [];
     }
-
-    if (session == null) {
-      return _mapRecords(students.take(2));
+    // The server restricts /api/students to the authenticated parent's children.
+    // Never reuse the administrator's in-memory directory or guess by surname.
+    final students = await AdminDirectoryApiService.instance.fetchStudents();
+    final current = await AuthSessionStore.instance.load();
+    if (current == null ||
+        current.username != session.username ||
+        current.tenantId != session.tenantId ||
+        current.primaryRole != session.primaryRole) {
+      return const [];
     }
-
-    final sessionTokens = _tokens(session.fullName);
-    final sessionUsername = session.username.toLowerCase();
-    final sessionSurname = _surname(session.fullName);
-
-    final linked = students.where((student) {
-      final parentTokens = _tokens(student.parentName);
-      final tokenMatch = sessionTokens.any(parentTokens.contains);
-      final usernameMatch = student.parentEmail.toLowerCase().contains(
-        sessionUsername,
-      );
-      final surnameMatch =
-          sessionSurname.isNotEmpty &&
-          _surname(student.parentName).toLowerCase() ==
-              sessionSurname.toLowerCase();
-      return tokenMatch || usernameMatch || surnameMatch;
-    }).toList();
-
-    final resolved = linked.isNotEmpty
-        ? linked
-        : _fallbackStudents(session, students);
-
-    return _mapRecords(resolved);
+    return _mapRecords(students);
   }
 
-  List<StudentRegistryRecord> _fallbackStudents(
-    AuthSession session,
-    List<StudentRegistryRecord> students,
-  ) {
-    final sessionSurname = _surname(session.fullName);
-    if (sessionSurname.isNotEmpty) {
-      final surnameMatches = students
-          .where(
-            (student) =>
-                _surname(student.parentName).toLowerCase() ==
-                sessionSurname.toLowerCase(),
-          )
-          .toList();
-      if (surnameMatches.isNotEmpty) {
-        return surnameMatches;
-      }
-    }
-
-    if (session.username.isNotEmpty) {
-      final usernameMatches = students
-          .where(
-            (student) => student.parentEmail.toLowerCase().contains(
-              session.username.toLowerCase(),
-            ),
-          )
-          .toList();
-      if (usernameMatches.isNotEmpty) {
-        return usernameMatches;
-      }
-    }
-
-    return students.take(2).toList();
-  }
-
-  List<LinkedChildRecord> _mapRecords(
-    Iterable<StudentRegistryRecord> students,
-  ) {
+  List<LinkedChildRecord> _mapRecords(Iterable<AdminStudentRecord> students) {
     return students
         .map(
           (student) => LinkedChildRecord(
@@ -108,24 +53,6 @@ class LinkedChildrenService {
             parentEmail: student.parentEmail,
           ),
         )
-        .toList();
-  }
-
-  String _surname(String value) {
-    final parts = value
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((item) => item.isNotEmpty)
-        .toList();
-    return parts.isEmpty ? '' : parts.last;
-  }
-
-  List<String> _tokens(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9çğıöşü\\s]'), ' ')
-        .split(RegExp(r'\\s+'))
-        .where((item) => item.isNotEmpty)
         .toList();
   }
 }
