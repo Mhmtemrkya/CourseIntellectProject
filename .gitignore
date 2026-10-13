@@ -57,6 +57,12 @@ packages/
 
 # Tauri
 src-tauri/target/
+desktop/src-tauri/.appstore/
+*.mobileprovision
+*.provisionprofile
+*.ipa
+*.xcarchive/
+*.pkg
 
 # Rust
 target/

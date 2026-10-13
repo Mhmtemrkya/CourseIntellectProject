@@ -45,12 +45,19 @@ pub fn run() {
     }
   }
 
-  tauri::Builder::default()
+  let builder = tauri::Builder::default()
     .plugin(tauri_plugin_deep_link::init())
     .plugin(tauri_plugin_shell::init())
-    .plugin(tauri_plugin_http::init())
+    .plugin(tauri_plugin_http::init());
+
+  // App Store builds receive updates through Apple, including when both features
+  // are accidentally selected. The native updater is never registered for MAS.
+  #[cfg(all(feature = "custom-updater", not(feature = "mac-app-store")))]
+  let builder = builder
     .plugin(tauri_plugin_updater::Builder::new().build())
-    .plugin(tauri_plugin_process::init())
+    .plugin(tauri_plugin_process::init());
+
+  builder
     .invoke_handler(tauri::generate_handler![
       keychain_get,
       keychain_set,

@@ -17,6 +17,11 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[features]
+default = ["custom-updater"]
+custom-updater = ["dep:tauri-plugin-updater", "dep:tauri-plugin-process"]
+mac-app-store = []
+
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -26,8 +31,8 @@ tauri-plugin-log = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-http = "2"
-tauri-plugin-updater = "2"
-tauri-plugin-process = "2"
+tauri-plugin-updater = { version = "2", optional = true }
+tauri-plugin-process = { version = "2", optional = true }
 # Oturum şifreleme anahtarı OS keychain'inde saklanır (macOS Keychain /
 # Windows Credential Manager). Linux'ta backend yoktur; JS katmanı keychain
 # hatasında eski localStorage davranışına düşer.

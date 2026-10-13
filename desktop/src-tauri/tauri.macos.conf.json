@@ -1,7 +1,23 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "app": {
+    "windows": [
+      {
+        "title": "SchoolAsist",
+        "center": true,
+        "decorations": true,
+        "resizable": true,
+        "maximized": true,
+        "minWidth": 1280,
+        "minHeight": 800
+      }
+    ]
+  },
   "bundle": {
-    "targets": ["app", "dmg"],
+    "targets": [
+      "app",
+      "dmg"
+    ],
     "macOS": {
       "dmg": {
         "background": "installer/dmg-background.png",

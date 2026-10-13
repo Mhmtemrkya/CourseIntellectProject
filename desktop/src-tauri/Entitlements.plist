@@ -3,10 +3,9 @@
 <plist version="1.0">
 <dict>
     <!-- Sertleştirilmiş çalışma zamanı (notarizasyon için) altında sınav
-         gözetim kamerası ve olası sesli özellikler için cihaz erişimi. -->
+         gözetimi ve öğrenci/personel fotoğrafı için kamera erişimi. Mikrofon
+         hiçbir yerde kullanılmadığından istenmez (App Review 2.4.5(i)). -->
     <key>com.apple.security.device.camera</key>
-    <true/>
-    <key>com.apple.security.device.audio-input</key>
     <true/>
     <!-- API'ye giden ağ istemcisi erişimi. -->
     <key>com.apple.security.network.client</key>

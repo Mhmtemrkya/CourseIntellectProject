@@ -1,0 +1,20 @@
+{
+  "identifier": "mac-app-store",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "deep-link:default",
+    "shell:allow-open",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://maydanozasist.schoolasist.com/**"
+        }
+      ]
+    }
+  ]
+}
