@@ -34,7 +34,7 @@
       {
         "title": "SchoolAsist",
         "center": true,
-        "decorations": false,
+        "decorations": true,
         "resizable": true,
         "maximized": true,
         "minWidth": 1280,
