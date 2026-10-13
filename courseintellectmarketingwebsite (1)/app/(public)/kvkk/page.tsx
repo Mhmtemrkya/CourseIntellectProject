@@ -101,14 +101,16 @@ Bu tedbirler, risklerin tamamen ortadan kalktığı anlamına gelmez. Hesap paro
     title: "8. Hesap ve Kurum Silme",
     content: `Hesabınızı uygulama içinden (Ayarlar > Hesabımı Sil) silebilirsiniz. İşlem öncesinde kimliğinizi parolanızla yeniden doğrularsınız ve silmeyi açıkça onaylarsınız.
 
-Verileriniz, hesabınız etkin olduğu (uygulamayı kullandığınız) sürece saklanır. Silme talebinden sonra 30 günlük iptal edilebilir bir bekleme süresi başlar; bu süre içinde talebi iptal edip hesabınızı geri alabilirsiniz. 30 gün dolduğunda silme otomatik ve kalıcı olarak tamamlanır. Kurum yöneticisi talebiniz platform yöneticisi tarafından; sıradan kullanıcı talepleri ise kurum yöneticisi tarafından keyfî olarak reddedilemez.
+Verileriniz, hesabınız etkin olduğu (uygulamayı kullandığınız) sürece saklanır. Silme talebinden sonra 30 günlük iptal edilebilir bir bekleme süresi başlar; bu süre içinde talebi iptal edip hesabınızı geri alabilirsiniz. 30 gün dolduğunda tamamlama işlemi başlar. İşlem ancak gerekli veri ve dosya temizliği başarıyla bitince tamamlandı olarak bildirilir. Kurum yöneticisi talebiniz platform yöneticisi tarafından; sıradan kullanıcı talepleri ise kurum yöneticisi tarafından keyfî olarak reddedilemez.
 
-Silme tamamlandığında (talepten 30 gün sonra):
+Bekleme süresi ve gerekli veri/dosya temizliği tamamlandığında:
 • Profil bilgileriniz, mesajlarınız, bildirimleriniz, yüklediğiniz dosyalar, profil görseliniz ve uygulama tercihleriniz kalıcı olarak silinir.
 • Oturumlarınız ve bildirim cihaz kayıtlarınız iptal edilir; hesaba artık giriş yapılamaz.
-• Finans (tahsilat, fatura, makbuz) ve eğitim (not, devamsızlık, sınav) kayıtlarındaki kişisel tanımlayıcılarınız (ad, kimlik no, iletişim, imza) silinir; geriye kalan tutar/sonuç satırları sizi tanımlamayan anonim kayıtlara dönüştürülür ve bu haliyle artık kişisel veri niteliği taşımaz.
+• Finans (tahsilat, fatura, makbuz) ve eğitim (not, devamsızlık, sınav) kayıtlarındaki kişisel tanımlayıcılarınız (ad, kimlik no, iletişim, imza) silinir; kalan tutar/sonuç satırlarında kişisel tanımlayıcılar temizlenir. Mevzuat gereği tutulması gereken kayıtların kapsamı ve süresi kurumun veri saklama politikasına tabidir.
 
-Kurum (tenant) silme, kurum yöneticisinin talebi ve platform yöneticisinin onayıyla yapılır; işlem öncesinde etkilenecek kullanıcı, dosya ve kayıt sayıları gösterilir. Onaylanınca kurumdaki tüm kullanıcıların kişisel bilgileri temizlenir, erişim kapatılır ve kurum devre dışı bırakılır; finans ve eğitim kayıtları yukarıdaki esaslarla anonim saklanır. Kurum silme süreci, kullanıcıların kendi hesaplarını silme taleplerini engellemez.`,
+Yönetici devri isteğe bağlıdır; başka personel bulunmaması kişisel hesabı silme talebini engellemez. Ortak dosyalar diğer kullanıcılar için korunabilir. Yasal veri saklama kapsamı ve süresi kurum politikasına tabidir.
+
+Kurum (tenant) silme, kurum yöneticisinin talebi ve platform yöneticisinin onayıyla yapılır; ilk talep öncesinde etkilenecek kullanıcı, dosya ve kayıt sayıları gösterilir. Onaylanınca kurumdaki tüm kullanıcıların kişisel bilgileri temizlenir, erişim kapatılır ve kurum devre dışı bırakılır; finans ve eğitim kayıtlarının kişisel tanımlayıcıları yukarıdaki esaslarla temizlenir. Kurum silme süreci, kullanıcıların kendi hesaplarını silme taleplerini engellemez.`,
   },
   {
     id: "cerezler",

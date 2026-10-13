@@ -20,7 +20,7 @@ public sealed class InstitutionDeletionService(
     private const string AuditCategory = "account-lifecycle";
 
     private static readonly InstitutionDeletionStatus[] ActiveStatuses =
-        [InstitutionDeletionStatus.PendingPlatformApproval, InstitutionDeletionStatus.Approved, InstitutionDeletionStatus.Scheduled];
+        [InstitutionDeletionStatus.PendingPlatformApproval, InstitutionDeletionStatus.Approved, InstitutionDeletionStatus.Scheduled, InstitutionDeletionStatus.Processing, InstitutionDeletionStatus.Failed];
 
     public async Task<InstitutionDeletionStatusDto> RequestAsync(
         Guid requestedByUserId, string actorName, CreateInstitutionDeletionRequest request, CancellationToken cancellationToken = default)
@@ -80,7 +80,7 @@ public sealed class InstitutionDeletionService(
             .OrderByDescending(x => x.RequestedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
         return latest is null
-            ? new InstitutionDeletionStatusDto { Status = "none" }
+            ? new InstitutionDeletionStatusDto { Status = "none", Impact = await BuildImpactAsync(cancellationToken) }
             : await ToStatusDtoAsync(latest, cancellationToken);
     }
 
@@ -153,22 +153,26 @@ public sealed class InstitutionDeletionService(
 
     private int GraceDays()
     {
-        // Varsayılan 30 gün (KVKK üst sınırı; onay sonrası iptal/işleme penceresi).
+        // Onay sonrası ürün bekleme süresi; hukuki saklama süresi değildir.
         var days = configuration.GetValue("InstitutionDeletion:GracePeriodDays", 30);
         return Math.Clamp(days, 1, MaxGraceDays);
     }
 
     private async Task<InstitutionDeletionImpactDto> BuildImpactAsync(CancellationToken cancellationToken)
     {
+        var tenantId = tenantContext.CurrentTenantId ?? throw new InvalidOperationException("Aktif kurum bağlamı yok.");
         return new InstitutionDeletionImpactDto
         {
-            UserCount = await dbContext.Users.CountAsync(x => x.DeletedAtUtc == null, cancellationToken),
-            StudentCount = await dbContext.Students.CountAsync(cancellationToken),
-            FileCount = await dbContext.ContentItems.CountAsync(cancellationToken)
-                + await dbContext.AdminDocuments.CountAsync(cancellationToken),
-            FinanceRecordCount = await dbContext.FinancePayments.CountAsync(cancellationToken),
-            EducationRecordCount = await dbContext.ExamResults.CountAsync(cancellationToken)
-                + await dbContext.AttendanceEntries.CountAsync(cancellationToken),
+            UserCount = await dbContext.Users.IgnoreQueryFilters().CountAsync(x => x.TenantId == tenantId && x.DeletedAtUtc == null, cancellationToken),
+            StudentCount = await dbContext.Students.IgnoreQueryFilters().CountAsync(x => x.TenantId == tenantId, cancellationToken),
+            FileCount = await DeletionDataCleaner.TenantFileCountAsync(dbContext, tenantId, cancellationToken),
+            FinanceRecordCount = await dbContext.FinancePayments.IgnoreQueryFilters().CountAsync(x => x.TenantId == tenantId, cancellationToken)
+                + await dbContext.FinanceInstallments.IgnoreQueryFilters().CountAsync(x => x.TenantId == tenantId, cancellationToken)
+                + await dbContext.EnrollmentContracts.IgnoreQueryFilters().CountAsync(x => x.TenantId == tenantId, cancellationToken)
+                + await dbContext.Set<AccountingInvoice>().IgnoreQueryFilters().CountAsync(x => x.TenantId == tenantId, cancellationToken),
+            EducationRecordCount = await dbContext.ExamResults.IgnoreQueryFilters().CountAsync(x => x.TenantId == tenantId, cancellationToken)
+                + await dbContext.AttendanceEntries.IgnoreQueryFilters().CountAsync(x => x.TenantId == tenantId, cancellationToken)
+                + await dbContext.HomeworkSubmissions.IgnoreQueryFilters().CountAsync(x => x.TenantId == tenantId, cancellationToken),
         };
     }
 

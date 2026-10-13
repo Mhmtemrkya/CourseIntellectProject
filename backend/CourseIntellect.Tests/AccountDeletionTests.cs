@@ -111,7 +111,7 @@ public sealed class AccountDeletionTests
     }
 
     [Fact]
-    public async Task SoleAdmin_WithoutSuccessor_Throws_WithSuccessor_PromotesAndAllows()
+    public async Task SoleAdmin_OptionalSuccessor_PromotesAndAllows()
     {
         using var db = NewDb();
         var admin = Student(name: "Yönetici");
@@ -121,9 +121,6 @@ public sealed class AccountDeletionTests
         db.Context.Users.AddRange(admin, staff);
         await db.Context.SaveChangesAsync();
         var service = NewService(db);
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.RequestAsync(admin.Id, "Yönetici", Ok()));
 
         var ok = await service.RequestAsync(admin.Id, "Yönetici",
             new CreateAccountDeletionRequest { Password = "correct-password", Confirm = true, SuccessorAdminUserId = staff.Id });
@@ -220,7 +217,7 @@ public sealed class AccountDeletionTests
     }
 
     [Fact]
-    public async Task Finalize_DuplicateNameClassStudents_SkipsEducationNameMatch()
+    public async Task Finalize_DuplicateNameClassStudents_RequiresReviewAndDoesNotComplete()
     {
         using var db = NewDb();
         var s1 = Student(name: "Ali Yılmaz");
@@ -231,12 +228,12 @@ public sealed class AccountDeletionTests
         db.Context.ExamResults.Add(new ExamResult { TenantId = Tenant, StudentName = "Ali Yılmaz", ClassName = "10B", Score = 70 });
         await db.Context.SaveChangesAsync();
 
-        var summary = await new AccountLifecycleService(db.Context).FinalizeAccountDeletionAsync(Tenant, s1.Id);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new AccountLifecycleService(db.Context).FinalizeAccountDeletionAsync(Tenant, s1.Id));
         db.Context.ChangeTracker.Clear();
 
         var exam = await db.Context.ExamResults.IgnoreQueryFilters().FirstAsync();
         Assert.Equal("Ali Yılmaz", exam.StudentName); // çakışma → dokunulmadı
-        Assert.Contains("educationNameMatchSkipped\":true", summary);
+        Assert.Null((await db.Context.Users.IgnoreQueryFilters().FirstAsync(x => x.Id == s1.Id)).DeletedAtUtc);
     }
 
     [Fact]
@@ -304,6 +301,35 @@ public sealed class AccountDeletionTests
         Assert.Contains("/uploads/avatars/can.png", storage.Deleted);
         Assert.Contains("/uploads/students/can.png", storage.Deleted);
         Assert.Contains("/uploads/messages/a.pdf", storage.Deleted);
+    }
+
+    [Fact]
+    public async Task SoleAdmin_NoOtherStaff_CanRequestWithoutHandoff()
+    {
+        using var db = NewDb(); var admin = Student(); admin.PrimaryRole = UserRole.Admin;
+        db.Context.Users.Add(admin); await db.Context.SaveChangesAsync();
+        Assert.Equal("Pending", (await NewService(db).RequestAsync(admin.Id, "Admin", Ok())).Status);
+    }
+
+    [Fact]
+    public async Task SoleAdmin_SelfHandoffOrPendingSuccessor_IsRejected()
+    {
+        using var db = NewDb(); var admin = Student(); admin.PrimaryRole = UserRole.Admin;
+        var teacher = Student(); teacher.PrimaryRole = UserRole.Teacher;
+        db.Context.Users.AddRange(admin, teacher); await db.Context.SaveChangesAsync();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => NewService(db).RequestAsync(admin.Id, "Admin", new CreateAccountDeletionRequest { Password = "correct-password", Confirm = true, SuccessorAdminUserId = admin.Id }));
+        await NewService(db).RequestAsync(teacher.Id, "Teacher", Ok());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => NewService(db).RequestAsync(admin.Id, "Admin", new CreateAccountDeletionRequest { Password = "correct-password", Confirm = true, SuccessorAdminUserId = teacher.Id }));
+    }
+
+    [Fact]
+    public async Task ProcessingRequest_CannotCancelOrCreateSecondRequest()
+    {
+        using var db = NewDb(); var user = Student(); db.Context.Users.Add(user);
+        var request = new AccountDeletionRequest { TenantId = Tenant, UserId = user.Id, Status = AccountDeletionStatus.Processing, ProcessingStartedAtUtc = DateTime.UtcNow, FinalizeAtUtc = DateTime.UtcNow.AddMinutes(-1) };
+        db.Context.Set<AccountDeletionRequest>().Add(request); await db.Context.SaveChangesAsync();
+        Assert.Equal(request.Id, (await NewService(db).RequestAsync(user.Id, "User", Ok())).Id);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => NewService(db).CancelMineAsync(user.Id, "User"));
     }
 
     private sealed class RecordingStorage : IFileStorageService

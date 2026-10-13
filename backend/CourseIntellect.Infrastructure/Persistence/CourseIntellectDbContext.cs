@@ -248,6 +248,16 @@ public sealed class CourseIntellectDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<DeletionFileTask>(entity =>
+        {
+            entity.ToTable("deletion_file_tasks");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.OperationKey).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.FileUrl).HasMaxLength(2000).IsRequired();
+            entity.HasIndex(x => new { x.OperationKey, x.FileUrl }).IsUnique();
+        });
+
         modelBuilder.Entity<AppUser>(entity =>
         {
             entity.ToTable("users");
@@ -292,7 +302,7 @@ public sealed class CourseIntellectDbContext : DbContext
             // Kullanıcı başına tek AKTİF talep (Pending=1 / Scheduled=2).
             entity.HasIndex(x => x.UserId)
                 .IsUnique()
-                .HasFilter("\"Status\" IN (1, 2)");
+                .HasFilter("\"Status\" IN (1, 2, 5, 6)");
         });
 
         modelBuilder.Entity<InstitutionDeletionRequest>(entity =>
@@ -305,7 +315,7 @@ public sealed class CourseIntellectDbContext : DbContext
             // Tenant başına tek AKTİF talep (PendingPlatformApproval=1 / Approved=2 / Scheduled=4).
             entity.HasIndex(x => x.TenantId)
                 .IsUnique()
-                .HasFilter("\"Status\" IN (1, 2, 4)");
+                .HasFilter("\"Status\" IN (1, 2, 4, 6, 7)");
         });
 
         modelBuilder.Entity<CustomRole>(entity =>

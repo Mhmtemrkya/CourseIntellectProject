@@ -19,7 +19,7 @@ namespace CourseIntellect.Api.Controllers;
 public sealed class LegalConsentController(CourseIntellectDbContext dbContext) : ControllerBase
 {
     /// <summary>Geçerli aydınlatma metni sürümü; istemcilerdeki sabitle aynı olmalıdır.</summary>
-    public const string CurrentVersion = "2026-05-02.kvkk.v1";
+    public const string CurrentVersion = "2026-10-04.kvkk.v3";
 
     private static readonly HashSet<string> AllowedStatuses = new(StringComparer.Ordinal) { "accepted", "declined" };
     private static readonly HashSet<string> AllowedPlatforms = new(StringComparer.Ordinal) { "desktop", "mobile", "web" };

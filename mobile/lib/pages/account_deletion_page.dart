@@ -59,7 +59,7 @@ class _AccountDeletionPageState extends State<AccountDeletionPage> {
 
   bool get _hasActiveRequest {
     final s = (_status['status'] ?? 'none').toString();
-    return s == 'Pending' || s == 'Scheduled';
+    return const ['Pending', 'Scheduled', 'Processing', 'Failed'].contains(s);
   }
 
   List<String> get _retainedExplanation {
@@ -139,6 +139,7 @@ class _AccountDeletionPageState extends State<AccountDeletionPage> {
                   TextField(
                     controller: controller,
                     obscureText: true,
+                    onChanged: (_) => setSheet(() {}),
                     decoration: InputDecoration(
                       labelText: 'Parola'.tr,
                       prefixIcon: const Icon(Icons.lock_outline_rounded),
@@ -146,7 +147,7 @@ class _AccountDeletionPageState extends State<AccountDeletionPage> {
                   ),
                   if (_isAdmin && _candidates.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Text('Yönetimi devredeceğiniz kişi (tek yöneticiyseniz zorunlu)'.tr,
+                    Text('Yönetimi devredeceğiniz kişi (isteğe bağlı; devir yoksa platform takip eder)'.tr,
                         style: theme.textTheme.bodySmall),
                     const SizedBox(height: 4),
                     DropdownButtonFormField<String>(
@@ -345,7 +346,7 @@ class _AccountDeletionPageState extends State<AccountDeletionPage> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: _busy ? null : _cancel,
+              onPressed: _busy || _status['canCancel'] != true ? null : _cancel,
               icon: const Icon(Icons.undo_rounded),
               label: Text('Talebi iptal et'.tr),
             ),

@@ -15,7 +15,8 @@ public enum AccountDeletionStatus
     Scheduled = 2,
     Cancelled = 3,
     Completed = 4,
-    Failed = 5
+    Failed = 5,
+    Processing = 6
 }
 
 /// <summary>
@@ -29,7 +30,8 @@ public enum InstitutionDeletionStatus
     Rejected = 3,
     Scheduled = 4,
     Completed = 5,
-    Failed = 6
+    Failed = 6,
+    Processing = 7
 }
 
 /// <summary>

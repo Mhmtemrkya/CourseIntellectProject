@@ -22,6 +22,11 @@ public interface IPushNotificationService
         IReadOnlyDictionary<string, string>? data = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Completion delivery to a pre-deletion token snapshot; tokens are not re-registered.</summary>
+    Task SendToTokensAsync(IReadOnlyList<string> tokens, string title, string body,
+        IReadOnlyDictionary<string, string>? data = null, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
     /// <summary>Adı verilen kullanıcının kayıtlı cihazlarına push gönderir
     /// (PushDeviceRegistration.FullName eşleşmesi; UserId bilinmeyen akışlar için).</summary>
     Task SendToUserByNameAsync(

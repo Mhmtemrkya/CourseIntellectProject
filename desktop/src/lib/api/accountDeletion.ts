@@ -13,6 +13,7 @@ export interface AccountDeletionStatus {
 }
 
 export interface AccountDeletionQueueItem {
+  failureReason?: string | null;
   id: string;
   userId: string;
   userDisplayName: string;
@@ -22,6 +23,13 @@ export interface AccountDeletionQueueItem {
   finalizeAtUtc: string;
   remainingDays: number;
   requiresPlatform: boolean;
+}
+
+export function deletionFailureMessage(reason?: string | null): string {
+  if (reason === 'education-identity-review-required' || reason === 'legacy-identity-review-required') {
+    return 'Eski kayıtlarda aynı adlı kullanıcılar bulundu. Kimlik eşlemesi incelenmeli; silme henüz tamamlanmadı.';
+  }
+  return 'Temizlik tamamlanamadı; işlem yeniden denenecek. Silme henüz tamamlanmadı.';
 }
 
 export interface InstitutionDeletionImpact {

@@ -34,6 +34,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("CompletedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CompletionTokensJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("FailureReason")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -43,6 +47,9 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("HandledByKind")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ProcessingStartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("ReauthenticatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -77,7 +84,7 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UserId")
                         .IsUnique()
-                        .HasFilter("\"Status\" IN (1, 2)");
+                        .HasFilter("\"Status\" IN (1, 2, 5, 6)");
 
                     b.ToTable("account_deletion_requests", (string)null);
                 });
@@ -2015,6 +2022,36 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("custom_roles", (string)null);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.DeletionFileTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FileUrl")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("OperationKey")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("OperationKey", "FileUrl")
+                        .IsUnique();
+
+                    b.ToTable("deletion_file_tasks", (string)null);
                 });
 
             modelBuilder.Entity("CourseIntellect.Domain.Entities.DrivingAppointment", b =>
@@ -6081,6 +6118,9 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("ProcessingStartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("RejectReason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -6102,7 +6142,7 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId")
                         .IsUnique()
-                        .HasFilter("\"Status\" IN (1, 2, 4)");
+                        .HasFilter("\"Status\" IN (1, 2, 4, 6, 7)");
 
                     b.ToTable("institution_deletion_requests", (string)null);
                 });
@@ -10376,6 +10416,14 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("CourseIntellect.Domain.Entities.CustomRole", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.DeletionFileTask", b =>
                 {
                     b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
                         .WithMany()

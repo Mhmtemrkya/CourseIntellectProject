@@ -11,7 +11,7 @@ public sealed class CreateAccountDeletionRequest
 
     /// <summary>
     /// Çağıran kurumun TEK yöneticisiyse, yönetimi devralacak kullanıcının kimliği.
-    /// Tek yönetici için zorunludur; süresiz kilidi önler.
+    /// İsteğe bağlıdır; devir yapılmaması kişisel hesap silmeyi engellemez.
     /// </summary>
     public Guid? SuccessorAdminUserId { get; set; }
 }
@@ -41,6 +41,8 @@ public sealed class SuccessorCandidateDto
 /// <summary>Yönetici/platform görünümünde bir silme talebi (yalnız görüntüleme/SLA).</summary>
 public sealed class AccountDeletionQueueItemDto
 {
+    /// <summary>PII içermeyen hata kodu; eski kimlik eşlemesi için platform incelemesini belirtir.</summary>
+    public string? FailureReason { get; set; }
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string UserDisplayName { get; set; } = string.Empty;

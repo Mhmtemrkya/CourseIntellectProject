@@ -1,5 +1,6 @@
 import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
+import 'account_deletion_page.dart';
 import 'package:student/i18n/app_locale.dart';
 import '../services/cafeteria_api_service.dart';
 import '../services/cafeteria_pdf_service.dart';
@@ -166,6 +167,12 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
       appBar: AppBar(
         title: Text(widget.canEdit ? 'Yemek Programı Düzenle' : 'Yemekhane'),
         actions: [
+          if (widget.canEdit)
+            IconButton(
+              tooltip: 'Hesabımı Sil'.tr,
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountDeletionPage())),
+              icon: const Icon(Icons.manage_accounts_outlined),
+            ),
           IconButton(
             tooltip: 'PDF paylaş'.tr,
             onPressed: _exporting || _week == null ? null : _exportPdf,

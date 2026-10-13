@@ -6,7 +6,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-export const legalConsentVersion = "2026-05-02.kvkk.v1";
+export const legalConsentVersion = "2026-10-04.kvkk.v3";
 
 export const legalDocuments = [
   {
@@ -28,6 +28,8 @@ export const legalDocuments = [
           "Kimlik ve iletişim bilgileri: ad soyad, kullanıcı adı, e-posta, telefon, veli/öğrenci bağlantısı.",
           "Eğitim ve operasyon bilgileri: sınıf, şube, devamsızlık, sınav, ödev, içerik kullanımı, görüşme ve duyuru kayıtları.",
           "Finans bilgileri: tahsilat, taksit, fatura, makbuz ve bakiye bilgileri.",
+          "Servis konumu: sürücü GPS koordinatları ve durak adresleri; sefer takibi, mesafe ve tahmini varış süresi için işlenir.",
+          "Paylaşılan içerikler: kullanıcıların gönderdiği mesajlar, fotoğraflar, ses kayıtları, belgeler ve destek talepleri ilgili hizmetin yürütülmesi için sunucuya iletilebilir.",
           "Teknik güvenlik bilgileri: oturum, cihaz, bildirim tokenı, IP, işlem zamanı ve denetim kayıtları.",
           "Özel nitelikli veri işlenmesi gerekiyorsa yalnızca KVKK madde 6 kapsamındaki şartlarla ve gerekli güvenlik tedbirleriyle işlenir.",
         ],
@@ -46,6 +48,14 @@ export const legalDocuments = [
           "Veriler; yetkili kamu kurumları, ödeme/finans hizmet sağlayıcıları, bildirim altyapısı, barındırma, yedekleme ve teknik destek sağlayıcılarıyla amaçla sınırlı paylaşılabilir.",
           "Yurt dışına aktarım gerekiyorsa KVKK madde 9 kapsamındaki aktarım şartları ve gerekli güvenceler sağlanmadan aktarım yapılmamalıdır.",
           "Veriler, ilgili mevzuatta öngörülen süre veya işleme amacı için gerekli süre boyunca saklanır; süre sonunda silinir, yok edilir veya anonim hale getirilir.",
+        ],
+      },
+      {
+        title: "Hesap ve kurum silme",
+        bullets: [
+          "Hesabımı Sil bölümünden mevcut parolanız ve açık onayınızla talep açabilirsiniz. Varsayılan iptal süresi 30 gündür; işlem başlayana kadar iptal edilebilir. İşlem tamamlanınca bildirim gönderilir.",
+          "Kurum yöneticisi kişisel silmeyi keyfî olarak reddedemez. Yönetici devri isteğe bağlıdır; başka personel bulunmaması talebi engellemez. Kurum silme ayrıca platform yöneticisi onayı gerektirir.",
+          "Profil, iletişim, kişisel içerik, dosya ve oturum bilgileri temizlenir. Ortak dosyalar diğer kullanıcılar için korunabilir. Finans ve eğitim sonuçları kişisel tanımlayıcılar temizlenerek tutulabilir; yasal saklama kapsamı ve süresi kurum politikasına tabidir. İnceleme veya dosya hatası varsa işlem tamamlandı olarak gösterilmez.",
         ],
       },
       {
@@ -126,6 +136,8 @@ export const legalDocuments = [
           "İşlem güvenliği, hesap, ders, sınav, ödeme ve kurum duyuruları hizmetin parçası olarak gönderilebilir.",
           "Tanıtım veya kampanya niteliğindeki iletiler için ayrı açık rıza/iletişim izni gerekir.",
           "Cihaz bildirim izni işletim sistemi ayarlarından ayrıca kapatılabilir.",
+          "Servis sürücüsü konum paylaşımını aktif sefer sırasında başlatır; arka planda paylaşım için işletim sistemi konum izni gerekir. Paylaşım uygulamadan durdurulabilir; sefer tamamlandığında durdurulur.",
+          "Harita görüntüleri OpenStreetMap sunucularından, bildirimler Firebase Cloud Messaging altyapısından sağlanır. Bu sağlayıcılar ilgili isteğe ait IP ve teknik cihaz verilerini işleyebilir.",
         ],
       },
     ],

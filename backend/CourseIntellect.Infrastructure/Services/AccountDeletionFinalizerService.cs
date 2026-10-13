@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
@@ -12,7 +13,7 @@ namespace CourseIntellect.Infrastructure.Services;
 
 /// <summary>
 /// Bekleme penceresi dolan hesap/kurum silme taleplerini otomatik tamamlar.
-/// YIKICI — bu yüzden config bayrağıyla opt-in ve ÜRETİMDE KAPALI olmalı
+/// Yıkıcı tamamlama yalnız kullanıcının onayladığı, süresi dolmuş talebi işler; üretimde etkin olmalı
 /// (bkz. <see cref="RejectedTenantCleanupService"/> aynı desen). Talep oluşturma/
 /// görüntüleme/iptal her zaman çalışır; gerçek silme yalnız bayrak açıkken olur.
 /// </summary>
@@ -24,17 +25,16 @@ public sealed class AccountDeletionFinalizerService(
     private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(15);
 
     public static bool AccountDeletionEnabled(IConfiguration configuration)
-        => configuration.GetValue("AccountDeletion:Enabled", false);
+        => configuration.GetValue("AccountDeletion:Enabled", true);
 
     public static bool InstitutionDeletionEnabled(IConfiguration configuration)
-        => configuration.GetValue("InstitutionDeletion:Enabled", false);
+        => configuration.GetValue("InstitutionDeletion:Enabled", true);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!AccountDeletionEnabled(configuration) && !InstitutionDeletionEnabled(configuration))
         {
-            logger.LogInformation("Hesap/kurum silme finalizer'ı yapılandırmayla kapalı (üretim varsayılanı).");
-            return;
+            logger.LogWarning("Hesap/kurum silme tamamlama servisi kapalı; kullanıcı talepleri tamamlanamayacak.");
         }
 
         try { await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); } catch (TaskCanceledException) { return; }
@@ -78,40 +78,60 @@ public sealed class AccountDeletionFinalizerService(
     {
         var due = await db.Set<AccountDeletionRequest>()
             .IgnoreQueryFilters()
-            .Where(x => (x.Status == AccountDeletionStatus.Pending || x.Status == AccountDeletionStatus.Scheduled)
+            .Where(x => (x.Status == AccountDeletionStatus.Pending || x.Status == AccountDeletionStatus.Scheduled || x.Status == AccountDeletionStatus.Failed
+                || (x.Status == AccountDeletionStatus.Processing && x.ProcessingStartedAtUtc < now.AddMinutes(-30)))
                 && x.FinalizeAtUtc <= now)
             .ToListAsync(cancellationToken);
 
         foreach (var request in due)
         {
             if (request.TenantId is not Guid tenantId) continue;
+            var claimed = await db.Set<AccountDeletionRequest>().IgnoreQueryFilters()
+                .Where(x => x.Id == request.Id && x.Status == request.Status && x.ProcessingStartedAtUtc == request.ProcessingStartedAtUtc)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, AccountDeletionStatus.Processing)
+                    .SetProperty(x => x.ProcessingStartedAtUtc, now), cancellationToken);
+            if (claimed == 0) continue; // cancelled or already claimed by another worker
+            db.ChangeTracker.Clear();
+            var active = await db.Set<AccountDeletionRequest>().IgnoreQueryFilters().SingleAsync(x => x.Id == request.Id, cancellationToken);
             try
             {
-                // Tamamlanma bildirimi: tokenlar silinmeden ÖNCE gönder (best-effort).
+                if (string.IsNullOrWhiteSpace(active.CompletionTokensJson) || active.CompletionTokensJson == "[]")
+                {
+                    var tokens = await db.PushDeviceRegistrations.IgnoreQueryFilters()
+                        .Where(x => x.UserId == active.UserId && x.TenantId == tenantId && x.IsActive)
+                        .Select(x => x.Token).ToListAsync(cancellationToken);
+                    active.CompletionTokensJson = JsonSerializer.Serialize(tokens);
+                    await db.SaveChangesAsync(cancellationToken);
+                }
+                var summary = await lifecycle.FinalizeAccountDeletionAsync(tenantId, active.UserId, cancellationToken);
+                active.Status = AccountDeletionStatus.Completed;
+                active.CompletedAtUtc = DateTime.UtcNow;
+                active.RetainedSummaryJson = summary;
+                active.FailureReason = null;
+                var completionTokens = JsonSerializer.Deserialize<List<string>>(active.CompletionTokensJson) ?? [];
+                active.CompletionTokensJson = "[]"; // temporary notification addresses are removed on completion
+                await db.SaveChangesAsync(cancellationToken);
                 if (push is not null)
                 {
                     try
                     {
-                        await push.SendToUserAsync(request.UserId, "Hesabınız silindi",
-                            "Hesap silme talebiniz tamamlandı. Kişisel verileriniz temizlendi.",
-                            new Dictionary<string, string> { ["type"] = "account-deletion-completed" });
+                        await push.SendToTokensAsync(completionTokens, "Hesabınız silindi",
+                            "Hesap silme işleminiz tamamlandı.",
+                            new Dictionary<string, string> { ["type"] = "account-deletion-completed" }, cancellationToken);
                     }
-                    catch (Exception ex) { logger?.LogWarning(ex, "Silme tamamlanma bildirimi gönderilemedi."); }
+                    catch (Exception) when (!cancellationToken.IsCancellationRequested)
+                    { logger?.LogWarning("Silme tamamlanma bildirimi teslim edilemedi."); }
                 }
-
-                var summary = await lifecycle.FinalizeAccountDeletionAsync(tenantId, request.UserId, cancellationToken);
-
-                request.Status = AccountDeletionStatus.Completed;
-                request.CompletedAtUtc = DateTime.UtcNow;
-                request.RetainedSummaryJson = summary;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                logger?.LogError(ex, "Hesap silme tamamlanamadı: {RequestId}", request.Id);
-                request.Status = AccountDeletionStatus.Failed;
-                request.FailureReason = "finalize-error";
+                logger?.LogError("Hesap silme yeniden denenecek: {RequestId}; hata türü: {ErrorType}", request.Id, ex.GetType().Name);
+                db.ChangeTracker.Clear();
+                var failure = FailureCode(ex);
+                await db.Set<AccountDeletionRequest>().IgnoreQueryFilters().Where(x => x.Id == request.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, AccountDeletionStatus.Failed)
+                        .SetProperty(x => x.FailureReason, failure), cancellationToken);
             }
-            await db.SaveChangesAsync(cancellationToken);
         }
     }
 
@@ -122,6 +142,10 @@ public sealed class AccountDeletionFinalizerService(
         var lifecycle = scope.ServiceProvider.GetRequiredService<IAccountLifecycleService>();
         await ProcessDueInstitutionDeletionsAsync(db, lifecycle, DateTime.UtcNow, logger, cancellationToken);
     }
+
+    private static string FailureCode(Exception exception)
+        => exception is InvalidOperationException && exception.Message is "education-identity-review-required" or "legacy-identity-review-required"
+            ? exception.Message : "finalize-retry-required";
 
     /// <summary>
     /// Süresi dolmuş, onaylı (Scheduled) kurum silme taleplerini tamamlar. Test edilebilir
@@ -137,26 +161,35 @@ public sealed class AccountDeletionFinalizerService(
     {
         var due = await db.Set<InstitutionDeletionRequest>()
             .IgnoreQueryFilters()
-            .Where(x => x.Status == InstitutionDeletionStatus.Scheduled
+            .Where(x => (x.Status == InstitutionDeletionStatus.Scheduled || x.Status == InstitutionDeletionStatus.Failed
+                || (x.Status == InstitutionDeletionStatus.Processing && x.ProcessingStartedAtUtc < now.AddMinutes(-30)))
                 && x.FinalizeAtUtc != null && x.FinalizeAtUtc <= now)
             .ToListAsync(cancellationToken);
 
         foreach (var request in due)
         {
             if (request.TenantId is not Guid tenantId) continue;
+            var claimed = await db.Set<InstitutionDeletionRequest>().IgnoreQueryFilters()
+                .Where(x => x.Id == request.Id && x.Status == request.Status && x.ProcessingStartedAtUtc == request.ProcessingStartedAtUtc)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, InstitutionDeletionStatus.Processing)
+                    .SetProperty(x => x.ProcessingStartedAtUtc, now), cancellationToken);
+            if (claimed == 0) continue;
+            db.ChangeTracker.Clear();
             try
             {
                 await lifecycle.FinalizeInstitutionDeletionAsync(tenantId, cancellationToken);
-                request.Status = InstitutionDeletionStatus.Completed;
-                request.CompletedAtUtc = DateTime.UtcNow;
+                await db.Set<InstitutionDeletionRequest>().IgnoreQueryFilters().Where(x => x.Id == request.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, InstitutionDeletionStatus.Completed)
+                        .SetProperty(x => x.CompletedAtUtc, DateTime.UtcNow).SetProperty(x => x.FailureReason, (string?)null), cancellationToken);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                logger?.LogError(ex, "Kurum silme tamamlanamadı: {RequestId}", request.Id);
-                request.Status = InstitutionDeletionStatus.Failed;
-                request.FailureReason = "finalize-error";
+                logger?.LogError("Kurum silme yeniden denenecek: {RequestId}; hata türü: {ErrorType}", request.Id, ex.GetType().Name);
+                db.ChangeTracker.Clear();
+                await db.Set<InstitutionDeletionRequest>().IgnoreQueryFilters().Where(x => x.Id == request.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, InstitutionDeletionStatus.Failed)
+                        .SetProperty(x => x.FailureReason, "finalize-retry-required"), cancellationToken);
             }
-            await db.SaveChangesAsync(cancellationToken);
         }
     }
 }

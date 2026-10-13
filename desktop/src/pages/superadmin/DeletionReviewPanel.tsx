@@ -10,6 +10,7 @@ import {
   getPlatformInstitutionDeletions,
   getPlatformAccountDeletions,
   decideInstitutionDeletion,
+  deletionFailureMessage,
   type InstitutionDeletionQueueItem,
   type AccountDeletionQueueItem,
 } from '../../lib/api/accountDeletion';
@@ -61,7 +62,7 @@ export function DeletionReviewPanel() {
         <CardTitle className="flex items-center gap-2">
           <Trash2 className="h-5 w-5 text-red-600" /> Silme Talepleri
         </CardTitle>
-        <CardDescription>Kurum silme onayları ve kurum yöneticisi hesap silme talepleri.</CardDescription>
+        <CardDescription>Kurum silme onayları, yönetici hesapları ve inceleme gerektiren kişisel silme işlemleri.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {institutions.length > 0 && (
@@ -104,11 +105,16 @@ export function DeletionReviewPanel() {
 
         {accounts.length > 0 && (
           <div className="space-y-2">
-            <div className="text-sm font-semibold">Kurum yöneticisi hesap silme talepleri (yalnız görüntüleme)</div>
+            <div className="text-sm font-semibold">Hesap silme işlemleri (kişisel talepler reddedilemez)</div>
             {accounts.map((item) => (
-              <div key={item.id} className="flex items-center justify-between text-sm">
-                <span>{item.userDisplayName} · {item.requesterRole}</span>
-                <Badge variant="outline">{item.remainingDays} gün · {item.status}</Badge>
+              <div key={item.id} className="space-y-1 text-sm">
+                <div className="flex items-center justify-between">
+                  <span>{item.userDisplayName} · {item.requesterRole}</span>
+                  <Badge variant="outline">{item.remainingDays} gün · {item.status}</Badge>
+                </div>
+                {item.status === 'Failed' && (
+                  <p className="text-amber-700">{deletionFailureMessage(item.failureReason)}</p>
+                )}
               </div>
             ))}
           </div>

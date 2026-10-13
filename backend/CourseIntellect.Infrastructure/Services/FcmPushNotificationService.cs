@@ -69,6 +69,15 @@ public sealed class FcmPushNotificationService(
         }
     }
 
+    public async Task SendToTokensAsync(IReadOnlyList<string> tokens, string title, string body,
+        IReadOnlyDictionary<string, string>? data = null, CancellationToken cancellationToken = default)
+    {
+        if (!IsConfigured || tokens.Count == 0) return;
+        var bearer = await GetAccessTokenAsync(cancellationToken);
+        foreach (var token in tokens.Distinct())
+            await SendToDeviceAsync(new PushDeviceRegistration { Token = token }, title, body, data, bearer, cancellationToken);
+    }
+
     // ToLowerInvariant Türkçe "İ"yi (U+0130) küçültmez; "Ali YİLMAZ" ile
     // "Ali Yilmaz" eşleşmiyor ve isimle gönderilen push sessizce düşüyordu.
     // Birleşik nokta (U+0307) da atılır.

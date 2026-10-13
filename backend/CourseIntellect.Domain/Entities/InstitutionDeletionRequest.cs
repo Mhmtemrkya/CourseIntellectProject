@@ -30,6 +30,7 @@ public sealed class InstitutionDeletionRequest : ITenantScopedEntity
 
     /// <summary>Onay sonrası otomatik tamamlama anı.</summary>
     public DateTime? FinalizeAtUtc { get; set; }
+    public DateTime? ProcessingStartedAtUtc { get; set; }
     public DateTime? CompletedAtUtc { get; set; }
     public string? FailureReason { get; set; }
 }

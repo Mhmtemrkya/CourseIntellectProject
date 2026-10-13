@@ -3,6 +3,7 @@ using CourseIntellect.Application.DTOs.AccountLifecycle;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CourseIntellect.Api.Controllers;
 
@@ -16,6 +17,7 @@ namespace CourseIntellect.Api.Controllers;
 public sealed class AccountDeletionController(IAccountDeletionService service) : ControllerBase
 {
     [HttpPost("request")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> CreateRequest([FromBody] CreateAccountDeletionRequest request, CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();

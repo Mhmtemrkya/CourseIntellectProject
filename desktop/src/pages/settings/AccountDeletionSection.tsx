@@ -22,8 +22,8 @@ import {
   type SuccessorCandidate,
 } from '../../lib/api/accountDeletion';
 
-const ACTIVE_ACCOUNT = new Set(['Pending', 'Scheduled']);
-const ACTIVE_INSTITUTION = new Set(['PendingPlatformApproval', 'Approved', 'Scheduled']);
+const ACTIVE_ACCOUNT = new Set(['Pending', 'Scheduled', 'Processing', 'Failed']);
+const ACTIVE_INSTITUTION = new Set(['PendingPlatformApproval', 'Approved', 'Scheduled', 'Processing', 'Failed']);
 
 export function AccountDeletionSection() {
   const { user } = useApp();
@@ -127,7 +127,7 @@ export function AccountDeletionSection() {
                 Silme talebiniz işleniyor — kalan süre <b>{account?.remainingDays ?? 0} gün</b>.
                 Süre dolana kadar iptal edebilirsiniz.
               </div>
-              <Button variant="outline" size="sm" disabled={busy} onClick={cancelAccount}>
+              <Button variant="outline" size="sm" disabled={busy || !account?.canCancel} onClick={cancelAccount}>
                 <Undo2 className="h-4 w-4 mr-1" /> İptal et
               </Button>
             </div>
@@ -138,7 +138,7 @@ export function AccountDeletionSection() {
               </ul>
               {isAdmin && (
                 <div className="space-y-1">
-                  <Label htmlFor="successor">Yönetimi devredeceğiniz kişi (tek yöneticiyseniz zorunlu)</Label>
+                  <Label htmlFor="successor">Yönetimi devredeceğiniz kişi (isteğe bağlı; devir yoksa platform takip eder)</Label>
                   <select id="successor" value={successorId} onChange={(e) => setSuccessorId(e.target.value)}
                     className="w-full rounded-md border bg-background px-3 py-2 text-sm">
                     <option value="">Seçiniz…</option>
@@ -191,7 +191,7 @@ export function AccountDeletionSection() {
                 )}
                 <p className="text-sm text-muted-foreground">
                   Bu talep platform yöneticisinin onayına düşer. Onaylanırsa kurum verileri temizlenir;
-                  finans ve eğitim kayıtları kişisel bilgiler silinerek anonim saklanır.
+                  finans ve eğitim kayıtları kişisel tanımlayıcıları temizlenerek saklanır.
                 </p>
                 <div className="flex flex-wrap items-end gap-3">
                   <div className="space-y-1">

@@ -25,7 +25,7 @@ public interface IFileStorageService
     /// <summary>
     /// Verilen /uploads URL'sine karşılık gelen fiziksel dosyayı güvenli şekilde siler
     /// (kök dışına çıkış engellenir). Hesap/kurum silmede kişisel medyayı diskten kaldırmak için.
-    /// Dosya yoksa veya URL depo dışıysa false döner (hata atmaz).
+    /// Dosya zaten yoksa true, URL depo dışıysa false döner. IO/izin hataları tekrar deneme için yayılır.
     /// </summary>
     Task<bool> DeleteAsync(
         string fileUrl,

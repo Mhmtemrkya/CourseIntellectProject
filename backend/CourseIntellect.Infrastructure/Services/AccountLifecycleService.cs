@@ -39,7 +39,7 @@ public sealed class AccountLifecycleService(
         typeof(TeacherDuty), typeof(TeacherTimetableSlot),
         // Denetim izi + kurum kaydı + silme talepleri (finalizer bu satırı günceller → silinmemeli)
         typeof(AuditLogEntry), typeof(TenantWorkspace),
-        typeof(AccountDeletionRequest), typeof(InstitutionDeletionRequest),
+        typeof(AccountDeletionRequest), typeof(InstitutionDeletionRequest), typeof(DeletionFileTask),
     ];
 
     public async Task<string> FinalizeAccountDeletionAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default)
@@ -51,8 +51,15 @@ public sealed class AccountLifecycleService(
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         var userExists = await dbContext.Users.IgnoreQueryFilters()
-            .AnyAsync(x => x.Id == userId, cancellationToken);
+            .AnyAsync(x => x.Id == userId && x.TenantId == tenantId, cancellationToken);
         if (!userExists) throw new InvalidOperationException("Kullanıcı bulunamadı.");
+
+        if (await dbContext.Users.IgnoreQueryFilters().AnyAsync(x => x.Id == userId && x.DeletedAtUtc != null, cancellationToken))
+        {
+            await transaction.CommitAsync(cancellationToken);
+            var retriedFiles = await CompleteFilesAsync($"account:{userId:N}", cancellationToken);
+            return JsonSerializer.Serialize(new { retriedFiles });
+        }
 
         // Fiziksel medyayı (profil görseli + mesaj ekleri) anonimleştirmeden ÖNCE topla;
         // commit'ten SONRA diskten sil.
@@ -105,7 +112,7 @@ public sealed class AccountLifecycleService(
             }
             else
             {
-                educationNameMatchSkipped = true; // elle inceleme gerekir
+                throw new InvalidOperationException("education-identity-review-required"); // no false completion for ambiguous legacy data
             }
         }
         // FK'li eğitim kayıtları her zaman güvenli şekilde anonimleştirilir.
@@ -152,6 +159,8 @@ public sealed class AccountLifecycleService(
                 .SetProperty(p => p.StudentName, Tombstone)
                 .SetProperty(p => p.SignatureImage, string.Empty), cancellationToken);
 
+        filesToDelete.AddRange(await DeletionDataCleaner.CleanLegacyAsync(dbContext, tenantId, userId, cancellationToken));
+
         // 3) Profil PII'si (satır korunur; finans/eğitim FK bütünlüğü için).
         await dbContext.Students
             .Where(x => x.UserId == userId)
@@ -161,7 +170,10 @@ public sealed class AccountLifecycleService(
                 .SetProperty(p => p.BirthDate, string.Empty)
                 .SetProperty(p => p.Address, string.Empty)
                 .SetProperty(p => p.Note, string.Empty)
-                .SetProperty(p => p.PhotoUrl, string.Empty), cancellationToken);
+                .SetProperty(p => p.PhotoUrl, string.Empty)
+                .SetProperty(p => p.CurrentSchool, string.Empty).SetProperty(p => p.SchoolNumber, string.Empty)
+                .SetProperty(p => p.ParentName, string.Empty).SetProperty(p => p.ParentPhone, string.Empty)
+                .SetProperty(p => p.ParentEmail, string.Empty).SetProperty(p => p.ParentUserId, (Guid?)null), cancellationToken);
         // Veli olarak başka öğrencilere bağlıysa veli PII'sini de temizle.
         await dbContext.Students
             .Where(x => x.ParentUserId == userId)
@@ -177,6 +189,10 @@ public sealed class AccountLifecycleService(
                 .SetProperty(p => p.Phone, string.Empty)
                 .SetProperty(p => p.Email, string.Empty)
                 .SetProperty(p => p.Note, string.Empty)
+                .SetProperty(p => p.Education, string.Empty).SetProperty(p => p.StartDate, string.Empty)
+                .SetProperty(p => p.MaritalStatus, string.Empty).SetProperty(p => p.ChildCount, 0)
+                .SetProperty(p => p.Campus, string.Empty).SetProperty(p => p.DepartmentOrBranch, string.Empty)
+                .SetProperty(p => p.HomeroomClass, string.Empty).SetProperty(p => p.AssignedClassesSerialized, string.Empty)
                 .SetProperty(p => p.PhotoUrl, string.Empty), cancellationToken);
 
         // 4) Kişisel/geçici veriyi TEMİZLE (purge).
@@ -197,9 +213,18 @@ public sealed class AccountLifecycleService(
                 .SetProperty(p => p.PlatformAccessEmail, (string?)null)
                 .SetProperty(p => p.Campus, string.Empty)
                 .SetProperty(p => p.DepartmentOrBranch, string.Empty)
+                .SetProperty(p => p.RoleHistorySerialized, "[]").SetProperty(p => p.ExtraRolesSerialized, "")
                 .SetProperty(p => p.Status, UserStatus.Passive)
                 .SetProperty(p => p.DeletedAtUtc, (DateTime?)DateTime.UtcNow)
                 .SetProperty(p => p.SecurityVersion, p => p.SecurityVersion + 1), cancellationToken);
+
+        filesToDelete.AddRange(await DeletionDataCleaner.CleanAsync(dbContext, tenantId, userId, cancellationToken));
+        await QueueFilesAsync(tenantId, $"account:{userId:N}", filesToDelete, cancellationToken);
+        // Unlink deleted ownership; platform operations can assign a replacement later.
+        await dbContext.Set<TenantWorkspace>().Where(x => x.Id == tenantId && x.AdminUserId == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.AdminUserId, (Guid?)null), cancellationToken);
+        await dbContext.Set<TenantGroup>().Where(x => x.OwnerUserId == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.OwnerUserId, (Guid?)null), cancellationToken);
 
         // Tamamlanma denetim kaydı — yalnız sayılar, PII yok, aktör "Sistem".
         dbContext.AuditLogEntries.Add(new Domain.Entities.AuditLogEntry
@@ -216,16 +241,7 @@ public sealed class AccountLifecycleService(
 
         await transaction.CommitAsync(cancellationToken);
 
-        // Commit sonrası fiziksel medyayı diskten sil (best-effort; /uploads kökü dışına çıkmaz).
-        var deletedFiles = 0;
-        if (fileStorage is not null)
-        {
-            foreach (var url in filesToDelete.Distinct())
-            {
-                try { if (await fileStorage.DeleteAsync(url, cancellationToken)) deletedFiles++; }
-                catch { /* best-effort: dosya silinemese de hesap silme tamamlanır */ }
-            }
-        }
+        var deletedFiles = await CompleteFilesAsync($"account:{userId:N}", cancellationToken);
 
         return JsonSerializer.Serialize(new
         {
@@ -247,6 +263,13 @@ public sealed class AccountLifecycleService(
         try
         {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        if (await dbContext.Set<TenantWorkspace>().IgnoreQueryFilters().AnyAsync(x => x.Id == tenantId && x.Status == "deleted", cancellationToken))
+        {
+            await transaction.CommitAsync(cancellationToken);
+            await CompleteFilesAsync($"institution:{tenantId:N}", cancellationToken);
+            return;
+        }
 
         // Fiziksel dosyaları (profil görselleri + mesaj ekleri) purge'den ÖNCE topla.
         var filesToDelete = new List<string>();
@@ -290,15 +313,21 @@ public sealed class AccountLifecycleService(
             .SetProperty(p => p.ParentName, Tombstone)
             .SetProperty(p => p.ParentPhone, string.Empty)
             .SetProperty(p => p.ParentEmail, string.Empty)
-            .SetProperty(p => p.PhotoUrl, string.Empty), cancellationToken);
+            .SetProperty(p => p.PhotoUrl, string.Empty).SetProperty(p => p.CurrentSchool, "").SetProperty(p => p.SchoolNumber, "")
+            .SetProperty(p => p.ParentUserId, (Guid?)null), cancellationToken);
         await dbContext.Staff.Where(x => x.TenantId == tenantId).ExecuteUpdateAsync(s => s
             .SetProperty(p => p.FullName, Tombstone)
             .SetProperty(p => p.TcNo, string.Empty)
             .SetProperty(p => p.Phone, string.Empty)
             .SetProperty(p => p.Email, string.Empty)
             .SetProperty(p => p.Note, string.Empty)
-            .SetProperty(p => p.PhotoUrl, string.Empty), cancellationToken);
+            .SetProperty(p => p.PhotoUrl, string.Empty).SetProperty(p => p.Education, "").SetProperty(p => p.StartDate, "")
+            .SetProperty(p => p.MaritalStatus, "").SetProperty(p => p.ChildCount, 0).SetProperty(p => p.Campus, "")
+            .SetProperty(p => p.DepartmentOrBranch, "").SetProperty(p => p.HomeroomClass, "").SetProperty(p => p.AssignedClassesSerialized, ""), cancellationToken);
         await dbContext.Users.Where(x => x.TenantId == tenantId).ExecuteUpdateAsync(s => s
+            .SetProperty(p => p.Username, p => "deleted-" + p.Id.ToString())
+            .SetProperty(p => p.Campus, "").SetProperty(p => p.DepartmentOrBranch, "")
+            .SetProperty(p => p.RoleHistorySerialized, "[]").SetProperty(p => p.ExtraRolesSerialized, "")
             .SetProperty(p => p.FullName, Tombstone)
             .SetProperty(p => p.TcNo, string.Empty)
             .SetProperty(p => p.Phone, (string?)null)
@@ -311,13 +340,23 @@ public sealed class AccountLifecycleService(
 
         // Denetim izindeki aktör adını anonimleştir (audit tablosu saklanır).
         await dbContext.AuditLogEntries.Where(x => x.TenantId == tenantId)
-            .ExecuteUpdateAsync(s => s.SetProperty(p => p.ActorName, Tombstone), cancellationToken);
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.ActorName, Tombstone).SetProperty(p => p.Detail, "")
+                .SetProperty(p => p.IpAddress, (string?)null).SetProperty(p => p.UserAgent, (string?)null)
+                .SetProperty(p => p.BeforeValue, (string?)null).SetProperty(p => p.AfterValue, (string?)null), cancellationToken);
 
         // Kullanıcı-scoped oturum/kod kayıtları (TenantId taşımaz) elle temizlenir.
         var tenantUserIds = await dbContext.Users.Where(x => x.TenantId == tenantId).Select(x => x.Id).ToListAsync(cancellationToken);
+        await dbContext.Set<AdminMfaChallenge>().Where(x => tenantUserIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
+        await dbContext.Set<UserScopeGrant>().Where(x => tenantUserIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
+        await dbContext.Set<TenantGroup>().Where(x => x.OwnerUserId != null && tenantUserIds.Contains(x.OwnerUserId.Value))
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.OwnerUserId, (Guid?)null), cancellationToken);
         await dbContext.RefreshTokenSessions.Where(x => tenantUserIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
         await dbContext.AuthorizationCodes.Where(x => tenantUserIds.Contains(x.UserId)).ExecuteDeleteAsync(cancellationToken);
 
+        filesToDelete.AddRange(await DeletionDataCleaner.CleanAsync(dbContext, tenantId, null, cancellationToken, InstitutionRetainTypes));
+        await QueueFilesAsync(tenantId, $"institution:{tenantId:N}", filesToDelete, cancellationToken);
+        await dbContext.Set<TenantRegistrationApplication>().Where(x => x.CreatedTenantId == tenantId)
+            .ExecuteDeleteAsync(cancellationToken);
         // Retain listesi DIŞINDAKİ tüm tenant-scoped tabloları fiziksel sil (mesaj, bildirim,
         // push, içerik, kütüphane, kurs, program, rehberlik, onam belgeleri, sürücü evrakı vb.).
         var purgedRows = await PurgeTenantOperationalTablesAsync(tenantId, cancellationToken);
@@ -326,7 +365,11 @@ public sealed class AccountLifecycleService(
         await dbContext.Set<Domain.Entities.TenantWorkspace>()
             .IgnoreQueryFilters()
             .Where(x => x.Id == tenantId)
-            .ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, "deleted"), cancellationToken);
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, "deleted")
+                .SetProperty(p => p.ContactName, "").SetProperty(p => p.ContactEmail, "").SetProperty(p => p.ContactPhone, (string?)null)
+                .SetProperty(p => p.AdminUserId, (Guid?)null).SetProperty(p => p.RegistrationIp, (string?)null)
+                .SetProperty(p => p.RegistrationUserAgent, (string?)null).SetProperty(p => p.RegistrationReferer, (string?)null)
+                .SetProperty(p => p.PendingAdminPasswordHash, (string?)null).SetProperty(p => p.ContactTitle, (string?)null), cancellationToken);
 
         // Tamamlanma denetim kaydı (yalnız PII'siz özet, aktör "Sistem").
         dbContext.AuditLogEntries.Add(new Domain.Entities.AuditLogEntry
@@ -343,20 +386,40 @@ public sealed class AccountLifecycleService(
 
         await transaction.CommitAsync(cancellationToken);
 
-        // Commit sonrası fiziksel medyayı diskten sil (best-effort).
-        if (fileStorage is not null)
-        {
-            foreach (var url in filesToDelete.Distinct())
-            {
-                try { await fileStorage.DeleteAsync(url, cancellationToken); }
-                catch { /* best-effort */ }
-            }
-        }
+        await CompleteFilesAsync($"institution:{tenantId:N}", cancellationToken);
         }
         finally
         {
             dbContext.SetTenantOverride(null);
         }
+    }
+
+    private async Task QueueFilesAsync(Guid tenantId, string operation, IEnumerable<string> urls, CancellationToken ct)
+    {
+        var existing = await dbContext.Set<DeletionFileTask>().IgnoreQueryFilters().Where(x => x.OperationKey == operation).Select(x => x.FileUrl).ToListAsync(ct);
+        foreach (var url in urls.Select(DeletionDataCleaner.CanonicalUrl).Where(x => x.StartsWith("/uploads/", StringComparison.Ordinal)).Distinct().Except(existing))
+            dbContext.Set<DeletionFileTask>().Add(new DeletionFileTask { TenantId = tenantId, OperationKey = operation, FileUrl = url });
+    }
+
+    private async Task<int> CompleteFilesAsync(string operation, CancellationToken ct)
+    {
+        var tasks = await dbContext.Set<DeletionFileTask>().IgnoreQueryFilters().Where(x => x.OperationKey == operation).ToListAsync(ct);
+        if (tasks.Count == 0) return 0;
+        if (fileStorage is null) throw new InvalidOperationException("File storage is required to complete deletion.");
+        // A shared upload is preserved while another record still owns it.
+        var referenced = await DeletionDataCleaner.ReferencedFilesAsync(dbContext, ct);
+        var removed = 0;
+        foreach (var task in tasks)
+        {
+            if (!referenced.Contains(task.FileUrl))
+            {
+                if (!await fileStorage.DeleteAsync(task.FileUrl, ct)) throw new IOException("Upload cleanup was not confirmed.");
+                removed++;
+            }
+            dbContext.Set<DeletionFileTask>().Remove(task);
+            await dbContext.SaveChangesAsync(ct);
+        }
+        return removed;
     }
 
     /// <summary>
@@ -441,6 +504,10 @@ public sealed class AccountLifecycleService(
 
     private async Task PurgeUserPersonalDataAsync(Guid userId, CancellationToken cancellationToken)
     {
+        await dbContext.Set<AdminMfaChallenge>().Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+        await dbContext.Set<UserScopeGrant>().Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+        await dbContext.Set<PasswordResetRequest>().Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+        await dbContext.Set<LegalConsentRecord>().Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
         await dbContext.RefreshTokenSessions.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
         await dbContext.AuthorizationCodes.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
         await dbContext.PushDeviceRegistrations.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);

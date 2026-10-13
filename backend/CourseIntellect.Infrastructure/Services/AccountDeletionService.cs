@@ -15,18 +15,19 @@ public sealed class AccountDeletionService(
     IAuditLogService auditLog,
     IConfiguration configuration) : IAccountDeletionService
 {
-    private const int MaxGraceDays = 30; // KVKK "en geç 30 gün" üst sınırı
+    private const int MaxGraceDays = 30; // Product cancellation window, not a legal retention determination
     private const string AuditCategory = "account-lifecycle";
 
     private static readonly AccountDeletionStatus[] ActiveStatuses =
-        [AccountDeletionStatus.Pending, AccountDeletionStatus.Scheduled];
+        [AccountDeletionStatus.Pending, AccountDeletionStatus.Scheduled, AccountDeletionStatus.Failed];
 
-    private static readonly string[] RetainedExplanation =
+    private string[] RetainedExplanation =>
     [
-        "Verileriniz hesabınızı kullandığınız sürece saklanır. Silme talebinden 30 gün sonra kalıcı olarak silinir; bu süre içinde talebi iptal edebilirsiniz.",
-        "30 gün sonunda profil bilgileriniz, mesajlarınız, bildirimleriniz, yüklediğiniz dosyalar, profil görseliniz ve tüm kişisel tanımlayıcılarınız SİLİNİR.",
-        "Tüm oturumlarınız ve bildirim cihaz kayıtlarınız iptal edilir; hesabınıza artık giriş yapılamaz.",
-        "Finans (tahsilat, fatura, makbuz) ve eğitim (not, devamsızlık, sınav) kayıtlarındaki kişisel bilgileriniz silinir; geriye kalan tutar/sonuç satırları sizi tanımlamayan anonim kayıtlara dönüştürülür.",
+        $"Silme talebiniz {GraceDays()} günlük iptal süresinden sonra işleme alınır; işlem başlayana kadar iptal edebilirsiniz.",
+        "Profil ve iletişim bilgileriniz, kişisel mesaj ve ekleriniz, ödev/soru içerikleriniz temizlenir. Diğer kullanıcıların da kullandığı dosyalar onların kayıtlarında korunabilir.",
+        "Tamamlandığında tüm oturumlarınız ve bildirim cihaz kayıtlarınız iptal edilir; hesabınıza giriş yapılamaz.",
+        "Finans ve eğitim sonuç kayıtlarında kişisel tanımlayıcılar temizlenir. Mevzuat gereği tutulması gereken kayıtların kapsamı ve süresi kurumun veri saklama politikasına tabidir.",
+        "Dosya veya eski eğitim kaydı temizliği inceleme gerektirirse talep tamamlandı olarak gösterilmez; platform tarafından takip edilir.",
     ];
 
     public async Task<AccountDeletionStatusDto> RequestAsync(
@@ -50,10 +51,12 @@ public sealed class AccountDeletionService(
             throw new UnauthorizedAccessException("Parola doğrulanamadı.");
         }
 
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+
         // Tekrarlı talep koruması: aktif talep varsa onu döndür.
         var existing = await dbContext.Set<AccountDeletionRequest>()
             .IgnoreQueryFilters()
-            .Where(x => x.UserId == userId && ActiveStatuses.Contains(x.Status))
+            .Where(x => x.UserId == userId && (ActiveStatuses.Contains(x.Status) || x.Status == AccountDeletionStatus.Processing))
             .OrderByDescending(x => x.RequestedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
         if (existing is not null)
@@ -62,9 +65,11 @@ public sealed class AccountDeletionService(
         }
 
         var isAdmin = user.PrimaryRole == UserRole.Admin;
+        if (request.SuccessorAdminUserId == userId)
+            throw new InvalidOperationException("Yönetimi kendinize devredemezsiniz.");
         var handledBy = isAdmin ? DeletionHandlerKind.Platform : DeletionHandlerKind.TenantAdmin;
 
-        // Tek yönetici kendini siliyorsa: yönetici devri ZORUNLU; süresiz kilidi önler.
+        // Devir isteğe bağlıdır; personel bulunmasa da kişisel silme platform kuyruğunda ilerler.
         if (isAdmin)
         {
             var otherActiveAdmins = await dbContext.Users.IgnoreQueryFilters().CountAsync(
@@ -75,13 +80,13 @@ public sealed class AccountDeletionService(
                     && x.DeletedAtUtc == null,
                 cancellationToken);
 
-            if (otherActiveAdmins == 0)
+            if (otherActiveAdmins == 0 && request.SuccessorAdminUserId is Guid)
             {
-                if (request.SuccessorAdminUserId is not Guid successorId)
-                {
-                    throw new InvalidOperationException(
-                        "Kurumun tek yöneticisisiniz. Hesabınızı silmeden önce yönetimi devredeceğiniz bir kullanıcı seçmelisiniz.");
-                }
+                var successorId = request.SuccessorAdminUserId!.Value;
+                if (successorId == userId) throw new InvalidOperationException("Yönetimi kendinize devredemezsiniz.");
+                if (await dbContext.Set<AccountDeletionRequest>().IgnoreQueryFilters()
+                    .AnyAsync(x => x.UserId == successorId && x.Status != AccountDeletionStatus.Cancelled && x.Status != AccountDeletionStatus.Completed, cancellationToken))
+                    throw new InvalidOperationException("Silme talebi olan kullanıcıya yönetim devredilemez.");
 
                 var successor = await dbContext.Users.IgnoreQueryFilters().FirstOrDefaultAsync(
                     x => x.Id == successorId && x.TenantId == tenantId
@@ -100,6 +105,8 @@ public sealed class AccountDeletionService(
                 successor.PrimaryRole = UserRole.Admin;
                 successor.CustomRoleId = null; // özel rol modül tavanı yöneticiyi kısıtlamasın
                 successor.SecurityVersion += 1;
+                await dbContext.Set<UserScopeGrant>().Where(x => x.UserId == successorId && x.IsHome).ExecuteDeleteAsync(cancellationToken);
+                dbContext.Set<UserScopeGrant>().Add(UserScopeGrant.CreateHome(successor));
 
                 // Kurum künyesindeki yönetici referansını da devret (izlenen varlık → aynı SaveChanges'te yazılır).
                 var workspace = await dbContext.Set<TenantWorkspace>()
@@ -136,11 +143,12 @@ public sealed class AccountDeletionService(
         }
         catch (DbUpdateException)
         {
+            await transaction.RollbackAsync(cancellationToken);
             // Eşzamanlı çift gönderim benzersiz indekse takılır → 500 yerine mevcut talebi döndür.
             dbContext.ChangeTracker.Clear();
             var concurrent = await dbContext.Set<AccountDeletionRequest>()
                 .IgnoreQueryFilters()
-                .Where(x => x.UserId == userId && ActiveStatuses.Contains(x.Status))
+                .Where(x => x.UserId == userId && (ActiveStatuses.Contains(x.Status) || x.Status == AccountDeletionStatus.Processing))
                 .OrderByDescending(x => x.RequestedAtUtc)
                 .FirstOrDefaultAsync(cancellationToken);
             if (concurrent is not null) return ToStatusDto(concurrent);
@@ -152,12 +160,13 @@ public sealed class AccountDeletionService(
             $"role={user.PrimaryRole}; finalizeAtUtc={deletionRequest.FinalizeAtUtc:o}; handledBy={handledBy}",
             cancellationToken);
 
+        await transaction.CommitAsync(cancellationToken);
         return ToStatusDto(deletionRequest);
     }
 
     public async Task<AccountDeletionStatusDto> GetMineAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var latest = await dbContext.Set<AccountDeletionRequest>()
+        var latest = await dbContext.Set<AccountDeletionRequest>().IgnoreQueryFilters()
             .Where(x => x.UserId == userId)
             .OrderByDescending(x => x.RequestedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
@@ -169,15 +178,20 @@ public sealed class AccountDeletionService(
 
     public async Task<AccountDeletionStatusDto> CancelMineAsync(Guid userId, string actorName, CancellationToken cancellationToken = default)
     {
-        var active = await dbContext.Set<AccountDeletionRequest>()
-            .Where(x => x.UserId == userId && ActiveStatuses.Contains(x.Status))
+        var active = await dbContext.Set<AccountDeletionRequest>().IgnoreQueryFilters()
+            .Where(x => x.UserId == userId && (ActiveStatuses.Contains(x.Status) || x.Status == AccountDeletionStatus.Processing))
             .OrderByDescending(x => x.RequestedAtUtc)
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new InvalidOperationException("İptal edilecek aktif bir silme talebiniz yok.");
 
+        var cancelledAt = DateTime.UtcNow;
+        var changed = await dbContext.Set<AccountDeletionRequest>().IgnoreQueryFilters()
+            .Where(x => x.Id == active.Id && ActiveStatuses.Contains(x.Status) && x.ProcessingStartedAtUtc == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, AccountDeletionStatus.Cancelled)
+                .SetProperty(x => x.CancelledAtUtc, cancelledAt).SetProperty(x => x.CompletionTokensJson, "[]"), cancellationToken);
+        if (changed == 0) throw new InvalidOperationException("Silme işlemi başlamış; talep artık iptal edilemez.");
         active.Status = AccountDeletionStatus.Cancelled;
-        active.CancelledAtUtc = DateTime.UtcNow;
-        await dbContext.SaveChangesAsync(cancellationToken);
+        active.CancelledAtUtc = cancelledAt;
 
         await auditLog.LogAsync(userId, actorName, "account-deletion-cancelled", AuditCategory,
             nameof(AccountDeletionRequest), active.Id.ToString(), "user cancelled", cancellationToken);
@@ -200,7 +214,8 @@ public sealed class AccountDeletionService(
                 && x.Id != userId
                 && x.Status == UserStatus.Active
                 && x.DeletedAtUtc == null
-                && StaffRoles.Contains(x.PrimaryRole))
+                && StaffRoles.Contains(x.PrimaryRole)
+                && !dbContext.Set<AccountDeletionRequest>().IgnoreQueryFilters().Any(r => r.UserId == x.Id && r.Status != AccountDeletionStatus.Cancelled && r.Status != AccountDeletionStatus.Completed))
             .OrderBy(x => x.FullName)
             .Select(x => new SuccessorCandidateDto { Id = x.Id, FullName = x.FullName, Role = x.PrimaryRole.ToString() })
             .ToListAsync(cancellationToken);
@@ -211,7 +226,7 @@ public sealed class AccountDeletionService(
     {
         // Tenant sorgu filtresi otomatik kapsar; yalnız görüntüleme.
         var items = await dbContext.Set<AccountDeletionRequest>()
-            .Where(x => ActiveStatuses.Contains(x.Status))
+            .Where(x => (ActiveStatuses.Contains(x.Status) || x.Status == AccountDeletionStatus.Processing))
             .OrderBy(x => x.FinalizeAtUtc)
             .ToListAsync(cancellationToken);
         return await ToQueueDtosAsync(items, cancellationToken);
@@ -222,7 +237,8 @@ public sealed class AccountDeletionService(
         // Platform bağlamı: tenant filtresi yok → IgnoreQueryFilters; yalnız yönetici talepleri.
         var items = await dbContext.Set<AccountDeletionRequest>()
             .IgnoreQueryFilters()
-            .Where(x => x.HandledByKind == DeletionHandlerKind.Platform && ActiveStatuses.Contains(x.Status))
+            .Where(x => (x.HandledByKind == DeletionHandlerKind.Platform && ActiveStatuses.Contains(x.Status))
+                || x.Status == AccountDeletionStatus.Failed || x.Status == AccountDeletionStatus.Processing)
             .OrderBy(x => x.FinalizeAtUtc)
             .ToListAsync(cancellationToken);
         return await ToQueueDtosAsync(items, cancellationToken);
@@ -230,7 +246,7 @@ public sealed class AccountDeletionService(
 
     private int GraceDays()
     {
-        // Varsayılan 30 gün: KVKK "en geç 30 gün" + App Store uyumlu iptal edilebilir pencere.
+        // Varsayılan iptal penceresi; hukuki veri saklama süresini belirlemez.
         // Kullanıcı bu süre boyunca hesabını geri alabilir; süre dolunca kalıcı silinir.
         var days = configuration.GetValue("AccountDeletion:GracePeriodDays", 30);
         return Math.Clamp(days, 1, MaxGraceDays);
@@ -257,20 +273,21 @@ public sealed class AccountDeletionService(
             FinalizeAtUtc = x.FinalizeAtUtc,
             RemainingDays = RemainingDays(x.FinalizeAtUtc),
             RequiresPlatform = x.HandledByKind == DeletionHandlerKind.Platform,
+            FailureReason = x.FailureReason,
         }).ToList();
     }
 
     private static int RemainingDays(DateTime finalizeAtUtc)
         => Math.Max(0, (int)Math.Ceiling((finalizeAtUtc - DateTime.UtcNow).TotalDays));
 
-    private static AccountDeletionStatusDto ToStatusDto(AccountDeletionRequest r) => new()
+    private AccountDeletionStatusDto ToStatusDto(AccountDeletionRequest r) => new()
     {
         Id = r.Id,
         Status = r.Status.ToString(),
         RequestedAtUtc = r.RequestedAtUtc,
         FinalizeAtUtc = r.FinalizeAtUtc,
         RemainingDays = RemainingDays(r.FinalizeAtUtc),
-        CanCancel = ActiveStatuses.Contains(r.Status),
+        CanCancel = ActiveStatuses.Contains(r.Status) && r.ProcessingStartedAtUtc == null,
         RetainedRecordsExplanation = RetainedExplanation,
     };
 }

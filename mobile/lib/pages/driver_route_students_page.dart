@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'account_deletion_page.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../services/service_tracking_api_service.dart';
@@ -44,7 +45,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
 
   @override
   void dispose() {
-    _stopLocationTracking();
+    _stopLocationTracking(updateUi: false);
     super.dispose();
   }
 
@@ -111,6 +112,12 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
             onPressed: _loadRoutes,
             icon: const Icon(Icons.refresh_rounded),
           ),
+          if (widget.standalone)
+            IconButton(
+              tooltip: 'Hesabımı Sil'.tr,
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountDeletionPage())),
+              icon: const Icon(Icons.manage_accounts_outlined),
+            ),
           if (widget.standalone)
             IconButton(
               tooltip: 'Çıkış Yap'.tr,
@@ -924,11 +931,11 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
         );
   }
 
-  void _stopLocationTracking() {
+  void _stopLocationTracking({bool updateUi = true}) {
     _positionSubscription?.cancel();
     _positionSubscription = null;
     _lastLocationSentAt = null;
-    if (mounted) {
+    if (updateUi && mounted) {
       setState(() {
         _locationTracking = false;
         _locationStatus = 'Arka plan GPS takibi durduruldu.';

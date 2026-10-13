@@ -42,7 +42,7 @@ class _InstitutionDeletionPageState extends State<InstitutionDeletionPage> {
 
   String get _statusText => (_status['status'] ?? 'none').toString();
   bool get _hasActiveRequest =>
-      _statusText == 'PendingPlatformApproval' || _statusText == 'Approved' || _statusText == 'Scheduled';
+      const ['PendingPlatformApproval', 'Approved', 'Scheduled', 'Processing', 'Failed'].contains(_statusText);
 
   Map<String, dynamic> get _impact {
     final raw = _status['impact'];
@@ -92,13 +92,14 @@ class _InstitutionDeletionPageState extends State<InstitutionDeletionPage> {
                 Text('Kurumu Sil'.tr, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
                 const SizedBox(height: 8),
                 Text(
-                  'Bu talep platform yöneticisinin onayına düşer. Onaylanırsa kurumun verileri temizlenir; finans ve eğitim kayıtları kişisel bilgiler silinerek anonim saklanır.'.tr,
+                  'Bu talep platform yöneticisinin onayına düşer. Onaylanırsa kurumun verileri temizlenir; finans ve eğitim kayıtları kişisel tanımlayıcıları temizlenerek saklanır.'.tr,
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: controller,
                   obscureText: true,
+                  onChanged: (_) => setSheet(() {}),
                   decoration: InputDecoration(
                     labelText: 'Parola'.tr,
                     prefixIcon: const Icon(Icons.lock_outline_rounded),

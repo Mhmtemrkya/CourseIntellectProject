@@ -108,26 +108,12 @@ public sealed class LocalFileStorageService(IHostEnvironment environment, IConfi
         var uploadsRootWithSeparator = Path.EndsInDirectorySeparator(uploadsRoot)
             ? uploadsRoot
             : uploadsRoot + Path.DirectorySeparatorChar;
-        // Kök dışına çıkış koruması — asla uploads kökü dışında silme.
-        if (!physicalPath.StartsWith(uploadsRootWithSeparator, StringComparison.OrdinalIgnoreCase)
-            || !File.Exists(physicalPath))
-        {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!physicalPath.StartsWith(uploadsRootWithSeparator, StringComparison.OrdinalIgnoreCase))
             return Task.FromResult(false);
-        }
-
-        try
-        {
-            File.Delete(physicalPath);
-            return Task.FromResult(true);
-        }
-        catch (IOException)
-        {
-            return Task.FromResult(false);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Task.FromResult(false);
-        }
+        // File.Delete is idempotent for an absent file; IO/permission failures must reach the retry queue.
+        File.Delete(physicalPath);
+        return Task.FromResult(true);
     }
 
     public async Task<StoredFilePrefixDto?> ReadPrefixAsync(string fileUrl, int maxBytes, CancellationToken cancellationToken = default)

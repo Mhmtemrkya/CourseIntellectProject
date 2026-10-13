@@ -36,9 +36,12 @@ public sealed class AccountDeletionRequest : ITenantScopedEntity
     public Guid? SuccessorAdminUserId { get; set; }
 
     public DateTime? CancelledAtUtc { get; set; }
+    public DateTime? ProcessingStartedAtUtc { get; set; }
     public DateTime? CompletedAtUtc { get; set; }
 
     /// <summary>Son hata (Failed durumunda operatör için); PII içermez.</summary>
+    public string CompletionTokensJson { get; set; } = "[]";
+
     public string? FailureReason { get; set; }
 
     /// <summary>Tamamlanınca anonimleştirilerek saklanan kayıt özetleri (JSON, yalnız sayılar).</summary>
