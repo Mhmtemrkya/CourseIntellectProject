@@ -20,8 +20,8 @@ export function SiteNav() {
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 28 })
   return <header className={`sa-nav${(pathname === "/" || pathname.startsWith("/deneyim") || pathname.startsWith("/platform") || pathname.startsWith("/ozellikler") || pathname.startsWith("/destek") || pathname.startsWith("/iletisim") || pathname.startsWith("/kurum-kaydi") || pathname.startsWith("/indir")) ? " is-brain-nav" : ""}`} onKeyDown={event => { if (event.key === "Escape") { setOpen(false); event.currentTarget.querySelector<HTMLButtonElement>(".sa-menu")?.focus() } }}><div className="sa-nav-inner"><Brand />
     <nav id="site-navigation" aria-label="Ana menü" className={open ? "sa-links is-open" : "sa-links"}>
-      <div className="ref-nav-center">{links.map(([href, label]) => <Link key={href} href={href} aria-current={pathname.startsWith(href) || href === "/ozellikler" && ["/platform", "/indir"].some(p => pathname.startsWith(p)) || href === "/destek" && pathname.startsWith("/iletisim") ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div>
-      <div className="ref-nav-account"><Link href="/indir" onClick={() => setOpen(false)}>Uygulamalar</Link>
+      <div className="ref-nav-center">{links.map(([href, label]) => <Link key={href} href={href} aria-current={pathname.startsWith(href) || href === "/ozellikler" && pathname.startsWith("/platform") || href === "/destek" && pathname.startsWith("/iletisim") ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div>
+      <div className="ref-nav-account"><Link href="/indir" aria-current={pathname.startsWith("/indir") ? "page" : undefined} onClick={() => setOpen(false)}>Uygulamalar</Link>
       <Link href="/kurum-kaydi" aria-current={pathname.startsWith("/kurum-kaydi") ? "page" : undefined} className="sa-button" onClick={() => setOpen(false)}>Ücretsiz Kurum Kaydı</Link></div>
     </nav>
     <button className="sa-menu" onClick={() => setOpen(!open)} aria-label={open ? "Menüyü kapat" : "Menüyü aç"} aria-expanded={open} aria-controls="site-navigation">{open ? <X /> : <Menu />}</button>
