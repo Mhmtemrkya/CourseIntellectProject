@@ -115,29 +115,21 @@ public sealed class UsernameGenerator(CourseIntellectDbContext dbContext)
         }
     }
 
-    private static string NormalizeAscii(string value)
+    // Büyük "İ" (U+0130) ToLowerInvariant ile küçülmez ve harf sayıldığı için kullanıcı
+    // adına olduğu gibi giriyordu ("demoİdari@..."). Önce İ/ı açıkça katlanır, kalan
+    // aksanlar ayrıştırılıp atılır; sonuçta yalnız ASCII harf/rakam kalır.
+    internal static string NormalizeAscii(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-        var lower = value.ToLowerInvariant();
-        var sb = new System.Text.StringBuilder(lower.Length);
-        foreach (var ch in lower)
+        var folded = value.Replace('İ', 'i').Replace('ı', 'i')
+            .ToLowerInvariant()
+            .Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(folded.Length);
+        foreach (var ch in folded)
         {
-            char mapped = ch switch
+            if (ch is (>= 'a' and <= 'z') or (>= '0' and <= '9'))
             {
-                'ç' => 'c',
-                'ğ' => 'g',
-                'ı' => 'i',
-                'ö' => 'o',
-                'ş' => 's',
-                'ü' => 'u',
-                'â' => 'a',
-                'î' => 'i',
-                'û' => 'u',
-                _ => ch,
-            };
-            if (char.IsLetterOrDigit(mapped))
-            {
-                sb.Append(mapped);
+                sb.Append(ch);
             }
         }
         return sb.ToString();

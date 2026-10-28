@@ -2010,8 +2010,10 @@ public sealed class PlatformOperationsService(
 
     private static string NormalizeSlug(string value)
     {
+        // "İ" ToLowerInvariant ile küçülmez; önce açıkça katlanır (bkz. UsernameGenerator).
         var normalized = new string(value
             .Trim()
+            .Replace('İ', 'i')
             .ToLowerInvariant()
             .Select(ch => ch switch
             {
