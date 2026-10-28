@@ -205,3 +205,6 @@
   .ref-legal-layout article,.ref-legal-terms .ref-legal-layout article { padding:24px 20px; border:0; border-radius:0; }.ref-legal-layout article>header h1,.ref-legal-title h1 { font-size:36px; }.ref-legal-layout article>header>p:last-child,.ref-legal-title>p { font-size:17px; }
   .ref-legal-band { padding:20px; }.ref-legal-band h2 { font-size:24px; }.ref-legal-title { padding:26px 20px 0; }.ref-legal-layout article>section h2 { font-size:27px; }.ref-legal-layout article>section p { font-size:15px; }
 }
+
+/* Geniş ekran ölçeği — bkz. presentation.css --wide-zoom */
+.ref-support,.ref-legal,.ref-application-status,.ref-account-site .ref-login,.ref-registration.sa-auth,.ref-download { zoom: var(--wide-zoom); }

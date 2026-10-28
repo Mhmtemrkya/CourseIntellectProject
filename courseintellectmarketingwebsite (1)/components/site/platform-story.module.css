@@ -114,3 +114,6 @@
   .flowLineMobile path:last-child { stroke:#ffa02d; stroke-width:2; }
   .flowStep:not(:last-child)::after { left:calc(50% - 4px); top:auto; right:auto; bottom:-18px; }
 }
+
+/* Geniş ekran ölçeği — bkz. presentation.css --wide-zoom */
+.container,.heroInner,.deviceLayout,.heroFoot { zoom: var(--wide-zoom); }

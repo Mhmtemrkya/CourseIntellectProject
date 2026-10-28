@@ -52,3 +52,6 @@
 .compact a:hover { text-decoration:underline; }
 .compact a:focus-visible { outline:2px solid #335ce9;outline-offset:5px; }
 @media(max-width:740px) { .compact { flex-wrap:wrap;gap:15px 22px;padding:22px 24px; }.compactBrand { font-size:17px; }.compact nav { width:100%;margin-left:0;gap:24px; }.compact small { margin-left:auto;font-size:9px;max-width:145px; } }
+
+/* Geniş ekran ölçeği — bkz. presentation.css --wide-zoom */
+.closingInner,.columns,.bottom { zoom: var(--wide-zoom); }

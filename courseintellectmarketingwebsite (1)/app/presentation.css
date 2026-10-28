@@ -489,3 +489,20 @@
   .sa-highlight-overlay,.sa-highlight-dialog { animation:none!important; }
   .ref-gallery-card>.sa-highlight-art,.sa-role-card-art,.sa-card-open>span,.sa-role-card-action svg { transform:none!important; transition:none!important; }
 }
+
+
+/* Geniş masaüstü ekranlar: ortalanmış içerik kapsayıcıları sabit piksel tavanlarla
+   (1320–1536px) tasarlandı; 1600px üstünde kenarlarda boş şerit kalıyordu. Kapsayıcılar
+   ekran genişliğiyle kademeli büyütülür (zoom). Tam ekran (svh/vw) bölümlere UYGULANMAZ:
+   zoom viewport birimlerini de çarpar. Kapsayıcılar iç içe ölçeklenmemeli. */
+:root { --wide-zoom: 1; }
+@media (min-width: 1600px) { :root { --wide-zoom: 1.1; } }
+@media (min-width: 1800px) { :root { --wide-zoom: 1.2; } }
+@media (min-width: 2000px) { :root { --wide-zoom: 1.3; } }
+@media (min-width: 2200px) { :root { --wide-zoom: 1.45; } }
+@media (min-width: 2400px) { :root { --wide-zoom: 1.6; } }
+@media (min-width: 2800px) { :root { --wide-zoom: 1.85; } }
+@media (min-width: 3200px) { :root { --wide-zoom: 2.1; } }
+@media (min-width: 3600px) { :root { --wide-zoom: 2.4; } }
+
+.sa-site .sa-nav-inner,.ref-hero-scene,.ref-light-showcase>.ref-scene,.ref-home-ecosystem>[role=tabpanel] { zoom: var(--wide-zoom); }

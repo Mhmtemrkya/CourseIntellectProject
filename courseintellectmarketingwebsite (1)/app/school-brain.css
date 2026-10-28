@@ -278,3 +278,17 @@
  .standalone-role-art-label i { width:28px; height:28px; }
  .standalone-role-art-label svg { width:17px; }
 }
+
+/* Masaüstü hero: başlık ve logo yalnız genişliğe göre büyürse geniş ama kısa pencerelerde
+   (ör. 1536×730) logo başlığın altına girer; büyük ekranlarda da 510px tavanı kenarlarda boşluk
+   bırakır. İkisi de genişlik VE yüksekliğin küçüğüne göre ölçeklenir. Mobil (≤760px) etkilenmez. */
+@media (min-width:761px) {
+  .standalone-core-anchor { width:min(35vw, calc((100svh - 70px) * .5)); max-width:none; }
+  .brain-sticky:has(.standalone-cinematic) .brain-heading h1 { font-size:clamp(38px, min(4.6vw, 8.2svh), 116px); }
+  .brain-sticky:has(.standalone-cinematic) .brain-heading p { font-size:clamp(15px, min(1.2vw, 2.1svh), 28px); }
+  .brain-poster>img { width:clamp(150px, min(21vw, 30svh), 420px); }
+  .brain-poster-platform { width:clamp(200px, min(30vw, 44svh), 620px); }
+}
+
+/* Geniş ekran ölçeği — bkz. presentation.css --wide-zoom. Sahnenin kendisi değil, üstündeki metin/kontroller. */
+.brain-all-features,.brain-scroll-cue,.brain-chapter-nav,.brain-teacher-copy,.brain-process-copy { zoom: var(--wide-zoom); }
