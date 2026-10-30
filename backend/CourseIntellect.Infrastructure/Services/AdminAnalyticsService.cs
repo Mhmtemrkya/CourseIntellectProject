@@ -45,14 +45,20 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
             .ToListAsync(cancellationToken);
 
         // Gider: maaş/bordro + fatura kayıtları (string tutar, in-memory parse).
-        var salaries = await dbContext.AccountingSalaries.AsNoTracking()
+        // Ana paneldeki "Gider" sayacıyla aynı kural (FinanceExpenseRules): reddedilen
+        // ve onay bekleyen bordro, reddedilen fatura sayılmaz; fatura, fatura tarihine düşer.
+        var salaries = (await dbContext.AccountingSalaries.AsNoTracking()
             .Where(s => s.CreatedAtUtc >= rangeStart && s.CreatedAtUtc < rangeEnd)
-            .Select(s => new { s.CreatedAtUtc, s.Amount })
-            .ToListAsync(cancellationToken);
-        var invoices = await dbContext.AccountingInvoices.AsNoTracking()
-            .Where(i => i.CreatedAtUtc >= rangeStart && i.CreatedAtUtc < rangeEnd)
-            .Select(i => new { i.CreatedAtUtc, i.Amount })
-            .ToListAsync(cancellationToken);
+            .Select(s => new { s.CreatedAtUtc, s.Amount, s.Status })
+            .ToListAsync(cancellationToken))
+            .Where(s => FinanceExpenseRules.SalaryCountsAsExpense(s.Status))
+            .ToList();
+        var invoices = (await dbContext.AccountingInvoices.AsNoTracking()
+            .Where(i => i.IssueDateUtc >= rangeStart && i.IssueDateUtc < rangeEnd)
+            .Select(i => new { CreatedAtUtc = i.IssueDateUtc, i.Amount, i.Status })
+            .ToListAsync(cancellationToken))
+            .Where(i => FinanceExpenseRules.InvoiceCountsAsExpense(i.Status))
+            .ToList();
 
         var working = buckets
             .Select(b => new MutableBucket { Start = b.Start, End = b.End })

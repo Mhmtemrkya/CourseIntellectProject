@@ -208,8 +208,31 @@ public sealed class StudentFinanceService(
 
     public async Task<int> BackfillMissingInstallmentsAsync(CancellationToken cancellationToken = default)
     {
+        // Eskiden sözleşmesiz (boş kimlikli) açılan elle taksitler kendi küçük
+        // sözleşmelerine bağlanır; böylece özet/pano/gecikme tablolarına girerler.
+        var orphans = await dbContext.FinanceInstallments
+            .Where(item => item.EnrollmentContractId == Guid.Empty)
+            .ToListAsync(cancellationToken);
+        foreach (var orphan in orphans)
+        {
+            var candidates = orphan.StudentUserId is null
+                ? await FindStudentUserIdsByNameAsync(orphan.StudentName, cancellationToken)
+                : [];
+            var userId = orphan.StudentUserId ?? (candidates.Count == 1 ? candidates[0] : null);
+            var (contract, _) = await BuildManualInstallmentAsync(
+                userId, orphan.StudentName.Trim(), orphan.Amount, orphan.DueDateUtc, null, cancellationToken);
+            contract.Currency = string.IsNullOrWhiteSpace(orphan.Currency) ? "TRY" : orphan.Currency;
+            await dbContext.EnrollmentContracts.AddAsync(contract, cancellationToken);
+            orphan.EnrollmentContractId = contract.Id;
+            orphan.StudentUserId = userId;
+        }
+        if (orphans.Count > 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
         var contracts = await dbContext.EnrollmentContracts.AsNoTracking().ToListAsync(cancellationToken);
-        if (contracts.Count == 0) return 0;
+        if (contracts.Count == 0) return orphans.Count;
         var contractIds = contracts.Select(item => item.Id).ToHashSet();
 
         var installmentContractIds = (await dbContext.FinanceInstallments.AsNoTracking()
@@ -252,7 +275,7 @@ public sealed class StudentFinanceService(
             await dbContext.FinanceInstallments.AddRangeAsync(toAdd, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
-        return toAdd.Count;
+        return orphans.Count + toAdd.Count;
     }
 
     public async Task<StudentFinanceAccountDto> GetAccountAsync(
@@ -262,9 +285,20 @@ public sealed class StudentFinanceService(
     {
         var name = studentName?.Trim() ?? string.Empty;
         var nameLower = name.ToLowerInvariant();
+        // Yalnız adla istenen hesap: ad tek öğrenciye aitse onun kimliğiyle açılır.
+        // Ad eşleşmesi her durumda yalnız kimliksiz (eski) kayıtları kapsar; aksi
+        // hâlde aynı adlı başka öğrencinin sözleşme/tahsilatı bu cariye karışıyordu.
+        if (studentUserId is null && nameLower.Length > 0)
+        {
+            var candidates = await FindStudentUserIdsByNameAsync(name, cancellationToken);
+            if (candidates.Count == 1) studentUserId = candidates[0];
+        }
+        // Kimliksiz (yalnız adla açılmış eski) sözleşme, kimlikle açılan cariye de
+        // girer; yoksa veli ekranında böyle bir çocuğun net tutarı 0 görünürdü.
         var contractQuery = studentUserId is Guid sid
-            ? dbContext.EnrollmentContracts.AsNoTracking().Where(item => item.StudentUserId == sid)
-            : dbContext.EnrollmentContracts.AsNoTracking().Where(item => item.StudentName.Trim().ToLower() == nameLower);
+            ? dbContext.EnrollmentContracts.AsNoTracking().Where(item => item.StudentUserId == sid
+                || (nameLower != string.Empty && item.StudentUserId == null && item.StudentName.Trim().ToLower() == nameLower))
+            : dbContext.EnrollmentContracts.AsNoTracking().Where(item => item.StudentUserId == null && item.StudentName.Trim().ToLower() == nameLower);
         var contracts = await contractQuery
             .OrderByDescending(item => item.CreatedAtUtc)
             .ToListAsync(cancellationToken);
@@ -279,14 +313,14 @@ public sealed class StudentFinanceService(
         var installments = await dbContext.FinanceInstallments.AsNoTracking()
             .Where(item => contractIds.Contains(item.EnrollmentContractId)
                 || (studentUserId != null && item.StudentUserId == studentUserId)
-                || (nameLower != string.Empty && item.StudentName.Trim().ToLower() == nameLower))
+                || (nameLower != string.Empty && item.StudentUserId == null && item.StudentName.Trim().ToLower() == nameLower))
             .OrderBy(item => item.DueDateUtc)
             .ToListAsync(cancellationToken);
 
         var payments = await dbContext.FinancePayments.AsNoTracking()
             .Where(item => (item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
                 || (studentUserId != null && item.StudentUserId == studentUserId)
-                || (nameLower != string.Empty && item.StudentName.Trim().ToLower() == nameLower))
+                || (nameLower != string.Empty && item.StudentUserId == null && item.StudentName.Trim().ToLower() == nameLower))
             .OrderByDescending(item => item.PaidAtUtc)
             .ToListAsync(cancellationToken);
 
@@ -327,7 +361,7 @@ public sealed class StudentFinanceService(
         var currency = contracts.FirstOrDefault()?.Currency
             ?? installments.FirstOrDefault()?.Currency
             ?? "TRY";
-        var overdue = installments.Count(item => item.Amount - item.PaidAmount > 0 && item.DueDateUtc < now);
+        var overdue = installments.Count(item => item.Amount - item.PaidAmount > 0 && FinanceDates.IsOverdue(item.DueDateUtc, now));
         var nextDue = installments
             .Where(item => item.Amount - item.PaidAmount > 0)
             .OrderBy(item => item.DueDateUtc)
@@ -714,6 +748,10 @@ public sealed class StudentFinanceService(
         var nameLower = name.ToLowerInvariant();
         var method = string.IsNullOrWhiteSpace(request.Method) ? "Nakit" : request.Method.Trim();
 
+        // Kurumun tahsilat/iade yazımları sıraya girer: eşzamanlı iki istek aynı
+        // taksidin PaidAmount'unu ezemez, aynı istek kimliği iki kayıt üretemez.
+        await using var ownedTransaction = await BeginFinanceWriteAsync(cancellationToken);
+
         // ── Çift tahsilat koruması ───────────────────────────────────────────
         // Aynı istek kimliğiyle daha önce kayıt oluştuysa YENİSİ YAZILMAZ; ilk
         // makbuz aynen döner. Kullanıcı iki kez tıklasa ya da ağ hatasında istek
@@ -728,11 +766,81 @@ public sealed class StudentFinanceService(
             }
         }
 
+        // Yalnız adla gelen tahsilat (muhasebe ekranı): ad tek öğrenciye aitse o
+        // öğrencinin kimliğine bağlanır; birden çok öğrenciye aitse para tahminle
+        // bir hesaba yazılmaz, işlem durdurulur.
+        if (request.StudentUserId is null && request.EnrollmentContractId is null && request.FinanceInstallmentId is null)
+        {
+            var resolvedUserId = await ResolveUniqueStudentUserIdAsync(name, cancellationToken);
+            if (resolvedUserId is not null)
+            {
+                request = request with { StudentUserId = resolvedUserId };
+            }
+        }
+
         Guid? contractId = request.EnrollmentContractId;
         var currency = "TRY";
+        var remainingToAllocate = amount;
+
+        // ── Bekleyen kayıt peşinatı önce kapanır ─────────────────────────────
+        // Peşinat taksit planının dışındadır; genel bir tahsilat onu atlayıp
+        // taksitlere ve "avans"a gidince sözleşme "Peşinat Bekleyenler"de kalıyor,
+        // "Peşinat tahsil et" ile aynı para ikinci kez alınıyordu. Belirli bir
+        // taksit seçilmediyse önce bekleyen peşinat, ayrı makbuzlu peşinat kaydı
+        // olarak kapatılır; artan tutar taksitlere gider.
+        var downPaymentRecords = new List<FinancePayment>();
+        if (request.FinanceInstallmentId is null && remainingToAllocate > 0)
+        {
+            var pendingQuery = dbContext.EnrollmentContracts
+                .Where(item => item.DownPayment > item.DownPaymentPaidAmount && item.Status == "Active");
+            pendingQuery = contractId is Guid pendingContractId
+                ? pendingQuery.Where(item => item.Id == pendingContractId)
+                : request.StudentUserId is Guid pendingUserId
+                    ? pendingQuery.Where(item => item.StudentUserId == pendingUserId)
+                    : pendingQuery.Where(item => item.StudentUserId == null && item.StudentName.Trim().ToLower() == nameLower);
+            var pendingContracts = await pendingQuery.OrderBy(item => item.CreatedAtUtc).ToListAsync(cancellationToken);
+            foreach (var pendingContract in pendingContracts)
+            {
+                if (remainingToAllocate <= 0) break;
+                var applied = Math.Min(pendingContract.DownPayment - pendingContract.DownPaymentPaidAmount, remainingToAllocate);
+                if (applied <= 0) continue;
+                pendingContract.DownPaymentPaidAmount += applied;
+                pendingContract.DownPaymentPaid = pendingContract.DownPaymentPaidAmount >= pendingContract.DownPayment;
+                remainingToAllocate -= applied;
+                var downPaymentRecord = new FinancePayment
+                {
+                    EnrollmentContractId = pendingContract.Id,
+                    StudentUserId = pendingContract.StudentUserId ?? request.StudentUserId,
+                    StudentName = string.IsNullOrWhiteSpace(pendingContract.StudentName) ? name : pendingContract.StudentName,
+                    Amount = applied,
+                    Method = method,
+                    ReceiptNo = await NextReceiptNoAsync(cancellationToken),
+                    Currency = pendingContract.Currency,
+                    Note = DownPaymentNote,
+                    CreatedByUserId = createdByUserId,
+                    BranchId = request.BranchId,
+                    PaidAtUtc = DateTime.UtcNow,
+                };
+                await dbContext.FinancePayments.AddAsync(downPaymentRecord, cancellationToken);
+                downPaymentRecords.Add(downPaymentRecord);
+                contractId ??= pendingContract.Id;
+            }
+        }
+
+        if (downPaymentRecords.Count > 0 && remainingToAllocate <= 0)
+        {
+            // Tutarın tamamı peşinata gitti: dönen makbuz peşinat makbuzudur ve
+            // tekrar denemede aynı makbuz dönsün diye istek kimliğini o taşır.
+            var onlyRecord = downPaymentRecords[0];
+            onlyRecord.ClientRequestId = request.ClientRequestId == Guid.Empty ? null : request.ClientRequestId;
+            await SavePaymentWithReceiptRetryAsync(onlyRecord, cancellationToken);
+            await LogDownPaymentRecordsAsync(downPaymentRecords, cancellationToken);
+            if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
+            return MapPayment(onlyRecord);
+        }
 
         // Ödemeyi belirli bir taksite ya da en eski ödenmemiş taksitlere (FIFO) mahsup et.
-        var remainingToAllocate = amount;
+        var mainAmount = remainingToAllocate;
         var targetInstallments = new List<FinanceInstallment>();
         var newAllocations = new List<(FinanceInstallment Installment, decimal Amount)>();
         if (request.FinanceInstallmentId is Guid installmentId)
@@ -756,11 +864,14 @@ public sealed class StudentFinanceService(
         else
         {
             var query = dbContext.FinanceInstallments.AsQueryable();
-            query = contractId is Guid cid
+            // Kimliği olmayan (eski/elle açılmış) taksit adla eşleşir; kimliği olan
+            // taksit yalnız kendi öğrencisinin tahsilatını alır.
+            query = request.EnrollmentContractId is Guid cid
                 ? query.Where(item => item.EnrollmentContractId == cid)
                 : request.StudentUserId is Guid sid
-                    ? query.Where(item => item.StudentUserId == sid)
-                    : query.Where(item => item.StudentName.Trim().ToLower() == nameLower);
+                    ? query.Where(item => item.StudentUserId == sid
+                        || (item.StudentUserId == null && item.StudentName.Trim().ToLower() == nameLower))
+                    : query.Where(item => item.StudentUserId == null && item.StudentName.Trim().ToLower() == nameLower);
             targetInstallments = await query
                 .Where(item => item.Amount - item.PaidAmount > 0)
                 .OrderBy(item => item.DueDateUtc)
@@ -790,7 +901,7 @@ public sealed class StudentFinanceService(
             var contractQuery = dbContext.EnrollmentContracts.AsNoTracking().AsQueryable();
             contractQuery = request.StudentUserId is Guid sid
                 ? contractQuery.Where(item => item.StudentUserId == sid)
-                : contractQuery.Where(item => item.StudentName.Trim().ToLower() == nameLower);
+                : contractQuery.Where(item => item.StudentUserId == null && item.StudentName.Trim().ToLower() == nameLower);
             contractId = await contractQuery
                 .OrderByDescending(item => item.CreatedAtUtc)
                 .Select(item => (Guid?)item.Id)
@@ -828,6 +939,14 @@ public sealed class StudentFinanceService(
         var note = remainingToAllocate > 0
             ? (string.IsNullOrEmpty(baseNote) ? $"Avans/Fazla: {remainingToAllocate:0.##}" : $"{baseNote} (Avans/Fazla: {remainingToAllocate:0.##})")
             : baseNote;
+        if (downPaymentRecords.Count > 0)
+        {
+            // Alınan para iki makbuza bölündü; tahsilat ekranı tek makbuz gösterdiği
+            // için peşinata giden kısım ana makbuzun notunda da görünür.
+            var downPaymentText = string.Join(", ", downPaymentRecords.Select(record =>
+                $"{MoneyText.Format(record.Amount, record.Currency)} peşinat, makbuz {record.ReceiptNo}"));
+            note = string.IsNullOrEmpty(note) ? $"Ayrıca {downPaymentText}" : $"{note} • Ayrıca {downPaymentText}";
+        }
 
         var payment = new FinancePayment
         {
@@ -836,7 +955,7 @@ public sealed class StudentFinanceService(
                 ?? (targetInstallments.Count == 1 ? targetInstallments[0].Id : null),
             StudentUserId = request.StudentUserId,
             StudentName = name,
-            Amount = amount,
+            Amount = mainAmount,
             Method = method,
             ReceiptNo = await NextReceiptNoAsync(cancellationToken),
             Currency = currency,
@@ -864,6 +983,7 @@ public sealed class StudentFinanceService(
             }
         }
         await SavePaymentWithReceiptRetryAsync(payment, cancellationToken);
+        await LogDownPaymentRecordsAsync(downPaymentRecords, cancellationToken);
 
         await auditLogService.LogAsync(
             "Tahsilat kaydedildi",
@@ -873,7 +993,22 @@ public sealed class StudentFinanceService(
             $"{payment.StudentName} — {payment.Amount:0.##} {payment.Currency} ({payment.Method}), makbuz: {payment.ReceiptNo}.",
             cancellationToken);
 
+        if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
         return MapPayment(payment);
+    }
+
+    private async Task LogDownPaymentRecordsAsync(IReadOnlyList<FinancePayment> records, CancellationToken cancellationToken)
+    {
+        foreach (var record in records)
+        {
+            await auditLogService.LogAsync(
+                "Bekleyen peşinat tahsil edildi",
+                "Finance",
+                "FinancePayment",
+                record.Id.ToString(),
+                $"{record.StudentName} — {record.Amount:0.##} {record.Currency} ({record.Method}) genel tahsilattan peşinata mahsup edildi, makbuz: {record.ReceiptNo}.",
+                cancellationToken);
+        }
     }
 
     public async Task<IReadOnlyList<PendingDownPaymentDto>> GetPendingDownPaymentsAsync(
@@ -903,6 +1038,9 @@ public sealed class StudentFinanceService(
         Guid? createdByUserId,
         CancellationToken cancellationToken = default)
     {
+        // Kilit, sözleşme okunmadan alınır: "Peşinat tahsil et"e çift tıklanınca
+        // ikinci istek ilkinin yazdığı durumu görür ve ikinci makbuz kesilmez.
+        await using var ownedTransaction = await BeginFinanceWriteAsync(cancellationToken);
         var contract = await dbContext.EnrollmentContracts
             .FirstOrDefaultAsync(item => item.Id == contractId, cancellationToken)
             ?? throw new InvalidOperationException("Sözleşme bulunamadı.");
@@ -960,6 +1098,7 @@ public sealed class StudentFinanceService(
             $"{contract.StudentName} — {remainingDownPayment:0.##} {contract.Currency} ({downPaymentMethod}), makbuz: {receiptNo}.",
             cancellationToken);
 
+        if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
         return MapPayment(payment);
     }
 
@@ -1094,7 +1233,7 @@ public sealed class StudentFinanceService(
                 var net = group.Sum(item => item.NetAmount);
                 var paid = paidByStudent.GetValueOrDefault(group.Key);
                 var studentInstallments = group.SelectMany(item => installmentsByContract.GetValueOrDefault(item.Id) ?? []).ToList();
-                var overdue = studentInstallments.Count(item => item.Amount - item.PaidAmount > 0 && item.DueDateUtc < now);
+                var overdue = studentInstallments.Count(item => item.Amount - item.PaidAmount > 0 && FinanceDates.IsOverdue(item.DueDateUtc, now));
                 var nextDue = studentInstallments
                     .Where(item => item.Amount - item.PaidAmount > 0)
                     .OrderBy(item => item.DueDateUtc)
@@ -1187,6 +1326,7 @@ public sealed class StudentFinanceService(
 
         // Aynı makbuza eşzamanlı iki iadenin kalan tutarı birlikte aşmasını önler.
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        await BeginFinanceWriteAsync(cancellationToken);
         var source = await dbContext.FinancePayments
             .FirstOrDefaultAsync(item => item.Id == request.PaymentId, cancellationToken)
             ?? throw new InvalidOperationException("İade edilecek tahsilat bulunamadı.");
@@ -1194,7 +1334,7 @@ public sealed class StudentFinanceService(
         {
             throw new InvalidOperationException("Yalnızca pozitif bir tahsilat iade edilebilir.");
         }
-        var isDownPayment = source.Note.StartsWith("Kayıt peşinatı", StringComparison.OrdinalIgnoreCase);
+        var isDownPayment = IsDownPaymentNote(source.Note);
         if (isDownPayment && refundType != "PaymentReversal")
         {
             throw new InvalidOperationException("Peşinat yalnızca tahsilat iptali/düzeltmesi olarak iade edilebilir.");
@@ -1381,16 +1521,23 @@ public sealed class StudentFinanceService(
         var now = DateTime.UtcNow;
         var net = dashboardContracts.Sum(item => item.NetAmount);
         var collected = FinanceTotals.NetCollected(payments.Select(item => item.Amount));
-        // Fazla/avans tahsilatta net'ten büyük olabilir; "Bekleyen" negatif gösterilmesin.
+        var paidByStudent = AttributePaymentsToStudents(contracts, payments);
+        // Bekleyen alacak öğrenci öğrenci hesaplanıp toplanır. Kurum toplamında
+        // "sözleşme − tahsilat" yapmak bir öğrencinin avansını başka bir öğrencinin
+        // borcundan düşüyordu (A 1.000 fazla, B 1.000 borçlu → "0 bekleyen").
         var outstanding = hasDateRange
             ? dashboardInstallments.Sum(item => Math.Max(0, item.Amount - item.PaidAmount))
-            : FinanceTotals.Outstanding(net, collected);
+            : contracts
+                .GroupBy(ResolveStudentKey)
+                .Sum(group => FinanceTotals.Outstanding(
+                    group.Sum(item => item.NetAmount),
+                    paidByStudent.GetValueOrDefault(group.Key)));
 
         decimal BucketAmount(int minDays, int maxDays) => dashboardInstallments
             .Where(item =>
             {
                 var remaining = item.Amount - item.PaidAmount;
-                if (remaining <= 0 || item.DueDateUtc >= now) return false;
+                if (remaining <= 0 || !FinanceDates.IsOverdue(item.DueDateUtc, now)) return false;
                 var overdueDays = (now - item.DueDateUtc).TotalDays;
                 return overdueDays >= minDays && (maxDays < 0 || overdueDays < maxDays);
             })
@@ -1400,7 +1547,7 @@ public sealed class StudentFinanceService(
             .Count(item =>
             {
                 var remaining = item.Amount - item.PaidAmount;
-                if (remaining <= 0 || item.DueDateUtc >= now) return false;
+                if (remaining <= 0 || !FinanceDates.IsOverdue(item.DueDateUtc, now)) return false;
                 var overdueDays = (now - item.DueDateUtc).TotalDays;
                 return overdueDays >= minDays && (maxDays < 0 || overdueDays < maxDays);
             });
@@ -1413,7 +1560,7 @@ public sealed class StudentFinanceService(
             new("90+ gün", BucketCount(90, -1), BucketAmount(90, -1)),
         };
 
-        var overdueInstallments = dashboardInstallments.Where(item => item.Amount - item.PaidAmount > 0 && item.DueDateUtc < now).ToList();
+        var overdueInstallments = dashboardInstallments.Where(item => item.Amount - item.PaidAmount > 0 && FinanceDates.IsOverdue(item.DueDateUtc, now)).ToList();
         var overdueTotal = overdueInstallments.Sum(item => item.Amount - item.PaidAmount);
         var overdueStudents = overdueInstallments
             .Select(item => item.StudentName)
@@ -1463,7 +1610,7 @@ public sealed class StudentFinanceService(
                         due,
                         paid,
                         balance,
-                        group.Count(item => item.DueDateUtc < now && item.Amount > item.PaidAmount),
+                        group.Count(item => FinanceDates.IsOverdue(item.DueDateUtc, now) && item.Amount > item.PaidAmount),
                         group.Where(item => item.Amount > item.PaidAmount).MinBy(item => item.DueDateUtc)?.DueDateUtc,
                         ResolveStatus(balance, 0, due));
                 })
@@ -1474,7 +1621,6 @@ public sealed class StudentFinanceService(
         }
         else
         {
-            var paidByStudent = AttributePaymentsToStudents(contracts, payments);
             topDebtors = contracts
                 .GroupBy(ResolveStudentKey)
                 .Select(group =>
@@ -1507,9 +1653,18 @@ public sealed class StudentFinanceService(
             aging, monthly, topDebtors, refundedTotal);
     }
 
-    public async Task<ReminderResultDto> SendDueRemindersAsync(
+    public Task<ReminderResultDto> SendDueRemindersAsync(
         int upcomingWindowDays,
         CancellationToken cancellationToken = default)
+        => SendRemindersAsync(upcomingWindowDays, overdueOnly: false, cancellationToken);
+
+    public Task<ReminderResultDto> SendOverdueRemindersAsync(CancellationToken cancellationToken = default)
+        => SendRemindersAsync(0, overdueOnly: true, cancellationToken);
+
+    private async Task<ReminderResultDto> SendRemindersAsync(
+        int upcomingWindowDays,
+        bool overdueOnly,
+        CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
         var windowEnd = now.AddDays(Math.Max(1, upcomingWindowDays));
@@ -1517,22 +1672,34 @@ public sealed class StudentFinanceService(
             .Where(item => item.Amount - item.PaidAmount > 0 && item.DueDateUtc <= windowEnd)
             .ToListAsync(cancellationToken);
 
-        var overdueCount = due.Count(item => item.DueDateUtc < now);
-        var upcomingCount = due.Count(item => item.DueDateUtc >= now);
-        var notified = 0;
-
-        foreach (var group in due.GroupBy(item => item.StudentName))
+        if (overdueOnly)
         {
-            if (string.IsNullOrWhiteSpace(group.Key)) continue;
+            due = due.Where(item => FinanceDates.IsOverdue(item.DueDateUtc, now)).ToList();
+        }
+        var overdueCount = due.Count(item => FinanceDates.IsOverdue(item.DueDateUtc, now));
+        var upcomingCount = due.Count - overdueCount;
+        var notified = 0;
+        var today = FinanceDates.TodayUtcDate(now).ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+
+        // Öğrenci kimliğe göre gruplanır: aynı adlı iki öğrencinin borcu tek
+        // hatırlatmada birleşip yanlış veliye gitmesin.
+        foreach (var group in due.GroupBy(item => item.StudentUserId is Guid id
+                     ? $"user:{id:N}"
+                     : $"name:{NormalizeStudentName(item.StudentName)}"))
+        {
+            var first = group.First();
+            if (first.StudentUserId is null && string.IsNullOrWhiteSpace(first.StudentName)) continue;
             var totalDue = group.Sum(item => item.Amount - item.PaidAmount);
-            var isOverdue = group.Any(item => item.DueDateUtc < now);
-            // Veliye hem uygulama içi bildirim hem de telefona push (ParentNotifier
-            // öğrencinin velisini çözer ve iki kanaldan bildirir).
+            var isOverdue = group.Any(item => FinanceDates.IsOverdue(item.DueDateUtc, now));
+            // Bildirim yalnız o öğrencinin velisine gider (uygulama içi + push);
+            // aynı gün ikinci kez basılan hatırlatma yeni kayıt üretmez.
             await parentNotifier.NotifyStudentParentAsync(
-                group.Key,
+                first.StudentUserId,
+                first.StudentName,
                 isOverdue ? "Geciken ödeme hatırlatması" : "Yaklaşan ödeme hatırlatması",
-                $"{group.Key} için {(isOverdue ? "vadesi geçen" : "yaklaşan")} {MoneyText.Format(totalDue)} taksit bulunuyor.",
+                $"{first.StudentName} için {(isOverdue ? "vadesi geçen" : "yaklaşan")} {MoneyText.Format(totalDue)} taksit bulunuyor.",
                 "FinanceReminder",
+                $"finance-reminder:{group.Key}:{today}",
                 cancellationToken);
             notified++;
         }
@@ -1665,7 +1832,7 @@ public sealed class StudentFinanceService(
         foreach (var payment in payments.Where(item => existing.All(allocation => allocation.FinancePaymentId != item.Id)))
         {
             // Kayıt peşinatı taksit planının dışındadır; yanlışlıkla taksite bağlanmaz.
-            if (payment.Note.StartsWith("Kayıt peşinatı", StringComparison.OrdinalIgnoreCase)) continue;
+            if (IsDownPaymentNote(payment.Note)) continue;
             var remaining = payment.Amount;
             var sequence = 0;
             foreach (var installment in installments)
@@ -1695,6 +1862,466 @@ public sealed class StudentFinanceService(
             .Where(item => item.FinancePaymentId == source.Id)
             .OrderByDescending(item => item.Sequence)
             .ToList();
+    }
+
+    public const string DownPaymentNote = "Kayıt peşinatı";
+
+    private const string AmbiguousStudentMessage =
+        "Bu adla birden fazla öğrenci kayıtlı. Para yanlış öğrencinin hesabına yazılmasın diye işlem durduruldu; işlemi öğrencinin kendi finans kartından yapın.";
+
+    private static bool IsDownPaymentNote(string? note) =>
+        (note ?? string.Empty).StartsWith(DownPaymentNote, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Para hareketi yazan her işlem bu kilidi alır. Açık bir işlem yoksa yenisini
+    /// başlatır ve döndürür (çağıran commit eder); varsa onun içinde çalışır.
+    /// PostgreSQL'de kurum başına işlem süresince tutulan danışma kilidi, eşzamanlı
+    /// iki tahsilatın aynı taksidin ödenen tutarını ezmesini ve aynı peşinatın iki
+    /// kez tahsil edilmesini önler. Test (SQLite) ortamında yalnız işlem açılır.
+    /// </summary>
+    private async Task<IDbContextTransaction?> BeginFinanceWriteAsync(CancellationToken cancellationToken)
+    {
+        var owned = dbContext.Database.CurrentTransaction is null
+            ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        if (dbContext.Database.IsNpgsql())
+        {
+            var lockKey = $"finance:{dbContext.CurrentTenantId?.ToString("N") ?? "legacy"}";
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtext({lockKey}))",
+                cancellationToken);
+        }
+        return owned;
+    }
+
+    /// <summary>Bu ada sahip öğrencilerin kullanıcı kimlikleri (sözleşme + öğrenci kartı).</summary>
+    private async Task<List<Guid>> FindStudentUserIdsByNameAsync(string? studentName, CancellationToken cancellationToken)
+    {
+        var nameLower = NormalizeStudentName(studentName);
+        if (nameLower.Length == 0) return [];
+
+        var fromContracts = await dbContext.EnrollmentContracts.AsNoTracking()
+            .Where(item => item.StudentUserId != null && item.StudentName.Trim().ToLower() == nameLower)
+            .Select(item => item.StudentUserId!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var fromProfiles = await dbContext.Students.AsNoTracking()
+            .Where(item => item.FullName.Trim().ToLower() == nameLower)
+            .Select(item => item.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var candidates = fromContracts.Concat(fromProfiles).Where(id => id != Guid.Empty).Distinct().ToList();
+        if (candidates.Count <= 1) return candidates;
+
+        // Aynı ad mezun/pasif bir öğrenciyle çakışıyorsa aktif olan tektir.
+        var active = await dbContext.Users.AsNoTracking()
+            .Where(item => candidates.Contains(item.Id) && item.Status != UserStatus.Passive)
+            .Select(item => item.Id)
+            .ToListAsync(cancellationToken);
+        return active.Count == 1 ? active : candidates;
+    }
+
+    public async Task<Guid?> ResolveUniqueStudentUserIdAsync(string? studentName, CancellationToken cancellationToken = default)
+    {
+        var candidates = await FindStudentUserIdsByNameAsync(studentName, cancellationToken);
+        if (candidates.Count > 1) throw new InvalidOperationException(AmbiguousStudentMessage);
+        return candidates.Count == 1 ? candidates[0] : null;
+    }
+
+    /// <summary>
+    /// Değiştirilebilir/silinebilir tahsilatı yükler. Taksite mahsup edilmiş, iade
+    /// görmüş ya da sınav ücretini kapatmış tahsilat düzenlenmez — onların düzeltmesi
+    /// makbuz üzerinden iadedir. Kalanlar (peşinat, avans/fazla ödeme) taksitlere hiç
+    /// dokunmadığı için düzenlenince taksit planı yeniden hesaplanmaz.
+    /// </summary>
+    private async Task<FinancePayment> LoadEditableCollectionAsync(Guid paymentId, string verb, CancellationToken cancellationToken)
+    {
+        var payment = await dbContext.FinancePayments.FirstOrDefaultAsync(item => item.Id == paymentId, cancellationToken)
+            ?? throw new KeyNotFoundException("Tahsilat bulunamadı.");
+        if (payment.Amount < 0 || payment.EntryType == "Refund")
+        {
+            throw new InvalidOperationException($"İade belgeleri {verb}; yanlış işlem yeni bir düzeltme hareketiyle ele alınmalıdır.");
+        }
+        if (await dbContext.FinancePayments.AnyAsync(item => item.OriginalPaymentId == payment.Id, cancellationToken))
+        {
+            throw new InvalidOperationException($"İade görmüş tahsilat {verb}; makbuz üzerinden iade yapılmalıdır.");
+        }
+        if (payment.Note.Contains("Direksiyon sınav ücreti tahsil edildi", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Sınav ücretini kapatan tahsilat {verb}; makbuz üzerinden iade yapılmalıdır.");
+        }
+        if (!IsDownPaymentNote(payment.Note))
+        {
+            var allocated = await dbContext.FinancePaymentAllocations
+                .AnyAsync(item => item.FinancePaymentId == payment.Id, cancellationToken);
+            // Dağılım tablosundan önceki tahsilatların taksit izi burada çıkarılır;
+            // eskiden bu tür tahsilat düzenlenince tüm taksitler sıfırdan dağıtılıyordu.
+            if (!allocated) allocated = (await CreateLegacyAllocationsAsync(payment, cancellationToken)).Count > 0;
+            if (allocated)
+            {
+                throw new InvalidOperationException($"Taksitlere mahsup edilmiş tahsilat {verb}; makbuz üzerinden iade yapılmalıdır.");
+            }
+        }
+        return payment;
+    }
+
+    public async Task<FinancePaymentDto> UpdateCollectionAsync(
+        Guid paymentId,
+        string? studentName,
+        decimal amount,
+        string? method,
+        string? note,
+        CancellationToken cancellationToken = default)
+    {
+        if (amount <= 0) throw new ArgumentException("Tahsilat tutarı sıfırdan büyük olmalı.");
+
+        await using var ownedTransaction = await BeginFinanceWriteAsync(cancellationToken);
+        var payment = await LoadEditableCollectionAsync(paymentId, "değiştirilemez", cancellationToken);
+        var newName = string.IsNullOrWhiteSpace(studentName) ? payment.StudentName : studentName.Trim();
+        var nameChanged = NormalizeStudentName(newName) != NormalizeStudentName(payment.StudentName);
+        var userNote = note?.Trim() ?? string.Empty;
+        var before = $"{payment.StudentName} — {payment.Amount:0.##} {payment.Currency} ({payment.Method})";
+
+        if (IsDownPaymentNote(payment.Note))
+        {
+            if (nameChanged)
+            {
+                throw new InvalidOperationException("Kayıt peşinatı başka bir öğrenciye taşınamaz; yanlış öğrenciden alındıysa makbuz üzerinden iade edin.");
+            }
+            if (payment.EnrollmentContractId is Guid contractId
+                && await dbContext.EnrollmentContracts.FirstOrDefaultAsync(item => item.Id == contractId, cancellationToken) is { } contract)
+            {
+                var paidWithoutThis = Math.Max(0, contract.DownPaymentPaidAmount - payment.Amount);
+                if (paidWithoutThis + amount > contract.DownPayment)
+                {
+                    throw new ArgumentException($"Peşinat tahsilatı sözleşmedeki peşinatı aşamaz (en fazla {contract.DownPayment - paidWithoutThis:0.##} {contract.Currency}).");
+                }
+                contract.DownPaymentPaidAmount = paidWithoutThis + amount;
+                contract.DownPaymentPaid = contract.DownPaymentPaidAmount >= contract.DownPayment;
+            }
+            // "Kayıt peşinatı" işareti korunur; silinirse kayıt sıradan tahsilata
+            // dönüşür ve peşinat bağı kaybolurdu.
+            payment.Note = userNote.Length == 0 || IsDownPaymentNote(userNote)
+                ? (userNote.Length == 0 ? DownPaymentNote : userNote)
+                : $"{DownPaymentNote} • {userNote}";
+        }
+        else
+        {
+            if (nameChanged)
+            {
+                var userId = await ResolveUniqueStudentUserIdAsync(newName, cancellationToken);
+                var newNameLower = NormalizeStudentName(newName);
+                var targetContract = userId is Guid targetUserId
+                    ? await dbContext.EnrollmentContracts.AsNoTracking()
+                        .Where(item => item.StudentUserId == targetUserId)
+                        .OrderByDescending(item => item.CreatedAtUtc)
+                        .FirstOrDefaultAsync(cancellationToken)
+                    : await dbContext.EnrollmentContracts.AsNoTracking()
+                        .Where(item => item.StudentUserId == null && item.StudentName.Trim().ToLower() == newNameLower)
+                        .OrderByDescending(item => item.CreatedAtUtc)
+                        .FirstOrDefaultAsync(cancellationToken);
+                payment.StudentName = newName;
+                payment.StudentUserId = userId;
+                payment.EnrollmentContractId = targetContract?.Id;
+            }
+            payment.Note = userNote;
+        }
+
+        payment.Amount = amount;
+        payment.Method = string.IsNullOrWhiteSpace(method) ? "Nakit" : method.Trim();
+        payment.FinanceInstallmentId = null;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Tahsilat düzeltildi",
+            "Finance",
+            "FinancePayment",
+            payment.Id.ToString(),
+            $"Makbuz {payment.ReceiptNo}: {before} → {payment.StudentName} — {payment.Amount:0.##} {payment.Currency} ({payment.Method}).",
+            cancellationToken);
+        if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
+        return MapPayment(payment);
+    }
+
+    public async Task DeleteCollectionAsync(Guid paymentId, CancellationToken cancellationToken = default)
+    {
+        await using var ownedTransaction = await BeginFinanceWriteAsync(cancellationToken);
+        var payment = await LoadEditableCollectionAsync(paymentId, "silinemez", cancellationToken);
+
+        // Silinen peşinat makbuzu sözleşmeden de düşülür; yoksa sözleşme makbuzu
+        // olmayan bir peşinatı "tahsil edildi" göstermeye devam ediyordu.
+        if (IsDownPaymentNote(payment.Note)
+            && payment.EnrollmentContractId is Guid contractId
+            && await dbContext.EnrollmentContracts.FirstOrDefaultAsync(item => item.Id == contractId, cancellationToken) is { } contract)
+        {
+            contract.DownPaymentPaidAmount = Math.Max(0, contract.DownPaymentPaidAmount - payment.Amount);
+            contract.DownPaymentPaid = contract.DownPayment <= 0 || contract.DownPaymentPaidAmount >= contract.DownPayment;
+        }
+
+        dbContext.FinancePayments.Remove(payment);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Tahsilat silindi",
+            "Finance",
+            "FinancePayment",
+            payment.Id.ToString(),
+            $"Makbuz {payment.ReceiptNo}: {payment.StudentName} — {payment.Amount:0.##} {payment.Currency} ({payment.Method}).",
+            cancellationToken);
+        if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
+    }
+
+    public async Task<FinanceInstallmentDto?> UpdateInstallmentAsync(
+        Guid installmentId,
+        decimal amount,
+        DateTime dueDateUtc,
+        string? status,
+        string? method,
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (amount <= 0) throw new ArgumentException("Taksit tutarı sıfırdan büyük olmalı.");
+
+        await using var ownedTransaction = await BeginFinanceWriteAsync(cancellationToken);
+        var installment = await dbContext.FinanceInstallments
+            .FirstOrDefaultAsync(item => item.Id == installmentId, cancellationToken);
+        if (installment is null) return null;
+
+        var requested = (status ?? string.Empty).Trim();
+        // İstemciler düzenleme formunda taksidin mevcut durumunu geri gönderir.
+        // Zaten tamamen ödenmiş taksidin tutarı artırılırken gelen "Ödendi",
+        // alınmamış bir para için makbuz kesmemeli; yalnız durum yeniden hesaplanır.
+        var wasFullyPaid = installment.Amount > 0 && installment.PaidAmount >= installment.Amount;
+        var markPaid = !wasFullyPaid
+            && (requested.Equals("Ödendi", StringComparison.OrdinalIgnoreCase)
+                || requested.Equals("Paid", StringComparison.OrdinalIgnoreCase));
+        var markPending = requested.Equals("Bekliyor", StringComparison.OrdinalIgnoreCase)
+            || requested.Equals("Pending", StringComparison.OrdinalIgnoreCase);
+
+        if (markPending)
+        {
+            // Yalnız ELLE işaretlenmiş (makbuzsuz) kısım geri alınır; gerçek
+            // tahsilatların mahsubu korunur — onların geri alınması iadedir.
+            var allocatedPaid = await dbContext.FinancePaymentAllocations
+                .Where(item => item.FinanceInstallmentId == installment.Id)
+                .SumAsync(item => (decimal?)(item.Amount - item.RefundedAmount), cancellationToken) ?? 0m;
+            installment.PaidAmount = Math.Clamp(allocatedPaid, 0, installment.PaidAmount);
+        }
+
+        if (amount < installment.PaidAmount)
+        {
+            throw new ArgumentException($"Taksit tutarı tahsil edilmiş {installment.PaidAmount:0.##} {installment.Currency} tutarın altına düşürülemez; fazlası için makbuz üzerinden iade yapın.");
+        }
+
+        // Taksit tutarı değişince sözleşmenin net tutarı da aynı farkla değişir;
+        // aksi hâlde sözleşme, taksit planı, ekstre ve pano farklı borç gösterir.
+        var delta = amount - installment.Amount;
+        installment.Amount = amount;
+        installment.DueDateUtc = dueDateUtc;
+        if (delta != 0 && installment.EnrollmentContractId != Guid.Empty
+            && await dbContext.EnrollmentContracts.FirstOrDefaultAsync(item => item.Id == installment.EnrollmentContractId, cancellationToken) is { } contract)
+        {
+            contract.NetAmount = Math.Max(0, contract.NetAmount + delta);
+            if (delta > 0)
+            {
+                contract.GrossAmount += delta;
+            }
+            else
+            {
+                contract.DiscountAmount = Math.Min(contract.GrossAmount, contract.DiscountAmount - delta);
+                contract.DiscountReason = $"{contract.DiscountReason} | Taksit tutarı düzeltmesi".Trim(' ', '|');
+            }
+        }
+        installment.Status = installment.PaidAmount <= 0
+            ? "Pending"
+            : installment.PaidAmount >= installment.Amount ? "Paid" : "Partial";
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // "Ödendi" artık gerçek, makbuzlu bir tahsilat yazar. Eskiden yalnız taksit
+        // kapanıyordu; para tahsilat listesine, kasaya, ekstreye ve panoya hiç
+        // girmiyordu.
+        if (markPaid && installment.Amount - installment.PaidAmount > 0)
+        {
+            await RecordPaymentAsync(
+                new RecordPaymentRequest(
+                    installment.StudentUserId,
+                    installment.StudentName,
+                    installment.EnrollmentContractId == Guid.Empty ? null : installment.EnrollmentContractId,
+                    installment.Id,
+                    installment.Amount - installment.PaidAmount,
+                    string.IsNullOrWhiteSpace(method) ? "Nakit" : method.Trim(),
+                    "Taksit ödendi olarak işaretlendi"),
+                actorUserId,
+                cancellationToken);
+        }
+
+        if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
+        return MapInstallment(installment, DateTime.UtcNow);
+    }
+
+    /// <summary>
+    /// Elle açılan taksit kendi küçük sözleşmesiyle kaydedilir. Eskiden sözleşmesiz
+    /// (boş kimlikli) yazılıyordu; özet listesi, finans panosu ve gecikme tablosu onu
+    /// görmüyor, öğrenci kimliğiyle gelen tahsilat da ona hiç ulaşmıyordu.
+    /// </summary>
+    public async Task<FinanceInstallmentDto> CreateManualInstallmentAsync(
+        string studentName,
+        decimal amount,
+        DateTime dueDateUtc,
+        string? note,
+        CancellationToken cancellationToken = default)
+    {
+        var name = studentName?.Trim() ?? string.Empty;
+        if (name.Length == 0) throw new ArgumentException("Öğrenci adı zorunludur.");
+        if (amount <= 0) throw new ArgumentException("Taksit tutarı sıfırdan büyük olmalı.");
+
+        await using var ownedTransaction = await BeginFinanceWriteAsync(cancellationToken);
+        var userId = await ResolveUniqueStudentUserIdAsync(name, cancellationToken);
+        var (contract, installment) = await BuildManualInstallmentAsync(userId, name, amount, dueDateUtc, note, cancellationToken);
+        await dbContext.EnrollmentContracts.AddAsync(contract, cancellationToken);
+        await dbContext.FinanceInstallments.AddAsync(installment, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Elle taksit açıldı",
+            "Finance",
+            "FinanceInstallment",
+            installment.Id.ToString(),
+            $"{name} — {amount:0.##} {installment.Currency}, vade {dueDateUtc:dd.MM.yyyy}.",
+            cancellationToken);
+        if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
+        return MapInstallment(installment, DateTime.UtcNow);
+    }
+
+    private async Task<(EnrollmentContract Contract, FinanceInstallment Installment)> BuildManualInstallmentAsync(
+        Guid? userId,
+        string name,
+        decimal amount,
+        DateTime dueDateUtc,
+        string? note,
+        CancellationToken cancellationToken)
+    {
+        var nameLower = NormalizeStudentName(name);
+        var latest = userId is Guid id
+            ? await dbContext.EnrollmentContracts.AsNoTracking()
+                .Where(item => item.StudentUserId == id)
+                .OrderByDescending(item => item.CreatedAtUtc)
+                .FirstOrDefaultAsync(cancellationToken)
+            : await dbContext.EnrollmentContracts.AsNoTracking()
+                .Where(item => item.StudentUserId == null && item.StudentName.Trim().ToLower() == nameLower)
+                .OrderByDescending(item => item.CreatedAtUtc)
+                .FirstOrDefaultAsync(cancellationToken);
+        var profileClass = userId is Guid profileUserId
+            ? await dbContext.Students.AsNoTracking()
+                .Where(item => item.UserId == profileUserId)
+                .Select(item => item.ClassName)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+        var trimmedNote = note?.Trim() ?? string.Empty;
+
+        var contract = new EnrollmentContract
+        {
+            StudentUserId = userId,
+            StudentName = name,
+            ClassName = string.IsNullOrWhiteSpace(profileClass) ? latest?.ClassName ?? string.Empty : profileClass.Trim(),
+            AcademicYear = latest?.AcademicYear ?? string.Empty,
+            GrossAmount = amount,
+            NetAmount = amount,
+            DownPayment = 0,
+            DownPaymentPaid = true,
+            InstallmentCount = 1,
+            Currency = "TRY",
+            Status = "Active",
+            Note = trimmedNote.Length == 0 ? "Manuel taksit" : $"Manuel taksit • {trimmedNote}",
+        };
+        var installment = new FinanceInstallment
+        {
+            EnrollmentContractId = contract.Id,
+            StudentUserId = userId,
+            StudentName = name,
+            SeqNo = 1,
+            Label = "Manuel Taksit",
+            DueDateUtc = DateTime.SpecifyKind(dueDateUtc.Date, DateTimeKind.Utc),
+            Amount = amount,
+            PaidAmount = 0,
+            Status = "Pending",
+            Currency = "TRY",
+        };
+        return (contract, installment);
+    }
+
+    /// <summary>
+    /// Muhasebe ekranındaki indirim/burs tanımını öğrencinin aktif sözleşmesine
+    /// uygular: indirim, henüz ödenmemiş taksitlerden (en son vadeden başlayarak)
+    /// düşülür. Tahsil edilmiş kısım indirilemez; onun karşılığı iadedir. Eskiden
+    /// tanım yalnız listeye yazılıyor, borç hiç değişmiyordu.
+    /// </summary>
+    public async Task<(decimal Applied, decimal Requested)> ApplyBenefitAsync(
+        Guid? studentUserId,
+        string studentName,
+        decimal ratePercent,
+        bool isScholarship,
+        string title,
+        CancellationToken cancellationToken = default)
+    {
+        var rate = Math.Clamp(ratePercent, 0m, 100m);
+        if (rate <= 0) throw new ArgumentException("İndirim/burs oranı sıfırdan büyük olmalı.");
+
+        await using var ownedTransaction = await BeginFinanceWriteAsync(cancellationToken);
+        var name = studentName?.Trim() ?? string.Empty;
+        var userId = studentUserId ?? await ResolveUniqueStudentUserIdAsync(name, cancellationToken);
+        var nameLower = NormalizeStudentName(name);
+        var contract = (userId is Guid id
+                ? await dbContext.EnrollmentContracts
+                    .Where(item => item.StudentUserId == id && item.Status == "Active")
+                    .OrderByDescending(item => item.CreatedAtUtc)
+                    .FirstOrDefaultAsync(cancellationToken)
+                : await dbContext.EnrollmentContracts
+                    .Where(item => item.StudentUserId == null && item.Status == "Active" && item.StudentName.Trim().ToLower() == nameLower)
+                    .OrderByDescending(item => item.CreatedAtUtc)
+                    .FirstOrDefaultAsync(cancellationToken))
+            ?? throw new InvalidOperationException("Öğrencinin aktif kayıt sözleşmesi yok; indirim/burs sözleşme oluşturulduktan sonra uygulanabilir.");
+
+        var requested = Math.Round(contract.GrossAmount * rate / 100m, 2, MidpointRounding.AwayFromZero);
+        var openInstallments = await dbContext.FinanceInstallments
+            .Where(item => item.EnrollmentContractId == contract.Id && item.Amount > item.PaidAmount)
+            .OrderByDescending(item => item.DueDateUtc)
+            .ToListAsync(cancellationToken);
+        var applied = Math.Min(requested, openInstallments.Sum(item => item.Amount - item.PaidAmount));
+        if (applied <= 0)
+        {
+            throw new InvalidOperationException("Sözleşmede ödenmemiş taksit kalmadığı için indirim borçtan düşülemez; tahsil edilmiş tutar için makbuz üzerinden iade yapın.");
+        }
+
+        var left = applied;
+        foreach (var installment in openInstallments)
+        {
+            if (left <= 0) break;
+            var cut = Math.Min(installment.Amount - installment.PaidAmount, left);
+            installment.Amount -= cut;
+            left -= cut;
+            installment.Status = installment.PaidAmount <= 0
+                ? (installment.Amount <= 0 ? "Paid" : "Pending")
+                : installment.PaidAmount >= installment.Amount ? "Paid" : "Partial";
+        }
+
+        contract.DiscountAmount = Math.Min(contract.GrossAmount, contract.DiscountAmount + applied);
+        contract.NetAmount = Math.Max(0, contract.NetAmount - applied);
+        if (isScholarship)
+        {
+            contract.ScholarshipAmount += applied;
+            contract.ScholarshipPercent = Math.Min(100m, contract.ScholarshipPercent + rate);
+        }
+        var label = $"{title.Trim()} (%{rate.ToString("0.##", CultureInfo.GetCultureInfo("tr-TR"))})";
+        contract.DiscountReason = $"{contract.DiscountReason} | {label}".Trim(' ', '|');
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            isScholarship ? "Burs uygulandı" : "İndirim uygulandı",
+            "Finance",
+            "EnrollmentContract",
+            contract.Id.ToString(),
+            $"{contract.StudentName} — {label}: {applied:0.##} {contract.Currency} borçtan düşüldü" + (applied < requested ? $" (istenen {requested:0.##}; kalan kısım tahsil edilmiş olduğu için düşülemedi)." : "."),
+            cancellationToken);
+        if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
+        return (applied, requested);
     }
 
     private static DateTime FirstDayOfNextMonth(DateTime reference)
@@ -1772,7 +2399,7 @@ public sealed class StudentFinanceService(
     {
         var remaining = installment.Amount - installment.PaidAmount;
         if (remaining <= 0) return "Paid";
-        if (installment.DueDateUtc < nowUtc) return "Overdue";
+        if (FinanceDates.IsOverdue(installment.DueDateUtc, nowUtc)) return "Overdue";
         return installment.PaidAmount > 0 ? "Partial" : "Pending";
     }
 
@@ -1860,7 +2487,7 @@ public sealed class StudentFinanceService(
             payment.ExternalReference,
             allocatedRefundableAmount,
             Math.Max(0, refundableAmount - allocatedRefundableAmount),
-            payment.Note.StartsWith("Kayıt peşinatı", StringComparison.OrdinalIgnoreCase),
+            IsDownPaymentNote(payment.Note),
             collectedByName,
             branchName);
 }

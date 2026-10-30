@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Accounting;
+using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Services;
@@ -14,7 +15,10 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
-public sealed class AccountingController(IAccountingService accountingService, CourseIntellectDbContext dbContext) : ControllerBase
+public sealed class AccountingController(
+    IAccountingService accountingService,
+    IStudentFinanceService studentFinanceService,
+    CourseIntellectDbContext dbContext) : ControllerBase
 {
     private const string BenefitSectionKey = "accounting-benefits";
 
@@ -108,8 +112,36 @@ public sealed class AccountingController(IAccountingService accountingService, C
             return BadRequest(new { message = "Öğrenci, sınıf, tür ve oran zorunludur." });
         }
 
-        var benefits = await CompatibilitySnapshotStore.LoadListAsync<AccountingBenefitSnapshot>(dbContext, BenefitSectionKey, cancellationToken);
         var benefitType = string.Equals(request.BenefitType.Trim(), "Burs", StringComparison.OrdinalIgnoreCase) ? "Burs" : "İndirim";
+        var benefitTitle = string.IsNullOrWhiteSpace(request.Title) ? $"{benefitType} Tanımı" : request.Title.Trim();
+
+        // Tanım öğrencinin sözleşmesine gerçekten uygulanır (ödenmemiş taksitlerden
+        // düşülür). Eskiden yalnız bu listeye "Aktif" yazılıyor, borç değişmiyordu.
+        var username = request.StudentUsername.Trim();
+        var studentUserId = await dbContext.Users.AsNoTracking()
+            .Where(x => x.Username == username)
+            .Select(x => (Guid?)x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        decimal applied, requested;
+        try
+        {
+            (applied, requested) = await studentFinanceService.ApplyBenefitAsync(
+                studentUserId,
+                request.StudentName.Trim(),
+                ParsePercent(request.Rate),
+                benefitType == "Burs",
+                benefitTitle,
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+
+        var benefits = await CompatibilitySnapshotStore.LoadListAsync<AccountingBenefitSnapshot>(dbContext, BenefitSectionKey, cancellationToken);
+        var appliedNote = applied < requested
+            ? $"Borçtan düşülen: {MoneyParser.Format(applied)} (istenen {MoneyParser.Format(requested)}; kalanı tahsil edilmiş olduğu için düşülemedi)."
+            : $"Borçtan düşülen: {MoneyParser.Format(applied)}.";
         var item = new AccountingBenefitSnapshot
         {
             Id = Guid.NewGuid(),
@@ -117,14 +149,14 @@ public sealed class AccountingController(IAccountingService accountingService, C
             StudentUsername = request.StudentUsername.Trim(),
             ClassName = request.ClassName.Trim(),
             BenefitType = benefitType,
-            Title = string.IsNullOrWhiteSpace(request.Title) ? $"{benefitType} Tanımı" : request.Title.Trim(),
+            Title = benefitTitle,
             Rate = request.Rate.Trim(),
             TotalAmount = NormalizeMoney(request.TotalAmount),
             NetAmount = CalculateNetAmount(request.TotalAmount, request.Rate),
             // İndirim/burs tanımı artık ayrı bir onay akışına girmez; kaydedildiği
             // anda aktiftir. Rol ve paket yetkisi endpoint seviyesinde korunur.
             Status = "Aktif",
-            Note = request.Note?.Trim() ?? string.Empty,
+            Note = string.IsNullOrWhiteSpace(request.Note) ? appliedNote : $"{request.Note.Trim()} • {appliedNote}",
             CreatedAtUtc = DateTime.UtcNow,
         };
 
@@ -134,7 +166,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
         await dbContext.AccountingAuditLogs.AddAsync(new AccountingAuditLog
         {
             Title = $"{item.BenefitType} doğrudan uygulandı",
-            Detail = $"{item.StudentName} için {item.Title} onay beklemeden aktif edildi.",
+            Detail = $"{item.StudentName} için {item.Title} uygulandı; {appliedNote}",
             Time = DateTime.UtcNow.ToString("dd.MM.yyyy • HH:mm"),
         }, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -243,11 +275,53 @@ public sealed class AccountingController(IAccountingService accountingService, C
     {
         var item = await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return NotFound();
+        var amount = ParseMoney(request.Amount);
+        if (amount <= 0)
+            return BadRequest(new { message = "Bordro tutarı sıfırdan büyük olmalıdır." });
+
+        // Bordro onayı yönetici işidir. Muhasebe rolü durumu yalnız "Planlandı" →
+        // "Ödendi" ilerletebilir; onay/ret/geri alma kararını veremez. Onaylanmış
+        // bordronun tutarı değişirse kayıt yeniden yönetici onayına düşer.
+        var currentStatus = NormalizeSalaryStatus(item.Status);
+        var requestedStatus = NormalizeSalaryStatus(request.Status);
+        var isAdmin = User.IsInRole("Admin");
+        if (!isAdmin && requestedStatus != currentStatus
+            && !(currentStatus == "Planlandı" && requestedStatus == "Ödendi"))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Bordro onay durumu yalnızca yönetici tarafından değiştirilebilir." });
+        }
+
+        var amountChanged = MoneyParser.Parse(item.Amount) != amount;
         item.Employee = request.Employee.Trim();
         item.Role = request.Role.Trim();
-        item.Amount = NormalizeMoney(request.Amount);
+        item.Amount = MoneyParser.Format(amount);
         item.PayDate = request.PayDate.Trim();
-        item.Status = request.Status.Trim();
+        item.Status = requestedStatus;
+        if (!isAdmin && amountChanged && currentStatus == "Planlandı")
+        {
+            item.Status = "Bekliyor";
+            var approval = await dbContext.AccountingApprovals
+                .FirstOrDefaultAsync(x => x.SourceType == "salary" && x.SourceKey == item.Id.ToString(), cancellationToken);
+            if (approval is null)
+            {
+                await dbContext.AccountingApprovals.AddAsync(new AccountingApproval
+                {
+                    Title = $"{item.Employee} bordro talebi",
+                    Reason = "Onaylı bordronun tutarı değiştirildi.",
+                    Category = "Maaş",
+                    Status = "Bekliyor",
+                    SourceType = "salary",
+                    SourceKey = item.Id.ToString(),
+                    UpdatedAtUtc = DateTime.UtcNow,
+                }, cancellationToken);
+            }
+            else
+            {
+                approval.Status = "Bekliyor";
+                approval.Reason = "Onaylı bordronun tutarı değiştirildi.";
+                approval.UpdatedAtUtc = DateTime.UtcNow;
+            }
+        }
         await dbContext.SaveChangesAsync(cancellationToken);
         return Ok(new AccountingSalaryDto(item.Id.ToString(), item.Employee, item.Role, item.Amount, item.PayDate, item.Status));
     }
@@ -260,6 +334,12 @@ public sealed class AccountingController(IAccountingService accountingService, C
         var item = await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return NotFound();
         dbContext.AccountingSalaries.Remove(item);
+        // Silinen bordronun onay satırı "Onaylar" ekranında sahipsiz kalmasın.
+        var key = item.Id.ToString();
+        var approvals = await dbContext.AccountingApprovals
+            .Where(x => x.SourceType == "salary" && x.SourceKey == key)
+            .ToListAsync(cancellationToken);
+        dbContext.AccountingApprovals.RemoveRange(approvals);
         await dbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
@@ -269,8 +349,15 @@ public sealed class AccountingController(IAccountingService accountingService, C
     [RequireEntitlement("collections", "collect")]
     public async Task<IActionResult> CreateCollection([FromBody] CreateCollectionRequest request, CancellationToken cancellationToken)
     {
-        var item = await accountingService.CreateCollectionAsync(request, CurrentUserId(), cancellationToken);
-        return Ok(item);
+        try
+        {
+            var item = await accountingService.CreateCollectionAsync(request, CurrentUserId(), cancellationToken);
+            return Ok(item);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     // Tahsilatı alan personeli kaydetmek için oturumdaki kullanıcı. Inbound claim map
@@ -286,52 +373,30 @@ public sealed class AccountingController(IAccountingService accountingService, C
     [RequireEntitlement("collections", "collect")]
     public async Task<IActionResult> UpdateCollection(Guid id, [FromBody] CreateCollectionRequest request, CancellationToken cancellationToken)
     {
-        var item = await dbContext.FinancePayments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (item is null) return NotFound();
-        if (item.Amount < 0 || item.EntryType == "Refund")
+        // Yalnız taksitlere dokunmayan tahsilat (peşinat, avans) düzeltilebilir;
+        // mahsup edilmiş tahsilatın düzeltmesi makbuz üzerinden iadedir. Eskiden
+        // düzeltme/silme öğrencinin bütün taksitlerini sıfırdan yeniden dağıtıyor,
+        // peşinatı taksitlere de sayıyordu.
+        FinancePaymentDto payment;
+        try
         {
-            return Conflict(new { message = "İade belgeleri değiştirilemez; yanlış işlem yeni bir düzeltme hareketiyle ele alınmalıdır." });
+            payment = await studentFinanceService.UpdateCollectionAsync(
+                id, request.Name, ParseMoney(request.Amount), request.Method, request.Note, cancellationToken);
         }
-        if (await dbContext.FinancePaymentAllocations.AnyAsync(x => x.FinancePaymentId == id, cancellationToken)
-            || await dbContext.FinancePayments.AnyAsync(x => x.OriginalPaymentId == id, cancellationToken))
-        {
-            return Conflict(new { message = "Taksitlere mahsup edilmiş veya iade görmüş tahsilat değiştirilemez." });
-        }
-        if (await HasStudentRefundAsync(item, cancellationToken))
-        {
-            return Conflict(new { message = "İade hareketi bulunan öğrenci tahsilatları değiştirilemez." });
-        }
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
 
-        var previousStudentName = item.StudentName;
-        var previousStudentUserId = item.StudentUserId;
-        var previousContractId = item.EnrollmentContractId;
-
-        item.StudentName = string.IsNullOrWhiteSpace(request.Name) ? item.StudentName : request.Name.Trim();
-        item.Amount = Math.Max(0m, ParseMoney(request.Amount));
-        item.Method = string.IsNullOrWhiteSpace(request.Method) ? "Nakit" : request.Method.Trim();
-        item.Note = request.Note?.Trim() ?? string.Empty;
-        var targetContract = await dbContext.EnrollmentContracts
-            .AsNoTracking()
-            .Where(contract => contract.StudentName == item.StudentName)
-            .OrderByDescending(contract => contract.CreatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
-        item.EnrollmentContractId = targetContract?.Id;
-        item.StudentUserId = targetContract?.StudentUserId;
-        item.FinanceInstallmentId = null;
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        await RecalculateInstallmentPaymentsAsync(previousStudentName, previousStudentUserId, previousContractId, cancellationToken);
-        await RecalculateInstallmentPaymentsAsync(item.StudentName, item.StudentUserId, item.EnrollmentContractId, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
+        var studentName = await dbContext.FinancePayments.AsNoTracking()
+            .Where(x => x.Id == id).Select(x => x.StudentName).FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
         return Ok(new AccountingCollectionDto(
-            item.Id.ToString(),
-            item.StudentName,
+            payment.Id.ToString(),
+            studentName,
             request.ClassName?.Trim() ?? string.Empty,
-            MoneyParser.Format(item.Amount),
-            item.Method,
-            item.PaidAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
-            item.Note));
+            MoneyParser.Format(payment.Amount),
+            payment.Method,
+            payment.PaidAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
+            payment.Note));
     }
 
     [HttpDelete("collections/{id:guid}")]
@@ -339,30 +404,12 @@ public sealed class AccountingController(IAccountingService accountingService, C
     [RequireEntitlement("collections")]
     public async Task<IActionResult> DeleteCollection(Guid id, CancellationToken cancellationToken)
     {
-        var item = await dbContext.FinancePayments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (item is null) return NotFound();
-        if (item.Amount < 0 || item.EntryType == "Refund")
+        try
         {
-            return Conflict(new { message = "İade belgeleri silinemez." });
+            await studentFinanceService.DeleteCollectionAsync(id, cancellationToken);
         }
-        if (await dbContext.FinancePaymentAllocations.AnyAsync(x => x.FinancePaymentId == id, cancellationToken)
-            || await dbContext.FinancePayments.AnyAsync(x => x.OriginalPaymentId == id, cancellationToken))
-        {
-            return Conflict(new { message = "Taksitlere mahsup edilmiş veya iade görmüş tahsilat silinemez; makbuz üzerinden iade yapılmalıdır." });
-        }
-        if (await HasStudentRefundAsync(item, cancellationToken))
-        {
-            return Conflict(new { message = "İade hareketi bulunan öğrenci tahsilatları silinemez." });
-        }
-
-        var studentName = item.StudentName;
-        var studentUserId = item.StudentUserId;
-        var contractId = item.EnrollmentContractId;
-
-        dbContext.FinancePayments.Remove(item);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        await RecalculateInstallmentPaymentsAsync(studentName, studentUserId, contractId, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        catch (KeyNotFoundException) { return NotFound(); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
         return NoContent();
     }
 
@@ -371,8 +418,15 @@ public sealed class AccountingController(IAccountingService accountingService, C
     [RequireEntitlement("installments", "plan-create")]
     public async Task<IActionResult> CreateInstallment([FromBody] CreateInstallmentRequest request, CancellationToken cancellationToken)
     {
-        var item = await accountingService.CreateInstallmentAsync(request, cancellationToken);
-        return Ok(item);
+        try
+        {
+            var item = await accountingService.CreateInstallmentAsync(request, cancellationToken);
+            return Ok(item);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("installments/{id:guid}")]
@@ -380,8 +434,15 @@ public sealed class AccountingController(IAccountingService accountingService, C
     [RequireEntitlement("installments", "edit")]
     public async Task<IActionResult> UpdateInstallment(Guid id, [FromBody] UpdateInstallmentRequest request, CancellationToken cancellationToken)
     {
-        var item = await accountingService.UpdateInstallmentAsync(id, request, cancellationToken);
-        return item is null ? NotFound() : Ok(item);
+        try
+        {
+            var item = await accountingService.UpdateInstallmentAsync(id, request, CurrentUserId(), cancellationToken);
+            return item is null ? NotFound() : Ok(item);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("approvals/{id:guid}/status")]
@@ -405,37 +466,16 @@ public sealed class AccountingController(IAccountingService accountingService, C
     [RequireEntitlement("bulk-actions", "bulk-notify")]
     public async Task<IActionResult> SendBulkReminders(CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
-        var installments = await dbContext.FinanceInstallments
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        var overdue = installments
-            .Where(item => item.Amount - item.PaidAmount > 0 && item.DueDateUtc < now)
-            .ToList();
-
-        if (overdue.Count == 0)
+        // Hatırlatma yalnız borçlu öğrencinin kendi velisine gider ve aynı gün tekrar
+        // basılırsa çoğalmaz. Eskiden her geciken taksit için bütün velilere açık bir
+        // yayın yazılıyordu (her veli başka çocukların adını ve borcunu görüyordu).
+        var result = await studentFinanceService.SendOverdueRemindersAsync(cancellationToken);
+        if (result.OverdueCount == 0)
         {
             return Ok(new { sentCount = 0, message = "Geciken kayıt bulunmuyor." });
         }
 
-        foreach (var item in overdue)
-        {
-            await dbContext.Notifications.AddAsync(new NotificationItem
-            {
-                Id = Guid.NewGuid(),
-                Title = "Ödeme hatırlatması",
-                Message = $"{item.StudentName} için ₺{(item.Amount - item.PaidAmount):N2} tutarlı ödeme bekleniyor.",
-                TimeLabel = "Bugün",
-                Audience = "Parent",
-                TargetRole = "Parent",
-                Category = "AccountingReminder",
-                IsRead = false,
-            }, cancellationToken);
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(new { sentCount = overdue.Count, message = "Hatırlatmalar gönderildi." });
+        return Ok(new { sentCount = result.Notified, message = "Hatırlatmalar gönderildi." });
     }
 
     [HttpPut("notifications/read-all")]
@@ -444,17 +484,6 @@ public sealed class AccountingController(IAccountingService accountingService, C
     {
         await accountingService.MarkAllNotificationsReadAsync(cancellationToken);
         return NoContent();
-    }
-
-    private Task<bool> HasStudentRefundAsync(FinancePayment payment, CancellationToken cancellationToken)
-    {
-        var normalizedName = payment.StudentName.Trim().ToLower();
-        return dbContext.FinancePayments.AnyAsync(item =>
-            item.Amount < 0
-            && ((payment.EnrollmentContractId != null && item.EnrollmentContractId == payment.EnrollmentContractId)
-                || (payment.StudentUserId != null && item.StudentUserId == payment.StudentUserId)
-                || (normalizedName != string.Empty && item.StudentName.Trim().ToLower() == normalizedName)),
-            cancellationToken);
     }
 
     private static string NormalizeMoney(string? value)
@@ -484,78 +513,15 @@ public sealed class AccountingController(IAccountingService accountingService, C
             : 0m;
     }
 
-    private async Task RecalculateInstallmentPaymentsAsync(
-        string? studentName,
-        Guid? studentUserId,
-        Guid? contractId,
-        CancellationToken cancellationToken)
+    // Muhasebe ekranı ile maaş ekranının durum etiketlerini tek biçime indirger.
+    private static string NormalizeSalaryStatus(string? status)
     {
-        var normalizedName = studentName?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(normalizedName) && studentUserId is null && contractId is null)
-        {
-            return;
-        }
-
-        var installments = await dbContext.FinanceInstallments
-            .Where(item =>
-                (contractId != null && item.EnrollmentContractId == contractId)
-                || (studentUserId != null && item.StudentUserId == studentUserId)
-                || (!string.IsNullOrWhiteSpace(normalizedName) && item.StudentName == normalizedName))
-            .OrderBy(item => item.DueDateUtc)
-            .ThenBy(item => item.SeqNo)
-            .ToListAsync(cancellationToken);
-
-        if (installments.Count == 0)
-        {
-            return;
-        }
-
-        foreach (var installment in installments)
-        {
-            installment.PaidAmount = 0m;
-            installment.Status = "Pending";
-        }
-
-        var payments = await dbContext.FinancePayments
-            .Where(item =>
-                item.Amount > 0
-                && ((contractId != null && item.EnrollmentContractId == contractId)
-                    || (studentUserId != null && item.StudentUserId == studentUserId)
-                    || (!string.IsNullOrWhiteSpace(normalizedName) && item.StudentName == normalizedName)))
-            .OrderBy(item => item.PaidAtUtc)
-            .ToListAsync(cancellationToken);
-
-        foreach (var payment in payments)
-        {
-            var remaining = payment.Amount;
-            var orderedInstallments = payment.FinanceInstallmentId is Guid installmentId
-                ? installments
-                    .Where(item => item.Id == installmentId)
-                    .Concat(installments.Where(item => item.Id != installmentId))
-                    .ToList()
-                : installments;
-
-            foreach (var installment in orderedInstallments)
-            {
-                if (remaining <= 0) break;
-
-                var due = installment.Amount - installment.PaidAmount;
-                if (due <= 0) continue;
-
-                var applied = Math.Min(due, remaining);
-                installment.PaidAmount += applied;
-                remaining -= applied;
-            }
-        }
-
-        foreach (var installment in installments)
-        {
-            installment.Status = installment.PaidAmount <= 0
-                ? "Pending"
-                : installment.PaidAmount >= installment.Amount
-                    ? "Paid"
-                    : "Partial";
-        }
+        var normalized = (status ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized.Contains("bekl") || normalized.Contains("pend")) return "Bekliyor";
+        if (normalized.Contains("öd") || normalized.Contains("oden") || normalized.Contains("paid")) return "Ödendi";
+        if (normalized.Contains("plan") || normalized.Contains("onaylan") || normalized.Contains("approv")) return "Planlandı";
+        if (normalized.Contains("red") || normalized.Contains("reject")) return "Reddedildi";
+        return "Bekliyor";
     }
 
     private static object MapBenefit(AccountingBenefitSnapshot item)

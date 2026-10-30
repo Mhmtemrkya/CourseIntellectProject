@@ -238,17 +238,19 @@ public sealed class SchoolDashboardController(
                 .Select(x => x.Amount)
                 .ToListAsync(cancellationToken);
             var operationalExpense = operationalExpenseAmounts.Sum();
-            var salaryAmounts = await dbContext.AccountingSalaries.AsNoTracking()
+            // Reddedilen ve onay bekleyen bordro ile reddedilen fatura gider değildir;
+            // fatura muhasebe ekranıyla aynı şekilde fatura tarihine göre döneme düşer.
+            var salaryRows = await dbContext.AccountingSalaries.AsNoTracking()
                 .Where(x => x.CreatedAtUtc >= rangeStart && x.CreatedAtUtc < rangeEnd)
-                .Select(x => x.Amount)
+                .Select(x => new { x.Amount, x.Status })
                 .ToListAsync(cancellationToken);
-            var invoiceAmounts = await dbContext.AccountingInvoices.AsNoTracking()
-                .Where(x => x.CreatedAtUtc >= rangeStart && x.CreatedAtUtc < rangeEnd)
-                .Select(x => x.Amount)
+            var invoiceRows = await dbContext.AccountingInvoices.AsNoTracking()
+                .Where(x => x.IssueDateUtc >= rangeStart && x.IssueDateUtc < rangeEnd)
+                .Select(x => new { x.Amount, x.Status })
                 .ToListAsync(cancellationToken);
             expenses = operationalExpense
-                + salaryAmounts.Sum(MoneyParser.Parse)
-                + invoiceAmounts.Sum(MoneyParser.Parse);
+                + salaryRows.Where(x => FinanceExpenseRules.SalaryCountsAsExpense(x.Status)).Sum(x => MoneyParser.Parse(x.Amount))
+                + invoiceRows.Where(x => FinanceExpenseRules.InvoiceCountsAsExpense(x.Status)).Sum(x => MoneyParser.Parse(x.Amount));
             net = collections - expenses;
 
             var openInstallments = await dbContext.FinanceInstallments.AsNoTracking()

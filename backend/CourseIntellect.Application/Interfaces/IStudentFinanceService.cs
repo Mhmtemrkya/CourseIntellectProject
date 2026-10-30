@@ -80,6 +80,53 @@ public interface IStudentFinanceService
         int upcomingWindowDays,
         CancellationToken cancellationToken = default);
 
+    // Yalnız vadesi geçmiş taksitler için, öğrencinin kendi velisine; aynı gün tekrar
+    // basılırsa yeni bildirim yazılmaz.
+    Task<ReminderResultDto> SendOverdueRemindersAsync(CancellationToken cancellationToken = default);
+
+    // Ad tek öğrenciye aitse kimliğini döndürür, hiçbir kimliğe çıkmıyorsa null;
+    // birden çok öğrenciye aitse InvalidOperationException fırlatır.
+    Task<Guid?> ResolveUniqueStudentUserIdAsync(string? studentName, CancellationToken cancellationToken = default);
+
+    // Taksite mahsup edilmemiş tahsilatı (peşinat, avans) düzeltir/siler. Bulunamazsa
+    // KeyNotFoundException, iade/mahsup nedeniyle düzenlenemezse InvalidOperationException,
+    // geçersiz tutarda ArgumentException fırlatır.
+    Task<FinancePaymentDto> UpdateCollectionAsync(
+        Guid paymentId,
+        string? studentName,
+        decimal amount,
+        string? method,
+        string? note,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteCollectionAsync(Guid paymentId, CancellationToken cancellationToken = default);
+
+    // Taksit tutarı/vadesi/durumu. "Ödendi" gerçek, makbuzlu tahsilat yazar.
+    Task<FinanceInstallmentDto?> UpdateInstallmentAsync(
+        Guid installmentId,
+        decimal amount,
+        DateTime dueDateUtc,
+        string? status,
+        string? method,
+        Guid? actorUserId,
+        CancellationToken cancellationToken = default);
+
+    Task<FinanceInstallmentDto> CreateManualInstallmentAsync(
+        string studentName,
+        decimal amount,
+        DateTime dueDateUtc,
+        string? note,
+        CancellationToken cancellationToken = default);
+
+    // İndirim/burs tanımını aktif sözleşmenin ödenmemiş taksitlerinden düşer.
+    Task<(decimal Applied, decimal Requested)> ApplyBenefitAsync(
+        Guid? studentUserId,
+        string studentName,
+        decimal ratePercent,
+        bool isScholarship,
+        string title,
+        CancellationToken cancellationToken = default);
+
     // Taksitsiz/taksit kaydı eksik (vade tarihi olmayan) eski sözleşmeleri tek bir
     // vadeli kayıtla takibe alır. Kalan tahsilat sayısını döndürür.
     Task<int> BackfillMissingInstallmentsAsync(CancellationToken cancellationToken = default);

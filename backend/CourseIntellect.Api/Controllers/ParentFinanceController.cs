@@ -31,6 +31,17 @@ public sealed class ParentFinanceController(
         }
 
         var accounts = new List<StudentFinanceAccountDto>();
+        if (User.IsInRole("Parent"))
+        {
+            // Veli: çocuklar kimlikle açılır; adla açılınca aynı adlı başka bir
+            // öğrencinin sözleşme/tahsilatı veliye görünebiliyordu.
+            foreach (var (userId, name) in await StudentScope.ResolveParentChildrenAsync(User, dbContext, cancellationToken))
+            {
+                accounts.Add(await studentFinanceService.GetAccountAsync(userId == Guid.Empty ? null : userId, name, cancellationToken));
+            }
+            return Ok(accounts);
+        }
+
         foreach (var name in allowed)
         {
             if (string.IsNullOrWhiteSpace(name)) continue;

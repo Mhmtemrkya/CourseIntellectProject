@@ -174,6 +174,8 @@ public sealed class AccountingService(
     public async Task<AccountingCollectionDto> CreateCollectionAsync(CreateCollectionRequest request, Guid? createdByUserId = null, CancellationToken cancellationToken = default)
     {
         var amount = ParseAmount(request.Amount);
+        // Geçersiz/eksi tutar 0'a ayrışır; 0 TL'lik makbuzlu tahsilat yazılmasın.
+        if (amount <= 0) throw new ArgumentException("Tahsilat tutarı sıfırdan büyük olmalı.");
         // Ödeme yöntemi boş/null gelebilir; tek yerde varsayılana ("Nakit") indirger ve
         // hem kayıtta hem bildirim/audit/DTO'da aynı değeri kullanırız (aksi halde DTO'daki
         // request.Method.Trim() null gelince tahsilat kaydedildikten sonra 500 veriyordu).
@@ -219,67 +221,37 @@ public sealed class AccountingService(
             collectedByName);
     }
 
-    // Manuel taksit (standalone) normalize taksit tablosuna yazılır.
+    // Elle taksit kendi sözleşmesiyle açılır (bkz. StudentFinanceService.CreateManualInstallmentAsync).
     public async Task<AccountingInstallmentDto> CreateInstallmentAsync(CreateInstallmentRequest request, CancellationToken cancellationToken = default)
     {
         var amount = ParseAmount(request.Amount);
-        var installment = new FinanceInstallment
-        {
-            EnrollmentContractId = Guid.Empty,
-            StudentName = request.Student.Trim(),
-            SeqNo = 1,
-            Label = "Manuel Taksit",
-            DueDateUtc = ParseDueDate(request.Due),
-            Amount = amount,
-            PaidAmount = 0,
-            Status = "Pending",
-            Currency = "TRY",
-        };
-        await dbContext.FinanceInstallments.AddAsync(installment, cancellationToken);
-        await AddNotificationAsync("Yeni taksit planı", $"{installment.StudentName} için yeni taksit planı oluşturuldu.", cancellationToken);
-        await AddAuditAsync("Taksit planı açıldı", $"{installment.StudentName} için {FormatAmount(amount)} tutarlı yeni taksit oluşturuldu.", cancellationToken);
+        var installment = await studentFinanceService.CreateManualInstallmentAsync(
+            request.Student, amount, ParseDueDate(request.Due), request.Note, cancellationToken);
+        var studentName = request.Student.Trim();
+        await AddNotificationAsync("Yeni taksit planı", $"{studentName} için yeni taksit planı oluşturuldu.", cancellationToken);
+        await AddAuditAsync("Taksit planı açıldı", $"{studentName} için {FormatAmount(amount)} tutarlı yeni taksit oluşturuldu.", cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return new AccountingInstallmentDto(installment.Id.ToString(), installment.StudentName, MapInstallmentStatus(installment, DateTime.UtcNow), FormatAmount(amount), request.Due.Trim(), request.Note?.Trim() ?? string.Empty);
+        return new AccountingInstallmentDto(installment.Id.ToString(), studentName, MapInstallmentStatus(installment.Amount, installment.PaidAmount, installment.DueDateUtc, DateTime.UtcNow), FormatAmount(amount), request.Due.Trim(), request.Note?.Trim() ?? string.Empty);
     }
 
-    public async Task<AccountingInstallmentDto?> UpdateInstallmentAsync(Guid id, UpdateInstallmentRequest request, CancellationToken cancellationToken = default)
+    public async Task<AccountingInstallmentDto?> UpdateInstallmentAsync(Guid id, UpdateInstallmentRequest request, Guid? actorUserId = null, CancellationToken cancellationToken = default)
     {
-        var installment = await dbContext.FinanceInstallments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var installment = await studentFinanceService.UpdateInstallmentAsync(
+            id,
+            ParseAmount(request.Amount),
+            ParseDueDate(request.Due),
+            request.Status,
+            request.Method,
+            actorUserId,
+            cancellationToken);
         if (installment is null) return null;
 
-        installment.Amount = ParseAmount(request.Amount);
-        installment.DueDateUtc = ParseDueDate(request.Due);
-
-        var requestedStatus = request.Status.Trim();
-        if (string.Equals(requestedStatus, "Ödendi", StringComparison.OrdinalIgnoreCase))
-        {
-            installment.PaidAmount = installment.Amount;
-            installment.Status = "Paid";
-        }
-        else if (string.Equals(requestedStatus, "Bekliyor", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(requestedStatus, "Pending", StringComparison.OrdinalIgnoreCase))
-        {
-            // Geri alma yolu eskiden HİÇ işlenmiyordu: "Ödendi"den "Bekliyor"a
-            // çevrilen taksit PaidAmount ve Status="Paid" ile kalıyor, borç
-            // kapalı görünmeye devam ediyordu.
-            //
-            // Yalnız ELLE işaretlenmiş kısım geri alınır: gerçek tahsilatların
-            // mahsubu (FinancePaymentAllocation) korunur. Aksi hâlde bir durum
-            // düzeltmesi, gerçekten alınmış parayı kayıtlardan silerdi.
-            var allocatedPaid = await dbContext.FinancePaymentAllocations
-                .Where(x => x.FinanceInstallmentId == installment.Id)
-                .SumAsync(x => (decimal?)(x.Amount - x.RefundedAmount), cancellationToken) ?? 0m;
-
-            installment.PaidAmount = Math.Clamp(allocatedPaid, 0, installment.Amount);
-            installment.Status = installment.PaidAmount <= 0
-                ? "Pending"
-                : installment.PaidAmount >= installment.Amount ? "Paid" : "Partial";
-        }
-
-        await AddNotificationAsync("Taksit güncellendi", $"{installment.StudentName} için taksit planı güncellendi.", cancellationToken);
-        await AddAuditAsync("Taksit güncellendi", $"{installment.StudentName} için taksit {FormatAmount(installment.Amount)} olarak güncellendi.", cancellationToken);
+        var studentName = await dbContext.FinanceInstallments.AsNoTracking()
+            .Where(x => x.Id == id).Select(x => x.StudentName).FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
+        await AddNotificationAsync("Taksit güncellendi", $"{studentName} için taksit planı güncellendi.", cancellationToken);
+        await AddAuditAsync("Taksit güncellendi", $"{studentName} için taksit {FormatAmount(installment.Amount)} olarak güncellendi.", cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return new AccountingInstallmentDto(installment.Id.ToString(), installment.StudentName, MapInstallmentStatus(installment, DateTime.UtcNow), FormatAmount(installment.Amount), request.Due.Trim(), request.Note?.Trim() ?? string.Empty);
+        return new AccountingInstallmentDto(id.ToString(), studentName, MapInstallmentStatus(installment.Amount, installment.PaidAmount, installment.DueDateUtc, DateTime.UtcNow), FormatAmount(installment.Amount), request.Due.Trim(), request.Note?.Trim() ?? string.Empty);
     }
 
     public async Task<AccountingApprovalDto?> UpdateApprovalStatusAsync(Guid id, UpdateApprovalStatusRequest request, CancellationToken cancellationToken = default)
@@ -289,14 +261,23 @@ public sealed class AccountingService(
         approval.Status = request.Status.Trim();
         approval.UpdatedAtUtc = DateTime.UtcNow;
 
+        // Onay kararı üç değerlidir: onay, ret, beklemeye geri alma. Eskiden onay
+        // dışındaki her değer (beklemeye almak dahil) kaydı "Reddedildi" yapıyordu.
+        // Ödenmiş fatura/bordronun ödeme durumu onay kararıyla ezilmez.
+        var decision = ClassifyApproval(approval.Status);
         if (approval.SourceType == "invoice")
         {
             var invoice = Guid.TryParse(approval.SourceKey, out var invoiceId)
                 ? await dbContext.AccountingInvoices.FirstOrDefaultAsync(x => x.Id == invoiceId, cancellationToken)
                 : await dbContext.AccountingInvoices.FirstOrDefaultAsync(x => x.Title == approval.SourceKey, cancellationToken);
-            if (invoice is not null)
+            if (invoice is not null && !IsPaidStatus(invoice.Status))
             {
-                invoice.Status = IsApprovedStatus(approval.Status) ? "Onaylandı" : "Reddedildi";
+                invoice.Status = decision switch
+                {
+                    ApprovalDecision.Approved => "Onaylandı",
+                    ApprovalDecision.Rejected => "Reddedildi",
+                    _ => "Ödenmedi",
+                };
             }
         }
 
@@ -305,9 +286,14 @@ public sealed class AccountingService(
             var salary = Guid.TryParse(approval.SourceKey, out var salaryId)
                 ? await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Id == salaryId, cancellationToken)
                 : await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Employee == approval.SourceKey, cancellationToken);
-            if (salary is not null)
+            if (salary is not null && !IsPaidStatus(salary.Status))
             {
-                salary.Status = IsApprovedStatus(approval.Status) ? "Planlandı" : "Reddedildi";
+                salary.Status = decision switch
+                {
+                    ApprovalDecision.Approved => "Planlandı",
+                    ApprovalDecision.Rejected => "Reddedildi",
+                    _ => "Bekliyor",
+                };
             }
         }
 
@@ -370,11 +356,14 @@ public sealed class AccountingService(
     }
 
     private static string MapInstallmentStatus(FinanceInstallment installment, DateTime nowUtc)
+        => MapInstallmentStatus(installment.Amount, installment.PaidAmount, installment.DueDateUtc, nowUtc);
+
+    private static string MapInstallmentStatus(decimal amount, decimal paidAmount, DateTime dueDateUtc, DateTime nowUtc)
     {
-        var remaining = installment.Amount - installment.PaidAmount;
+        var remaining = amount - paidAmount;
         if (remaining <= 0) return "Ödendi";
-        if (installment.DueDateUtc < nowUtc) return "Gecikti";
-        return installment.PaidAmount > 0 ? "Kısmi" : "Bekleyen";
+        if (FinanceDates.IsOverdue(dueDateUtc, nowUtc)) return "Gecikti";
+        return paidAmount > 0 ? "Kısmi" : "Bekleyen";
     }
 
     private static DateTime ParseDueDate(string value)
@@ -399,11 +388,21 @@ public sealed class AccountingService(
     private static string NormalizeAmount(string amount)
         => MoneyParser.Format(MoneyParser.Parse(amount));
 
-    private static bool IsApprovedStatus(string? status)
+    private enum ApprovalDecision { Pending, Approved, Rejected }
+
+    private static ApprovalDecision ClassifyApproval(string? status)
     {
         var normalized = (status ?? string.Empty).Trim().ToLowerInvariant();
-        return normalized is "approved" or "onaylandı" or "onaylandi";
+        return normalized switch
+        {
+            "approved" or "onaylandı" or "onaylandi" => ApprovalDecision.Approved,
+            "rejected" or "reddedildi" => ApprovalDecision.Rejected,
+            _ => ApprovalDecision.Pending,
+        };
     }
+
+    private static bool IsPaidStatus(string? status) =>
+        string.Equals(status?.Trim(), "Ödendi", StringComparison.OrdinalIgnoreCase);
 
     private static string TimeLabel()
     {

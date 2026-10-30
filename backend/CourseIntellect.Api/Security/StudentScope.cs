@@ -30,41 +30,52 @@ public static class StudentScope
 
         if (user.IsInRole("Parent"))
         {
-            // JWT, kimliği "sub"/"nameid" claim'i ile taşır ve inbound claim
-            // map kapalı olduğundan ClaimTypes.NameIdentifier'a eşlenmez. Bu
-            // yüzden olası tüm claim adlarını sırayla dene.
-            var userRaw = user.FindFirstValue("user_id")
-                ?? user.FindFirstValue("sub")
-                ?? user.FindFirstValue("nameid")
-                ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
-            Guid.TryParse(userRaw, out var parentUserId);
-
-            var parentName = Normalize(user.FindFirstValue("name") ?? user.FindFirstValue(ClaimTypes.Name));
-            var username = Normalize(user.FindFirstValue("unique_name")
-                ?? user.FindFirstValue("preferred_username")
-                ?? user.FindFirstValue(ClaimTypes.GivenName));
-
-            var students = await dbContext.Students
-                .AsNoTracking()
-                .Select(x => new { x.FullName, x.ParentUserId, x.ParentName, x.ParentEmail })
-                .ToListAsync(cancellationToken);
-
-            // Öncelik ParentUserId eşleşmesinde; bağ kurulmamış (sadece veli adı/
-            // e-postası girilmiş) kayıtlar için isim/e-posta eşleşmesine düşülür.
-            var matched = students
-                .Where(x =>
-                    (parentUserId != Guid.Empty && x.ParentUserId == parentUserId)
-                    || (parentName.Length > 0 && Normalize(x.ParentName) == parentName)
-                    || (username.Length > 0 && Normalize(x.ParentEmail).Contains(username)))
+            return (await ResolveParentChildrenAsync(user, dbContext, cancellationToken))
                 .Select(x => x.FullName)
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
-
-            return matched;
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Velinin çocukları, kullanıcı kimlikleriyle. Finans gibi para gösteren uçlar
+    /// adla değil bununla çalışmalı: aynı adlı başka bir öğrencinin hesabı veliye
+    /// karışmasın. Veli değilse boş liste döner.
+    /// </summary>
+    public static async Task<IReadOnlyList<(Guid UserId, string FullName)>> ResolveParentChildrenAsync(
+        ClaimsPrincipal user,
+        CourseIntellectDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        if (!user.IsInRole("Parent")) return [];
+
+        // JWT, kimliği "sub"/"nameid" claim'i ile taşır ve inbound claim map kapalı
+        // olduğundan ClaimTypes.NameIdentifier'a eşlenmez (ResolveUserId hepsini dener).
+        var parentUserId = ResolveUserId(user) ?? Guid.Empty;
+        var parentName = Normalize(user.FindFirstValue("name") ?? user.FindFirstValue(ClaimTypes.Name));
+        var username = Normalize(user.FindFirstValue("unique_name")
+            ?? user.FindFirstValue("preferred_username")
+            ?? user.FindFirstValue(ClaimTypes.GivenName));
+
+        var students = await dbContext.Students
+            .AsNoTracking()
+            .Select(x => new { x.UserId, x.FullName, x.ParentUserId, x.ParentName, x.ParentEmail })
+            .ToListAsync(cancellationToken);
+
+        // Öncelik ParentUserId eşleşmesinde; bağ kurulmamış (sadece veli adı/
+        // e-postası girilmiş) kayıtlar için isim/e-posta eşleşmesine düşülür.
+        return students
+            .Where(x =>
+                (parentUserId != Guid.Empty && x.ParentUserId == parentUserId)
+                || (parentName.Length > 0 && Normalize(x.ParentName) == parentName)
+                || (username.Length > 0 && Normalize(x.ParentEmail).Contains(username)))
+            .Where(x => !string.IsNullOrWhiteSpace(x.FullName))
+            .Select(x => (x.UserId, x.FullName.Trim()))
+            .Distinct()
+            .ToList();
     }
 
     /// <summary>
