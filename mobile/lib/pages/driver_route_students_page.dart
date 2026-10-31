@@ -905,6 +905,32 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
       return;
     }
 
+    final consent = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Servis konum paylaşımı'.tr),
+        content: const Text(
+          'SchoolAsist, aktif servis seferinde bu cihazın hassas konumunu '
+          'toplar ve okul ile bu servise atanmış öğrencilerin velilerine '
+          'gönderir. Takibi başlatırsanız uygulama ekranı kapalıyken veya '
+          'telefon kilitliyken de konum paylaşımı devam eder. Android’de '
+          'takip boyunca bir bildirim gösterilir. GPS Durdur düğmesiyle '
+          'paylaşımı durdurabilirsiniz; sefer bitince takip durur.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('Vazgeç'.tr),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text('Konum paylaşımını başlat'.tr),
+          ),
+        ],
+      ),
+    );
+    if (consent != true || !mounted) return;
+
     final ready = await _ensureLocationReady();
     if (!ready || !mounted) return;
 
@@ -977,14 +1003,16 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
       return false;
     }
 
-    if (permission == LocationPermission.whileInUse) {
+    if (defaultTargetPlatform == TargetPlatform.iOS &&
+        permission == LocationPermission.whileInUse) {
       final upgradedPermission = await Geolocator.requestPermission();
       if (upgradedPermission == LocationPermission.always) {
         permission = upgradedPermission;
       }
     }
 
-    if (permission == LocationPermission.whileInUse) {
+    if (defaultTargetPlatform == TargetPlatform.iOS &&
+        permission == LocationPermission.whileInUse) {
       setState(() {
         _locationStatus =
             'Konum izni sadece uygulama açıkken verilmiş. Android foreground servis çalışır; iPhone için Ayarlar > Konum > Her Zaman seçeneğini aç.';
