@@ -16,6 +16,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import RoleDashboardColumns, { type RoleDashboardGroup } from '../../components/dashboard/RoleDashboardColumns';
 import { fetchAccountingDashboard, fetchExpenses, fetchFinanceDashboard } from '../../lib/api/modules';
+import { CurrencyTotalsCard } from '../../components/finance/CurrencyTotalsCard';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 import { filterByPeriod, periodLabel as buildPeriodLabel, shiftAnchor, parseTrDateTime, type FinancePeriod } from '../../lib/financePeriod';
 import {
@@ -512,6 +513,8 @@ export default function FinanceDashboard() {
       </div>
 
       {error ? <ErrorBanner title="Finans verileri alınamadı" message={error} onRetry={loadDashboard} /> : null}
+
+      <CurrencyTotalsCard finance={finance} />
 
       {/* Dönem seçici — tüm sayfa (kartlar, grafik, oran, hedef, listeler) bu döneme göre */}
       <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-3">

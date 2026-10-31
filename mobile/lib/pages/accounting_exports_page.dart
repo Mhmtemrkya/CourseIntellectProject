@@ -69,7 +69,7 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
           _exportCard(
             context,
             'Excel Olarak Aktar',
-            'Tahsilatlar, taksitler, cari hesaplar ve geciken ödemeler',
+            'Bu ayın tüm para hareketleri: tahsilat, iade, gider, maaş ve fatura ödemeleri (makbuz no, yöntem, şube, işlem yapan)',
             Icons.table_chart_outlined,
             const Color(0xFF0F766E),
             'Excel',

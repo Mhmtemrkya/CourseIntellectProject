@@ -321,18 +321,26 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
   int get _periodCollected =>
       _sumAmount(_periodCollections.map((c) => c.amount));
 
+  // Gider nakit esaslıdır (sunucudaki FinanceExpenseRules ile aynı): maaş ve
+  // fatura yalnız ÖDENDİĞİ gün, iptal/ret edilen hiç sayılmaz; gider defterinde
+  // yalnız onaylı kayıtlar.
   int get _periodExpense {
     final range = _periodRange(_period, _anchor);
     final salary = _sumAmount(
       _store.salaries
-          .where((s) => range.contains(_parseTrDate(s.payDate)))
+          .where(
+            (s) =>
+                s.status == 'Ödendi' &&
+                range.contains(s.paidAtUtc?.toLocal() ?? _parseTrDate(s.payDate)),
+          )
           .map((s) => s.amount),
     );
     final invoice = _sumAmount(
       _store.invoices
           .where(
             (i) =>
-                range.contains(_parseTrDate(i.subtitle)) &&
+                i.status == 'Ödendi' &&
+                range.contains(i.paidAtUtc?.toLocal() ?? _parseTrDate(i.subtitle)) &&
                 _isExpenseInvoice(i),
           )
           .map((i) => i.amount),
@@ -343,7 +351,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
 
   /// Seçili aralıktaki gider defteri toplamı.
   int _sumLedger(_Range range) => _store.expenseLedger
-      .where((item) => range.contains(item.expenseDate))
+      .where((item) => item.approved && range.contains(item.expenseDate))
       .fold<int>(0, (sum, item) => sum + item.amount);
 
   int get _periodUnpaidDue => _sumAmount(

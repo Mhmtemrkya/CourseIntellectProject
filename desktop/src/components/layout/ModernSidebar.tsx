@@ -51,7 +51,7 @@ import {
   KeyRound,
   ChevronDown,
 } from "lucide-react";
-import { Activity, Archive, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserX, TrendingDown } from "lucide-react";
+import { Activity, Archive, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserX, TrendingDown, BookMarked, Flag, DoorOpen, Target } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import {
   Tooltip,
@@ -154,6 +154,12 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
       color: "#0ea5e9",
     },
     {
+      path: "/admin/subject-groups",
+      icon: BookMarked,
+      label: "Zümreler",
+      color: "#4f46e5",
+    },
+    {
       path: "/admin/operations",
       icon: Activity,
       label: "Operasyon",
@@ -241,6 +247,24 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
       icon: Library,
       label: "Kütüphane",
       color: "#0ea5e9",
+    },
+    {
+      path: "/clubs",
+      icon: Flag,
+      label: "Kulüpler",
+      color: "#e11d48",
+    },
+    {
+      path: "/preference-robot",
+      icon: Target,
+      label: "Tercih Robotu",
+      color: "#7c3aed",
+    },
+    {
+      path: "/visitors",
+      icon: DoorOpen,
+      label: "Ziyaretçi Takibi",
+      color: "#0d9488",
     },
     {
       path: "/admin/finance-approvals",
@@ -445,6 +469,24 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
       color: "#0ea5e9",
     },
     {
+      path: "/clubs",
+      icon: Flag,
+      label: "Kulüpler",
+      color: "#e11d48",
+    },
+    {
+      path: "/preference-robot",
+      icon: Target,
+      label: "Tercih Robotu",
+      color: "#7c3aed",
+    },
+    {
+      path: "/visitors",
+      icon: DoorOpen,
+      label: "Ziyaretçi Takibi",
+      color: "#0d9488",
+    },
+    {
       path: "/forms",
       icon: FileSignature,
       label: "Sözleşme & Formlar",
@@ -543,6 +585,7 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
     },
     { path: "/sa/system", icon: Settings, label: "Sistem", color: "#06b6d4" },
     { path: "/sa/logs", icon: ScrollText, label: "Log Merkezi", color: "#14b8a6" },
+    { path: "/sa/preference-data", icon: Target, label: "Tercih Robotu Verisi", color: "#7c3aed" },
     { path: "/sa/support", icon: Ticket, label: "Destek", color: "#a855f7" },
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
@@ -588,6 +631,12 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
       icon: Library,
       label: "Kütüphane",
       color: "#0ea5e9",
+    },
+    {
+      path: "/g/preference-robot",
+      icon: Target,
+      label: "Tercih Robotu",
+      color: "#7c3aed",
     },
     {
       path: "/chat",
@@ -725,6 +774,24 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
       label: "Kütüphane",
       color: "#0ea5e9",
     },
+    {
+      path: "/t/clubs",
+      icon: Flag,
+      label: "Kulüpler",
+      color: "#e11d48",
+    },
+    {
+      path: "/t/preference-robot",
+      icon: Target,
+      label: "Tercih Robotu",
+      color: "#7c3aed",
+    },
+    {
+      path: "/t/subject-groups",
+      icon: BookMarked,
+      label: "Zümrem",
+      color: "#4f46e5",
+    },
     { path: "/t/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
     {
       path: "/t/chat",
@@ -851,6 +918,18 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
       label: "Kütüphane",
       color: "#0ea5e9",
     },
+    {
+      path: "/s/clubs",
+      icon: Flag,
+      label: "Kulüpler",
+      color: "#e11d48",
+    },
+    {
+      path: "/s/preference-robot",
+      icon: Target,
+      label: "Tercih Robotu",
+      color: "#7c3aed",
+    },
     { path: "/s/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
     { path: "/s/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
@@ -964,6 +1043,18 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
       label: "Kütüphane",
       color: "#0ea5e9",
     },
+    {
+      path: "/p/clubs",
+      icon: Flag,
+      label: "Kulüpler",
+      color: "#e11d48",
+    },
+    {
+      path: "/p/preference-robot",
+      icon: Target,
+      label: "Tercih Robotu",
+      color: "#7c3aed",
+    },
     { path: "/p/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
@@ -993,10 +1084,10 @@ export const ROLE_LABELS: Partial<Record<string, string>> = {
 
 const ROLE_MENU_GROUPS: Partial<Record<string, MenuGroupDefinition[]>> = {
   admin: [
-    { id: "main", title: "Ana Panel", modules: ["dashboard", "kpi", "operations", "global-search", "tasks"] },
-    { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses", "duties"], paths: ["/admin/staff"] },
+    { id: "main", title: "Ana Panel", modules: ["dashboard", "kpi", "operations", "global-search", "tasks", "visitors"], paths: ["/visitors"] },
+    { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses", "duties", "subject-groups"], paths: ["/admin/staff", "/admin/subject-groups"] },
     { id: "registrations", title: "Kayıt İşlemleri", modules: ["registrations", "records", "administrative-units", "org-units", "staff-hr", "approvals", "password-reset"], paths: ["/admin/passive-records"] },
-    { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons", "library"] },
+    { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons", "library", "clubs"], paths: ["/clubs", "/preference-robot"] },
     { id: "reports", title: "Raporlar", modules: ["reports", "branch-comparison"] },
     { id: "finance", title: "Finans", modules: ["finance", "student-accounts", "collections", "refunds", "installments", "billing", "late-payments", "discounts-scholarships", "collection-calendar", "reconciliation", "bulk-actions", "overdue-rules", "salary", "cash-report", "ledger", "finance-export", "finance-audit-log", "finance-detail-hub"] },
     { id: "communication", title: "İletişim", modules: ["notifications", "meetings", "chat", "support"] },
@@ -1004,8 +1095,8 @@ const ROLE_MENU_GROUPS: Partial<Record<string, MenuGroupDefinition[]>> = {
     { id: "system", title: "Sistem", modules: ["role-management", "rbac", "audit-log", "data-backup", "profile", "system"] },
   ],
   administrative: [
-    { id: "main", title: "Ana Panel", modules: ["operations", "tasks", "schedule", "duties"] },
-    { id: "records", title: "İdari İşler", modules: ["records", "documents", "password-reset", "registrations"] },
+    { id: "main", title: "Ana Panel", modules: ["operations", "tasks", "schedule", "duties", "visitors"], paths: ["/visitors"] },
+    { id: "records", title: "İdari İşler", modules: ["records", "documents", "password-reset", "registrations", "clubs"], paths: ["/clubs", "/preference-robot"] },
     { id: "reports", title: "Raporlar", modules: ["reports"] },
     { id: "communication", title: "İletişim", modules: ["notifications", "meetings", "chat"] },
     { id: "services", title: "Servis & Yemekhane", modules: ["service", "cafeteria"] },
@@ -1023,28 +1114,28 @@ const ROLE_MENU_GROUPS: Partial<Record<string, MenuGroupDefinition[]>> = {
   superadmin: [
     { id: "main", title: "Ana Panel", modules: ["platform"] },
     { id: "institutions", title: "Kurum Yönetimi", modules: ["tenants", "plans", "billing", "limits", "customization"] },
-    { id: "intelligence", title: "AI & Sistem", modules: ["ai-management", "system"] },
+    { id: "intelligence", title: "AI & Sistem", modules: ["ai-management", "system"], paths: ["/sa/preference-data"] },
     { id: "support", title: "Destek", modules: ["support"] },
   ],
   counselor: [
     { id: "main", title: "Rehberlik", modules: [], paths: ["/g/dashboard"] },
-    { id: "students", title: "Öğrenci Takibi", modules: [], paths: ["/g/sessions", "/g/planner", "/g/appointments", "/g/inventories", "/g/reports", "/g/library"] },
+    { id: "students", title: "Öğrenci Takibi", modules: [], paths: ["/g/sessions", "/g/planner", "/g/appointments", "/g/inventories", "/g/reports", "/g/library", "/g/preference-robot"] },
     { id: "communication", title: "İletişim", modules: ["chat"], paths: ["/chat"] },
     { id: "system", title: "Sistem", modules: ["profile", "system"], paths: ["/settings"] },
   ],
   teacher: [
     { id: "main", title: "Ana Panel", modules: ["dashboard", "schedule", "attendance", "live-lessons", "duties"] },
-    { id: "learning", title: "Ders & İçerik", modules: ["content", "question-bank", "questions"] },
+    { id: "learning", title: "Ders & İçerik", modules: ["content", "question-bank", "questions", "subject-groups"], paths: ["/t/subject-groups"] },
     { id: "assessment", title: "Sınav & Not", modules: ["exams", "mock-exams", "grade-entry", "reports"] },
-    { id: "students", title: "Öğrenci Takibi", modules: ["assignments", "meetings"] },
+    { id: "students", title: "Öğrenci Takibi", modules: ["assignments", "meetings", "clubs"], paths: ["/t/clubs", "/t/preference-robot"] },
     { id: "communication", title: "İletişim", modules: ["notifications", "chat"] },
     { id: "system", title: "Sistem", modules: ["profile", "system"] },
   ],
   student: [
     { id: "main", title: "Ana Panel", modules: ["dashboard", "schedule", "study-plan", "live-lessons"] },
     { id: "learning", title: "Öğrenme", modules: ["content", "question-bank", "questions", "assignments", "ai"] },
-    { id: "assessment", title: "Sınavlar", modules: ["exams", "mock-exams", "reports"] },
-    { id: "life", title: "Okul Hayatı", modules: ["attendance", "cafeteria"] },
+    { id: "assessment", title: "Sınavlar", modules: ["exams", "mock-exams", "reports"], paths: ["/s/preference-robot"] },
+    { id: "life", title: "Okul Hayatı", modules: ["attendance", "cafeteria", "clubs"], paths: ["/s/clubs"] },
     { id: "communication", title: "İletişim", modules: ["notifications", "chat"] },
     { id: "system", title: "Sistem", modules: ["profile", "system"] },
   ],
@@ -1052,7 +1143,7 @@ const ROLE_MENU_GROUPS: Partial<Record<string, MenuGroupDefinition[]>> = {
     { id: "main", title: "Ana Panel", modules: ["dashboard", "parents"] },
     { id: "student", title: "Öğrenci Takibi", modules: ["attendance", "exams", "reports", "feedback", "excuse"] },
     { id: "finance", title: "Finans", modules: ["payments", "receipts"] },
-    { id: "school", title: "Okul Hayatı", modules: ["cafeteria", "meetings"] },
+    { id: "school", title: "Okul Hayatı", modules: ["cafeteria", "meetings", "clubs"], paths: ["/p/clubs", "/p/preference-robot"] },
     { id: "communication", title: "İletişim", modules: ["notifications", "chat"] },
     { id: "system", title: "Sistem", modules: ["profile", "system"] },
   ],

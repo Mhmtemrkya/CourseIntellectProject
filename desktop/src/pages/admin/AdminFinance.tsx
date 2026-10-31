@@ -24,6 +24,7 @@ import { formatDate } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
 import type { AccountingDashboard } from '../../lib/api/accounting';
 import type { FinanceDashboardDto } from '../../types/api/generated';
+import { CurrencyTotalsCard } from '../../components/finance/CurrencyTotalsCard';
 import type { IconComponent } from '../../types/ui';
 
 function tl(value: unknown): string {
@@ -264,6 +265,8 @@ export default function AdminFinance() {
           </div>
         </div>
       </section>
+
+      <CurrencyTotalsCard finance={enrollmentFinance} />
 
       {error ? <ErrorBanner title="Finans verisi yüklenemedi" message={error} onRetry={loadDashboard} /> : null}
 

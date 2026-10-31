@@ -225,27 +225,30 @@ public sealed class SchoolDashboardController(
             // NOT: Tutarlar sunucuda toplanır ama SQL SUM yerine seçilen aralığın
             // tutar sütunu okunup bellekte toplanır — decimal toplama tüm
             // sağlayıcılarda (Postgres/SQLite) aynı sonucu versin diye.
+            // Pano TL'dir; döviz cinsinden tahsilatlar TL toplamına karışmaz.
             var paymentAmounts = await dbContext.FinancePayments.AsNoTracking()
-                .Where(x => x.PaidAtUtc >= rangeStart && x.PaidAtUtc < rangeEnd)
+                .Where(x => x.PaidAtUtc >= rangeStart && x.PaidAtUtc < rangeEnd && x.Currency == "TRY")
                 .Select(x => x.Amount)
                 .ToListAsync(cancellationToken);
             collections = paymentAmounts.Sum();
 
             // Gider = işletme gideri (ortak /finance/expenses defteri) + bordro + fatura.
             // Ana paneldeki kazanç/gider grafiği de aynı üç kaynağı toplar.
-            var operationalExpenseAmounts = await dbContext.DrivingExpenses.AsNoTracking()
+            // Gider nakit esaslıdır (FinanceExpenseRules): onaylı işletme gideri gider
+            // tarihinde, maaş ve fatura yalnız ÖDENDİĞİ gün. Tahsilat da ödendiği güne yazılır.
+            var operationalExpenseRows = await dbContext.DrivingExpenses.AsNoTracking()
                 .Where(x => x.ExpenseDateUtc >= rangeStart && x.ExpenseDateUtc < rangeEnd)
-                .Select(x => x.Amount)
+                .Select(x => new { x.Amount, x.ApprovalStatus })
                 .ToListAsync(cancellationToken);
-            var operationalExpense = operationalExpenseAmounts.Sum();
-            // Reddedilen ve onay bekleyen bordro ile reddedilen fatura gider değildir;
-            // fatura muhasebe ekranıyla aynı şekilde fatura tarihine göre döneme düşer.
+            var operationalExpense = operationalExpenseRows
+                .Where(x => FinanceExpenseRules.ExpenseCountsAsExpense(x.ApprovalStatus))
+                .Sum(x => x.Amount);
             var salaryRows = await dbContext.AccountingSalaries.AsNoTracking()
-                .Where(x => x.CreatedAtUtc >= rangeStart && x.CreatedAtUtc < rangeEnd)
+                .Where(x => (x.PaidAtUtc ?? x.CreatedAtUtc) >= rangeStart && (x.PaidAtUtc ?? x.CreatedAtUtc) < rangeEnd)
                 .Select(x => new { x.Amount, x.Status })
                 .ToListAsync(cancellationToken);
             var invoiceRows = await dbContext.AccountingInvoices.AsNoTracking()
-                .Where(x => x.IssueDateUtc >= rangeStart && x.IssueDateUtc < rangeEnd)
+                .Where(x => (x.PaidAtUtc ?? x.IssueDateUtc) >= rangeStart && (x.PaidAtUtc ?? x.IssueDateUtc) < rangeEnd)
                 .Select(x => new { x.Amount, x.Status })
                 .ToListAsync(cancellationToken);
             expenses = operationalExpense
@@ -253,8 +256,13 @@ public sealed class SchoolDashboardController(
                 + invoiceRows.Where(x => FinanceExpenseRules.InvoiceCountsAsExpense(x.Status)).Sum(x => MoneyParser.Parse(x.Amount));
             net = collections - expenses;
 
+            // Dondurulmuş/iptal sözleşmenin taksiti bekleyen/geciken sayılmaz.
+            var pausedContractIds = await dbContext.EnrollmentContracts.AsNoTracking()
+                .Where(x => x.Status != "Active")
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
             var openInstallments = await dbContext.FinanceInstallments.AsNoTracking()
-                .Where(x => x.Amount > x.PaidAmount)
+                .Where(x => x.Amount > x.PaidAmount && x.Currency == "TRY" && !pausedContractIds.Contains(x.EnrollmentContractId))
                 .Select(x => new { Remaining = x.Amount - x.PaidAmount, x.DueDateUtc })
                 .ToListAsync(cancellationToken);
             // "Bekleyen tahsilat" seçili takvim aralığının vadesidir. Böylece

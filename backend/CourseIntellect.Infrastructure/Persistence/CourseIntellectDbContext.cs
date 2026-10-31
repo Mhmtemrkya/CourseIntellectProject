@@ -92,6 +92,14 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<GuidanceRiskReview> GuidanceRiskReviews => Set<GuidanceRiskReview>();
     public DbSet<GuidanceInventoryAssignment> GuidanceInventories => Set<GuidanceInventoryAssignment>();
     public DbSet<LibraryBook> LibraryBooks => Set<LibraryBook>();
+    public DbSet<SubjectGroup> SubjectGroups => Set<SubjectGroup>();
+    public DbSet<SubjectGroupMember> SubjectGroupMembers => Set<SubjectGroupMember>();
+    public DbSet<Club> Clubs => Set<Club>();
+    public DbSet<VisitorEntry> Visitors => Set<VisitorEntry>();
+    public DbSet<PreferenceProgram> PreferencePrograms => Set<PreferenceProgram>();
+    public DbSet<StudentPreferenceChoice> StudentPreferenceChoices => Set<StudentPreferenceChoice>();
+    public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
+    public DbSet<ClubActivity> ClubActivities => Set<ClubActivity>();
     public DbSet<LibraryLoan> LibraryLoans => Set<LibraryLoan>();
     public DbSet<LibraryReservation> LibraryReservations => Set<LibraryReservation>();
     public DbSet<LibraryRecommendation> LibraryRecommendations => Set<LibraryRecommendation>();
@@ -108,6 +116,9 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<AccountingApproval> AccountingApprovals => Set<AccountingApproval>();
     public DbSet<AccountingNotification> AccountingNotifications => Set<AccountingNotification>();
     public DbSet<AccountingAuditLog> AccountingAuditLogs => Set<AccountingAuditLog>();
+    public DbSet<FinanceDayClosing> FinanceDayClosings => Set<FinanceDayClosing>();
+    public DbSet<BankReconciliationEntry> BankReconciliationEntries => Set<BankReconciliationEntry>();
+    public DbSet<FinanceReminderLog> FinanceReminderLogs => Set<FinanceReminderLog>();
     public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
     public DbSet<StaffLeaveRequest> StaffLeaveRequests => Set<StaffLeaveRequest>();
@@ -392,6 +403,130 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.ClassName).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Net).HasPrecision(6, 2);
+        });
+
+        modelBuilder.Entity<SubjectGroup>(entity =>
+        {
+            entity.ToTable("subject_groups");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.Subject).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.AcademicYear).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.HeadTeacherName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.Color).HasMaxLength(9).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.BranchId, x.Subject, x.AcademicYear });
+        });
+
+        // Ulusal referans verisi: tenant/şube filtresi YOK (tüm kurumlar aynı resmî veriyi görür).
+        modelBuilder.Entity<PreferenceProgram>(entity =>
+        {
+            entity.ToTable("preference_programs");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Exam).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.Code).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Level).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.InstitutionType).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.InstitutionName).HasMaxLength(250).IsRequired();
+            entity.Property(x => x.City).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Unit).HasMaxLength(250).IsRequired();
+            entity.Property(x => x.ProgramName).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.ScoreType).HasMaxLength(10).IsRequired();
+            entity.Property(x => x.MinScore).HasPrecision(9, 5);
+            entity.Property(x => x.MaxScore).HasPrecision(9, 5);
+            entity.Property(x => x.Percentile).HasPrecision(7, 4);
+            entity.Property(x => x.Source).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.SourceUrl).HasMaxLength(300).IsRequired();
+            entity.HasIndex(x => new { x.Exam, x.Year, x.Code }).IsUnique();
+            entity.HasIndex(x => new { x.Exam, x.Year, x.ScoreType, x.MinScore });
+        });
+
+        modelBuilder.Entity<StudentPreferenceChoice>(entity =>
+        {
+            entity.ToTable("student_preference_choices");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.Exam).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.ProgramCode).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(300).IsRequired();
+            entity.HasIndex(x => new { x.StudentUserId, x.Exam, x.ProgramCode }).IsUnique();
+        });
+
+        modelBuilder.Entity<VisitorEntry>(entity =>
+        {
+            entity.ToTable("visitor_entries");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Phone).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.IdentityLast4).HasMaxLength(4).IsRequired();
+            entity.Property(x => x.VisitorType).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Purpose).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.HostName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.BadgeNo).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.VehiclePlate).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.CreatedByName).HasMaxLength(150).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.CheckInAtUtc });
+            entity.HasIndex(x => x.CheckOutAtUtc);
+        });
+
+        modelBuilder.Entity<Club>(entity =>
+        {
+            entity.ToTable("clubs");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Category).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.AcademicYear).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.AdvisorTeacherName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.MeetingSchedule).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Location).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Color).HasMaxLength(9).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.BranchId, x.AcademicYear });
+            entity.HasIndex(x => x.AdvisorTeacherUserId);
+        });
+
+        modelBuilder.Entity<ClubMember>(entity =>
+        {
+            entity.ToTable("club_members");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.ClassName).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Role).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.RequestNote).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.DecisionNote).HasMaxLength(500).IsRequired();
+            entity.HasIndex(x => new { x.ClubId, x.StudentUserId }).IsUnique();
+            entity.HasIndex(x => x.StudentUserId);
+        });
+
+        modelBuilder.Entity<ClubActivity>(entity =>
+        {
+            entity.ToTable("club_activities");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.Title).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.Location).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Outcome).HasMaxLength(2000).IsRequired();
+            entity.HasIndex(x => new { x.ClubId, x.StartsAtUtc });
+        });
+
+        modelBuilder.Entity<SubjectGroupMember>(entity =>
+        {
+            entity.ToTable("subject_group_members");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.TeacherName).HasMaxLength(150).IsRequired();
+            entity.HasIndex(x => new { x.SubjectGroupId, x.TeacherUserId }).IsUnique();
+            entity.HasIndex(x => x.TeacherUserId);
         });
 
         modelBuilder.Entity<LibraryBook>(entity =>
@@ -690,6 +825,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
             entity.Property(x => x.PaymentMethod).HasMaxLength(60).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.CancelReason).HasMaxLength(300).IsRequired().HasDefaultValue(string.Empty);
             entity.HasIndex(x => new { x.TenantId, x.InvoiceNumber }).IsUnique();
         });
 
@@ -703,6 +839,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Amount).HasMaxLength(40).IsRequired();
             entity.Property(x => x.PayDate).HasMaxLength(40).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.PaymentMethod).HasMaxLength(60).IsRequired().HasDefaultValue(string.Empty);
         });
 
         modelBuilder.Entity<AccountingApproval>(entity =>
@@ -860,6 +997,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ScholarshipAmount).HasColumnName("scholarship_amount").HasPrecision(18, 2);
             entity.Property(x => x.Currency).HasMaxLength(8).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.StatusReason).HasMaxLength(300).IsRequired().HasDefaultValue(string.Empty);
             entity.Property(x => x.Note).HasMaxLength(500);
             entity.HasIndex(x => x.StudentUserId);
         });
@@ -945,8 +1083,53 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Amount).HasPrecision(18, 2);
             entity.Property(x => x.Currency).HasMaxLength(8).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(1000);
+            entity.Property(x => x.ApprovalStatus).HasMaxLength(20).IsRequired().HasDefaultValue("Onaylandı");
+            entity.Property(x => x.PaymentMethod).HasMaxLength(40).IsRequired().HasDefaultValue(string.Empty);
             entity.HasIndex(x => x.ExpenseDateUtc);
             entity.HasIndex(x => x.VehicleId);
+        });
+
+        modelBuilder.Entity<FinanceDayClosing>(entity =>
+        {
+            entity.ToTable("finance_day_closings");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.CashIn).HasPrecision(18, 2);
+            entity.Property(x => x.CashOut).HasPrecision(18, 2);
+            entity.Property(x => x.ExpectedCash).HasPrecision(18, 2);
+            entity.Property(x => x.CountedCash).HasPrecision(18, 2);
+            entity.Property(x => x.Difference).HasPrecision(18, 2);
+            entity.Property(x => x.CardIn).HasPrecision(18, 2);
+            entity.Property(x => x.TransferIn).HasPrecision(18, 2);
+            entity.Property(x => x.Note).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.ClosedByName).HasMaxLength(150).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.Day }).IsUnique();
+        });
+
+        modelBuilder.Entity<BankReconciliationEntry>(entity =>
+        {
+            entity.ToTable("bank_reconciliation_entries");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Reference).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.Description).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.MatchedType).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.MatchedLabel).HasMaxLength(200).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.Reference, x.BankDate, x.Amount }).IsUnique();
+            entity.HasIndex(x => new { x.MatchedType, x.MatchedId });
+        });
+
+        modelBuilder.Entity<FinanceReminderLog>(entity =>
+        {
+            entity.ToTable("finance_reminder_logs");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.DedupeKey).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Channel).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.DedupeKey }).IsUnique();
         });
 
         modelBuilder.Entity<HomeworkAssignment>(entity =>
@@ -1264,6 +1447,8 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Detail).HasMaxLength(500).IsRequired();
             entity.Property(x => x.Time).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.ActorName).HasMaxLength(150).IsRequired().HasDefaultValue(string.Empty);
+            entity.HasIndex(x => x.CreatedAtUtc);
         });
 
         modelBuilder.Entity<RolePolicy>(entity =>
@@ -2660,6 +2845,20 @@ public sealed class CourseIntellectDbContext : DbContext
     private void ApplyTenantContext()
     {
         ApplyPersonNameFormat();
+        // Muhasebe kayıt geçmişi: işlemi yapan personel oturumdan damgalanır.
+        var actor = httpContextAccessor?.HttpContext?.User;
+        if (actor?.Identity?.IsAuthenticated == true)
+        {
+            var actorRaw = actor.FindFirst("user_id")?.Value ?? actor.FindFirst("sub")?.Value
+                ?? actor.FindFirst("nameid")?.Value ?? actor.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var actorName = actor.FindFirst("name")?.Value ?? actor.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? string.Empty;
+            foreach (var entry in ChangeTracker.Entries<AccountingAuditLog>())
+            {
+                if (entry.State != EntityState.Added) continue;
+                if (entry.Entity.ActorUserId is null && Guid.TryParse(actorRaw, out var actorId)) entry.Entity.ActorUserId = actorId;
+                if (string.IsNullOrEmpty(entry.Entity.ActorName)) entry.Entity.ActorName = actorName.Length > 150 ? actorName[..150] : actorName;
+            }
+        }
         var tenantId = CurrentTenantId;
         if (tenantId.HasValue)
         {

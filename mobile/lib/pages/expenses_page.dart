@@ -2,6 +2,7 @@ import 'package:student/widgets/school_card.dart';
 import 'package:flutter/material.dart';
 
 import '../i18n/app_locale.dart';
+import '../services/auth_session_store.dart';
 import '../services/expenses_api_service.dart';
 import '../widgets/admin_ui.dart';
 
@@ -41,6 +42,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
   String? _error;
   Map<String, dynamic> _data = const {};
   String _categoryFilter = '';
+  // Gider onayı yalnız yönetici (sunucu da yalnız Admin'e izin verir).
+  bool _canDecide = false;
 
   List<Map<String, dynamic>> get _items => ((_data['items'] as List?) ?? const [])
       .map((e) => Map<String, dynamic>.from(e as Map))
@@ -55,6 +58,22 @@ class _ExpensesPageState extends State<ExpensesPage> {
   void initState() {
     super.initState();
     _load();
+    AuthSessionStore.instance.load().then((session) {
+      if (!mounted || session == null) return;
+      final roles = {session.primaryRole, ...session.extraRoles}
+          .map((role) => role.toLowerCase());
+      setState(() => _canDecide = roles.contains('admin') || roles.contains('branchmanager'));
+    });
+  }
+
+  Future<void> _decide(Map<String, dynamic> item, String decision) async {
+    try {
+      await ExpensesApiService.instance.decideExpense('${item['id']}', decision);
+      _message(decision == 'approve' ? 'Gider onaylandı.' : 'Gider reddedildi.');
+      await _load();
+    } catch (e) {
+      _message('$e', error: true);
+    }
   }
 
   Future<void> _load() async {
@@ -116,6 +135,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
     var category = '${existing?['category'] ?? 'Fuel'}';
     if (!_categories.containsKey(category)) category = 'Other';
     var vehicleId = '${existing?['vehicleId'] ?? ''}';
+    var paymentMethod = '${existing?['paymentMethod'] ?? ''}';
+    if (!const ['Havale', 'Nakit', 'Kredi Kartı'].contains(paymentMethod)) paymentMethod = 'Havale';
     var date = DateTime.tryParse('${existing?['expenseDateUtc'] ?? ''}')?.toLocal() ?? DateTime.now();
 
     final saved = await showModalBottomSheet<bool>(
@@ -188,6 +209,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   onChanged: (v) => vehicleId = v ?? '',
                 ),
                 const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: paymentMethod,
+                  decoration: const InputDecoration(labelText: 'Ödeme yöntemi', border: OutlineInputBorder()),
+                  items: const [
+                    DropdownMenuItem(value: 'Havale', child: Text('Havale/EFT')),
+                    DropdownMenuItem(value: 'Nakit', child: Text('Nakit (kasadan)')),
+                    DropdownMenuItem(value: 'Kredi Kartı', child: Text('Kredi Kartı')),
+                  ],
+                  onChanged: (v) => paymentMethod = v ?? paymentMethod,
+                ),
+                const SizedBox(height: 10),
                 TextField(
                   controller: vendorCtrl,
                   decoration: InputDecoration(labelText: 'Tedarikçi (opsiyonel)'.tr, border: const OutlineInputBorder()),
@@ -236,16 +268,18 @@ class _ExpensesPageState extends State<ExpensesPage> {
       'expenseDateUtc': DateTime.utc(date.year, date.month, date.day, 12).toIso8601String(),
       'vehicleId': vehicleId.isEmpty ? null : vehicleId,
       'note': noteCtrl.text.trim(),
+      'paymentMethod': paymentMethod,
     };
     setState(() => _saving = true);
     try {
-      if (existing == null) {
-        await ExpensesApiService.instance.createExpense(body);
-        _message('Gider faturası oluşturuldu.'.tr);
-      } else {
-        await ExpensesApiService.instance.updateExpense('${existing['id']}', body);
-        _message('Gider güncellendi.'.tr);
-      }
+      final saved = existing == null
+          ? await ExpensesApiService.instance.createExpense(body)
+          : await ExpensesApiService.instance.updateExpense('${existing['id']}', body);
+      final pending = saved['approvalStatus'] == 'Bekliyor';
+      _message(
+        '${existing == null ? 'Gider faturası oluşturuldu.'.tr : 'Gider güncellendi.'.tr}'
+        '${pending ? ' Yönetici onayından sonra gider toplamına girer.' : ''}',
+      );
       await _load();
     } catch (e) {
       _message('$e', error: true);
@@ -290,7 +324,10 @@ class _ExpensesPageState extends State<ExpensesPage> {
                         _money(_summary['total']),
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
                       ),
-                      subtitle: Text('${_summary['count'] ?? 0} ${'gider kaydı'.tr}'),
+                      subtitle: Text(
+                        '${_summary['count'] ?? 0} ${'onaylı gider kaydı'.tr}'
+                        '${((_summary['pendingCount'] as num?) ?? 0) > 0 ? ' • ${_summary['pendingCount']} onay bekliyor (${_money(_summary['pendingTotal'])})' : ''}',
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -362,6 +399,20 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                   visualDensity: VisualDensity.compact,
                                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
+                                if (item['approvalStatus'] == 'Bekliyor')
+                                  const Chip(
+                                    avatar: Icon(Icons.schedule_rounded, size: 16, color: Colors.orange),
+                                    label: Text('Onay bekliyor'),
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                if (item['approvalStatus'] == 'Reddedildi')
+                                  const Chip(
+                                    avatar: Icon(Icons.close_rounded, size: 16, color: Colors.red),
+                                    label: Text('Reddedildi'),
+                                    visualDensity: VisualDensity.compact,
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
                                 if ('${item['vehiclePlate'] ?? ''}'.isNotEmpty)
                                   Chip(
                                     avatar: const Icon(Icons.directions_car_rounded, size: 16),
@@ -377,6 +428,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                 _dateOnly(item['expenseDateUtc']),
                                 if ('${item['vendorName'] ?? ''}'.isNotEmpty) '${item['vendorName']}',
                                 if ('${item['invoiceNo'] ?? ''}'.isNotEmpty) '${'Fatura'.tr}: ${item['invoiceNo']}',
+                                if ('${item['paymentMethod'] ?? ''}'.isNotEmpty) '${item['paymentMethod']}',
                               ].join(' • '),
                               style: const TextStyle(fontSize: 12, color: Colors.grey),
                             ),
@@ -399,6 +451,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    if (_canDecide && item['approvalStatus'] == 'Bekliyor') ...[
+                                      TextButton(
+                                        onPressed: () => _decide(item, 'approve'),
+                                        child: const Text('Onayla'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => _decide(item, 'reject'),
+                                        child: const Text('Reddet'),
+                                      ),
+                                    ],
                                     TextButton(
                                       onPressed: () => _openForm(existing: item),
                                       child: Text('Düzenle'.tr),

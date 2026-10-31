@@ -20,6 +20,11 @@ export interface ExpenseItem {
   createdByName: string | null;
   createdAtUtc: string;
   updatedAtUtc: string | null;
+  /** Onaylandı / Bekliyor / Reddedildi — yalnız onaylı gider toplamlara girer. */
+  approvalStatus: string;
+  paymentMethod: string;
+  approvedAtUtc: string | null;
+  approvedByName: string | null;
 }
 
 export interface ExpenseCategoryTotal {
@@ -35,6 +40,8 @@ export interface ExpenseListResponse {
     total: number;
     count: number;
     byCategory: ExpenseCategoryTotal[];
+    pendingCount: number;
+    pendingTotal: number;
   };
   categories: string[];
   vehicles: Array<{ id: string; plateNumber: string }>;
@@ -50,6 +57,9 @@ export interface ExpenseQuery extends QueryParams {
 // ─── İşletme giderleri (mazot, bakım, kira, sigorta...) ───────────────────────
 // İşletme giderleri — kurumdan bağımsız genel finans modülü (okul + sürücü kursu).
 export const fetchExpenses = (params: ExpenseQuery = {}) => api.get<ExpenseListResponse>('/api/finance/expenses', { params });
-export const createExpense = (payload: ExpenseRequest) => api.post<{ id: string }>('/api/finance/expenses', payload);
-export const updateExpense = (id: string, payload: ExpenseRequest) => api.put<{ id: string }>(`/api/finance/expenses/${id}`, payload);
+export const createExpense = (payload: ExpenseRequest) => api.post<{ id: string; approvalStatus: string }>('/api/finance/expenses', payload);
+export const updateExpense = (id: string, payload: ExpenseRequest) => api.put<{ id: string; approvalStatus: string }>(`/api/finance/expenses/${id}`, payload);
+/** Onay bekleyen gideri onaylar/reddeder (yalnız yönetici). */
+export const decideExpense = (id: string, decision: 'approve' | 'reject', note?: string) =>
+  api.post<{ id: string; approvalStatus: string }>(`/api/finance/expenses/${id}/decision`, { decision, note: note ?? null });
 export const deleteExpense = (id: string) => api.delete<{ deleted: boolean }>(`/api/finance/expenses/${id}`);

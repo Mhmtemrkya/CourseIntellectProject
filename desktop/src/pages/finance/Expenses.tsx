@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, CarFront, Plus, Receipt, RefreshCw, Trash2, TrendingDown, Wallet } from 'lucide-react';
+import { CalendarDays, CarFront, Check, Clock, Plus, Receipt, RefreshCw, Trash2, TrendingDown, Wallet, X } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { useToast } from '../../hooks/use-toast';
 import {
-  createExpense, deleteExpense, fetchExpenses, updateExpense,
+  createExpense, decideExpense, deleteExpense, fetchExpenses, updateExpense,
 } from '../../lib/api/modules';
+import { useApp } from '../../context/AppContext';
 import { Page, PageHeader, PageLoading, PageNotice, StatCard } from '../../components/layout/PageKit';
 import { formatDate, formatDateTime } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
@@ -25,6 +26,7 @@ interface ExpenseForm {
   invoiceNo: string;
   vehicleId: string;
   note: string;
+  paymentMethod: string;
 }
 
 type Vehicle = ExpenseListResponse['vehicles'][number];
@@ -47,7 +49,14 @@ const dateTime = (v: string | null | undefined) => (v ? formatDateTime(v) : '—
 const dateOnly = (v: string | null | undefined) => (v ? formatDate(v) : '—');
 const todayInput = () => new Date().toISOString().slice(0, 10);
 
-const EMPTY_FORM: ExpenseForm = { category: 'Fuel', title: '', amount: '', expenseDate: todayInput(), vendorName: '', invoiceNo: '', vehicleId: '', note: '' };
+const EMPTY_FORM: ExpenseForm = { category: 'Fuel', title: '', amount: '', expenseDate: todayInput(), vendorName: '', invoiceNo: '', vehicleId: '', note: '', paymentMethod: 'Havale' };
+
+/** Onay rozeti: yalnız onaylı gider toplamlara ve kasaya girer. */
+function ApprovalBadge({ status }: { status: string }) {
+  if (status === 'Bekliyor') return <Badge className="bg-amber-100 text-amber-700"><Clock className="mr-1 h-3 w-3" />Onay bekliyor</Badge>;
+  if (status === 'Reddedildi') return <Badge className="bg-red-100 text-red-700"><X className="mr-1 h-3 w-3" />Reddedildi</Badge>;
+  return null;
+}
 
 interface ExpenseModalProps {
   initial: ExpenseForm;
@@ -79,10 +88,13 @@ function ExpenseModal({ initial, vehicles, onClose, onSaved }: ExpenseModalProps
         expenseDateUtc: form.expenseDate ? new Date(`${form.expenseDate}T12:00:00Z`).toISOString() : null,
         vehicleId: form.vehicleId || null,
         note: form.note.trim(),
+        paymentMethod: form.paymentMethod,
       };
-      if (initial.id) await updateExpense(initial.id, payload);
-      else await createExpense(payload);
-      toast({ title: editing ? 'Gider güncellendi' : 'Gider faturası oluşturuldu' });
+      const saved = initial.id ? await updateExpense(initial.id, payload) : await createExpense(payload);
+      toast({
+        title: editing ? 'Gider güncellendi' : 'Gider faturası oluşturuldu',
+        description: saved?.approvalStatus === 'Bekliyor' ? 'Yönetici onayından sonra gider toplamına girer.' : undefined,
+      });
       onSaved();
     } catch (e) {
       toast({ title: 'Gider kaydedilemedi', description: errorMessage(e), variant: 'destructive' });
@@ -139,6 +151,13 @@ function ExpenseModal({ initial, vehicles, onClose, onSaved }: ExpenseModalProps
             <label className="text-xs font-bold text-muted-foreground">Fatura no (opsiyonel)
               <Input className="mt-1" maxLength={60} value={form.invoiceNo} onChange={(e) => set({ invoiceNo: e.target.value })} />
             </label>
+            <label className="text-xs font-bold text-muted-foreground">Ödeme yöntemi
+              <select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={form.paymentMethod} onChange={(e) => set({ paymentMethod: e.target.value })}>
+                <option value="Havale">Havale/EFT</option>
+                <option value="Nakit">Nakit (kasadan)</option>
+                <option value="Kredi Kartı">Kredi Kartı</option>
+              </select>
+            </label>
           </div>
           <label className="block text-xs font-bold text-muted-foreground">Not (opsiyonel)
             <Input className="mt-1" maxLength={1000} value={form.note} onChange={(e) => set({ note: e.target.value })} />
@@ -159,6 +178,9 @@ export default function Expenses() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ category: '', vehicleId: '', from: '', to: '' });
   const [modal, setModal] = useState<ExpenseForm | null>(null);
+  const { user } = useApp();
+  // Sunucuda karar ucu yalnız yönetici (şube müdürü yönetici yetkisi taşır).
+  const canDecide = ['admin', 'branchmanager'].includes(String(user?.backendRole || user?.role || '').toLowerCase());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -189,10 +211,20 @@ export default function Expenses() {
     }
   };
 
+  const decide = async (item: ExpenseItem, decision: 'approve' | 'reject') => {
+    try {
+      await decideExpense(item.id, decision);
+      toast({ title: decision === 'approve' ? 'Gider onaylandı' : 'Gider reddedildi' });
+      await load();
+    } catch (e) {
+      toast({ title: 'İşlem yapılamadı', description: errorMessage(e), variant: 'destructive' });
+    }
+  };
+
   const vehicles = data?.vehicles || [];
   const hasVehicles = vehicles.length > 0;
   const items = data?.items || [];
-  const summary = data?.summary || { total: 0, count: 0, byCategory: [] };
+  const summary = data?.summary || { total: 0, count: 0, byCategory: [], pendingCount: 0, pendingTotal: 0 };
   const topCategory = useMemo(() => (summary.byCategory || [])[0], [summary]);
 
   if (loading && !data) return <PageLoading />;
@@ -208,8 +240,8 @@ export default function Expenses() {
       />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Toplam Gider" value={money(summary.total)} caption="Seçili filtrede" icon={TrendingDown} tone="rose" />
-        <StatCard label="Kayıt" value={summary.count} caption="Gider faturası" icon={Receipt} tone="brand" />
+        <StatCard label="Toplam Gider" value={money(summary.total)} caption={`${summary.count} onaylı kayıt`} icon={TrendingDown} tone="rose" />
+        <StatCard label="Onay bekleyen" value={summary.pendingCount || 0} caption={money(summary.pendingTotal || 0)} icon={Clock} tone="brand" />
         <StatCard label="En yüksek kalem" value={topCategory ? CATEGORY_LABEL[topCategory.category] || topCategory.category : '—'} caption={topCategory ? money(topCategory.total) : 'Kayıt yok'} icon={Wallet} tone="amber" />
         {hasVehicles ? (
           <StatCard label="Araç gideri" value={money((summary.byCategory || []).filter((x) => x.category === 'Fuel' || x.category === 'Maintenance').reduce((s, x) => s + Number(x.total), 0))} caption="Mazot + bakım" icon={CarFront} tone="violet" />
@@ -246,11 +278,13 @@ export default function Expenses() {
                     <b className="truncate">{item.title}</b>
                     <Badge variant="outline">{CATEGORY_LABEL[item.category] || item.category}</Badge>
                     {item.vehiclePlate ? <Badge variant="outline" className="border-brand-primary/40 text-brand-primary"><CarFront className="mr-1 h-3 w-3" />{item.vehiclePlate}</Badge> : null}
+                    <ApprovalBadge status={item.approvalStatus} />
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {dateOnly(item.expenseDateUtc)}
                     {item.vendorName ? ` • ${item.vendorName}` : ''}
                     {item.invoiceNo ? ` • Fatura: ${item.invoiceNo}` : ''}
+                    {item.paymentMethod ? ` • ${item.paymentMethod}` : ''}
                   </p>
                   {item.note ? <p className="mt-1 text-xs text-muted-foreground">{item.note}</p> : null}
                   {/* Detay: kim oluşturdu, hangi şube, ne zaman. */}
@@ -259,14 +293,22 @@ export default function Expenses() {
                     {item.branchName ? ` • Şube: ${item.branchName}` : ''}
                     {` • ${dateTime(item.createdAtUtc)}`}
                     {item.updatedAtUtc ? ' • (düzenlendi)' : ''}
+                    {item.approvedByName && item.approvalStatus !== 'Bekliyor' ? ` • ${item.approvalStatus === 'Reddedildi' ? 'Reddeden' : 'Onaylayan'}: ${item.approvedByName}` : ''}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-lg font-black text-rose-600">{money(item.amount)}</span>
+                  <span className={`text-lg font-black ${item.approvalStatus === 'Onaylandı' ? 'text-rose-600' : 'text-muted-foreground line-through decoration-transparent'}`}>{money(item.amount)}</span>
+                  {canDecide && item.approvalStatus === 'Bekliyor' ? (
+                    <>
+                      <Button size="sm" onClick={() => decide(item, 'approve')}><Check className="mr-1 h-4 w-4" />Onayla</Button>
+                      <Button size="sm" variant="outline" onClick={() => decide(item, 'reject')}><X className="mr-1 h-4 w-4" />Reddet</Button>
+                    </>
+                  ) : null}
                   <Button size="sm" variant="outline" onClick={() => setModal({
                     id: item.id, category: item.category, title: item.title, amount: String(item.amount),
                     expenseDate: item.expenseDateUtc ? item.expenseDateUtc.slice(0, 10) : todayInput(),
                     vendorName: item.vendorName || '', invoiceNo: item.invoiceNo || '', vehicleId: item.vehicleId || '', note: item.note || '',
+                    paymentMethod: item.paymentMethod || 'Havale',
                   })}>Düzenle</Button>
                   <Button size="sm" variant="ghost" onClick={() => remove(item)}><Trash2 className="h-4 w-4 text-rose-600" /></Button>
                 </div>

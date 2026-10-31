@@ -9,6 +9,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import 'accounting_api_service.dart';
 import 'accounting_finance_store.dart';
 import 'pdf_fonts.dart';
 
@@ -60,30 +61,18 @@ class AccountingExportService {
     return AccountingExportFile(file: saved, label: export.label);
   }
 
+  /// Excel/CSV: sunucunun ürettiği muhasebe hareket dökümü (bu ay). Eskiden
+  /// cihazda 5 sütunluk özet üretiliyordu; makbuz no, yöntem, şube, işlem
+  /// yapan ve giderler yoktu, Türkçe karakterler de bozuluyordu.
   Future<AccountingExportFile> _buildCsv(AccountingFinanceStore store) async {
-    final lines = <String>[
-      'Tip,Ad/Sistem,Kategori/Sınıf,Tutar,Durum/Tarih',
-      ...store.collections.map(
-        (item) =>
-            'Tahsilat,${_escape(item.name)},${_escape(item.className)},${_escape(item.amount)},${_escape(item.time)}',
-      ),
-      ...store.installments.map(
-        (item) =>
-            'Taksit,${_escape(item.student)},${_escape(item.status)},${_escape(item.amount)},${_escape(item.due)}',
-      ),
-      ...store.invoices.map(
-        (item) =>
-            'Fatura,${_escape(item.title)},${_escape(item.category)},${_escape(item.amount)},${_escape(item.status)}',
-      ),
-      ...store.salaries.map(
-        (item) =>
-            'Bordro,${_escape(item.employee)},${_escape(item.role)},${_escape(item.amount)},${_escape(item.status)}',
-      ),
-    ];
-
+    final now = DateTime.now();
+    final bytes = await AccountingApiService.instance.downloadJournalCsv(
+      from: DateTime(now.year, now.month, 1),
+      to: now,
+    );
     final file = await _writeFile(
-      'muhasebe_raporu.csv',
-      Uint8List.fromList([0xEF, 0xBB, 0xBF, ...lines.join('\n').codeUnits]),
+      'muhasebe_hareketleri_${now.year}${now.month.toString().padLeft(2, '0')}.csv',
+      Uint8List.fromList(bytes),
     );
     return AccountingExportFile(file: file, label: 'Excel/CSV');
   }
@@ -216,11 +205,6 @@ class AccountingExportService {
       await exportDir.create(recursive: true);
     }
     return exportDir;
-  }
-
-  String _escape(String value) {
-    final normalized = value.replaceAll('"', '""');
-    return '"$normalized"';
   }
 
   Future<pw.Font> _loadPdfFont() async {

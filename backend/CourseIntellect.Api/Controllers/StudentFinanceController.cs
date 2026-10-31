@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
+using CourseIntellect.Domain.Services;
 using Microsoft.AspNetCore.Authorization;
 using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,7 @@ public sealed class StudentFinanceController(
     IEInvoiceService eInvoiceService,
     IPayrollService payrollService,
     IReconciliationService reconciliationService,
+    IFinanceDayCloseService dayCloseService,
     IStudentStatementPdfService statementPdfService,
     IPlatformConfigurationService platformConfigurationService,
     IFileStorageService fileStorageService,
@@ -36,8 +38,15 @@ public sealed class StudentFinanceController(
             return BadRequest(new { message = "Öğrenci adı zorunludur." });
         }
 
-        var result = await studentFinanceService.CreateEnrollmentAsync(request, CurrentUserId(), cancellationToken);
-        return Ok(result);
+        try
+        {
+            var result = await studentFinanceService.CreateEnrollmentAsync(request, CurrentUserId(), cancellationToken);
+            return Ok(result);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("account")]
@@ -240,6 +249,94 @@ public sealed class StudentFinanceController(
         return Ok(await reconciliationService.ReconcileAsync(request, cancellationToken));
     }
 
+    /// <summary>Kaydedilmiş banka hareketleri (status: Matched / Unmatched / Ignored).</summary>
+    [HttpGet("reconciliation/entries")]
+    public async Task<IActionResult> GetReconciliationEntries([FromQuery] string? status, CancellationToken cancellationToken)
+        => Ok(await reconciliationService.ListAsync(status, cancellationToken));
+
+    [HttpPut("reconciliation/entries/{id:guid}")]
+    [RequireEntitlement("reconciliation", "run")]
+    public async Task<IActionResult> UpdateReconciliationEntry(Guid id, [FromBody] ReconciliationEntryActionRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var entry = await reconciliationService.UpdateEntryAsync(id, request.Action, cancellationToken);
+            return entry is null ? NotFound() : Ok(entry);
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    // ---- Gün sonu kasa kapanışı ----
+    [HttpGet("day-close")]
+    public async Task<IActionResult> GetDayClose([FromQuery] DateTime? day, CancellationToken cancellationToken)
+        => Ok(await dayCloseService.GetSummaryAsync(day ?? FinanceDates.TodayUtcDate(DateTime.UtcNow), cancellationToken));
+
+    [HttpGet("day-close/history")]
+    public async Task<IActionResult> GetDayCloseHistory([FromQuery] DateTime? fromUtc, [FromQuery] DateTime? toUtc, CancellationToken cancellationToken)
+        => Ok(await dayCloseService.ListAsync(fromUtc, toUtc, cancellationToken));
+
+    [HttpPost("day-close")]
+    [Authorize(Roles = "Accounting,Admin")]
+    public async Task<IActionResult> CloseDay([FromBody] CloseFinanceDayRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var actorName = (User.FindFirstValue("name") ?? User.FindFirstValue(ClaimTypes.Name) ?? string.Empty).Trim();
+            return Ok(await dayCloseService.CloseAsync(request, CurrentUserId(), actorName, cancellationToken));
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+    }
+
+    /// <summary>Kapanmış günü yeniden açar (düzeltme için). Yalnız yönetici.</summary>
+    [HttpPost("day-close/reopen")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ReopenDay([FromBody] ReopenFinanceDayRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await dayCloseService.ReopenAsync(request.Day, request.Reason, cancellationToken) ? NoContent() : NotFound();
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    // ---- Sözleşme yaşam döngüsü ----
+    [HttpPost("contracts/{contractId:guid}/status")]
+    [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("installments", "edit")]
+    public Task<IActionResult> ChangeContractStatus(Guid contractId, [FromBody] ChangeContractStatusRequest request, CancellationToken cancellationToken)
+        => MutateAsync(() => studentFinanceService.ChangeContractStatusAsync(contractId, request, cancellationToken));
+
+    [HttpPost("contracts/{contractId:guid}/restructure")]
+    [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("installments", "edit")]
+    public Task<IActionResult> RestructureInstallments(Guid contractId, [FromBody] RestructureInstallmentsRequest request, CancellationToken cancellationToken)
+        => MutateAsync(() => studentFinanceService.RestructureInstallmentsAsync(contractId, request, cancellationToken));
+
+    // ---- Toplu tahsilat ----
+    [HttpPost("payments/bulk")]
+    [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("collections", "collect")]
+    public async Task<IActionResult> BulkCollect([FromBody] BulkCollectionRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await studentFinanceService.BulkCollectAsync(request, CurrentUserId(), cancellationToken));
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    private static async Task<IActionResult> MutateAsync<T>(Func<Task<T>> action)
+    {
+        try
+        {
+            return new OkObjectResult(await action());
+        }
+        catch (KeyNotFoundException ex) { return new NotFoundObjectResult(new { message = ex.Message }); }
+        catch (ArgumentException ex) { return new BadRequestObjectResult(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return new ConflictObjectResult(new { message = ex.Message }); }
+    }
+
     // ---- Faz 4 ----
     [HttpPost("e-invoice/issue")]
     [RequireEntitlement("billing", "invoice-create")]
@@ -248,6 +345,11 @@ public sealed class StudentFinanceController(
         return Ok(await eInvoiceService.IssueAsync(request, cancellationToken));
     }
 
+    /// <summary>
+    /// KULLANIMDAN KALDIRILDI: yeni uygulamalar maaşı doğrudan yazar. Yayındaki eski
+    /// sürümlerin "Bordro Hesapla" düğmesi 404 almasın diye korunuyor.
+    /// </summary>
+    [Obsolete("Eski uygulama sürümleri için korunuyor; yeni sürümler yaygınlaşınca kaldırılacak.")]
     [HttpPost("payroll/calculate")]
     public IActionResult CalculatePayroll([FromBody] PayrollRequest request)
     {

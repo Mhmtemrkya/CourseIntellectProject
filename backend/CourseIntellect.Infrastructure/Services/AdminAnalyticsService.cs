@@ -26,7 +26,8 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
 
         // Kazanç: normalize finans tahsilatları (kesin tarih + decimal tutar).
         var payments = await dbContext.FinancePayments.AsNoTracking()
-            .Where(p => p.PaidAtUtc >= rangeStart && p.PaidAtUtc < rangeEnd)
+            // Grafik TL'dir; döviz cinsinden tahsilat TL toplamına karışmaz.
+            .Where(p => p.PaidAtUtc >= rangeStart && p.PaidAtUtc < rangeEnd && p.Currency == "TRY")
             .Select(p => new { p.PaidAtUtc, p.Amount })
             .ToListAsync(cancellationToken);
 
@@ -36,26 +37,23 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
             .Select(s => s.CreatedAtUtc)
             .ToListAsync(cancellationToken);
 
-        // Gider: işletme gider defteri (ortak /finance/expenses — iç tablo adı
-        // DrivingExpense'tir ama okul da aynı ekranı kullanır) + maaş/bordro +
-        // fatura. Ana paneldeki "Gider" sayacı da aynı üç kaynağı toplar.
-        var operationalExpenses = await dbContext.DrivingExpenses.AsNoTracking()
+        // Gider kuralı ana paneldeki "Gider" sayacıyla aynıdır (FinanceExpenseRules):
+        // onaylı işletme gideri gider tarihinde; maaş ve fatura yalnız ödendiği gün.
+        var operationalExpenses = (await dbContext.DrivingExpenses.AsNoTracking()
             .Where(e => e.ExpenseDateUtc >= rangeStart && e.ExpenseDateUtc < rangeEnd)
-            .Select(e => new { e.ExpenseDateUtc, e.Amount })
-            .ToListAsync(cancellationToken);
-
-        // Gider: maaş/bordro + fatura kayıtları (string tutar, in-memory parse).
-        // Ana paneldeki "Gider" sayacıyla aynı kural (FinanceExpenseRules): reddedilen
-        // ve onay bekleyen bordro, reddedilen fatura sayılmaz; fatura, fatura tarihine düşer.
+            .Select(e => new { e.ExpenseDateUtc, e.Amount, e.ApprovalStatus })
+            .ToListAsync(cancellationToken))
+            .Where(e => FinanceExpenseRules.ExpenseCountsAsExpense(e.ApprovalStatus))
+            .ToList();
         var salaries = (await dbContext.AccountingSalaries.AsNoTracking()
-            .Where(s => s.CreatedAtUtc >= rangeStart && s.CreatedAtUtc < rangeEnd)
-            .Select(s => new { s.CreatedAtUtc, s.Amount, s.Status })
+            .Where(s => (s.PaidAtUtc ?? s.CreatedAtUtc) >= rangeStart && (s.PaidAtUtc ?? s.CreatedAtUtc) < rangeEnd)
+            .Select(s => new { CreatedAtUtc = s.PaidAtUtc ?? s.CreatedAtUtc, s.Amount, s.Status })
             .ToListAsync(cancellationToken))
             .Where(s => FinanceExpenseRules.SalaryCountsAsExpense(s.Status))
             .ToList();
         var invoices = (await dbContext.AccountingInvoices.AsNoTracking()
-            .Where(i => i.IssueDateUtc >= rangeStart && i.IssueDateUtc < rangeEnd)
-            .Select(i => new { CreatedAtUtc = i.IssueDateUtc, i.Amount, i.Status })
+            .Where(i => (i.PaidAtUtc ?? i.IssueDateUtc) >= rangeStart && (i.PaidAtUtc ?? i.IssueDateUtc) < rangeEnd)
+            .Select(i => new { CreatedAtUtc = i.PaidAtUtc ?? i.IssueDateUtc, i.Amount, i.Status })
             .ToListAsync(cancellationToken))
             .Where(i => FinanceExpenseRules.InvoiceCountsAsExpense(i.Status))
             .ToList();

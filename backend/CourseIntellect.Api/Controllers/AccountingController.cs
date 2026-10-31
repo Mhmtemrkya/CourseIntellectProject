@@ -5,6 +5,7 @@ using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using CourseIntellect.Api.Authorization;
@@ -18,6 +19,7 @@ namespace CourseIntellect.Api.Controllers;
 public sealed class AccountingController(
     IAccountingService accountingService,
     IStudentFinanceService studentFinanceService,
+    IFinanceJournalExportService journalExportService,
     CourseIntellectDbContext dbContext) : ControllerBase
 {
     private const string BenefitSectionKey = "accounting-benefits";
@@ -58,44 +60,19 @@ public sealed class AccountingController(
 
     [HttpGet("exports/csv")]
     [Authorize(Roles = "Accounting,Admin")]
-    public async Task<IActionResult> ExportCsv(CancellationToken cancellationToken)
+    public async Task<IActionResult> ExportCsv(
+        [FromQuery] DateTime? fromUtc,
+        [FromQuery] DateTime? toUtc,
+        CancellationToken cancellationToken)
     {
-        // Muhasebe ihracatı backend'de hazırlanır (mobil+desktop ortak kaynak).
-        // Tek bir CSV: tahsilatlar, taksitler, faturalar, bordrolar.
-        var data = await accountingService.GetDashboardAsync(cancellationToken: cancellationToken);
-        var builder = new System.Text.StringBuilder();
-        builder.AppendLine("Tip,Ad/Sistem,Kategori/Sinif,Tutar,Durum/Tarih");
-
-        foreach (var c in data.Collections)
-        {
-            builder.AppendLine($"Tahsilat,{CsvEscape(c.Name)},{CsvEscape(c.ClassName)},{CsvEscape(c.Amount)},{CsvEscape(c.Time)}");
-        }
-        foreach (var i in data.Installments)
-        {
-            builder.AppendLine($"Taksit,{CsvEscape(i.Student)},{CsvEscape(i.Status)},{CsvEscape(i.Amount)},{CsvEscape(i.Due)}");
-        }
-        foreach (var inv in data.Invoices)
-        {
-            builder.AppendLine($"Fatura,{CsvEscape(inv.Title)},{CsvEscape(inv.Category)},{CsvEscape(inv.Amount)},{CsvEscape(inv.Status)}");
-        }
-        foreach (var s in data.Salaries)
-        {
-            builder.AppendLine($"Bordro,{CsvEscape(s.Employee)},{CsvEscape(s.Role)},{CsvEscape(s.Amount)},{CsvEscape(s.Status)}");
-        }
-
-        var bytes = System.Text.Encoding.UTF8.GetPreamble()
-            .Concat(System.Text.Encoding.UTF8.GetBytes(builder.ToString()))
-            .ToArray();
-        var fileName = $"muhasebe-{DateTime.UtcNow:yyyyMMddHHmm}.csv";
-        return File(bytes, "text/csv", fileName);
-    }
-
-    private static string CsvEscape(string? value)
-    {
-        if (string.IsNullOrEmpty(value)) return string.Empty;
-        var needsQuote = value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r');
-        var escaped = value.Replace("\"", "\"\"");
-        return needsQuote ? $"\"{escaped}\"" : escaped;
+        // Muhasebe ihracatı backend'de hazırlanır (mobil+desktop ortak kaynak):
+        // dönemdeki tüm para hareketleri tek yevmiye biçiminde (tahsilat, iade,
+        // gider, maaş ve fatura ödemeleri; belge no, yöntem, şube, işlem yapan).
+        if (fromUtc.HasValue && toUtc.HasValue && toUtc <= fromUtc)
+            return BadRequest(new { message = "Bitiş tarihi başlangıç tarihinden sonra olmalıdır." });
+        var bytes = await journalExportService.ExportCsvAsync(fromUtc, toUtc, cancellationToken);
+        var fileName = $"muhasebe-hareketleri-{DateTime.UtcNow:yyyyMMddHHmm}.csv";
+        return File(bytes, "text/csv; charset=utf-8", fileName);
     }
 
     [HttpPost("benefits")]
@@ -215,9 +192,14 @@ public sealed class AccountingController(
             return NotFound(new { message = "Ödendi olarak işaretlenecek fatura bulunamadı.", action = "Fatura listesini yenileyip kaydı yeniden seçin." });
         if (string.Equals(invoice.Status, "Ödendi", StringComparison.OrdinalIgnoreCase))
             return Conflict(new { message = "Bu fatura zaten ödendi olarak kayıtlı.", action = "Fatura detayından ödeme tarihini ve yöntemini kontrol edin." });
+        if (string.Equals(invoice.Status, FinanceExpenseRules.Cancelled, StringComparison.OrdinalIgnoreCase))
+            return Conflict(new { message = "İptal edilmiş fatura ödendi olarak işaretlenemez." });
+        var markPaidAt = (request.PaidAtUtc ?? DateTime.UtcNow).ToUniversalTime();
+        try { await FinanceDayGuard.EnsureOpenAsync(dbContext, markPaidAt, cancellationToken); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
 
         invoice.Status = "Ödendi";
-        invoice.PaidAtUtc = (request.PaidAtUtc ?? DateTime.UtcNow).ToUniversalTime();
+        invoice.PaidAtUtc = markPaidAt;
         invoice.PaymentMethod = request.PaymentMethod.Trim();
         if (!string.IsNullOrWhiteSpace(request.Note))
             invoice.Note = string.IsNullOrWhiteSpace(invoice.Note)
@@ -245,7 +227,51 @@ public sealed class AccountingController(
             invoice.DueDateUtc,
             invoice.PaidAtUtc,
             invoice.PaymentMethod,
-            invoice.Note));
+            invoice.Note,
+            invoice.CancelledAtUtc,
+            invoice.CancelReason));
+    }
+
+    [HttpPut("invoices/{id:guid}")]
+    [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("billing", "invoice-create")]
+    public Task<IActionResult> UpdateInvoice(Guid id, [FromBody] UpdateInvoiceRequest request, CancellationToken cancellationToken)
+        => Mutate(() => accountingService.UpdateInvoiceAsync(id, request, cancellationToken));
+
+    [HttpPost("invoices/{id:guid}/cancel")]
+    [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("billing", "invoice-create")]
+    public Task<IActionResult> CancelInvoice(Guid id, [FromBody] CancelInvoiceRequest request, CancellationToken cancellationToken)
+        => Mutate(() => accountingService.CancelInvoiceAsync(id, request.Reason, cancellationToken));
+
+    [HttpDelete("invoices/{id:guid}")]
+    [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("billing", "invoice-create")]
+    public async Task<IActionResult> DeleteInvoice(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await accountingService.DeleteInvoiceAsync(id, cancellationToken) ? NoContent() : NotFound();
+        }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+    }
+
+    [HttpPut("salaries/{id:guid}/pay")]
+    [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("salary", "define")]
+    public Task<IActionResult> PaySalary(Guid id, [FromBody] PaySalaryRequest request, CancellationToken cancellationToken)
+        => Mutate(() => accountingService.PaySalaryAsync(id, request, cancellationToken));
+
+    // Ortak hata eşlemesi: bulunamadı → 404, geçersiz girdi → 400, kural ihlali → 409.
+    private static async Task<IActionResult> Mutate<T>(Func<Task<T?>> action) where T : class
+    {
+        try
+        {
+            var result = await action();
+            return result is null ? new NotFoundResult() : new OkObjectResult(result);
+        }
+        catch (ArgumentException ex) { return new BadRequestObjectResult(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return new ConflictObjectResult(new { message = ex.Message }); }
     }
 
     [HttpPost("salaries")]
@@ -263,7 +289,7 @@ public sealed class AccountingController(
     {
         var items = await dbContext.AccountingSalaries
             .OrderByDescending(x => x.Id)
-            .Select(x => new AccountingSalaryDto(x.Id.ToString(), x.Employee, x.Role, x.Amount, x.PayDate, x.Status))
+            .Select(x => new AccountingSalaryDto(x.Id.ToString(), x.Employee, x.Role, x.Amount, x.PayDate, x.Status, x.PaidAtUtc, x.PaymentMethod))
             .ToListAsync(cancellationToken);
         return Ok(items);
     }
@@ -292,6 +318,23 @@ public sealed class AccountingController(
         }
 
         var amountChanged = MoneyParser.Parse(item.Amount) != amount;
+        if (currentStatus == "Ödendi" && (amountChanged || requestedStatus != "Ödendi"))
+        {
+            // Ödenmiş maaş kasadan çıkmış paradır; tutarı/durumu yalnız o gün açıksa değişir.
+            try { await FinanceDayGuard.EnsureOpenAsync(dbContext, item.PaidAtUtc ?? item.CreatedAtUtc, cancellationToken); }
+            catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+        }
+        if (requestedStatus == "Ödendi" && currentStatus != "Ödendi")
+        {
+            try { await FinanceDayGuard.EnsureOpenAsync(dbContext, DateTime.UtcNow, cancellationToken); }
+            catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+            item.PaidAtUtc = DateTime.UtcNow;
+        }
+        else if (requestedStatus != "Ödendi")
+        {
+            item.PaidAtUtc = null;
+            item.PaymentMethod = string.Empty;
+        }
         item.Employee = request.Employee.Trim();
         item.Role = request.Role.Trim();
         item.Amount = MoneyParser.Format(amount);
@@ -323,7 +366,7 @@ public sealed class AccountingController(
             }
         }
         await dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(new AccountingSalaryDto(item.Id.ToString(), item.Employee, item.Role, item.Amount, item.PayDate, item.Status));
+        return Ok(new AccountingSalaryDto(item.Id.ToString(), item.Employee, item.Role, item.Amount, item.PayDate, item.Status, item.PaidAtUtc, item.PaymentMethod));
     }
 
     [HttpDelete("salaries/{id:guid}")]
@@ -333,6 +376,11 @@ public sealed class AccountingController(
     {
         var item = await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return NotFound();
+        if (FinanceExpenseRules.SalaryCountsAsExpense(item.Status))
+        {
+            try { await FinanceDayGuard.EnsureOpenAsync(dbContext, item.PaidAtUtc ?? item.CreatedAtUtc, cancellationToken); }
+            catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+        }
         dbContext.AccountingSalaries.Remove(item);
         // Silinen bordronun onay satırı "Onaylar" ekranında sahipsiz kalmasın.
         var key = item.Id.ToString();

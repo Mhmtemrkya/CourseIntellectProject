@@ -1,4 +1,6 @@
+import 'package:student/pages/preference_robot_page.dart';
 import 'package:flutter/material.dart';
+import 'package:student/pages/clubs_page.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/teacher_duties_page.dart';
 import 'package:student/pages/teacher_home_page.dart';
@@ -8,6 +10,7 @@ import 'package:student/pages/teacher_profile_page.dart';
 import 'package:student/pages/teacher_schedule_page.dart';
 import 'package:student/widgets/adaptive_scaffold.dart';
 import 'package:student/pages/teacher_library_page.dart';
+import 'package:student/pages/subject_groups_page.dart';
 
 class TeacherBottomNav extends StatelessWidget {
   const TeacherBottomNav({super.key});
@@ -46,6 +49,24 @@ class TeacherBottomNav extends StatelessWidget {
           label: 'Kütüphane'.tr,
           pageBuilder: (_) => const TeacherLibraryPage(),
           sidebarColor: const Color(0xFF0EA5E9),
+        ),
+        AdaptiveDestination(
+          icon: Icons.flag_rounded,
+          label: 'Kulüpler'.tr,
+          pageBuilder: (_) => const ClubsPage(audience: ClubsAudience.teacher),
+          sidebarColor: const Color(0xFFE11D48),
+        ),
+        AdaptiveDestination(
+          icon: Icons.track_changes_rounded,
+          label: 'Tercih Robotu'.tr,
+          pageBuilder: (_) => const PreferenceRobotPage(),
+          sidebarColor: const Color(0xFF7C3AED),
+        ),
+        AdaptiveDestination(
+          icon: Icons.groups_2_rounded,
+          label: 'Zümrem'.tr,
+          pageBuilder: (_) => const TeacherSubjectGroupsPage(),
+          sidebarColor: const Color(0xFF4F46E5),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

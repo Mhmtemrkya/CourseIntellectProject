@@ -35,6 +35,10 @@ String _normalizeInvoiceCategory(Object? value) {
 
 String _normalizeInvoiceStatus(Object? value) {
   final normalized = _normalizeFinanceText(value).toLowerCase();
+  // İptal edilen fatura listede kalır ama gider toplamına girmez.
+  if (normalized.contains('iptal') || normalized.contains('cancel')) {
+    return 'İptal';
+  }
   if (normalized.contains('unpaid') ||
       normalized.contains('ödenmedi') ||
       normalized.contains('odenmedi') ||
@@ -133,6 +137,8 @@ class InvoiceRecord {
   final DateTime? paidAtUtc;
   final String paymentMethod;
   final String note;
+  final DateTime? cancelledAtUtc;
+  final String cancelReason;
 
   InvoiceRecord({
     this.id = '',
@@ -148,6 +154,8 @@ class InvoiceRecord {
     this.paidAtUtc,
     this.paymentMethod = '',
     this.note = '',
+    this.cancelledAtUtc,
+    this.cancelReason = '',
   });
 
   factory InvoiceRecord.fromMap(Map<String, dynamic> map) {
@@ -165,6 +173,8 @@ class InvoiceRecord {
       paidAtUtc: DateTime.tryParse('${map['paidAtUtc'] ?? ''}'),
       paymentMethod: _normalizeFinanceText(map['paymentMethod']),
       note: _normalizeFinanceText(map['note']),
+      cancelledAtUtc: DateTime.tryParse('${map['cancelledAtUtc'] ?? ''}'),
+      cancelReason: _normalizeFinanceText(map['cancelReason']),
     );
   }
 
@@ -182,6 +192,8 @@ class InvoiceRecord {
     'paidAtUtc': paidAtUtc?.toIso8601String(),
     'paymentMethod': paymentMethod,
     'note': note,
+    'cancelledAtUtc': cancelledAtUtc?.toIso8601String(),
+    'cancelReason': cancelReason,
   };
 }
 
@@ -192,6 +204,8 @@ class SalaryRecord {
   final String amount;
   final String payDate;
   String status;
+  final DateTime? paidAtUtc;
+  final String paymentMethod;
 
   SalaryRecord({
     this.id = '',
@@ -200,6 +214,8 @@ class SalaryRecord {
     required this.amount,
     required this.payDate,
     required this.status,
+    this.paidAtUtc,
+    this.paymentMethod = '',
   });
 
   factory SalaryRecord.fromMap(Map<String, dynamic> map) {
@@ -210,6 +226,8 @@ class SalaryRecord {
       amount: _normalizeFinanceText(map['amount']),
       payDate: _normalizeFinanceText(map['payDate']),
       status: _normalizeSalaryStatus(map['status']),
+      paidAtUtc: DateTime.tryParse('${map['paidAtUtc'] ?? ''}'),
+      paymentMethod: _normalizeFinanceText(map['paymentMethod']),
     );
   }
 
@@ -220,6 +238,8 @@ class SalaryRecord {
     'amount': amount,
     'payDate': payDate,
     'status': status,
+    'paidAtUtc': paidAtUtc?.toIso8601String(),
+    'paymentMethod': paymentMethod,
   };
 }
 
@@ -404,11 +424,19 @@ class AuditLogRecord {
   final String detail;
   final String time;
 
+  /// Sunucunun gerçek zaman damgası; alan eklenmeden önceki eski kayıtlarda null.
+  final DateTime? createdAtUtc;
+
+  /// İşlemi yapan personel; eski kayıtlarda boş.
+  final String actorName;
+
   AuditLogRecord({
     this.id = '',
     required this.title,
     required this.detail,
     required this.time,
+    this.createdAtUtc,
+    this.actorName = '',
   });
 
   factory AuditLogRecord.fromMap(Map<String, dynamic> map) {
@@ -417,6 +445,8 @@ class AuditLogRecord {
       title: _normalizeFinanceText(map['title']),
       detail: _normalizeFinanceText(map['detail']),
       time: _normalizeFinanceText(map['time']),
+      createdAtUtc: DateTime.tryParse('${map['createdAtUtc'] ?? ''}'),
+      actorName: _normalizeFinanceText(map['actorName']),
     );
   }
 
@@ -425,6 +455,8 @@ class AuditLogRecord {
     'title': title,
     'detail': detail,
     'time': time,
+    'createdAtUtc': createdAtUtc?.toIso8601String(),
+    'actorName': actorName,
   };
 }
 
@@ -679,6 +711,52 @@ class AccountingFinanceStore extends ChangeNotifier {
 
   Future<void> deleteSalary(String id) async {
     await AccountingApiService.instance.deleteSalary(id);
+    await loadDashboard();
+  }
+
+  Future<void> paySalary({
+    required String id,
+    required String paymentMethod,
+    required DateTime paidAt,
+  }) async {
+    await AccountingApiService.instance.paySalary(
+      salaryId: id,
+      paymentMethod: paymentMethod,
+      paidAt: paidAt,
+    );
+    await loadDashboard();
+  }
+
+  Future<void> updateInvoice({
+    required String id,
+    required String title,
+    required String category,
+    required String amount,
+    required DateTime date,
+    DateTime? dueDate,
+    String counterparty = '',
+    String note = '',
+  }) async {
+    await AccountingApiService.instance.updateInvoice(
+      invoiceId: id,
+      title: title,
+      category: category,
+      amount: amount,
+      date: date,
+      dueDate: dueDate,
+      counterparty: counterparty,
+      note: note,
+    );
+    await loadDashboard();
+  }
+
+  Future<void> cancelInvoice({required String id, required String reason}) async {
+    await AccountingApiService.instance.cancelInvoice(invoiceId: id, reason: reason);
+    await loadDashboard();
+  }
+
+  Future<void> deleteInvoice(String id) async {
+    await AccountingApiService.instance.deleteInvoice(id);
     await loadDashboard();
   }
 

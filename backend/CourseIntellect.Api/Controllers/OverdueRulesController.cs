@@ -55,7 +55,7 @@ public sealed class OverdueRulesController(CourseIntellectDbContext dbContext) :
     }
 
     [HttpPut]
-    [Authorize(Roles = "Admin,Administrative,Finance")]
+    [Authorize(Roles = "Admin,Administrative,Accounting")]
     [RequireEntitlement("overdue-rules", "define")]
     public async Task<IActionResult> Put([FromBody] JsonElement payload, CancellationToken cancellationToken)
     {

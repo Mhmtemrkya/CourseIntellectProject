@@ -80,6 +80,16 @@ public interface IStudentFinanceService
         int upcomingWindowDays,
         CancellationToken cancellationToken = default);
 
+    // Yalnız vadesi gelmemiş (yaklaşan) taksitler için; gecikme kuralı tanımlı kurumda gecikmişleri kurallar hatırlatır.
+    Task<ReminderResultDto> SendUpcomingRemindersAsync(int upcomingWindowDays, CancellationToken cancellationToken = default);
+
+    // freeze / unfreeze / cancel. Bulunamazsa KeyNotFoundException.
+    Task<EnrollmentContractDto> ChangeContractStatusAsync(Guid contractId, ChangeContractStatusRequest request, CancellationToken cancellationToken = default);
+
+    Task<EnrollmentContractDto> RestructureInstallmentsAsync(Guid contractId, RestructureInstallmentsRequest request, CancellationToken cancellationToken = default);
+
+    Task<BulkCollectionResultDto> BulkCollectAsync(BulkCollectionRequest request, Guid? createdByUserId, CancellationToken cancellationToken = default);
+
     // Yalnız vadesi geçmiş taksitler için, öğrencinin kendi velisine; aynı gün tekrar
     // basılırsa yeni bildirim yazılmaz.
     Task<ReminderResultDto> SendOverdueRemindersAsync(CancellationToken cancellationToken = default);

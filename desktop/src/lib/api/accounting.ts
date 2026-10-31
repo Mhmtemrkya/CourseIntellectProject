@@ -1,5 +1,7 @@
 import { api } from './client';
 import type {
+  PaySalaryRequest,
+  UpdateInvoiceRequest,
   AccountingApprovalDto,
   AccountingCollectionDto,
   AccountingDashboardDto,
@@ -119,4 +121,36 @@ export async function updateInstallment(id: string, payload: UpdateInstallmentRe
 export async function markAllAccountingNotificationsRead(): Promise<null> {
   const response = await api.put<null>('/api/accounting/notifications/read-all');
   return response;
+}
+
+// --- Fatura ve bordro yaşam döngüsü ---
+
+export async function updateInvoice(id: string, payload: UpdateInvoiceRequest): Promise<AccountingInvoiceDto | null> {
+  return api.put<AccountingInvoiceDto>(`/api/accounting/invoices/${id}`, payload);
+}
+
+/** İptal edilen fatura silinmez; gider toplamından çıkar, gerekçesiyle kalır. */
+export async function cancelInvoice(id: string, reason: string): Promise<AccountingInvoiceDto | null> {
+  return api.post<AccountingInvoiceDto>(`/api/accounting/invoices/${id}/cancel`, { reason });
+}
+
+/** Yalnız ödenmemiş fatura silinir. */
+export async function deleteInvoice(id: string): Promise<void> {
+  await api.delete(`/api/accounting/invoices/${id}`);
+}
+
+/** Onaylı (Planlandı) bordronun ödendiğini kaydeder. */
+export async function paySalary(id: string, payload: PaySalaryRequest): Promise<AccountingSalaryDto | null> {
+  return api.put<AccountingSalaryDto>(`/api/accounting/salaries/${id}/pay`, payload);
+}
+
+/**
+ * Muhasebe hareket dökümü (yevmiye CSV): dönemdeki tahsilat, iade, gider, maaş ve
+ * fatura ödemeleri; belge no, yöntem, şube ve işlem yapan sütunlarıyla. Sunucuda üretilir.
+ */
+export function downloadAccountingJournal(range: AccountingRange = {}): Promise<Blob | null> {
+  return api.get('/api/accounting/exports/csv', {
+    params: Object.keys(range).length ? range : undefined,
+    responseType: 'blob',
+  });
 }

@@ -1,106 +1,75 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { History, Receipt, ShieldCheck, Wallet } from 'lucide-react';
+import { History, Search, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
-import { formatCurrency, parseFinanceMoney } from '../../lib/financeDocuments';
+import { formatDateTime } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
-import type { AccountingDashboard } from '../../lib/api/accounting';
+import type { AccountingAuditLogDto } from '../../types/api/generated';
 
-// Backend ISO tarih döner; ekranda yerel biçimde gösterilir.
-function formatDateTime(value: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return '—';
-  return parsed.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
-}
+const ALL = '__all__';
 
+/**
+ * Muhasebe kayıt geçmişi: sunucuda her finans işleminde yazılan kayıtlar (kim,
+ * ne zaman, ne yaptı). Zaman sunucunun gerçek damgasıdır; işlemi yapan personel
+ * oturumdan damgalanır. Bu alanlar eklenmeden önceki eski kayıtlarda yalnız
+ * kayıt anındaki zaman metni bulunur ve kişi bilinmez.
+ */
 export default function AuditLog() {
-  const [dashboard, setDashboard] = useState<AccountingDashboard | null>(null);
+  const [logs, setLogs] = useState<AccountingAuditLogDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actor, setActor] = useState(ALL);
+  const [search, setSearch] = useState('');
 
   const loadLogs = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      setDashboard(await fetchAccountingDashboard());
+      const dashboard = await fetchAccountingDashboard();
+      setLogs(dashboard?.auditLogs || []);
     } catch (err) {
-      setError(errorMessage(err, 'Audit log alınamadı.'));
+      setError(errorMessage(err, 'Kayıt geçmişi alınamadı.'));
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void loadLogs();
-  }, [loadLogs]);
+  useEffect(() => { void loadLogs(); }, [loadLogs]);
 
-  const logs = useMemo(() => ([
-    // İade belgeleri negatif tutarlıdır; "Tahsilat işlendi" başlığıyla listelenince
-    // yanlış okunuyordu. Kendi başlığı ve tonuyla gösterilir.
-    ...(dashboard?.collections || []).slice(0, 5).map((item) => {
-      const isRefund = item.entryType === 'Refund' || parseFinanceMoney(item.amount) < 0;
-      return {
-        id: `collection-${item.id}`,
-        title: isRefund ? 'İade işlendi' : 'Tahsilat işlendi',
-        detail: isRefund
-          ? `${item.name} için ${formatCurrency(Math.abs(parseFinanceMoney(item.amount)))} tutarlı iade yapıldı`
-          : `${item.name} için ${formatCurrency(item.amount)} tutarlı kayıt işlendi`,
-        type: isRefund ? 'İade' : 'Tahsilat',
-        icon: Wallet,
-        tone: isRefund ? 'rose' : 'emerald',
-        time: item.time || '—',
-      };
-    }),
-    ...(dashboard?.invoices || []).slice(0, 5).map((item) => ({
-      id: `invoice-${item.id}`,
-      title: 'Fatura üretildi',
-      detail: `${item.title} belgesi ${formatCurrency(item.amount)} tutarla kaydedildi`,
-      type: 'Fatura',
-      icon: Receipt,
-      tone: 'sky',
-      time: item.subtitle || '—',
-    })),
-    ...(dashboard?.approvals || []).slice(0, 5).map((item) => ({
-      id: `approval-${item.id}`,
-      title: 'Onay kaydı güncellendi',
-      detail: `${item.id} numaralı kayıt ${item.status || 'bekliyor'} durumuna geçti`,
-      type: 'Onay',
-      icon: ShieldCheck,
-      tone: 'amber',
-      time: item.updatedAtUtc ? formatDateTime(item.updatedAtUtc) : '—',
-    })),
-    // Zamanı olan kayıtlar önce, zamansızlar (eski onay satırları) sona.
-  ].sort((a, b) => {
-    if (a.time === '—') return 1;
-    if (b.time === '—') return -1;
-    return String(b.time).localeCompare(String(a.time));
-  })), [dashboard]);
+  const actors = useMemo(
+    () => Array.from(new Set(logs.map((item) => item.actorName || '').filter(Boolean))).sort((a, b) => a.localeCompare(b, 'tr')),
+    [logs],
+  );
 
-  const summary = useMemo(() => ({
-    count: logs.length,
-    collections: logs.filter((item) => item.type === 'Tahsilat').length,
-    invoices: logs.filter((item) => item.type === 'Fatura').length,
-  }), [logs]);
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase('tr');
+    return logs.filter((item) => {
+      if (actor !== ALL && (item.actorName || '') !== actor) return false;
+      if (!query) return true;
+      return `${item.title} ${item.detail} ${item.actorName || ''}`.toLocaleLowerCase('tr').includes(query);
+    });
+  }, [actor, logs, search]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="finance-audit-log-page">
       <div>
-        <h1 className="text-3xl font-bold font-heading">Audit Log</h1>
-        <p className="text-muted-foreground mt-1">Finans operasyonlarının zaman sıralı kayıt görünümü</p>
+        <h1 className="text-3xl font-bold font-heading">Kayıt Geçmişi</h1>
+        <p className="text-muted-foreground mt-1">Finans işlemlerinin kim tarafından, ne zaman yapıldığı</p>
       </div>
-      {error ? <ErrorBanner title="Audit log alınamadı" message={error} onRetry={loadLogs} /> : null}
+      {error ? <ErrorBanner title="Kayıt geçmişi alınamadı" message={error} onRetry={loadLogs} /> : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         {[
-          ['Toplam Log', summary.count],
-          ['Tahsilat Olayı', summary.collections],
-          ['Fatura Olayı', summary.invoices],
+          ['Toplam kayıt', logs.length],
+          ['Gösterilen', filtered.length],
+          ['İşlem yapan personel', actors.length],
         ].map(([label, value]) => (
           <Card key={label}>
             <CardContent className="p-4">
@@ -111,37 +80,39 @@ export default function AuditLog() {
         ))}
       </div>
 
+      <div className="flex flex-wrap gap-3">
+        <div className="relative min-w-[240px] flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-10" placeholder="İşlem veya açıklama ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <select className="h-10 min-w-[220px] rounded-md border bg-background px-3 text-sm" value={actor} onChange={(e) => setActor(e.target.value)} aria-label="İşlem yapan">
+          <option value={ALL}>Tüm personel</option>
+          {actors.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><History className="h-5 w-5 text-brand-primary" />İşlem Zaman Çizgisi</CardTitle>
-          <CardDescription>Gerçek finans hareketlerinden türetilen audit listesi</CardDescription>
+          <CardDescription>En yeni kayıt en üstte</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {logs.map((item) => {
-            const Icon = item.icon;
-            const toneClasses = item.tone === 'emerald'
-              ? 'bg-emerald-50 text-emerald-700'
-              : item.tone === 'sky'
-                ? 'bg-sky-50 text-sky-700'
-                : 'bg-amber-50 text-amber-700';
-            return (
-              <div key={item.id} className="flex flex-col gap-4 rounded-2xl border p-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex gap-4">
-                  <div className={`rounded-2xl p-3 ${toneClasses}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">{item.title}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge variant="outline">{item.type}</Badge>
-                  <span className="text-xs text-muted-foreground">{item.time}</span>
-                </div>
+        <CardContent className="space-y-3">
+          {filtered.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Kayıt bulunamadı.</p>
+          ) : filtered.map((item) => (
+            <div key={item.id} className="flex flex-col gap-2 rounded-2xl border p-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="font-semibold">{item.title}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
               </div>
-            );
-          })}
+              <div className="flex shrink-0 flex-col items-start gap-1 text-xs text-muted-foreground lg:items-end">
+                <span>{item.createdAtUtc ? formatDateTime(item.createdAtUtc) : item.time || '—'}</span>
+                {item.actorName ? (
+                  <Badge variant="outline" className="gap-1"><User className="h-3 w-3" />{item.actorName}</Badge>
+                ) : null}
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
     </motion.div>

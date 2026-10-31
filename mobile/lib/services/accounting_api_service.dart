@@ -46,12 +46,18 @@ class ExpenseLedgerRecord {
   final int amount;
   final DateTime? expenseDate;
 
+  /// Yalnız onaylı gider toplamlara girer (onay bekleyen/reddedilen girmez).
+  final String approvalStatus;
+
+  bool get approved => approvalStatus == 'Onaylandı';
+
   const ExpenseLedgerRecord({
     required this.id,
     required this.title,
     required this.category,
     required this.amount,
     required this.expenseDate,
+    this.approvalStatus = 'Onaylandı',
   });
 
   factory ExpenseLedgerRecord.fromMap(Map<String, dynamic> map) {
@@ -62,6 +68,7 @@ class ExpenseLedgerRecord {
       category: map['category'] as String? ?? '',
       amount: ((map['amount'] as num?) ?? 0).round(),
       expenseDate: raw == null ? null : DateTime.tryParse(raw)?.toLocal(),
+      approvalStatus: map['approvalStatus'] as String? ?? 'Onaylandı',
     );
   }
 }
@@ -220,19 +227,6 @@ class AccountingApiService {
     );
   }
 
-  Future<Map<String, dynamic>> calculatePayroll({
-    required double grossSalary,
-    String? employee,
-    int? year,
-  }) async {
-    final response = await _authorizedJson(
-      'POST',
-      '/api/student-finance/payroll/calculate',
-      {'grossSalary': grossSalary, 'employee': employee, 'year': year},
-    );
-    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
-  }
-
   Future<SalaryRecord> updateSalary({
     required String salaryId,
     required String employee,
@@ -252,6 +246,94 @@ class AccountingApiService {
     return SalaryRecord.fromMap(
       Map<String, dynamic>.from(jsonDecode(response.body) as Map),
     );
+  }
+
+  /// Onaylı (Planlandı) bordronun ödendiğini kaydeder; gider/kasa bu tarihe yazılır.
+  Future<SalaryRecord> paySalary({
+    required String salaryId,
+    required String paymentMethod,
+    required DateTime paidAt,
+  }) async {
+    final response = await _authorizedJson(
+      'PUT',
+      '/api/accounting/salaries/$salaryId/pay',
+      {
+        'paymentMethod': paymentMethod,
+        'paidAtUtc': DateTime(paidAt.year, paidAt.month, paidAt.day, 12)
+            .toUtc()
+            .toIso8601String(),
+      },
+    );
+    return SalaryRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
+  }
+
+  /// Ödenmemiş faturanın bilgilerini düzeltir; ödenmiş faturada tutar değişmez.
+  Future<InvoiceRecord> updateInvoice({
+    required String invoiceId,
+    required String title,
+    required String category,
+    required String amount,
+    required DateTime date,
+    DateTime? dueDate,
+    String counterparty = '',
+    String note = '',
+  }) async {
+    final response =
+        await _authorizedJson('PUT', '/api/accounting/invoices/$invoiceId', {
+          'title': title,
+          'category': category,
+          'amount': amount,
+          'date': DateTime(date.year, date.month, date.day, 12)
+              .toUtc()
+              .toIso8601String(),
+          'dueDateUtc': dueDate == null
+              ? null
+              : DateTime(dueDate.year, dueDate.month, dueDate.day, 12)
+                    .toUtc()
+                    .toIso8601String(),
+          'counterparty': counterparty,
+          'note': note,
+        });
+    return InvoiceRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
+  }
+
+  /// İptal edilen fatura silinmez; gider toplamından çıkar, gerekçesiyle kalır.
+  Future<InvoiceRecord> cancelInvoice({
+    required String invoiceId,
+    required String reason,
+  }) async {
+    final response = await _authorizedJson(
+      'POST',
+      '/api/accounting/invoices/$invoiceId/cancel',
+      {'reason': reason},
+    );
+    return InvoiceRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
+  }
+
+  /// Yalnız ödenmemiş fatura silinir.
+  Future<void> deleteInvoice(String invoiceId) =>
+      _authorizedDelete('/api/accounting/invoices/$invoiceId', 'Fatura silinemedi');
+
+  /// Muhasebe hareket dökümü (yevmiye CSV, sunucuda üretilir): dönemdeki
+  /// tahsilat, iade, gider, maaş ve fatura ödemeleri; belge no, yöntem, şube
+  /// ve işlem yapan sütunlarıyla. UTF-8 BOM'lu, ";" ayraçlı.
+  Future<List<int>> downloadJournalCsv({DateTime? from, DateTime? to}) async {
+    final query = <String>[
+      if (from != null)
+        'fromUtc=${Uri.encodeComponent(DateTime(from.year, from.month, from.day).toUtc().toIso8601String())}',
+      if (to != null)
+        'toUtc=${Uri.encodeComponent(DateTime(to.year, to.month, to.day).add(const Duration(days: 1)).toUtc().toIso8601String())}',
+    ];
+    final response = await _authorizedGet(
+      '/api/accounting/exports/csv${query.isEmpty ? '' : '?${query.join('&')}'}',
+    );
+    return response.bodyBytes;
   }
 
   Future<void> deleteSalary(String salaryId) async {
@@ -497,9 +579,43 @@ class AccountingApiService {
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AccountingApiException(
-        'Muhasebe işlemi tamamlanamadı (${response.statusCode}).',
+        _serverMessage(response) ??
+            'Muhasebe işlemi tamamlanamadı (${response.statusCode}).',
       );
     }
     return response;
+  }
+
+  Future<void> _authorizedDelete(String path, String fallback) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) {
+      throw const AccountingApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
+    }
+    final response = await http.delete(
+      Uri.parse('${ApiConfig.baseUrl}$path'),
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}',
+        ...ScopeHeaders.merged,
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AccountingApiException(
+        _serverMessage(response) ?? '$fallback (${response.statusCode}).',
+      );
+    }
+  }
+
+  /// Sunucunun anlaşılır hata metni (ör. "gün kapatıldı", "aynı adlı öğrenci").
+  static String? _serverMessage(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map && body['message'] is String) {
+        final message = (body['message'] as String).trim();
+        return message.isEmpty ? null : message;
+      }
+    } catch (_) {}
+    return null;
   }
 }

@@ -64,7 +64,7 @@ class _AccountingSalaryPageState extends State<AccountingSalaryPage> {
               AccountingHeroMetric(
                 label: 'Bu Ay Bordro',
                 value:
-                    formatMoney(_store.salaries.fold<int>(0, (sum, item) => sum + _parseAmount(item.amount))),
+                    formatMoney(_store.salaries.where((item) => item.status != 'Reddedildi').fold<int>(0, (sum, item) => sum + _parseAmount(item.amount))),
               ),
               AccountingHeroMetric(
                 label: 'Bekleyen',

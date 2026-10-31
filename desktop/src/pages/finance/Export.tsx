@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
+import { Input } from '../../components/ui/input';
 import { Checkbox } from '../../components/ui/checkbox';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -16,7 +17,7 @@ import { Separator } from '../../components/ui/separator';
 import { useToast } from '../../hooks/use-toast';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { fetchAccountingDashboard } from '../../lib/api/modules';
+import { downloadAccountingJournal, fetchAccountingDashboard } from '../../lib/api/modules';
 import { downloadBlob, parseFinanceMoney } from '../../lib/financeDocuments';
 import { formatDate } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
@@ -62,6 +63,34 @@ export default function Export() {
     summary: true,
   });
   const [history, setHistory] = useState<ExportHistoryEntry[]>([]);
+  const [journalFrom, setJournalFrom] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1, 12).toISOString().slice(0, 10);
+  });
+  const [journalTo, setJournalTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [journalBusy, setJournalBusy] = useState(false);
+
+  const handleJournalExport = async () => {
+    try {
+      setJournalBusy(true);
+      const blob = await downloadAccountingJournal({
+        fromUtc: journalFrom ? new Date(`${journalFrom}T00:00:00`).toISOString() : null,
+        toUtc: journalTo ? new Date(`${journalTo}T23:59:59.999`).toISOString() : null,
+      });
+      if (!blob) throw new Error('Dosya alınamadı.');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `muhasebe-hareketleri-${journalFrom}-${journalTo}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast({ title: 'Hareket dökümü indirildi.' });
+    } catch (err) {
+      toast({ title: 'Döküm indirilemedi', description: errorMessage(err), variant: 'destructive' });
+    } finally {
+      setJournalBusy(false);
+    }
+  };
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -176,6 +205,21 @@ export default function Export() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          <motion.div variants={itemVariants}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Muhasebe Hareket Dökümü</CardTitle>
+                <CardDescription>
+                  Seçilen dönemdeki tüm para hareketleri tek dosyada: tahsilat, iade, gider, maaş ve fatura ödemeleri; belge no, yöntem, şube ve işlem yapan sütunlarıyla. Excel'de doğrudan açılır; muhasebe programına alan eşlemesiyle aktarılır.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-end gap-3">
+                <div><Label htmlFor="journal-from">Başlangıç</Label><Input id="journal-from" type="date" value={journalFrom} onChange={(e) => setJournalFrom(e.target.value)} /></div>
+                <div><Label htmlFor="journal-to">Bitiş</Label><Input id="journal-to" type="date" value={journalTo} onChange={(e) => setJournalTo(e.target.value)} /></div>
+                <Button onClick={() => void handleJournalExport()} disabled={journalBusy}>{journalBusy ? 'Hazırlanıyor...' : 'CSV İndir'}</Button>
+              </CardContent>
+            </Card>
+          </motion.div>
           <motion.div variants={itemVariants}>
             <Card>
               <CardHeader>

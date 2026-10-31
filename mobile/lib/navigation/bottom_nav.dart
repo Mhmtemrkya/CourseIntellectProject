@@ -1,4 +1,6 @@
+import 'package:student/pages/preference_robot_page.dart';
 import 'package:flutter/material.dart';
+import 'package:student/pages/clubs_page.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/content_page.dart';
 import 'package:student/pages/exams_page.dart';
@@ -52,6 +54,18 @@ class BottomNav extends StatelessWidget {
           label: 'Kütüphane'.tr,
           pageBuilder: (_) => const StudentLibraryPage(),
           sidebarColor: const Color(0xFF0EA5E9),
+        ),
+        AdaptiveDestination(
+          icon: Icons.flag_rounded,
+          label: 'Kulüpler'.tr,
+          pageBuilder: (_) => const ClubsPage(audience: ClubsAudience.student),
+          sidebarColor: const Color(0xFFE11D48),
+        ),
+        AdaptiveDestination(
+          icon: Icons.track_changes_rounded,
+          label: 'Tercih Robotu'.tr,
+          pageBuilder: (_) => const PreferenceRobotPage(canSave: true),
+          sidebarColor: const Color(0xFF7C3AED),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

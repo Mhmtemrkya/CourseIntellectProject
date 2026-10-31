@@ -47,6 +47,7 @@ type EnrollForm = {
   installmentCount: string;
   academicYear: string;
   firstInstallmentDate: string;
+  currency: string;
 };
 
 const emptyEnrollForm: EnrollForm = {
@@ -57,6 +58,7 @@ const emptyEnrollForm: EnrollForm = {
   installmentCount: '',
   academicYear: '',
   firstInstallmentDate: '',
+  currency: 'TRY',
 };
 
 const containerVariants: Variants = {
@@ -251,7 +253,9 @@ export default function Ledger() {
         downPayment: Number(enrollForm.downPayment) || 0,
         installmentCount: Number(enrollForm.installmentCount) || 0,
         firstInstallmentDate: enrollForm.firstInstallmentDate || null,
-        currency: 'TRY',
+        // Öğrencinin cari hesabı tek para biriminde tutulur; sunucu farklı para
+        // biriminde ikinci açık sözleşmeyi reddeder. Çevrim yapılmaz.
+        currency: enrollForm.currency || 'TRY',
         note: 'Sonradan eklenen sözleşme',
       });
       toast({ title: 'Sözleşme oluşturuldu', description: `${enrollStudent.name} için ücret/taksit planı eklendi.` });
@@ -473,8 +477,21 @@ export default function Ledger() {
               {enrollStudent?.className && enrollStudent.className !== '-' ? ` • ${enrollStudent.className}` : ''}
             </p>
             <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <Label>Para Birimi</Label>
+                <select
+                  className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={enrollForm.currency}
+                  onChange={(e) => setEnrollForm((p) => ({ ...p, currency: e.target.value }))}
+                >
+                  <option value="TRY">Türk Lirası (TL)</option>
+                  <option value="USD">ABD Doları (USD)</option>
+                  <option value="EUR">Euro (EUR)</option>
+                  <option value="GBP">İngiliz Sterlini (GBP)</option>
+                </select>
+              </div>
               <div>
-                <Label>Toplam Ücret (TL) *</Label>
+                <Label>Toplam Ücret ({enrollForm.currency === 'TRY' ? 'TL' : enrollForm.currency}) *</Label>
                 <Input type="number" min="0" value={enrollForm.grossAmount} onChange={(e) => setEnrollForm((p) => ({ ...p, grossAmount: e.target.value }))} placeholder="Örn: 60000" />
               </div>
               <div>

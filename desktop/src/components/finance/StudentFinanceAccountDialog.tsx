@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Loader2, Wallet, Receipt, CreditCard, CheckCircle2, Clock3, XCircle,
+  Loader2, Wallet, Receipt, CreditCard, CheckCircle2, Clock3, XCircle, PauseCircle, Ban,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -11,14 +11,13 @@ import { formatDate } from '../../lib/format';
 import {
   fetchStudentFinanceAccount,
   recordFinancePayment,
-  createFinancePaymentIntent,
-  confirmFinancePayment,
 } from '../../lib/api/modules';
+import { ContractActions } from './ContractActions';
 import { errorMessage } from '../../lib/errors';
 import type { IconComponent } from '../../types/ui';
 import type { StudentFinanceAccountDto } from '../../types/api/generated';
 
-type InstallmentStatusKey = 'Paid' | 'Partial' | 'Overdue' | 'Pending';
+type InstallmentStatusKey = 'Paid' | 'Partial' | 'Overdue' | 'Pending' | 'Frozen' | 'Cancelled';
 
 export interface StudentFinanceAccountDialogProps {
   studentName?: string | null;
@@ -36,6 +35,8 @@ const STATUS_META: Record<InstallmentStatusKey, readonly [string, string, IconCo
   Partial: ['Kısmi', 'text-amber-600', Clock3],
   Overdue: ['Gecikmiş', 'text-red-600', XCircle],
   Pending: ['Bekliyor', 'text-muted-foreground', Clock3],
+  Frozen: ['Donduruldu', 'text-sky-600', PauseCircle],
+  Cancelled: ['İptal', 'text-muted-foreground', Ban],
 };
 
 // Öğrenci cari ekranı: sözleşme/taksit/ödeme listesi + ödeme kaydet, iade, online ödeme.
@@ -70,7 +71,7 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
 
   useEffect(() => { void load(); }, [load]);
 
-  const recordPayment = async (online = false) => {
+  const recordPayment = async () => {
     const amount = Number(paymentAmount);
     if (!amount || amount <= 0) {
       toast({ title: 'Geçerli bir tutar girin.', variant: 'destructive' });
@@ -80,26 +81,12 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
     try {
       setBusy(true);
       const contractId = account?.contracts?.[0]?.id || null;
-      if (online) {
-        const intent = await createFinancePaymentIntent({
-          studentName: account.studentName,
-          studentUserId: account.studentUserId,
-          enrollmentContractId: contractId,
-          amount,
-        });
-        if (!intent) throw new Error('Ödeme başlatılamadı.');
-        const confirmed = await confirmFinancePayment({ intentId: intent.intentId, token: 'TEST-OK' });
-        if (!confirmed?.success) {
-          toast({ title: 'Online ödeme onaylanmadı', description: intent.configured ? 'Sağlayıcı reddetti.' : 'Sağlayıcı yapılandırılmadı (test modu).', variant: 'destructive' });
-          return;
-        }
-      }
       await recordFinancePayment({
         studentName: account.studentName,
         studentUserId: account.studentUserId,
         enrollmentContractId: contractId,
         amount,
-        method: online ? 'Online' : paymentMethod,
+        method: paymentMethod,
       });
       toast({ title: 'Ödeme kaydedildi', description: tl(amount) });
       setPaymentAmount('');
@@ -126,7 +113,7 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
 
         {loading ? (
           <div className="py-12 text-center"><LoadingDots /></div>
-        ) : !account || account.netTotal <= 0 ? (
+        ) : !account || (account.contracts || []).length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Bu öğrenci için kayıt/sözleşme finansalı bulunamadı.</p>
         ) : (
           <div className="space-y-5">
@@ -156,15 +143,21 @@ export default function StudentFinanceAccountDialog({ studentName, studentUserId
                   ))}
                 </div>
                 <div className="mt-3 flex gap-2">
-                  <Button onClick={() => recordPayment(false)} disabled={busy} className="flex-1">
+                  <Button onClick={() => recordPayment()} disabled={busy} className="flex-1">
                     {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Receipt className="mr-2 h-4 w-4" />} Tahsil Et
-                  </Button>
-                  <Button onClick={() => recordPayment(true)} disabled={busy} variant="outline" className="flex-1">
-                    <CreditCard className="mr-2 h-4 w-4" /> Online
                   </Button>
                 </div>
               </div>
 
+            </div>
+
+            <div>
+              <p className="mb-2 font-semibold">Sözleşmeler</p>
+              <div className="space-y-2">
+                {(account.contracts || []).map((contract) => (
+                  <ContractActions key={contract.id} contract={contract} currency={currency} onChanged={load} />
+                ))}
+              </div>
             </div>
 
             <div>

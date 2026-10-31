@@ -13,4 +13,7 @@ public interface IReminderJobService
 
     /// <summary>Uzun süredir görülmeyen (ölü) push cihaz kayıtlarını pasifler.</summary>
     Task CleanupStalePushTokensAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Saklama süresi dolan ziyaretçi kayıtlarını tüm kurumlarda siler (KVKK).</summary>
+    Task PurgeExpiredVisitorsAsync(CancellationToken cancellationToken = default);
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
+import '../widgets/finance_day_close_panel.dart';
 
 class AccountingCashReportPage extends StatefulWidget {
   const AccountingCashReportPage({super.key});
@@ -79,6 +80,7 @@ class _AccountingCashReportPageState extends State<AccountingCashReportPage> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const FinanceDayClosePanel(),
           AccountingHeroCard(
             eyebrow: 'Kasa görünümü',
             title:

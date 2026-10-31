@@ -43,7 +43,9 @@ public sealed record RecordPaymentRequest(
     /// İstemcinin ürettiği tekil istek kimliği. Aynı kimlikle gelen ikinci istek
     /// yeni tahsilat OLUŞTURMAZ, ilk makbuzu döndürür (çift tahsilat koruması).
     /// </summary>
-    Guid? ClientRequestId = null);
+    Guid? ClientRequestId = null,
+    /// <summary>Tahsilatın fiilî tarihi (toplu/banka aktarımı); boşsa şimdi.</summary>
+    DateTime? PaidAtUtc = null);
 
 public sealed record FinanceInstallmentDto(
     Guid Id,
@@ -106,7 +108,10 @@ public sealed record EnrollmentContractDto(
     /// <summary>Burs oranı (0–100); 0 ise öğrenci burslu değildir.</summary>
     decimal ScholarshipPercent = 0,
     /// <summary>Bursun para karşılığı — <see cref="DiscountAmount"/>'ın İÇİNDEDİR.</summary>
-    decimal ScholarshipAmount = 0);
+    decimal ScholarshipAmount = 0,
+    /// <summary>Dondurma/iptal gerekçesi ve zamanı (Status Frozen/Cancelled iken dolu).</summary>
+    string StatusReason = "",
+    DateTime? StatusChangedAtUtc = null);
 
 /// <summary>Bekleyen peşinatı tahsil etme isteği; yöntem boşsa "Nakit".</summary>
 public sealed record CollectDownPaymentRequest(string? Method = null);
@@ -212,7 +217,10 @@ public sealed record FinanceDashboardDto(
     IReadOnlyList<AgingBucketDto> Aging,
     IReadOnlyList<MonthlyIncomeDto> MonthlyIncome,
     IReadOnlyList<StudentFinanceSummaryDto> TopDebtors,
-    decimal RefundedTotal = 0);
+    decimal RefundedTotal = 0,
+    // Ana tutarlar Currency alanındaki para birimindedir; kurumda başka para
+    // biriminde sözleşme varsa her biri burada ayrı listelenir (çevrim yapılmaz).
+    IReadOnlyList<CurrencyTotalDto>? CurrencyTotals = null);
 
 public sealed record MonthlyIncomeDto(string Month, decimal Amount);
 
@@ -252,7 +260,10 @@ public sealed record EInvoiceResultDto(
     bool Configured,
     string? Message);
 
-// ---- Faz 4: bordro (SGK/stopaj) ----
+// ---- Faz 3: mutabakat ----
+public sealed record BankStatementRow(string Reference, decimal Amount, DateTime Date, string? Description);
+
+// ---- Bordro hesaplayıcı: KULLANIMDAN KALDIRILDI (yalnız eski uygulama sürümleri) ----
 public sealed record PayrollRequest(decimal GrossSalary, string? Employee, int? Year);
 
 public sealed record PayrollResultDto(
@@ -266,12 +277,19 @@ public sealed record PayrollResultDto(
     decimal SgkEmployer,
     decimal TotalEmployerCost);
 
-// ---- Faz 3: mutabakat ----
-public sealed record BankStatementRow(string Reference, decimal Amount, DateTime Date, string? Description);
-
 public sealed record ReconciliationRequest(IReadOnlyList<BankStatementRow> Rows, int DateToleranceDays);
 
-public sealed record ReconciliationMatchDto(string Reference, decimal Amount, DateTime Date, Guid? PaymentId, string? ReceiptNo, string MatchStatus);
+public sealed record ReconciliationMatchDto(
+    string Reference,
+    decimal Amount,
+    DateTime Date,
+    Guid? PaymentId,
+    string? ReceiptNo,
+    string MatchStatus,
+    // Eşleşen kaydın türü (Payment/Expense/Salary/Invoice), etiketi ve kalıcı satır kimliği.
+    string? MatchedType = null,
+    string? MatchedLabel = null,
+    Guid? EntryId = null);
 
 public sealed record ReconciliationResultDto(
     int Total,

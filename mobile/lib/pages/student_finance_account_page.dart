@@ -1,3 +1,4 @@
+import '../widgets/finance_contract_actions.dart';
 import 'package:student/widgets/school_card.dart';
 import 'dart:io';
 
@@ -51,8 +52,11 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
     }
   }
 
-  String _tl(dynamic value) =>
-      formatMoney(value is num ? value : double.tryParse('$value') ?? 0);
+  // Öğrencinin cari hesabı tek para biriminde tutulur (TRY/USD/EUR/GBP).
+  String _tl(dynamic value) => formatMoney(
+    value is num ? value : double.tryParse('$value') ?? 0,
+    currency: '${_account?['currency'] ?? 'TRY'}',
+  );
 
   /// Tahsilat artık tek satırlık "tutar gir" kutusuyla DEĞİL, masaüstündekiyle
   /// aynı pencereyle alınır: taksit seçimi, ödeme yöntemi, makbuz notu ve çift
@@ -152,6 +156,8 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
         return Colors.red;
       case 'Partial':
         return Colors.orange;
+      case 'Frozen':
+        return Colors.blue;
       default:
         return Colors.grey;
     }
@@ -165,6 +171,8 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
         return 'Gecikti';
       case 'Partial':
         return 'Kısmi';
+      case 'Frozen':
+        return 'Donduruldu';
       default:
         return 'Bekliyor';
     }
@@ -173,7 +181,8 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
   @override
   Widget build(BuildContext context) {
     final account = _account;
-    final hasData = account != null && (account['netTotal'] as num? ?? 0) > 0;
+    // İptal edilmiş (net 0) sözleşme de görünmeli; ölçüt sözleşme varlığıdır.
+    final hasData = account != null && ((account['contracts'] as List?) ?? const []).isNotEmpty;
     return Scaffold(
       appBar: AppBar(title: Text('${widget.studentName} • Cari')),
       body: _loading
@@ -222,6 +231,18 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
                       label: Text('Ekstre (PDF)'.tr),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Sözleşmeler',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  ...((account['contracts'] as List<dynamic>? ?? []).map(
+                    (raw) => FinanceContractActions(
+                      contract: Map<String, dynamic>.from(raw as Map),
+                      onChanged: _load,
+                    ),
+                  )),
                   const SizedBox(height: 16),
                   const Text(
                     'Taksitler',

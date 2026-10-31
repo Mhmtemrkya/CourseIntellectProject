@@ -408,7 +408,7 @@ export default function SystemSettings() {
           <div className="flex items-center justify-between p-4 rounded-lg border">
             <div>
               <p className="font-medium">Online ödemeyi etkinleştir</p>
-              <p className="text-sm text-muted-foreground">Kapalıyken sadece TEST-OK token'ı ile test ödemesi alınır.</p>
+              <p className="text-sm text-muted-foreground">Kapalıyken çevrimiçi ödeme alınmaz.</p>
             </div>
             <Switch checked={payEnabled} onCheckedChange={setPayEnabled} />
           </div>

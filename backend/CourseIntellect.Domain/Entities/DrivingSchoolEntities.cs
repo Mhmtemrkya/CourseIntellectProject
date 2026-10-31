@@ -60,6 +60,16 @@ public sealed class DrivingExpense : IBranchScopedEntity
     public Guid? CreatedByUserId { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAtUtc { get; set; }
+    /// <summary>
+    /// Onay durumu: Onaylandı / Bekliyor / Reddedildi. Yöneticinin girdiği gider
+    /// doğrudan onaylıdır; diğer rollerin girdiği gider yönetici onayına düşer ve
+    /// onaylanana kadar gider toplamına girmez. Eski kayıtlar onaylı sayılır.
+    /// </summary>
+    public string ApprovalStatus { get; set; } = "Onaylandı";
+    public Guid? ApprovedByUserId { get; set; }
+    public DateTime? ApprovedAtUtc { get; set; }
+    /// <summary>Ödeme kanalı (Nakit/Kart/Havale); nakit giderler gün sonu kasasından düşer.</summary>
+    public string PaymentMethod { get; set; } = string.Empty;
 }
 
 public sealed class DrivingInstructorProfile : IBranchScopedEntity

@@ -1,9 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { TR_EN as TR_EN_BASE } from './dictionary';
 import { TR_EN_EXT } from './dictionary-extended';
+import { TR_EN_MODULES } from './dictionary-modules';
 
 // Ana + genişletilmiş sözlük tek tabloda birleşir (ana öncelikli).
-const TR_EN: Record<string, string> = { ...TR_EN_EXT, ...TR_EN_BASE };
+const TR_EN: Record<string, string> = { ...TR_EN_MODULES, ...TR_EN_EXT, ...TR_EN_BASE };
 
 // Uygulama genelinde TR→EN çeviri katmanı. Sayfaları tek tek elden geçirmek
 // yerine DOM metin düğümlerini sözlükle çevirir: EN seçiliyken bir

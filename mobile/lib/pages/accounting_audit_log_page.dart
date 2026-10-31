@@ -14,6 +14,15 @@ class AccountingAuditLogPage extends StatefulWidget {
 
 class _AccountingAuditLogPageState extends State<AccountingAuditLogPage> {
   final _store = AccountingFinanceStore.instance;
+  // Personel süzgeci: boş = herkes.
+  String _actor = '';
+
+  String _timeLabel(AuditLogRecord item) {
+    final at = item.createdAtUtc?.toLocal();
+    if (at == null || at.year < 2000) return item.time;
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${two(at.day)}.${two(at.month)}.${at.year} ${two(at.hour)}:${two(at.minute)}';
+  }
 
   @override
   void initState() {
@@ -35,6 +44,15 @@ class _AccountingAuditLogPageState extends State<AccountingAuditLogPage> {
 
   @override
   Widget build(BuildContext context) {
+    final actors = _store.auditLogs
+        .map((item) => item.actorName)
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    final logs = _actor.isEmpty
+        ? _store.auditLogs
+        : _store.auditLogs.where((item) => item.actorName == _actor).toList();
     return AccountingScaffold(
       appBar: AppHeader(title: 'İşlem Kayıtları'.tr),
       child: ListView(
@@ -54,12 +72,23 @@ class _AccountingAuditLogPageState extends State<AccountingAuditLogPage> {
               ),
               AccountingHeroMetric(
                 label: 'Son',
-                value: _store.auditLogs.firstOrNull?.time ?? '-',
+                value: _store.auditLogs.isEmpty ? '-' : _timeLabel(_store.auditLogs.first),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          ..._store.auditLogs.map(
+          if (actors.isNotEmpty)
+            DropdownButtonFormField<String>(
+              initialValue: _actor,
+              decoration: const InputDecoration(labelText: 'İşlem yapan'),
+              items: [
+                const DropdownMenuItem(value: '', child: Text('Tüm personel')),
+                ...actors.map((name) => DropdownMenuItem(value: name, child: Text(name))),
+              ],
+              onChanged: (value) => setState(() => _actor = value ?? ''),
+            ),
+          const SizedBox(height: 12),
+          ...logs.map(
             (item) => AccountingPanel(
               margin: const EdgeInsets.only(bottom: 12),
               child: Row(
@@ -96,7 +125,9 @@ class _AccountingAuditLogPageState extends State<AccountingAuditLogPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          item.time,
+                          item.actorName.isEmpty
+                              ? _timeLabel(item)
+                              : '${_timeLabel(item)} • ${item.actorName}',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),

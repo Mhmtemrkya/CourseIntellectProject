@@ -16,4 +16,10 @@ public interface IAccountingService
     Task<AccountingApprovalDto?> UpdateApprovalStatusAsync(Guid id, UpdateApprovalStatusRequest request, CancellationToken cancellationToken = default);
     Task<AccountingNotificationDto> CreateNotificationAsync(CreateAccountingNotificationRequest request, CancellationToken cancellationToken = default);
     Task MarkAllNotificationsReadAsync(CancellationToken cancellationToken = default);
+    // Fatura/bordro yaşam döngüsü. Bulunamazsa null/false; kural ihlalinde
+    // InvalidOperationException, geçersiz girdide ArgumentException.
+    Task<AccountingInvoiceDto?> UpdateInvoiceAsync(Guid id, UpdateInvoiceRequest request, CancellationToken cancellationToken = default);
+    Task<AccountingInvoiceDto?> CancelInvoiceAsync(Guid id, string reason, CancellationToken cancellationToken = default);
+    Task<bool> DeleteInvoiceAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<AccountingSalaryDto?> PaySalaryAsync(Guid id, PaySalaryRequest request, CancellationToken cancellationToken = default);
 }

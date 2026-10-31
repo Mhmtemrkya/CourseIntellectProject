@@ -40,7 +40,8 @@ public sealed class AccountingService(
         var salaries = await salaryQuery.OrderByDescending(x => x.CreatedAtUtc).Select(x => ToDto(x)).ToListAsync(cancellationToken);
         var approvals = await approvalQuery.OrderByDescending(x => x.UpdatedAtUtc).Select(x => ToDto(x)).ToListAsync(cancellationToken);
         var notifications = await dbContext.AccountingNotifications.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
-        var auditLogs = await dbContext.AccountingAuditLogs.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
+        // Kimlik (Guid) sırası rastgeledir; kayıt geçmişi gerçek zamana göre sıralanır.
+        var auditLogs = await dbContext.AccountingAuditLogs.OrderByDescending(x => x.CreatedAtUtc).Take(1000).Select(x => ToDto(x)).ToListAsync(cancellationToken);
 
         // Sınıf bilgisini öğrenci adından sözleşmeye bakarak (harf duyarsız) tamamla.
         var contractClassRows = await dbContext.EnrollmentContracts.AsNoTracking()
@@ -89,10 +90,17 @@ public sealed class AccountingService(
         if (fromUtc.HasValue) installmentQuery = installmentQuery.Where(x => x.DueDateUtc >= fromUtc.Value);
         if (toUtc.HasValue) installmentQuery = installmentQuery.Where(x => x.DueDateUtc < toUtc.Value);
         var financeInstallments = await installmentQuery.OrderBy(x => x.DueDateUtc).ToListAsync(cancellationToken);
+        var pausedContracts = (await dbContext.EnrollmentContracts.AsNoTracking()
+            .Where(x => x.Status != "Active")
+            .Select(x => new { x.Id, x.Status })
+            .ToListAsync(cancellationToken)).ToDictionary(x => x.Id, x => x.Status);
         var installments = financeInstallments.Select(item => new AccountingInstallmentDto(
             item.Id.ToString(),
             item.StudentName,
-            MapInstallmentStatus(item, now),
+            // Dondurulmuş kaydın taksiti "Gecikti" değil "Donduruldu" görünür.
+            pausedContracts.TryGetValue(item.EnrollmentContractId, out var pausedStatus) && item.Amount > item.PaidAmount
+                ? (pausedStatus == "Frozen" ? "Donduruldu" : "İptal")
+                : MapInstallmentStatus(item, now),
             FormatAmount(item.Amount),
             item.DueDateUtc.ToLocalTime().ToString("dd.MM.yyyy", CultureInfo.GetCultureInfo("tr-TR")),
             item.Amount - item.PaidAmount > 0 ? $"Kalan {FormatAmount(item.Amount - item.PaidAmount)}" : "Tamamlandı")).ToList();
@@ -128,6 +136,10 @@ public sealed class AccountingService(
         invoice.InvoiceNumber = string.IsNullOrWhiteSpace(request.InvoiceNumber)
             ? $"FTR-{issueDate:yyyyMMdd}-{invoice.Id.ToString("N")[..8].ToUpperInvariant()}"
             : request.InvoiceNumber.Trim().ToUpperInvariant();
+        if (invoice.PaidAtUtc is DateTime createdPaidAt)
+        {
+            await FinanceDayGuard.EnsureOpenAsync(dbContext, createdPaidAt, cancellationToken);
+        }
         await dbContext.AccountingInvoices.AddAsync(invoice, cancellationToken);
         await AddNotificationAsync(
             "Yeni fatura oluşturuldu",
@@ -254,6 +266,122 @@ public sealed class AccountingService(
         return new AccountingInstallmentDto(id.ToString(), studentName, MapInstallmentStatus(installment.Amount, installment.PaidAmount, installment.DueDateUtc, DateTime.UtcNow), FormatAmount(installment.Amount), request.Due.Trim(), request.Note?.Trim() ?? string.Empty);
     }
 
+    public async Task<AccountingInvoiceDto?> UpdateInvoiceAsync(Guid id, UpdateInvoiceRequest request, CancellationToken cancellationToken = default)
+    {
+        var invoice = await dbContext.AccountingInvoices.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (invoice is null) return null;
+        if (IsCancelled(invoice.Status)) throw new InvalidOperationException("İptal edilmiş fatura düzenlenemez.");
+        if (string.IsNullOrWhiteSpace(request.Title)) throw new ArgumentException("Fatura başlığı zorunludur.");
+        if (string.IsNullOrWhiteSpace(request.Category)) throw new ArgumentException("Fatura kategorisi zorunludur.");
+        var amount = ParseAmount(request.Amount);
+        if (amount <= 0) throw new ArgumentException("Fatura tutarı sıfırdan büyük olmalıdır.");
+        var issueDate = DateTime.TryParse(request.Date, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsed)
+            ? parsed.ToUniversalTime()
+            : invoice.IssueDateUtc;
+        if (request.DueDateUtc.HasValue && request.DueDateUtc.Value.Date < issueDate.Date)
+            throw new ArgumentException("Son ödeme tarihi fatura tarihinden önce olamaz.");
+
+        var isPaid = IsPaidStatus(invoice.Status);
+        if (isPaid && (MoneyParser.Parse(invoice.Amount) != amount))
+        {
+            // Ödenmiş faturanın tutarı kasadan çıkmış parayı gösterir; değişmesi
+            // geçmiş kasa/mutabakatı bozar. Düzeltme: iptal + yeni fatura.
+            throw new InvalidOperationException("Ödenmiş faturanın tutarı değiştirilemez; faturayı iptal edip doğrusunu girin.");
+        }
+        if (isPaid && invoice.PaidAtUtc is DateTime paidAt)
+        {
+            await FinanceDayGuard.EnsureOpenAsync(dbContext, paidAt, cancellationToken);
+        }
+
+        var before = $"{invoice.Title} • {invoice.Amount}";
+        invoice.Title = request.Title.Trim();
+        invoice.Category = request.Category.Trim();
+        invoice.Counterparty = request.Counterparty?.Trim() ?? invoice.Counterparty;
+        invoice.Amount = MoneyParser.Format(amount);
+        invoice.IssueDateUtc = issueDate;
+        invoice.DueDateUtc = request.DueDateUtc?.ToUniversalTime();
+        invoice.Subtitle = invoice.DueDateUtc.HasValue
+            ? $"{issueDate.ToLocalTime():dd.MM.yyyy} • Vade {invoice.DueDateUtc.Value.ToLocalTime():dd.MM.yyyy}"
+            : $"{issueDate.ToLocalTime():dd.MM.yyyy}";
+        if (request.Note is not null) invoice.Note = request.Note.Trim();
+        invoice.UpdatedAtUtc = DateTime.UtcNow;
+        await AddAuditAsync("Fatura düzenlendi", $"{invoice.InvoiceNumber}: {before} → {invoice.Title} • {invoice.Amount}.", cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToDto(invoice);
+    }
+
+    /// <summary>İptal edilen fatura silinmez: gider toplamından çıkar, izi ve gerekçesi kalır.</summary>
+    public async Task<AccountingInvoiceDto?> CancelInvoiceAsync(Guid id, string reason, CancellationToken cancellationToken = default)
+    {
+        var invoice = await dbContext.AccountingInvoices.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (invoice is null) return null;
+        if (IsCancelled(invoice.Status)) throw new InvalidOperationException("Fatura zaten iptal edilmiş.");
+        if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("İptal gerekçesi zorunludur.");
+        if (invoice.PaidAtUtc is DateTime paidAt && IsPaidStatus(invoice.Status))
+        {
+            // Ödenmiş faturanın iptali o günün kasasını değiştirir.
+            await FinanceDayGuard.EnsureOpenAsync(dbContext, paidAt, cancellationToken);
+        }
+
+        invoice.Status = FinanceExpenseRules.Cancelled;
+        invoice.CancelledAtUtc = DateTime.UtcNow;
+        invoice.CancelReason = reason.Trim().Length > 300 ? reason.Trim()[..300] : reason.Trim();
+        invoice.UpdatedAtUtc = DateTime.UtcNow;
+        await AddAuditAsync("Fatura iptal edildi", $"{invoice.InvoiceNumber} • {invoice.Title} • {invoice.Amount}. Gerekçe: {invoice.CancelReason}", cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToDto(invoice);
+    }
+
+    /// <summary>Yalnız ödenmemiş fatura silinir; ödenmiş fatura iptal edilir.</summary>
+    public async Task<bool> DeleteInvoiceAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var invoice = await dbContext.AccountingInvoices.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (invoice is null) return false;
+        if (IsPaidStatus(invoice.Status) || invoice.PaidAtUtc.HasValue)
+        {
+            throw new InvalidOperationException("Ödenmiş fatura silinemez; iptal edin.");
+        }
+        dbContext.AccountingInvoices.Remove(invoice);
+        var key = invoice.Id.ToString();
+        var approvals = await dbContext.AccountingApprovals
+            .Where(x => x.SourceType == "invoice" && x.SourceKey == key)
+            .ToListAsync(cancellationToken);
+        dbContext.AccountingApprovals.RemoveRange(approvals);
+        await AddAuditAsync("Fatura silindi", $"{invoice.InvoiceNumber} • {invoice.Title} • {invoice.Amount}.", cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// Onaylı (Planlandı) bordronun ödendiğini kaydeder. Gider ve kasa bu ödeme
+    /// tarihine yazılır; nakit ödenen maaş o günün kasasından düşer.
+    /// </summary>
+    public async Task<AccountingSalaryDto?> PaySalaryAsync(Guid id, PaySalaryRequest request, CancellationToken cancellationToken = default)
+    {
+        var salary = await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (salary is null) return null;
+        if (IsPaidStatus(salary.Status)) throw new InvalidOperationException("Bu bordro zaten ödendi olarak kayıtlı.");
+        if (!string.Equals(salary.Status?.Trim(), "Planlandı", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Yalnız yönetici onaylı (Planlandı) bordro ödenebilir.");
+        }
+        if (string.IsNullOrWhiteSpace(request.PaymentMethod)) throw new ArgumentException("Ödeme yöntemi zorunludur.");
+        var paidAt = (request.PaidAtUtc ?? DateTime.UtcNow).ToUniversalTime();
+        if (paidAt > DateTime.UtcNow.AddMinutes(5)) throw new ArgumentException("İleri tarihli ödeme kaydedilemez.");
+        await FinanceDayGuard.EnsureOpenAsync(dbContext, paidAt, cancellationToken);
+
+        salary.Status = FinanceExpenseRules.Paid;
+        salary.PaidAtUtc = paidAt;
+        salary.PaymentMethod = request.PaymentMethod.Trim();
+        await AddAuditAsync("Maaş ödendi", $"{salary.Employee} • {salary.Amount} • {salary.PaymentMethod} ({paidAt.ToLocalTime():dd.MM.yyyy}).", cancellationToken);
+        await AddNotificationAsync("Maaş ödemesi kaydedildi", $"{salary.Employee} için {salary.Amount} ödeme kaydedildi.", cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToDto(salary);
+    }
+
+    private static bool IsCancelled(string? status) =>
+        string.Equals(status?.Trim(), FinanceExpenseRules.Cancelled, StringComparison.OrdinalIgnoreCase);
+
     public async Task<AccountingApprovalDto?> UpdateApprovalStatusAsync(Guid id, UpdateApprovalStatusRequest request, CancellationToken cancellationToken = default)
     {
         var approval = await dbContext.AccountingApprovals.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -270,7 +398,7 @@ public sealed class AccountingService(
             var invoice = Guid.TryParse(approval.SourceKey, out var invoiceId)
                 ? await dbContext.AccountingInvoices.FirstOrDefaultAsync(x => x.Id == invoiceId, cancellationToken)
                 : await dbContext.AccountingInvoices.FirstOrDefaultAsync(x => x.Title == approval.SourceKey, cancellationToken);
-            if (invoice is not null && !IsPaidStatus(invoice.Status))
+            if (invoice is not null && !IsPaidStatus(invoice.Status) && !IsCancelled(invoice.Status))
             {
                 invoice.Status = decision switch
                 {
@@ -423,9 +551,12 @@ public sealed class AccountingService(
         x.DueDateUtc,
         x.PaidAtUtc,
         x.PaymentMethod,
-        x.Note);
-    private static AccountingSalaryDto ToDto(AccountingSalary x) => new(x.Id.ToString(), x.Employee, x.Role, x.Amount, x.PayDate, x.Status);
+        x.Note,
+        x.CancelledAtUtc,
+        x.CancelReason);
+    private static AccountingSalaryDto ToDto(AccountingSalary x) => new(x.Id.ToString(), x.Employee, x.Role, x.Amount, x.PayDate, x.Status, x.PaidAtUtc, x.PaymentMethod);
     private static AccountingApprovalDto ToDto(AccountingApproval x) => new(x.Id.ToString(), x.Title, x.Reason, x.Category, x.Status, x.SourceType, x.SourceKey, x.UpdatedAtUtc);
     private static AccountingNotificationDto ToDto(AccountingNotification x) => new(x.Id.ToString(), x.Title, x.Message, x.Time, x.Unread);
-    private static AccountingAuditLogDto ToDto(AccountingAuditLog x) => new(x.Id.ToString(), x.Title, x.Detail, x.Time);
+    // Alan eklenmeden önceki kayıtların gerçek zamanı bilinmez (0001); onlarda yalnız Time metni gösterilir.
+    private static AccountingAuditLogDto ToDto(AccountingAuditLog x) => new(x.Id.ToString(), x.Title, x.Detail, x.Time, x.CreatedAtUtc.Year < 2000 ? null : x.CreatedAtUtc, x.ActorName);
 }

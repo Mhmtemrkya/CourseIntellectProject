@@ -32,6 +32,14 @@ import Settings from "./pages/Settings";
 import InstitutionProfile from "./pages/settings/InstitutionProfile";
 const ConsentTemplates = lazyWithReload(() => import("./pages/settings/ConsentTemplates"));
 const SchoolContractForms = lazyWithReload(() => import("./pages/SchoolContractForms"));
+const SubjectGroups = lazyWithReload(() => import("./pages/admin/SubjectGroups"));
+const TeacherSubjectGroups = lazyWithReload(() => import("./pages/teacher/TeacherSubjectGroups"));
+const ClubsAdminPage = lazyWithReload(() => import("./pages/clubs/ClubsPages").then((m) => ({ default: m.ClubsAdminPage })));
+const ClubsTeacherPage = lazyWithReload(() => import("./pages/clubs/ClubsPages").then((m) => ({ default: m.ClubsTeacherPage })));
+const ClubsStudentPage = lazyWithReload(() => import("./pages/clubs/ClubsPages").then((m) => ({ default: m.ClubsStudentPage })));
+const ClubsParentPage = lazyWithReload(() => import("./pages/clubs/ClubsPages").then((m) => ({ default: m.ClubsParentPage })));
+const PreferenceRobotPage = lazyWithReload(() => import("./pages/preference/PreferenceRobotPage"));
+const VisitorsPage = lazyWithReload(() => import("./pages/visitors/VisitorsPage"));
 // Tablet imza istasyonu: uygulama kabuğunun DIŞINDA, tam ekran çalışır (kiosk).
 const ConsentStation = lazyWithReload(() => import("./pages/ConsentStation"));
 
@@ -61,6 +69,7 @@ const Support = lazyWithReload(() => import("./pages/superadmin/Support"));
 const AIManagement = lazyWithReload(() => import("./pages/superadmin/AIManagement"));
 const TenantCustomization = lazyWithReload(() => import("./pages/superadmin/TenantCustomization"));
 const PlatformLogs = lazyWithReload(() => import("./pages/superadmin/PlatformLogs"));
+const PreferenceData = lazyWithReload(() => import("./pages/superadmin/PreferenceData"));
 
 // Teacher Pages
 import GuidanceDashboard from "./pages/guidance/GuidanceDashboard";
@@ -309,6 +318,7 @@ function App() {
               <Route path="/settings/consent-forms" element={<ConsentTemplates />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/admin/academics" element={<AdminAcademics />} />
+              <Route path="/admin/subject-groups" element={<SubjectGroups />} />
               <Route path="/admin/exam-papers" element={<TeacherReports />} />
               <Route path="/admin/duty-create" element={<DutyCreate />} />
               <Route path="/admin/duties" element={<DutiesBoard />} />
@@ -383,6 +393,7 @@ function App() {
               <Route path="/sa/ai" element={<AIManagement />} />
               <Route path="/sa/customization" element={<TenantCustomization />} />
               <Route path="/sa/logs" element={<PlatformLogs />} />
+              <Route path="/sa/preference-data" element={<PreferenceData />} />
 
               {/* Guidance (Rehberlik) Routes */}
               <Route path="/g/dashboard" element={<GuidanceDashboard />} />
@@ -400,6 +411,17 @@ function App() {
               <Route path="/s/library" element={<LibraryUserPage />} />
               <Route path="/p/library" element={<LibraryUserPage />} />
               <Route path="/t/library" element={<LibraryUserPage />} />
+              <Route path="/t/subject-groups" element={<TeacherSubjectGroups />} />
+              <Route path="/clubs" element={<ClubsAdminPage />} />
+              <Route path="/t/clubs" element={<ClubsTeacherPage />} />
+              <Route path="/s/clubs" element={<ClubsStudentPage />} />
+              <Route path="/p/clubs" element={<ClubsParentPage />} />
+              <Route path="/visitors" element={<VisitorsPage />} />
+              <Route path="/preference-robot" element={<PreferenceRobotPage />} />
+              <Route path="/t/preference-robot" element={<PreferenceRobotPage />} />
+              <Route path="/g/preference-robot" element={<PreferenceRobotPage />} />
+              <Route path="/p/preference-robot" element={<PreferenceRobotPage />} />
+              <Route path="/s/preference-robot" element={<PreferenceRobotPage canSave />} />
               <Route path="/g/library" element={<LibraryUserPage />} />
 
               {/* Teacher Routes */}

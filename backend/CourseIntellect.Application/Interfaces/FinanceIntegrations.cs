@@ -17,7 +17,10 @@ public interface IEInvoiceService
     Task<EInvoiceResultDto> IssueAsync(IssueEInvoiceRequest request, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Brüt maaştan SGK/işsizlik/gelir vergisi/damga düşerek net hesaplar.</summary>
+/// <summary>
+/// KULLANIMDAN KALDIRILDI: yalnız eski uygulama sürümleri için. Yeni sürümler maaşı
+/// doğrudan yazar; eski sürümler yaygınlıktan kalkınca silinmeli.
+/// </summary>
 public interface IPayrollService
 {
     PayrollResultDto Calculate(PayrollRequest request);
@@ -27,4 +30,9 @@ public interface IPayrollService
 public interface IReconciliationService
 {
     Task<ReconciliationResultDto> ReconcileAsync(ReconciliationRequest request, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<BankReconciliationEntryDto>> ListAsync(string? status, CancellationToken cancellationToken = default);
+
+    /// <summary>action: ignore / unmatch. Bulunamazsa null; geçersiz işlemde ArgumentException.</summary>
+    Task<BankReconciliationEntryDto?> UpdateEntryAsync(Guid id, string action, CancellationToken cancellationToken = default);
 }

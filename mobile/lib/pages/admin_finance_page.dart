@@ -81,48 +81,6 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
     );
   }
 
-  Future<void> _payrollDialog() async {
-    final controller = TextEditingController();
-    Map<String, dynamic>? result;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('Bordro Hesapla'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(hintText: 'Brüt maaş (₺)'.tr),
-              ),
-              if (result != null) ...[
-                const SizedBox(height: 12),
-                _kv('Net', _tl(result!['net'])),
-                _kv('SGK İşçi', _tl(result!['sgkEmployee'])),
-                _kv('Gelir Vergisi', _tl(result!['incomeTax'])),
-                _kv('İşveren Maliyeti', _tl(result!['totalEmployerCost'])),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Kapat')),
-            ElevatedButton(
-              onPressed: () async {
-                final gross = double.tryParse(controller.text.trim());
-                if (gross == null || gross <= 0) return;
-                final r = await StudentFinanceApiService.instance.calculatePayroll(gross);
-                setLocal(() => result = r);
-              },
-              child: const Text('Hesapla'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _dashMetric(String label, String value) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -130,14 +88,6 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
           const SizedBox(height: 2),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
         ],
-      );
-
-  Widget _kv(String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [Text(k, style: const TextStyle(color: Colors.grey)), Text(v, style: const TextStyle(fontWeight: FontWeight.w700))],
-        ),
       );
 
   void _refresh() {
@@ -334,14 +284,6 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
                       ),
                       const SizedBox(width: 8),
                       FilledButton(onPressed: _openAccount, child: Text('Aç'.tr)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(onPressed: _payrollDialog, icon: const Icon(Icons.calculate_outlined), label: const Text('Bordro Hesapla')),
                     ],
                   ),
                 ],

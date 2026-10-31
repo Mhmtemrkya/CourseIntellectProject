@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'strings_modules_tr_en.dart';
 import 'strings_tr_en.dart';
 import 'package:student/utils/log_ignored.dart';
 
@@ -50,13 +51,13 @@ String translate(String source) {
   if (!AppLocale.isEnglish) return source;
   final trimmed = source.trim();
   if (trimmed.isEmpty) return source;
-  final direct = kTrEn[trimmed];
+  final direct = kTrEn[trimmed] ?? kTrEnModules[trimmed];
   if (direct != null) return source.replaceFirst(trimmed, direct);
   // Sayısal kalıp: "3 kayıt" -> "{n} kayıt"
   if (_numberPattern.hasMatch(trimmed)) {
     final numbers = _numberPattern.allMatches(trimmed).map((m) => m.group(0)!).toList();
     final pattern = trimmed.replaceAll(_numberPattern, '{n}');
-    final hit = kTrEn[pattern];
+    final hit = kTrEn[pattern] ?? kTrEnModules[pattern];
     if (hit != null) {
       var index = 0;
       final restored = hit.replaceAllMapped(RegExp(r'\{n\}'), (_) => index < numbers.length ? numbers[index++] : '');

@@ -17,6 +17,14 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Düzenle/iptal/sil sonrası store yenilenince ekran da güncellensin.
+    return ListenableBuilder(
+      listenable: AccountingFinanceStore.instance,
+      builder: (context, _) => _build(context),
+    );
+  }
+
+  Widget _build(BuildContext context) {
     final store = AccountingFinanceStore.instance;
     final current =
         store.invoices
@@ -80,6 +88,11 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
                   label: 'Açıklama',
                   value: current.note.isEmpty ? '-' : current.note,
                 ),
+                if (current.status == 'İptal')
+                  _DetailRow(
+                    label: 'İptal Gerekçesi',
+                    value: current.cancelReason.isEmpty ? '-' : current.cancelReason,
+                  ),
               ],
             ),
           ),
@@ -144,12 +157,173 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (current.status != 'İptal' && current.id.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => _edit(context, current),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Düzenle'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => _cancel(context, current),
+                        icon: const Icon(Icons.block_rounded),
+                        label: const Text('İptal Et'),
+                      ),
+                      if (!isPaid)
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFB42318),
+                          ),
+                          onPressed: () => _delete(context, current),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text('Sil'),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _edit(BuildContext context, InvoiceRecord current) async {
+    final isPaid = current.status == 'Ödendi';
+    final title = TextEditingController(text: current.title);
+    final category = TextEditingController(text: current.category);
+    final amount = TextEditingController(text: current.amount);
+    final counterparty = TextEditingController(text: current.counterparty);
+    final note = TextEditingController(text: current.note);
+    var date = (current.issueDateUtc ?? DateTime.now()).toLocal();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('Faturayı Düzenle'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: title, decoration: const InputDecoration(labelText: 'Başlık')),
+                TextField(controller: category, decoration: const InputDecoration(labelText: 'Kategori')),
+                TextField(
+                  controller: amount,
+                  enabled: !isPaid,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Tutar',
+                    helperText: isPaid ? 'Ödenmiş faturanın tutarı değişmez; iptal edip yenisini girin.' : null,
+                    helperMaxLines: 2,
+                  ),
+                ),
+                TextField(controller: counterparty, decoration: const InputDecoration(labelText: 'İlgili Kişi/Kurum')),
+                TextField(controller: note, decoration: const InputDecoration(labelText: 'Açıklama')),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.event_rounded),
+                  label: Text('Fatura tarihi: ${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}'),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: date,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) setLocal(() => date = picked);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Vazgeç'.tr)),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Kaydet')),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    try {
+      await AccountingFinanceStore.instance.updateInvoice(
+        id: current.id,
+        title: title.text.trim(),
+        category: category.text.trim(),
+        amount: amount.text.trim(),
+        date: date,
+        dueDate: current.dueDateUtc?.toLocal(),
+        counterparty: counterparty.text.trim(),
+        note: note.text.trim(),
+      );
+      if (context.mounted) _showActionInfo(context, 'Fatura güncellendi.');
+    } catch (error) {
+      if (context.mounted) _showActionInfo(context, '$error');
+    }
+  }
+
+  Future<void> _cancel(BuildContext context, InvoiceRecord current) async {
+    final reason = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Faturayı İptal Et'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('İptal edilen fatura listede kalır ama gider toplamından çıkar.'),
+            TextField(controller: reason, decoration: const InputDecoration(labelText: 'Gerekçe *')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Vazgeç'.tr)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('İptal Et')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (reason.text.trim().isEmpty) {
+      if (context.mounted) _showActionInfo(context, 'İptal gerekçesi yazın.');
+      return;
+    }
+    try {
+      await AccountingFinanceStore.instance.cancelInvoice(id: current.id, reason: reason.text.trim());
+      if (context.mounted) _showActionInfo(context, 'Fatura iptal edildi.');
+    } catch (error) {
+      if (context.mounted) _showActionInfo(context, '$error');
+    }
+  }
+
+  Future<void> _delete(BuildContext context, InvoiceRecord current) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Faturayı Sil'),
+        content: Text('${current.invoiceNumber} numaralı fatura silinsin mi? Bu işlem geri alınamaz.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Vazgeç'.tr)),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB42318)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await AccountingFinanceStore.instance.deleteInvoice(current.id);
+      if (context.mounted) {
+        _showActionInfo(context, 'Fatura silindi.');
+        Navigator.pop(context);
+      }
+    } catch (error) {
+      if (context.mounted) _showActionInfo(context, '$error');
+    }
   }
 
   void _showActionInfo(BuildContext context, String message) {

@@ -20,6 +20,7 @@ import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocume
 import { filterByPeriod, isFinancePeriod, periodLabel, shiftAnchor, type FinancePeriod } from '../../lib/financePeriod';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { errorMessage } from '../../lib/errors';
+import { DayClosePanel } from '../../components/finance/DayClosePanel';
 import type { AccountingDashboard } from '../../lib/api/accounting';
 import type { AccountingCollectionDto } from '../../types/api/generated';
 
@@ -147,6 +148,10 @@ export default function CashReport() {
       </motion.div>
 
       {/* Summary Cards */}
+      <motion.div variants={itemVariants}>
+        <DayClosePanel />
+      </motion.div>
+
       <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         <Card>
           <CardContent className="flex items-center gap-3 py-4">

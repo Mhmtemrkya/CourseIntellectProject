@@ -4,6 +4,7 @@ import {
   Archive,
   BarChart3,
   Bell,
+  BookMarked,
   BookOpen,
   Building2,
   Calendar,
@@ -151,6 +152,7 @@ export const ADMIN_HUBS: MenuHub[] = [
     tabs: [
       { path: '/admin/academics', label: 'Akademik Yönetim', icon: BookOpen },
       { path: '/classes', label: 'Sınıflar & Gruplar', icon: Users },
+      { path: '/admin/subject-groups', label: 'Zümreler', icon: BookMarked },
       { path: '/schedule', label: 'Ders Programı', icon: Calendar },
       { path: '/attendance', label: 'Devamsızlık', icon: UserCheck },
       { path: '/exams', label: 'Sınavlar', icon: ClipboardList },

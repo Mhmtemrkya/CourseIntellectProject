@@ -129,8 +129,15 @@ public static class DependencyInjection
         services.AddScoped<IOrgUnitService, OrgUnitService>();
         services.AddHttpClient<IPaymentGatewayService, HttpPaymentGatewayService>();
         services.AddHttpClient<IEInvoiceService, HttpEInvoiceService>();
-        services.AddSingleton<IPayrollService, PayrollService>();
         services.AddScoped<IReconciliationService, ReconciliationService>();
+        services.AddSingleton<IPayrollService, PayrollService>();
+        services.AddScoped<IFinanceDayCloseService, FinanceDayCloseService>();
+        services.AddScoped<ISubjectGroupService, SubjectGroupService>();
+        services.AddScoped<IClubService, ClubService>();
+        services.AddScoped<IVisitorService, VisitorService>();
+        services.AddScoped<IPreferenceRobotService, PreferenceRobotService>();
+        services.AddScoped<IOverdueRuleReminderService, OverdueRuleReminderService>();
+        services.AddScoped<IFinanceJournalExportService, FinanceJournalExportService>();
         // Kural motoru her zaman kayıtlı: hem kendi başına hem hibrit'in temeli.
         services.AddSingleton<RuleBasedAssistantIntentResolver>();
         services.AddHttpClient<ILocalLlmClient, OllamaIntentClient>();

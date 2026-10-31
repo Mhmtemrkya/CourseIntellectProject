@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import {
   FileText, Download, Printer, Search,
-  Eye, CheckCircle, XCircle, Plus, CircleDollarSign,
+  Eye, CheckCircle, XCircle, Plus, CircleDollarSign, Pencil, Ban, Trash2,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -26,7 +26,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  createCollection, createInvoice, fetchAccountingDashboard, fetchStudents, markInvoicePaid,
+  cancelInvoice, createCollection, createInvoice, deleteInvoice, fetchAccountingDashboard, fetchStudents, markInvoicePaid, updateInvoice,
 } from '../../lib/api/modules';
 import {
   buildFinanceDocumentHtml,
@@ -57,7 +57,7 @@ const itemVariants: Variants = {
   visible: { opacity: 1, y: 0 },
 };
 
-type InvoiceStatus = 'paid' | 'unpaid' | 'overdue';
+type InvoiceStatus = 'paid' | 'unpaid' | 'overdue' | 'cancelled';
 
 /** Detay penceresi ve belge üretimi için türüyle etiketlenmiş kayıt. */
 type SelectedRecord =
@@ -93,7 +93,9 @@ function studentKeyOf(student: StudentSummaryDto): string {
 
 function statusFromInvoice(invoice: AccountingInvoiceDto): InvoiceStatus {
   const status = normalizeFinanceText(invoice.status);
-  if (status === 'paid' || status.includes('odendi') || status.includes('onay')) return 'paid';
+  if (status.includes('iptal') || status.includes('cancel')) return 'cancelled';
+  // "Onaylandı" ödendi DEĞİLDİR: onaylı ama ödenmemiş faturanın "Ödendi" butonu görünmeli.
+  if (status === 'paid' || status.includes('odendi')) return 'paid';
   if (invoice.dueDateUtc && new Date(invoice.dueDateUtc) < new Date()) return 'overdue';
   if (status.includes('overdue') || status.includes('gec')) return 'overdue';
   if (status.includes('unpaid') || status.includes('odenmedi') || status.includes('bekli')) return 'unpaid';
@@ -474,6 +476,128 @@ function MarkPaidDialog({
   );
 }
 
+/** Fatura düzeltme. Ödenmiş faturada tutar değişmez (sunucu da reddeder); iptal edip yenisini girin. */
+function InvoiceEditDialog({ invoice, onOpenChange, onSaved }: {
+  invoice: AccountingInvoiceDto | null;
+  onOpenChange: (open: boolean) => void;
+  onSaved: (updated: AccountingInvoiceDto) => void;
+}) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ title: '', category: '', amount: '', date: '', dueDate: '', counterparty: '', note: '' });
+
+  useEffect(() => {
+    if (!invoice) return;
+    setForm({
+      title: invoice.title,
+      category: invoice.category,
+      amount: String(parseFinanceMoney(invoice.amount)),
+      date: (invoice.issueDateUtc || '').slice(0, 10),
+      dueDate: (invoice.dueDateUtc || '').slice(0, 10),
+      counterparty: invoice.counterparty || '',
+      note: invoice.note || '',
+    });
+  }, [invoice]);
+
+  const isPaid = invoice ? statusFromInvoice(invoice) === 'paid' : false;
+
+  const save = async () => {
+    if (!invoice) return;
+    try {
+      setSaving(true);
+      const updated = await updateInvoice(invoice.id, {
+        title: form.title,
+        category: form.category,
+        amount: form.amount,
+        date: form.date,
+        note: form.note,
+        dueDateUtc: form.dueDate ? new Date(`${form.dueDate}T12:00:00`).toISOString() : null,
+        counterparty: form.counterparty,
+      });
+      if (updated) onSaved(updated);
+      toast({ title: 'Fatura güncellendi.' });
+      onOpenChange(false);
+    } catch (err) {
+      toast({ title: 'Fatura güncellenemedi', description: errorMessage(err), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={Boolean(invoice)} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Faturayı Düzenle</DialogTitle></DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2"><Label>Başlık</Label><Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} /></div>
+          <div><Label>Kategori</Label><Input value={form.category} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} /></div>
+          <div>
+            <Label>Tutar (TL)</Label>
+            <Input type="number" min="0" step="0.01" value={form.amount} disabled={isPaid} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} />
+            {isPaid ? <p className="mt-1 text-xs text-muted-foreground">Ödenmiş faturanın tutarı değişmez; gerekirse iptal edip yenisini girin.</p> : null}
+          </div>
+          <div><Label>Fatura Tarihi</Label><Input type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} /></div>
+          <div><Label>Son Ödeme Tarihi</Label><Input type="date" value={form.dueDate} onChange={(e) => setForm((p) => ({ ...p, dueDate: e.target.value }))} /></div>
+          <div className="sm:col-span-2"><Label>İlgili Kişi/Kurum</Label><Input value={form.counterparty} onChange={(e) => setForm((p) => ({ ...p, counterparty: e.target.value }))} /></div>
+          <div className="sm:col-span-2"><Label>Açıklama</Label><Input value={form.note} onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
+          <Button onClick={save} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Fatura iptali: kayıt silinmez, gider toplamından çıkar, gerekçesiyle kalır. */
+function InvoiceCancelDialog({ invoice, onOpenChange, onCancelled }: {
+  invoice: AccountingInvoiceDto | null;
+  onOpenChange: (open: boolean) => void;
+  onCancelled: (updated: AccountingInvoiceDto) => void;
+}) {
+  const { toast } = useToast();
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { if (invoice) setReason(''); }, [invoice]);
+
+  const save = async () => {
+    if (!invoice) return;
+    if (!reason.trim()) {
+      toast({ title: 'İptal gerekçesi yazın.', variant: 'destructive' });
+      return;
+    }
+    try {
+      setSaving(true);
+      const updated = await cancelInvoice(invoice.id, reason.trim());
+      if (updated) onCancelled(updated);
+      toast({ title: 'Fatura iptal edildi.' });
+      onOpenChange(false);
+    } catch (err) {
+      toast({ title: 'Fatura iptal edilemedi', description: errorMessage(err), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={Boolean(invoice)} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Faturayı İptal Et</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          {invoice?.invoiceNumber} • {invoice ? formatCurrency(invoice.amount) : ''}. İptal edilen fatura listede kalır ama gider toplamından çıkar.
+        </p>
+        <div><Label htmlFor="invoice-cancel-reason">Gerekçe *</Label><Input id="invoice-cancel-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ör. mükerrer kayıt" /></div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Vazgeç</Button>
+          <Button variant="destructive" onClick={save} disabled={saving}>{saving ? 'İptal ediliyor...' : 'İptal Et'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function InvoicesReceipts() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('invoices');
@@ -489,6 +613,8 @@ export default function InvoicesReceipts() {
   const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<SelectedRecord | null>(null);
   const [invoiceToMarkPaid, setInvoiceToMarkPaid] = useState<AccountingInvoiceDto | null>(null);
+  const [invoiceToEdit, setInvoiceToEdit] = useState<AccountingInvoiceDto | null>(null);
+  const [invoiceToCancel, setInvoiceToCancel] = useState<AccountingInvoiceDto | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -528,14 +654,14 @@ export default function InvoicesReceipts() {
 
   const getStatusBadge = (status: InvoiceStatus) => {
     // Etiket ve renk ortak durum sözlüğünden gelir.
-    const labels: Record<InvoiceStatus, string> = { paid: 'Ödendi', unpaid: 'Bekliyor', overdue: 'Gecikti' };
+    const labels: Record<InvoiceStatus, string> = { paid: 'Ödendi', unpaid: 'Bekliyor', overdue: 'Gecikti', cancelled: 'İptal' };
     return <StatusBadge status={labels[status]} />;
   };
 
   const stats = useMemo(() => ({
     totalInvoices: invoices.length,
     paidInvoices: invoices.filter((i) => statusFromInvoice(i) === 'paid').length,
-    pendingAmount: invoices.filter((i) => statusFromInvoice(i) !== 'paid').reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0),
+    pendingAmount: invoices.filter((i) => statusFromInvoice(i) === 'unpaid' || statusFromInvoice(i) === 'overdue').reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0),
     totalReceipts: receipts.length,
   }), [invoices, receipts]);
 
@@ -599,6 +725,18 @@ export default function InvoicesReceipts() {
       invoices: prev.invoices.map((invoice) => (invoice.id === updated.id ? updated : invoice)),
     } : prev));
     setSelectedRecord((current) => (current?.type === 'invoice' && current.id === updated.id ? { ...updated, type: 'invoice' } : current));
+  };
+
+  const handleDeleteInvoice = async (invoice: AccountingInvoiceDto) => {
+    if (!window.confirm(`${invoice.invoiceNumber} numaralı fatura silinsin mi? Bu işlem geri alınamaz.`)) return;
+    try {
+      await deleteInvoice(invoice.id);
+      setDashboard((prev) => (prev ? { ...prev, invoices: prev.invoices.filter((item) => item.id !== invoice.id) } : prev));
+      setSelectedRecord(null);
+      toast({ title: 'Fatura silindi.' });
+    } catch (err) {
+      toast({ title: 'Fatura silinemedi', description: errorMessage(err), variant: 'destructive' });
+    }
   };
 
   const handleBulkPrint = () => {
@@ -806,6 +944,7 @@ export default function InvoicesReceipts() {
                     <SelectItem value="paid">Ödendi</SelectItem>
                     <SelectItem value="unpaid">Bekliyor</SelectItem>
                     <SelectItem value="overdue">Gecikmiş</SelectItem>
+                    <SelectItem value="cancelled">İptal</SelectItem>
                   </SelectContent>
                 </Select>
               ) : null}
@@ -842,10 +981,17 @@ export default function InvoicesReceipts() {
                       <TableCell>{getStatusBadge(statusFromInvoice(invoice))}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {statusFromInvoice(invoice) !== 'paid' ? (
+                          {statusFromInvoice(invoice) === 'unpaid' || statusFromInvoice(invoice) === 'overdue' ? (
                             <Button size="sm" className="h-8 bg-emerald-600 px-2 text-white hover:bg-emerald-700" onClick={() => setInvoiceToMarkPaid(invoice)}>
                               <CircleDollarSign className="mr-1 h-4 w-4" />Ödendi
                             </Button>
+                          ) : null}
+                          {statusFromInvoice(invoice) !== 'cancelled' ? (
+                            <FeatureGate module="billing" action="invoice-create">
+                              <Button variant="ghost" size="icon" aria-label="Faturayı düzenle" onClick={() => setInvoiceToEdit(invoice)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </FeatureGate>
                           ) : null}
                           <Button variant="ghost" size="icon" onClick={() => openRecordDetail({ ...invoice, type: 'invoice' })}>
                             <Eye className="h-4 w-4" />
@@ -929,6 +1075,16 @@ export default function InvoicesReceipts() {
         onOpenChange={(open) => { if (!open) setInvoiceToMarkPaid(null); }}
         onPaid={handleInvoicePaid}
       />
+      <InvoiceEditDialog
+        invoice={invoiceToEdit}
+        onOpenChange={(open) => { if (!open) setInvoiceToEdit(null); }}
+        onSaved={handleInvoicePaid}
+      />
+      <InvoiceCancelDialog
+        invoice={invoiceToCancel}
+        onOpenChange={(open) => { if (!open) setInvoiceToCancel(null); }}
+        onCancelled={handleInvoicePaid}
+      />
 
       <Dialog open={Boolean(selectedRecord)} onOpenChange={(open) => { if (!open) setSelectedRecord(null); }}>
         <DialogContent className="max-w-2xl">
@@ -975,6 +1131,9 @@ export default function InvoicesReceipts() {
                     <p><strong>Son ödeme tarihi:</strong> {selectedRecord.dueDateUtc ? formatDate(selectedRecord.dueDateUtc) : '-'}</p>
                     <p><strong>Ödeme yöntemi:</strong> {selectedRecord.paymentMethod || '-'}</p>
                     <p><strong>Açıklama:</strong> {selectedRecord.note || selectedRecord.subtitle || '-'}</p>
+                    {selectedRecord.cancelledAtUtc ? (
+                      <p className="text-red-600"><strong>İptal:</strong> {formatDate(selectedRecord.cancelledAtUtc)} — {selectedRecord.cancelReason || '-'}</p>
+                    ) : null}
                   </>
                 ) : (
                   <>
@@ -991,7 +1150,21 @@ export default function InvoicesReceipts() {
           <DialogFooter>
             {selectedRecord ? (
               <>
-                {selectedRecord.type === 'invoice' && statusFromInvoice(selectedRecord) !== 'paid' ? (
+                {selectedRecord.type === 'invoice' && statusFromInvoice(selectedRecord) !== 'cancelled' ? (
+                  <FeatureGate module="billing" action="invoice-create">
+                    <div className="flex gap-2">
+                      {statusFromInvoice(selectedRecord) !== 'paid' ? (
+                        <Button variant="outline" className="text-red-600" onClick={() => void handleDeleteInvoice(selectedRecord)}>
+                          <Trash2 className="mr-2 h-4 w-4" />Sil
+                        </Button>
+                      ) : null}
+                      <Button variant="outline" onClick={() => setInvoiceToCancel(selectedRecord)}>
+                        <Ban className="mr-2 h-4 w-4" />İptal Et
+                      </Button>
+                    </div>
+                  </FeatureGate>
+                ) : null}
+                {selectedRecord.type === 'invoice' && (statusFromInvoice(selectedRecord) === 'unpaid' || statusFromInvoice(selectedRecord) === 'overdue') ? (
                   <Button onClick={() => setInvoiceToMarkPaid(selectedRecord)}>
                     <CircleDollarSign className="mr-2 h-4 w-4" />Ödendi Olarak İşaretle
                   </Button>

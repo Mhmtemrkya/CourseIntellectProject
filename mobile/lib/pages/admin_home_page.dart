@@ -1,5 +1,9 @@
+import 'package:student/pages/preference_robot_page.dart';
 import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
+import 'subject_groups_page.dart';
+import 'clubs_page.dart';
+import 'visitors_page.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import 'admin_branch_comparison_page.dart';
@@ -1210,6 +1214,34 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   List<_QuickLink> _quickLinks() => [
+    _QuickLink(
+      'Zümreler'.tr,
+      'Ders zümreleri ve zümre başkanları'.tr,
+      const Color(0xFF4F46E5),
+      Icons.groups_2_rounded,
+      () => const SubjectGroupsPage(),
+    ),
+    _QuickLink(
+      'Kulüpler'.tr,
+      'Öğrenci kulüpleri, danışmanlar ve etkinlikler'.tr,
+      const Color(0xFFE11D48),
+      Icons.flag_rounded,
+      () => const ClubsPage(audience: ClubsAudience.admin),
+    ),
+    _QuickLink(
+      'Tercih Robotu'.tr,
+      'LGS / YKS taban puanları ve tercih önerileri'.tr,
+      const Color(0xFF7C3AED),
+      Icons.track_changes_rounded,
+      () => const PreferenceRobotPage(),
+    ),
+    _QuickLink(
+      'Ziyaretçi Takibi'.tr,
+      'Ziyaretçi giriş-çıkış kaydı'.tr,
+      const Color(0xFF0D9488),
+      Icons.door_front_door_rounded,
+      () => const VisitorsPage(),
+    ),
     _QuickLink(
       'Nöbet Oluştur'.tr,
       'Öğretmenlere nöbet ata'.tr,

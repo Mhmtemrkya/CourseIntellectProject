@@ -17,4 +17,8 @@ public sealed class AccountingInvoice : ITenantScopedEntity
     public string PaymentMethod { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAtUtc { get; set; }
+    /// <summary>İptal edilen fatura silinmez; gider toplamından çıkar, izi kalır.</summary>
+    public DateTime? CancelledAtUtc { get; set; }
+    public string CancelReason { get; set; } = string.Empty;
 }

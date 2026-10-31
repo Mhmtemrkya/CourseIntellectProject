@@ -20,6 +20,11 @@ public sealed class StudentFinanceService(
     IAuditLogService auditLogService,
     IInstitutionProfileService institutionProfileService) : IStudentFinanceService
 {
+    private static readonly HashSet<string> SupportedCurrencies = ["TRY", "USD", "EUR", "GBP"];
+
+    private static bool CollectsDownPaymentAtEnrollment(CreateEnrollmentRequest request) =>
+        request.DownPaymentPaid && request.DownPayment > 0;
+
     public async Task<EnrollmentContractDto> CreateEnrollmentAsync(
         CreateEnrollmentRequest request,
         Guid? createdByUserId,
@@ -44,8 +49,31 @@ public sealed class StudentFinanceService(
         var net = gross - discount;
         var downPayment = Math.Clamp(request.DownPayment, 0, net);
         var installmentCount = Math.Max(0, request.InstallmentCount);
-        var currency = string.IsNullOrWhiteSpace(request.Currency) ? "TRY" : request.Currency.Trim();
+        var currency = string.IsNullOrWhiteSpace(request.Currency) ? "TRY" : request.Currency.Trim().ToUpperInvariant();
+        if (currency == "TL") currency = "TRY";
+        if (!SupportedCurrencies.Contains(currency))
+        {
+            throw new ArgumentException("Desteklenen para birimleri: TRY, USD, EUR, GBP.");
+        }
         var studentName = request.StudentName.Trim();
+
+        // Bir öğrencinin cari hesabı tek para biriminde tutulur: tahsilat, iade,
+        // ekstre ve kalan borç farklı para birimlerini toplamasın. Çevrim yapılmaz.
+        if (request.StudentUserId is Guid currencyStudentId)
+        {
+            var otherCurrency = await dbContext.EnrollmentContracts.AsNoTracking()
+                .Where(item => item.StudentUserId == currencyStudentId && item.Status != "Cancelled" && item.Currency != currency)
+                .Select(item => item.Currency)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (otherCurrency is not null)
+            {
+                throw new ArgumentException($"Öğrencinin {otherCurrency} cinsinden açık sözleşmesi var; aynı öğrenciye farklı para biriminde sözleşme açılamaz.");
+            }
+        }
+        if (CollectsDownPaymentAtEnrollment(request))
+        {
+            await FinanceDayGuard.EnsureOpenAsync(dbContext, DateTime.UtcNow, cancellationToken);
+        }
 
         var contract = new EnrollmentContract
         {
@@ -361,7 +389,11 @@ public sealed class StudentFinanceService(
         var currency = contracts.FirstOrDefault()?.Currency
             ?? installments.FirstOrDefault()?.Currency
             ?? "TRY";
-        var overdue = installments.Count(item => item.Amount - item.PaidAmount > 0 && FinanceDates.IsOverdue(item.DueDateUtc, now));
+        // Dondurulmuş/iptal sözleşmenin taksiti gecikme sayılmaz.
+        var pausedContractIds = contracts.Where(item => item.Status != "Active").Select(item => item.Id).ToHashSet();
+        var overdue = installments.Count(item => item.Amount - item.PaidAmount > 0
+            && FinanceDates.IsOverdue(item.DueDateUtc, now)
+            && !pausedContractIds.Contains(item.EnrollmentContractId));
         var nextDue = installments
             .Where(item => item.Amount - item.PaidAmount > 0)
             .OrderBy(item => item.DueDateUtc)
@@ -446,7 +478,7 @@ public sealed class StudentFinanceService(
             overdue,
             nextDue,
             contracts.Select(item => MapContract(item, installmentsByContract.GetValueOrDefault(item.Id) ?? [])).ToList(),
-            installments.Select(item => MapInstallment(item, now)).ToList(),
+            installments.Select(item => MapInstallment(item, now, pausedContractIds.Contains(item.EnrollmentContractId))).ToList(),
             payments.Select(item => MapPayment(
                 item,
                 refundedByPayment.GetValueOrDefault(item.Id),
@@ -748,6 +780,14 @@ public sealed class StudentFinanceService(
         var nameLower = name.ToLowerInvariant();
         var method = string.IsNullOrWhiteSpace(request.Method) ? "Nakit" : request.Method.Trim();
 
+        var paidAtUtc = request.PaidAtUtc is DateTime requestedPaidAt
+            ? DateTime.SpecifyKind(requestedPaidAt, requestedPaidAt.Kind == DateTimeKind.Local ? DateTimeKind.Local : DateTimeKind.Utc).ToUniversalTime()
+            : DateTime.UtcNow;
+        if (paidAtUtc > DateTime.UtcNow.AddMinutes(5))
+        {
+            throw new InvalidOperationException("İleri tarihli tahsilat kaydedilemez.");
+        }
+
         // Kurumun tahsilat/iade yazımları sıraya girer: eşzamanlı iki istek aynı
         // taksidin PaidAmount'unu ezemez, aynı istek kimliği iki kayıt üretemez.
         await using var ownedTransaction = await BeginFinanceWriteAsync(cancellationToken);
@@ -765,6 +805,8 @@ public sealed class StudentFinanceService(
                 return MapPayment(existing);
             }
         }
+
+        await FinanceDayGuard.EnsureOpenAsync(dbContext, paidAtUtc, cancellationToken);
 
         // Yalnız adla gelen tahsilat (muhasebe ekranı): ad tek öğrenciye aitse o
         // öğrencinin kimliğine bağlanır; birden çok öğrenciye aitse para tahminle
@@ -819,7 +861,7 @@ public sealed class StudentFinanceService(
                     Note = DownPaymentNote,
                     CreatedByUserId = createdByUserId,
                     BranchId = request.BranchId,
-                    PaidAtUtc = DateTime.UtcNow,
+                    PaidAtUtc = paidAtUtc,
                 };
                 await dbContext.FinancePayments.AddAsync(downPaymentRecord, cancellationToken);
                 downPaymentRecords.Add(downPaymentRecord);
@@ -948,6 +990,22 @@ public sealed class StudentFinanceService(
             note = string.IsNullOrEmpty(note) ? $"Ayrıca {downPaymentText}" : $"{note} • Ayrıca {downPaymentText}";
         }
 
+        if (newAllocations.Count == 0)
+        {
+            // Taksite gitmeyen (avans) tahsilat da öğrencinin sözleşme para biriminde kaydedilir.
+            if (downPaymentRecords.Count > 0)
+            {
+                currency = downPaymentRecords[0].Currency;
+            }
+            else if (contractId is Guid currencyContractId)
+            {
+                currency = await dbContext.EnrollmentContracts.AsNoTracking()
+                    .Where(item => item.Id == currencyContractId)
+                    .Select(item => item.Currency)
+                    .FirstOrDefaultAsync(cancellationToken) ?? currency;
+            }
+        }
+
         var payment = new FinancePayment
         {
             EnrollmentContractId = contractId,
@@ -964,7 +1022,7 @@ public sealed class StudentFinanceService(
             // Şube açıkça seçildiyse onu yaz; boşsa ApplyTenantContext aktörün şubesine düşürür.
             BranchId = request.BranchId,
             ClientRequestId = request.ClientRequestId == Guid.Empty ? null : request.ClientRequestId,
-            PaidAtUtc = DateTime.UtcNow,
+            PaidAtUtc = paidAtUtc,
         };
         await dbContext.FinancePayments.AddAsync(payment, cancellationToken);
         if (newAllocations.Count > 0)
@@ -1052,6 +1110,7 @@ public sealed class StudentFinanceService(
         {
             throw new InvalidOperationException("Peşinat zaten tahsil edilmiş.");
         }
+        await FinanceDayGuard.EnsureOpenAsync(dbContext, DateTime.UtcNow, cancellationToken);
 
         var downPaymentMethod = string.IsNullOrWhiteSpace(method) ? "Nakit" : method.Trim();
         var remainingDownPayment = contract.DownPayment - contract.DownPaymentPaidAmount;
@@ -1233,7 +1292,10 @@ public sealed class StudentFinanceService(
                 var net = group.Sum(item => item.NetAmount);
                 var paid = paidByStudent.GetValueOrDefault(group.Key);
                 var studentInstallments = group.SelectMany(item => installmentsByContract.GetValueOrDefault(item.Id) ?? []).ToList();
-                var overdue = studentInstallments.Count(item => item.Amount - item.PaidAmount > 0 && FinanceDates.IsOverdue(item.DueDateUtc, now));
+                var groupPaused = group.Where(item => item.Status != "Active").Select(item => item.Id).ToHashSet();
+                var overdue = studentInstallments.Count(item => item.Amount - item.PaidAmount > 0
+                    && FinanceDates.IsOverdue(item.DueDateUtc, now)
+                    && !groupPaused.Contains(item.EnrollmentContractId));
                 var nextDue = studentInstallments
                     .Where(item => item.Amount - item.PaidAmount > 0)
                     .OrderBy(item => item.DueDateUtc)
@@ -1327,6 +1389,7 @@ public sealed class StudentFinanceService(
         // Aynı makbuza eşzamanlı iki iadenin kalan tutarı birlikte aşmasını önler.
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         await BeginFinanceWriteAsync(cancellationToken);
+        await FinanceDayGuard.EnsureOpenAsync(dbContext, DateTime.UtcNow, cancellationToken);
         var source = await dbContext.FinancePayments
             .FirstOrDefaultAsync(item => item.Id == request.PaymentId, cancellationToken)
             ?? throw new InvalidOperationException("İade edilecek tahsilat bulunamadı.");
@@ -1475,7 +1538,35 @@ public sealed class StudentFinanceService(
         DateTime? toUtc = null,
         CancellationToken cancellationToken = default)
     {
-        var contractQuery = dbContext.EnrollmentContracts.AsNoTracking().AsQueryable();
+        // Para birimleri toplanmaz (çevrim yok). Ana kartlar TRY'dir (kurumda TRY
+        // sözleşme yoksa en yaygın para birimi); diğer para birimleri ayrı satırda.
+        var currencies = await dbContext.EnrollmentContracts.AsNoTracking()
+            .GroupBy(item => item.Currency)
+            .Select(group => new { Currency = group.Key, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+        var primary = currencies.Any(item => item.Currency == "TRY") || currencies.Count == 0
+            ? "TRY"
+            : currencies.OrderByDescending(item => item.Count).First().Currency;
+        var dashboard = await BuildDashboardAsync(className, fromUtc, toUtc, primary, cancellationToken);
+        if (currencies.Count <= 1) return dashboard;
+
+        var totals = new List<CurrencyTotalDto>();
+        foreach (var currency in currencies.Select(item => item.Currency).OrderBy(item => item == primary ? 0 : 1).ThenBy(item => item))
+        {
+            var part = currency == primary ? dashboard : await BuildDashboardAsync(className, fromUtc, toUtc, currency, cancellationToken);
+            totals.Add(new CurrencyTotalDto(currency, part.NetTotal, part.CollectedTotal, part.OutstandingTotal));
+        }
+        return dashboard with { CurrencyTotals = totals };
+    }
+
+    private async Task<FinanceDashboardDto> BuildDashboardAsync(
+        string? className,
+        DateTime? fromUtc,
+        DateTime? toUtc,
+        string currencyFilter,
+        CancellationToken cancellationToken)
+    {
+        var contractQuery = dbContext.EnrollmentContracts.AsNoTracking().Where(item => item.Currency == currencyFilter);
         if (!string.IsNullOrWhiteSpace(className))
         {
             var normalized = className.Trim();
@@ -1507,6 +1598,9 @@ public sealed class StudentFinanceService(
                 (!fromUtc.HasValue || item.DueDateUtc >= fromUtc.Value)
                 && (!toUtc.HasValue || item.DueDateUtc < toUtc.Value))
             .ToList();
+        // Gecikme/yaşlandırma yalnız aktif sözleşmelerde; dondurulmuş kayıt borcu durur.
+        var pausedDashboardContracts = contracts.Where(item => item.Status != "Active").Select(item => item.Id).ToHashSet();
+        var agingInstallments = dashboardInstallments.Where(item => !pausedDashboardContracts.Contains(item.EnrollmentContractId)).ToList();
         // Tahsilatlar sözleşmeye bağlanmamış (peşin/manuel/iade) olabilir; hesap görünümüyle
         // tutarlı kalmak için contract / öğrenci kullanıcı / öğrenci adı (harf duyarsız) üzerinden toplanır.
         var paymentQuery = dbContext.FinancePayments.AsNoTracking()
@@ -1516,7 +1610,7 @@ public sealed class StudentFinanceService(
                 || (item.StudentName != string.Empty && studentNamesLower.Contains(item.StudentName.Trim().ToLower())));
         if (fromUtc.HasValue) paymentQuery = paymentQuery.Where(item => item.PaidAtUtc >= fromUtc.Value);
         if (toUtc.HasValue) paymentQuery = paymentQuery.Where(item => item.PaidAtUtc < toUtc.Value);
-        var payments = await paymentQuery.ToListAsync(cancellationToken);
+        var payments = await paymentQuery.Where(item => item.Currency == currencyFilter).ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
         var net = dashboardContracts.Sum(item => item.NetAmount);
@@ -1533,7 +1627,7 @@ public sealed class StudentFinanceService(
                     group.Sum(item => item.NetAmount),
                     paidByStudent.GetValueOrDefault(group.Key)));
 
-        decimal BucketAmount(int minDays, int maxDays) => dashboardInstallments
+        decimal BucketAmount(int minDays, int maxDays) => agingInstallments
             .Where(item =>
             {
                 var remaining = item.Amount - item.PaidAmount;
@@ -1543,7 +1637,7 @@ public sealed class StudentFinanceService(
             })
             .Sum(item => item.Amount - item.PaidAmount);
 
-        int BucketCount(int minDays, int maxDays) => dashboardInstallments
+        int BucketCount(int minDays, int maxDays) => agingInstallments
             .Count(item =>
             {
                 var remaining = item.Amount - item.PaidAmount;
@@ -1560,7 +1654,7 @@ public sealed class StudentFinanceService(
             new("90+ gün", BucketCount(90, -1), BucketAmount(90, -1)),
         };
 
-        var overdueInstallments = dashboardInstallments.Where(item => item.Amount - item.PaidAmount > 0 && FinanceDates.IsOverdue(item.DueDateUtc, now)).ToList();
+        var overdueInstallments = agingInstallments.Where(item => item.Amount - item.PaidAmount > 0 && FinanceDates.IsOverdue(item.DueDateUtc, now)).ToList();
         var overdueTotal = overdueInstallments.Sum(item => item.Amount - item.PaidAmount);
         var overdueStudents = overdueInstallments
             .Select(item => item.StudentName)
@@ -1646,7 +1740,7 @@ public sealed class StudentFinanceService(
         var pendingDownPaymentTotal = pendingDownPayments.Sum(item => item.DownPayment - item.DownPaymentPaidAmount);
         var refundedTotal = payments.Where(item => item.Amount < 0).Sum(item => -item.Amount);
 
-        var currency = contracts.FirstOrDefault()?.Currency ?? "TRY";
+        var currency = currencyFilter;
         return new FinanceDashboardDto(
             currency, net, collected, outstanding, overdueTotal, overdueStudents,
             collectionRate, avgCollectionDays, pendingDownPayments.Count, pendingDownPaymentTotal,
@@ -1656,21 +1750,35 @@ public sealed class StudentFinanceService(
     public Task<ReminderResultDto> SendDueRemindersAsync(
         int upcomingWindowDays,
         CancellationToken cancellationToken = default)
-        => SendRemindersAsync(upcomingWindowDays, overdueOnly: false, cancellationToken);
+        => SendRemindersAsync(upcomingWindowDays, overdueOnly: false, upcomingOnly: false, cancellationToken);
 
     public Task<ReminderResultDto> SendOverdueRemindersAsync(CancellationToken cancellationToken = default)
-        => SendRemindersAsync(0, overdueOnly: true, cancellationToken);
+        => SendRemindersAsync(0, overdueOnly: true, upcomingOnly: false, cancellationToken);
+
+    public Task<ReminderResultDto> SendUpcomingRemindersAsync(int upcomingWindowDays, CancellationToken cancellationToken = default)
+        => SendRemindersAsync(upcomingWindowDays, overdueOnly: false, upcomingOnly: true, cancellationToken);
 
     private async Task<ReminderResultDto> SendRemindersAsync(
         int upcomingWindowDays,
         bool overdueOnly,
+        bool upcomingOnly,
         CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
         var windowEnd = now.AddDays(Math.Max(1, upcomingWindowDays));
-        var due = await dbContext.FinanceInstallments.AsNoTracking()
-            .Where(item => item.Amount - item.PaidAmount > 0 && item.DueDateUtc <= windowEnd)
-            .ToListAsync(cancellationToken);
+        var activeContractIds = (await dbContext.EnrollmentContracts.AsNoTracking()
+            .Where(item => item.Status == "Active")
+            .Select(item => item.Id)
+            .ToListAsync(cancellationToken)).ToHashSet();
+        var due = (await dbContext.FinanceInstallments.AsNoTracking()
+                .Where(item => item.Amount - item.PaidAmount > 0 && item.DueDateUtc <= windowEnd)
+                .ToListAsync(cancellationToken))
+            .Where(item => activeContractIds.Contains(item.EnrollmentContractId))
+            .ToList();
+        if (upcomingOnly)
+        {
+            due = due.Where(item => !FinanceDates.IsOverdue(item.DueDateUtc, now)).ToList();
+        }
 
         if (overdueOnly)
         {
@@ -1938,6 +2046,7 @@ public sealed class StudentFinanceService(
     {
         var payment = await dbContext.FinancePayments.FirstOrDefaultAsync(item => item.Id == paymentId, cancellationToken)
             ?? throw new KeyNotFoundException("Tahsilat bulunamadı.");
+        await FinanceDayGuard.EnsureOpenAsync(dbContext, payment.PaidAtUtc, cancellationToken);
         if (payment.Amount < 0 || payment.EntryType == "Refund")
         {
             throw new InvalidOperationException($"İade belgeleri {verb}; yanlış işlem yeni bir düzeltme hareketiyle ele alınmalıdır.");
@@ -2324,6 +2433,274 @@ public sealed class StudentFinanceService(
         return (applied, requested);
     }
 
+    /// <summary>
+    /// Sözleşme yaşam döngüsü.
+    ///   • freeze: kayıt dondurulur; borç durur ama gecikme, yaşlandırma ve
+    ///     hatırlatma işlemez. unfreeze ile kaldığı yerden devam eder.
+    ///   • cancel: kayıt iptal edilir; ödenmemiş taksitler ve bekleyen peşinat
+    ///     silinir (borçtan düşer), tahsil edilmiş para yerinde kalır — iadesi
+    ///     ayrıca makbuz üzerinden yapılır. Geri alınamaz.
+    /// </summary>
+    public async Task<EnrollmentContractDto> ChangeContractStatusAsync(
+        Guid contractId,
+        ChangeContractStatusRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var action = (request.Action ?? string.Empty).Trim().ToLowerInvariant();
+        var reason = (request.Reason ?? string.Empty).Trim();
+        if (reason.Length == 0) throw new ArgumentException("Gerekçe zorunludur.");
+        if (reason.Length > 300) reason = reason[..300];
+
+        await using var ownedTransaction = await BeginFinanceWriteAsync(cancellationToken);
+        var contract = await dbContext.EnrollmentContracts.FirstOrDefaultAsync(item => item.Id == contractId, cancellationToken)
+            ?? throw new KeyNotFoundException("Sözleşme bulunamadı.");
+        if (contract.Status == "Cancelled")
+        {
+            throw new InvalidOperationException("İptal edilmiş sözleşme değiştirilemez.");
+        }
+
+        var installments = await dbContext.FinanceInstallments
+            .Where(item => item.EnrollmentContractId == contract.Id)
+            .ToListAsync(cancellationToken);
+        string auditTitle;
+        string auditDetail;
+        switch (action)
+        {
+            case "freeze":
+                if (contract.Status == "Frozen") throw new InvalidOperationException("Sözleşme zaten dondurulmuş.");
+                contract.Status = "Frozen";
+                auditTitle = "Kayıt donduruldu";
+                auditDetail = $"{contract.StudentName} kaydı donduruldu. Gerekçe: {reason}";
+                break;
+            case "unfreeze":
+                if (contract.Status != "Frozen") throw new InvalidOperationException("Yalnız dondurulmuş sözleşme devam ettirilebilir.");
+                contract.Status = "Active";
+                auditTitle = "Dondurulan kayıt devam ettirildi";
+                auditDetail = $"{contract.StudentName} kaydı yeniden aktif. Gerekçe: {reason}";
+                break;
+            case "cancel":
+                var writeOff = installments.Sum(item => Math.Max(0, item.Amount - item.PaidAmount))
+                    + Math.Max(0, contract.DownPayment - contract.DownPaymentPaidAmount);
+                foreach (var installment in installments.Where(item => item.Amount > item.PaidAmount))
+                {
+                    installment.Amount = installment.PaidAmount;
+                    installment.Status = installment.PaidAmount > 0 ? "Paid" : "Cancelled";
+                }
+                contract.DownPayment = contract.DownPaymentPaidAmount;
+                contract.DownPaymentPaid = true;
+                if (writeOff > 0)
+                {
+                    contract.NetAmount = Math.Max(0, contract.NetAmount - writeOff);
+                    contract.DiscountAmount = Math.Min(contract.GrossAmount, contract.DiscountAmount + writeOff);
+                    contract.DiscountReason = $"{contract.DiscountReason} | Kayıt iptali".Trim(' ', '|');
+                }
+                contract.Status = "Cancelled";
+                auditTitle = "Kayıt iptal edildi";
+                auditDetail = $"{contract.StudentName} kaydı iptal edildi; {MoneyText.Format(writeOff, contract.Currency)} ödenmemiş borç silindi. Gerekçe: {reason}";
+                break;
+            default:
+                throw new ArgumentException("Geçersiz işlem (freeze, unfreeze, cancel).");
+        }
+
+        contract.StatusChangedAtUtc = DateTime.UtcNow;
+        contract.StatusReason = reason;
+        await dbContext.AccountingAuditLogs.AddAsync(new AccountingAuditLog
+        {
+            Title = auditTitle,
+            Detail = auditDetail.Length > 500 ? auditDetail[..500] : auditDetail,
+            Time = $"{DateTime.Now:dd MMMM yyyy} • {DateTime.Now:HH:mm}",
+        }, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(auditTitle, "Finance", "EnrollmentContract", contract.Id.ToString(), auditDetail, cancellationToken);
+        if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
+        return MapContract(contract, installments);
+    }
+
+    /// <summary>
+    /// Kalan borcu yeni bir taksit planına böler. Hiç ödenmemiş (mahsupsuz) taksitler
+    /// kaldırılır; kısmen ödenmiş taksit ödenen tutara indirilip kapatılır. Ödeme
+    /// dağılım kayıtları korunur, sözleşmenin net tutarı değişmez.
+    /// </summary>
+    public async Task<EnrollmentContractDto> RestructureInstallmentsAsync(
+        Guid contractId,
+        RestructureInstallmentsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.InstallmentCount is < 1 or > 60) throw new ArgumentException("Taksit sayısı 1 ile 60 arasında olmalı.");
+
+        await using var ownedTransaction = await BeginFinanceWriteAsync(cancellationToken);
+        var contract = await dbContext.EnrollmentContracts.FirstOrDefaultAsync(item => item.Id == contractId, cancellationToken)
+            ?? throw new KeyNotFoundException("Sözleşme bulunamadı.");
+        if (contract.Status != "Active") throw new InvalidOperationException("Yalnız aktif sözleşmenin taksitleri yeniden yapılandırılabilir.");
+
+        // Sürücü kursu ek ücret taksitleri kendi kalemlerine bağlıdır; plana karışmaz.
+        var chargeInstallmentIds = (await dbContext.DrivingCharges.AsNoTracking()
+            .Where(item => item.EnrollmentContractId == contract.Id && item.FinanceInstallmentId != null)
+            .Select(item => item.FinanceInstallmentId!.Value)
+            .ToListAsync(cancellationToken)).ToHashSet();
+        var installments = await dbContext.FinanceInstallments
+            .Where(item => item.EnrollmentContractId == contract.Id)
+            .ToListAsync(cancellationToken);
+        var open = installments
+            .Where(item => item.Amount > item.PaidAmount && !chargeInstallmentIds.Contains(item.Id))
+            .ToList();
+        var remaining = open.Sum(item => item.Amount - item.PaidAmount);
+        if (remaining <= 0) throw new InvalidOperationException("Yeniden yapılandırılacak ödenmemiş taksit yok.");
+
+        var openIds = open.Select(item => item.Id).ToList();
+        var allocatedIds = (await dbContext.FinancePaymentAllocations.AsNoTracking()
+            .Where(item => openIds.Contains(item.FinanceInstallmentId))
+            .Select(item => item.FinanceInstallmentId)
+            .Distinct()
+            .ToListAsync(cancellationToken)).ToHashSet();
+        foreach (var installment in open)
+        {
+            if (installment.PaidAmount <= 0 && !allocatedIds.Contains(installment.Id))
+            {
+                dbContext.FinanceInstallments.Remove(installment);
+                installments.Remove(installment);
+            }
+            else
+            {
+                installment.Amount = installment.PaidAmount;
+                installment.Status = "Paid";
+            }
+        }
+
+        var firstDue = DateTime.SpecifyKind(request.FirstDueDate.Date, DateTimeKind.Utc);
+        var per = Math.Round(remaining / request.InstallmentCount, 2, MidpointRounding.AwayFromZero);
+        var seq = installments.Count == 0 ? 0 : installments.Max(item => item.SeqNo);
+        var allocated = 0m;
+        for (var index = 0; index < request.InstallmentCount; index++)
+        {
+            var amount = index == request.InstallmentCount - 1 ? remaining - allocated : per;
+            allocated += amount;
+            var created = new FinanceInstallment
+            {
+                EnrollmentContractId = contract.Id,
+                StudentUserId = contract.StudentUserId,
+                StudentName = contract.StudentName,
+                SeqNo = ++seq,
+                Label = $"Yapılandırma {index + 1}. Taksit",
+                DueDateUtc = firstDue.AddMonths(index),
+                Amount = amount,
+                PaidAmount = 0,
+                Status = "Pending",
+                Currency = contract.Currency,
+            };
+            await dbContext.FinanceInstallments.AddAsync(created, cancellationToken);
+            installments.Add(created);
+        }
+        contract.InstallmentCount = installments.Count(item => !chargeInstallmentIds.Contains(item.Id));
+
+        var reason = string.IsNullOrWhiteSpace(request.Reason) ? string.Empty : $" Gerekçe: {request.Reason.Trim()}";
+        var detail = $"{contract.StudentName}: kalan {MoneyText.Format(remaining, contract.Currency)} borç {request.InstallmentCount} taksite bölündü (ilk vade {firstDue:dd.MM.yyyy}).{reason}";
+        await dbContext.AccountingAuditLogs.AddAsync(new AccountingAuditLog
+        {
+            Title = "Taksit planı yeniden yapılandırıldı",
+            Detail = detail.Length > 500 ? detail[..500] : detail,
+            Time = $"{DateTime.Now:dd MMMM yyyy} • {DateTime.Now:HH:mm}",
+        }, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync("Taksit planı yeniden yapılandırıldı", "Finance", "EnrollmentContract", contract.Id.ToString(), detail, cancellationToken);
+        if (ownedTransaction is not null) await ownedTransaction.CommitAsync(cancellationToken);
+        return MapContract(contract, installments);
+    }
+
+    /// <summary>
+    /// Toplu tahsilat (banka dökümü vb.). Önce önizleme (DryRun) yapılır; kayıtta
+    /// her satır ayrı tahsilattır ve satır içeriğinden türeyen sabit istek kimliği
+    /// taşır — aynı dosya ikinci kez yüklenirse aynı satır ikinci kez tahsil edilmez.
+    /// Hatalı satır (bulunamayan/aynı adlı öğrenci, kapalı gün) diğerlerini durdurmaz.
+    /// </summary>
+    public async Task<BulkCollectionResultDto> BulkCollectAsync(
+        BulkCollectionRequest request,
+        Guid? createdByUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var rows = request.Rows ?? [];
+        if (rows.Count == 0) throw new ArgumentException("Aktarılacak satır yok.");
+        if (rows.Count > 1000) throw new ArgumentException("Tek seferde en fazla 1000 satır aktarılabilir.");
+
+        var results = new List<BulkCollectionRowResult>();
+        var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
+        var tenantKey = dbContext.CurrentTenantId?.ToString("N") ?? "legacy";
+        foreach (var row in rows)
+        {
+            var name = (row.StudentName ?? string.Empty).Trim();
+            var method = string.IsNullOrWhiteSpace(row.Method) ? "Havale" : row.Method.Trim();
+            // Satırdaki gün, Türkiye öğlesine (09:00 UTC) yazılır; bugünse ve saat henüz
+            // gelmediyse şimdiki an kullanılır (aksi hâlde "ileri tarihli" sayılırdı).
+            DateTime? paidAt = row.PaidAt.HasValue
+                ? DateTime.SpecifyKind(row.PaidAt.Value.Date.AddHours(9), DateTimeKind.Utc)
+                : null;
+            if (paidAt > DateTime.UtcNow) paidAt = DateTime.UtcNow;
+            var content = string.Join('|', NormalizeStudentName(name), row.Amount.ToString("0.00", CultureInfo.InvariantCulture),
+                paidAt?.ToString("yyyyMMdd", CultureInfo.InvariantCulture) ?? string.Empty, method.ToLowerInvariant(), (row.Reference ?? string.Empty).Trim());
+            occurrences[content] = occurrences.GetValueOrDefault(content) + 1;
+            var requestId = DeterministicGuid($"bulk:{tenantKey}:{content}#{occurrences[content]}");
+
+            if (name.Length == 0 || row.Amount <= 0)
+            {
+                results.Add(new BulkCollectionRowResult(row.Line, name, row.Amount, "Error", "Öğrenci adı ve sıfırdan büyük tutar zorunludur.", null));
+                continue;
+            }
+
+            var existing = await dbContext.FinancePayments.AsNoTracking()
+                .FirstOrDefaultAsync(item => item.ClientRequestId == requestId, cancellationToken);
+            if (existing is not null)
+            {
+                results.Add(new BulkCollectionRowResult(row.Line, name, row.Amount, "Duplicate", "Bu satır daha önce işlenmiş.", existing.ReceiptNo));
+                continue;
+            }
+
+            try
+            {
+                var userId = row.StudentUserId ?? await ResolveUniqueStudentUserIdAsync(name, cancellationToken);
+                if (userId is null && !await dbContext.EnrollmentContracts.AsNoTracking()
+                        .AnyAsync(item => item.StudentUserId == null && item.StudentName.Trim().ToLower() == NormalizeStudentName(name), cancellationToken))
+                {
+                    results.Add(new BulkCollectionRowResult(row.Line, name, row.Amount, "Error", "Bu adla kayıtlı öğrenci bulunamadı.", null));
+                    continue;
+                }
+                if (paidAt.HasValue) await FinanceDayGuard.EnsureOpenAsync(dbContext, paidAt.Value, cancellationToken);
+
+                if (request.DryRun)
+                {
+                    results.Add(new BulkCollectionRowResult(row.Line, name, row.Amount, "Ready", "Kayda hazır.", null));
+                    continue;
+                }
+
+                var note = string.IsNullOrWhiteSpace(row.Reference) ? "Toplu aktarım" : $"Toplu aktarım • {row.Reference.Trim()}";
+                var payment = await RecordPaymentAsync(
+                    new RecordPaymentRequest(userId, name, null, null, row.Amount, method, note, null, requestId, paidAt),
+                    createdByUserId,
+                    cancellationToken);
+                results.Add(new BulkCollectionRowResult(row.Line, name, row.Amount, "Recorded", "Kaydedildi.", payment.ReceiptNo));
+            }
+            catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
+            {
+                dbContext.ChangeTracker.Clear();
+                results.Add(new BulkCollectionRowResult(row.Line, name, row.Amount, "Error", exception.Message, null));
+            }
+        }
+
+        var recorded = results.Where(item => item.Status == "Recorded").ToList();
+        return new BulkCollectionResultDto(
+            results.Count,
+            recorded.Count,
+            results.Count(item => item.Status == "Duplicate"),
+            results.Count(item => item.Status == "Error"),
+            recorded.Sum(item => item.Amount),
+            results);
+    }
+
+    private static Guid DeterministicGuid(string value)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        return new Guid(hash.AsSpan(0, 16));
+    }
+
     private static DateTime FirstDayOfNextMonth(DateTime reference)
     {
         var firstOfThisMonth = new DateTime(reference.Year, reference.Month, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -2422,13 +2799,15 @@ public sealed class StudentFinanceService(
             contract.Currency,
             contract.Status,
             contract.CreatedAtUtc,
-            installments.OrderBy(item => item.SeqNo).Select(item => MapInstallment(item, now)).ToList(),
+            installments.OrderBy(item => item.SeqNo).Select(item => MapInstallment(item, now, contract.Status != "Active")).ToList(),
             contract.DownPaymentPaidAmount,
             contract.DownPayment <= 0 || contract.DownPaymentPaidAmount >= contract.DownPayment
                 ? "Ödendi"
                 : contract.DownPaymentPaidAmount > 0 ? "Kısmi" : "Bekliyor",
             contract.ScholarshipPercent,
-            contract.ScholarshipAmount);
+            contract.ScholarshipAmount,
+            contract.StatusReason,
+            contract.StatusChangedAtUtc);
     }
 
     /// <summary>
@@ -2446,7 +2825,7 @@ public sealed class StudentFinanceService(
         return string.IsNullOrEmpty(text) ? label : $"{label} + {text}";
     }
 
-    private static FinanceInstallmentDto MapInstallment(FinanceInstallment installment, DateTime nowUtc) =>
+    private static FinanceInstallmentDto MapInstallment(FinanceInstallment installment, DateTime nowUtc, bool paused = false) =>
         new(
             installment.Id,
             installment.EnrollmentContractId,
@@ -2456,7 +2835,7 @@ public sealed class StudentFinanceService(
             installment.Amount,
             installment.PaidAmount,
             installment.Amount - installment.PaidAmount,
-            InstallmentStatus(installment, nowUtc),
+            (paused && installment.Amount - installment.PaidAmount > 0 ? "Frozen" : InstallmentStatus(installment, nowUtc)),
             installment.Currency);
 
     private static FinancePaymentDto MapPayment(

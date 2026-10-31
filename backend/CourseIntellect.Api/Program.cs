@@ -507,6 +507,9 @@ if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
     // Ölü push token temizliği: Pazar 03:00 UTC
     recurringJobs.AddOrUpdate<IReminderJobService>(
         "stale-push-token-cleanup", x => x.CleanupStalePushTokensAsync(CancellationToken.None), "0 3 * * 0", utc);
+    // Ziyaretçi kayıtlarının saklama süresi (KVKK): her gece 03:30 UTC
+    recurringJobs.AddOrUpdate<IReminderJobService>(
+        "visitor-retention", x => x.PurgeExpiredVisitorsAsync(CancellationToken.None), "30 3 * * *", utc);
 
     // Sürücü kursu işleri DrivingAsist ürününe taşındı. Bu ürünün Hangfire deposunda
     // önceki sürümlerden kalan kayıtlar yalnız bayrak açıkça verilirse silinir:

@@ -39,6 +39,7 @@ import {
   parseFinanceMoney,
 } from '../../lib/financeDocuments';
 import { errorMessage } from '../../lib/errors';
+import { BulkCollectionDialog } from '../../components/finance/BulkCollectionDialog';
 import type { AccountingDashboard } from '../../lib/api/accounting';
 import type {
   AccountingCollectionDto,
@@ -353,6 +354,7 @@ export default function Collections() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [bulkOpen, setBulkOpen] = useState(false);
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -542,14 +544,18 @@ export default function Collections() {
           </p>
         </div>
         <FeatureGate module="collections" action="collect">
-          <Button
-            className="bg-brand-primary hover:bg-brand-primary/90"
-            onClick={() => setDialogOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Yeni Tahsilat
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBulkOpen(true)}>Toplu Aktarım</Button>
+            <Button
+              className="bg-brand-primary hover:bg-brand-primary/90"
+              onClick={() => setDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Yeni Tahsilat
+            </Button>
+          </div>
         </FeatureGate>
+        <BulkCollectionDialog open={bulkOpen} onOpenChange={setBulkOpen} onRecorded={() => void loadData()} />
       </div>
 
       {error ? <ErrorBanner title="Tahsilatlar alınamadı" message={error} onRetry={loadData} /> : null}

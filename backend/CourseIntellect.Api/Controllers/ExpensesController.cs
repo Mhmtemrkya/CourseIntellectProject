@@ -1,7 +1,9 @@
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
+using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -45,11 +47,14 @@ public sealed class ExpensesController(
 
         var rows = await query.OrderByDescending(x => x.ExpenseDateUtc).ThenByDescending(x => x.CreatedAtUtc)
             .Select(x => new { x.Id, category = x.Category.ToString(), x.Title, x.VendorName, x.InvoiceNo, x.Amount,
-                x.Currency, x.ExpenseDateUtc, x.VehicleId, x.Note, x.BranchId, x.CreatedByUserId, x.CreatedAtUtc, x.UpdatedAtUtc })
+                x.Currency, x.ExpenseDateUtc, x.VehicleId, x.Note, x.BranchId, x.CreatedByUserId, x.CreatedAtUtc, x.UpdatedAtUtc,
+                x.ApprovalStatus, x.PaymentMethod, x.ApprovedByUserId, x.ApprovedAtUtc })
             .ToListAsync(ct);
 
         // "Kim oluşturdu, hangi şube, hangi araç" — detayda göstermek için adları çöz.
-        var creatorIds = rows.Where(x => x.CreatedByUserId != null).Select(x => x.CreatedByUserId!.Value).Distinct().ToList();
+        var creatorIds = rows.Where(x => x.CreatedByUserId != null).Select(x => x.CreatedByUserId!.Value)
+            .Concat(rows.Where(x => x.ApprovedByUserId != null).Select(x => x.ApprovedByUserId!.Value))
+            .Distinct().ToList();
         var branchIds = rows.Where(x => x.BranchId != null).Select(x => x.BranchId!.Value).Distinct().ToList();
         var vehIds = rows.Where(x => x.VehicleId != null).Select(x => x.VehicleId!.Value).Distinct().ToList();
         var creatorNames = await dbContext.Users.IgnoreQueryFilters().AsNoTracking().Where(x => creatorIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.FullName, ct);
@@ -63,16 +68,27 @@ public sealed class ExpensesController(
             x.Note, x.BranchId, branchName = x.BranchId is Guid b && branchNames.TryGetValue(b, out var bn) ? bn : null,
             x.CreatedByUserId, createdByName = x.CreatedByUserId is Guid cr && creatorNames.TryGetValue(cr, out var cn) ? cn : null,
             x.CreatedAtUtc, x.UpdatedAtUtc,
+            x.ApprovalStatus, x.PaymentMethod, x.ApprovedAtUtc,
+            approvedByName = x.ApprovedByUserId is Guid ap && creatorNames.TryGetValue(ap, out var an) ? an : null,
         }).ToList();
 
-        var byCategory = rows.GroupBy(x => x.category)
+        // Toplamlar yalnız onaylı giderlerden; onay bekleyenler ayrıca sayılır.
+        var approvedRows = rows.Where(x => FinanceExpenseRules.ExpenseCountsAsExpense(x.ApprovalStatus)).ToList();
+        var byCategory = approvedRows.GroupBy(x => x.category)
             .Select(g => new { category = g.Key, total = g.Sum(y => y.Amount), count = g.Count() })
             .OrderByDescending(x => x.total).ToList();
 
         return Ok(new
         {
             items,
-            summary = new { total = rows.Sum(x => x.Amount), count = rows.Count, byCategory },
+            summary = new
+            {
+                total = approvedRows.Sum(x => x.Amount),
+                count = approvedRows.Count,
+                byCategory,
+                pendingCount = rows.Count(x => x.ApprovalStatus == FinanceExpenseRules.AwaitingApproval),
+                pendingTotal = rows.Where(x => x.ApprovalStatus == FinanceExpenseRules.AwaitingApproval).Sum(x => x.Amount),
+            },
             categories = Enum.GetValues<DrivingExpenseCategory>().Select(x => x.ToString()),
             // Araç seçici yalnız sürücü kursunda dolu döner; okulda boş liste.
             vehicles = await dbContext.DrivingVehicles.AsNoTracking().Where(x => x.IsActive)
@@ -84,6 +100,11 @@ public sealed class ExpensesController(
     public async Task<IActionResult> Create([FromBody] ExpenseRequest request, CancellationToken ct)
     {
         if (await ValidateAsync(request, ct) is { } error) return error;
+        var expenseDate = request.ExpenseDateUtc ?? DateTime.UtcNow;
+        try { await FinanceDayGuard.EnsureOpenAsync(dbContext, expenseDate, ct); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+        // Yöneticinin girdiği gider doğrudan onaylıdır; diğer rollerinki yönetici onayına düşer.
+        var isAdmin = User.IsInRole("Admin");
         var expense = new DrivingExpense
         {
             Category = request.ParsedCategory!.Value,
@@ -92,10 +113,14 @@ public sealed class ExpensesController(
             InvoiceNo = (request.InvoiceNo ?? string.Empty).Trim(),
             Amount = request.Amount,
             Currency = "TRY",
-            ExpenseDateUtc = request.ExpenseDateUtc ?? DateTime.UtcNow,
+            ExpenseDateUtc = expenseDate,
             VehicleId = request.VehicleId,
             Note = (request.Note ?? string.Empty).Trim(),
             CreatedByUserId = CurrentUserId(),
+            PaymentMethod = (request.PaymentMethod ?? string.Empty).Trim(),
+            ApprovalStatus = isAdmin ? FinanceExpenseRules.Approved : FinanceExpenseRules.AwaitingApproval,
+            ApprovedByUserId = isAdmin ? CurrentUserId() : null,
+            ApprovedAtUtc = isAdmin ? DateTime.UtcNow : null,
             // TenantId + BranchId ApplyTenantContext ile aktörün şubesine otomatik damgalanır.
         };
         dbContext.DrivingExpenses.Add(expense);
@@ -103,7 +128,7 @@ public sealed class ExpensesController(
         await auditLogService.LogChangeAsync("Gider faturası oluşturuldu", AuditCategory, nameof(DrivingExpense), expense.Id.ToString(),
             $"{expense.Title} — {expense.Amount:N2} ₺ ({expense.Category})", null,
             new { expense.Category, expense.Amount, expense.VendorName, expense.InvoiceNo }, ct);
-        return Ok(new { expense.Id });
+        return Ok(new { expense.Id, expense.ApprovalStatus });
     }
 
     [HttpPut("{id:guid}")]
@@ -112,6 +137,13 @@ public sealed class ExpensesController(
         var expense = await dbContext.DrivingExpenses.SingleOrDefaultAsync(x => x.Id == id, ct);
         if (expense is null) return NotFound(new { message = "Gider bulunamadı." });
         if (await ValidateAsync(request, ct) is { } error) return error;
+        var newDate = request.ExpenseDateUtc ?? expense.ExpenseDateUtc;
+        try
+        {
+            await FinanceDayGuard.EnsureOpenAsync(dbContext, expense.ExpenseDateUtc, ct);
+            await FinanceDayGuard.EnsureOpenAsync(dbContext, newDate, ct);
+        }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
         var before = new { expense.Category, expense.Amount, expense.Title };
         expense.Category = request.ParsedCategory!.Value;
         expense.Title = request.Title!.Trim();
@@ -121,11 +153,19 @@ public sealed class ExpensesController(
         expense.ExpenseDateUtc = request.ExpenseDateUtc ?? expense.ExpenseDateUtc;
         expense.VehicleId = request.VehicleId;
         expense.Note = (request.Note ?? string.Empty).Trim();
+        expense.PaymentMethod = (request.PaymentMethod ?? expense.PaymentMethod).Trim();
         expense.UpdatedAtUtc = DateTime.UtcNow;
+        // Onaylı gideri yönetici dışındaki biri değiştirirse kayıt yeniden onaya düşer.
+        if (!User.IsInRole("Admin") && expense.ApprovalStatus != FinanceExpenseRules.AwaitingApproval)
+        {
+            expense.ApprovalStatus = FinanceExpenseRules.AwaitingApproval;
+            expense.ApprovedByUserId = null;
+            expense.ApprovedAtUtc = null;
+        }
         await dbContext.SaveChangesAsync(ct);
         await auditLogService.LogChangeAsync("Gider faturası güncellendi", AuditCategory, nameof(DrivingExpense), expense.Id.ToString(),
             $"{expense.Title} — {expense.Amount:N2} ₺", before, new { expense.Category, expense.Amount, expense.Title }, ct);
-        return Ok(new { expense.Id });
+        return Ok(new { expense.Id, expense.ApprovalStatus });
     }
 
     [HttpDelete("{id:guid}")]
@@ -133,11 +173,37 @@ public sealed class ExpensesController(
     {
         var expense = await dbContext.DrivingExpenses.SingleOrDefaultAsync(x => x.Id == id, ct);
         if (expense is null) return NotFound(new { message = "Gider bulunamadı." });
+        try { await FinanceDayGuard.EnsureOpenAsync(dbContext, expense.ExpenseDateUtc, ct); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
         dbContext.DrivingExpenses.Remove(expense);
         await dbContext.SaveChangesAsync(ct);
         await auditLogService.LogChangeAsync("Gider faturası silindi", AuditCategory, nameof(DrivingExpense), id.ToString(),
             $"{expense.Title} — {expense.Amount:N2} ₺", new { expense.Title, expense.Amount }, null, ct);
         return Ok(new { deleted = true });
+    }
+
+    /// <summary>Onay bekleyen gideri onaylar ya da reddeder. Yalnız yönetici.</summary>
+    [HttpPost("{id:guid}/decision")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Decide(Guid id, [FromBody] ExpenseDecisionRequest request, CancellationToken ct)
+    {
+        var expense = await dbContext.DrivingExpenses.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (expense is null) return NotFound(new { message = "Gider bulunamadı." });
+        var approve = string.Equals(request.Decision?.Trim(), "approve", StringComparison.OrdinalIgnoreCase);
+        var reject = string.Equals(request.Decision?.Trim(), "reject", StringComparison.OrdinalIgnoreCase);
+        if (!approve && !reject) return BadRequest(new { message = "Karar 'approve' ya da 'reject' olmalıdır." });
+        try { await FinanceDayGuard.EnsureOpenAsync(dbContext, expense.ExpenseDateUtc, ct); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+
+        var before = expense.ApprovalStatus;
+        expense.ApprovalStatus = approve ? FinanceExpenseRules.Approved : FinanceExpenseRules.Rejected;
+        expense.ApprovedByUserId = CurrentUserId();
+        expense.ApprovedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(ct);
+        await auditLogService.LogChangeAsync(approve ? "Gider onaylandı" : "Gider reddedildi", AuditCategory, nameof(DrivingExpense), expense.Id.ToString(),
+            $"{expense.Title} — {expense.Amount:N2} ₺" + (string.IsNullOrWhiteSpace(request.Note) ? string.Empty : $" • {request.Note.Trim()}"),
+            new { ApprovalStatus = before }, new { expense.ApprovalStatus }, ct);
+        return Ok(new { expense.Id, expense.ApprovalStatus });
     }
 
     private async Task<IActionResult?> ValidateAsync(ExpenseRequest request, CancellationToken ct)
@@ -166,10 +232,14 @@ public sealed record ExpenseRequest(
     decimal Amount,
     DateTime? ExpenseDateUtc,
     Guid? VehicleId,
-    string? Note)
+    string? Note,
+    // Ödeme kanalı (Nakit/Kart/Havale); nakit gider gün sonu kasasından düşer.
+    string? PaymentMethod = null)
 {
     public DrivingExpenseCategory? ParsedCategory =>
         Enum.TryParse<DrivingExpenseCategory>(Category, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
             ? parsed
             : null;
 }
+
+public sealed record ExpenseDecisionRequest(string Decision, string? Note);

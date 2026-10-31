@@ -1,23 +1,29 @@
 import { api } from './client';
 import type {
+  BankReconciliationEntryDto,
+  BulkCollectionRequest,
+  BulkCollectionResultDto,
+  ChangeContractStatusRequest,
+  CloseFinanceDayRequest,
   CollectDownPaymentRequest,
   ConfirmPaymentRequest,
   CreateEnrollmentRequest,
   EInvoiceResultDto,
   EnrollmentContractDto,
   FinanceDashboardDto,
+  FinanceDayClosingDto,
+  FinanceDaySummaryDto,
   FinancePaymentDto,
   InstitutionProfileDto,
   IssueEInvoiceRequest,
   PaymentIntentDto,
   PaymentIntentRequest,
-  PayrollRequest,
-  PayrollResultDto,
   PendingDownPaymentDto,
   ReconciliationRequest,
   ReconciliationResultDto,
   RecordPaymentRequest,
   RefundRequest,
+  RestructureInstallmentsRequest,
   ReminderResultDto,
   SaveInstitutionProfileRequest,
   StudentFinanceAccountDto,
@@ -167,7 +173,48 @@ export async function issueFinanceEInvoice(payload: IssueEInvoiceRequest): Promi
   return response;
 }
 
-export async function calculatePayroll(payload: PayrollRequest): Promise<PayrollResultDto | null> {
-  const response = await api.post<PayrollResultDto>('/api/student-finance/payroll/calculate', payload);
-  return response;
+// ---- Banka mutabakatı (kalıcı kayıtlar) ----
+export async function fetchReconciliationEntries(status?: string | null): Promise<BankReconciliationEntryDto[]> {
+  const response = await api.get<BankReconciliationEntryDto[]>('/api/student-finance/reconciliation/entries', {
+    params: status ? { status } : {},
+  });
+  return response ?? [];
+}
+
+/** action: 'ignore' (eşleşme beklenmez) ya da 'unmatch' (eşleşmeyi kaldır). */
+export async function updateReconciliationEntry(id: string, action: 'ignore' | 'unmatch'): Promise<BankReconciliationEntryDto | null> {
+  return api.put<BankReconciliationEntryDto>(`/api/student-finance/reconciliation/entries/${id}`, { action });
+}
+
+// ---- Gün sonu kasa kapanışı ----
+export async function fetchFinanceDaySummary(day?: string | null): Promise<FinanceDaySummaryDto | null> {
+  return api.get<FinanceDaySummaryDto>('/api/student-finance/day-close', { params: day ? { day } : {} });
+}
+
+export async function fetchFinanceDayHistory(range: DateRangeQuery = {}): Promise<FinanceDayClosingDto[]> {
+  const response = await api.get<FinanceDayClosingDto[]>('/api/student-finance/day-close/history', { params: range });
+  return response ?? [];
+}
+
+export async function closeFinanceDay(payload: CloseFinanceDayRequest): Promise<FinanceDayClosingDto | null> {
+  return api.post<FinanceDayClosingDto>('/api/student-finance/day-close', payload);
+}
+
+/** Kapanmış günü yeniden açar (yalnız yönetici). */
+export async function reopenFinanceDay(day: string, reason: string): Promise<null> {
+  return api.post<null>('/api/student-finance/day-close/reopen', { day, reason });
+}
+
+// ---- Sözleşme yaşam döngüsü ----
+export async function changeContractStatus(contractId: string, payload: ChangeContractStatusRequest): Promise<EnrollmentContractDto | null> {
+  return api.post<EnrollmentContractDto>(`/api/student-finance/contracts/${contractId}/status`, payload);
+}
+
+export async function restructureInstallments(contractId: string, payload: RestructureInstallmentsRequest): Promise<EnrollmentContractDto | null> {
+  return api.post<EnrollmentContractDto>(`/api/student-finance/contracts/${contractId}/restructure`, payload);
+}
+
+// ---- Toplu tahsilat ----
+export async function bulkCollect(payload: BulkCollectionRequest): Promise<BulkCollectionResultDto | null> {
+  return api.post<BulkCollectionResultDto>('/api/student-finance/payments/bulk', payload);
 }

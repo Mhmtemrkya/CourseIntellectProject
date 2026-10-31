@@ -13,4 +13,6 @@ public sealed record AccountingInvoiceDto(
     DateTime? DueDateUtc,
     DateTime? PaidAtUtc,
     string PaymentMethod,
-    string Note);
+    string Note,
+    DateTime? CancelledAtUtc = null,
+    string? CancelReason = null);

@@ -53,7 +53,10 @@ public sealed class EnrollmentContract : IBranchScopedEntity
 
     public int InstallmentCount { get; set; }
     public string Currency { get; set; } = "TRY";
+    /// <summary>Active, Frozen (dondurulmuş: borç durur, gecikme/hatırlatma işlemez) veya Cancelled.</summary>
     public string Status { get; set; } = "Active";
+    public DateTime? StatusChangedAtUtc { get; set; }
+    public string StatusReason { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
     public Guid? CreatedByUserId { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

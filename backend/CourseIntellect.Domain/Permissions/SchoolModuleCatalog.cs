@@ -41,6 +41,9 @@ public static class SchoolModuleCatalog
         new("courses", "Kurslar", "Öğrenci ve Akademik", true),
         new("guidance", "Rehberlik", "Öğrenci ve Akademik", true),
         new("library", "Kütüphane", "Öğrenci ve Akademik", true),
+        new("subject-groups", "Zümreler", "Öğrenci ve Akademik", true),
+        new("clubs", "Kulüpler", "Öğrenci ve Akademik", true),
+        new("preference-robot", "Tercih Robotu", "Öğrenci ve Akademik", true),
 
         // ── Kurum operasyonu ─────────────────────────────────────────────────
         new("registrations", "Kayıt İşlemleri", "Kurum Operasyonu", true),
@@ -53,6 +56,7 @@ public static class SchoolModuleCatalog
         new("meetings", "Veli Görüşmeleri", "Kurum Operasyonu", true),
         new("chat", "Mesajlar", "Kurum Operasyonu", true),
         new("cafeteria", "Yemekhane", "Kurum Operasyonu", true),
+        new("visitors", "Ziyaretçi Takibi", "Kurum Operasyonu", true),
         new("service", "Servis Takibi", "Kurum Operasyonu", true),
         new("org-units", "Şube / Birim Yönetimi", "Kurum Operasyonu", true),
         new("settings", "Ayarlar", "Kurum Operasyonu", true),

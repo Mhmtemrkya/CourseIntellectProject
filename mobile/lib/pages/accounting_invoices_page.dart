@@ -66,7 +66,7 @@ class _AccountingInvoicesPageState extends State<AccountingInvoicesPage> {
               AccountingHeroMetric(
                 label: 'Bekleyen',
                 value:
-                    '${_store.invoices.where((item) => item.status != 'Ödendi').length} belge',
+                    '${_store.invoices.where((item) => item.status != 'Ödendi' && item.status != 'İptal').length} belge',
               ),
             ],
           ),
@@ -356,7 +356,7 @@ class _InvoiceListPageState extends State<_InvoiceListPage> {
                               ),
                         ),
                         const SizedBox(height: 4),
-                        if (item.status != 'Ödendi')
+                        if (item.status != 'Ödendi' && item.status != 'İptal')
                           TextButton.icon(
                             onPressed: () => _markPaid(item),
                             icon: const Icon(

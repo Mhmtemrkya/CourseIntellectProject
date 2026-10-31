@@ -57,6 +57,76 @@ class _AccountingSalaryDetailPageState
     }
   }
 
+  /// Yalnız yönetici onaylı (Planlandı) bordro ödenir; gider/kasa bu tarihe yazılır.
+  Future<void> _recordPayment() async {
+    var method = 'Havale';
+    var paidAt = DateTime.now();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('Maaş Ödemesini Kaydet'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${_salary.employee} • ${_salary.amount}'),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: method,
+                decoration: const InputDecoration(labelText: 'Ödeme yöntemi'),
+                items: const [
+                  DropdownMenuItem(value: 'Havale', child: Text('Havale/EFT')),
+                  DropdownMenuItem(value: 'Nakit', child: Text('Nakit')),
+                  DropdownMenuItem(value: 'Kredi Kartı', child: Text('Kredi Kartı')),
+                ],
+                onChanged: (value) => setLocal(() => method = value ?? method),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.event_rounded),
+                label: Text('Ödeme tarihi: ${paidAt.day.toString().padLeft(2, '0')}.${paidAt.month.toString().padLeft(2, '0')}.${paidAt.year}'),
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: paidAt,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setLocal(() => paidAt = picked);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Vazgeç'.tr)),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ödendi Kaydet')),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await AccountingFinanceStore.instance.paySalary(
+        id: _salary.id,
+        paymentMethod: method,
+        paidAt: paidAt,
+      );
+      if (!mounted) return;
+      final refreshed = AccountingFinanceStore.instance.salaries.firstWhere(
+        (item) => item.id == _salary.id,
+        orElse: () => _salary,
+      );
+      setState(() => _salary = refreshed);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Maaş ödemesi kaydedildi.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+    }
+  }
+
   Future<void> _confirmDelete() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -156,6 +226,28 @@ class _AccountingSalaryDetailPageState
                 _row(context, 'Ödeme Tarihi', current.payDate),
                 _row(context, 'Bordro Tutarı', current.amount),
                 _row(context, 'Durum', current.status),
+                if (current.paidAtUtc != null)
+                  _row(
+                    context,
+                    'Ödendi',
+                    '${current.paidAtUtc!.toLocal().day.toString().padLeft(2, '0')}.${current.paidAtUtc!.toLocal().month.toString().padLeft(2, '0')}.${current.paidAtUtc!.toLocal().year}'
+                        '${current.paymentMethod.isEmpty ? '' : ' • ${current.paymentMethod}'}',
+                  ),
+                if (current.status == 'Planlandı' && current.id.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _recordPayment,
+                      icon: const Icon(Icons.check_circle_outline_rounded),
+                      label: const Text('Ödendi Kaydet'),
+                    ),
+                  ),
+                ] else if (current.status == 'Bekliyor')
+                  Text(
+                    'Ödeme, yönetici onayından sonra kaydedilebilir.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
               ],
             ),
           ),
@@ -178,7 +270,7 @@ class _AccountingSalaryDetailPageState
                   'Onay takibi',
                   current.status == 'Planlandı' || current.status == 'Ödendi'
                       ? 'Bordro onayı tamamlandı ve ödeme akışına alındı.'
-                      : 'Bordro yönetiçi onayını bekliyor.',
+                      : 'Bordro yönetici onayını bekliyor.',
                 ),
                 _step(
                   context,

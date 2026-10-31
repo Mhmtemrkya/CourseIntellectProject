@@ -41,7 +41,7 @@ class StudentFinanceApiService {
     final response = await http.get(uri, headers: _headers(session));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StudentFinanceApiException(
-        'İstek başarısız (${response.statusCode}).',
+        _serverMessage(response) ?? 'İstek başarısız (${response.statusCode}).',
       );
     }
     return response.body.isEmpty ? null : jsonDecode(response.body);
@@ -63,11 +63,42 @@ class StudentFinanceApiService {
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StudentFinanceApiException(
-        'İşlem başarısız (${response.statusCode}).',
+        _serverMessage(response) ?? 'İşlem başarısız (${response.statusCode}).',
       );
     }
     return response.body.isEmpty ? null : jsonDecode(response.body);
   }
+
+  Future<dynamic> _put(String path, Map<String, dynamic> body) async {
+    final session = await _session();
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}$path'),
+      headers: _headers(session, json: true),
+      body: jsonEncode(body),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StudentFinanceApiException(
+        _serverMessage(response) ?? 'İşlem başarısız (${response.statusCode}).',
+      );
+    }
+    return response.body.isEmpty ? null : jsonDecode(response.body);
+  }
+
+  /// Sunucunun anlaşılır hata metni (ör. "gün kapatıldı", "aynı adlı öğrenci").
+  static String? _serverMessage(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      if (body is Map && body['message'] is String) {
+        final message = (body['message'] as String).trim();
+        return message.isEmpty ? null : message;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Gün sonu: yerel günü öğle saatiyle gönderir (saat dilimi günü kaydırmasın).
+  static String _day(DateTime day) =>
+      DateTime.utc(day.year, day.month, day.day).toIso8601String();
 
   Future<Map<String, dynamic>> getAccount({
     String? studentName,
@@ -255,9 +286,94 @@ class StudentFinanceApiService {
     return Map<String, dynamic>.from(result as Map);
   }
 
-  Future<Map<String, dynamic>> calculatePayroll(double grossSalary) async {
-    final result = await _post('/api/student-finance/payroll/calculate', {
-      'grossSalary': grossSalary,
+  // ---- Banka mutabakatı (kalıcı kayıtlar) ----
+  Future<List<Map<String, dynamic>>> getReconciliationEntries({String? status}) async {
+    final result = await _get(
+      '/api/student-finance/reconciliation/entries',
+      status == null || status.isEmpty ? null : {'status': status},
+    );
+    return (result as List? ?? [])
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+  }
+
+  /// action: 'ignore' (eşleşme beklenmez) ya da 'unmatch' (eşleşmeyi kaldır).
+  Future<void> updateReconciliationEntry(String id, String action) async {
+    await _put('/api/student-finance/reconciliation/entries/$id', {'action': action});
+  }
+
+  // ---- Gün sonu kasa kapanışı ----
+  Future<Map<String, dynamic>> getDaySummary(DateTime day) async {
+    final result = await _get('/api/student-finance/day-close', {'day': _day(day)});
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> getDayHistory() async {
+    final result = await _get('/api/student-finance/day-close/history');
+    return (result as List? ?? [])
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> closeDay({
+    required DateTime day,
+    required double countedCash,
+    String? note,
+  }) async {
+    final result = await _post('/api/student-finance/day-close', {
+      'day': _day(day),
+      'countedCash': countedCash,
+      'note': note,
+    });
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  /// Kapanmış günü yeniden açar (yalnız yönetici).
+  Future<void> reopenDay({required DateTime day, required String reason}) async {
+    await _post('/api/student-finance/day-close/reopen', {
+      'day': _day(day),
+      'reason': reason,
+    });
+  }
+
+  // ---- Sözleşme yaşam döngüsü ----
+  /// action: 'freeze' / 'unfreeze' / 'cancel'.
+  Future<Map<String, dynamic>> changeContractStatus({
+    required String contractId,
+    required String action,
+    required String reason,
+  }) async {
+    final result = await _post('/api/student-finance/contracts/$contractId/status', {
+      'action': action,
+      'reason': reason,
+    });
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<Map<String, dynamic>> restructureInstallments({
+    required String contractId,
+    required int installmentCount,
+    required DateTime firstDueDate,
+    String? reason,
+  }) async {
+    final result = await _post('/api/student-finance/contracts/$contractId/restructure', {
+      'installmentCount': installmentCount,
+      'firstDueDate': DateTime(firstDueDate.year, firstDueDate.month, firstDueDate.day, 12)
+          .toUtc()
+          .toIso8601String(),
+      'reason': reason,
+    });
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  // ---- Toplu tahsilat ----
+  Future<Map<String, dynamic>> bulkCollect({
+    required List<Map<String, dynamic>> rows,
+    required bool dryRun,
+  }) async {
+    final result = await _post('/api/student-finance/payments/bulk', {
+      'rows': rows,
+      'dryRun': dryRun,
     });
     return Map<String, dynamic>.from(result as Map);
   }

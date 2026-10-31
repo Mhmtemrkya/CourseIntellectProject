@@ -128,8 +128,10 @@ public sealed class HttpPaymentGatewayService(
 
         if (!configured)
         {
-            // Yapılandırma yoksa yalnızca açık test token'ı ile başarı (dev akışı).
-            return string.Equals(request.Token, "TEST-OK", StringComparison.OrdinalIgnoreCase);
+            // Sağlayıcı yokken hiçbir ödeme onaylanmaz. Eskiden "TEST-OK" belirteci
+            // onay sayılıyordu ve masaüstündeki "Online" düğmesi para alınmadan
+            // gerçek tahsilat makbuzu kesebiliyordu.
+            return false;
         }
 
         try
@@ -215,10 +217,12 @@ public sealed class HttpEInvoiceService(
 
         if (!configured)
         {
+            // Sağlayıcı yokken belge numarası UYDURULMAZ: sahte bir ETTN gerçek
+            // e-fatura gibi görünüp kayda/öğrenciye gidebilirdi.
             return new EInvoiceResultDto(
-                providerName, "Stub", $"{Guid.NewGuid():N}"[..32].ToUpperInvariant(),
+                providerName, "NotConfigured", null,
                 net, vat, gross, false,
-                "e-Fatura sağlayıcısı yapılandırılmadı; örnek (stub) belge üretildi.");
+                "e-Fatura sağlayıcısı yapılandırılmadığı için belge kesilmedi. Ayarlar > Entegrasyonlar'dan sağlayıcı bilgilerini girin.");
         }
 
         try

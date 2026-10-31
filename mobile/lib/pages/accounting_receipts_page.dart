@@ -3,6 +3,7 @@ import 'package:student/i18n/app_locale.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../services/accounting_finance_store.dart';
+import 'accounting_bulk_collection_page.dart';
 import '../services/auth_session_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/accounting_ui.dart';
@@ -131,6 +132,15 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
           'Tahsilatlar',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Toplu Aktarım',
+            icon: const Icon(Icons.upload_file_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AccountingBulkCollectionPage()),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showNewCollectionSheet,

@@ -53,3 +53,7 @@ export * from './guidance';
 export * from './library';
 export * from './consent';
 export * from './legalConsent';
+export * from './subjectGroups';
+export * from './clubs';
+export * from './visitors';
+export * from './preferenceRobot';

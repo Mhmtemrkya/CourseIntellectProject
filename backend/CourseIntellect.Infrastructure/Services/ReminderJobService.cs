@@ -14,6 +14,8 @@ namespace CourseIntellect.Infrastructure.Services;
 public sealed class ReminderJobService(
     CourseIntellectDbContext dbContext,
     IStudentFinanceService studentFinanceService,
+    IOverdueRuleReminderService overdueRuleReminderService,
+    IVisitorService visitorService,
     ILibraryReminderService libraryReminderService,
     ILogger<ReminderJobService> logger) : IReminderJobService
 {
@@ -25,7 +27,14 @@ public sealed class ReminderJobService(
         var total = 0;
         await ForEachTenantAsync(async _ =>
         {
-            var result = await studentFinanceService.SendDueRemindersAsync(FinanceUpcomingWindowDays, cancellationToken);
+            // Kurum gecikme kuralı tanımladıysa gecikmiş borçlar kurallarla (gün eşiği,
+            // kanal, şablon) hatırlatılır; genel hatırlatma yalnız yaklaşan vadeler için
+            // çalışır. Kural yoksa eski davranış: hem gecikmiş hem yaklaşan.
+            var rules = await overdueRuleReminderService.RunAsync(cancellationToken);
+            total += rules.Sent;
+            var result = rules.RulesActive
+                ? await studentFinanceService.SendUpcomingRemindersAsync(FinanceUpcomingWindowDays, cancellationToken)
+                : await studentFinanceService.SendDueRemindersAsync(FinanceUpcomingWindowDays, cancellationToken);
             total += result.Notified;
         }, "ödeme", cancellationToken);
         logger.LogInformation("Ödeme hatırlatma işi bitti. Toplam bildirim: {Count}.", total);
@@ -53,6 +62,16 @@ public sealed class ReminderJobService(
         {
             logger.LogInformation("{Count} ölü push token pasiflendi ({Days} gündür görülmeyen).", affected, StaleTokenDays);
         }
+    }
+
+    public async Task PurgeExpiredVisitorsAsync(CancellationToken cancellationToken = default)
+    {
+        var total = 0;
+        await ForEachTenantAsync(async _ =>
+        {
+            total += await visitorService.PurgeExpiredAsync(DateTime.UtcNow, cancellationToken);
+        }, "ziyaretçi saklama", cancellationToken);
+        logger.LogInformation("Ziyaretçi saklama işi bitti. Silinen kayıt: {Count}.", total);
     }
 
     /// <summary>Her kurum için override kurup verilen işi çalıştırır; kurum bazında

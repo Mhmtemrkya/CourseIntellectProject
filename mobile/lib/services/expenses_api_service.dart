@@ -157,4 +157,8 @@ class ExpensesApiService {
   ) => _put('/api/finance/expenses/$id', body);
   Future<Map<String, dynamic>> deleteExpense(String id) =>
       _delete('/api/finance/expenses/$id');
+
+  /// Onay bekleyen gideri onaylar ('approve') ya da reddeder ('reject'); yalnız yönetici.
+  Future<Map<String, dynamic>> decideExpense(String id, String decision) =>
+      _post('/api/finance/expenses/$id/decision', {'decision': decision});
 }

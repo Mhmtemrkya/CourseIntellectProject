@@ -413,9 +413,9 @@ public sealed class AccountingLogicFixesTests : IDisposable
     [Theory]
     [InlineData("Reddedildi", false)]
     [InlineData("Bekliyor", false)]
-    [InlineData("Planlandı", true)]
+    [InlineData("Planlandı", false)]
     [InlineData("Ödendi", true)]
-    public void SalaryExpenseRule_SkipsRejectedAndUnapproved(string status, bool counts)
+    public void SalaryExpenseRule_CountsOnlyPaidSalaries(string status, bool counts)
         => Assert.Equal(counts, FinanceExpenseRules.SalaryCountsAsExpense(status));
 
     // ── 14: eşzamanlı tahsilat (gerçek PostgreSQL, danışma kilidi) ───────────
@@ -451,6 +451,40 @@ public sealed class AccountingLogicFixesTests : IDisposable
         Assert.Equal(10, receipts.Select(x => x.ReceiptNo).Distinct().Count());
         Assert.Equal(1_000m, await verify.FinancePaymentAllocations.AsNoTracking()
             .Where(x => x.FinanceInstallmentId == installment.Id).SumAsync(x => x.Amount));
+    }
+
+    // Tahsilat artık işlem (transaction) içinde; Postgres'te makbuz no çakışması
+    // işlemi düşürmemeli, yeni numarayla yeniden denenmeli (EF otomatik savepoint).
+    [PostgreSqlFact("COURSE_INTELLECT_POSTGRES_TEST")]
+    public async Task ReceiptCollision_InsideFinanceTransaction_RetriesOnPostgres()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("COURSE_INTELLECT_POSTGRES_TEST")!;
+        DbContextOptions<Infrastructure.Persistence.CourseIntellectDbContext> Options() =>
+            new DbContextOptionsBuilder<Infrastructure.Persistence.CourseIntellectDbContext>().UseNpgsql(connectionString).Options;
+        var month = DateTime.UtcNow.ToString("yyyyMM");
+
+        await using var context = new Infrastructure.Persistence.CourseIntellectDbContext(Options());
+        await context.Database.MigrateAsync();
+        // Makbuz no tekilliği kurum başınadır (tenant_id NULL'lar Postgres'te çakışmaz).
+        var tenant = new TenantWorkspace { Name = "Çakışma", Slug = $"cakisma-{Guid.NewGuid():N}", ContactEmail = "c@c.com" };
+        context.TenantWorkspaces.Add(tenant);
+        await context.SaveChangesAsync();
+        context.SetTenantOverride(tenant.Id);
+        // Sayaç sıfırken mevcut bir makbuz 00001'i tutuyor → ilk deneme çakışır.
+        context.FinancePayments.Add(new FinancePayment { StudentName = "Eski", Amount = 1m, ReceiptNo = $"MKB-{month}-00001" });
+        await context.SaveChangesAsync();
+
+        var userId = Guid.NewGuid();
+        var service = CreatePgService(context);
+        var contract = await service.CreateEnrollmentAsync(new CreateEnrollmentRequest(
+            userId, $"Çakışma {Guid.NewGuid():N}", "9-A", "2026", 1_000m, 0, null, 0, 1, NextMonth, "TRY", null), null);
+        var payment = await service.RecordPaymentAsync(new RecordPaymentRequest(
+            userId, "Çakışma", contract.Id, null, 100m, "Nakit", null), null);
+
+        Assert.Equal($"MKB-{month}-00002", payment.ReceiptNo);
+        await using var verify = new Infrastructure.Persistence.CourseIntellectDbContext(Options());
+        verify.SetTenantOverride(tenant.Id);
+        Assert.Equal(100m, (await verify.FinanceInstallments.AsNoTracking().SingleAsync(x => x.EnrollmentContractId == contract.Id)).PaidAmount);
     }
 
     private StudentFinanceService CreatePgService(Infrastructure.Persistence.CourseIntellectDbContext context) => new(
