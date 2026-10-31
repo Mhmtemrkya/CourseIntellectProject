@@ -25,6 +25,32 @@ def number(value):
     except (TypeError, ValueError):
         return ''
 
+# ÖSYM tablosu ili yalnız adında il geçmeyen üniversitelerde parantezle yazar
+# ("GAZİ ÜNİVERSİTESİ (ANKARA)"). Diğerlerinin adı ille başlar ("ADIYAMAN ÜNİVERSİTESİ").
+PROVINCES = sorted((
+    'ADANA ADIYAMAN AFYONKARAHİSAR AĞRI AKSARAY AMASYA ANKARA ANTALYA ARDAHAN ARTVİN AYDIN BALIKESİR BARTIN '
+    'BATMAN BAYBURT BİLECİK BİNGÖL BİTLİS BOLU BURDUR BURSA ÇANAKKALE ÇANKIRI ÇORUM DENİZLİ DİYARBAKIR DÜZCE '
+    'EDİRNE ELAZIĞ ERZİNCAN ERZURUM ESKİŞEHİR GAZİANTEP GİRESUN GÜMÜŞHANE HAKKARİ HATAY IĞDIR ISPARTA İSTANBUL '
+    'İZMİR KAHRAMANMARAŞ KARABÜK KARAMAN KARS KASTAMONU KAYSERİ KIRIKKALE KIRKLARELİ KIRŞEHİR KİLİS KOCAELİ '
+    'KONYA KÜTAHYA MALATYA MANİSA MARDİN MERSİN MUĞLA MUŞ NEVŞEHİR NİĞDE ORDU OSMANİYE RİZE SAKARYA SAMSUN '
+    'SİİRT SİNOP SİVAS ŞANLIURFA ŞIRNAK TEKİRDAĞ TOKAT TRABZON TUNCELİ UŞAK VAN YALOVA YOZGAT ZONGULDAK'
+).split(), key=len, reverse=True)
+# Adında il geçmeyen ve parantezle de yazılmayan istisnalar.
+KNOWN_CITIES = {'GEBZE TEKNİK ÜNİVERSİTESİ': 'KOCAELİ'}
+
+
+def city_of(university):
+    match = re.search(r'\(([^()]+)\)\s*$', university)
+    if match:
+        return match.group(1).strip()
+    if university in KNOWN_CITIES:
+        return KNOWN_CITIES[university]
+    for province in PROVINCES:
+        if university.startswith(province + ' '):
+            return province
+    return ''
+
+
 def rows(path, level):
     sheet = openpyxl.load_workbook(path, read_only=True).worksheets[0]
     for index, row in enumerate(sheet.iter_rows(values_only=True)):
@@ -34,8 +60,7 @@ def rows(path, level):
         if not code.isdigit():
             continue
         university = str(row[2] or '').strip()
-        match = re.search(r'\(([^()]+)\)\s*$', university)
-        city = match.group(1).strip() if match else ''
+        city = city_of(university)
         yield [code, level, str(row[1] or '').strip(), university, city, str(row[3] or '').strip(),
                str(row[4] or '').strip(), str(row[5] or '').strip(), number(row[6]), number(row[7]),
                number(row[8]), number(row[9])]
@@ -50,6 +75,8 @@ def main():
     count = 0
     for level, path in (('Önlisans', tablo3), ('Lisans', tablo4)):
         for row in rows(path, level):
+            if not row[4]:
+                raise SystemExit(f'İl bulunamadı: {row[3]} — KNOWN_CITIES sözlüğüne ekleyin.')
             writer.writerow(row + [source])
             count += 1
     with gzip.open(out, 'wt', encoding='utf-8', compresslevel=9) as handle:

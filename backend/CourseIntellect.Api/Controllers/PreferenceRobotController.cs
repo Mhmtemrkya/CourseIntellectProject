@@ -21,6 +21,10 @@ public sealed class PreferenceRobotController(IPreferenceRobotService service) :
     [HttpGet("meta")]
     public async Task<IActionResult> Meta([FromQuery] string? exam, CancellationToken cancellationToken) => Ok(await service.GetMetaAsync(exam, cancellationToken));
 
+    [HttpGet("options")]
+    public async Task<IActionResult> Options([FromQuery] PreferenceOptionsRequest request, CancellationToken cancellationToken)
+        => Ok(await service.GetOptionsAsync(request, cancellationToken));
+
     [HttpPost("estimate")]
     public IActionResult Estimate([FromBody] PreferenceNetInput input)
     {

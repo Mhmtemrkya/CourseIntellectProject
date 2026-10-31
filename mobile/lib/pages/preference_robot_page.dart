@@ -49,7 +49,29 @@ const _bands = {
   'Target': ('Hedef', 'Puanın taban puana yakın', Color(0xFF2563EB)),
   'Reach': ('Zorlayıcı', 'Taban puanın biraz altındasın', Color(0xFFD97706)),
   'Safe': ('Rahat', 'Taban puanın belirgin üstündesin', Color(0xFF16A34A)),
+  'Far': ('Uzak', 'Taban puanın çok altındasın', Color(0xFFE11D48)),
 };
+
+/// Türkçe harfleri katlar: "İSTANBUL" ile "istanbul", "Ğ" ile "g" eşleşir.
+String _fold(String text) => text
+    .replaceAll('İ', 'i')
+    .replaceAll('I', 'ı')
+    .toLowerCase()
+    .replaceAll('ı', 'i')
+    .replaceAll('ğ', 'g')
+    .replaceAll('ü', 'u')
+    .replaceAll('ş', 's')
+    .replaceAll('ö', 'o')
+    .replaceAll('ç', 'c')
+    .replaceAll('\u0307', '');
+
+class _PickOption {
+  final String value;
+  final String label;
+  final String? detail;
+  final String? hint;
+  const _PickOption(this.value, this.label, {this.detail, this.hint});
+}
 
 String _fmt(Object? raw, [int digits = 2]) {
   final value = (raw as num?)?.toDouble();
@@ -86,8 +108,12 @@ class _PreferenceRobotPageState extends State<PreferenceRobotPage> {
   bool _fromNets = false;
   String _scoreType = 'SAY';
   String _city = '';
+  String _university = '';
+  String _department = '';
   String _institutionType = '';
   String _level = '';
+  Map<String, dynamic>? _options;
+  int _optionsRequest = 0;
   Map<String, dynamic>? _estimate;
   Map<String, dynamic>? _result;
   String _band = 'Target';
@@ -103,6 +129,84 @@ class _PreferenceRobotPageState extends State<PreferenceRobotPage> {
     super.initState();
     _loadMeta();
     _loadChoices();
+    _loadOptions();
+  }
+
+  /// İl → üniversite → bölüm listeleri; yalnız gerçekten var olan eşleşmeler gelir.
+  Future<void> _loadOptions() async {
+    final request = ++_optionsRequest;
+    try {
+      final options = asMap(
+        await _client.get('/api/preference-robot/options', {
+          'exam': _exam,
+          'scoreType': _exam == 'LGS' ? '' : _scoreType,
+          'level': _level,
+          'institutionType': _institutionType,
+          'city': _city,
+          'university': _university,
+        }),
+      );
+      if (!mounted || request != _optionsRequest) return;
+      setState(() {
+        _options = options;
+        final universities = asMapList(options['universities']).map((item) => '${item['name']}').toSet();
+        final departments = asMapList(options['departments']).map((item) => '${item['name']}').toSet();
+        if (_university.isNotEmpty && !universities.contains(_university)) {
+          _university = '';
+          _department = '';
+        }
+        if (_department.isNotEmpty && !departments.contains(_department)) _department = '';
+      });
+    } catch (_) {
+      if (mounted && request == _optionsRequest) setState(() => _options = null);
+    }
+  }
+
+  /// Filtre değişince seçenekler ve (daha önce arandıysa) sonuçlar yenilenir.
+  void _changeFilter(VoidCallback change) {
+    setState(change);
+    _loadOptions();
+    if (_result != null) _search(silent: true);
+  }
+
+  Future<void> _pick({
+    required String title,
+    required String allLabel,
+    required String value,
+    required List<_PickOption> options,
+    required ValueChanged<String> onChanged,
+  }) async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheet) => _PickerSheet(title: title, allLabel: allLabel, value: value, options: options),
+    );
+    if (picked != null && picked != value) onChanged(picked);
+  }
+
+  Widget _pickerField({
+    required String label,
+    required String value,
+    required String allLabel,
+    required List<_PickOption> options,
+    required ValueChanged<String> onChanged,
+  }) {
+    final selected = options.where((option) => option.value == value).firstOrNull;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _pick(title: label.tr, allLabel: allLabel, value: value, options: options, onChanged: onChanged),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label.tr,
+          isDense: true,
+          suffixIcon: value.isEmpty
+              ? const Icon(Icons.unfold_more_rounded)
+              : IconButton(tooltip: 'Seçimi temizle'.tr, icon: const Icon(Icons.close_rounded), onPressed: () => onChanged('')),
+        ),
+        child: Text(selected?.label ?? allLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+    );
   }
 
   @override
@@ -149,15 +253,19 @@ class _PreferenceRobotPageState extends State<PreferenceRobotPage> {
       _estimate = null;
       _scoreType = exam == 'LGS' ? 'LGS' : 'SAY';
       _city = '';
+      _university = '';
+      _department = '';
       _institutionType = '';
       _level = '';
       _query.clear();
+      _options = null;
       for (final controller in _nets.values) {
         controller.clear();
       }
     });
     _loadMeta();
     _loadChoices();
+    _loadOptions();
   }
 
   Future<void> _calculate() async {
@@ -182,10 +290,10 @@ class _PreferenceRobotPageState extends State<PreferenceRobotPage> {
     }
   }
 
-  Future<void> _search() async {
+  Future<void> _search({bool silent = false}) async {
     final score = _parse(_score.text);
     if (score == null || score == 0) {
-      _snack('Puanını gir ya da netlerinden hesapla.'.tr);
+      if (!silent) _snack('Puanını gir ya da netlerinden hesapla.'.tr);
       return;
     }
     setState(() => _busy = true);
@@ -199,17 +307,24 @@ class _PreferenceRobotPageState extends State<PreferenceRobotPage> {
           'institutionType': _institutionType.isEmpty ? null : _institutionType,
           'level': _level.isEmpty ? null : _level,
           'query': _query.text.trim().isEmpty ? null : _query.text.trim(),
-          'limit': 600,
+          'university': _university.isEmpty ? null : _university,
+          'department': _department.isEmpty ? null : _department,
+          'limit': 1000,
         }),
       );
       if (!mounted) return;
       setState(() {
         _result = result;
-        _band = ((result['targetCount'] as num?) ?? 0) > 0
+        int count(String key) => ((result[key] as num?) ?? 0).toInt();
+        _band = count('targetCount') > 0
             ? 'Target'
-            : ((result['reachCount'] as num?) ?? 0) > 0
+            : count('reachCount') > 0
             ? 'Reach'
-            : 'Safe';
+            : count('safeCount') > 0
+            ? 'Safe'
+            : count('farCount') > 0
+            ? 'Far'
+            : 'Target';
       });
     } catch (error) {
       _snack('$error');
@@ -557,7 +672,7 @@ class _PreferenceRobotPageState extends State<PreferenceRobotPage> {
                           (type) => ChoiceChip(
                             label: Text(type),
                             selected: _scoreType == type,
-                            onSelected: (_) => setState(() => _scoreType = type),
+                            onSelected: (_) => _changeFilter(() => _scoreType = type),
                           ),
                         )
                         .toList(),
@@ -580,24 +695,99 @@ class _PreferenceRobotPageState extends State<PreferenceRobotPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('2. Filtreler'.tr, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _query,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    labelText: (_exam == 'LGS' ? 'Okul adı' : 'Program / üniversite').tr,
-                    hintText: (_exam == 'LGS' ? 'Örn: Fen Lisesi' : 'Örn: bilgisayar mühendisliği').tr,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('2. Nerede, hangi bölüm?'.tr, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                    ),
+                    if (_city.isNotEmpty ||
+                        _university.isNotEmpty ||
+                        _department.isNotEmpty ||
+                        _institutionType.isNotEmpty ||
+                        _level.isNotEmpty)
+                      TextButton.icon(
+                        onPressed: () => _changeFilter(() {
+                          _city = '';
+                          _university = '';
+                          _department = '';
+                          _institutionType = '';
+                          _level = '';
+                        }),
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                        label: Text('Filtreleri temizle'.tr),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 8),
-                _dropdown('İl', _city, asList(meta['cities']).map((item) => '$item').toList(), (value) => setState(() => _city = value)),
-                const SizedBox(height: 8),
+                _pickerField(
+                  label: 'İl',
+                  value: _city,
+                  allLabel: 'Tüm iller'.tr,
+                  options: asMapList(_options?['cities'])
+                      .map(
+                        (item) => _PickOption(
+                          '${item['name']}',
+                          '${item['name']}',
+                          hint: _exam == 'LGS' ? '${item['programCount']} ${'okul'.tr}' : '${item['universityCount']} ${'üniversite'.tr}',
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) => _changeFilter(() {
+                    _city = value;
+                    _university = '';
+                    _department = '';
+                  }),
+                ),
+                const SizedBox(height: 10),
+                _pickerField(
+                  label: _exam == 'LGS' ? 'Okul' : 'Üniversite',
+                  value: _university,
+                  allLabel:
+                      (_exam == 'LGS'
+                              ? (_city.isEmpty ? 'Tüm okullar' : 'Bu ildeki tüm okullar')
+                              : (_city.isEmpty ? 'Tüm üniversiteler' : 'Bu ildeki tüm üniversiteler'))
+                          .tr,
+                  options: asMapList(_options?['universities'])
+                      .map(
+                        (item) => _PickOption(
+                          '${item['name']}',
+                          '${item['name']}',
+                          detail: '${item['city']} • ${item['institutionType']}',
+                          hint: _exam == 'LGS' ? null : '${item['programCount']} ${'program'.tr}',
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) => _changeFilter(() {
+                    _university = value;
+                    _department = '';
+                  }),
+                ),
+                if (_exam == 'YKS') ...[
+                  const SizedBox(height: 10),
+                  _pickerField(
+                    label: 'Bölüm',
+                    value: _department,
+                    allLabel: (_university.isEmpty ? 'Tüm bölümler' : 'Bu üniversitedeki tüm bölümler').tr,
+                    options: asMapList(_options?['departments'])
+                        .map(
+                          (item) => _PickOption(
+                            '${item['name']}',
+                            '${item['name']}',
+                            hint: _university.isEmpty
+                                ? '${item['universityCount']} ${'üniversite'.tr}'
+                                : '${item['programCount']} ${'program'.tr}',
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) => _changeFilter(() => _department = value),
+                  ),
+                ],
+                const SizedBox(height: 10),
                 _dropdown(
                   _exam == 'LGS' ? 'Okul türü' : 'Üniversite türü',
                   _institutionType,
                   asList(meta['institutionTypes']).map((item) => '$item').toList(),
-                  (value) => setState(() => _institutionType = value),
+                  (value) => _changeFilter(() => _institutionType = value),
                 ),
                 if (_exam == 'YKS') ...[
                   const SizedBox(height: 8),
@@ -605,20 +795,35 @@ class _PreferenceRobotPageState extends State<PreferenceRobotPage> {
                     'Düzey',
                     _level,
                     const ['Lisans', 'Önlisans'],
-                    (value) => setState(() => _level = value),
+                    (value) => _changeFilter(() => _level = value),
                     labels: const {'Lisans': 'Lisans (4 yıllık)', 'Önlisans': 'Önlisans (2 yıllık)'},
                   ),
                 ],
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _query,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => _search(),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    labelText: 'Serbest arama'.tr,
+                    hintText: (_exam == 'LGS' ? 'Örn: Fen Lisesi' : 'Örn: İngilizce, burslu, fakülte').tr,
+                    isDense: true,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Text(
-                  'İl bilgisi ÖSYM tablosunda yalnız il adı taşıyan üniversitelerde vardır; diğerlerinde üniversite adında aranır.'.tr,
+                  (_exam == 'LGS'
+                          ? 'Okul seçersen o okulun puanı sana göre konumu gösterilir.'
+                          : 'Üniversite ya da bölüm seçersen puan aralığı uygulanmaz: o seçimdeki tüm programlar, sana göre konumlarıyla listelenir. İl, üniversitenin bulunduğu ildir.')
+                      .tr,
                   style: hint,
                 ),
                 const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: _busy || lgsMissing ? null : _search,
+                    onPressed: _busy || lgsMissing ? null : () => _search(),
                     icon: const Icon(Icons.travel_explore_rounded),
                     label: Text((_busy ? 'Aranıyor…' : 'Uygun Programları Bul').tr),
                   ),
@@ -629,12 +834,13 @@ class _PreferenceRobotPageState extends State<PreferenceRobotPage> {
           if (result != null) ...[
             const SizedBox(height: 12),
             Row(
-              children: _bands.entries.map((entry) {
-                final count = entry.key == 'Target'
-                    ? result['targetCount']
-                    : entry.key == 'Reach'
-                    ? result['reachCount']
-                    : result['safeCount'];
+              children: _bands.entries.where((entry) => entry.key != 'Far' || result['focused'] == true).map((entry) {
+                final count = switch (entry.key) {
+                  'Target' => result['targetCount'],
+                  'Reach' => result['reachCount'],
+                  'Safe' => result['safeCount'],
+                  _ => result['farCount'],
+                };
                 final selected = _band == entry.key;
                 final color = entry.value.$3;
                 return Expanded(
@@ -732,6 +938,7 @@ class _ProgramCard extends StatelessWidget {
             spacing: 6,
             runSpacing: 4,
             children: [
+              if ('${item['city'] ?? ''}'.isNotEmpty) AdminAccentBadge(label: '${item['city']}', color: const Color(0xFF64748B)),
               if ('${item['institutionType'] ?? ''}'.isNotEmpty)
                 AdminAccentBadge(label: '${item['institutionType']}', color: const Color(0xFF64748B)),
               if ('${item['level'] ?? ''}'.isNotEmpty) AdminAccentBadge(label: '${item['level']}'.tr, color: const Color(0xFF64748B)),
@@ -797,6 +1004,83 @@ class _ProgramCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Aranabilir seçim sayfası (il, üniversite, bölüm). Boş değer "Tümü" demektir.
+class _PickerSheet extends StatefulWidget {
+  final String title;
+  final String allLabel;
+  final String value;
+  final List<_PickOption> options;
+  const _PickerSheet({required this.title, required this.allLabel, required this.value, required this.options});
+
+  @override
+  State<_PickerSheet> createState() => _PickerSheetState();
+}
+
+class _PickerSheetState extends State<_PickerSheet> {
+  String _term = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final words = _fold(_term).split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
+    final filtered = words.isEmpty
+        ? widget.options
+        : widget.options.where((option) {
+            final haystack = _fold('${option.label} ${option.detail ?? ''}');
+            return words.every(haystack.contains);
+          }).toList();
+    final hint = TextStyle(color: Theme.of(context).hintColor, fontSize: 12);
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.8,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                autofocus: true,
+                onChanged: (value) => setState(() => _term = value),
+                decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded), hintText: 'Ara...'.tr, isDense: true),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.builder(
+                itemCount: filtered.length + (words.isEmpty ? 1 : 0),
+                itemBuilder: (_, index) {
+                  if (words.isEmpty && index == 0) {
+                    return ListTile(
+                      leading: Icon(widget.value.isEmpty ? Icons.check_rounded : null),
+                      title: Text(widget.allLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      onTap: () => Navigator.pop(context, ''),
+                    );
+                  }
+                  final option = filtered[index - (words.isEmpty ? 1 : 0)];
+                  return ListTile(
+                    leading: Icon(option.value == widget.value ? Icons.check_rounded : null),
+                    title: Text(option.label),
+                    subtitle: option.detail == null ? null : Text(option.detail!, style: hint),
+                    trailing: option.hint == null ? null : Text(option.hint!, style: hint),
+                    onTap: () => Navigator.pop(context, option.value),
+                  );
+                },
+              ),
+            ),
+            if (filtered.isEmpty && words.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('Sonuç bulunamadı'.tr, style: hint),
+              ),
+          ],
+        ),
       ),
     );
   }

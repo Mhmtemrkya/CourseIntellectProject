@@ -5698,12 +5698,26 @@ export interface PreferenceChoiceItem {
 }
 
 // CourseIntellect.Application/DTOs/Preference/PreferenceDtos.cs
+export interface PreferenceCityOptionDto {
+  name: string;
+  universityCount: number;
+  programCount: number;
+}
+
+// CourseIntellect.Application/DTOs/Preference/PreferenceDtos.cs
 export interface PreferenceDatasetDto {
   exam: string;
   year: number;
   count: number;
   source: string;
   sourceUrl: string;
+}
+
+// CourseIntellect.Application/DTOs/Preference/PreferenceDtos.cs
+export interface PreferenceDepartmentOptionDto {
+  name: string;
+  programCount: number;
+  universityCount: number;
 }
 
 // CourseIntellect.Application/DTOs/Preference/PreferenceDtos.cs
@@ -5776,6 +5790,24 @@ export interface PreferenceNetInput {
   diplomaGrade?: number | null;
 }
 
+// CourseIntellect.Application/DTOs/Preference/PreferenceDtos.cs
+export interface PreferenceOptionsDto {
+  year: number;
+  cities: PreferenceCityOptionDto[];
+  universities: PreferenceUniversityOptionDto[];
+  departments: PreferenceDepartmentOptionDto[];
+}
+
+// CourseIntellect.Application/DTOs/Preference/PreferenceDtos.cs
+export interface PreferenceOptionsRequest {
+  exam: string;
+  scoreType?: string | null;
+  level?: string | null;
+  institutionType?: string | null;
+  city?: string | null;
+  university?: string | null;
+}
+
 // CourseIntellect.Domain/Entities/PreferenceEntities.cs
 export interface PreferenceProgram {
   id: string;
@@ -5788,6 +5820,7 @@ export interface PreferenceProgram {
   city: string;
   unit: string;
   programName: string;
+  department: string;
   scoreType: string;
   quota: number | null;
   placed: number | null;
@@ -5796,6 +5829,7 @@ export interface PreferenceProgram {
   percentile: number | null;
   source: string;
   sourceUrl: string;
+  dataVersion: number;
   importedAtUtc: string;
 }
 
@@ -5817,6 +5851,8 @@ export interface PreferenceSearchRequest {
   level?: string | null;
   query?: string | null;
   limit?: number | null;
+  university?: string | null;
+  department?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Preference/PreferenceDtos.cs
@@ -5830,6 +5866,16 @@ export interface PreferenceSearchResultDto {
   reachCount: number;
   items: PreferenceMatchDto[];
   disclaimer: string;
+  focused: boolean;
+  farCount: number;
+}
+
+// CourseIntellect.Application/DTOs/Preference/PreferenceDtos.cs
+export interface PreferenceUniversityOptionDto {
+  name: string;
+  city: string;
+  institutionType: string;
+  programCount: number;
 }
 
 // CourseIntellect.Application/DTOs/Students/PromoteStudentsRequest.cs

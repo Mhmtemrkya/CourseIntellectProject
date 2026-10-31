@@ -23,6 +23,20 @@ public sealed class PreferenceRobotService(CourseIntellectDbContext dbContext) :
     public const int MaxLgsChoices = 5;
 
     private static readonly SemaphoreSlim LoadLock = new(1, 1);
+    /// <summary>
+    /// Gömülü YKS verisinin sürümü. Veri dosyaları değiştiğinde artırılır; eski sürümle
+    /// yüklenmiş yıllar silinip yeniden yüklenir (tercih listeleri program koduyla tutulduğu için etkilenmez).
+    /// 2: tüm üniversitelere il bilgisi + bölüm (eksiz program adı).
+    /// </summary>
+    public const int BuiltInDataVersion = 2;
+
+    /// <summary>"Bilgisayar Mühendisliği (İngilizce) (Burslu)" → "Bilgisayar Mühendisliği".</summary>
+    public static string DepartmentOf(string programName)
+    {
+        var index = programName.IndexOf('(');
+        var head = index > 0 ? programName[..index].Trim() : programName.Trim();
+        return head.Length > 0 ? head : programName.Trim();
+    }
     private static readonly CultureInfo Tr = CultureInfo.GetCultureInfo("tr-TR");
 
     public const string Disclaimer =
@@ -162,6 +176,53 @@ public sealed class PreferenceRobotService(CourseIntellectDbContext dbContext) :
             datasets.Any(item => item.Exam == Lgs));
     }
 
+    public async Task<PreferenceOptionsDto> GetOptionsAsync(PreferenceOptionsRequest request, CancellationToken cancellationToken = default)
+    {
+        await EnsureBuiltInDataAsync(cancellationToken);
+        var exam = NormalizeExam(request.Exam);
+        var year = await dbContext.PreferencePrograms.AsNoTracking()
+            .Where(item => item.Exam == exam)
+            .Select(item => (int?)item.Year)
+            .MaxAsync(cancellationToken);
+        if (year is null) return new PreferenceOptionsDto(0, [], [], []);
+
+        // Puan türü / düzey / kurum türü tüm listeleri daraltır; il üniversiteleri,
+        // üniversite (yoksa il) bölümleri daraltır. Böylece yalnız gerçekten var olan
+        // il-üniversite-bölüm üçlüleri seçilebilir.
+        var scoped = dbContext.PreferencePrograms.AsNoTracking().Where(item => item.Exam == exam && item.Year == year);
+        var scoreType = (request.ScoreType ?? string.Empty).Trim().ToUpper(Tr);
+        if (exam == Yks && scoreType.Length > 0) scoped = scoped.Where(item => item.ScoreType == scoreType);
+        if (!string.IsNullOrWhiteSpace(request.Level)) scoped = scoped.Where(item => item.Level == request.Level.Trim());
+        if (!string.IsNullOrWhiteSpace(request.InstitutionType)) scoped = scoped.Where(item => item.InstitutionType == request.InstitutionType.Trim());
+
+        var rows = await scoped
+            .Select(item => new { item.City, item.InstitutionName, item.InstitutionType, item.Department })
+            .ToListAsync(cancellationToken);
+        var comparer = StringComparer.Create(Tr, true);
+        var city = (request.City ?? string.Empty).Trim();
+        var university = (request.University ?? string.Empty).Trim();
+
+        var cities = rows
+            .Where(item => item.City.Length > 0)
+            .GroupBy(item => item.City)
+            .Select(group => new PreferenceCityOptionDto(group.Key, group.Select(item => item.InstitutionName).Distinct().Count(), group.Count()))
+            .OrderBy(item => item.Name, comparer)
+            .ToList();
+        var inCity = city.Length > 0 ? rows.Where(item => item.City == city).ToList() : rows;
+        var universities = inCity
+            .GroupBy(item => item.InstitutionName)
+            .Select(group => new PreferenceUniversityOptionDto(group.Key, group.First().City, group.First().InstitutionType, group.Count()))
+            .OrderBy(item => item.Name, comparer)
+            .ToList();
+        var inUniversity = university.Length > 0 ? inCity.Where(item => item.InstitutionName == university).ToList() : inCity;
+        var departments = inUniversity
+            .GroupBy(item => item.Department)
+            .Select(group => new PreferenceDepartmentOptionDto(group.Key, group.Count(), group.Select(item => item.InstitutionName).Distinct().Count()))
+            .OrderBy(item => item.Name, comparer)
+            .ToList();
+        return new PreferenceOptionsDto(year.Value, cities, universities, departments);
+    }
+
     public async Task<PreferenceSearchResultDto> SearchAsync(PreferenceSearchRequest request, CancellationToken cancellationToken = default)
     {
         await EnsureBuiltInDataAsync(cancellationToken);
@@ -185,11 +246,18 @@ public sealed class PreferenceRobotService(CourseIntellectDbContext dbContext) :
         int? previousYear = years.Where(item => item < year).Cast<int?>().FirstOrDefault();
 
         var (safe, target, reach) = Bands(exam);
+        var university = (request.University ?? string.Empty).Trim();
+        var department = (request.Department ?? string.Empty).Trim();
+        // Üniversite ya da bölüm seçildiyse kullanıcı belirli programlara bakıyor: puan
+        // penceresi uygulanmaz, ulaşılamayanlar da "Far" bandında gösterilir.
+        var focused = university.Length > 0 || department.Length > 0;
         var low = request.Score - safe - 40;
         var high = request.Score - reach;
         var query = dbContext.PreferencePrograms.AsNoTracking()
-            .Where(item => item.Exam == exam && item.Year == year && item.MinScore != null
-                && item.MinScore >= low && item.MinScore <= high);
+            .Where(item => item.Exam == exam && item.Year == year && item.MinScore != null);
+        if (!focused) query = query.Where(item => item.MinScore >= low && item.MinScore <= high);
+        if (university.Length > 0) query = query.Where(item => item.InstitutionName == university);
+        if (department.Length > 0) query = query.Where(item => item.Department == department);
         if (exam == Yks)
         {
             if (scoreType.Length == 0) throw new ArgumentException("Puan türü seçin (SAY, EA, SÖZ, DİL, TYT).");
@@ -200,7 +268,7 @@ public sealed class PreferenceRobotService(CourseIntellectDbContext dbContext) :
         var rows = await query.ToListAsync(cancellationToken);
 
         var city = (request.City ?? string.Empty).Trim().ToUpper(Tr);
-        if (city.Length > 0) rows = rows.Where(item => item.City.ToUpper(Tr) == city || item.InstitutionName.ToUpper(Tr).Contains(city)).ToList();
+        if (city.Length > 0) rows = rows.Where(item => item.City.ToUpper(Tr) == city).ToList();
         var text = (request.Query ?? string.Empty).Trim().ToLower(Tr);
         if (text.Length > 0)
         {
@@ -223,17 +291,17 @@ public sealed class PreferenceRobotService(CourseIntellectDbContext dbContext) :
             .Select(item =>
             {
                 var gap = Math.Round(request.Score - item.MinScore!.Value, 2);
-                var band = gap >= safe ? "Safe" : gap >= target ? "Target" : gap >= reach ? "Reach" : null;
+                var band = gap >= safe ? "Safe" : gap >= target ? "Target" : gap >= reach ? "Reach" : focused ? "Far" : null;
                 return band is null ? null : ToMatch(item, gap, band, previous.GetValueOrDefault(item.Code));
             })
-            .Where(item => item is not null && (item.Band != "Safe" || item.Gap <= safe + 40))
+            .Where(item => item is not null && (focused || item.Band != "Safe" || item.Gap <= safe + 40))
             .Select(item => item!)
             .ToList();
 
         var limit = Math.Clamp(request.Limit ?? 300, 10, 1000);
         // Önce hedef (en uygun), sonra zorlayıcı, sonra rahat; her bant içinde taban puanı yüksekten düşüğe.
         var ordered = matches
-            .OrderBy(item => item.Band switch { "Target" => 0, "Reach" => 1, _ => 2 })
+            .OrderBy(item => item.Band switch { "Target" => 0, "Reach" => 1, "Safe" => 2, _ => 3 })
             .ThenByDescending(item => item.MinScore)
             .Take(limit)
             .ToList();
@@ -246,7 +314,9 @@ public sealed class PreferenceRobotService(CourseIntellectDbContext dbContext) :
             matches.Count(item => item.Band == "Target"),
             matches.Count(item => item.Band == "Reach"),
             ordered,
-            Disclaimer);
+            Disclaimer,
+            focused,
+            matches.Count(item => item.Band == "Far"));
     }
 
     // ─── Tercih listesi ─────────────────────────────────────────────────────
@@ -323,9 +393,9 @@ public sealed class PreferenceRobotService(CourseIntellectDbContext dbContext) :
             .Select(name => (Name: name, Year: int.Parse(name["Preference.yks_".Length..name.IndexOf(".csv", StringComparison.Ordinal)], CultureInfo.InvariantCulture)))
             .ToList();
         var years = resources.Select(item => item.Year).ToList();
-        // Yüklü yıllar veritabanından okunur (süreç içi önbellek tutulmaz: veritabanı değişebilir).
+        // Güncel sürümle yüklü yıllar veritabanından okunur (süreç içi önbellek tutulmaz: veritabanı değişebilir).
         var loaded = await dbContext.PreferencePrograms.AsNoTracking()
-            .Where(item => item.Exam == Yks && years.Contains(item.Year))
+            .Where(item => item.Exam == Yks && years.Contains(item.Year) && item.DataVersion == BuiltInDataVersion)
             .Select(item => item.Year).Distinct().ToListAsync(cancellationToken);
         if (resources.All(item => loaded.Contains(item.Year))) return;
         await LoadLock.WaitAsync(cancellationToken);
@@ -334,9 +404,17 @@ public sealed class PreferenceRobotService(CourseIntellectDbContext dbContext) :
             foreach (var (name, year) in resources)
             {
                 // Kilit beklerken başka bir istek yüklemiş olabilir.
-                if (await dbContext.PreferencePrograms.AnyAsync(item => item.Exam == Yks && item.Year == year, cancellationToken)) continue;
+                if (await dbContext.PreferencePrograms.AnyAsync(item => item.Exam == Yks && item.Year == year && item.DataVersion == BuiltInDataVersion, cancellationToken)) continue;
+                await using var transaction = dbContext.Database.IsRelational()
+                    ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+                    : null;
+                // Eski sürümle yüklenmiş yıl varsa yenisiyle değiştirilir.
+                await dbContext.PreferencePrograms
+                    .Where(item => item.Exam == Yks && item.Year == year)
+                    .ExecuteDeleteAsync(cancellationToken);
                 await using var stream = assembly.GetManifestResourceStream(name)!;
                 await ImportYksAsync(year, stream, cancellationToken);
+                if (transaction is not null) await transaction.CommitAsync(cancellationToken);
             }
         }
         finally
@@ -370,6 +448,8 @@ public sealed class PreferenceRobotService(CourseIntellectDbContext dbContext) :
                     City = cells[4],
                     Unit = cells[5],
                     ProgramName = cells[6],
+                    Department = DepartmentOf(cells[6]),
+                    DataVersion = BuiltInDataVersion,
                     ScoreType = cells[7],
                     Quota = ParseInt(cells[8]),
                     Placed = ParseInt(cells[9]),
@@ -427,6 +507,7 @@ public sealed class PreferenceRobotService(CourseIntellectDbContext dbContext) :
                 Unit = cells[3],
                 InstitutionType = cells[4],
                 ProgramName = cells[1],
+                Department = cells[1].Trim(),
                 ScoreType = "LGS",
                 Quota = ParseInt(cells[5]),
                 MinScore = score,

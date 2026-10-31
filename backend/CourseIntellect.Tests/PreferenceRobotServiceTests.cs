@@ -66,6 +66,78 @@ public sealed class PreferenceRobotServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task BuiltInData_EveryYksProgramHasCityAndDepartment()
+    {
+        await Service.EnsureBuiltInDataAsync();
+
+        Assert.False(await db.Context.PreferencePrograms.AnyAsync(item => item.Exam == "YKS" && (item.City == "" || item.Department == "")));
+        // Adında il geçmeyen istisna ve parantezle yazılan il.
+        Assert.Equal("KOCAELİ", (await db.Context.PreferencePrograms.FirstAsync(item => item.InstitutionName == "GEBZE TEKNİK ÜNİVERSİTESİ")).City);
+        Assert.Equal("ADIYAMAN", (await db.Context.PreferencePrograms.FirstAsync(item => item.InstitutionName == "ADIYAMAN ÜNİVERSİTESİ")).City);
+        var agu = await db.Context.PreferencePrograms.SingleAsync(item => item.Year == 2025 && item.Code == "106510077");
+        Assert.Equal("Bilgisayar Mühendisliği", agu.Department);
+    }
+
+    [Fact]
+    public async Task BuiltInData_OlderVersion_IsReplaced_ChoicesSurvive()
+    {
+        var student = Guid.NewGuid();
+        await Service.EnsureBuiltInDataAsync();
+        await Service.SaveChoicesAsync(student, new SavePreferenceChoicesRequest("YKS", [new("106510077", null)]));
+        // Eski sürüm verisini taklit et: il ve bölüm boş, sürüm 1.
+        await db.Context.PreferencePrograms.Where(item => item.Exam == "YKS" && item.Year == 2025)
+            .ExecuteUpdateAsync(set => set.SetProperty(item => item.DataVersion, 1).SetProperty(item => item.City, "").SetProperty(item => item.Department, ""));
+        db.Context.ChangeTracker.Clear();
+
+        await Service.EnsureBuiltInDataAsync();
+
+        Assert.Equal(21602, await db.Context.PreferencePrograms.CountAsync(item => item.Exam == "YKS" && item.Year == 2025));
+        Assert.False(await db.Context.PreferencePrograms.AnyAsync(item => item.Year == 2025 && (item.DataVersion != PreferenceRobotService.BuiltInDataVersion || item.City == "")));
+        var choice = Assert.Single(await Service.GetChoicesAsync(student, "YKS"));
+        Assert.Equal(442.53227m, choice.Program!.MinScore);
+    }
+
+    [Fact]
+    public async Task Options_CascadeCityUniversityDepartment()
+    {
+        var all = await Service.GetOptionsAsync(new PreferenceOptionsRequest("YKS", "SAY", null, null, null, null));
+        Assert.Equal(2025, all.Year);
+        Assert.Contains(all.Cities, item => item.Name == "KAYSERİ");
+
+        var kayseri = await Service.GetOptionsAsync(new PreferenceOptionsRequest("YKS", "SAY", null, null, "KAYSERİ", null));
+        Assert.All(kayseri.Universities, item => Assert.Equal("KAYSERİ", item.City));
+        Assert.Contains(kayseri.Universities, item => item.Name == "ABDULLAH GÜL ÜNİVERSİTESİ (KAYSERİ)");
+        Assert.DoesNotContain(kayseri.Universities, item => item.Name.StartsWith("ANKARA", StringComparison.Ordinal));
+
+        var agu = await Service.GetOptionsAsync(new PreferenceOptionsRequest("YKS", "SAY", null, null, "KAYSERİ", "ABDULLAH GÜL ÜNİVERSİTESİ (KAYSERİ)"));
+        Assert.Contains(agu.Departments, item => item.Name == "Bilgisayar Mühendisliği");
+        // Yalnız o üniversitede ve o puan türünde gerçekten var olan bölümler.
+        var aguPrograms = await db.Context.PreferencePrograms
+            .Where(item => item.Year == 2025 && item.InstitutionName == "ABDULLAH GÜL ÜNİVERSİTESİ (KAYSERİ)" && item.ScoreType == "SAY")
+            .Select(item => item.Department).Distinct().ToListAsync();
+        Assert.Equal(aguPrograms.Count, agu.Departments.Count);
+        Assert.All(agu.Departments, item => Assert.Contains(item.Name, aguPrograms));
+    }
+
+    [Fact]
+    public async Task Search_FocusedOnUniversity_ListsAllPrograms_IncludingFar()
+    {
+        var result = await Service.SearchAsync(new PreferenceSearchRequest("YKS", "SAY", 300m, null, null, null, null, null, 1000,
+            University: "ABDULLAH GÜL ÜNİVERSİTESİ (KAYSERİ)"));
+
+        Assert.True(result.Focused);
+        Assert.All(result.Items, item => Assert.Equal("ABDULLAH GÜL ÜNİVERSİTESİ (KAYSERİ)", item.InstitutionName));
+        var agu = Assert.Single(result.Items, item => item.Code == "106510077");
+        Assert.Equal("Far", agu.Band);
+        Assert.True(result.FarCount > 0);
+
+        var department = await Service.SearchAsync(new PreferenceSearchRequest("YKS", "SAY", 445m, null, null, null, null, null, 1000,
+            Department: "Bilgisayar Mühendisliği"));
+        Assert.All(department.Items, item => Assert.StartsWith("Bilgisayar Mühendisliği", item.ProgramName));
+        Assert.Contains(department.Items, item => item.ProgramName.Contains("(İngilizce)"));
+    }
+
+    [Fact]
     public async Task Search_Lgs_WithoutData_SaysSoInsteadOfInventing()
     {
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>

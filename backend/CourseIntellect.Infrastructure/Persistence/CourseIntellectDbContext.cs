@@ -432,6 +432,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.City).HasMaxLength(60).IsRequired();
             entity.Property(x => x.Unit).HasMaxLength(250).IsRequired();
             entity.Property(x => x.ProgramName).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.Department).HasMaxLength(300).IsRequired();
             entity.Property(x => x.ScoreType).HasMaxLength(10).IsRequired();
             entity.Property(x => x.MinScore).HasPrecision(9, 5);
             entity.Property(x => x.MaxScore).HasPrecision(9, 5);

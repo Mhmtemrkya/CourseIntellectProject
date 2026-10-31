@@ -22,6 +22,11 @@ public sealed class PreferenceProgram
     /// <summary>Fakülte/yüksekokul ya da LGS'de ilçe.</summary>
     public string Unit { get; set; } = string.Empty;
     public string ProgramName { get; set; } = string.Empty;
+    /// <summary>
+    /// Bölüm: program adının dil/burs/öğretim eki atılmış hâli ("Bilgisayar Mühendisliği (İngilizce) (Burslu)"
+    /// → "Bilgisayar Mühendisliği"). Bölüm listesi ve filtresi bunun üzerinden çalışır.
+    /// </summary>
+    public string Department { get; set; } = string.Empty;
     /// <summary>SAY, EA, SÖZ, DİL, TYT ya da LGS.</summary>
     public string ScoreType { get; set; } = string.Empty;
     public int? Quota { get; set; }
@@ -33,6 +38,8 @@ public sealed class PreferenceProgram
     public decimal? Percentile { get; set; }
     public string Source { get; set; } = string.Empty;
     public string SourceUrl { get; set; } = string.Empty;
+    /// <summary>Gömülü veri sürümü; yükseltilince eski yıl satırları yenisiyle değiştirilir.</summary>
+    public int DataVersion { get; set; } = 1;
     public DateTime ImportedAtUtc { get; set; } = DateTime.UtcNow;
 }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowDown, ArrowUp, Calculator, ExternalLink, GraduationCap, Info, ListOrdered, Minus, Plus, Save, School, Search, Target,
-  Trash2, TrendingDown, TrendingUp,
+  Trash2, TrendingDown, TrendingUp, X,
 } from 'lucide-react';
 import { Page, PageHeader, PageLoading, PageNotice, StatCard } from '../../components/layout/PageKit';
 import { Badge } from '../../components/ui/badge';
@@ -10,11 +10,12 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { useToast } from '../../hooks/use-toast';
 import {
-  estimatePreferenceScore, fetchPreferenceChoices, fetchPreferenceMeta, savePreferenceChoices, searchPreferencePrograms,
+  estimatePreferenceScore, fetchPreferenceChoices, fetchPreferenceMeta, fetchPreferenceOptions, savePreferenceChoices, searchPreferencePrograms,
 } from '../../lib/api/modules';
+import { SearchSelect } from './SearchSelect';
 import { errorMessage } from '../../lib/errors';
 import type {
-  PreferenceEstimateDto, PreferenceMatchDto, PreferenceMetaDto, PreferenceNetInput, PreferenceSearchResultDto,
+  PreferenceEstimateDto, PreferenceMatchDto, PreferenceMetaDto, PreferenceNetInput, PreferenceOptionsDto, PreferenceSearchResultDto,
 } from '../../types/api/generated';
 
 type Exam = 'YKS' | 'LGS';
@@ -59,7 +60,11 @@ const BANDS: Array<{ key: string; label: string; hint: string; tone: string }> =
   { key: 'Target', label: 'Hedef', hint: 'Puanın taban puana yakın', tone: 'border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300' },
   { key: 'Reach', label: 'Zorlayıcı', hint: 'Taban puanın biraz altındasın', tone: 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300' },
   { key: 'Safe', label: 'Rahat', hint: 'Taban puanın belirgin üstündesin', tone: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
+  { key: 'Far', label: 'Uzak', hint: 'Taban puanın çok altındasın', tone: 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300' },
 ];
+
+const EMPTY_FILTERS = { city: '', university: '', department: '', institutionType: '', level: '', query: '' };
+type Filters = typeof EMPTY_FILTERS;
 
 const fmt = (value: number | null | undefined, digits = 2) =>
   value === null || value === undefined ? '—' : value.toLocaleString('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -78,7 +83,9 @@ export default function PreferenceRobotPage({ canSave = false }: { canSave?: boo
   const [nets, setNets] = useState<Partial<Record<NetKey, string>>>({});
   const [diploma, setDiploma] = useState('');
   const [estimate, setEstimate] = useState<PreferenceEstimateDto | null>(null);
-  const [filters, setFilters] = useState({ city: '', institutionType: '', level: '', query: '' });
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [options, setOptions] = useState<PreferenceOptionsDto | null>(null);
+  const [searched, setSearched] = useState(false);
   const [result, setResult] = useState<PreferenceSearchResultDto | null>(null);
   const [band, setBand] = useState('Target');
   const [busy, setBusy] = useState(false);
@@ -104,12 +111,50 @@ export default function PreferenceRobotPage({ canSave = false }: { canSave?: boo
 
   useEffect(() => { void loadChoices(); }, [loadChoices]);
 
+  // İl → üniversite → bölüm listeleri sunucudan, yalnız gerçekten var olan eşleşmelerle gelir.
+  const optionScoreType = exam === 'LGS' ? '' : scoreType;
+  useEffect(() => {
+    let cancelled = false;
+    fetchPreferenceOptions({
+      exam,
+      scoreType: optionScoreType,
+      level: filters.level,
+      institutionType: filters.institutionType,
+      city: filters.city,
+      university: filters.university,
+    })
+      .then((response) => { if (!cancelled) setOptions(response); })
+      .catch(() => { if (!cancelled) setOptions(null); });
+    return () => { cancelled = true; };
+  }, [exam, optionScoreType, filters.level, filters.institutionType, filters.city, filters.university]);
+
+  // Üst seçim değişince artık geçerli olmayan alt seçim temizlenir (ör. il değişti, üniversite o ilde yok).
+  useEffect(() => {
+    if (!options) return;
+    setFilters((current) => {
+      let next = current;
+      if (current.university && !options.universities.some((item) => item.name === current.university)) next = { ...next, university: '', department: '' };
+      if (next.department && !options.departments.some((item) => item.name === next.department)) next = { ...next, department: '' };
+      return next;
+    });
+  }, [options]);
+
+  const setFilter = (key: keyof Filters, value: string) => {
+    setFilters((current) => {
+      const next = { ...current, [key]: value };
+      if (key === 'city') { next.university = ''; next.department = ''; }
+      if (key === 'university') next.department = '';
+      return next;
+    });
+  };
+
   const switchExam = (next: Exam) => {
     setExam(next);
     setResult(null);
     setEstimate(null);
     setNets({});
-    setFilters({ city: '', institutionType: '', level: '', query: '' });
+    setFilters(EMPTY_FILTERS);
+    setSearched(false);
     setScoreType(next === 'LGS' ? 'LGS' : 'SAY');
   };
 
@@ -134,10 +179,10 @@ export default function PreferenceRobotPage({ canSave = false }: { canSave?: boo
     }
   };
 
-  const search = async () => {
+  const search = useCallback(async (silent = false) => {
     const value = Number(score.replace(',', '.'));
     if (!value) {
-      toast({ title: 'Puanını gir ya da netlerinden hesapla.', variant: 'destructive' });
+      if (!silent) toast({ title: 'Puanını gir ya da netlerinden hesapla.', variant: 'destructive' });
       return;
     }
     setBusy(true);
@@ -151,16 +196,27 @@ export default function PreferenceRobotPage({ canSave = false }: { canSave?: boo
         institutionType: filters.institutionType || null,
         level: filters.level || null,
         query: filters.query || null,
-        limit: 600,
+        university: filters.university || null,
+        department: filters.department || null,
+        limit: 1000,
       });
       setResult(response);
-      if (response) setBand(response.targetCount > 0 ? 'Target' : response.reachCount > 0 ? 'Reach' : 'Safe');
+      setSearched(true);
+      if (response) {
+        setBand(response.targetCount > 0 ? 'Target' : response.reachCount > 0 ? 'Reach' : response.safeCount > 0 ? 'Safe' : response.farCount > 0 ? 'Far' : 'Target');
+      }
     } catch (error) {
       toast({ title: 'Arama yapılamadı', description: errorMessage(error), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
-  };
+  }, [exam, scoreType, score, filters, toast]);
+
+  // İlk aramadan sonra il/üniversite/bölüm/tür değişince sonuçlar kendiliğinden yenilenir.
+  useEffect(() => {
+    if (searched) void search(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.city, filters.university, filters.department, filters.institutionType, filters.level]);
 
   const addChoice = (item: PreferenceMatchDto) => {
     if (choices.some((choice) => choice.code === item.code)) return;
@@ -295,22 +351,65 @@ export default function PreferenceRobotPage({ canSave = false }: { canSave?: boo
           </section>
 
           <section className="rounded-2xl border bg-card p-5">
-            <h2 className="text-lg font-bold">2. Filtreler</h2>
-            <div className="mt-3 grid gap-3 md:grid-cols-4">
-              <div className="md:col-span-2">
-                <Label htmlFor="pref-query">{exam === 'LGS' ? 'Okul adı' : 'Program / üniversite'}</Label>
-                <Input id="pref-query" value={filters.query} onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))} placeholder={exam === 'LGS' ? 'Örn: Fen Lisesi' : 'Örn: bilgisayar mühendisliği'} />
-              </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-bold">2. Nerede, hangi bölüm?</h2>
+              {Object.values(filters).some(Boolean) ? (
+                <Button size="sm" variant="ghost" onClick={() => setFilters(EMPTY_FILTERS)}><X className="mr-1 h-4 w-4" />Filtreleri temizle</Button>
+              ) : null}
+            </div>
+            <div className={`mt-3 grid gap-3 ${exam === 'LGS' ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
               <div>
                 <Label htmlFor="pref-city">İl</Label>
-                <select id="pref-city" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={filters.city} onChange={(event) => setFilters((current) => ({ ...current, city: event.target.value }))}>
-                  <option value="">Tümü</option>
-                  {meta.cities.map((city) => <option key={city} value={city}>{city}</option>)}
-                </select>
+                <SearchSelect
+                  id="pref-city"
+                  value={filters.city}
+                  onChange={(value) => setFilter('city', value)}
+                  allLabel="Tüm iller"
+                  searchPlaceholder="İl ara..."
+                  emptyText="İl bulunamadı"
+                  options={(options?.cities ?? []).map((item) => ({ value: item.name, label: item.name, hint: exam === 'LGS' ? `${item.programCount} okul` : `${item.universityCount} üniversite` }))}
+                />
               </div>
               <div>
+                <Label htmlFor="pref-university">{exam === 'LGS' ? 'Okul' : 'Üniversite'}</Label>
+                <SearchSelect
+                  id="pref-university"
+                  value={filters.university}
+                  onChange={(value) => setFilter('university', value)}
+                  allLabel={exam === 'LGS' ? (filters.city ? 'Bu ildeki tüm okullar' : 'Tüm okullar') : (filters.city ? 'Bu ildeki tüm üniversiteler' : 'Tüm üniversiteler')}
+                  searchPlaceholder={exam === 'LGS' ? 'Okul ara...' : 'Üniversite ara...'}
+                  emptyText={exam === 'LGS' ? 'Okul bulunamadı' : 'Üniversite bulunamadı'}
+                  options={(options?.universities ?? []).map((item) => ({
+                    value: item.name,
+                    label: item.name,
+                    detail: `${item.city} • ${item.institutionType}`,
+                    hint: exam === 'LGS' ? undefined : `${item.programCount} program`,
+                  }))}
+                />
+              </div>
+              {exam === 'YKS' ? (
+                <div>
+                  <Label htmlFor="pref-department">Bölüm</Label>
+                  <SearchSelect
+                    id="pref-department"
+                    value={filters.department}
+                    onChange={(value) => setFilter('department', value)}
+                    allLabel={filters.university ? 'Bu üniversitedeki tüm bölümler' : 'Tüm bölümler'}
+                    searchPlaceholder="Bölüm ara..."
+                    emptyText="Bölüm bulunamadı"
+                    options={(options?.departments ?? []).map((item) => ({
+                      value: item.name,
+                      label: item.name,
+                      hint: filters.university ? `${item.programCount} program` : `${item.universityCount} üniversite`,
+                    }))}
+                  />
+                </div>
+              ) : null}
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <div>
                 <Label htmlFor="pref-type">{exam === 'LGS' ? 'Okul türü' : 'Üniversite türü'}</Label>
-                <select id="pref-type" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={filters.institutionType} onChange={(event) => setFilters((current) => ({ ...current, institutionType: event.target.value }))}>
+                <select id="pref-type" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={filters.institutionType} onChange={(event) => setFilter('institutionType', event.target.value)}>
                   <option value="">Tümü</option>
                   {meta.institutionTypes.map((type) => <option key={type} value={type}>{type}</option>)}
                 </select>
@@ -318,23 +417,29 @@ export default function PreferenceRobotPage({ canSave = false }: { canSave?: boo
               {exam === 'YKS' ? (
                 <div>
                   <Label htmlFor="pref-level">Düzey</Label>
-                  <select id="pref-level" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={filters.level} onChange={(event) => setFilters((current) => ({ ...current, level: event.target.value }))}>
+                  <select id="pref-level" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={filters.level} onChange={(event) => setFilter('level', event.target.value)}>
                     <option value="">Tümü</option>
                     <option value="Lisans">Lisans (4 yıllık)</option>
                     <option value="Önlisans">Önlisans (2 yıllık)</option>
                   </select>
                 </div>
               ) : null}
+              <div>
+                <Label htmlFor="pref-query">Serbest arama</Label>
+                <Input id="pref-query" value={filters.query} onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))} onKeyDown={(event) => { if (event.key === 'Enter') void search(); }} placeholder={exam === 'LGS' ? 'Örn: Fen Lisesi' : 'Örn: İngilizce, burslu, fakülte'} />
+              </div>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">İl bilgisi ÖSYM tablosunda yalnız il adı taşıyan üniversitelerde vardır; diğerlerinde üniversite adında aranır.</p>
+            <p className="mt-2 text-xs text-muted-foreground">{exam === 'LGS'
+              ? 'Okul seçersen o okulun puanı sana göre konumu gösterilir.'
+              : 'Üniversite ya da bölüm seçersen puan aralığı uygulanmaz: o seçimdeki tüm programlar, sana göre konumlarıyla listelenir. İl, üniversitenin bulunduğu ildir.'}</p>
             <Button className="mt-4" onClick={() => void search()} disabled={busy || lgsMissing}><Search className="mr-2 h-4 w-4" />{busy ? 'Aranıyor…' : 'Uygun Programları Bul'}</Button>
           </section>
 
           {result ? (
             <section className="space-y-3">
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                {BANDS.map((item) => {
-                  const count = item.key === 'Target' ? result.targetCount : item.key === 'Reach' ? result.reachCount : result.safeCount;
+              <div className={`grid gap-2 sm:gap-3 ${result.focused ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
+                {BANDS.filter((item) => item.key !== 'Far' || result.focused).map((item) => {
+                  const count = item.key === 'Target' ? result.targetCount : item.key === 'Reach' ? result.reachCount : item.key === 'Safe' ? result.safeCount : result.farCount;
                   return (
                     <button key={item.key} type="button" onClick={() => setBand(item.key)}
                       className={`min-w-0 rounded-2xl border p-3 text-left transition ${band === item.key ? item.tone : 'bg-card hover:bg-foreground/[0.03]'}`}>
@@ -416,6 +521,7 @@ function ProgramRow({ item, canSave, added, onAdd }: { item: PreferenceMatchDto;
         <p className="font-semibold">{item.programName}</p>
         <p className="text-sm text-muted-foreground">{item.institutionName}{item.unit ? ` • ${item.unit}` : ''}</p>
         <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
+          {item.city ? <Badge variant="outline">{item.city}</Badge> : null}
           {item.institutionType ? <Badge variant="outline">{item.institutionType}</Badge> : null}
           {item.level ? <Badge variant="outline">{item.level}</Badge> : null}
           {item.quota !== null ? <Badge variant="outline">{`Kontenjan ${item.quota}`}</Badge> : null}

@@ -10,6 +10,8 @@ namespace CourseIntellect.Application.Interfaces;
 public interface IPreferenceRobotService
 {
     Task<PreferenceMetaDto> GetMetaAsync(string? exam = null, CancellationToken cancellationToken = default);
+    /// <summary>Kademeli filtre seçenekleri: il → üniversite → bölüm (yalnız var olan eşleşmeler).</summary>
+    Task<PreferenceOptionsDto> GetOptionsAsync(PreferenceOptionsRequest request, CancellationToken cancellationToken = default);
     PreferenceEstimateDto Estimate(PreferenceNetInput input);
     Task<PreferenceSearchResultDto> SearchAsync(PreferenceSearchRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PreferenceChoiceDto>> GetChoicesAsync(Guid studentUserId, string exam, CancellationToken cancellationToken = default);

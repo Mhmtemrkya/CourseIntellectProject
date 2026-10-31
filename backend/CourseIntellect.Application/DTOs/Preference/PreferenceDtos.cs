@@ -51,9 +51,37 @@ public sealed record PreferenceSearchRequest(
     string? InstitutionType,
     string? Level,
     string? Query,
-    int? Limit);
+    int? Limit,
+    /// <summary>Seçilen üniversite/okul (tam ad). Seçiliyse puan penceresi uygulanmaz, tüm programlar gelir.</summary>
+    string? University = null,
+    /// <summary>Seçilen bölüm (eksiz program adı). Seçiliyse puan penceresi uygulanmaz.</summary>
+    string? Department = null);
 
-/// <summary>Band: Safe (rahat), Target (hedef), Reach (zorlayıcı).</summary>
+/// <summary>Kademeli filtre seçenekleri: il → üniversite → bölüm, en güncel yılın verisinden.</summary>
+public sealed record PreferenceOptionsRequest(
+    string Exam,
+    string? ScoreType,
+    string? Level,
+    string? InstitutionType,
+    string? City,
+    string? University);
+
+public sealed record PreferenceCityOptionDto(string Name, int UniversityCount, int ProgramCount);
+
+public sealed record PreferenceUniversityOptionDto(string Name, string City, string InstitutionType, int ProgramCount);
+
+public sealed record PreferenceDepartmentOptionDto(string Name, int ProgramCount, int UniversityCount);
+
+public sealed record PreferenceOptionsDto(
+    int Year,
+    IReadOnlyList<PreferenceCityOptionDto> Cities,
+    IReadOnlyList<PreferenceUniversityOptionDto> Universities,
+    IReadOnlyList<PreferenceDepartmentOptionDto> Departments);
+
+/// <summary>
+/// Band: Safe (rahat), Target (hedef), Reach (zorlayıcı); yalnız üniversite/bölüm seçiliyken
+/// Far (puanın taban puanın çok altında).
+/// </summary>
 public sealed record PreferenceMatchDto(
     string Code,
     string Level,
@@ -84,7 +112,10 @@ public sealed record PreferenceSearchResultDto(
     int TargetCount,
     int ReachCount,
     IReadOnlyList<PreferenceMatchDto> Items,
-    string Disclaimer);
+    string Disclaimer,
+    /// <summary>Üniversite ya da bölüm seçiliyse true: tüm programlar listelenir, Far bandı dolabilir.</summary>
+    bool Focused = false,
+    int FarCount = 0);
 
 public sealed record PreferenceChoiceDto(Guid Id, int Order, string Exam, string Note, PreferenceMatchDto? Program);
 
