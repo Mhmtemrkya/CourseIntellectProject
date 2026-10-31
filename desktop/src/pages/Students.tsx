@@ -67,6 +67,7 @@ import {
 } from '../lib/inputMasks';
 import { errorMessage } from '../lib/errors';
 import type { AttendanceEntryDto, ExamResultDto, StudentSummaryDto, UpdateStudentRequest } from '../types/api/generated';
+import { useAssistantFocus } from '../lib/assistantFocus';
 
 /** Dizin satırı: öğrenci + devam oranı ve son sınav puanı. */
 interface StudentRow extends StudentSummaryDto {
@@ -105,6 +106,7 @@ function StudentDetailDrawer({ student, onToggleStatus, onUpdated }: {
   const [photoUrl, setPhotoUrl] = useState(student?.photoUrl || '');
   const [savingPhoto, setSavingPhoto] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
+  useAssistantFocus(student ? { id: student.id, name: student.fullName } : null);
 
   const savePhoto = async (url: string) => {
     if (!student) return;

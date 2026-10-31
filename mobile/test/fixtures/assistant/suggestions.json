@@ -1,0 +1,27 @@
+[
+ {
+  "label": "Bugünkü derslerim",
+  "command": "schedule",
+  "category": "Ders"
+ },
+ {
+  "label": "Bugün devamsız olanlar",
+  "command": "absent",
+  "category": "Yoklama"
+ },
+ {
+  "label": "50 puanın altındakiler",
+  "command": "low_score",
+  "category": "Sınav"
+ },
+ {
+  "label": "Öğrenci ara",
+  "command": "search",
+  "category": "Öğrenci"
+ },
+ {
+  "label": "Optik deneme nasıl yüklenir?",
+  "command": "howto",
+  "category": "Yardım"
+ }
+]

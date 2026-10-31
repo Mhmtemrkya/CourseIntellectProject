@@ -513,6 +513,14 @@ export interface AnnouncementItem {
   teacherName: string | null;
 }
 
+// CourseIntellect.Infrastructure/Services/StudentInsightCalculator.cs
+export const AnswerOutcome = {
+  Correct: 0,
+  Wrong: 1,
+  Blank: 2,
+} as const;
+export type AnswerOutcome = (typeof AnswerOutcome)[keyof typeof AnswerOutcome];
+
 // CourseIntellect.Domain/Entities/ExamSolvingEntities.cs
 export interface AnswerSelection {
   id: string;
@@ -684,6 +692,7 @@ export interface AssistantActionRequest {
   conversationId: string;
   command: string;
   studentId?: string | null;
+  context?: AssistantClientContext | null;
 }
 
 // CourseIntellect.Domain/Entities/AssistantEntities.cs
@@ -704,9 +713,25 @@ export interface AssistantAuditLog {
 }
 
 // CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
+export interface AssistantBriefingDto {
+  greeting: string;
+  items: AssistantBriefingItemDto[];
+}
+
+// CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
+export interface AssistantBriefingItemDto {
+  text: string;
+  tone: string;
+  ask: string | null;
+}
+
+// CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
 export interface AssistantClientContext {
   currentRoute: string | null;
   selectedStudentId: string | null;
+  portal: string | null;
+  language: string | null;
+  selectedStudentName: string | null;
 }
 
 // CourseIntellect.Domain/Entities/AssistantEntities.cs
@@ -716,12 +741,19 @@ export interface AssistantConversation {
   branchId: string | null;
   userId: string;
   title: string;
+  portal: string;
   selectedStudentId: string | null;
   lastIntent: AssistantIntent | null;
   createdAtUtc: string;
   updatedAtUtc: string;
   lastMessageAtUtc: string | null;
   isArchived: boolean;
+}
+
+// CourseIntellect.Infrastructure/Services/AssistantConversation.cs
+export interface AssistantConversation_RosterEntry {
+  candidate: StudentCandidate;
+  tcNo: string;
 }
 
 // CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
@@ -731,6 +763,23 @@ export interface AssistantConversationDto {
   createdAtUtc: string;
   updatedAtUtc: string;
   lastMessageAtUtc: string | null;
+  portal: string;
+}
+
+// CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
+export interface AssistantFeedbackRequest {
+  helpful: boolean;
+}
+
+// CourseIntellect.Domain/Services/AssistantHelpCatalog.cs
+export interface AssistantHelpArticle {
+  id: string;
+  titleTr: string;
+  titleEn: string;
+  keywords: string[];
+  stepsTr: string[];
+  stepsEn: string[];
+  routes: Record<string, string>;
 }
 
 // CourseIntellect.Domain/Enums/AssistantEnums.cs
@@ -766,6 +815,10 @@ export const AssistantIntent = {
   NotifyParentAboutAbsence: 28,
   GetFinanceOverview: 29,
   GetInstitutionSummary: 30,
+  Thanks: 31,
+  SmallTalk: 32,
+  HowTo: 33,
+  GetTopicInsight: 34,
 } as const;
 export type AssistantIntent = (typeof AssistantIntent)[keyof typeof AssistantIntent];
 
@@ -773,7 +826,7 @@ export type AssistantIntent = (typeof AssistantIntent)[keyof typeof AssistantInt
 export interface AssistantIntentScope {
   institutionTypes: InstitutionType[];
   requiredModule: string | null;
-  deniedRoles: string[];
+  allowedRoles: string[];
 }
 
 // CourseIntellect.Domain/Entities/AssistantEntities.cs
@@ -789,6 +842,7 @@ export interface AssistantMessage {
   structuredPayloadJson: string;
   clientMessageId: string | null;
   processingDurationMs: number | null;
+  feedback: number | null;
   createdAtUtc: string;
 }
 
@@ -801,6 +855,9 @@ export interface AssistantMessageDto {
   intent: AssistantIntent;
   data: unknown | null;
   createdAtUtc: string;
+  actions: AssistantActionDto[] | null;
+  suggestions: string[] | null;
+  feedback: number | null;
 }
 
 // CourseIntellect.Domain/Enums/AssistantEnums.cs
@@ -823,6 +880,7 @@ export interface AssistantRequestContext {
   correlationId: string;
   ipAddress: string;
   userAgent: string;
+  language: string;
 }
 
 // CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
@@ -850,6 +908,16 @@ export interface AssistantSuggestionDto {
   label: string;
   command: string;
   category: string;
+}
+
+// CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
+export interface AssistantUnansweredDto {
+  messageId: string;
+  question: string;
+  answer: string;
+  reason: string;
+  portal: string;
+  createdAtUtc: string;
 }
 
 // CourseIntellect.Domain/Entities/AttendanceEntry.cs
@@ -1199,6 +1267,32 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
+export interface ChatMessage {
+  role: string;
+  content: string;
+}
+
+// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
+export interface ChatOptions {
+  temperature: number;
+  num_ctx: number;
+}
+
+// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
+export interface ChatRequest {
+  model: string;
+  messages: ChatMessage[];
+  stream: boolean;
+  format: unknown;
+  options: ChatOptions;
+}
+
+// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
+export interface ChatResponse {
+  message: ChatMessage | null;
+}
+
 // CourseIntellect.Application/DTOs/Visitors/VisitorDtos.cs
 export interface CheckInVisitorRequest {
   fullName: string;
@@ -1255,6 +1349,18 @@ export interface ClassCourseAssignmentRequest {
   isRequired: boolean;
 }
 
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface ClassInsightDto {
+  className: string;
+  studentCount: number;
+  activeStudentCount: number;
+  solved: number;
+  successRate: number;
+  students: ClassStudentInsightDto[];
+  topics: ClassTopicInsightDto[];
+  minSample: number;
+}
+
 // CourseIntellect.Api/Controllers/ClassesController.cs
 export interface ClassModuleSettingsRequest {
   attendance: boolean;
@@ -1273,10 +1379,31 @@ export interface ClassRankingDto {
   className: string;
 }
 
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface ClassStudentInsightDto {
+  studentUserId: string;
+  fullName: string;
+  solved: number;
+  successRate: number;
+  weakTopicCount: number;
+  topWeakSubject: string | null;
+  topWeakTopic: string | null;
+}
+
 // CourseIntellect.Api/Controllers/ClassesController.cs
 export interface ClassTeacherAssignmentRequest {
   teacherId?: string | null;
   role?: string | null;
+}
+
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface ClassTopicInsightDto {
+  subject: string;
+  topic: string;
+  solved: number;
+  successRate: number;
+  studentCount: number;
+  strugglingStudentCount: number;
 }
 
 // CourseIntellect.Application/DTOs/StudentFinance/FinanceOperationsDtos.cs
@@ -3901,6 +4028,16 @@ export interface EnrollmentContractDto {
   statusChangedAtUtc: string | null;
 }
 
+// CourseIntellect.Domain/Entities/StudentInsightEntities.cs
+export interface ExamBlankAnswer {
+  id: string;
+  tenantId: string | null;
+  questionId: string;
+  studentUsername: string;
+  examSessionId: string;
+  completedAtUtc: string;
+}
+
 // CourseIntellect.Domain/Entities/ExamSolvingEntities.cs
 export interface ExamQuestion {
   id: string;
@@ -4474,6 +4611,42 @@ export const IdentityVerificationStatus = {
   Unavailable: 3,
 } as const;
 export type IdentityVerificationStatus = (typeof IdentityVerificationStatus)[keyof typeof IdentityVerificationStatus];
+
+// CourseIntellect.Infrastructure/Services/StudentInsightCalculator.cs
+export interface InsightAnswer {
+  studentUserId: string;
+  subject: string;
+  topic: string;
+  outcome: AnswerOutcome;
+  atUtc: string;
+}
+
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface InsightClassSummaryDto {
+  className: string;
+  studentCount: number;
+}
+
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface InsightNoteDto {
+  id: string | null;
+  status: string;
+  source: string | null;
+  model: string | null;
+  text: string | null;
+  generatedAtUtc: string | null;
+  isCurrent: boolean;
+  reviewStatus: string;
+  reviewedText: string | null;
+}
+
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface InsightOverviewDto {
+  classes: InsightClassSummaryDto[];
+  aiEnabled: boolean;
+  aiModel: string | null;
+  sources: string[];
+}
 
 // CourseIntellect.Application/DTOs/AccountLifecycle/InstitutionDeletionDtos.cs
 export interface InstitutionDeletionDecisionRequest {
@@ -5156,6 +5329,249 @@ export interface OpenConsentSessionRequest {
   expiresInMinutes?: number | null;
 }
 
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalAnswerKeyDto {
+  booklet: string;
+  subjects: OpticalAnswerKeySubjectDto[];
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalAnswerKeySubjectDto {
+  subject: string;
+  answers: string;
+  topics: string[];
+}
+
+// CourseIntellect.Domain/Entities/OpticalExamEntities.cs
+export interface OpticalExam {
+  id: string;
+  tenantId: string | null;
+  branchId: string | null;
+  templateId: string;
+  title: string;
+  examDateUtc: string;
+  wrongPenalty: number;
+  multiMarkAsWrong: boolean;
+  cancelledMode: string;
+  keysJson: string;
+  status: string;
+  fileName: string;
+  importedStudentCount: number;
+  importedAtUtc: string | null;
+  importedByUserId: string | null;
+  createdAtUtc: string;
+}
+
+// CourseIntellect.Domain/Entities/OpticalExamEntities.cs
+export interface OpticalExamAnswer {
+  id: string;
+  tenantId: string | null;
+  branchId: string | null;
+  opticalExamId: string;
+  studentUserId: string;
+  booklet: string;
+  subject: string;
+  questionNo: number;
+  topic: string;
+  outcome: string;
+  marked: string;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalExamDto {
+  id: string;
+  title: string;
+  examDateUtc: string;
+  templateId: string;
+  wrongPenalty: number;
+  multiMarkAsWrong: boolean;
+  cancelledMode: string;
+  keys: OpticalAnswerKeyDto[];
+  status: string;
+  fileName: string;
+  importedStudentCount: number;
+  importedAtUtc: string | null;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalExamResultRowDto {
+  studentUserId: string;
+  fullName: string;
+  className: string;
+  booklet: string;
+  totalNet: number;
+  scores: OpticalSubjectScoreDto[];
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalExamResultsDto {
+  examId: string;
+  title: string;
+  subjects: string[];
+  rows: OpticalExamResultRowDto[];
+  averages: OpticalSubjectScoreDto[];
+}
+
+// CourseIntellect.Domain/Entities/OpticalExamEntities.cs
+export interface OpticalExamStudentResult {
+  id: string;
+  tenantId: string | null;
+  branchId: string | null;
+  opticalExamId: string;
+  studentUserId: string;
+  studentNo: string;
+  booklet: string;
+  subject: string;
+  correct: number;
+  wrong: number;
+  blank: number;
+  net: number;
+  examResultId: string | null;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalExamSummaryDto {
+  id: string;
+  title: string;
+  examDateUtc: string;
+  templateId: string;
+  templateName: string;
+  status: string;
+  importedStudentCount: number;
+  importedAtUtc: string | null;
+  questionCount: number;
+  topicCoverage: number;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalImportResultDto {
+  importedStudents: number;
+  skippedRows: number;
+  answerCount: number;
+  topicAnswerCount: number;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalMatchOverrideDto {
+  line: number;
+  studentUserId: string | null;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalPreviewDto {
+  encoding: string;
+  sampleLines: string[];
+  rowCount: number;
+  matchedCount: number;
+  ambiguousCount: number;
+  unmatchedCount: number;
+  rows: OpticalPreviewRowDto[];
+  errors: string[];
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalPreviewRowDto {
+  line: number;
+  studentNo: string;
+  name: string;
+  className: string;
+  booklet: string;
+  matchStatus: string;
+  matchedBy: string | null;
+  studentUserId: string | null;
+  studentName: string | null;
+  candidates: OpticalStudentCandidateDto[];
+  scores: OpticalSubjectScoreDto[];
+  warnings: string[];
+}
+
+// CourseIntellect.Infrastructure/Services/OpticalParser.cs
+export interface OpticalQuestionResult {
+  subject: string;
+  questionNo: number;
+  topic: string;
+  outcome: string;
+  marked: string;
+}
+
+// CourseIntellect.Infrastructure/Services/OpticalParser.cs
+export interface OpticalRawRow {
+  line: number;
+  studentNo: string;
+  name: string;
+  className: string;
+  booklet: string;
+  marks: Record<string, string>;
+}
+
+// CourseIntellect.Infrastructure/Services/OpticalParser.cs
+export interface OpticalScoredRow {
+  booklet: string;
+  questions: OpticalQuestionResult[];
+  scores: OpticalSubjectScoreDto[];
+  warnings: string[];
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalStudentCandidateDto {
+  studentUserId: string;
+  fullName: string;
+  className: string;
+  schoolNumber: string;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalSubjectBlockDto {
+  name: string;
+  start: number;
+  count: number;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalSubjectScoreDto {
+  subject: string;
+  correct: number;
+  wrong: number;
+  blank: number;
+  net: number;
+}
+
+// CourseIntellect.Domain/Entities/OpticalExamEntities.cs
+export interface OpticalTemplate {
+  id: string;
+  tenantId: string | null;
+  name: string;
+  encoding: string;
+  studentNoStart: number;
+  studentNoLength: number;
+  nameStart: number;
+  nameLength: number;
+  classStart: number;
+  classLength: number;
+  bookletStart: number;
+  bookletLength: number;
+  subjectsJson: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalTemplateDto {
+  id: string;
+  name: string;
+  encoding: string;
+  studentNoStart: number;
+  studentNoLength: number;
+  nameStart: number;
+  nameLength: number;
+  classStart: number;
+  classLength: number;
+  bookletStart: number;
+  bookletLength: number;
+  subjects: OpticalSubjectBlockDto[];
+  lineLength: number;
+}
+
 // CourseIntellect.Domain/Entities/OrgUnit.cs
 export interface OrgUnit {
   id: string;
@@ -5270,6 +5686,16 @@ export interface ParsedAssistantQuery {
   gradeLevel: number | null;
   sectionName: string | null;
   scoreThreshold: number | null;
+}
+
+// CourseIntellect.Infrastructure/Services/OpticalExamService.cs
+export interface ParsedFile {
+  exam: OpticalExam;
+  encoding: string;
+  sampleLines: string[];
+  rows: unknown[];
+  roster: RosterStudent[];
+  errors: string[];
 }
 
 // CourseIntellect.Application/DTOs/Common/UserSummaryDto.cs
@@ -6463,6 +6889,12 @@ export interface RestructureInstallmentsRequest {
   reason?: string | null;
 }
 
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface ReviewInsightNoteRequest {
+  action: string;
+  editedText?: string | null;
+}
+
 // CourseIntellect.Application/DTOs/Auth/PasswordResetDtos.cs
 export interface ReviewPasswordResetRequest {
   approved: boolean;
@@ -6499,6 +6931,17 @@ export interface RoleSummaryDto {
   requiresCriticalApproval: boolean;
   messagingScope: string;
   moduleAccess: string[];
+}
+
+// CourseIntellect.Infrastructure/Services/OpticalExamService.cs
+export interface RosterStudent {
+  userId: string;
+  fullName: string;
+  className: string;
+  schoolNumber: string;
+  branchId: string | null;
+  nameKey: string;
+  numberKey: string;
 }
 
 // CourseIntellect.Application/DTOs/Attendance/SaveAttendanceRequest.cs
@@ -6603,6 +7046,32 @@ export interface SaveInstitutionProfileRequest {
   taxOffice?: string | null;
   taxNumber?: string | null;
   documentFooterNote?: string | null;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface SaveOpticalExamRequest {
+  title: string;
+  examDateUtc: string;
+  templateId: string;
+  wrongPenalty: number;
+  multiMarkAsWrong: boolean;
+  cancelledMode: string;
+  keys: OpticalAnswerKeyDto[];
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface SaveOpticalTemplateRequest {
+  name: string;
+  encoding: string;
+  studentNoStart: number;
+  studentNoLength: number;
+  nameStart: number;
+  nameLength: number;
+  classStart: number;
+  classLength: number;
+  bookletStart: number;
+  bookletLength: number;
+  subjects: OpticalSubjectBlockDto[];
 }
 
 // CourseIntellect.Api/Controllers/PlannedExamsController.cs
@@ -7646,6 +8115,53 @@ export interface StudentFinanceSummaryDto {
   totalPayable: number;
 }
 
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface StudentInsightDto {
+  studentUserId: string;
+  fullName: string;
+  className: string;
+  solved: number;
+  successRate: number;
+  firstAnswerAtUtc: string | null;
+  lastAnswerAtUtc: string | null;
+  subjects: SubjectInsightDto[];
+  topics: TopicInsightDto[];
+  weakTopics: TopicInsightDto[];
+  strongTopics: TopicInsightDto[];
+  note: InsightNoteDto;
+  minSample: number;
+}
+
+// CourseIntellect.Domain/Entities/StudentInsightEntities.cs
+export interface StudentInsightNote {
+  id: string;
+  tenantId: string | null;
+  branchId: string | null;
+  studentUserId: string;
+  inputHash: string;
+  status: string;
+  source: string;
+  model: string;
+  draft: string;
+  text: string;
+  error: string;
+  requestedByUserId: string | null;
+  requestedAtUtc: string;
+  generatedAtUtc: string | null;
+  reviewStatus: string;
+  reviewedText: string;
+  reviewedByUserId: string | null;
+  reviewedAtUtc: string | null;
+}
+
+// CourseIntellect.Infrastructure/Services/StudentInsightService.cs
+export interface StudentInsightService_RosterEntry {
+  userId: string;
+  fullName: string;
+  className: string;
+  username: string;
+}
+
 // CourseIntellect.Domain/Entities/ExamSolvingEntities.cs
 export interface StudentNote {
   id: string;
@@ -7728,14 +8244,6 @@ export interface StudentRow {
   userId: string;
   fullName: string;
   className: string;
-}
-
-// CourseIntellect.Infrastructure/Services/AssistantService.cs
-export interface StudentSelection {
-  candidates: StudentCandidate[];
-  denied: boolean;
-  message: string;
-  failureCode: string;
 }
 
 // CourseIntellect.Domain/Entities/ServiceTrackingEntities.cs
@@ -7916,6 +8424,14 @@ export interface SubjectGroupTeacherOptionDto {
   currentGroups: string[];
 }
 
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface SubjectInsightDto {
+  subject: string;
+  solved: number;
+  successRate: number;
+  weakTopicCount: number;
+}
+
 // CourseIntellect.Application/DTOs/SubjectGroups/SubjectGroupDtos.cs
 export interface SubjectSuggestionDto {
   subject: string;
@@ -7935,6 +8451,15 @@ export interface SuccessorCandidateDto {
   id: string;
   fullName: string;
   role: string;
+}
+
+// CourseIntellect.Infrastructure/Services/AssistantConversation.cs
+export interface SuggestionDef {
+  tr: string;
+  en: string;
+  command: string;
+  category: string;
+  intent: AssistantIntent;
 }
 
 // CourseIntellect.Domain/Entities/SupportTicket.cs
@@ -7992,6 +8517,15 @@ export interface SystemStatusDto {
 export interface TableSummary {
   tableName: string;
   rowCount: number;
+}
+
+// CourseIntellect.Infrastructure/Services/AssistantConversation.cs
+export interface TargetSelection {
+  candidates: StudentCandidate[];
+  denied: boolean;
+  message: string;
+  failureCode: string;
+  needsName: boolean;
 }
 
 // CourseIntellect.Application/DTOs/Admin/AdminTaskDtos.cs
@@ -8343,6 +8877,25 @@ export interface TimetableSlotResponse {
 // CourseIntellect.Api/Controllers/ContactMessagesController.cs
 export interface ToggleStarRequest {
   isStarred: boolean;
+}
+
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface TopicInsightDto {
+  subject: string;
+  topic: string;
+  solved: number;
+  correct: number;
+  wrong: number;
+  blank: number;
+  successRate: number;
+  classSuccessRate: number | null;
+  previousSuccessRate: number | null;
+  recentSuccessRate: number | null;
+  trend: string;
+  hasEnoughData: boolean;
+  isWeak: boolean;
+  isStrong: boolean;
+  diagnosis: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Translations/TranslationDto.cs

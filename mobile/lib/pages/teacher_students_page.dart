@@ -191,6 +191,7 @@ class _TeacherStudentsPageState extends State<TeacherStudentsPage> {
                   builder: (_) => StudentExamHistoryPage(
                     studentName: student.fullName,
                     title: '${student.fullName} · ${'Sınav Geçmişi'.tr}',
+                    studentUserId: student.userId,
                   ),
                 ),
               ),

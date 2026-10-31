@@ -11,9 +11,10 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import { PremiumPanel, PremiumScoreCard, type ChartTone } from '../../components/ui/premium-dashboard';
 import { useApp } from '../../context/AppContext';
-import { fetchExamResults } from '../../lib/api/modules';
+import { fetchExamResults, fetchMyInsight } from '../../lib/api/modules';
+import { TopicRecommendations } from '../../components/insights/TopicRecommendations';
 import { errorMessage } from '../../lib/errors';
-import type { ExamResultDto } from '../../types/api/generated';
+import type { ExamResultDto, StudentInsightDto } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
 
 const SCORE_TONES: readonly ChartTone[] = ['brand', 'blue', 'emerald', 'violet', 'amber', 'rose'];
@@ -28,6 +29,11 @@ function letterGrade(score: number): string {
 
 export default function StudentExamResults() {
   const navigate = useNavigate();
+  // Konu analizi (modül kapalıysa ya da yetki yoksa panel gizlenir).
+  const [insight, setInsight] = useState<StudentInsightDto | null | undefined>(undefined);
+  useEffect(() => {
+    fetchMyInsight().then(setInsight).catch(() => setInsight(undefined));
+  }, []);
   const { user } = useApp();
   const [records, setRecords] = useState<ExamResultDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +92,8 @@ export default function StudentExamResults() {
           </Card>
         ))}
       </div>
+
+      {insight !== undefined ? <TopicRecommendations data={insight} title="Çalışman gereken konular" /> : null}
 
       {records.length === 0 ? (
         <StudentEmptyState

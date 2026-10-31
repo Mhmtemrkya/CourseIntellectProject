@@ -1,0 +1,29 @@
+{
+ "conversationId": "48e03152-c438-427c-84fe-ddbbf4b60d83",
+ "messageId": "e35bb32a-21e4-4480-bbfd-891d7d57d3ad",
+ "type": "topic_insight",
+ "text": "Ayşe Demir en çok şu konularda zorlanıyor: Köklü Sayılar. Nedenleri ve önerileri aşağıda.",
+ "data": {
+  "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9",
+  "fullName": "Ayşe Demir",
+  "solved": 183,
+  "successRate": 65.0,
+  "weakTopics": [
+   {
+    "subject": "Matematik",
+    "topic": "Köklü Sayılar",
+    "successRate": 40,
+    "diagnosis": "misconception",
+    "trend": "up"
+   }
+  ],
+  "strongTopics": []
+ },
+ "actions": [],
+ "suggestions": [
+  "Devamsızlığı",
+  "Sınav sonuçları",
+  "Bekleyen ödevleri"
+ ],
+ "intent": 34
+}

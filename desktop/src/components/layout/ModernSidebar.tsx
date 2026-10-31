@@ -51,7 +51,7 @@ import {
   KeyRound,
   ChevronDown,
 } from "lucide-react";
-import { Activity, Archive, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserX, TrendingDown, BookMarked, Flag, DoorOpen, Target } from "lucide-react";
+import { Activity, Archive, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserX, TrendingDown, BookMarked, Flag, DoorOpen, Target, ScanLine } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import {
   Tooltip,
@@ -255,6 +255,18 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
       color: "#e11d48",
     },
     {
+      path: "/optical-exams",
+      icon: ScanLine,
+      label: "Optik Denemeler",
+      color: "#0d9488",
+    },
+    {
+      path: "/insights",
+      icon: Brain,
+      label: "Konu Analizi",
+      color: "#0891b2",
+    },
+    {
       path: "/preference-robot",
       icon: Target,
       label: "Tercih Robotu",
@@ -289,6 +301,12 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
       icon: CheckSquare,
       label: "Kayıt Geçmişi",
       color: "#64748b",
+    },
+    {
+      path: "/admin/assistant-questions",
+      icon: CheckSquare,
+      label: "Asistan Soruları",
+      color: "#4f46e5",
     },
     {
       path: "/admin/data-backup",
@@ -633,6 +651,18 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
       color: "#0ea5e9",
     },
     {
+      path: "/g/optical-exams",
+      icon: ScanLine,
+      label: "Optik Denemeler",
+      color: "#0d9488",
+    },
+    {
+      path: "/g/insights",
+      icon: Brain,
+      label: "Konu Analizi",
+      color: "#0891b2",
+    },
+    {
       path: "/g/preference-robot",
       icon: Target,
       label: "Tercih Robotu",
@@ -779,6 +809,18 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
       icon: Flag,
       label: "Kulüpler",
       color: "#e11d48",
+    },
+    {
+      path: "/t/optical-exams",
+      icon: ScanLine,
+      label: "Optik Denemeler",
+      color: "#0d9488",
+    },
+    {
+      path: "/t/insights",
+      icon: Brain,
+      label: "Konu Analizi",
+      color: "#0891b2",
     },
     {
       path: "/t/preference-robot",
@@ -1087,7 +1129,7 @@ const ROLE_MENU_GROUPS: Partial<Record<string, MenuGroupDefinition[]>> = {
     { id: "main", title: "Ana Panel", modules: ["dashboard", "kpi", "operations", "global-search", "tasks", "visitors"], paths: ["/visitors"] },
     { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses", "duties", "subject-groups"], paths: ["/admin/staff", "/admin/subject-groups"] },
     { id: "registrations", title: "Kayıt İşlemleri", modules: ["registrations", "records", "administrative-units", "org-units", "staff-hr", "approvals", "password-reset"], paths: ["/admin/passive-records"] },
-    { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons", "library", "clubs"], paths: ["/clubs", "/preference-robot"] },
+    { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons", "library", "clubs"], paths: ["/clubs", "/preference-robot", "/insights", "/optical-exams"] },
     { id: "reports", title: "Raporlar", modules: ["reports", "branch-comparison"] },
     { id: "finance", title: "Finans", modules: ["finance", "student-accounts", "collections", "refunds", "installments", "billing", "late-payments", "discounts-scholarships", "collection-calendar", "reconciliation", "bulk-actions", "overdue-rules", "salary", "cash-report", "ledger", "finance-export", "finance-audit-log", "finance-detail-hub"] },
     { id: "communication", title: "İletişim", modules: ["notifications", "meetings", "chat", "support"] },
@@ -1119,7 +1161,7 @@ const ROLE_MENU_GROUPS: Partial<Record<string, MenuGroupDefinition[]>> = {
   ],
   counselor: [
     { id: "main", title: "Rehberlik", modules: [], paths: ["/g/dashboard"] },
-    { id: "students", title: "Öğrenci Takibi", modules: [], paths: ["/g/sessions", "/g/planner", "/g/appointments", "/g/inventories", "/g/reports", "/g/library", "/g/preference-robot"] },
+    { id: "students", title: "Öğrenci Takibi", modules: [], paths: ["/g/sessions", "/g/planner", "/g/appointments", "/g/inventories", "/g/reports", "/g/library", "/g/preference-robot", "/g/insights", "/g/optical-exams"] },
     { id: "communication", title: "İletişim", modules: ["chat"], paths: ["/chat"] },
     { id: "system", title: "Sistem", modules: ["profile", "system"], paths: ["/settings"] },
   ],
@@ -1127,7 +1169,7 @@ const ROLE_MENU_GROUPS: Partial<Record<string, MenuGroupDefinition[]>> = {
     { id: "main", title: "Ana Panel", modules: ["dashboard", "schedule", "attendance", "live-lessons", "duties"] },
     { id: "learning", title: "Ders & İçerik", modules: ["content", "question-bank", "questions", "subject-groups"], paths: ["/t/subject-groups"] },
     { id: "assessment", title: "Sınav & Not", modules: ["exams", "mock-exams", "grade-entry", "reports"] },
-    { id: "students", title: "Öğrenci Takibi", modules: ["assignments", "meetings", "clubs"], paths: ["/t/clubs", "/t/preference-robot"] },
+    { id: "students", title: "Öğrenci Takibi", modules: ["assignments", "meetings", "clubs"], paths: ["/t/clubs", "/t/preference-robot", "/t/insights", "/t/optical-exams"] },
     { id: "communication", title: "İletişim", modules: ["notifications", "chat"] },
     { id: "system", title: "Sistem", modules: ["profile", "system"] },
   ],

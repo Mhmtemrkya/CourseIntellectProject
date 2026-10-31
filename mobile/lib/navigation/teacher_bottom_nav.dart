@@ -1,5 +1,7 @@
+import 'package:student/pages/assistant_page.dart';
 import 'package:student/pages/preference_robot_page.dart';
 import 'package:flutter/material.dart';
+import 'package:student/pages/student_insights_page.dart';
 import 'package:student/pages/clubs_page.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/teacher_duties_page.dart';
@@ -57,6 +59,12 @@ class TeacherBottomNav extends StatelessWidget {
           sidebarColor: const Color(0xFFE11D48),
         ),
         AdaptiveDestination(
+          icon: Icons.insights_rounded,
+          label: 'Konu Analizi'.tr,
+          pageBuilder: (_) => const StudentInsightsPage(),
+          sidebarColor: const Color(0xFF0891B2),
+        ),
+        AdaptiveDestination(
           icon: Icons.track_changes_rounded,
           label: 'Tercih Robotu'.tr,
           pageBuilder: (_) => const PreferenceRobotPage(),
@@ -73,6 +81,12 @@ class TeacherBottomNav extends StatelessWidget {
           label: 'Mesajlar',
           pageBuilder: (_) => const TeacherMessagesPage(),
           sidebarColor: const Color(0xFF2563EB),
+        ),
+        AdaptiveDestination(
+          icon: Icons.auto_awesome_rounded,
+          label: 'Asistan'.tr,
+          pageBuilder: (_) => const AssistantPage(portal: 'teacher'),
+          sidebarColor: const Color(0xFF4F46E5),
         ),
         AdaptiveDestination(
           icon: Icons.person_rounded,

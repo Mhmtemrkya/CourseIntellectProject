@@ -98,6 +98,12 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<VisitorEntry> Visitors => Set<VisitorEntry>();
     public DbSet<PreferenceProgram> PreferencePrograms => Set<PreferenceProgram>();
     public DbSet<StudentPreferenceChoice> StudentPreferenceChoices => Set<StudentPreferenceChoice>();
+    public DbSet<StudentInsightNote> StudentInsightNotes => Set<StudentInsightNote>();
+    public DbSet<ExamBlankAnswer> ExamBlankAnswers => Set<ExamBlankAnswer>();
+    public DbSet<OpticalTemplate> OpticalTemplates => Set<OpticalTemplate>();
+    public DbSet<OpticalExam> OpticalExams => Set<OpticalExam>();
+    public DbSet<OpticalExamAnswer> OpticalExamAnswers => Set<OpticalExamAnswer>();
+    public DbSet<OpticalExamStudentResult> OpticalExamStudentResults => Set<OpticalExamStudentResult>();
     public DbSet<ClubMember> ClubMembers => Set<ClubMember>();
     public DbSet<ClubActivity> ClubActivities => Set<ClubActivity>();
     public DbSet<LibraryLoan> LibraryLoans => Set<LibraryLoan>();
@@ -452,6 +458,83 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ProgramCode).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(300).IsRequired();
             entity.HasIndex(x => new { x.StudentUserId, x.Exam, x.ProgramCode }).IsUnique();
+        });
+
+        modelBuilder.Entity<StudentInsightNote>(entity =>
+        {
+            entity.ToTable("student_insight_notes");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.InputHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Source).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Model).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Draft).HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.Text).HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.Error).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.ReviewStatus).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.ReviewedText).HasMaxLength(4000).IsRequired();
+            entity.HasIndex(x => new { x.StudentUserId, x.RequestedAtUtc });
+            entity.HasIndex(x => x.ReviewStatus);
+        });
+
+        modelBuilder.Entity<ExamBlankAnswer>(entity =>
+        {
+            entity.ToTable("exam_blank_answers");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.StudentUsername).HasMaxLength(150).IsRequired();
+            entity.HasIndex(x => x.StudentUsername);
+            entity.HasIndex(x => new { x.ExamSessionId, x.QuestionId }).IsUnique();
+        });
+
+        modelBuilder.Entity<OpticalTemplate>(entity =>
+        {
+            entity.ToTable("optical_templates");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Encoding).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.SubjectsJson).HasMaxLength(4000).IsRequired();
+        });
+
+        modelBuilder.Entity<OpticalExam>(entity =>
+        {
+            entity.ToTable("optical_exams");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.CancelledMode).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.KeysJson).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.FileName).HasMaxLength(200).IsRequired();
+            entity.HasIndex(x => x.ExamDateUtc);
+        });
+
+        modelBuilder.Entity<OpticalExamAnswer>(entity =>
+        {
+            entity.ToTable("optical_exam_answers");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.Booklet).HasMaxLength(4).IsRequired();
+            entity.Property(x => x.Subject).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Topic).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Outcome).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.Marked).HasMaxLength(4).IsRequired();
+            entity.HasIndex(x => new { x.OpticalExamId, x.StudentUserId });
+            entity.HasIndex(x => x.StudentUserId);
+        });
+
+        modelBuilder.Entity<OpticalExamStudentResult>(entity =>
+        {
+            entity.ToTable("optical_exam_student_results");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.StudentNo).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Booklet).HasMaxLength(4).IsRequired();
+            entity.Property(x => x.Subject).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Net).HasPrecision(9, 2);
+            entity.HasIndex(x => new { x.OpticalExamId, x.StudentUserId });
         });
 
         modelBuilder.Entity<VisitorEntry>(entity =>
@@ -2643,6 +2726,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasKey(x => x.Id);
             ConfigureBranchScope(entity);
             entity.Property(x => x.Title).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Portal).HasMaxLength(20).IsRequired().HasDefaultValue(string.Empty);
             entity.Property(x => x.LastIntent).HasConversion<string>().HasMaxLength(50);
             entity.HasIndex(x => new { x.TenantId, x.UserId, x.IsArchived, x.LastMessageAtUtc });
         });

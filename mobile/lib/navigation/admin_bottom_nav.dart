@@ -1,3 +1,5 @@
+import 'package:student/i18n/app_locale.dart';
+import 'package:student/pages/assistant_page.dart';
 import 'package:flutter/material.dart';
 import '../pages/admin_academics_page.dart';
 import '../pages/admin_finance_page.dart';
@@ -44,6 +46,12 @@ class AdminBottomNav extends StatelessWidget {
           label: 'Raporlar',
           pageBuilder: (_) => const TeacherReportsPage(),
           sidebarColor: const Color(0xFFFF9D2E),
+        ),
+        AdaptiveDestination(
+          icon: Icons.auto_awesome_rounded,
+          label: 'Asistan'.tr,
+          pageBuilder: (_) => const AssistantPage(portal: 'admin'),
+          sidebarColor: const Color(0xFF4F46E5),
         ),
         AdaptiveDestination(
           icon: Icons.person_outline_rounded,

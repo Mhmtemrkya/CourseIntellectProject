@@ -610,7 +610,6 @@ if (!app.Environment.IsDevelopment())
 app.UseCors("ConfiguredOrigins");
 // Hız sınırlama; endpoint'e özel "auth" politikasını uygulayabilmesi için
 // (implicit) routing sonrası, kimlik doğrulamadan önce çalışır → gereksiz iş yapılmadan reddeder.
-app.UseRateLimiter();
 var staticFileContentTypes = new FileExtensionContentTypeProvider();
 staticFileContentTypes.Mappings[".mp4"] = "video/mp4";
 staticFileContentTypes.Mappings[".m4v"] = "video/mp4";
@@ -683,6 +682,10 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 app.UseAuthentication();
+// Hız sınırı kimlik doğrulamadan SONRA: kullanıcı bazlı politikalar (asistan, fotoğraf analizi)
+// kullanıcı kimliğine göre bölünür. Önceden kimlikten önce çalıştığı için herkes IP'ye düşüyor,
+// aynı okul ağındaki tüm kullanıcılar tek kotayı paylaşıyordu. IP bazlı politikalar etkilenmez.
+app.UseRateLimiter();
 app.UseMiddleware<BootstrapOnlyMiddleware>();
 
 // ── Claims debug middleware (sadece Development) ─────────────────────────────

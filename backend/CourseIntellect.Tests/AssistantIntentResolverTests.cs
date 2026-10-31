@@ -116,4 +116,40 @@ public sealed class AssistantIntentResolverTests
         Assert.Equal(AssistantIntent.GetFinanceOverview, resolver.Resolve("toplam borç ne kadar").Intent);
         Assert.Equal(AssistantIntent.ListStudentsWithDebt, resolver.Resolve("borcu olan öğrencileri listele").Intent);
     }
+
+    /// <summary>Gerçek kullanıcıların yazdığı cümleler (öğrenci, veli, personel; Türkçe ve İngilizce).</summary>
+    [Theory]
+    [InlineData("bugün hangi derslerim var", AssistantIntent.GetSchedule)]
+    [InlineData("devamsızlığım kaç gün", AssistantIntent.GetAttendance)]
+    [InlineData("hangi konulara çalışmalıyım", AssistantIntent.GetTopicInsight)]
+    [InlineData("Ali hangi konularda zayıf", AssistantIntent.GetTopicInsight)]
+    [InlineData("çocuğumun devamsızlığı", AssistantIntent.GetAttendance)]
+    [InlineData("bugün devamsız olanlar", AssistantIntent.ListAbsentStudents)]
+    [InlineData("50 puanın altındakiler", AssistantIntent.ListLowScoreStudents)]
+    [InlineData("teşekkürler", AssistantIntent.Thanks)]
+    [InlineData("sağ ol", AssistantIntent.Thanks)]
+    [InlineData("sen kimsin", AssistantIntent.SmallTalk)]
+    [InlineData("nasılsın", AssistantIntent.SmallTalk)]
+    [InlineData("optik deneme nasıl yüklenir", AssistantIntent.HowTo)]
+    [InlineData("ödev nasıl verilir", AssistantIntent.HowTo)]
+    [InlineData("kızımın devamsızlığı nasıl", AssistantIntent.GetAttendance)]
+    [InlineData("matematik notlarım nasıl?", AssistantIntent.GetExamResults)]
+    [InlineData("Merhaba, Ali Yılmaz'ın sınav sonuçları", AssistantIntent.GetExamResults)]
+    [InlineData("merhaba", AssistantIntent.Greeting)]
+    [InlineData("hi", AssistantIntent.Greeting)]
+    [InlineData("hi!", AssistantIntent.Greeting)]
+    [InlineData("what lessons do I have today", AssistantIntent.GetSchedule)]
+    [InlineData("which topics should I study", AssistantIntent.GetTopicInsight)]
+    [InlineData("how do I submit homework", AssistantIntent.HowTo)]
+    [InlineData("thanks", AssistantIntent.Thanks)]
+    public void Resolves_NaturalPhrases(string message, AssistantIntent expected)
+        => Assert.Equal(expected, new RuleBasedAssistantIntentResolver().Resolve(message).Intent);
+
+    [Fact]
+    public void ScoreThreshold_IsNotAStudentNumber()
+    {
+        var parsed = new RuleBasedAssistantIntentResolver().Resolve("50 puanın altındakiler");
+        Assert.Null(parsed.StudentNumber);
+        Assert.Equal(50m, parsed.ScoreThreshold);
+    }
 }

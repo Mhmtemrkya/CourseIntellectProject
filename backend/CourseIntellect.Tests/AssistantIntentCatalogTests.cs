@@ -180,12 +180,50 @@ public sealed class AssistantIntentCatalogTests
     [Fact]
     public void EveryIntent_HasAnExplicitScope()
     {
+        // İzin listesi: kataloğa girmemiş niyetin izinli rolü yoktur (fail-closed).
         var unscoped = Enum.GetValues<AssistantIntent>()
-            .Where(intent => AssistantIntentCatalog.ScopeOf(intent) is { InstitutionTypes.Count: 0, RequiredModule: null, DeniedRoles.Count: 0 }
-                             && intent is not (AssistantIntent.Unknown or AssistantIntent.Help or AssistantIntent.Greeting))
+            .Where(intent => AssistantIntentCatalog.ScopeOf(intent).AllowedRoles.Count == 0)
             .ToList();
 
         Assert.True(unscoped.Count == 0,
             $"Kataloğa eklenmemiş niyetler: {string.Join(", ", unscoped)}");
     }
+
+    /// <summary>
+    /// Her rol yalnız kendi portalındaki bilgileri sorabilir. Bu tablo portal kapsamını
+    /// kilitler: bir niyetin rol listesi değişirse bu test bilinçli olarak güncellenmeli.
+    /// </summary>
+    [Theory]
+    // Öğrenci: kendi akademik bilgileri, ödeme, servis; toplu listeler ve kurum özetleri yok.
+    [InlineData("Student", AssistantIntent.GetExamResults, true)]
+    [InlineData("Student", AssistantIntent.GetTopicInsight, true)]
+    [InlineData("Student", AssistantIntent.GetPaymentSummary, true)]
+    [InlineData("Student", AssistantIntent.ListStudentsWithDebt, false)]
+    [InlineData("Student", AssistantIntent.ListAbsentStudents, false)]
+    [InlineData("Student", AssistantIntent.GetFinanceOverview, false)]
+    // Veli: çocuğunun akademik/ödeme/servis bilgileri; listeler yok.
+    [InlineData("Parent", AssistantIntent.GetAttendance, true)]
+    [InlineData("Parent", AssistantIntent.GetTopicInsight, true)]
+    [InlineData("Parent", AssistantIntent.ListClassStudents, false)]
+    // Öğretmen: akademik ve listeler; finans yok.
+    [InlineData("Teacher", AssistantIntent.ListLowScoreStudents, true)]
+    [InlineData("Teacher", AssistantIntent.GetTopicInsight, true)]
+    [InlineData("Teacher", AssistantIntent.GetPaymentSummary, false)]
+    [InlineData("Teacher", AssistantIntent.GetFinanceOverview, false)]
+    // İdari personel: operasyon (yoklama, sınıf listesi, servis); finans ve akademik sonuç yok.
+    [InlineData("Administrative", AssistantIntent.ListAbsentStudents, true)]
+    [InlineData("Administrative", AssistantIntent.GetExamResults, false)]
+    [InlineData("Administrative", AssistantIntent.GetFinanceOverview, false)]
+    [InlineData("Administrative", AssistantIntent.ListStudentsWithDebt, false)]
+    [InlineData("Administrative", AssistantIntent.GetInstitutionSummary, false)]
+    // Muhasebe: finans; akademik yok.
+    [InlineData("Accounting", AssistantIntent.ListStudentsWithDebt, true)]
+    [InlineData("Accounting", AssistantIntent.GetTopicInsight, false)]
+    // Yönetici ve şube müdürü: hepsi.
+    [InlineData("Admin", AssistantIntent.GetInstitutionSummary, true)]
+    [InlineData("BranchManager", AssistantIntent.GetFinanceOverview, true)]
+    // Bilinmeyen rol hiçbir şeye erişemez.
+    [InlineData("Cafeteria", AssistantIntent.GetExamResults, false)]
+    public void PortalScope_Matrix(string role, AssistantIntent intent, bool allowed)
+        => Assert.Equal(allowed, AssistantIntentCatalog.IsAllowedForRole(intent, role));
 }

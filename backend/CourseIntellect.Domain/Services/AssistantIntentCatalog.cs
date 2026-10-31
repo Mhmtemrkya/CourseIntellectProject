@@ -4,7 +4,7 @@ namespace CourseIntellect.Domain.Services;
 
 /// <summary>
 /// Bir asistan niyetinin kapsamı: hangi kurum türlerinde anlamlı, hangi modül
-/// yetkisini ve hangi rolleri gerektirir.
+/// yetkisini ve hangi PORTALLARIN (rollerin) kullanabileceği.
 /// </summary>
 /// <param name="InstitutionTypes">
 /// Boş küme = her kurumda geçerli (selam, yardım gibi). Aksi hâlde yalnız
@@ -13,30 +13,21 @@ namespace CourseIntellect.Domain.Services;
 /// <param name="RequiredModule">
 /// <c>IEntitlementService</c> modül anahtarı. Null ise paket kontrolü yapılmaz.
 /// </param>
-/// <param name="DeniedRoles">
-/// Bu niyeti kullanamayacak roller (küçük harf). Örn. öğretmen borç göremez.
+/// <param name="AllowedRoles">
+/// Bu niyeti kullanabilen portallar (küçük harf: admin, administrative, teacher,
+/// accounting, parent, student). İZİN LİSTESİDİR: listede olmayan rol kullanamaz
+/// (eski "yasak listesi" yeni ya da unutulan bir rolü varsayılan olarak serbest bırakıyordu).
+/// Şube müdürü admin, rehber öğretmen teacher portalını kullanır.
 /// </param>
 public sealed record AssistantIntentScope(
     IReadOnlySet<InstitutionType> InstitutionTypes,
     string? RequiredModule,
-    IReadOnlySet<string> DeniedRoles);
+    IReadOnlySet<string> AllowedRoles);
 
-/// <summary>
-/// Asistan niyetlerinin tek doğruluk kaynağı. Kurum türü, modül ve rol kapsamı
-/// burada bildirilir; servis katmanı bu katalogdan okur.
-///
-/// NEDEN: Kapsam bilgisi önceden üç ayrı yere dağılmıştı — <c>RequiredModule</c>
-/// switch'i, rol bazlı öneri switch'i ve servis içindeki tekil rol kontrolleri.
-/// Kurum türü ise hiçbirinde yoktu; bu yüzden bir okul yöneticisine "Kursiyer
-/// ilerlemesi" önerisi çıkıyordu. Tek katalog bunu yapısal olarak imkânsız kılar.
-///
-/// Aynı desen <see cref="CourseIntellect.Domain.Permissions.DrivingPermissionCatalog"/>
-/// ile tutarlıdır.
-/// </summary>
 public static class AssistantIntentCatalog
 {
     /// <summary>Okul benzeri kurumlar: akademik takvim, sınıf, ödev, sınav düzeni ortak.</summary>
-    public static readonly IReadOnlySet<InstitutionType> Academic =
+    public static readonly IReadOnlySet<InstitutionType> AcademicInstitutions =
         new HashSet<InstitutionType> { InstitutionType.PrivateSchool, InstitutionType.CourseCenter, InstitutionType.StudyCenter };
 
     /// <summary>Yalnız sürücü kursu.</summary>
@@ -46,69 +37,86 @@ public static class AssistantIntentCatalog
     /// <summary>Kurum türünden bağımsız (selam, yardım, öğrenci arama, finans).</summary>
     private static readonly IReadOnlySet<InstitutionType> Any = new HashSet<InstitutionType>();
 
-    private static readonly IReadOnlySet<string> NoDeniedRoles = new HashSet<string>();
-    private static readonly IReadOnlySet<string> DenyAccounting = new HashSet<string> { "accounting" };
-    private static readonly IReadOnlySet<string> DenyTeacher = new HashSet<string> { "teacher" };
-    // Analitik özetler tek öğrenciye değil tüm kuruma bakar; öğrenci/veli/öğretmen
-    // görmemeli. Muhasebe finans özetini görebilir ama akademik panoyu görmez.
-    private static readonly IReadOnlySet<string> DenyBelowFinance = new HashSet<string> { "student", "parent", "teacher" };
-    private static readonly IReadOnlySet<string> DenyBelowManagement = new HashSet<string> { "student", "parent", "teacher", "accounting" };
+    // Portal (rol) kümeleri. Her rol yalnız kendi portalındaki bilgileri sorabilir.
+    private static IReadOnlySet<string> Roles(params string[] roles) => new HashSet<string>(roles);
+    private static readonly IReadOnlySet<string> Everyone = Roles("admin", "administrative", "teacher", "accounting", "parent", "student");
+    // Öğrenci dosyasına bakabilenler: öğrenci kendini, veli çocuğunu, personel kapsamındaki öğrencileri.
+    private static readonly IReadOnlySet<string> StudentFile = Roles("admin", "administrative", "teacher", "accounting", "parent", "student");
+    // Akademik (sınav, ödev, konu): muhasebe ve idari portal kapsamı dışı (KVKK: görev gereği değil).
+    private static readonly IReadOnlySet<string> Academic = Roles("admin", "teacher", "parent", "student");
+    private static readonly IReadOnlySet<string> AttendanceView = Roles("admin", "administrative", "teacher", "parent", "student");
+    private static readonly IReadOnlySet<string> StaffLists = Roles("admin", "administrative", "teacher");
+    private static readonly IReadOnlySet<string> AcademicLists = Roles("admin", "teacher");
+    // Tek öğrencinin ödemesi: öğretmen ve idari portalda finans yok.
+    private static readonly IReadOnlySet<string> PaymentView = Roles("admin", "accounting", "parent", "student");
+    private static readonly IReadOnlySet<string> FinanceStaff = Roles("admin", "accounting");
+    private static readonly IReadOnlySet<string> Management = Roles("admin");
+    private static readonly IReadOnlySet<string> Operations = Roles("admin", "administrative", "parent", "student");
+    private static readonly IReadOnlySet<string> LibraryView = Roles("admin", "administrative", "teacher", "parent", "student");
+    private static readonly IReadOnlySet<string> ScheduleView = Roles("admin", "administrative", "teacher", "parent", "student");
+    private static readonly IReadOnlySet<string> ParentNotify = Roles("admin", "administrative", "teacher");
+    private static readonly IReadOnlySet<string> DrivingView = Roles("admin", "administrative", "teacher", "parent", "student");
 
     private static readonly IReadOnlyDictionary<AssistantIntent, AssistantIntentScope> Scopes =
         new Dictionary<AssistantIntent, AssistantIntentScope>
         {
             // ─── Kurum türünden bağımsız ──────────────────────────────────────
-            [AssistantIntent.Unknown] = new(Any, null, NoDeniedRoles),
-            [AssistantIntent.Help] = new(Any, null, NoDeniedRoles),
-            [AssistantIntent.Greeting] = new(Any, null, NoDeniedRoles),
+            [AssistantIntent.Unknown] = new(Any, null, Everyone),
+            [AssistantIntent.Help] = new(Any, null, Everyone),
+            [AssistantIntent.Greeting] = new(Any, null, Everyone),
+            [AssistantIntent.Thanks] = new(Any, null, Everyone),
+            [AssistantIntent.SmallTalk] = new(Any, null, Everyone),
+            [AssistantIntent.HowTo] = new(Any, null, Everyone),
 
             // Öğrenci/kursiyer arama her kurumda var; muhasebe de tahsilat için arar.
-            [AssistantIntent.SearchStudent] = new(Any, "students", NoDeniedRoles),
-            [AssistantIntent.GetStudentSummary] = new(Any, "students", NoDeniedRoles),
-            [AssistantIntent.OpenStudentDetail] = new(Any, "students", NoDeniedRoles),
-            [AssistantIntent.GetAnnouncements] = new(Any, "notifications", NoDeniedRoles),
-            [AssistantIntent.GetUnreadMessages] = new(Any, "chat", NoDeniedRoles),
+            [AssistantIntent.SearchStudent] = new(Any, "students", StudentFile),
+            [AssistantIntent.GetStudentSummary] = new(Any, "students", StudentFile),
+            [AssistantIntent.OpenStudentDetail] = new(Any, "students", StudentFile),
+            [AssistantIntent.GetAnnouncements] = new(Any, "notifications", Everyone),
+            [AssistantIntent.GetUnreadMessages] = new(Any, "chat", Everyone),
 
             // Finans her kurumda; öğretmen göremez.
-            [AssistantIntent.GetPaymentSummary] = new(Any, "finance", DenyTeacher),
-            [AssistantIntent.ListStudentsWithDebt] = new(Any, "finance", DenyTeacher),
+            [AssistantIntent.GetPaymentSummary] = new(Any, "finance", PaymentView),
+            [AssistantIntent.ListStudentsWithDebt] = new(Any, "finance", FinanceStaff),
 
             // ─── Yalnız okul/dershane ─────────────────────────────────────────
             // Muhasebe rolü akademik veriye erişemez (KVKK: görev gereği değil).
-            [AssistantIntent.GetAttendance] = new(Academic, "attendance", DenyAccounting),
-            [AssistantIntent.ListAbsentStudents] = new(Academic, "attendance", DenyAccounting),
-            [AssistantIntent.GetExamResults] = new(Academic, "exams", DenyAccounting),
-            [AssistantIntent.GetExamAverage] = new(Academic, "exams", DenyAccounting),
-            [AssistantIntent.GetUpcomingExams] = new(Academic, "exams", DenyAccounting),
-            [AssistantIntent.ListLowScoreStudents] = new(Academic, "exams", DenyAccounting),
-            [AssistantIntent.GetHomework] = new(Academic, "assignments", DenyAccounting),
-            [AssistantIntent.GetSchedule] = new(Academic, "schedule", DenyAccounting),
-            [AssistantIntent.ListClassStudents] = new(Academic, "students", DenyAccounting),
+            [AssistantIntent.GetAttendance] = new(AcademicInstitutions, "attendance", AttendanceView),
+            [AssistantIntent.ListAbsentStudents] = new(AcademicInstitutions, "attendance", StaffLists),
+            [AssistantIntent.GetExamResults] = new(AcademicInstitutions, "exams", Academic),
+            [AssistantIntent.GetExamAverage] = new(AcademicInstitutions, "exams", Academic),
+            [AssistantIntent.GetUpcomingExams] = new(AcademicInstitutions, "exams", Academic),
+            [AssistantIntent.ListLowScoreStudents] = new(AcademicInstitutions, "exams", AcademicLists),
+            [AssistantIntent.GetHomework] = new(AcademicInstitutions, "assignments", Academic),
+            [AssistantIntent.GetSchedule] = new(AcademicInstitutions, "schedule", ScheduleView),
+            [AssistantIntent.ListClassStudents] = new(AcademicInstitutions, "students", StaffLists),
             // Servis (okul taşıtı) sürücü kursunda yok — kursun aracı öğrenci taşımaz.
-            [AssistantIntent.GetTransportStatus] = new(Academic, "service", DenyAccounting),
+            [AssistantIntent.GetTransportStatus] = new(AcademicInstitutions, "service", Operations),
 
             // ─── Yalnız sürücü kursu ──────────────────────────────────────────
-            [AssistantIntent.GetDrivingLessons] = new(Driving, "schedule", DenyAccounting),
-            [AssistantIntent.GetDrivingExamStatus] = new(Driving, "exams", DenyAccounting),
-            [AssistantIntent.GetDrivingProgress] = new(Driving, "students", DenyAccounting),
-            [AssistantIntent.GetDrivingDocuments] = new(Driving, "students", DenyAccounting),
-            [AssistantIntent.GetDrivingAppointments] = new(Driving, "schedule", DenyAccounting),
-            [AssistantIntent.GetDrivingGraduation] = new(Driving, "students", DenyAccounting),
+            [AssistantIntent.GetDrivingLessons] = new(Driving, "schedule", DrivingView),
+            [AssistantIntent.GetDrivingExamStatus] = new(Driving, "exams", DrivingView),
+            [AssistantIntent.GetDrivingProgress] = new(Driving, "students", DrivingView),
+            [AssistantIntent.GetDrivingDocuments] = new(Driving, "students", DrivingView),
+            [AssistantIntent.GetDrivingAppointments] = new(Driving, "schedule", DrivingView),
+            [AssistantIntent.GetDrivingGraduation] = new(Driving, "students", DrivingView),
 
             // ─── Yalnız okul/dershane ─────────────────────────────────────────
-            [AssistantIntent.GetLibraryLoans] = new(Academic, "library", DenyAccounting),
+            [AssistantIntent.GetLibraryLoans] = new(AcademicInstitutions, "library", LibraryView),
 
             // ─── Analitik özetler (yönetici seviyesi, öğrenci hedefi yok) ─────
             // Finans özeti her kurumda, muhasebe de görebilir.
-            [AssistantIntent.GetFinanceOverview] = new(Any, "finance", DenyBelowFinance),
+            [AssistantIntent.GetFinanceOverview] = new(Any, "finance", FinanceStaff),
             // Kurum panosu akademik/kursiyer sayımı içerir; muhasebe kapsam dışı.
-            [AssistantIntent.GetInstitutionSummary] = new(Any, "students", DenyBelowManagement),
+            [AssistantIntent.GetInstitutionSummary] = new(Any, "students", Management),
 
             // ─── Yazma eylemleri ──────────────────────────────────────────────
             // Bildirim gönderme kursiyer/öğrenci dosyasına dokunduğu için
             // "students" modülüne ve öğretmen üstü rollere bağlı.
-            [AssistantIntent.SendDocumentReminder] = new(Driving, "students", DenyAccounting),
-            [AssistantIntent.NotifyParentAboutAbsence] = new(Academic, "attendance", DenyAccounting),
+            [AssistantIntent.SendDocumentReminder] = new(Driving, "students", ParentNotify),
+            [AssistantIntent.NotifyParentAboutAbsence] = new(AcademicInstitutions, "attendance", ParentNotify),
+            // Konu analizi: personelden öğretmen/yönetici, öğrenci kendini, veli çocuğunu görür.
+            [AssistantIntent.GetTopicInsight] = new(AcademicInstitutions, "student-insights", Academic),
         };
 
     /// <summary>
@@ -182,8 +190,8 @@ public static class AssistantIntentCatalog
         _ => "Bu işlem veri değiştirecek.",
     };
 
-    /// <summary>Kataloğa girmemiş bir niyet varsayılan olarak her yerde ve serbesttir.</summary>
-    private static readonly AssistantIntentScope Fallback = new(Any, null, NoDeniedRoles);
+    /// <summary>Kataloğa girmemiş bir niyet hiçbir rol için açık değildir (fail-closed).</summary>
+    private static readonly AssistantIntentScope Fallback = new(Any, null, new HashSet<string>());
 
     public static AssistantIntentScope ScopeOf(AssistantIntent intent) =>
         Scopes.TryGetValue(intent, out var scope) ? scope : Fallback;
@@ -195,9 +203,21 @@ public static class AssistantIntentCatalog
         return scope.InstitutionTypes.Count == 0 || scope.InstitutionTypes.Contains(institutionType);
     }
 
-    /// <summary>Bu rol bu niyeti kullanabilir mi?</summary>
+    /// <summary>Bu portal (rol) bu niyeti kullanabilir mi? Şube müdürü yönetici portalını kullanır.</summary>
     public static bool IsAllowedForRole(AssistantIntent intent, string primaryRole) =>
-        !ScopeOf(intent).DeniedRoles.Contains((primaryRole ?? string.Empty).ToLowerInvariant());
+        ScopeOf(intent).AllowedRoles.Contains(PortalOf(primaryRole));
+
+    /// <summary>Rol adını portal anahtarına çevirir (branchmanager → admin, bilinmeyen → boş).</summary>
+    public static string PortalOf(string? role) => (role ?? string.Empty).Trim().ToLowerInvariant() switch
+    {
+        "admin" or "branchmanager" or "developer" => "admin",
+        "administrative" => "administrative",
+        "teacher" or "counselor" => "teacher",
+        "accounting" => "accounting",
+        "parent" => "parent",
+        "student" => "student",
+        _ => string.Empty,
+    };
 
     public static string? RequiredModule(AssistantIntent intent) => ScopeOf(intent).RequiredModule;
 

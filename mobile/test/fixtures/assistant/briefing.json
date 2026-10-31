@@ -1,0 +1,15 @@
+{
+ "greeting": "Merhaba Hasan Hoca! Bugün için kısa bir özet:",
+ "items": [
+  {
+   "text": "Bugün 1 dersiniz var; ilki 09:20 Geometri.",
+   "tone": "info",
+   "ask": "Bugünkü derslerim"
+  },
+  {
+   "text": "Sınıflarınızda bugün devamsız öğrenci yok.",
+   "tone": "good",
+   "ask": null
+  }
+ ]
+}

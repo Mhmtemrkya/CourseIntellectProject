@@ -1,3 +1,4 @@
+import 'package:student/pages/assistant_page.dart';
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import '../pages/accounting_exports_page.dart';
@@ -59,6 +60,12 @@ class AccountingBottomNav extends StatelessWidget {
           label: 'Dışa Aktar'.tr,
           pageBuilder: (_) => const AccountingExportsPage(),
           sidebarColor: const Color(0xFF14B8A6),
+        ),
+        AdaptiveDestination(
+          icon: Icons.auto_awesome_rounded,
+          label: 'Asistan'.tr,
+          pageBuilder: (_) => const AssistantPage(portal: 'accounting'),
+          sidebarColor: const Color(0xFF4F46E5),
         ),
         AdaptiveDestination(
           icon: Icons.person_outline_rounded,

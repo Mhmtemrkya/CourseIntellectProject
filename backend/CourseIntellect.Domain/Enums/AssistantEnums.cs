@@ -52,7 +52,17 @@ public enum AssistantIntent
     /// <summary>Bu ayki tahsilat ve açık borç toplamı.</summary>
     GetFinanceOverview,
     /// <summary>Kuruma özel sayım panosu (aktif/mezun/evrak bekleyen ya da öğrenci/devamsız).</summary>
-    GetInstitutionSummary
+    GetInstitutionSummary,
+
+    // ─── Faz 6: sohbet ve yönlendirme (değerler sona eklenir; DB'de sayı olarak saklanır) ───
+    /// <summary>Teşekkür, vedalaşma.</summary>
+    Thanks,
+    /// <summary>"Sen kimsin", "nasılsın", "neler yapabilirsin", "sistemi tanıt".</summary>
+    SmallTalk,
+    /// <summary>"... nasıl yapılır / nerede" — yardım kataloğundan portal içi makale.</summary>
+    HowTo,
+    /// <summary>Öğrencinin zayıf konuları ve sabit öneriler (konu analizi).</summary>
+    GetTopicInsight
 }
 
 public enum AssistantSenderType { User = 1, Assistant = 2, System = 3 }

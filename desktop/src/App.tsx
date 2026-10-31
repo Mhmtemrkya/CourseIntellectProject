@@ -39,6 +39,8 @@ const ClubsTeacherPage = lazyWithReload(() => import("./pages/clubs/ClubsPages")
 const ClubsStudentPage = lazyWithReload(() => import("./pages/clubs/ClubsPages").then((m) => ({ default: m.ClubsStudentPage })));
 const ClubsParentPage = lazyWithReload(() => import("./pages/clubs/ClubsPages").then((m) => ({ default: m.ClubsParentPage })));
 const PreferenceRobotPage = lazyWithReload(() => import("./pages/preference/PreferenceRobotPage"));
+const StudentInsightsPage = lazyWithReload(() => import("./pages/insights/StudentInsightsPage"));
+const OpticalExamsPage = lazyWithReload(() => import("./pages/optical/OpticalExamsPage"));
 const VisitorsPage = lazyWithReload(() => import("./pages/visitors/VisitorsPage"));
 // Tablet imza istasyonu: uygulama kabuğunun DIŞINDA, tam ekran çalışır (kiosk).
 const ConsentStation = lazyWithReload(() => import("./pages/ConsentStation"));
@@ -162,6 +164,7 @@ import Destek from "./pages/admin/Destek";
 import AdminPersonnelApprovals from "./pages/admin/AdminPersonnelApprovals";
 import AdminStaffHr from "./pages/admin/AdminStaffHr";
 import AdminAuditLog from "./pages/admin/AdminAuditLog";
+import AssistantQuestions from "./pages/admin/AssistantQuestions";
 import AdminDataBackup from "./pages/admin/AdminDataBackup";
 import AdminOrgUnits from "./pages/admin/AdminOrgUnits";
 import AdminRbacMatrix from "./pages/admin/AdminRbacMatrix";
@@ -333,6 +336,7 @@ function App() {
               <Route path="/admin/personnel-approvals" element={<AdminOnlyRoute><AdminPersonnelApprovals /></AdminOnlyRoute>} />
               <Route path="/admin/staff-hr" element={<AdminStaffHr />} />
               <Route path="/admin/audit-log" element={<AdminOnlyRoute><AdminAuditLog /></AdminOnlyRoute>} />
+              <Route path="/admin/assistant-questions" element={<AdminOnlyRoute><AssistantQuestions /></AdminOnlyRoute>} />
               <Route path="/admin/data-backup" element={<AdminOnlyRoute><AdminDataBackup /></AdminOnlyRoute>} />
               <Route path="/admin/org-units" element={<AdminOrgUnits />} />
               <Route path="/admin/rbac" element={<AdminOnlyRoute><AdminRbacMatrix /></AdminOnlyRoute>} />
@@ -418,6 +422,12 @@ function App() {
               <Route path="/p/clubs" element={<ClubsParentPage />} />
               <Route path="/visitors" element={<VisitorsPage />} />
               <Route path="/preference-robot" element={<PreferenceRobotPage />} />
+              <Route path="/insights" element={<StudentInsightsPage />} />
+              <Route path="/optical-exams" element={<OpticalExamsPage />} />
+              <Route path="/t/optical-exams" element={<OpticalExamsPage />} />
+              <Route path="/g/optical-exams" element={<OpticalExamsPage />} />
+              <Route path="/t/insights" element={<StudentInsightsPage />} />
+              <Route path="/g/insights" element={<StudentInsightsPage />} />
               <Route path="/t/preference-robot" element={<PreferenceRobotPage />} />
               <Route path="/g/preference-robot" element={<PreferenceRobotPage />} />
               <Route path="/p/preference-robot" element={<PreferenceRobotPage />} />

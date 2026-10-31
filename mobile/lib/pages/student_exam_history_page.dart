@@ -1,3 +1,4 @@
+import 'package:student/widgets/topic_recommendations_card.dart';
 import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
 
@@ -7,15 +8,20 @@ import '../services/exam_results_store.dart';
 import '../services/school_feed_api_service.dart';
 import 'student_exam_group_detail_page.dart';
 import '../widgets/responsive_layout.dart';
+import '../services/assistant_focus.dart';
 
 class StudentExamHistoryPage extends StatefulWidget {
   final String studentName;
   final String title;
 
+  /// Personel görünümünde konu önerileri için öğrenci kimliği (öğrenci/veli için gerekmez).
+  final String? studentUserId;
+
   const StudentExamHistoryPage({
     super.key,
     required this.studentName,
     required this.title,
+    this.studentUserId,
   });
 
   @override
@@ -30,6 +36,8 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
   @override
   void initState() {
     super.initState();
+    // Asistan bu öğrenciyi "son bakılan öğrenci" olarak bilsin (öğrencinin kendi ekranında sunucu yok sayar).
+    AssistantFocus.set(id: widget.studentUserId, name: widget.studentName);
     _loadRecords();
   }
 
@@ -70,6 +78,7 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
                   children: [
                     _heroCard(average, records.length),
                     const SizedBox(height: 16),
+                    TopicRecommendationsCard(studentUserId: widget.studentUserId, studentName: widget.studentName),
                     ResponsiveLayout.isTablet(context)
                         ? Row(
                             children: [

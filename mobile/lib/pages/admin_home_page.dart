@@ -1,3 +1,4 @@
+import 'package:student/pages/student_insights_page.dart';
 import 'package:student/pages/preference_robot_page.dart';
 import 'package:student/widgets/card_system.dart';
 import 'package:flutter/material.dart';
@@ -1227,6 +1228,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
       const Color(0xFFE11D48),
       Icons.flag_rounded,
       () => const ClubsPage(audience: ClubsAudience.admin),
+    ),
+    _QuickLink(
+      'Konu Analizi'.tr,
+      'Hangi öğrenci hangi konuda zorlanıyor'.tr,
+      const Color(0xFF0891B2),
+      Icons.insights_rounded,
+      () => const StudentInsightsPage(),
     ),
     _QuickLink(
       'Tercih Robotu'.tr,

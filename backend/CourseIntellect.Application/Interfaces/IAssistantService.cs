@@ -15,10 +15,13 @@ public interface IAssistantIntentResolver
 public interface IAssistantService
 {
     Task<AssistantConversationDto> CreateConversationAsync(AssistantRequestContext context, string? title, CancellationToken cancellationToken);
-    Task<IReadOnlyList<AssistantConversationDto>> GetConversationsAsync(AssistantRequestContext context, CancellationToken cancellationToken);
+    Task<IReadOnlyList<AssistantConversationDto>> GetConversationsAsync(AssistantRequestContext context, string? portal, CancellationToken cancellationToken);
     Task<IReadOnlyList<AssistantMessageDto>?> GetMessagesAsync(AssistantRequestContext context, Guid conversationId, CancellationToken cancellationToken);
     Task<bool> DeleteConversationAsync(AssistantRequestContext context, Guid conversationId, CancellationToken cancellationToken);
     Task<IReadOnlyList<AssistantSuggestionDto>> GetSuggestionsAsync(AssistantRequestContext context, CancellationToken cancellationToken);
     Task<AssistantResponseDto> SendAsync(AssistantRequestContext context, SendAssistantMessageRequest request, CancellationToken cancellationToken);
     Task<AssistantResponseDto> ExecuteActionAsync(AssistantRequestContext context, AssistantActionRequest request, CancellationToken cancellationToken);
+    Task<AssistantBriefingDto> GetBriefingAsync(AssistantRequestContext context, CancellationToken cancellationToken);
+    Task<bool> SetFeedbackAsync(AssistantRequestContext context, Guid messageId, bool helpful, CancellationToken cancellationToken);
+    Task<IReadOnlyList<AssistantUnansweredDto>> GetUnansweredAsync(AssistantRequestContext context, int days, CancellationToken cancellationToken);
 }

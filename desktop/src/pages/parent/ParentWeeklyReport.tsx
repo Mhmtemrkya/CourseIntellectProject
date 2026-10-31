@@ -1,3 +1,6 @@
+import { TopicRecommendations } from '../../components/insights/TopicRecommendations';
+import { fetchChildrenInsights } from '../../lib/api/modules';
+import type { StudentInsightDto } from '../../types/api/generated';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Download, Eye, FileText, Sparkles, TrendingUp } from 'lucide-react';
@@ -57,6 +60,10 @@ export default function ParentWeeklyReport() {
   const [data, setData] = useState<ParentDashboardData | null>(null);
   const [teacherReports, setTeacherReports] = useState<TeacherWeeklyReport[]>([]);
   const [selectedTeacherReport, setSelectedTeacherReport] = useState<TeacherWeeklyReport | null>(null);
+  const [childInsights, setChildInsights] = useState<StudentInsightDto[]>([]);
+  useEffect(() => {
+    fetchChildrenInsights().then((list) => setChildInsights(list ?? [])).catch(() => setChildInsights([]));
+  }, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -134,6 +141,10 @@ export default function ParentWeeklyReport() {
       </div>
 
       {error ? <ErrorBanner title="Haftalık rapor alınamadı" message={error} onRetry={loadReport} /> : null}
+
+      {childInsights.map((child) => (
+        <TopicRecommendations key={child.studentUserId} data={child} title="Çalışması gereken konular" who={child.fullName} />
+      ))}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="lg:col-span-2 overflow-hidden border-slate-200/70">

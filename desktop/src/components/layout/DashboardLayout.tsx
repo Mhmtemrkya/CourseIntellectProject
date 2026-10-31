@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { checkIsServiceDriver } from '../../lib/driverGuard';
 import { EntitlementGuard } from '../EntitlementGuard';
 import { PremiumSidebar } from './PremiumSidebar';
+import { AssistantPanel } from '../assistant/AssistantPanel';
 import { SectionHubTabs } from './SectionHub';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
@@ -130,6 +131,9 @@ export function DashboardLayout() {
           </AnimatePresence>
         </main>
       </motion.div>
+
+      {/* SchoolAsist Asistan (portal ile body'ye çizilir; .app-shell konum tuzağına takılmaz) */}
+      <AssistantPanel />
 
       {/* Right Drawer */}
       <Sheet open={drawerOpen} onOpenChange={closeDrawer}>

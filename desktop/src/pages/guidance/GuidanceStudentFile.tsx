@@ -42,6 +42,7 @@ import {
 import { errorMessage, isRecord } from '../../lib/errors';
 import type { GuidanceStudentFile as StudentFileData } from '../../lib/api/guidance';
 import type { GuidanceSessionRecord } from '../../types/api/generated';
+import { useAssistantFocus } from '../../lib/assistantFocus';
 
 type AttendanceEntry = StudentFileData['attendance'][number];
 
@@ -183,6 +184,7 @@ export default function GuidanceStudentFile() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const decodedName = decodeURIComponent(studentName || '');
+  useAssistantFocus(decodedName ? { name: decodedName } : null);
 
   const [file, setFile] = useState<StudentFileData | null>(null);
   const [loading, setLoading] = useState(true);

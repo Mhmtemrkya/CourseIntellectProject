@@ -256,6 +256,7 @@ public sealed class ReportsController(
             return new
             {
                 id = student.Id,
+                userId = student.UserId,
                 fullName = student.FullName,
                 username = users.TryGetValue(student.UserId, out var user) ? user.Username : string.Empty,
                 className = student.ClassName,

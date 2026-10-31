@@ -1,3 +1,4 @@
+import { TopicRecommendations } from '../../components/insights/TopicRecommendations';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import jsPDF from 'jspdf';
@@ -20,6 +21,7 @@ import { errorMessage } from '../../lib/errors';
 import type { ReportStudentRow, TeacherClassReport, TeacherReportAnalytics } from '../../lib/api/reports';
 import type { TeacherExamPaperReportResponse } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { useAssistantFocus } from '../../lib/assistantFocus';
 
 /** Rapor kartı / önizleme modeli: canlı öğrenci raporu ya da sunucudaki sınav kağıdı. */
 interface ReportItem {
@@ -710,6 +712,12 @@ function StudentDetailModal({
             ))}
           </div>
 
+          {tab === 'overview' && student.userId ? (
+            <div className="mt-5">
+              <TopicRecommendations studentUserId={student.userId} detailHref="/t/insights" />
+            </div>
+          ) : null}
+
           {tab === 'overview' ? (
             <div className="mt-5 grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
               <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.055] p-6">
@@ -924,6 +932,7 @@ export default function TeacherPdfReportCenter() {
   const [loadError, setLoadError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [selectedStudentDetail, setSelectedStudentDetail] = useState<ReportStudentRow | null>(null);
+  useAssistantFocus(selectedStudentDetail ? { id: selectedStudentDetail.userId ?? selectedStudentDetail.id, name: selectedStudentDetail.fullName } : null);
   const [activeType, setActiveType] = useState('Tümü');
   const [subject, setSubject] = useState('Tüm Dersler');
   const [dateFilter, setDateFilter] = useState('Tüm Tarihler');

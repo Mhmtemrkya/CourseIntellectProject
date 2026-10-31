@@ -44,6 +44,8 @@ public static class SchoolModuleCatalog
         new("subject-groups", "Zümreler", "Öğrenci ve Akademik", true),
         new("clubs", "Kulüpler", "Öğrenci ve Akademik", true),
         new("preference-robot", "Tercih Robotu", "Öğrenci ve Akademik", true),
+        new("student-insights", "Öğrenci Konu Analizi", "Öğrenci ve Akademik", true),
+        new("optical-exams", "Optik Denemeler", "Öğrenci ve Akademik", true),
 
         // ── Kurum operasyonu ─────────────────────────────────────────────────
         new("registrations", "Kayıt İşlemleri", "Kurum Operasyonu", true),

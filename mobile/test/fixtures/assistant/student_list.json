@@ -1,0 +1,85 @@
+{
+ "conversationId": "48e03152-c438-427c-84fe-ddbbf4b60d83",
+ "messageId": "60f862e1-e608-4d65-a371-f8da96ccbac2",
+ "type": "student_list",
+ "text": "Bu sınıfta 12 öğrenci var. Birini seçerseniz ayrıntılarına bakabiliriz.",
+ "data": {
+  "items": [
+   {
+    "studentId": "34a61388-08cb-45b6-a1d4-1cd73c980e64",
+    "fullName": "Ali YİLMAZ",
+    "className": "10-A",
+    "studentNumberMasked": "24**"
+   },
+   {
+    "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9",
+    "fullName": "Ayşe Demir",
+    "className": "10-A",
+    "studentNumberMasked": "-"
+   },
+   {
+    "studentId": "ab2af5a3-d3b8-4c32-bcea-9de6d386f3e4",
+    "fullName": "Burak Öztürk",
+    "className": "10-A",
+    "studentNumberMasked": "-"
+   },
+   {
+    "studentId": "834eb02e-276b-40f3-aa4e-486975052307",
+    "fullName": "Can Arslan",
+    "className": "10-A",
+    "studentNumberMasked": "-"
+   },
+   {
+    "studentId": "cfd2843c-6291-4aa4-8c5b-6f2bea75d040",
+    "fullName": "Defne Yıldız",
+    "className": "10-A",
+    "studentNumberMasked": "-"
+   },
+   {
+    "studentId": "dd8216de-236a-4936-ad87-936497a47e41",
+    "fullName": "Elif Şahin",
+    "className": "10-A",
+    "studentNumberMasked": "-"
+   },
+   {
+    "studentId": "13e6c7f0-321a-4014-b8de-383ccecc5412",
+    "fullName": "Emre Koç",
+    "className": "10-A",
+    "studentNumberMasked": "-"
+   },
+   {
+    "studentId": "dda77f6b-4777-4b40-b5e0-a359a94c9e10",
+    "fullName": "Kerem Polat",
+    "className": "10-A",
+    "studentNumberMasked": "-"
+   },
+   {
+    "studentId": "5803656c-aeed-4bc9-98a1-3df06b8dfbae",
+    "fullName": "Mehmet Kaya",
+    "className": "10-A",
+    "studentNumberMasked": "-"
+   },
+   {
+    "studentId": "4fc17cb8-36ec-491c-b8fd-e328e3241ae2",
+    "fullName": "Nehir Acar",
+    "className": "10-A",
+    "studentNumberMasked": "-"
+   },
+   {
+    "studentId": "0a26f5b5-1105-4c8b-b48f-f3f0869e9af5",
+    "fullName": "Selin Aydın",
+    "className": "10-A",
+    "studentNumberMasked": "-"
+   },
+   {
+    "studentId": "5c6204e7-8fd9-4179-96c3-57f55dfdd6e3",
+    "fullName": "Zeynep Çelik",
+    "className": "10-A",
+    "studentNumberMasked": "-"
+   }
+  ]
+ },
+ "actions": [],
+ "suggestions": [],
+ "intent": 15
+}

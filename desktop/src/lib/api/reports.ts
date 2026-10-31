@@ -6,6 +6,8 @@ import type { TeacherWeeklyReportCreateRequest } from '../../types/api/generated
 /** GET /api/reports/students satırı (ReportsController.GetStudents). */
 export interface ReportStudentRow {
   id: string;
+  /** Kullanıcı kimliği (konu analizi için); eski sunucularda gelmeyebilir. */
+  userId?: string;
   fullName: string;
   username: string;
   className: string;

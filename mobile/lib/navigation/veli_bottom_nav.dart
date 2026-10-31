@@ -1,3 +1,4 @@
+import 'package:student/pages/assistant_page.dart';
 import 'package:student/pages/preference_robot_page.dart';
 import 'package:flutter/material.dart';
 import 'package:student/pages/clubs_page.dart';
@@ -73,6 +74,12 @@ class VeliBottomNav extends StatelessWidget {
           label: 'Mesajlar',
           pageBuilder: (_) => const VeliMesajlarPage(),
           sidebarColor: const Color(0xFF2563EB),
+        ),
+        AdaptiveDestination(
+          icon: Icons.auto_awesome_rounded,
+          label: 'Asistan'.tr,
+          pageBuilder: (_) => const AssistantPage(portal: 'parent'),
+          sidebarColor: const Color(0xFF4F46E5),
         ),
         AdaptiveDestination(
           icon: Icons.person_rounded,

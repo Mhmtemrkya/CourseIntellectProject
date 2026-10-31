@@ -136,6 +136,10 @@ public static class DependencyInjection
         services.AddScoped<IClubService, ClubService>();
         services.AddScoped<IVisitorService, VisitorService>();
         services.AddScoped<IPreferenceRobotService, PreferenceRobotService>();
+        // Öğrenci konu analizi; öneri notu modeli varsayılan KAPALI (Insights:Llm:Enabled).
+        services.AddHttpClient<IInsightTextGenerator, OllamaInsightTextGenerator>();
+        services.AddScoped<IStudentInsightService, StudentInsightService>();
+        services.AddScoped<IOpticalExamService, OpticalExamService>();
         services.AddScoped<IOverdueRuleReminderService, OverdueRuleReminderService>();
         services.AddScoped<IFinanceJournalExportService, FinanceJournalExportService>();
         // Kural motoru her zaman kayıtlı: hem kendi başına hem hibrit'in temeli.

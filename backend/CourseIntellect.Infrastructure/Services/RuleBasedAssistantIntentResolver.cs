@@ -17,10 +17,12 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
     public ParsedAssistantQuery Resolve(string message)
     {
         var normalized = Normalize(message);
-        var searchable = RemoveDiacritics(normalized);
+        var searchable = ExpandEnglish(RemoveDiacritics(normalized));
         var number = NumberRegex().Match(searchable);
         string? tc = null;
         string? studentNumber = null;
+        // "50 puanın altında" gibi eşik sayıları öğrenci numarası sayılmaz.
+        if (number.Success && ScoreRegex().IsMatch(searchable)) number = Match.Empty;
         if (number.Success)
         {
             if (number.Value.Length == 11) tc = number.Value;
@@ -48,12 +50,42 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
             && digits.Take(10).Sum() % 10 == digits[10];
     }
 
+    /// <summary>Küçük harf + Türkçe harf katlama (ı→i, ş→s…); eşleştirme anahtarı.</summary>
+    public static string Fold(string value) => RemoveDiacritics(Normalize(value));
+
+    /// <summary>
+    /// İngilizce arayüzde yazılan soruları anlamak için İngilizce ifadelerin Türkçe anahtar
+    /// karşılıkları metne eklenir (kural motoru Türkçe anahtarlarla çalışır).
+    /// </summary>
+    private static readonly (string English, string Turkish)[] EnglishKeywords =
+    [
+        ("who are you", "sen kimsin"), ("what can you do", "neler yapabilir"), ("how are you", "nasilsin"),
+        ("how do i", "nasil "), ("how to", "nasil "), ("how can i", "nasil "), ("where is", "nerede bulur"),
+        ("thank", "tesekkur"), ("bye", "gorusuruz"), ("hello", "merhaba"), (" hi ", "merhaba"), (" hey ", "merhaba"), ("good evening", "iyi aksamlar"), ("good morning", "gunaydin"),
+        ("absent today", "bugun devamsiz olanlar"), ("attendance", "devamsiz"), ("absent", "devamsiz"),
+        ("weak", "zayif"), ("topics", "hangi konu"), ("should i study", "calismaliyim"),
+        ("exam", "sinav"), ("grade", "not"), ("result", "sonuc"), ("average", "ortalama"),
+        ("homework", "odev"), ("assignment", "odev"), ("timetable", "ders program"), ("schedule", "ders program"), ("lessons", "derslerim"),
+        ("announcement", "duyuru"), ("message", "mesaj"), ("bus", "servis"), ("payment", "odeme"), ("debt", "borc"),
+        ("collection", "tahsilat"), ("revenue", "tahsilat"), ("summary", "kurum ozet"), ("library", "kitap"), ("book", "kitap"),
+        ("below", "altinda"), ("class", "sinif"), ("students", "ogrenciler"), ("who", "kimler"), ("list", "listele"), ("today", "bugun"),
+    ];
+
+    private static string ExpandEnglish(string text)
+    {
+        // Kısa kelimeler ("hi") başka kelimenin içinde ("this") eşleşmesin diye kenarlar boşlukla doldurulur.
+        var padded = $" {text.TrimEnd('!', '?', '.', ',')} ";
+        var extra = EnglishKeywords.Where(pair => padded.Contains(pair.English, StringComparison.Ordinal)).Select(pair => pair.Turkish).ToList();
+        return extra.Count == 0 ? text : text + " " + string.Join(' ', extra);
+    }
+
     public static string Normalize(string value) => MultiSpaceRegex().Replace((value ?? string.Empty).Trim().ToLower(new CultureInfo("tr-TR")), " ");
 
     private static AssistantIntent ResolveIntent(string text, string? tc, string? studentNumber, int? grade)
     {
-        if (ContainsAny(text, "merhaba", "selam", "gunaydin", "iyi aksamlar")) return AssistantIntent.Greeting;
-        if (ContainsAny(text, "yardim", "neler yapabilirsin", "komutlar")) return AssistantIntent.Help;
+        // Sıra önemlidir: "Merhaba, Ali'nin notları" bir veri sorusudur, selam değil.
+        // Önce yazma eylemleri, sonra "nasıl yapılır", sonra veri soruları, en son sohbet.
+
         // Yazma eylemleri EN ÖNDE: "evrak hatırlatması gönder" cümlesi aksi hâlde
         // "evrak" kuralına takılıp sorguya dönerdi. Bu niyetler doğrudan
         // çalıştırılmaz; servis katmanı önce onay kartı üretir.
@@ -61,6 +93,24 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
             return AssistantIntent.SendDocumentReminder;
         if (ContainsAny(text, "veliye bildir", "veliyi bilgilendir", "veliye haber", "veliye mesaj"))
             return AssistantIntent.NotifyParentAboutAbsence;
+
+        // Sohbet kalıpları "nasıl" içerdiği için yardım sorusundan önce ayıklanır.
+        if (ContainsAny(text, "nasilsin", "naber", "ne haber", "iyi misin")) return AssistantIntent.SmallTalk;
+        if (ContainsAny(text, "neler yapabilir", "ne yapabilir", "sen kimsin", "kimsin", "kendini tanit", "sistemi tanit", "sistemi anlat", "bu sistem ne"))
+            return AssistantIntent.SmallTalk;
+
+        // "... nasıl yapılır / nerede / ne işe yarar": portal içi yardım makalesi.
+        // Cümle "nasıl" ile BİTİYORSA ("kızımın devamsızlığı nasıl") bu bir durum
+        // sorusudur, yardım değil; veri kurallarına bırakılır.
+        var statusQuestion = text.TrimEnd('?', '.', '!', ' ').EndsWith("nasil", StringComparison.Ordinal);
+        if (!statusQuestion && ContainsAny(text, "nasil ", "ne ise yarar", "nedir", "nereden ", "nerede bulur", "nereye ", "yardim et", "ogret"))
+            return AssistantIntent.HowTo;
+        if (text.TrimEnd('?', '.', '!', ' ').EndsWith("nerede", StringComparison.Ordinal) && !ContainsAny(text, "servis", "arac"))
+            return AssistantIntent.HowTo;
+
+        // Konu analizi: zayıf konular ve çalışma önerisi.
+        if (ContainsAny(text, "zayif", "hangi konu", "konulara", "konularda", "konularim", "calismaliyim", "calismam gereken", "eksik konu", "eksiklerim", "konu analiz", "neye calis"))
+            return AssistantIntent.GetTopicInsight;
 
         // Analitik özetler: tek öğrenciye değil kuruma bakan sorular. "kaç",
         // "toplam", "özet", "genel" gibi niceleyiciler bunları ayırır. Finans
@@ -87,17 +137,29 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
         if (ContainsAny(text, "kurs ilerleme", "ders hakk", "kalan dakika", "surus ilerleme")) return AssistantIntent.GetDrivingProgress;
         if (ContainsAny(text, "direksiyon sinav", "e-sinav", "sinav durum")) return AssistantIntent.GetDrivingExamStatus;
         if (ContainsAny(text, "direksiyon ders", "surus ders")) return AssistantIntent.GetDrivingLessons;
-        if (ContainsAny(text, "devamsiz", "yoklama", "gec kal")) return text.Contains("bugun") && !ContainsAny(text, "devamsizligim", "cocugum") ? AssistantIntent.ListAbsentStudents : AssistantIntent.GetAttendance;
+        if (ContainsAny(text, "devamsiz", "yoklama", "gec kal", "kac gun yok", "okula gelmedi", "gelmeyen"))
+            return ContainsAny(text, "bugun", "gelmeyen") && ContainsAny(text, "olanlar", "kimler", "listele", "gelmeyen", "ogrenciler") && !ContainsAny(text, "devamsizligim", "cocugum")
+                ? AssistantIntent.ListAbsentStudents
+                : AssistantIntent.GetAttendance;
         if (ContainsAny(text, "odev")) return AssistantIntent.GetHomework;
-        if (ContainsAny(text, "ders program", "bugunku ders", "yarinki ders", "haftalik program")) return AssistantIntent.GetSchedule;
+        if (ContainsAny(text, "ders program", "bugunku ders", "yarinki ders", "haftalik program", "derslerim", "dersim", "programim", "hangi ders", "ders var", "dersleri ne"))
+            return AssistantIntent.GetSchedule;
         if (ContainsAny(text, "duyuru")) return AssistantIntent.GetAnnouncements;
         if (ContainsAny(text, "mesaj")) return AssistantIntent.GetUnreadMessages;
         if (ContainsAny(text, "servis", "durak", "arac nerede", "bindi", "binmedi")) return AssistantIntent.GetTransportStatus;
-        if (ContainsAny(text, "borc", "odeme", "taksit", "tahsilat")) return ContainsAny(text, "ogrenciler", "olanlar", "listele") ? AssistantIntent.ListStudentsWithDebt : AssistantIntent.GetPaymentSummary;
+        if (ContainsAny(text, "borc", "odeme", "taksit", "tahsilat", "aidat", "ucret")) return ContainsAny(text, "ogrenciler", "olanlar", "listele", "kimler") ? AssistantIntent.ListStudentsWithDebt : AssistantIntent.GetPaymentSummary;
+        // "50 puanın altındakiler": sınav kelimesi geçmese de puan eşiği listesidir (sayı öğrenci no değildir).
+        if (ContainsAny(text, "puan") && ContainsAny(text, "altinda")) return AssistantIntent.ListLowScoreStudents;
         if (ContainsAny(text, "ortalama")) return AssistantIntent.GetExamAverage;
-        if (ContainsAny(text, "sinav", "not", "sonuc")) return text.Contains("altinda") ? AssistantIntent.ListLowScoreStudents : AssistantIntent.GetExamResults;
-        if (grade.HasValue && ContainsAny(text, "sinif", "ogrenciler", "listele")) return AssistantIntent.ListClassStudents;
-        if (tc is not null || studentNumber is not null || grade.HasValue || ContainsAny(text, "ogrenci", "kursiyer", "bul", "getir", "ara")) return AssistantIntent.SearchStudent;
+        if (ContainsAny(text, "sinav", "not", "sonuc", "karne", "deneme")) return text.Contains("altinda") ? AssistantIntent.ListLowScoreStudents : AssistantIntent.GetExamResults;
+        if (grade.HasValue && ContainsAny(text, "sinif", "ogrenciler", "listele", "kimler")) return AssistantIntent.ListClassStudents;
+        if (tc is not null || studentNumber is not null || grade.HasValue || ContainsAny(text, "ogrenci", "kursiyer", "bul", "getir", "ara ", "kimdir")) return AssistantIntent.SearchStudent;
+
+        // Sohbet: selam, teşekkür, yardım (veri sorusu yoksa).
+        if (ContainsAny(text, "tesekkur", "sag ol", "sagol", "eyvallah", "gorusuruz", "hosca kal", "iyi calismalar", "kolay gelsin")) return AssistantIntent.Thanks;
+        if (ContainsAny(text, "merhaba", "selam", "gunaydin", "iyi aksamlar", "iyi gunler", "mrb", "slm", "hey")) return AssistantIntent.Greeting;
+        if (ContainsAny(text, "yardim", "komutlar", "ne sorabilirim")) return AssistantIntent.Help;
+        // Yalnız bir ad yazılmışsa servis kişinin yetki kapsamındaki öğrencilerde arar.
         return AssistantIntent.Unknown;
     }
 

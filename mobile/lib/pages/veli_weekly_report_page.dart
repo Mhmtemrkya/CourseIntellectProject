@@ -1,3 +1,4 @@
+import 'package:student/widgets/topic_recommendations_card.dart';
 import 'package:student/widgets/card_system.dart';
 import 'dart:io';
 
@@ -127,6 +128,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
               else ...[
                 _heroCard(context),
                 const SizedBox(height: 16),
+                const TopicRecommendationsCard(title: 'Çalışması gereken konular'),
                 _actionsCard(context),
                 const SizedBox(height: 16),
                 _summaryGrid(context),

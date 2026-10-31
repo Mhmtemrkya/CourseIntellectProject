@@ -55,6 +55,7 @@ import { formatCurrency, parseFinanceMoney } from '../lib/financeDocuments';
 import { downloadSchoolAsistReportPdf } from '../lib/schoolAsistReportPdf';
 import { useToast } from '../hooks/use-toast';
 import { formatDate as formatShortDate, formatMoney } from '../lib/format';
+import { TopicRecommendations } from '../components/insights/TopicRecommendations';
 import { errorMessage, isRecord } from '../lib/errors';
 import type { AdminDashboardData } from '../lib/api/dashboardData';
 import type { AccountingDashboard } from '../lib/api/accounting';
@@ -62,6 +63,7 @@ import type {
   AttendanceEntryDto, ExamResultDto, StaffSummaryDto, StudentSummaryDto, UpdateStudentRequest,
 } from '../types/api/generated';
 import type { IconComponent } from '../types/ui';
+import { useAssistantFocus } from '../lib/assistantFocus';
 
 interface ReportType {
   id: 'performance' | 'students' | 'teachers';
@@ -338,6 +340,8 @@ function AdministrativeReportOverview() {
     averageScore: filteredExams.length ? Math.round(filteredExams.reduce((sum, item) => sum + Number(item.score || 0), 0) / filteredExams.length) : 0,
     activeExams: filteredExams.length,
   }), [filteredStudents, dashboardData, filteredExams]);
+
+  useAssistantFocus(selectedStudent ? { id: selectedStudent.id, name: selectedStudent.name } : null);
 
   const selectedStudentDetail = useMemo(() => {
     if (!selectedStudent) return null;
@@ -945,6 +949,8 @@ function AdministrativeReportOverview() {
                   </div>
                 </CardContent>
               </Card>
+
+              <TopicRecommendations studentUserId={selectedStudentDetail.student.userId} detailHref="/insights" />
 
               {selectedStudentDetail.remainingBalance > 0 ? (
                 <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">

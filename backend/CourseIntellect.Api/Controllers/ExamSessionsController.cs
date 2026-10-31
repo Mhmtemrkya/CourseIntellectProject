@@ -269,6 +269,19 @@ public sealed class ExamSessionsController(
                 }, cancellationToken);
             }
 
+            // Boş bırakılan sorular yalnız konu analizi için ayrı tutulur (başarı oranı ve boş bırakma teşhisi).
+            var completedAt = session.CompletedAtUtc ?? DateTime.UtcNow;
+            foreach (var question in session.Questions.Where(item => item.QuestionBankItemId.HasValue && item.Answer is null))
+            {
+                await dbContext.ExamBlankAnswers.AddAsync(new ExamBlankAnswer
+                {
+                    QuestionId = question.QuestionBankItemId!.Value,
+                    StudentUsername = session.StudentUsername,
+                    ExamSessionId = session.Id,
+                    CompletedAtUtc = completedAt,
+                }, cancellationToken);
+            }
+
             await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, sessions, session.StudentUsername, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
 

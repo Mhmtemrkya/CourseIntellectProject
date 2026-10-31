@@ -1,0 +1,58 @@
+{
+ "conversationId": "48e03152-c438-427c-84fe-ddbbf4b60d83",
+ "messageId": "c66c876d-ef37-4469-853d-39bb1bd45807",
+ "type": "student_summary",
+ "text": "Ayşe Demir — 10-A. Devamsızlık, sınav sonuçları ya da zayıf konular gibi neye bakayım?",
+ "data": {
+  "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9",
+  "fullName": "Ayşe Demir",
+  "className": "10-A",
+  "studentNumberMasked": "-",
+  "photoUrl": "",
+  "institutionMode": "school"
+ },
+ "actions": [
+  {
+   "type": "send_command",
+   "label": "Devamsızlık",
+   "route": null,
+   "command": "get_attendance",
+   "parameters": {
+    "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9"
+   }
+  },
+  {
+   "type": "send_command",
+   "label": "Sınav sonuçları",
+   "route": null,
+   "command": "get_exam_results",
+   "parameters": {
+    "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9"
+   }
+  },
+  {
+   "type": "send_command",
+   "label": "Zayıf konular",
+   "route": null,
+   "command": "get_topics",
+   "parameters": {
+    "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9"
+   }
+  },
+  {
+   "type": "send_command",
+   "label": "Bekleyen ödevler",
+   "route": null,
+   "command": "get_homework",
+   "parameters": {
+    "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9"
+   }
+  }
+ ],
+ "suggestions": [
+  "Devamsızlığı",
+  "Sınav sonuçları",
+  "Zayıf olduğu konular"
+ ],
+ "intent": 4
+}

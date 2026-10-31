@@ -1,0 +1,216 @@
+[
+ {
+  "id": "4eb1af36-28aa-4b91-98f3-c551083272d4",
+  "sender": "user",
+  "type": "text",
+  "text": "10-A sınıfındaki öğrenciler",
+  "intent": 0,
+  "data": null,
+  "createdAtUtc": "2026-10-31T22:48:30.070385Z",
+  "actions": [],
+  "suggestions": [],
+  "feedback": null
+ },
+ {
+  "id": "60f862e1-e608-4d65-a371-f8da96ccbac2",
+  "sender": "assistant",
+  "type": "student_list",
+  "text": "Bu sınıfta 12 öğrenci var. Birini seçerseniz ayrıntılarına bakabiliriz.",
+  "intent": 15,
+  "data": {
+   "items": [
+    {
+     "fullName": "Ali YİLMAZ",
+     "className": "10-A",
+     "studentId": "34a61388-08cb-45b6-a1d4-1cd73c980e64",
+     "studentNumberMasked": "24**"
+    },
+    {
+     "fullName": "Ayşe Demir",
+     "className": "10-A",
+     "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9",
+     "studentNumberMasked": "-"
+    },
+    {
+     "fullName": "Burak Öztürk",
+     "className": "10-A",
+     "studentId": "ab2af5a3-d3b8-4c32-bcea-9de6d386f3e4",
+     "studentNumberMasked": "-"
+    },
+    {
+     "fullName": "Can Arslan",
+     "className": "10-A",
+     "studentId": "834eb02e-276b-40f3-aa4e-486975052307",
+     "studentNumberMasked": "-"
+    },
+    {
+     "fullName": "Defne Yıldız",
+     "className": "10-A",
+     "studentId": "cfd2843c-6291-4aa4-8c5b-6f2bea75d040",
+     "studentNumberMasked": "-"
+    },
+    {
+     "fullName": "Elif Şahin",
+     "className": "10-A",
+     "studentId": "dd8216de-236a-4936-ad87-936497a47e41",
+     "studentNumberMasked": "-"
+    },
+    {
+     "fullName": "Emre Koç",
+     "className": "10-A",
+     "studentId": "13e6c7f0-321a-4014-b8de-383ccecc5412",
+     "studentNumberMasked": "-"
+    },
+    {
+     "fullName": "Kerem Polat",
+     "className": "10-A",
+     "studentId": "dda77f6b-4777-4b40-b5e0-a359a94c9e10",
+     "studentNumberMasked": "-"
+    },
+    {
+     "fullName": "Mehmet Kaya",
+     "className": "10-A",
+     "studentId": "5803656c-aeed-4bc9-98a1-3df06b8dfbae",
+     "studentNumberMasked": "-"
+    },
+    {
+     "fullName": "Nehir Acar",
+     "className": "10-A",
+     "studentId": "4fc17cb8-36ec-491c-b8fd-e328e3241ae2",
+     "studentNumberMasked": "-"
+    },
+    {
+     "fullName": "Selin Aydın",
+     "className": "10-A",
+     "studentId": "0a26f5b5-1105-4c8b-b48f-f3f0869e9af5",
+     "studentNumberMasked": "-"
+    },
+    {
+     "fullName": "Zeynep Çelik",
+     "className": "10-A",
+     "studentId": "5c6204e7-8fd9-4179-96c3-57f55dfdd6e3",
+     "studentNumberMasked": "-"
+    }
+   ]
+  },
+  "createdAtUtc": "2026-10-31T22:48:30.083775Z",
+  "actions": [],
+  "suggestions": [],
+  "feedback": null
+ },
+ {
+  "id": "999b3ac5-746c-4af1-b60d-a30234a47ac6",
+  "sender": "user",
+  "type": "text",
+  "text": "Öğrenci bilgisi göster",
+  "intent": 0,
+  "data": null,
+  "createdAtUtc": "2026-10-31T22:48:30.10492Z",
+  "actions": [],
+  "suggestions": [],
+  "feedback": null
+ },
+ {
+  "id": "c66c876d-ef37-4469-853d-39bb1bd45807",
+  "sender": "assistant",
+  "type": "student_summary",
+  "text": "Ayşe Demir — 10-A. Devamsızlık, sınav sonuçları ya da zayıf konular gibi neye bakayım?",
+  "intent": 4,
+  "data": {
+   "fullName": "Ayşe Demir",
+   "photoUrl": "",
+   "className": "10-A",
+   "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9",
+   "institutionMode": "school",
+   "studentNumberMasked": "-"
+  },
+  "createdAtUtc": "2026-10-31T22:48:30.111099Z",
+  "actions": [
+   {
+    "type": "send_command",
+    "label": "Devamsızlık",
+    "route": null,
+    "command": "get_attendance",
+    "parameters": {
+     "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9"
+    }
+   },
+   {
+    "type": "send_command",
+    "label": "Sınav sonuçları",
+    "route": null,
+    "command": "get_exam_results",
+    "parameters": {
+     "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9"
+    }
+   },
+   {
+    "type": "send_command",
+    "label": "Zayıf konular",
+    "route": null,
+    "command": "get_topics",
+    "parameters": {
+     "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9"
+    }
+   },
+   {
+    "type": "send_command",
+    "label": "Bekleyen ödevler",
+    "route": null,
+    "command": "get_homework",
+    "parameters": {
+     "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9"
+    }
+   }
+  ],
+  "suggestions": [
+   "Devamsızlığı",
+   "Sınav sonuçları",
+   "Zayıf olduğu konular"
+  ],
+  "feedback": null
+ },
+ {
+  "id": "1ee0daa3-6040-4703-b5f4-8dd5e5d91b22",
+  "sender": "user",
+  "type": "text",
+  "text": "Zayıf olduğu konular",
+  "intent": 0,
+  "data": null,
+  "createdAtUtc": "2026-10-31T22:48:30.124367Z",
+  "actions": [],
+  "suggestions": [],
+  "feedback": null
+ },
+ {
+  "id": "e35bb32a-21e4-4480-bbfd-891d7d57d3ad",
+  "sender": "assistant",
+  "type": "topic_insight",
+  "text": "Ayşe Demir en çok şu konularda zorlanıyor: Köklü Sayılar. Nedenleri ve önerileri aşağıda.",
+  "intent": 34,
+  "data": {
+   "solved": 183,
+   "fullName": "Ayşe Demir",
+   "studentId": "893b7e33-a85a-46cd-8104-25b42f7f20c9",
+   "weakTopics": [
+    {
+     "topic": "Köklü Sayılar",
+     "trend": "up",
+     "subject": "Matematik",
+     "diagnosis": "misconception",
+     "successRate": 40
+    }
+   ],
+   "successRate": 65.0,
+   "strongTopics": []
+  },
+  "createdAtUtc": "2026-10-31T22:48:30.143756Z",
+  "actions": [],
+  "suggestions": [
+   "Devamsızlığı",
+   "Sınav sonuçları",
+   "Bekleyen ödevleri"
+  ],
+  "feedback": null
+ }
+]

@@ -9,6 +9,8 @@ public sealed class AssistantConversation : IBranchScopedEntity
     public Guid? BranchId { get; set; }
     public Guid UserId { get; set; }
     public string Title { get; set; } = "Yeni sohbet";
+    /// <summary>Sohbetin açıldığı portal (student, parent, teacher…); geçmiş listesi portala göre süzülür.</summary>
+    public string Portal { get; set; } = string.Empty;
     public Guid? SelectedStudentId { get; set; }
     public AssistantIntent? LastIntent { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
@@ -30,6 +32,8 @@ public sealed class AssistantMessage : ITenantScopedEntity
     public string StructuredPayloadJson { get; set; } = "{}";
     public Guid? ClientMessageId { get; set; }
     public long? ProcessingDurationMs { get; set; }
+    /// <summary>Kullanıcı geri bildirimi (yalnız asistan mesajında): 1 = işe yaradı, -1 = yaramadı.</summary>
+    public short? Feedback { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
