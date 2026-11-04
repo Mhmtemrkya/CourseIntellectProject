@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { appBasePath } from './webBuild';
 import logoUrl from '../assets/brand/logo.png';
 import type { GeneratedPdf } from './credentialsPdf';
 import { localDateKey } from './localDate';
@@ -76,7 +77,7 @@ async function ensureAssets(doc: jsPDF): Promise<{ fontFamily: string; logoDataU
 
   try {
     if (!cachedFontBase64) {
-      const response = await fetch('/fonts/Roboto-Regular.ttf');
+      const response = await fetch(`${appBasePath}/fonts/Roboto-Regular.ttf`);
       if (!response.ok) throw new Error('font fetch failed');
       cachedFontBase64 = arrayBufferToBase64(await response.arrayBuffer());
     }

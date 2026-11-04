@@ -38,6 +38,18 @@ Run the generator with the two verified user-supplied addresses and a NEW privat
 5. Verify existing SMTP actually delivers a code to each intended address with that user's consented login, test one-use/expiry/failed code rejection, admin operations, logout, and normal school mobile/desktop login. Then return 404 for public-site `/admin` routes while preserving them on the management host. Code generation or UI fixtures do not establish mail deliverability.
 6. Check time sync, HTTPS/HSTS/CSP, no-store/noindex responses, auth rate limits, secret-redacted logs, refresh rotation, account disabling and restart behavior. Do not weaken normal school tenant enforcement. No default/shared admin account is created.
 
+## Secret management path (2026-11-04)
+
+The management panel is no longer part of the public marketing build. Admin route files are named `*.admin.tsx`; the public build (`SITE_TARGET=public`, default) does not treat them as pages, so the public route tree and JS chunks contain no panel routes or path. The release script additionally fails if the public output contains `admin/`, `/admin/login` or the secret path.
+
+A second build (`SITE_TARGET=admin`) uses `basePath` = `COURSE_INTELLECT_ADMIN_BASE_PATH` (a slash plus 32-64 lowercase letters/digits, e.g. `"/$(openssl rand -hex 24)"`). The value lives only in `/etc/courseintellect/backend-secrets.env`; it is never committed or printed. The release copies that build to `<marketing-release>/.admin<path>/`, so pointer switch and rollback stay atomic.
+
+- `schoolasist.com`: `/admin` and `/.admin` return 404 (`nginx-security.conf`).
+- `yonetim.schoolasist.com`: root is `marketing-current/.admin`; only `<path>/admin/`, `<path>/_next/`, `<path>/__next.*.txt`, `/images/` and `/api/` are served, everything else is 404. Install the template by replacing `__ADMIN_BASE_PATH__` with the secret (see the comment in `nginx-admin-private.conf`).
+- Rotating the path: change the secret, redeploy, reinstall the nginx template. Old bookmarks then return 404.
+- This is obscurity layered on top of the password + email-code flow above, not a replacement for it.
+- Local development of the panel: `npm run dev:admin` (no base path in development).
+
 ## Recovery
 
 No Authenticator enrollment or recovery-code route exists. If a user loses mailbox access, recovery is an audited operator intervention after identity verification; there is no public “skip code” or email-recipient change endpoint. Rotate the password with the existing hash format, increment SecurityVersion, revoke sessions/challenges, and update the server allowlist/binding only for the verified owner. Disabling the application account or removing its email from the pair revokes access.

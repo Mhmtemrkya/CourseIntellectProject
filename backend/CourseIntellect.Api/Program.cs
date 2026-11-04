@@ -689,6 +689,8 @@ app.UseAuthentication();
 // aynı okul ağındaki tüm kullanıcılar tek kotayı paylaşıyordu. IP bazlı politikalar etkilenmez.
 app.UseRateLimiter();
 app.UseMiddleware<BootstrapOnlyMiddleware>();
+// Web kökeninden kimlikli istek → yalnız demo hesapları (bkz. WebDemoAccessPolicy).
+app.UseMiddleware<CourseIntellect.Api.Middleware.WebDemoChannelMiddleware>();
 
 // ── Claims debug middleware (sadece Development) ─────────────────────────────
 // 403 sorunlarını teşhis etmek için: Authentication sonrası, Authorization

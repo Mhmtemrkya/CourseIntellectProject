@@ -8,6 +8,7 @@ DB_BACKUP="$ROOT_DIR/scripts/courseintellect-db-backup"
 UPLOADS_BACKUP="$ROOT_DIR/scripts/courseintellect-uploads-backup"
 NGINX="$ROOT_DIR/courseintellectmarketingwebsite (1)/deploy/nginx-security.conf"
 HEADERS="$ROOT_DIR/courseintellectmarketingwebsite (1)/deploy/nginx-security-headers.conf"
+ADMIN_NGINX="$ROOT_DIR/courseintellectmarketingwebsite (1)/deploy/nginx-admin-private.conf"
 MARKETING_CONFIG="$ROOT_DIR/courseintellectmarketingwebsite (1)/next.config.mjs"
 REGISTRATION_PAGE="$ROOT_DIR/courseintellectmarketingwebsite (1)/app/kurum-kaydi/page.tsx"
 TURNSTILE="$ROOT_DIR/courseintellectmarketingwebsite (1)/components/turnstile-widget.tsx"
@@ -98,7 +99,17 @@ assert_contains "$HEADERS" 'https://challenges.cloudflare.com'
 assert_contains "$HEADERS" 'frame-src https://challenges.cloudflare.com'
 
 # Header coverage includes slashless exact static-export routes as well as descendants.
-assert_contains "$NGINX" 'location = /admin {'
+assert_contains "$NGINX" 'location ^~ /admin {'
+assert_contains "$NGINX" 'location ^~ /.admin {'
+assert_not_contains "$NGINX" 'try_files /admin/index.html'
+# Management panel: separate build under a secret, validated, never-committed base path.
+assert_contains "$DEPLOY" 'COURSE_INTELLECT_ADMIN_BASE_PATH'
+assert_contains "$DEPLOY" 'SITE_TARGET=admin'
+assert_contains "$DEPLOY" '[[ ! -e out/admin ]]'
+assert_contains "$DEPLOY" '.admin$COURSE_INTELLECT_ADMIN_BASE_PATH'
+assert_contains "$ADMIN_NGINX" '__ADMIN_BASE_PATH__'
+assert_contains "$ADMIN_NGINX" 'root /opt/courseintellect/marketing-current/.admin;'
+assert_contains "$ADMIN_NGINX" 'location / { return 404; }'
 assert_contains "$NGINX" 'location = /giris {'
 assert_contains "$NGINX" 'X-Robots-Tag "noindex, nofollow"'
 

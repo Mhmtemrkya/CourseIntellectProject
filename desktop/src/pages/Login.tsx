@@ -18,6 +18,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { getUserHomePath } from "../lib/auth";
 import { getRememberSession, getRememberedUsername } from "../lib/secureSession";
+import { isWebDemoBuild } from "../lib/webBuild";
 import { requestPasswordReset } from "../lib/api/modules";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -402,6 +403,11 @@ export default function Login() {
                 </button>
               </div>
 
+              {isWebDemoBuild ? (
+                <p className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600" data-testid="web-demo-notice">
+                  Web girişi yalnız demo hesaplar içindir. Kendi kurum hesabınızla mobil veya masaüstü uygulamasından giriş yapın.
+                </p>
+              ) : (
               <div className="flex items-center justify-between pt-1">
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -427,6 +433,7 @@ export default function Login() {
                   Şifremi unuttum?
                 </button>
               </div>
+              )}
 
               <Button
                 type="submit"

@@ -9,10 +9,8 @@
   Cross-Origin-Opener-Policy: same-origin
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self'; connect-src 'self' https://maydanozasist.schoolasist.com https://vitals.vercel-insights.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests
 
-# Yönetim ve giriş ekranları arama sonuçlarında görünmesin. robots.txt'e yol
-# yazmak yerine başlıkla: robots.txt herkese açıktır, oraya yazılan yol ilan olur.
-/admin/*
-  X-Robots-Tag: noindex, nofollow
-
+# Giriş ekranı arama sonuçlarında görünmesin. robots.txt'e yol yazmak yerine
+# başlıkla: robots.txt herkese açıktır, oraya yazılan yol ilan olur. Platform yönetim
+# paneli bu sitede hiç yoktur (ayrı derleme, yalnız yönetim alan adında).
 /giris/*
   X-Robots-Tag: noindex, nofollow

@@ -6,10 +6,14 @@ SOURCE_DEPLOY="$ROOT_DIR/scripts/deploy_production_fullstack.sh"
 
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 
+# Sahte gizli yönetim yolu: dağıtım çıktısında ASLA görünmemeli.
+MOCK_ADMIN_SEGMENT="0123456789abcdef0123456789abcdefmocksecret"
+MOCK_WEB_SEGMENT="fedcba9876543210fedcba9876543210mockwebpath"
+
 make_fixture() {
   local fixture="$1"
   mkdir -p "$fixture/repo/scripts" "$fixture/repo/backend" \
-    "$fixture/repo/courseintellectmarketingwebsite (1)/deploy" "$fixture/bin" \
+    "$fixture/repo/courseintellectmarketingwebsite (1)/deploy" "$fixture/repo/desktop/deploy" "$fixture/bin" \
     "$fixture/etc" "$fixture/nginx" "$fixture/uploads" "$fixture/releases" \
     "$fixture/old/backend" "$fixture/old/marketing"
   cp "$SOURCE_DEPLOY" "$fixture/repo/scripts/deploy_production_fullstack.sh"
@@ -19,6 +23,7 @@ make_fixture() {
     "$fixture/repo/courseintellectmarketingwebsite (1)/deploy/nginx-security.conf"
   cp "$ROOT_DIR/courseintellectmarketingwebsite (1)/deploy/nginx-security-headers.conf" \
     "$fixture/repo/courseintellectmarketingwebsite (1)/deploy/nginx-security-headers.conf"
+  cp "$ROOT_DIR/desktop/deploy/nginx-web-demo.conf" "$fixture/repo/desktop/deploy/nginx-web-demo.conf"
   printf 'old backend\n' > "$fixture/old/backend/DEPLOYED_COMMIT"
   printf 'old marketing\n' > "$fixture/old/marketing/DEPLOYED_COMMIT"
   ln -s "$fixture/old/backend" "$fixture/backend-current"
@@ -26,7 +31,7 @@ make_fixture() {
   printf 'old security\n' > "$fixture/nginx/schoolasist-security.conf"
   printf 'old headers\n' > "$fixture/nginx/schoolasist-security-headers.conf"
   printf 'TenantCleanup__Enabled=false\nRegistration__Enabled=false\n' > "$fixture/etc/backend.env"
-  printf 'COURSE_INTELLECT_CAPTCHA_SECRET="mock-secret-must-not-appear"\n' > "$fixture/etc/backend-secrets.env"
+  printf 'COURSE_INTELLECT_CAPTCHA_SECRET="mock-secret-must-not-appear"\nCOURSE_INTELLECT_ADMIN_BASE_PATH=/%s\nCOURSE_INTELLECT_WEB_BASE_PATH=/%s\n' "$MOCK_ADMIN_SEGMENT" "$MOCK_WEB_SEGMENT" > "$fixture/etc/backend-secrets.env"
   chmod 0600 "$fixture/etc/backend.env" "$fixture/etc/backend-secrets.env"
 
   git -C "$fixture/repo" init -q
@@ -69,7 +74,17 @@ MOCK
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'npm %s\n' "$*" >> "$MOCK_LOG"
-if [[ "${1:-}" == "run" && "${2:-}" == "build" ]]; then
+if [[ "${1:-}" == "run" && "${2:-}" == "build:web" ]]; then
+  # Demo-only web app: secret base path and production API URL must be inlined.
+  mkdir -p build/static/js
+  printf '<script defer src="%s/static/js/main.x.js"></script>\n' "$WEB_BASE_PATH" > build/index.html
+  printf 'api="%s"\n' "$REACT_APP_COURSE_INTELLECT_API_URL" > build/static/js/main.x.js
+elif [[ "${1:-}" == "run" && "${2:-}" == "build" && "${SITE_TARGET:-public}" == "admin" ]]; then
+  # Management build: secret base path must be inlined into asset URLs.
+  mkdir -p out/admin/login
+  printf 'panel\n' > out/admin/index.html
+  printf '<link href="%s/_next/static/x.css">\n' "$ADMIN_BASE_PATH" > out/admin/login/index.html
+elif [[ "${1:-}" == "run" && "${2:-}" == "build" ]]; then
   mkdir -p out/kurum-kaydi/dogrula
   printf '%s %s\n' "$NEXT_PUBLIC_API_URL" "$NEXT_PUBLIC_TURNSTILE_SITE_KEY" > out/index.html
   printf '%s data-registration-enabled="%s" Kurum kaydı şu anda geçici olarak kapalıdır.\n' "$NEXT_PUBLIC_API_URL" "$NEXT_PUBLIC_REGISTRATION_ENABLED" > out/kurum-kaydi/index.html
@@ -223,12 +238,19 @@ success="$work/success"
 make_fixture "$success"
 success_output="$(run_deploy "$success" 2>&1)"
 [[ "$success_output" != *'mock-secret-must-not-appear'* ]] || fail "deployment output leaked a secret value"
+[[ "$success_output" != *"$MOCK_ADMIN_SEGMENT"* ]] || fail "deployment output leaked the management base path"
+[[ "$success_output" != *"$MOCK_WEB_SEGMENT"* ]] || fail "deployment output leaked the web app base path"
 backend_target="$(readlink -f "$success/backend-current")"
 marketing_target="$(readlink -f "$success/marketing-current")"
 [[ "$backend_target" == "$success/releases/backend/"* ]] || fail "backend release layout is incompatible"
 [[ "$marketing_target" == "$success/releases/marketing/"* ]] || fail "marketing release layout is incompatible"
 [[ "$(<"$backend_target/DEPLOYED_COMMIT")" == "$FIXTURE_SHA" ]] || fail "backend provenance marker mismatch"
 [[ "$(<"$marketing_target/DEPLOYED_COMMIT")" == "$FIXTURE_SHA" ]] || fail "marketing provenance marker mismatch"
+[[ -f "$marketing_target/.admin/$MOCK_ADMIN_SEGMENT/admin/login/index.html" ]] || fail "management build was not placed under the secret path"
+[[ ! -e "$marketing_target/admin" ]] || fail "public marketing release exposes the management panel"
+[[ -f "$marketing_target/.webapp/$MOCK_WEB_SEGMENT/index.html" ]] || fail "web app build was not placed under its secret path"
+grep -Fq "location ^~ /$MOCK_WEB_SEGMENT/" "$success/nginx/schoolasist-web-demo.conf" \
+  || fail "web app nginx snippet was not rendered with the secret path"
 grep -Fq 'npm audit --omit=dev --audit-level=high' "$success/actions.log" || fail "production-only npm audit was not run"
 db_backup_line="$(grep -n '^backup$' "$success/actions.log" | cut -d: -f1)"
 uploads_backup_line="$(grep -n '^uploads-backup$' "$success/actions.log" | cut -d: -f1)"

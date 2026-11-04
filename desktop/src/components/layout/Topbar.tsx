@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { appBasePath } from "../../lib/webBuild";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -241,7 +242,7 @@ export function Topbar() {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/dashboard">Ana Sayfa</BreadcrumbLink>
+            <BreadcrumbLink href={`${appBasePath}/dashboard`}>Ana Sayfa</BreadcrumbLink>
           </BreadcrumbItem>
           {pathSegments.map((segment, index) => (
             <BreadcrumbItem key={segment}>

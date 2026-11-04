@@ -1,5 +1,6 @@
 import { clearDesktopSession, desktopApiBaseUrl, loadDesktopSession } from '../auth';
 import { ensureFreshDesktopSession } from '../sessionRefresh';
+import { appBasePath } from '../webBuild';
 import {
   getOrderedDesktopApiCandidates,
   setActiveDesktopApiBaseUrl,
@@ -291,11 +292,11 @@ async function send<T>(method: HttpMethod, url: string, data: unknown, config: R
     clearDesktopSession();
     if (typeof window !== 'undefined') {
       const isDesktopLike = window.location.protocol === 'file:' || window.__TAURI__;
-      const loginPath = isDesktopLike ? '#/login' : '/login';
+      const loginPath = isDesktopLike ? '#/login' : `${appBasePath}/login`;
       const currentPath = isDesktopLike
         ? `${window.location.hash || ''}`
         : window.location.pathname;
-      if (currentPath !== '/login' && currentPath !== '#/login') {
+      if (currentPath !== loginPath && currentPath !== '#/login') {
         window.location.assign(loginPath);
       }
     }

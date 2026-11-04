@@ -20,12 +20,16 @@ public sealed class CourseIntellectDbContext : DbContext
         DbContextOptions<CourseIntellectDbContext> options,
         IHttpContextAccessor? httpContextAccessor = null,
         ITenantContext? tenantContext = null,
-        IActiveScope? activeScope = null) : base(options)
+        IActiveScope? activeScope = null,
+        CourseIntellect.Infrastructure.Auth.WebDemoAccessPolicy? webDemoPolicy = null) : base(options)
     {
         this.httpContextAccessor = httpContextAccessor;
         this.tenantContext = tenantContext;
         this.activeScope = activeScope;
+        this.webDemoPolicy = webDemoPolicy;
     }
+
+    private readonly CourseIntellect.Infrastructure.Auth.WebDemoAccessPolicy? webDemoPolicy;
 
     /// <summary>Arka plan işleri (Hangfire) gibi HttpContext'in olmadığı akışlarda
     /// tenant bağlamını elle set etmek için. Ayarlandığında claim'i EZER; böylece
@@ -243,25 +247,87 @@ public sealed class CourseIntellectDbContext : DbContext
     public override int SaveChanges()
     {
         ApplyTenantContext();
+        GuardProtectedDemoAccounts();
         return base.SaveChanges();
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         ApplyTenantContext();
+        GuardProtectedDemoAccounts();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         ApplyTenantContext();
+        GuardProtectedDemoAccounts();
         return base.SaveChangesAsync(cancellationToken);
     }
 
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         ApplyTenantContext();
+        GuardProtectedDemoAccounts();
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    // Demo hesaplarının kimlik bilgisi alanları. Giriş sayaçları, son giriş zamanı,
+    // ad/kampüs gibi alanlar serbesttir.
+    private static readonly string[] ProtectedDemoUserProperties =
+    [
+        nameof(AppUser.Username),
+        nameof(AppUser.PasswordHash),
+        nameof(AppUser.Status),
+        nameof(AppUser.DeletedAtUtc),
+        nameof(AppUser.MustChangePassword),
+        nameof(AppUser.TemporaryPasswordExpiresAtUtc),
+        nameof(AppUser.PlatformAccessEmail),
+        nameof(AppUser.TenantId),
+        nameof(AppUser.PrimaryRole),
+    ];
+
+    /// <summary>
+    /// Son savunma hattı: hangi servis/uç yazarsa yazsın, herkese açık demo hesaplarının
+    /// parolası, kullanıcı adı (e-posta), durumu değiştirilemez; hesap silinemez, hesap ya da
+    /// kurum silme talebi açılamaz. Servisler kendi düzeyinde de reddeder; bu, unutulan yolları yakalar.
+    /// </summary>
+    private void GuardProtectedDemoAccounts()
+    {
+        if (webDemoPolicy is null || !webDemoPolicy.HasProtectedAccounts) return;
+        foreach (var entry in ChangeTracker.Entries<AppUser>())
+        {
+            if (entry.State is not (EntityState.Modified or EntityState.Deleted)) continue;
+            var originalUsername = entry.Property(x => x.Username).OriginalValue;
+            if (!webDemoPolicy.IsProtectedUsername(originalUsername)) continue;
+            if (entry.State == EntityState.Deleted) throw new CourseIntellect.Application.Exceptions.ProtectedDemoAccountException();
+            foreach (var name in ProtectedDemoUserProperties)
+            {
+                var property = entry.Property(name);
+                if (!Equals(property.OriginalValue, property.CurrentValue))
+                    throw new CourseIntellect.Application.Exceptions.ProtectedDemoAccountException();
+            }
+        }
+
+        var deletionUserIds = ChangeTracker.Entries<AccountDeletionRequest>()
+            .Where(x => x.State == EntityState.Added)
+            .Select(x => x.Entity.UserId)
+            .ToList();
+        var deletionTenantIds = ChangeTracker.Entries<InstitutionDeletionRequest>()
+            .Where(x => x.State == EntityState.Added)
+            .Select(x => x.Entity.TenantId)
+            .ToList();
+        if (deletionUserIds.Count == 0 && deletionTenantIds.Count == 0) return;
+        if (deletionTenantIds.Any(webDemoPolicy.IsDemoTenant))
+            throw new CourseIntellect.Application.Exceptions.ProtectedDemoAccountException();
+
+        var tenantIds = deletionTenantIds.OfType<Guid>().ToList();
+        var candidates = Users.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => deletionUserIds.Contains(x.Id) || (x.TenantId != null && tenantIds.Contains(x.TenantId.Value)))
+            .Select(x => x.Username)
+            .ToList();
+        if (candidates.Any(webDemoPolicy.IsProtectedUsername))
+            throw new CourseIntellect.Application.Exceptions.ProtectedDemoAccountException();
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

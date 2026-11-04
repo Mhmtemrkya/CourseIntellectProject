@@ -23,8 +23,11 @@ Production-layout defaults:
 Required deployment inputs not normally stored in the config files:
   TARGET_SHA, COURSE_INTELLECT_PUBLIC_API_URL, COURSE_INTELLECT_PUBLIC_SITE_URL
 Required production settings include COURSE_INTELLECT_DB,
-COURSE_INTELLECT_UPLOADS_ROOT, Registration__Enabled, and
-TenantCleanup__Enabled=false. Captcha credentials and a valid SMTP setup are
+COURSE_INTELLECT_UPLOADS_ROOT, Registration__Enabled,
+COURSE_INTELLECT_ADMIN_BASE_PATH (secret management-panel path; keep it in the
+secrets env file, never in Git), COURSE_INTELLECT_WEB_BASE_PATH (secret path of the
+demo-only web app on the public site; same rules) and WebDemo__TenantId (demo tenant;
+without it the backend keeps web login closed) and TenantCleanup__Enabled=false. Captcha credentials and a valid SMTP setup are
 required only when public registration is explicitly enabled.
 Optional COURSE_INTELLECT_DOTNET_RUNTIME selects a root-owned executable for this
 service only; the runtime override is restored together with pointers on failure.
@@ -100,6 +103,7 @@ done
 required=(
   TARGET_SHA COURSE_INTELLECT_PUBLIC_API_URL COURSE_INTELLECT_PUBLIC_SITE_URL
   COURSE_INTELLECT_DB COURSE_INTELLECT_UPLOADS_ROOT Registration__Enabled
+  COURSE_INTELLECT_ADMIN_BASE_PATH COURSE_INTELLECT_WEB_BASE_PATH
 )
 for name in "${required[@]}"; do
   [[ -n "${!name:-}" ]] || { printf '%s is required.\n' "$name" >&2; exit 2; }
@@ -120,6 +124,22 @@ fi
 [[ "${COURSE_INTELLECT_PUBLIC_API_URL%/}" == "https://maydanozasist.schoolasist.com" \
    && "${COURSE_INTELLECT_PUBLIC_SITE_URL%/}" == "https://schoolasist.com" ]] \
   || { echo "Public URLs must match the established CourseIntellect production origins." >&2; exit 2; }
+# Management panel is built separately under this secret path and served only by the
+# management host (nginx-admin-private.conf). Never print the value.
+[[ "$COURSE_INTELLECT_ADMIN_BASE_PATH" =~ ^/[a-z0-9]{32,64}$ ]] \
+  || { echo "COURSE_INTELLECT_ADMIN_BASE_PATH must be a slash followed by 32-64 lowercase letters/digits." >&2; exit 2; }
+# Demo-only web app: separate desktop build under its own secret path on the public site.
+[[ "$COURSE_INTELLECT_WEB_BASE_PATH" =~ ^/[a-z0-9]{32,64}$ ]] \
+  || { echo "COURSE_INTELLECT_WEB_BASE_PATH must be a slash followed by 32-64 lowercase letters/digits." >&2; exit 2; }
+[[ "$COURSE_INTELLECT_WEB_BASE_PATH" != "$COURSE_INTELLECT_ADMIN_BASE_PATH" ]] \
+  || { echo "COURSE_INTELLECT_WEB_BASE_PATH must differ from the admin path." >&2; exit 2; }
+# WebDemo__TenantId is optional: without it the backend keeps web login closed (fail-closed).
+if [[ -n "${WebDemo__TenantId:-}" ]]; then
+  [[ "$WebDemo__TenantId" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] \
+    || { echo "WebDemo__TenantId must be a lowercase GUID." >&2; exit 2; }
+else
+  echo "WebDemo__TenantId is not set; the web app will deploy but web login stays closed." >&2
+fi
 [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]] \
   || { echo "TARGET_SHA must be a full lowercase 40-character SHA." >&2; exit 2; }
 [[ "$COURSE_INTELLECT_RELEASES_ROOT" == /* && "$COURSE_INTELLECT_RELEASES_ROOT" != "/" ]] \
@@ -283,7 +303,7 @@ wait_for_url() {
 restore_nginx() {
   (( nginx_changed == 1 )) || return 0
   local name failed=0
-  for name in schoolasist-security.conf schoolasist-security-headers.conf; do
+  for name in schoolasist-security.conf schoolasist-security-headers.conf schoolasist-web-demo.conf; do
     if [[ -f "$NGINX_BACKUP/$name" ]]; then
       install -m 0644 "$NGINX_BACKUP/$name" "$COURSE_INTELLECT_NGINX_SNIPPET_DIR/$name" || failed=1
     else
@@ -432,6 +452,22 @@ dotnet publish "$SOURCE_ROOT/backend/CourseIntellect.Api/CourseIntellect.Api.csp
 printf '%s\n' "$TARGET_SHA" > "$BACKEND_RELEASE/DEPLOYED_COMMIT"
 printf '%s\n' "$BACKEND_RELEASE" > "$BACKEND_READY_MARKER"
 
+# Demo-only web app (desktop React build). The secret path is never printed.
+pushd "$SOURCE_ROOT/desktop" >/dev/null
+rm -rf build
+npm ci --include=dev --no-audit --no-fund
+npx tsc --noEmit -p .
+WEB_BASE_PATH="$COURSE_INTELLECT_WEB_BASE_PATH" \
+REACT_APP_COURSE_INTELLECT_API_URL="$COURSE_INTELLECT_PUBLIC_API_URL" \
+  npm run build:web >/dev/null
+[[ -f build/index.html ]]
+grep -F -q -- "$COURSE_INTELLECT_WEB_BASE_PATH/static/" build/index.html
+grep -R -F -q -- "$COURSE_INTELLECT_PUBLIC_API_URL" build/static/js
+! grep -R -E -q -- "127\.0\.0\.1:5206|localhost:5206" build/static/js/main.*.js
+WEB_OUT="$BUILD_ROOT/web-out"
+mv build "$WEB_OUT"
+popd >/dev/null
+
 pushd "$SOURCE_ROOT/$MARKETING_DIR" >/dev/null
 rm -rf .next out
 npm ci --include=dev --no-audit --no-fund
@@ -442,12 +478,32 @@ marketing_turnstile_site_key=""
 if [[ "$Registration__Enabled" == "true" ]]; then
   marketing_turnstile_site_key="$NEXT_PUBLIC_TURNSTILE_SITE_KEY"
 fi
+# 1) Management panel: separate build under the secret base path. It is copied into the
+#    marketing release as .admin<path>/ (public nginx returns 404 for /.admin).
+SITE_TARGET=admin \
+ADMIN_BASE_PATH="$COURSE_INTELLECT_ADMIN_BASE_PATH" \
+NODE_ENV=production \
+NEXT_PUBLIC_API_URL="$COURSE_INTELLECT_PUBLIC_API_URL" \
+NEXT_PUBLIC_REGISTRATION_ENABLED="$Registration__Enabled" \
+NEXT_PUBLIC_TURNSTILE_SITE_KEY="$marketing_turnstile_site_key" \
+  npm run build
+[[ -f out/admin/index.html && -f out/admin/login/index.html ]]
+grep -R -F -q -- "$COURSE_INTELLECT_ADMIN_BASE_PATH/_next/" out/admin/login/index.html
+ADMIN_OUT="$BUILD_ROOT/admin-out"
+mv out "$ADMIN_OUT"
+rm -rf .next
+# 2) Public marketing site: must contain no trace of the management panel or its path.
+SITE_TARGET=public \
 NODE_ENV=production \
 NEXT_PUBLIC_API_URL="$COURSE_INTELLECT_PUBLIC_API_URL" \
 NEXT_PUBLIC_REGISTRATION_ENABLED="$Registration__Enabled" \
 NEXT_PUBLIC_TURNSTILE_SITE_KEY="$marketing_turnstile_site_key" \
   npm run build
 [[ -f out/index.html && -f out/kurum-kaydi/index.html && -f out/kurum-kaydi/dogrula/index.html ]]
+[[ ! -e out/admin ]]
+! grep -R -F -q -- "$COURSE_INTELLECT_ADMIN_BASE_PATH" out
+! grep -R -F -q -- "$COURSE_INTELLECT_WEB_BASE_PATH" out
+! grep -R -F -q -- "/admin/login" out
 ! grep -R -F -q -- "$RETIRED_API_HOST" out
 ! grep -R -F -q -- "https://api.example.invalid" out
 grep -R -F -q -- "$COURSE_INTELLECT_PUBLIC_API_URL" out
@@ -461,6 +517,12 @@ printf '%s\n' "$Registration__Enabled" > out/REGISTRATION_ENABLED
 [[ "$(<out/REGISTRATION_ENABLED)" == "$Registration__Enabled" ]]
 popd >/dev/null
 cp -a "$SOURCE_ROOT/$MARKETING_DIR/out/." "$MARKETING_RELEASE/"
+mkdir -p "$MARKETING_RELEASE/.admin$COURSE_INTELLECT_ADMIN_BASE_PATH"
+cp -a "$ADMIN_OUT/." "$MARKETING_RELEASE/.admin$COURSE_INTELLECT_ADMIN_BASE_PATH/"
+[[ -f "$MARKETING_RELEASE/.admin$COURSE_INTELLECT_ADMIN_BASE_PATH/admin/login/index.html" ]]
+mkdir -p "$MARKETING_RELEASE/.webapp$COURSE_INTELLECT_WEB_BASE_PATH"
+cp -a "$WEB_OUT/." "$MARKETING_RELEASE/.webapp$COURSE_INTELLECT_WEB_BASE_PATH/"
+[[ -f "$MARKETING_RELEASE/.webapp$COURSE_INTELLECT_WEB_BASE_PATH/index.html" ]]
 printf '%s\n' "$TARGET_SHA" > "$MARKETING_RELEASE/DEPLOYED_COMMIT"
 printf '%s\n' "$MARKETING_RELEASE" > "$MARKETING_READY_MARKER"
 
@@ -481,7 +543,7 @@ verify_uploads_snapshot "$uploads_backup_path"
 external_state_unchanged
 
 mkdir -p "$COURSE_INTELLECT_NGINX_SNIPPET_DIR"
-for name in schoolasist-security.conf schoolasist-security-headers.conf; do
+for name in schoolasist-security.conf schoolasist-security-headers.conf schoolasist-web-demo.conf; do
   [[ ! -L "$COURSE_INTELLECT_NGINX_SNIPPET_DIR/$name" ]] \
     || { echo "Existing nginx snippets must not be symbolic links." >&2; false; }
   [[ -f "$COURSE_INTELLECT_NGINX_SNIPPET_DIR/$name" ]] \
@@ -491,6 +553,10 @@ done
 nginx_changed=1
 install -m 0644 "$SOURCE_ROOT/$MARKETING_DIR/deploy/nginx-security.conf" "$COURSE_INTELLECT_NGINX_SNIPPET_DIR/schoolasist-security.conf"
 install -m 0644 "$SOURCE_ROOT/$MARKETING_DIR/deploy/nginx-security-headers.conf" "$COURSE_INTELLECT_NGINX_SNIPPET_DIR/schoolasist-security-headers.conf"
+WEB_NGINX_RENDERED="$BUILD_ROOT/schoolasist-web-demo.conf"
+sed "s#__WEB_BASE_PATH__#${COURSE_INTELLECT_WEB_BASE_PATH}#g" "$SOURCE_ROOT/desktop/deploy/nginx-web-demo.conf" > "$WEB_NGINX_RENDERED"
+! grep -F -q -- "__WEB_BASE_PATH__" "$WEB_NGINX_RENDERED"
+install -m 0644 "$WEB_NGINX_RENDERED" "$COURSE_INTELLECT_NGINX_SNIPPET_DIR/schoolasist-web-demo.conf"
 nginx -t
 external_state_unchanged
 

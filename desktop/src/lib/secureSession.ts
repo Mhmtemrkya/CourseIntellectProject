@@ -7,6 +7,7 @@
 import type { DesktopSession } from '../types/session';
 import { isRecord } from './errors';
 import { logIgnored } from './logIgnored';
+import { isWebDemoBuild } from './webBuild';
 
 const LEGACY_STORAGE_KEY = 'courseintellect-desktop-session';
 const ENCRYPTED_STORAGE_KEY = 'courseintellect-desktop-session-v2';
@@ -64,13 +65,19 @@ function parseSession(raw: string): DesktopSession | null {
   return isDesktopSession(parsed) ? parsed : null;
 }
 
+// Web derlemesinde düz oturum sekmeye özel sessionStorage'da tutulur: sekme kapanınca
+// düşer, aynı tarayıcıyı kullanan sonraki kişiye kalmaz. Masaüstü (dev) localStorage'da kalır.
+function plainStore(): Storage {
+  return isWebDemoBuild ? sessionStorage : localStorage;
+}
+
 function readPlainLocal(): DesktopSession | null {
-  const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+  const raw = plainStore().getItem(LEGACY_STORAGE_KEY);
   if (!raw) return null;
   try {
     return parseSession(raw);
   } catch {
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    plainStore().removeItem(LEGACY_STORAGE_KEY);
     return null;
   }
 }
@@ -196,7 +203,7 @@ export function persistDesktopSession(session: DesktopSession): void {
       });
     return;
   }
-  localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(session));
+  plainStore().setItem(LEGACY_STORAGE_KEY, JSON.stringify(session));
 }
 
 export function loadDesktopSession(): DesktopSession | null {
@@ -210,6 +217,7 @@ export function loadDesktopSession(): DesktopSession | null {
 export function clearDesktopSession(): void {
   sessionCache = null;
   localStorage.removeItem(LEGACY_STORAGE_KEY);
+  if (isWebDemoBuild) sessionStorage.removeItem(LEGACY_STORAGE_KEY);
   if (secureMode) {
     pendingWrite = pendingWrite
       .catch(logIgnored('secureSession'))

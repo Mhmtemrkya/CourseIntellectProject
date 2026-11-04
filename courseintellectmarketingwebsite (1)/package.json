@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build && node scripts/inject-csp-hashes.mjs",
     "dev": "next dev",
+    "dev:admin": "SITE_TARGET=admin next dev",
     "lint": "eslint .",
     "start": "next start"
   },

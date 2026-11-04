@@ -53,6 +53,7 @@
   },
   "scripts": {
     "build": "node ./node_modules/@craco/craco/dist/bin/craco.js build",
+    "build:web": "node ./scripts/build-web.mjs",
     "test": "node ./node_modules/@craco/craco/dist/bin/craco.js test",
     "start": "node ./node_modules/@craco/craco/dist/bin/craco.js start",
     "start:prod": "REACT_APP_COURSE_INTELLECT_ENV=production node ./node_modules/@craco/craco/dist/bin/craco.js start",

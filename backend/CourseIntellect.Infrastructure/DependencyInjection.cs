@@ -78,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<AdminEmailAccessPolicy>();
+        services.AddSingleton<WebDemoAccessPolicy>();
         services.AddScoped<IAdminMfaService, AdminMfaService>();
         services.AddScoped<AdminSessionGuard>();
         services.AddScoped<IUserDirectoryService, UserDirectoryService>();

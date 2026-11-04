@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { appBasePath } from './webBuild';
 import logoUrl from '../assets/brand/logo.png';
 
 let cachedFontBase64: string | null = null;
@@ -31,7 +32,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 async function ensureUnicodeFont(doc: jsPDF): Promise<boolean> {
   try {
     if (!cachedFontBase64) {
-      const response = await fetch('/fonts/Roboto-Regular.ttf');
+      const response = await fetch(`${appBasePath}/fonts/Roboto-Regular.ttf`);
       if (!response.ok) throw new Error('font fetch failed');
       const buffer = await response.arrayBuffer();
       cachedFontBase64 = arrayBufferToBase64(buffer);

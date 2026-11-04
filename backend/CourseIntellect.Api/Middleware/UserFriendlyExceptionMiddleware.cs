@@ -56,6 +56,16 @@ public sealed class UserFriendlyExceptionMiddleware(
                 traceId = context.TraceIdentifier,
             }));
         }
+        catch (CourseIntellect.Application.Exceptions.ProtectedDemoAccountException exception)
+        {
+            if (context.Response.HasStarted) throw;
+            await WriteForbiddenAsync(context, "DEMO_ACCOUNT_PROTECTED", exception.Message);
+        }
+        catch (CourseIntellect.Application.Exceptions.WebDemoOnlyException exception)
+        {
+            if (context.Response.HasStarted) throw;
+            await WriteForbiddenAsync(context, "WEB_DEMO_ONLY", exception.Message);
+        }
         catch (UnauthorizedAccessException exception)
         {
             // Servis kapsamı gibi iş kuralı denetimleri bu istisnayı fırlatır
@@ -105,5 +115,18 @@ public sealed class UserFriendlyExceptionMiddleware(
                 traceId,
             }));
         }
+    }
+
+    private static async Task WriteForbiddenAsync(HttpContext context, string code, string message)
+    {
+        context.Response.Clear();
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        context.Response.ContentType = "application/json; charset=utf-8";
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new
+        {
+            code,
+            message,
+            traceId = context.TraceIdentifier,
+        }));
     }
 }

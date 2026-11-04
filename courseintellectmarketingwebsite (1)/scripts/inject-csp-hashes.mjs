@@ -6,13 +6,14 @@
 // script'in de çalışması demek. Tarayıcı birden çok CSP'yi BİRLİKTE uygular: başlıktaki
 // politika `unsafe-inline` içerse bile bu meta politikası özetsiz satır içi script'i engeller.
 // Özetler her derlemede değiştiği için meta sayfanın içinde üretilir (nginx dosyasıyla
-// eşgüdüm gerekmez). Kullanım: next build && node scripts/inject-csp-hashes.mjs
+// eşgüdüm gerekmez). Kullanım: next build && node scripts/inject-csp-hashes.mjs [çıktı-klasörü]
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const OUT = fileURLToPath(new URL('../out/', import.meta.url))
+// Varsayılan statik çıktı klasörü; yönetim derlemesi gibi başka bir klasör için ilk argüman verilir.
+const OUT = process.argv[2] ? resolve(process.argv[2]) : fileURLToPath(new URL('../out/', import.meta.url))
 const SCRIPT_HOSTS = "'self' https://va.vercel-scripts.com https://challenges.cloudflare.com"
 const MARKER = 'data-csp-hashes'
 

@@ -18,7 +18,8 @@ namespace CourseIntellect.Infrastructure.Services;
 public sealed class OverdueRuleReminderService(
     CourseIntellectDbContext dbContext,
     IParentNotifier parentNotifier,
-    IEmailSender emailSender) : IOverdueRuleReminderService
+    IEmailSender emailSender,
+    CourseIntellect.Infrastructure.Auth.WebDemoAccessPolicy? webDemoPolicy = null) : IOverdueRuleReminderService
 {
     private const string ConfigurationType = "overdue-rules";
 
@@ -75,7 +76,10 @@ public sealed class OverdueRuleReminderService(
                         oldest.StudentUserId, oldest.StudentName, rule.Name, message, "FinanceOverdueRule", dedupeKey, cancellationToken);
                     delivered = true;
                 }
+                // Demo kurumunun yönetici parolası herkese açık: kural metni ve veli e-postası
+                // ziyaretçinin elinde olduğundan sunucunun SMTP'si istenmeyen posta aracı olurdu.
                 if (channel is "email" or "both"
+                    && webDemoPolicy?.IsDemoTenant(dbContext.CurrentTenantId) != true
                     && emailSender.IsConfigured
                     && profile is not null
                     && !string.IsNullOrWhiteSpace(profile.ParentEmail))

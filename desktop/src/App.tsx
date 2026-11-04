@@ -2,6 +2,7 @@ import "@/App.css";
 import { Suspense, type ReactElement } from "react";
 import { lazyWithReload } from "./lib/lazyWithReload";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { appBasePath } from "./lib/webBuild";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { LanguageProvider } from "./lib/i18n/LanguageContext";
@@ -274,7 +275,7 @@ function App() {
         <StartupGate>
         <MaintenanceGate>
         <LegalConsentGate>
-        <RouterComponent>
+        <RouterComponent basename={RouterComponent === BrowserRouter && appBasePath ? appBasePath : undefined}>
           <Suspense
             fallback={
               <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">

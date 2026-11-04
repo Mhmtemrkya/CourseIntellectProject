@@ -23,7 +23,8 @@ public sealed class AuthService(
     IHttpContextAccessor httpContextAccessor,
     Microsoft.Extensions.Configuration.IConfiguration configuration,
     IAdminMfaService? adminMfaService = null,
-    AdminEmailAccessPolicy? adminEmailPolicy = null) : IAuthService
+    AdminEmailAccessPolicy? adminEmailPolicy = null,
+    WebDemoAccessPolicy? webDemoPolicy = null) : IAuthService
 {
     private const string PasswordResetPending = "Pending";
     private const string PasswordResetApproved = "Approved";
@@ -74,6 +75,10 @@ public sealed class AuthService(
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
+        // Web kanalı: demo listesinde olmayan ad parola denenmeden reddedilir (parola doğruluğu sızmaz,
+        // kilitleme sayacı da gerçek hesaplar için web üzerinden işletilemez).
+        if (IsWebRequest() && webDemoPolicy?.IsProtectedUsername(request.Username) != true)
+            throw new WebDemoOnlyException();
         var user = await ValidatePasswordAsync(request, cancellationToken);
         if (user is null || AdminMfaService.IsPlatformAdmin(user)) return null;
         await RecordLoginAttemptAsync(user.Username, user.Id, user.PrimaryRole.ToString(), true, user.TenantId, cancellationToken);
@@ -196,6 +201,9 @@ public sealed class AuthService(
     // kilitlidir; en eski başarısız deneme pencereden düştükçe kilit kendiliğinden açılır.
     private async Task<bool> IsLockedOutAsync(string login, CancellationToken cancellationToken)
     {
+        // Parolası herkese açık demo hesaplarında hesap kilidi koruma sağlamaz; tersine, birkaç yanlış
+        // denemeyle tüm ziyaretçileri dışarıda bırakmaya yarardı. IP tabanlı "auth" hız sınırı geçerli kalır.
+        if (webDemoPolicy?.IsProtectedUsername(login) == true) return false;
         var windowStart = DateTimeOffset.UtcNow.AddMinutes(-_lockoutWindowMinutes);
 
         // Zaman penceresi karşılaştırması bellekte yapılır: DateTimeOffset SQL çevirisi
@@ -307,8 +315,14 @@ public sealed class AuthService(
             .AnyAsync(x => x.Id == tenantId && x.InstitutionType == InstitutionType.DrivingSchool, cancellationToken);
     }
 
+    private bool IsWebRequest() => webDemoPolicy?.IsWebRequest(httpContextAccessor.HttpContext) == true;
+
     private async Task<LoginResponse> CreateLoginResponseAsync(AppUser user, CancellationToken cancellationToken, bool bootstrapOnly = false, DateTime? adminMfaVerifiedAtUtc = null)
     {
+        // Giriş, yenileme ve PKCE kod takası buradan geçer: web kökeninden yalnız demo kurumunun
+        // demo hesaplarına token verilir.
+        if (IsWebRequest() && webDemoPolicy?.IsAllowedOnWeb(user.Username, user.TenantId) != true)
+            throw new WebDemoOnlyException();
         var isAdmin = AdminMfaService.IsPlatformAdmin(user);
         if (isAdmin && adminMfaVerifiedAtUtc is null) throw new InvalidOperationException("Platform admin requires MFA.");
         var sessionId = Guid.NewGuid();
@@ -370,6 +384,7 @@ public sealed class AuthService(
     {
         var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
         if (user is null) return null;
+        if (webDemoPolicy?.IsProtectedUsername(user.Username) == true) throw new ProtectedDemoAccountException();
 
         var newPassword = (request.NewPassword ?? string.Empty).Trim();
         var isPlatformAdmin = user.PrimaryRole == UserRole.Developer && user.TenantId is null;
@@ -432,7 +447,8 @@ public sealed class AuthService(
     public async Task RequestPasswordResetAsync(ForgotPasswordRequest request, CancellationToken cancellationToken = default)
     {
         var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(email))
+        // Demo hesapları sıfırlanamaz; yanıt aynı kalır (hesabın varlığı sızmaz).
+        if (string.IsNullOrWhiteSpace(email) || webDemoPolicy?.IsProtectedUsername(email) == true)
         {
             return;
         }
