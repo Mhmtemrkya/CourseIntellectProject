@@ -24,7 +24,7 @@ import {
 } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { setAppFullscreen } from '../../lib/tauri';
-import { openHttpUrl } from '../../lib/safeOpen';
+import { isHttpUrl, openHttpUrl } from '../../lib/safeOpen';
 import { errorMessage } from '../../lib/errors';
 import type { ContentCommentDto, ContentDto, ContentExerciseDto, ExamResultDto } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
@@ -468,7 +468,7 @@ export default function StudentContent() {
                       <p className="text-[11px] text-muted-foreground">{card.total} Konu</p>
                     </div>
                   </div>
-                  <span className="shrink-0 text-sm font-black text-[hsl(var(--brand-accent))]">%{card.avg}</span>
+                  <span className="shrink-0 text-sm font-black text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">%{card.avg}</span>
                 </div>
                 <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.07]"><div className={`h-full rounded-full bg-gradient-to-r ${SUBJECT_TONES[index % SUBJECT_TONES.length]}`} style={{ width: `${card.avg}%` }} /></div>
                 <p className="mt-1 text-[11px] text-muted-foreground">{card.done} / {card.total} Konu</p>
@@ -486,7 +486,7 @@ export default function StudentContent() {
             const progress = Math.round(Number(item.progress) || 0);
             return (
               <div key={item.id || item.title} className="flex items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><Play className="h-4 w-4" /></span>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><Play className="h-4 w-4" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{item.title}</p>
                   <p className="truncate text-xs text-muted-foreground">{item.subject}</p>
@@ -510,7 +510,7 @@ export default function StudentContent() {
               icon={Star}
               title={item.title}
               subtitle={item.subject}
-              meta={<Play className="h-4 w-4 text-[hsl(var(--brand-accent))]" />}
+              meta={<Play className="h-4 w-4 text-[hsl(var(--brand-accent-text,var(--brand-accent)))]" />}
               onClick={() => openItem(item)}
             />
           )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Öneri bulunamadı.</div>}
@@ -525,7 +525,7 @@ export default function StudentContent() {
           ['Favori Konuların', 'Favori konularına hızlıca ulaş', Star, '/s/favorites'],
         ] satisfies ReadonlyArray<readonly [string, string, IconComponent, string]>).map(([title, sub, Icon, href]) => (
           <button key={title} onClick={() => navigate(href)} className="flex flex-col gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[hsl(var(--brand-accent)/0.28)] hover:bg-[hsl(var(--brand-accent)/0.08)]">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><Icon className="h-5 w-5" /></span>
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><Icon className="h-5 w-5" /></span>
             <div><p className="text-sm font-semibold">{title}</p><p className="text-xs text-muted-foreground">{sub}</p></div>
           </button>
         ))}
@@ -806,8 +806,10 @@ export default function StudentContent() {
                           ) : contentExercises.map((exercise) => (
                             <a
                               key={exercise.id || exercise.title}
-                              href={exercise.url || '#'}
-                              target={exercise.url ? '_blank' : undefined}
+                              // Öğretmenin girdiği adres: yalnız http(s) tıklanabilir. React 18 javascript:
+                              // href'ini engellemez; Tauri webview'da oturum token'ına erişen XSS olurdu.
+                              href={isHttpUrl(exercise.url) ? exercise.url : '#'}
+                              target={isHttpUrl(exercise.url) ? '_blank' : undefined}
                               rel="noopener noreferrer"
                               className="block rounded-2xl border border-foreground/10 bg-foreground/[0.04] p-4 transition hover:bg-foreground/[0.08]"
                             >

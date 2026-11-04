@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import logoUrl from '../assets/brand/logo.png';
 import type { GeneratedPdf } from './credentialsPdf';
+import { localDateKey } from './localDate';
 
 type RGB = [number, number, number];
 type ColumnAlign = 'left' | 'center' | 'right';
@@ -326,7 +327,7 @@ export async function createSchoolAsistReportPdf({
 
   return {
     doc,
-    fileName: `schoolasist-${safeFileName(report.name)}-${generatedAt.toISOString().slice(0, 10)}.pdf`,
+    fileName: `schoolasist-${safeFileName(report.name)}-${localDateKey(generatedAt)}.pdf`,
   };
 }
 

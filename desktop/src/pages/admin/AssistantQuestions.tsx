@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { HelpCircle, Info, MessageSquareWarning, ThumbsDown } from 'lucide-react';
+import { Ban, HelpCircle, Info, MessageSquareWarning, ThumbsDown } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Page, PageHeader, PageLoading, PageNotice, StatCard } from '../../components/layout/PageKit';
 import { fetchAssistantUnanswered } from '../../lib/api/modules';
@@ -13,6 +13,7 @@ const REASONS: Record<string, { label: string; tone: string }> = {
   unknown: UNKNOWN_REASON,
   no_guide: { label: 'Rehber yok', tone: 'border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300' },
   negative: { label: 'İşe yaramadı', tone: 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300' },
+  out_of_scope: { label: 'Kapsam dışı', tone: 'border-slate-500/40 bg-slate-500/10 text-slate-700 dark:text-slate-300' },
 };
 
 const PORTALS: Record<string, string> = {
@@ -52,7 +53,7 @@ export default function AssistantQuestions() {
   }, [load]);
 
   const counts = useMemo(() => {
-    const result: Record<string, number> = { unknown: 0, no_guide: 0, negative: 0 };
+    const result: Record<string, number> = { unknown: 0, no_guide: 0, negative: 0, out_of_scope: 0 };
     (rows ?? []).forEach((row) => { result[row.reason] = (result[row.reason] ?? 0) + 1; });
     return result;
   }, [rows]);
@@ -62,8 +63,8 @@ export default function AssistantQuestions() {
   return (
     <Page testId="assistant-questions-page">
       <PageHeader
-        title="Asistan Soruları"
-        description="Asistanın cevaplayamadığı ya da yetersiz bulunan sorular. Sık tekrar edenler yeni yetenek ve rehber adayıdır."
+        title="Maydi Soruları"
+        description="Maydi'nin cevaplayamadığı ya da yetersiz bulunan sorular. Sık tekrar edenler yeni yetenek ve rehber adayıdır."
         icon={MessageSquareWarning}
         onRefresh={() => void load()}
         refreshing={rows === null}
@@ -74,10 +75,11 @@ export default function AssistantQuestions() {
         <p className="text-muted-foreground">Soranın kimliği gösterilmez; yalnız hangi portaldan sorulduğu görünür. Liste kurumunuzla (şube yöneticisinde kendi şubesiyle) sınırlıdır.</p>
       </section>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Anlaşılmayan" value={counts.unknown} icon={HelpCircle} />
         <StatCard label="Rehberi olmayan" value={counts.no_guide} icon={Info} />
         <StatCard label="İşe yaramadı" value={counts.negative} icon={ThumbsDown} />
+        <StatCard label="Kapsam dışı" value={counts.out_of_scope} icon={Ban} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

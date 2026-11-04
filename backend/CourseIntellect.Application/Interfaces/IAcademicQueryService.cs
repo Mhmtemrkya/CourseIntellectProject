@@ -7,7 +7,12 @@ namespace CourseIntellect.Application.Interfaces;
 public interface IAcademicQueryService
 {
     Task<IReadOnlyList<StudentSummaryDto>> GetStudentsAsync(CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<ExamResultDto>> GetExamResultsAsync(string? studentName, string? className, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ExamResultDto>> GetExamResultsAsync(
+        string? studentName,
+        string? className,
+        Guid? studentId = null,
+        StudentRecordScope? scope = null,
+        CancellationToken cancellationToken = default);
     /// <summary>Seçili öğrencileri hedef sınıfa taşır (dönem sonu sınıf yükseltme).</summary>
     Task<PromoteStudentsResult> PromoteStudentsAsync(PromoteStudentsRequest request, CancellationToken cancellationToken = default);
     Task<ExamResultDto> CreateExamResultAsync(CreateExamResultRequest request, CancellationToken cancellationToken = default);

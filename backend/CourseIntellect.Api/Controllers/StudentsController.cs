@@ -28,10 +28,16 @@ public sealed class StudentsController(
     {
         var students = await academicQueryService.GetStudentsAsync(cancellationToken);
 
-        var allowedNames = await StudentScope.ResolveAllowedStudentNamesAsync(User, dbContext, cancellationToken);
-        if (allowedNames is not null)
+        // Öğrenci/veli yalnız kendi (çocuklarının) profilini görür — profil kimliğiyle. Eskiden
+        // adla süzülüyordu: başka ailedeki aynı adlı çocuk da veliye listeleniyordu.
+        var scope = await StudentScope.ResolveStudentRecordScopeAsync(User, dbContext, cancellationToken);
+        if (scope is not null)
         {
-            students = StudentScope.FilterByStudentNames(students, allowedNames, item => item.FullName);
+            // Kimliği çözülemeyen (profil bağı olmayan) eski oturumda ada düşülür.
+            var allowedIds = scope.StudentIds.ToHashSet();
+            students = allowedIds.Count > 0
+                ? students.Where(item => allowedIds.Contains(item.Id)).ToList()
+                : StudentScope.FilterByStudentNames(students, scope.StudentNames, item => item.FullName);
         }
 
         return Ok(students);

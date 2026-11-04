@@ -205,7 +205,7 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Taksit Planı (2024-2025)".tr,
+            "Taksit Planı".tr,
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 12),

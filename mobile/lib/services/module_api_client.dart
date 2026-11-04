@@ -56,6 +56,24 @@ class ModuleApiClient {
   Future<dynamic> delete(String path) async =>
       _decode(await http.delete(_uri(path), headers: await _headers()));
 
+  /// Dosya yükleme (multipart/form-data). [fields] düz metin alanlarıdır.
+  Future<dynamic> postFile(String path, {required String field, required String fileName, required List<int> bytes, Map<String, String> fields = const {}}) async {
+    final request = http.MultipartRequest('POST', _uri(path))
+      ..headers.addAll(await _headers())
+      ..fields.addAll(fields)
+      ..files.add(http.MultipartFile.fromBytes(field, bytes, filename: fileName));
+    return _decode(await http.Response.fromStream(await request.send()));
+  }
+
+  /// İkili içerik (PDF gibi). Hata gövdesi yine anlaşılır mesaja çevrilir.
+  Future<List<int>> getBytes(String path) async {
+    final response = await http.get(_uri(path), headers: await _headers());
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ModuleApiException(_message(response), response.statusCode);
+    }
+    return response.bodyBytes;
+  }
+
   dynamic _decode(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ModuleApiException(_message(response), response.statusCode);

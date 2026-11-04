@@ -114,7 +114,7 @@ public sealed class PlatformConfigurationService(
         }
 
         var user = httpContextAccessor.HttpContext?.User;
-        var userRaw = user?.FindFirstValue("user_id") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRaw = user?.FindFirstValue("user_id") ?? user?.FindFirstValue("sub") ?? user?.FindFirstValue("nameid") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userRaw, out var userId))
         {
             return null;

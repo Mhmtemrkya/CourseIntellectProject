@@ -32,7 +32,7 @@ export default function SetupWizardPanel({ status, navigate, testId = 'setup-wiz
       className="overflow-hidden rounded-3xl border border-[hsl(var(--brand-accent)/0.35)] bg-[hsl(var(--brand-accent)/0.05)]"
     >
       <div className="flex flex-wrap items-center gap-4 border-b border-[hsl(var(--brand-accent)/0.2)] px-5 py-4">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.15)] text-[hsl(var(--brand-accent))]">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.15)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">
           <Rocket className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">

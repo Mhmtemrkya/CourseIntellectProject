@@ -264,6 +264,20 @@ export interface AddGrantRequest {
   accessMode: string;
 }
 
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface AddOpticalTopicRequest {
+  subject: string;
+  level?: string | null;
+  name: string;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface AddOpticalTopicResultDto {
+  status: string;
+  name: string;
+  topic: OpticalCustomTopicDto | null;
+}
+
 // CourseIntellect.Application/DTOs/PlatformOperations/RegisterTenantRequest.cs
 export interface AddRegistrationBlocklistRequest {
   kind: string;
@@ -474,6 +488,27 @@ export interface AdminUserListItemDto {
   lastLoginAt: string | null;
 }
 
+// CourseIntellect.Infrastructure/Services/AssistantAgent.cs
+export interface AgentState {
+  context: AssistantRequestContext;
+  conversation: AssistantConversation;
+  voice: unknown;
+  message: string;
+  folded: string;
+  parsed: ParsedAssistantQuery;
+  targetId: string | null;
+  focusName: string | null;
+}
+
+// CourseIntellect.Infrastructure/Services/AssistantAgent.cs
+export interface AgentTool {
+  name: string;
+  intent: AssistantIntent;
+  description: string;
+  parameters: string;
+  run: unknown;
+}
+
 // CourseIntellect.Application/DTOs/StudentFinance/StudentFinanceDtos.cs
 export interface AgingBucketDto {
   label: string;
@@ -539,6 +574,11 @@ export interface AnswerSelectionResponse {
   openAnswer: string | null;
   isCorrect: boolean;
   savedAtUtc: string;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface ApplyOpticalStudyPlansRequest {
+  students: OpticalStudyPlanApplyItem[];
 }
 
 // CourseIntellect.Infrastructure/Services/AccountingService.cs
@@ -725,6 +765,20 @@ export interface AssistantBriefingItemDto {
   ask: string | null;
 }
 
+// CourseIntellect.Application/Interfaces/IAssistantChatModel.cs
+export interface AssistantChatMessage {
+  role: string;
+  content: string;
+  toolCalls: AssistantToolCall[] | null;
+  toolName: string | null;
+}
+
+// CourseIntellect.Application/Interfaces/IAssistantChatModel.cs
+export interface AssistantChatTurn {
+  content: string;
+  toolCalls: AssistantToolCall[];
+}
+
 // CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
 export interface AssistantClientContext {
   currentRoute: string | null;
@@ -819,6 +873,14 @@ export const AssistantIntent = {
   SmallTalk: 32,
   HowTo: 33,
   GetTopicInsight: 34,
+  GetAttendanceRanking: 35,
+  GetExamTrend: 36,
+  CompareClasses: 37,
+  GetAtRiskStudents: 38,
+  GetFinanceReport: 39,
+  GetClassOverview: 40,
+  GetStudentReport: 41,
+  OutOfScope: 42,
 } as const;
 export type AssistantIntent = (typeof AssistantIntent)[keyof typeof AssistantIntent];
 
@@ -910,6 +972,19 @@ export interface AssistantSuggestionDto {
   category: string;
 }
 
+// CourseIntellect.Application/Interfaces/IAssistantChatModel.cs
+export interface AssistantToolCall {
+  name: string;
+  arguments: unknown;
+}
+
+// CourseIntellect.Application/Interfaces/IAssistantChatModel.cs
+export interface AssistantToolSpec {
+  name: string;
+  description: string;
+  parameters: unknown;
+}
+
 // CourseIntellect.Application/DTOs/Assistant/AssistantDtos.cs
 export interface AssistantUnansweredDto {
   messageId: string;
@@ -925,6 +1000,7 @@ export interface AttendanceEntry {
   id: string;
   tenantId: string | null;
   branchId: string | null;
+  studentId: string | null;
   studentName: string;
   className: string;
   lessonDate: string;
@@ -940,6 +1016,7 @@ export interface AttendanceEntryDto {
   lessonDate: string;
   status: string;
   lesson: string;
+  studentId: string | null;
 }
 
 // CourseIntellect.Api/Controllers/AttendanceQrSessionsController.cs
@@ -958,6 +1035,7 @@ export interface AttendanceQrOpenRequest {
 // CourseIntellect.Api/Controllers/AttendanceQrSessionsController.cs
 export interface AttendanceQrScanEntry {
   studentName: string;
+  studentId: string | null;
   scannedAtUtc: string;
 }
 
@@ -1267,30 +1345,28 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
-// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
-export interface ChatMessage {
-  role: string;
-  content: string;
+// CourseIntellect.Infrastructure/Services/OllamaAgentChatModel.cs
+export interface ChatFunction {
+  name: string;
+  description: string;
+  parameters: unknown;
 }
 
-// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
-export interface ChatOptions {
-  temperature: number;
-  num_ctx: number;
+// CourseIntellect.Infrastructure/Services/OllamaAgentChatModel.cs
+export interface ChatFunctionCall {
+  name: string;
+  arguments: unknown;
 }
 
-// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
-export interface ChatRequest {
-  model: string;
-  messages: ChatMessage[];
-  stream: boolean;
-  format: unknown;
-  options: ChatOptions;
+// CourseIntellect.Infrastructure/Services/OllamaAgentChatModel.cs
+export interface ChatTool {
+  type: string;
+  function: ChatFunction;
 }
 
-// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
-export interface ChatResponse {
-  message: ChatMessage | null;
+// CourseIntellect.Infrastructure/Services/OllamaAgentChatModel.cs
+export interface ChatToolCall {
+  function: ChatFunctionCall | null;
 }
 
 // CourseIntellect.Application/DTOs/Visitors/VisitorDtos.cs
@@ -1412,6 +1488,17 @@ export interface CloseFinanceDayRequest {
   countedCash: number;
   note?: string | null;
 }
+
+// CourseIntellect.Infrastructure/Services/OpticalLayoutDetector.cs
+export const Cls = {
+  Space: 0,
+  Digit: 1,
+  Answer: 2,
+  Star: 3,
+  Letter: 4,
+  Other: 5,
+} as const;
+export type Cls = (typeof Cls)[keyof typeof Cls];
 
 // CourseIntellect.Domain/Entities/ClubEntities.cs
 export interface Club {
@@ -2294,6 +2381,7 @@ export interface CreateExamResultRequest {
   correctCount?: number | null;
   wrongCount?: number | null;
   totalQuestions?: number | null;
+  studentId?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Homework/CreateHomeworkAssignmentRequest.cs
@@ -4056,6 +4144,7 @@ export interface ExamResult {
   type: ExamType;
   subject: string;
   dateLabel: string;
+  studentId: string | null;
   studentName: string;
   className: string;
   score: number;
@@ -4076,6 +4165,7 @@ export interface ExamResultDto {
   scorePercent: number;
   classRank: number | null;
   overallRank: number | null;
+  studentId: string | null;
 }
 
 // CourseIntellect.Api/Controllers/PlannedExamsController.cs
@@ -5280,6 +5370,35 @@ export interface NotificationItem {
   createdAtUtc: string;
 }
 
+// CourseIntellect.Infrastructure/Services/OllamaAgentChatModel.cs
+export interface OllamaAgentChatModel_ChatMessage {
+  role: string;
+  content: string | null;
+  tool_calls: ChatToolCall[] | null;
+  tool_name: string | null;
+}
+
+// CourseIntellect.Infrastructure/Services/OllamaAgentChatModel.cs
+export interface OllamaAgentChatModel_ChatOptions {
+  temperature: number;
+  num_ctx: number;
+}
+
+// CourseIntellect.Infrastructure/Services/OllamaAgentChatModel.cs
+export interface OllamaAgentChatModel_ChatRequest {
+  model: string;
+  messages: unknown[];
+  tools: ChatTool[];
+  stream: boolean;
+  keep_alive: string;
+  options: unknown;
+}
+
+// CourseIntellect.Infrastructure/Services/OllamaAgentChatModel.cs
+export interface OllamaAgentChatModel_ChatResponse {
+  message: unknown | null;
+}
+
 // CourseIntellect.Infrastructure/Services/OllamaIntentClient.cs
 export interface OllamaChatRequest {
   model: string;
@@ -5292,6 +5411,32 @@ export interface OllamaChatRequest {
 // CourseIntellect.Infrastructure/Services/OllamaIntentClient.cs
 export interface OllamaChatResponse {
   message: OllamaMessage | null;
+}
+
+// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
+export interface OllamaInsightTextGenerator_ChatMessage {
+  role: string;
+  content: string;
+}
+
+// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
+export interface OllamaInsightTextGenerator_ChatOptions {
+  temperature: number;
+  num_ctx: number;
+}
+
+// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
+export interface OllamaInsightTextGenerator_ChatRequest {
+  model: string;
+  messages: unknown[];
+  stream: boolean;
+  format: unknown;
+  options: unknown;
+}
+
+// CourseIntellect.Infrastructure/Services/OllamaInsightTextGenerator.cs
+export interface OllamaInsightTextGenerator_ChatResponse {
+  message: unknown | null;
 }
 
 // CourseIntellect.Infrastructure/Services/OllamaIntentClient.cs
@@ -5330,6 +5475,16 @@ export interface OpenConsentSessionRequest {
 }
 
 // CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalAnswerBlockDto {
+  label: string;
+  start: number;
+  count: number;
+  confidence: string;
+  reason: string;
+  countNeedsConfirmation: boolean;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
 export interface OpticalAnswerKeyDto {
   booklet: string;
   subjects: OpticalAnswerKeySubjectDto[];
@@ -5343,6 +5498,26 @@ export interface OpticalAnswerKeySubjectDto {
 }
 
 // CourseIntellect.Domain/Entities/OpticalExamEntities.cs
+export interface OpticalCustomTopic {
+  id: string;
+  tenantId: string | null;
+  subject: string;
+  level: string;
+  name: string;
+  normalizedName: string;
+  createdByUserId: string | null;
+  createdAtUtc: string;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalCustomTopicDto {
+  id: string;
+  subject: string;
+  level: string;
+  name: string;
+}
+
+// CourseIntellect.Domain/Entities/OpticalExamEntities.cs
 export interface OpticalExam {
   id: string;
   tenantId: string | null;
@@ -5350,6 +5525,7 @@ export interface OpticalExam {
   templateId: string;
   title: string;
   examDateUtc: string;
+  level: string;
   wrongPenalty: number;
   multiMarkAsWrong: boolean;
   cancelledMode: string;
@@ -5391,6 +5567,7 @@ export interface OpticalExamDto {
   fileName: string;
   importedStudentCount: number;
   importedAtUtc: string | null;
+  level: string;
 }
 
 // CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
@@ -5441,6 +5618,14 @@ export interface OpticalExamSummaryDto {
   importedAtUtc: string | null;
   questionCount: number;
   topicCoverage: number;
+  level: string;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalFlaggedLineDto {
+  line: number;
+  kind: string;
+  reason: string;
 }
 
 // CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
@@ -5451,10 +5636,58 @@ export interface OpticalImportResultDto {
   topicAnswerCount: number;
 }
 
+// CourseIntellect.Infrastructure/Services/OpticalLayoutDetector.cs
+export interface OpticalLayoutDetection {
+  suggestion: OpticalTemplateSuggestionDto;
+  segments: OpticalLayoutSegment[];
+  ambiguous: boolean;
+}
+
+// CourseIntellect.Infrastructure/Services/OpticalLayoutDetector.cs
+export interface OpticalLayoutSegment {
+  id: string;
+  kind: string;
+  start: number;
+  length: number;
+  fill: number;
+  distinctValues: number;
+  shapes: string[];
+}
+
 // CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
 export interface OpticalMatchOverrideDto {
   line: number;
   studentUserId: string | null;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalNumberCandidateDto {
+  id: string;
+  start: number;
+  length: number;
+  distinctValues: number;
+  constant: boolean;
+  leadingZeros: boolean;
+  note: string;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalPlanTaskDto {
+  title: string;
+  subject: string;
+  topic: string;
+  date: string;
+  durationMinutes: number;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalPlanTopicDto {
+  subject: string;
+  topic: string;
+  correct: number;
+  wrong: number;
+  blank: number;
+  total: number;
 }
 
 // CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
@@ -5521,6 +5754,46 @@ export interface OpticalStudentCandidateDto {
 }
 
 // CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalStudyPlanApplyItem {
+  studentUserId: string;
+  tasks: OpticalPlanTaskDto[];
+  sendParentSummary: boolean;
+  parentSummary: string | null;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalStudyPlanApplyResultDto {
+  applied: number;
+  tasksWritten: number;
+  parentsNotified: number;
+  skipped: string[];
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalStudyPlanPreviewDto {
+  examId: string;
+  examTitle: string;
+  hasTopics: boolean;
+  studyPlanEnabled: boolean;
+  students: OpticalStudyPlanRowDto[];
+  message: string | null;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalStudyPlanRowDto {
+  studentUserId: string;
+  studentName: string;
+  className: string;
+  net: number;
+  weakTopics: OpticalPlanTopicDto[];
+  tasks: OpticalPlanTaskDto[];
+  parentSummary: string;
+  hasParent: boolean;
+  skipReason: string | null;
+  alreadyApplied: boolean;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
 export interface OpticalSubjectBlockDto {
   name: string;
   start: number;
@@ -5534,6 +5807,24 @@ export interface OpticalSubjectScoreDto {
   wrong: number;
   blank: number;
   net: number;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalSubjectTopicsDto {
+  subject: string;
+  groups: OpticalTopicGroupDto[];
+  custom: OpticalCustomTopicDto[];
+  used: string[];
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalSuggestedFieldDto {
+  key: string;
+  label: string;
+  start: number;
+  length: number;
+  confidence: string;
+  reason: string;
 }
 
 // CourseIntellect.Domain/Entities/OpticalExamEntities.cs
@@ -5570,6 +5861,54 @@ export interface OpticalTemplateDto {
   bookletLength: number;
   subjects: OpticalSubjectBlockDto[];
   lineLength: number;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalTemplateSuggestionDto {
+  supported: boolean;
+  message: string;
+  encoding: string;
+  format: string;
+  totalLines: number;
+  sampledLines: number;
+  typicalLineLength: number;
+  minLineLength: number;
+  maxLineLength: number;
+  fields: OpticalSuggestedFieldDto[];
+  numberCandidates: OpticalNumberCandidateDto[];
+  answerBlocks: OpticalAnswerBlockDto[];
+  booklets: string[];
+  flaggedLines: OpticalFlaggedLineDto[];
+  warnings: string[];
+  confirmations: string[];
+  aiStatus: string;
+  aiNotes: string[];
+  manualRecommended: boolean;
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalTopicCatalogDto {
+  level: string;
+  levels: OpticalTopicLevelDto[];
+  subjects: OpticalSubjectTopicsDto[];
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalTopicGroupDto {
+  label: string;
+  topics: string[];
+}
+
+// CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
+export interface OpticalTopicLevelDto {
+  key: string;
+  label: string;
+}
+
+// CourseIntellect.Domain/Services/OpticalTopicCatalog.cs
+export interface OpticalTopicUnit {
+  label: string;
+  topics: string[];
 }
 
 // CourseIntellect.Domain/Entities/OrgUnit.cs
@@ -6656,6 +6995,13 @@ export interface QuestionThreadReplyDto {
   attachments: QuestionThreadAttachmentDto[];
 }
 
+// CourseIntellect.Infrastructure/Services/OpticalLayoutDetector.cs
+export interface Range {
+  start: number;
+  length: number;
+  readonly end?: number;
+}
+
 // CourseIntellect.Application/DTOs/StudentFinance/FinanceOperationsDtos.cs
 export interface ReconciliationEntryActionRequest {
   action: string;
@@ -6832,6 +7178,41 @@ export interface ReorderStopsRequest {
   stops: ReorderStopItemRequest[];
 }
 
+// CourseIntellect.Infrastructure/Services/AssistantAnalytics.cs
+export interface ReportChart {
+  kind: string;
+  x: string;
+  series: ReportSeries[];
+}
+
+// CourseIntellect.Infrastructure/Services/AssistantAnalytics.cs
+export interface ReportColumn {
+  key: string;
+  label: string;
+  align: string;
+}
+
+// CourseIntellect.Infrastructure/Services/AssistantAnalytics.cs
+export interface ReportData {
+  kind: string;
+  title: string;
+  subtitle: string;
+  metrics: ReportMetric[];
+  columns: ReportColumn[];
+  rows: (Record<string, unknown | null>)[];
+  chart: ReportChart | null;
+  sections: ReportSection[];
+  notes: string[];
+  studentId: string | null;
+}
+
+// CourseIntellect.Infrastructure/Services/AssistantAnalytics.cs
+export interface ReportMetric {
+  label: string;
+  value: string;
+  tone: string;
+}
+
 // CourseIntellect.Domain/Entities/ExamSolvingEntities.cs
 export interface ReportRecipient {
   id: string;
@@ -6840,6 +7221,18 @@ export interface ReportRecipient {
   userId: string | null;
   role: string;
   createdAtUtc: string;
+}
+
+// CourseIntellect.Infrastructure/Services/AssistantAnalytics.cs
+export interface ReportSection {
+  title: string;
+  lines: string[];
+}
+
+// CourseIntellect.Infrastructure/Services/AssistantAnalytics.cs
+export interface ReportSeries {
+  key: string;
+  label: string;
 }
 
 // CourseIntellect.Api/Controllers/LibraryController.cs
@@ -6882,6 +7275,21 @@ export interface ResolvedRole {
   modules: Record<string, ResolvedModule>;
 }
 
+// CourseIntellect.Infrastructure/Services/AttendanceService.cs
+export interface ResolvedStudent {
+  studentId: string | null;
+  userId: string | null;
+  name: string;
+  status: string;
+}
+
+// CourseIntellect.Infrastructure/Services/StudentIdentityResolver.cs
+export interface ResolvedStudentIdentity {
+  studentId: string | null;
+  userId: string | null;
+  name: string;
+}
+
 // CourseIntellect.Application/DTOs/StudentFinance/FinanceOperationsDtos.cs
 export interface RestructureInstallmentsRequest {
   installmentCount: number;
@@ -6899,6 +7307,13 @@ export interface ReviewInsightNoteRequest {
 export interface ReviewPasswordResetRequest {
   approved: boolean;
   note?: string | null;
+}
+
+// CourseIntellect.Infrastructure/Services/AssistantAnalytics.cs
+export interface RiskRow {
+  student: StudentCandidate;
+  score: number;
+  reasons: string[];
 }
 
 // CourseIntellect.Domain/Entities/RolePolicy.cs
@@ -6942,6 +7357,13 @@ export interface RosterStudent {
   branchId: string | null;
   nameKey: string;
   numberKey: string;
+  profileId: string;
+}
+
+// CourseIntellect.Infrastructure/Services/OpticalStudyPlanService.cs
+export interface RowSet {
+  hasTopics: boolean;
+  rows: OpticalStudyPlanRowDto[];
 }
 
 // CourseIntellect.Application/DTOs/Attendance/SaveAttendanceRequest.cs
@@ -6956,6 +7378,7 @@ export interface SaveAttendanceRequest {
 export interface SaveAttendanceStudentRequest {
   name: string;
   status: string;
+  studentId?: string | null;
 }
 
 // CourseIntellect.Api/Controllers/GuidanceController.cs
@@ -7057,6 +7480,7 @@ export interface SaveOpticalExamRequest {
   multiMarkAsWrong: boolean;
   cancelledMode: string;
   keys: OpticalAnswerKeyDto[];
+  level?: string | null;
 }
 
 // CourseIntellect.Application/DTOs/OpticalExams/OpticalExamDtos.cs
@@ -7603,6 +8027,22 @@ export interface SiteContentItem {
   updatedAtUtc: string;
   updatedBy: string;
 }
+
+// CourseIntellect.Infrastructure/Services/AssistantSmallTalk.cs
+export const SocialKind = {
+  None: 0,
+  Greeting: 1,
+  HowAreYou: 2,
+  Identity: 3,
+  Thanks: 4,
+  Farewell: 5,
+  WellWish: 6,
+  Compliment: 7,
+  Apology: 8,
+  Frustration: 9,
+  Acknowledge: 10,
+} as const;
+export type SocialKind = (typeof SocialKind)[keyof typeof SocialKind];
 
 // CourseIntellect.Application/DTOs/ExamSolving/ExamSolvingDtos.cs
 export interface SolutionQuestionResponse {
@@ -8239,6 +8679,12 @@ export interface StudentQuestionThread {
   attachmentsSerialized: string;
 }
 
+// CourseIntellect.Application/DTOs/Students/StudentRecordScope.cs
+export interface StudentRecordScope {
+  studentIds: string[];
+  studentNames: string[];
+}
+
 // CourseIntellect.Infrastructure/Services/ClubService.cs
 export interface StudentRow {
   userId: string;
@@ -8302,6 +8748,35 @@ export interface StudentStatementPdfModel {
   brandName: string;
   logoBytes: string | null;
   accentColor: string;
+}
+
+// CourseIntellect.Infrastructure/Services/StudentSuccessReportPdf.cs
+export interface StudentSuccessReport {
+  institution: string;
+  studentName: string;
+  className: string;
+  studentNo: string;
+  reportNo: string;
+  generatedAtUtc: string;
+  average: number | null;
+  classAverage: number | null;
+  attendanceRate: number | null;
+  absentLessons: number;
+  attendanceRecords: number;
+  homeworkRate: number | null;
+  pendingHomework: number;
+  examCount: number;
+  rank: number | null;
+  classSize: number;
+  topicSuccess: number | null;
+  solvedQuestions: number;
+  subjects: SuccessSubjectRow[];
+  weakTopics: SuccessTopicRow[];
+  strongTopics: SuccessTopicRow[];
+  exams: SuccessExamRow[];
+  optical: SuccessOpticalRow[];
+  scoreTrend: SuccessTrendPoint[];
+  netTrend: SuccessTrendPoint[];
 }
 
 // CourseIntellect.Application/DTOs/Students/StudentSummaryDto.cs
@@ -8446,11 +8921,57 @@ export interface SubmitQuestionPracticeAttemptRequest {
   answerText: string;
 }
 
+// CourseIntellect.Infrastructure/Services/StudentSuccessReportPdf.cs
+export interface SuccessExamRow {
+  date: string;
+  title: string;
+  subject: string;
+  score: number | null;
+  net: number | null;
+}
+
+// CourseIntellect.Infrastructure/Services/StudentSuccessReportPdf.cs
+export interface SuccessOpticalRow {
+  date: string;
+  title: string;
+  subject: string;
+  correct: number;
+  wrong: number;
+  blank: number;
+  net: number;
+}
+
 // CourseIntellect.Application/DTOs/AccountLifecycle/AccountDeletionDtos.cs
 export interface SuccessorCandidateDto {
   id: string;
   fullName: string;
   role: string;
+}
+
+// CourseIntellect.Infrastructure/Services/StudentSuccessReportPdf.cs
+export interface SuccessSubjectRow {
+  subject: string;
+  student: number | null;
+  classAverage: number | null;
+  count: number;
+  unit: string;
+}
+
+// CourseIntellect.Infrastructure/Services/StudentSuccessReportPdf.cs
+export interface SuccessTopicRow {
+  subject: string;
+  topic: string;
+  successRate: number;
+  classRate: number | null;
+  diagnosis: string | null;
+  trend: string;
+  solved: number;
+}
+
+// CourseIntellect.Infrastructure/Services/StudentSuccessReportPdf.cs
+export interface SuccessTrendPoint {
+  label: string;
+  value: number;
 }
 
 // CourseIntellect.Infrastructure/Services/AssistantConversation.cs
@@ -8879,6 +9400,13 @@ export interface ToggleStarRequest {
   isStarred: boolean;
 }
 
+// CourseIntellect.Infrastructure/Services/AssistantAgent.cs
+export interface ToolOutcome {
+  forModel: string;
+  card: AssistantResponseDto | null;
+  terminal: boolean;
+}
+
 // CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
 export interface TopicInsightDto {
   subject: string;
@@ -8924,6 +9452,14 @@ export const TransmissionType = {
   Automatic: 2,
 } as const;
 export type TransmissionType = (typeof TransmissionType)[keyof typeof TransmissionType];
+
+// CourseIntellect.Infrastructure/Services/AssistantAnalytics.cs
+export interface TrendExam {
+  date: string | null;
+  title: string;
+  values: Record<string, number>;
+  total: number | null;
+}
 
 // CourseIntellect.Application/DTOs/Accounting/UpdateApprovalStatusRequest.cs
 export interface UpdateApprovalStatusRequest {

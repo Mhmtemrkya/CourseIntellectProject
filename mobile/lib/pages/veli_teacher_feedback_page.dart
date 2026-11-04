@@ -66,15 +66,14 @@ class _VeliTeacherFeedbackPageState extends State<VeliTeacherFeedbackPage> {
         final absentCount = childAttendance
             .where(
               (item) =>
-                  _normalizeText(item.status).contains('devamsız') ||
-                  _normalizeText(item.status) == 'absent',
+                  // _normalizeText "ı"yı "i"ye katlar; "devamsız" hiç eşleşmiyordu.
+                  canonicalAttendanceStatus(item.status) == 'Devamsiz',
             )
             .length;
         final lateCount = childAttendance
             .where(
               (item) =>
-                  _normalizeText(item.status).contains('gec') ||
-                  _normalizeText(item.status) == 'late',
+                  canonicalAttendanceStatus(item.status) == 'Gec',
             )
             .length;
         final childExams = examResults

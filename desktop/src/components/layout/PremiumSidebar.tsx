@@ -514,7 +514,7 @@ export function PremiumSidebar() {
             {!compact && (
               <div className="min-w-0">
                 <p className={cn("truncate text-[16px] font-bold", light ? "text-slate-950" : "text-white")}>
-                  School<span className="text-[hsl(var(--brand-accent))]">Asist</span>
+                  School<span className="text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Asist</span>
                 </p>
                 {/*
                   Kurum adı artık kullanıcı kartında yazıyor; burada tekrar
@@ -589,7 +589,7 @@ export function PremiumSidebar() {
                   >
                     {institutionName || displayEmail}
                   </p>
-                  <span className="mt-1 inline-flex rounded-full bg-[hsl(var(--brand-accent)/0.12)] px-2 py-0.5 text-[9px] font-semibold text-[hsl(var(--brand-accent))]">
+                  <span className="mt-1 inline-flex rounded-full bg-[hsl(var(--brand-accent)/0.12)] px-2 py-0.5 text-[9px] font-semibold text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">
                     {ROLE_LABELS[primaryRole] || primaryRole}
                   </span>
                 </div>

@@ -117,6 +117,19 @@ public static class AssistantIntentCatalog
             [AssistantIntent.NotifyParentAboutAbsence] = new(AcademicInstitutions, "attendance", ParentNotify),
             // Konu analizi: personelden öğretmen/yönetici, öğrenci kendini, veli çocuğunu görür.
             [AssistantIntent.GetTopicInsight] = new(AcademicInstitutions, "student-insights", Academic),
+            [AssistantIntent.OutOfScope] = new(Any, null, Everyone),
+
+            // ─── Analiz ve rapor (yerel model ajanı) ──────────────────────────
+            // Öğretmen yalnız ders verdiği sınıfları görür; kapsam araç yürütülürken uygulanır.
+            [AssistantIntent.GetAttendanceRanking] = new(AcademicInstitutions, "attendance", StaffLists),
+            // Eğilim: öğrenci kendininkini, veli çocuğununkini, personel kapsamındaki sınıf/öğrenciyi görür.
+            [AssistantIntent.GetExamTrend] = new(AcademicInstitutions, "exams", Academic),
+            [AssistantIntent.CompareClasses] = new(AcademicInstitutions, "exams", AcademicLists),
+            [AssistantIntent.GetAtRiskStudents] = new(AcademicInstitutions, "exams", AcademicLists),
+            [AssistantIntent.GetClassOverview] = new(AcademicInstitutions, "students", AcademicLists),
+            [AssistantIntent.GetFinanceReport] = new(Any, "finance", FinanceStaff),
+            // Öğrenci raporunun her bölümü kendi niyetinin kapısından ayrıca geçer (ödeme, sınav…).
+            [AssistantIntent.GetStudentReport] = new(AcademicInstitutions, "students", Academic),
         };
 
     /// <summary>

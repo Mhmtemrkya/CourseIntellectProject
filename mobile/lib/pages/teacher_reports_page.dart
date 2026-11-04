@@ -15,6 +15,7 @@ import 'package:student/services/reports_analytics_api_service.dart';
 import 'package:student/services/teacher_weekly_report_api_service.dart';
 import 'package:student/widgets/responsive_layout.dart';
 import 'package:student/widgets/responsive_overlays.dart';
+import '../services/module_api_client.dart';
 import '../services/pdf_fonts.dart';
 
 class TeacherReportsPage extends StatefulWidget {
@@ -332,6 +333,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
           ? "Sınıf bilgisi yok"
           : student.className,
       "studentName": student.fullName,
+      "studentId": student.id,
       "studentNo": student.username,
       "studentCount": 1,
       "average": average,
@@ -376,6 +378,16 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
   }
 
   Future<File> _createReportPdfFile(Map<String, dynamic> report) async {
+    // Öğrenci raporu sunucuda üretilen 6 sayfalık Öğrenci Başarı Raporu'dur (masaüstü ve asistanla aynı).
+    final studentId = report['studentId']?.toString() ?? '';
+    if (studentId.isNotEmpty) {
+      try {
+        final bytes = await ModuleApiClient.instance.getBytes('/api/assistant/students/$studentId/success-report');
+        return _writeExportFile('ogrenci-basari-raporu-$studentId.pdf', bytes);
+      } catch (_) {
+        // Sunucu raporu alınamazsa (eski sunucu) aşağıdaki kısa rapora düşülür.
+      }
+    }
     final document = pw.Document(theme: await turkishPdfTheme());
     final isStudentReport =
         (report['studentName']?.toString() ?? '').isNotEmpty;

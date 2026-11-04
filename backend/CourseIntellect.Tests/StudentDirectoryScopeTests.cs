@@ -8,6 +8,7 @@ using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CourseIntellect.Tests;
 
@@ -27,17 +28,24 @@ public sealed class StudentDirectoryScopeTests : IDisposable
         parentName, "+90 555 111 22 33", "veli@example.com", "Adres", "", "", $"kullanici-{name}",
         "Active", null, []);
 
-    private sealed class StubAcademicQuery : IAcademicQueryService
+    // Veritabanında profil varsa liste onlardan (gerçek profil kimlikleriyle) kurulur;
+    // kapsam artık profil kimliğiyle süzer.
+    private sealed class StubAcademicQuery(CourseIntellect.Infrastructure.Persistence.CourseIntellectDbContext context) : IAcademicQueryService
     {
         public Task<IReadOnlyList<StudentSummaryDto>> GetStudentsAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<StudentSummaryDto>>(
-            [
-                Student("Ali VELI", "Ayse VELI"),
-                Student("Ayse YILMAZ", "Baska VELI"),
-                Student("Mehmet KAYA", "Ayse VELI"),
-            ]);
+        {
+            var profiles = context.Students.IgnoreQueryFilters().ToList();
+            return Task.FromResult<IReadOnlyList<StudentSummaryDto>>(profiles.Count > 0
+                ? profiles.Select(p => Student(p.FullName, p.ParentName) with { Id = p.Id, UserId = p.UserId }).ToList()
+                :
+                [
+                    Student("Ali VELI", "Ayse VELI"),
+                    Student("Ayse YILMAZ", "Baska VELI"),
+                    Student("Mehmet KAYA", "Ayse VELI"),
+                ]);
+        }
 
-        public Task<IReadOnlyList<ExamResultDto>> GetExamResultsAsync(string? studentName, string? className, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<ExamResultDto>> GetExamResultsAsync(string? studentName, string? className, Guid? studentId = null, StudentRecordScope? scope = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<ExamResultDto> CreateExamResultAsync(CreateExamResultRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<ExamResultDto?> UpdateExamResultAsync(Guid id, UpdateExamResultRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<bool> DeleteExamResultAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -51,7 +59,7 @@ public sealed class StudentDirectoryScopeTests : IDisposable
 
     private StudentsController CreateController(params Claim[] claims)
     {
-        return new StudentsController(new StubAcademicQuery(), null!, db.Context)
+        return new StudentsController(new StubAcademicQuery(db.Context), null!, db.Context)
         {
             ControllerContext = new ControllerContext
             {
@@ -127,4 +135,31 @@ public sealed class StudentDirectoryScopeTests : IDisposable
     }
 
     public void Dispose() => db.Dispose();
+
+    [Fact]
+    public async Task Parent_DoesNotSeeSameNamedChildOfAnotherFamily()
+    {
+        db.Context.TenantWorkspaces.Add(new TenantWorkspace { Id = TenantId, Name = "Okul", Slug = "okul" });
+        db.Context.Users.Add(new AppUser
+        {
+            Id = ParentUserId, TenantId = TenantId, Username = "veli.ayse",
+            FullName = "Ayse VELI", PrimaryRole = UserRole.Parent,
+        });
+        // Başka ailede aynı adlı bir "Ali VELI" daha var; eskiden adla süzüldüğü için veliye listeleniyordu.
+        db.Context.Students.AddRange(
+            new StudentProfile { TenantId = TenantId, UserId = Guid.NewGuid(), FullName = "Ali VELI", ParentUserId = ParentUserId, ParentName = "Ayse VELI" },
+            new StudentProfile { TenantId = TenantId, UserId = Guid.NewGuid(), FullName = "Ali VELI", ParentName = "Baska VELI" });
+        await db.Context.SaveChangesAsync();
+
+        var controller = CreateController(
+            new Claim(ClaimTypes.Role, "Parent"),
+            new Claim("nameid", ParentUserId.ToString()),
+            new Claim("name", "Ayse VELI"),
+            new Claim("unique_name", "veli.ayse"));
+
+        var names = await NamesOf(await controller.GetStudents(CancellationToken.None));
+
+        Assert.Single(names);
+    }
+
 }

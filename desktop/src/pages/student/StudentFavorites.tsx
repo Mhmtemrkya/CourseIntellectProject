@@ -108,7 +108,7 @@ export default function StudentFavorites() {
         </div>
         <div className="flex flex-wrap gap-2">
           {subjects.map((item) => (
-            <button key={item} type="button" onClick={() => setSubject(item)} className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${subject === item ? 'border-[hsl(var(--brand-accent))] bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]' : 'border-foreground/10 text-muted-foreground hover:bg-foreground/[0.05]'}`}>{item}</button>
+            <button key={item} type="button" onClick={() => setSubject(item)} className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${subject === item ? 'border-[hsl(var(--brand-accent))] bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]' : 'border-foreground/10 text-muted-foreground hover:bg-foreground/[0.05]'}`}>{item}</button>
           ))}
         </div>
       </div>

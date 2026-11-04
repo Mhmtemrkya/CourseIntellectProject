@@ -147,7 +147,7 @@ export function PageHeader({ icon, title, description, userName, actions }: Pare
         <div className="mt-8 flex items-center gap-4">
           {icon}
           <div>
-            <h1 className="!text-[29px] !font-black !tracking-[-0.04em] !text-white">{title}</h1>
+            <h1 className="!text-[29px] !font-black !tracking-[-0.04em] !text-foreground">{title}</h1>
           </div>
         </div>
       </div>

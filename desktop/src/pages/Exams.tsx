@@ -38,6 +38,7 @@ import { errorMessage } from '../lib/errors';
 import type { PlannedExam } from '../lib/api/plannedExams';
 import type { ExamResultDto, StudentSummaryDto } from '../types/api/generated';
 import type { IconComponent } from '../types/ui';
+import { localDateKey } from '../lib/localDate';
 
 /** Liste satırı: planlı sınav ya da yalnız sonucu girilmiş (sentetik) sınav. */
 interface ExamListRow {
@@ -292,7 +293,7 @@ export default function Exams() {
   const grouped = useMemo(() => {
     const map = new Map<string, ExamListRow[]>();
     filtered.forEach((row) => {
-      const key = row.date ? row.date.toISOString().slice(0, 10) : 'tarihsiz';
+      const key = row.date ? localDateKey(row.date) : 'tarihsiz';
       const bucket = map.get(key);
       if (bucket) bucket.push(row);
       else map.set(key, [row]);

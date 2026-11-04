@@ -32,6 +32,7 @@ import type { AccountingDashboard } from '../../lib/api/accounting';
 import type { AccountingInstallmentDto, StudentSummaryDto } from '../../types/api/generated';
 import type { StatusTone } from '../../components/ui/status-badge';
 import type { IconComponent } from '../../types/ui';
+import { localDateKey } from '../../lib/localDate';
 
 type PlanStatus = 'current' | 'overdue' | 'completed';
 type StatusFilter = PlanStatus | 'all';
@@ -128,7 +129,7 @@ function CreatePlanDialog({
   const [form, setForm] = useState({
     studentKey: '',
     amount: '',
-    due: new Date().toISOString().slice(0, 10),
+    due: localDateKey(),
     note: '',
   });
 
@@ -137,7 +138,7 @@ function CreatePlanDialog({
       setForm({
         studentKey: '',
         amount: '',
-        due: new Date().toISOString().slice(0, 10),
+        due: localDateKey(),
         note: '',
       });
     }

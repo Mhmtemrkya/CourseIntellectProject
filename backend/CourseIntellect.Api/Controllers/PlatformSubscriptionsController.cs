@@ -118,7 +118,7 @@ public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService
 
     private (Guid actorId, Guid tenantId) GetClaims()
     {
-        var actorRaw = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var actorRaw = User.FindFirstValue("user_id") ?? User.FindFirstValue("sub") ?? User.FindFirstValue("nameid") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         Guid.TryParse(actorRaw, out var actorId);
         var tenantId = tenantContext.CurrentTenantId ?? Guid.Empty;
         return (actorId, tenantId);

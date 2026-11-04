@@ -145,6 +145,41 @@ public sealed class AssistantIntentResolverTests
     public void Resolves_NaturalPhrases(string message, AssistantIntent expected)
         => Assert.Equal(expected, new RuleBasedAssistantIntentResolver().Resolve(message).Intent);
 
+    /// <summary>Sohbet cümleleri doğru türe ayrılır; veri sorusu içeren cümleler sohbete kaçmaz.</summary>
+    [Theory]
+    [InlineData("merhaba", AssistantIntent.Greeting, SocialKind.Greeting)]
+    [InlineData("selamlar hocam", AssistantIntent.Greeting, SocialKind.Greeting)]
+    [InlineData("merhaba nasılsın", AssistantIntent.SmallTalk, SocialKind.HowAreYou)]
+    [InlineData("nasıl gidiyor", AssistantIntent.SmallTalk, SocialKind.HowAreYou)]
+    [InlineData("ne yapabiliyorsun", AssistantIntent.SmallTalk, SocialKind.Identity)]
+    [InlineData("bot musun", AssistantIntent.SmallTalk, SocialKind.Identity)]
+    [InlineData("adın ne", AssistantIntent.SmallTalk, SocialKind.Identity)]
+    [InlineData("teşekkürler", AssistantIntent.Thanks, SocialKind.Thanks)]
+    [InlineData("eyvallah çok işime yaradı", AssistantIntent.Thanks, SocialKind.Thanks)]
+    [InlineData("eline sağlık", AssistantIntent.Thanks, SocialKind.Thanks)]
+    [InlineData("görüşürüz", AssistantIntent.Thanks, SocialKind.Farewell)]
+    [InlineData("iyi geceler", AssistantIntent.Thanks, SocialKind.Farewell)]
+    [InlineData("kolay gelsin", AssistantIntent.Thanks, SocialKind.WellWish)]
+    [InlineData("harikasın", AssistantIntent.SmallTalk, SocialKind.Compliment)]
+    [InlineData("özür dilerim", AssistantIntent.SmallTalk, SocialKind.Apology)]
+    [InlineData("beni anlamıyorsun", AssistantIntent.SmallTalk, SocialKind.Frustration)]
+    [InlineData("tamam", AssistantIntent.SmallTalk, SocialKind.Acknowledge)]
+    [InlineData("anladım", AssistantIntent.SmallTalk, SocialKind.Acknowledge)]
+    [InlineData("thank you", AssistantIntent.Thanks, SocialKind.Thanks)]
+    [InlineData("bye", AssistantIntent.Thanks, SocialKind.Farewell)]
+    public void Resolves_SmallTalkKinds(string message, AssistantIntent intent, SocialKind kind)
+    {
+        Assert.Equal(intent, new RuleBasedAssistantIntentResolver().Resolve(message).Intent);
+        Assert.Equal(kind, AssistantSmallTalk.Classify(RuleBasedAssistantIntentResolver.Fold(message)));
+    }
+
+    [Theory]
+    [InlineData("teşekkürler, Ali'nin sınav sonuçları", AssistantIntent.GetExamResults)]
+    [InlineData("tamam şimdi bugün devamsız olanlar", AssistantIntent.ListAbsentStudents)]
+    [InlineData("harika, ödevlerim neler", AssistantIntent.GetHomework)]
+    public void SmallTalk_DoesNotSwallowDataQuestions(string message, AssistantIntent expected)
+        => Assert.Equal(expected, new RuleBasedAssistantIntentResolver().Resolve(message).Intent);
+
     [Fact]
     public void ScoreThreshold_IsNotAStudentNumber()
     {

@@ -3,6 +3,7 @@ using CourseIntellect.Api.Security;
 using CourseIntellect.Application.DTOs.ExamResults;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,38 +19,40 @@ public sealed class ExamResultsController(
     CourseIntellectDbContext dbContext) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] string? studentName, [FromQuery] string? className, CancellationToken cancellationToken)
+    public async Task<IActionResult> Get(
+        [FromQuery] string? studentName,
+        [FromQuery] string? className,
+        [FromQuery] Guid? studentId,
+        CancellationToken cancellationToken)
     {
         // Kapsam: öğrenci yalnızca kendi sonuçlarını, veli yalnızca kendi
         // çocuklarının sonuçlarını görebilir; personel rolleri kısıtsızdır.
-        var allowedNames = await StudentScope.ResolveAllowedStudentNamesAsync(User, dbContext, cancellationToken);
-        if (allowedNames is { Count: 0 })
+        // Kimliğe bağlı sonuçlar kimlikle, bağlanmamış eski sonuçlar adla süzülür.
+        var scope = await StudentScope.ResolveStudentRecordScopeAsync(User, dbContext, cancellationToken);
+        if (scope is { StudentIds.Count: 0, StudentNames.Count: 0 })
         {
             return Ok(Array.Empty<ExamResultDto>());
         }
 
-        if (allowedNames is { Count: 1 })
+        if (scope is not null)
         {
-            studentName = allowedNames[0];
-        }
-        else if (allowedNames is { Count: > 1 })
-        {
-            // Veli birden fazla çocuğa sahipse: istenen isim izinli listedeyse
-            // korunur, değilse/boşsa tüm çocuklarına daraltılır.
+            // Kapsam dışı öğrenci istenirse boş döner. Eskiden istek yok sayılıp tüm kapsam
+            // dönüyordu: çok çocuklu velide bir çocuğun kartına kardeşlerinin kayıtları karışabilirdi.
+            if (studentId is { } requestedId && !scope.StudentIds.Contains(requestedId))
+            {
+                return Ok(Array.Empty<object>());
+            }
+
+            // Ad harf/Türkçe karakterden bağımsız karşılaştırılır: mobil adı "Ayse" diye
+            // gönderebilir, kayıtta "Ayşe" yazar.
             var requested = studentName?.Trim();
             studentName = !string.IsNullOrWhiteSpace(requested)
-                && allowedNames.Any(name => string.Equals(name.Trim(), requested, StringComparison.OrdinalIgnoreCase))
+                && scope.StudentNames.Any(name => StudentIdentityResolver.NameKey(name) == StudentIdentityResolver.NameKey(requested))
                 ? requested
                 : null;
         }
 
-        var results = await academicQueryService.GetExamResultsAsync(studentName, className, cancellationToken);
-
-        if (allowedNames is { Count: > 1 } && string.IsNullOrWhiteSpace(studentName))
-        {
-            results = StudentScope.FilterByStudentNames(results, allowedNames, item => item.StudentName);
-        }
-
+        var results = await academicQueryService.GetExamResultsAsync(studentName, className, studentId, scope, cancellationToken);
         return Ok(results);
     }
 
@@ -59,21 +62,13 @@ public sealed class ExamResultsController(
     [HttpGet("class-ranking")]
     public async Task<IActionResult> GetClassRanking(CancellationToken cancellationToken)
     {
-        var userRaw = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        // Kimlik "sub"/"nameid" claim'iyle gelir (ClaimTypes.NameIdentifier eşlenmez); eskiden
+        // bulunamayınca adla aranıyor ve başka sınıftaki aynı adlı öğrencinin sırası dönüyordu.
         CourseIntellect.Domain.Entities.StudentProfile? me = null;
-        if (Guid.TryParse(userRaw, out var userId))
+        if (StudentScope.ResolveUserId(User) is { } userId)
         {
             me = await dbContext.Students.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
-        }
-        if (me is null)
-        {
-            var fullName = (User.FindFirstValue("name") ?? User.FindFirstValue(ClaimTypes.Name) ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(fullName))
-            {
-                me = await dbContext.Students.AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.FullName == fullName, cancellationToken);
-            }
         }
 
         if (me is null || string.IsNullOrWhiteSpace(me.ClassName))
@@ -84,38 +79,32 @@ public sealed class ExamResultsController(
         var className = me.ClassName;
         var classmates = await dbContext.Students.AsNoTracking()
             .Where(x => x.ClassName == className)
-            .Select(x => x.FullName)
+            .Select(x => new { x.Id, x.FullName })
             .ToListAsync(cancellationToken);
 
         var results = await dbContext.ExamResults.AsNoTracking()
             .Where(x => x.ClassName == className && x.Score > 0)
-            .Select(x => new { x.StudentName, x.Score })
+            .Select(x => new { x.StudentId, x.StudentName, x.Score })
             .ToListAsync(cancellationToken);
 
-        var averages = results
-            .GroupBy(r => r.StudentName.Trim().ToLowerInvariant())
-            .ToDictionary(g => g.Key, g => g.Average(x => x.Score));
-
-        var ranked = classmates
-            .Select(name => new
-            {
-                Key = name.Trim().ToLowerInvariant(),
-                Avg = averages.TryGetValue(name.Trim().ToLowerInvariant(), out var value) ? value : 0d,
-            })
-            .OrderByDescending(x => x.Avg)
-            .ToList();
-
-        var total = ranked.Count;
-        var myKey = me.FullName.Trim().ToLowerInvariant();
-        var myAverage = averages.TryGetValue(myKey, out var mine) ? mine : 0d;
-        var rank = ranked.FindIndex(x => x.Key == myKey) + 1;
-        if (rank <= 0)
+        // Sonuç öğrenciye kimlikle, bağlanmamış eski sonuç adla eşlenir.
+        double AverageOf(Guid id, string fullName)
         {
-            rank = total > 0 ? total : 1;
-            total = Math.Max(total, 1);
+            var key = StudentIdentityResolver.NameKey(fullName);
+            var scores = results
+                .Where(r => r.StudentId is { } linked ? linked == id : StudentIdentityResolver.NameKey(r.StudentName) == key)
+                .Select(r => (double)r.Score)
+                .ToList();
+            return scores.Count > 0 ? scores.Average() : 0d;
         }
 
-        return Ok(new ClassRankingDto(rank, total, Math.Round(myAverage, 1), className));
+        var averages = classmates.Select(x => AverageOf(x.Id, x.FullName)).ToList();
+        var myAverage = AverageOf(me.Id, me.FullName);
+        var total = classmates.Count;
+        // Eşit ortalamalar aynı sırayı alır (1, 2, 2, 4).
+        var rank = 1 + averages.Count(value => value > myAverage);
+
+        return Ok(new ClassRankingDto(rank, Math.Max(total, 1), Math.Round(myAverage, 1), className));
     }
 
     [HttpPost]

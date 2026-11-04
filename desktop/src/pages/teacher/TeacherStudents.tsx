@@ -27,6 +27,8 @@ import {
 } from '../../lib/api/modules';
 import { errorMessage } from '../../lib/errors';
 import type { AttendanceEntryDto, ExamResultDto, ScheduleEntryDto, StudentSummaryDto } from '../../types/api/generated';
+import { belongsToStudent, byRecordDateDesc } from '../../lib/studentRecords';
+import { isAttendedStatus } from '../../lib/attendanceStatus';
 
 const normalize = (value: string | null | undefined = ''): string => String(value ?? '').trim().toLocaleLowerCase('tr-TR');
 
@@ -95,11 +97,11 @@ export default function TeacherStudents() {
       .filter((student) => !isUserPassive(student.status))
       .filter((student) => classKeys.size === 0 || classKeys.has(normalize(student.className)))
       .map((student) => {
-        const rows = attendance.filter((row) => normalize(row.studentName) === normalize(student.fullName));
-        const present = rows.filter((row) => normalize(row.status).includes('katildi')).length;
+        const rows = attendance.filter((row) => belongsToStudent(row, student));
+        const present = rows.filter((row) => isAttendedStatus(row.status)).length;
         const lastExam = examResults
-          .filter((row) => normalize(row.studentName) === normalize(student.fullName))
-          .sort((a, b) => String(b.dateLabel || '').localeCompare(String(a.dateLabel || '')))[0];
+          .filter((row) => belongsToStudent(row, student))
+          .sort(byRecordDateDesc)[0];
         return {
           ...student,
           attendanceRate: rows.length > 0 ? Math.round((present / rows.length) * 100) : 0,

@@ -51,9 +51,12 @@ public sealed class StudentPromotionTests : IDisposable
             return Task.CompletedTask;
         }
 
+        public List<(object? Before, object? After)> Changes { get; } = [];
+
         public Task LogChangeAsync(string action, string category, string entityType, string entityId, string detail, object? before, object? after, CancellationToken cancellationToken = default)
         {
             Entries.Add($"{action}|{detail}");
+            Changes.Add((before, after));
             return Task.CompletedTask;
         }
 
@@ -160,6 +163,90 @@ public sealed class StudentPromotionTests : IDisposable
             () => service.PromoteStudentsAsync(new PromoteStudentsRequest([AliUserId], "  ")));
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.PromoteStudentsAsync(new PromoteStudentsRequest([], "8-A")));
+    }
+
+    private static UpdateStudentRequest Edit(string fullName, string className = "7-A", string tcNo = "10000000146") =>
+        new(fullName, tcNo, className, "", "", "2012-05-01", "Ortaokul", "Veli VELI", "", "", "", "");
+
+    /// <summary>Ad düzeltilince çalışma programı (XP, seri) yeni ada taşınır; değişen alanlar eski/yeni değerle kaydedilir, TC maskelenir.</summary>
+    [Fact]
+    public async Task Update_RenamesStudyPlan_AndAuditsChangedFieldsWithMaskedTc()
+    {
+        await SeedAsync();
+        db.Context.StudyPlanStates.Add(new StudyPlanState { TenantId = TenantA, StudentName = "Ali VELI", XpPoints = 120, StreakCount = 4 });
+        await db.Context.SaveChangesAsync();
+        var service = CreateService(TenantA);
+        var id = (await db.Context.Students.FirstAsync(x => x.UserId == AliUserId)).Id;
+
+        var result = await service.UpdateStudentAsync(id, Edit("Ali Veli Can"));
+
+        Assert.Equal("Ali Veli CAN", result?.FullName);
+        var plan = await db.Context.StudyPlanStates.SingleAsync();
+        Assert.Equal("Ali Veli CAN", plan.StudentName);
+        Assert.Equal(120, plan.XpPoints);
+        var entry = Assert.Single(audit.Entries, item => item.StartsWith("Öğrenci bilgileri güncellendi"));
+        Assert.Contains("Ad soyad: Ali VELI → Ali Veli CAN", entry);
+        Assert.Contains("TC kimlik: (boş) → 100******46", entry);
+        Assert.DoesNotContain("10000000146", entry);
+        Assert.Contains("Çalışma programı yeni ada taşındı", entry);
+        var after = Assert.IsType<Dictionary<string, string>>(audit.Changes.Single().After);
+        Assert.Equal("100******46", after["TC kimlik"]);
+        Assert.DoesNotContain("Sınıf", after.Keys);
+    }
+
+    /// <summary>Eski adı taşıyan başka öğrenci varsa program kimin olduğu belli değildir; yerinde bırakılır.</summary>
+    [Fact]
+    public async Task Update_RenamesLinkedAttendanceAndExamRows()
+    {
+        await SeedAsync();
+        var service = CreateService(TenantA);
+        var id = (await db.Context.Students.FirstAsync(x => x.UserId == AliUserId)).Id;
+        db.Context.ExamResults.Add(new ExamResult { TenantId = TenantA, StudentId = id, StudentName = "Ali VELI", ClassName = "7-A", ExamTitle = "Deneme", Subject = "Fen", DateLabel = "01.06.2026", Score = 70 });
+        db.Context.AttendanceEntries.AddRange(
+            new AttendanceEntry { TenantId = TenantA, StudentId = id, StudentName = "Ali VELI", ClassName = "7-A", Lesson = "Fen", LessonDate = new DateTime(2026, 6, 1), Status = "Katildi" },
+            new AttendanceEntry { TenantId = TenantA, StudentName = "Ali VELI", ClassName = "7-A", Lesson = "Fen", LessonDate = new DateTime(2026, 6, 2), Status = "Katildi" });
+        await db.Context.SaveChangesAsync();
+
+        await service.UpdateStudentAsync(id, Edit("Ali Can"));
+
+        var rows = await db.Context.AttendanceEntries.IgnoreQueryFilters().AsNoTracking().ToListAsync();
+        Assert.Equal("Ali CAN", rows.Single(x => x.StudentId == id).StudentName);
+        var exam = await db.Context.ExamResults.IgnoreQueryFilters().AsNoTracking().SingleAsync();
+        Assert.Equal("Ali CAN", exam.StudentName);
+        // Kimliğe bağlanmamış eski kayıt (kime ait olduğu kesin değil) ellenmez.
+        Assert.Equal("Ali VELI", rows.Single(x => x.StudentId == null).StudentName);
+    }
+
+    [Fact]
+    public async Task Update_DoesNotMoveStudyPlan_WhenOldNameIsShared()
+    {
+        await SeedAsync();
+        var twinId = Guid.NewGuid();
+        db.Context.Users.Add(new AppUser { Id = twinId, TenantId = TenantA, Username = "ali2", FullName = "Ali VELI", PrimaryRole = UserRole.Student });
+        db.Context.Students.Add(new StudentProfile { TenantId = TenantA, UserId = twinId, FullName = "Ali VELI", ClassName = "7-B" });
+        db.Context.StudyPlanStates.Add(new StudyPlanState { TenantId = TenantA, StudentName = "Ali VELI" });
+        await db.Context.SaveChangesAsync();
+        var service = CreateService(TenantA);
+        var id = (await db.Context.Students.FirstAsync(x => x.UserId == AliUserId)).Id;
+
+        await service.UpdateStudentAsync(id, Edit("Ali Can"));
+
+        Assert.Equal("Ali VELI", (await db.Context.StudyPlanStates.SingleAsync()).StudentName);
+        Assert.Contains(audit.Entries, item => item.Contains("çalışma programı taşınmadı"));
+    }
+
+    [Fact]
+    public async Task Update_WithoutChanges_WritesNoAuditEntry()
+    {
+        await SeedAsync();
+        var service = CreateService(TenantA);
+        var id = (await db.Context.Students.FirstAsync(x => x.UserId == AliUserId)).Id;
+        await service.UpdateStudentAsync(id, Edit("Ali VELI"));
+        audit.Entries.Clear();
+
+        await service.UpdateStudentAsync(id, Edit("Ali VELI"));
+
+        Assert.DoesNotContain(audit.Entries, item => item.StartsWith("Öğrenci bilgileri güncellendi"));
     }
 
     public void Dispose() => db.Dispose();

@@ -3095,4 +3095,9 @@ const Map<String, String> kTrEn = {
   'Platform onayı bekleniyor': 'Awaiting platform approval',
   'Onaylandı — silme zamanlandı': 'Approved — deletion scheduled',
   'Red gerekçesi:': 'Rejection reason:',
+  'Taksit Planı': 'Installment Plan',
+  'Aylara göre bölme: ilk taksit ayrı, kalan tutar kalan taksitlere eşit bölünür ve her ay aynı gün vadelenir.':
+      'Monthly split: the first installment is separate, the rest is divided equally and falls due on the same day each month.',
+  'İlk taksit tutarını, geçerli bir başlangıç tarihini ve (birden çok taksitte) ilk taksitten büyük toplam tutarı girin.':
+      'Enter the first installment amount, a valid start date and (for several installments) a total larger than the first installment.',
 };

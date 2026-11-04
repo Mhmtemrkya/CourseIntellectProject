@@ -24,4 +24,9 @@ public interface IAssistantService
     Task<AssistantBriefingDto> GetBriefingAsync(AssistantRequestContext context, CancellationToken cancellationToken);
     Task<bool> SetFeedbackAsync(AssistantRequestContext context, Guid messageId, bool helpful, CancellationToken cancellationToken);
     Task<IReadOnlyList<AssistantUnansweredDto>> GetUnansweredAsync(AssistantRequestContext context, int days, CancellationToken cancellationToken);
+    /// <summary>Kullanıcının kendi rapor mesajının PDF'i; mesaj başkasınınsa ya da rapor değilse null.</summary>
+    Task<(byte[] Content, string FileName)?> GetReportPdfAsync(AssistantRequestContext context, Guid messageId, CancellationToken cancellationToken);
+    Task<(byte[] Content, string FileName)?> GetReportExcelAsync(AssistantRequestContext context, Guid messageId, CancellationToken cancellationToken);
+    /// <summary>6 sayfalık Öğrenci Başarı Raporu; öğrenci kullanıcının kapsamında değilse null.</summary>
+    Task<(byte[] Content, string FileName)?> GetStudentSuccessPdfAsync(AssistantRequestContext context, Guid studentId, CancellationToken cancellationToken);
 }

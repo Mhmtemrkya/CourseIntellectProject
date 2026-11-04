@@ -56,7 +56,7 @@ function Calendar({
         day_range_end: "day-range-end",
         day_selected:
           "bg-[hsl(var(--brand-accent))] text-white hover:bg-[hsl(var(--brand-accent))] hover:text-white focus:bg-[hsl(var(--brand-accent))] focus:text-white",
-        day_today: "bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]",
+        day_today: "bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]",
         day_outside:
           "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
         day_disabled: "text-muted-foreground opacity-50",

@@ -258,7 +258,9 @@ public sealed class StudyPlanService(CourseIntellectDbContext dbContext) : IStud
             return;
         }
 
-        var today = DateTime.UtcNow.Date;
+        // Seri Türkiye gününe göre sayılır: UTC günü kullanılınca gece 00:00–03:00
+        // arasında tamamlanan görev önceki güne yazılıyor, seri yanlış kırılıyordu.
+        var today = AssistantDates.TodayTr;
         var lastDate = entity.LastCompletedAt?.Date;
 
         if (lastDate is null)

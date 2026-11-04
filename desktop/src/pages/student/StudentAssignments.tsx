@@ -100,7 +100,7 @@ function daysLeftLabel(deadline: string): { text: string; tone: string } | null 
   const date = parseDate(deadline);
   if (!date) return null;
   const days = Math.ceil((date.getTime() - Date.now()) / 86400000);
-  if (days > 0) return { text: `${days} gün kaldı`, tone: days <= 3 ? 'text-rose-400' : 'text-[hsl(var(--brand-accent))]' };
+  if (days > 0) return { text: `${days} gün kaldı`, tone: days <= 3 ? 'text-rose-400' : 'text-[hsl(var(--brand-accent-text,var(--brand-accent)))]' };
   if (days === 0) return { text: 'Bugün', tone: 'text-rose-400' };
   return { text: `${Math.abs(days)} gün geçti`, tone: 'text-muted-foreground' };
 }
@@ -332,7 +332,7 @@ export default function StudentAssignments() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5" data-testid="student-assignments-page">
       <div>
-        <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Ödevlerim</h1>
+        <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Ödevlerim</h1>
         <p className="mt-1 text-sm text-muted-foreground">Tüm ödevlerini takip et, zamanında teslim et.</p>
       </div>
 
@@ -412,7 +412,7 @@ export default function StudentAssignments() {
                       <tr key={item.id} className="border-b border-foreground/[0.06] transition-colors hover:bg-foreground/[0.025]">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]">
+                            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">
                               <BookOpen className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
@@ -480,13 +480,13 @@ export default function StudentAssignments() {
           <PremiumPanel title="Sonuçlanan Ödevler" description="Değerlendirilen ödevlerin" contentClassName="space-y-2.5">
             {graded.length ? graded.map((item) => (
               <button key={item.id} onClick={() => setDetailAssignment(item)} className="flex w-full items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left transition-colors hover:bg-[hsl(var(--brand-accent)/0.06)]">
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><Award className="h-4 w-4" /></div>
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><Award className="h-4 w-4" /></div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{decodeText(item.title)}</p>
                   <p className="truncate text-xs text-muted-foreground">{decodeText(item.subject)}</p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="text-lg font-black text-[hsl(var(--brand-accent))]">{letterGrade(submissionGrade(item.ownSubmission))}</p>
+                  <p className="text-lg font-black text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">{letterGrade(submissionGrade(item.ownSubmission))}</p>
                   <p className="text-[10px] text-muted-foreground">{submissionGrade(item.ownSubmission) ?? '-'}/100</p>
                 </div>
               </button>

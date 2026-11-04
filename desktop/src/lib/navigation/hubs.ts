@@ -219,7 +219,7 @@ export const ADMIN_HUBS: MenuHub[] = [
       { path: '/admin/documents', label: 'Belge Merkezi', icon: FileText },
       { path: '/admin/passive-records', label: 'Pasif Kayıtlar', icon: UserX },
       { path: '/admin/audit-log', label: 'Kayıt Geçmişi', icon: Activity },
-      { path: '/admin/assistant-questions', label: 'Asistan Soruları', icon: MessageSquareWarning },
+      { path: '/admin/assistant-questions', label: 'Maydi Soruları', icon: MessageSquareWarning },
       { path: '/admin/data-backup', label: 'Verilerimi İndir', icon: Download },
     ],
   },

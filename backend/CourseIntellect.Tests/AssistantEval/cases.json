@@ -1,0 +1,1109 @@
+{
+  "_readme": "Asistan ölçüm seti. Sorular sentetiktir (gerçek öğrenci adı yok). Beklenen niyet, niyetin tanımından yazılır; mevcut çıktıdan kopyalanmaz. Kural motoru yanılıyorsa durum 'knownFailure' ile gerekçesiyle işaretlenir; düzelince işaret kaldırılır.",
+  "cases": [
+    {
+      "q": "merhaba",
+      "intent": "Greeting"
+    },
+    {
+      "q": "Merhaba, iyi günler",
+      "intent": "Greeting"
+    },
+    {
+      "q": "selam",
+      "intent": "Greeting"
+    },
+    {
+      "q": "günaydın",
+      "intent": "Greeting"
+    },
+    {
+      "q": "iyi akşamlar",
+      "intent": "Greeting"
+    },
+    {
+      "q": "hello",
+      "intent": "Greeting"
+    },
+    {
+      "q": "teşekkürler",
+      "intent": "Thanks"
+    },
+    {
+      "q": "çok teşekkür ederim",
+      "intent": "Thanks"
+    },
+    {
+      "q": "sağ ol",
+      "intent": "Thanks"
+    },
+    {
+      "q": "eyvallah",
+      "intent": "Thanks"
+    },
+    {
+      "q": "thanks a lot",
+      "intent": "Thanks"
+    },
+    {
+      "q": "görüşürüz",
+      "intent": "Thanks"
+    },
+    {
+      "q": "sen kimsin",
+      "intent": "SmallTalk"
+    },
+    {
+      "q": "nasılsın",
+      "intent": "SmallTalk"
+    },
+    {
+      "q": "neler yapabilirsin",
+      "intent": "SmallTalk"
+    },
+    {
+      "q": "what can you do",
+      "intent": "SmallTalk"
+    },
+    {
+      "q": "who are you",
+      "intent": "SmallTalk"
+    },
+    {
+      "q": "yardım",
+      "intent": "Help"
+    },
+    {
+      "q": "yardım eder misin",
+      "intent": "Help"
+    },
+    {
+      "q": "ödev nasıl verilir",
+      "intent": "HowTo"
+    },
+    {
+      "q": "yoklama nasıl alınır",
+      "intent": "HowTo"
+    },
+    {
+      "q": "duyuru nasıl yayınlanır",
+      "intent": "HowTo"
+    },
+    {
+      "q": "şifremi nasıl değiştiririm",
+      "intent": "HowTo"
+    },
+    {
+      "q": "optik deneme nasıl yüklenir",
+      "intent": "HowTo"
+    },
+    {
+      "q": "ders programı nerede",
+      "intent": "HowTo"
+    },
+    {
+      "q": "how do I add a student",
+      "intent": "HowTo"
+    },
+    {
+      "q": "bugün hava nasıl olacak",
+      "intent": "OutOfScope",
+      "knownFailure": "Kural motoru uygulama dışı soruyu ayırt etmez; yerel model kapalıyken 'anlayamadım' ya da yardım cevabı döner. Model açıkken out_of_scope aracı seçilir."
+    },
+    {
+      "q": "bana python kodu yaz",
+      "intent": "OutOfScope",
+      "knownFailure": "Kural motoru uygulama dışı soruyu ayırt etmez; yerel model kapalıyken 'anlayamadım' ya da yardım cevabı döner. Model açıkken out_of_scope aracı seçilir."
+    },
+    {
+      "q": "Türkiye'nin başkenti neresi",
+      "intent": "OutOfScope",
+      "knownFailure": "Kural motoru uygulama dışı soruyu ayırt etmez; yerel model kapalıyken 'anlayamadım' ya da yardım cevabı döner. Model açıkken out_of_scope aracı seçilir."
+    },
+    {
+      "q": "bu matematik sorusunu çöz: 2x+3=7",
+      "intent": "OutOfScope",
+      "knownFailure": "Kural motoru uygulama dışı soruyu ayırt etmez; yerel model kapalıyken 'anlayamadım' ya da yardım cevabı döner. Model açıkken out_of_scope aracı seçilir."
+    },
+    {
+      "q": "maç kaç kaç bitti",
+      "intent": "OutOfScope",
+      "knownFailure": "Kural motoru uygulama dışı soruyu ayırt etmez; yerel model kapalıyken 'anlayamadım' ya da yardım cevabı döner. Model açıkken out_of_scope aracı seçilir."
+    },
+    {
+      "q": "Zeynep Kaya'nın devamsızlığını göster",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "Ali Demir kaç gün gelmedi",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "devamsızlığım ne kadar",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "devamsizligim kac gun",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "oğlumun devamsızlığı",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "kızım bu hafta okula gitmiş mi",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "Mehmet Arslan yoklama durumu",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "my attendance",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "Zeynep Kaya'nın sınav sonuçları",
+      "intent": "GetExamResults"
+    },
+    {
+      "q": "notlarım",
+      "intent": "GetExamResults"
+    },
+    {
+      "q": "sınav notlarımı göster",
+      "intent": "GetExamResults"
+    },
+    {
+      "q": "son sınavdan kaç aldım",
+      "intent": "GetExamResults"
+    },
+    {
+      "q": "oğlumun notları nasıl",
+      "intent": "GetExamResults"
+    },
+    {
+      "q": "Ali Demir deneme sonuçları",
+      "intent": "GetExamResults"
+    },
+    {
+      "q": "my exam results",
+      "intent": "GetExamResults"
+    },
+    {
+      "q": "not ortalamam kaç",
+      "intent": "GetExamAverage"
+    },
+    {
+      "q": "Ali Demir'in ortalaması",
+      "intent": "GetExamAverage"
+    },
+    {
+      "q": "genel ortalamam ne",
+      "intent": "GetExamAverage"
+    },
+    {
+      "q": "bekleyen ödevlerimi göster",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "ödevim var mı",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "bugün ödevim var mı",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "teslim etmediğim ödevler",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "odevlerim",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "kızımın ödevleri",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "Mehmet Arslan ödev durumu",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "my homework",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "bugünkü derslerim",
+      "intent": "GetSchedule"
+    },
+    {
+      "q": "ders programım",
+      "intent": "GetSchedule"
+    },
+    {
+      "q": "yarın hangi derslerim var",
+      "intent": "GetSchedule"
+    },
+    {
+      "q": "haftalık ders programı",
+      "intent": "GetSchedule"
+    },
+    {
+      "q": "bugun derslerim neler",
+      "intent": "GetSchedule"
+    },
+    {
+      "q": "my timetable",
+      "intent": "GetSchedule"
+    },
+    {
+      "q": "yaklaşan sınavlar",
+      "intent": "GetUpcomingExams",
+      "knownFailure": "Yaklaşan sınav cevabı yok: planlı sınavlar asistana bağlanmadı, soru sınav sonuçlarına gidiyor."
+    },
+    {
+      "q": "sınavım ne zaman",
+      "intent": "GetUpcomingExams",
+      "knownFailure": "Yaklaşan sınav cevabı yok: planlı sınavlar asistana bağlanmadı, soru sınav sonuçlarına gidiyor."
+    },
+    {
+      "q": "bu hafta sınav var mı",
+      "intent": "GetUpcomingExams",
+      "knownFailure": "Yaklaşan sınav cevabı yok: planlı sınavlar asistana bağlanmadı, soru sınav sonuçlarına gidiyor."
+    },
+    {
+      "q": "gelecek sınavlarım",
+      "intent": "GetUpcomingExams",
+      "knownFailure": "Yaklaşan sınav cevabı yok: planlı sınavlar asistana bağlanmadı, soru sınav sonuçlarına gidiyor."
+    },
+    {
+      "q": "duyurular",
+      "intent": "GetAnnouncements"
+    },
+    {
+      "q": "son duyurular neler",
+      "intent": "GetAnnouncements"
+    },
+    {
+      "q": "okuldan yeni duyuru var mı",
+      "intent": "GetAnnouncements"
+    },
+    {
+      "q": "announcements",
+      "intent": "GetAnnouncements"
+    },
+    {
+      "q": "okunmamış mesajlarım",
+      "intent": "GetUnreadMessages"
+    },
+    {
+      "q": "yeni mesajım var mı",
+      "intent": "GetUnreadMessages"
+    },
+    {
+      "q": "mesajlarım",
+      "intent": "GetUnreadMessages"
+    },
+    {
+      "q": "borcum ne kadar",
+      "intent": "GetPaymentSummary"
+    },
+    {
+      "q": "kalan taksitlerim",
+      "intent": "GetPaymentSummary"
+    },
+    {
+      "q": "ödeme durumum",
+      "intent": "GetPaymentSummary"
+    },
+    {
+      "q": "Ali Demir'in ödeme durumu",
+      "intent": "GetPaymentSummary"
+    },
+    {
+      "q": "oğlumun okul taksiti ne zaman",
+      "intent": "GetPaymentSummary"
+    },
+    {
+      "q": "my payments",
+      "intent": "GetPaymentSummary"
+    },
+    {
+      "q": "servis nerede",
+      "intent": "GetTransportStatus"
+    },
+    {
+      "q": "servis durağım hangisi",
+      "intent": "GetTransportStatus"
+    },
+    {
+      "q": "okul servisi ne zaman gelir",
+      "intent": "GetTransportStatus"
+    },
+    {
+      "q": "school bus",
+      "intent": "GetTransportStatus"
+    },
+    {
+      "q": "10-A sınıfındaki öğrenciler",
+      "intent": "ListClassStudents",
+      "grade": 10,
+      "section": "A"
+    },
+    {
+      "q": "8B sınıfını listele",
+      "intent": "ListClassStudents",
+      "grade": 8,
+      "section": "B"
+    },
+    {
+      "q": "10/A öğrenci listesi",
+      "intent": "ListClassStudents",
+      "grade": 10,
+      "section": "A"
+    },
+    {
+      "q": "11. sınıf C şubesi öğrencileri",
+      "intent": "ListClassStudents",
+      "grade": 11,
+      "section": "C"
+    },
+    {
+      "q": "9-D sınıf listesi",
+      "intent": "ListClassStudents",
+      "grade": 9,
+      "section": "D"
+    },
+    {
+      "q": "students in class 10-A",
+      "intent": "ListClassStudents",
+      "grade": 10,
+      "section": "A"
+    },
+    {
+      "q": "bugün devamsız olanlar",
+      "intent": "ListAbsentStudents"
+    },
+    {
+      "q": "bugün kimler gelmedi",
+      "intent": "ListAbsentStudents"
+    },
+    {
+      "q": "bugün okula gelmeyen öğrenciler",
+      "intent": "ListAbsentStudents"
+    },
+    {
+      "q": "bugun devamsiz olanlar kimler",
+      "intent": "ListAbsentStudents"
+    },
+    {
+      "q": "who is absent today",
+      "intent": "ListAbsentStudents"
+    },
+    {
+      "q": "50 altında not alanlar",
+      "intent": "ListLowScoreStudents",
+      "threshold": 50
+    },
+    {
+      "q": "notu 45'in altında olan öğrenciler",
+      "intent": "ListLowScoreStudents",
+      "threshold": 45
+    },
+    {
+      "q": "düşük not alan öğrenciler",
+      "intent": "ListLowScoreStudents"
+    },
+    {
+      "q": "sınavdan 60 altı alanlar",
+      "intent": "ListLowScoreStudents",
+      "threshold": 60
+    },
+    {
+      "q": "borcu olan öğrencileri listele",
+      "intent": "ListStudentsWithDebt"
+    },
+    {
+      "q": "borçlu öğrenciler",
+      "intent": "ListStudentsWithDebt"
+    },
+    {
+      "q": "ödemesi geciken öğrenciler kimler",
+      "intent": "ListStudentsWithDebt"
+    },
+    {
+      "q": "borclu ogrenciler listesi",
+      "intent": "ListStudentsWithDebt"
+    },
+    {
+      "q": "kütüphaneden aldığım kitaplar",
+      "intent": "GetLibraryLoans"
+    },
+    {
+      "q": "iade etmem gereken kitap var mı",
+      "intent": "GetLibraryLoans"
+    },
+    {
+      "q": "Ali Demir'in üzerindeki kitaplar",
+      "intent": "GetLibraryLoans"
+    },
+    {
+      "q": "bu ayki tahsilat",
+      "intent": "GetFinanceOverview"
+    },
+    {
+      "q": "bu ay ne kadar tahsilat yaptık",
+      "intent": "GetFinanceOverview"
+    },
+    {
+      "q": "açık borç toplamı",
+      "intent": "GetFinanceOverview"
+    },
+    {
+      "q": "kurum özeti",
+      "intent": "GetInstitutionSummary"
+    },
+    {
+      "q": "toplam öğrenci sayısı kaç",
+      "intent": "GetInstitutionSummary"
+    },
+    {
+      "q": "kaç öğrencimiz var",
+      "intent": "GetInstitutionSummary"
+    },
+    {
+      "q": "Ali Demir'in velisine devamsızlık bildir",
+      "intent": "NotifyParentAboutAbsence"
+    },
+    {
+      "q": "Zeynep Kaya'nın velisine devamsızlık mesajı gönder",
+      "intent": "NotifyParentAboutAbsence"
+    },
+    {
+      "q": "veliye devamsızlık bilgisi gönder",
+      "intent": "NotifyParentAboutAbsence"
+    },
+    {
+      "q": "zayıf olduğum konular",
+      "intent": "GetTopicInsight"
+    },
+    {
+      "q": "hangi konulara çalışmalıyım",
+      "intent": "GetTopicInsight"
+    },
+    {
+      "q": "Ali Demir'in zayıf konuları",
+      "intent": "GetTopicInsight"
+    },
+    {
+      "q": "eksik konularım neler",
+      "intent": "GetTopicInsight"
+    },
+    {
+      "q": "oğlumun zorlandığı konular",
+      "intent": "GetTopicInsight"
+    },
+    {
+      "q": "which topics should I study",
+      "intent": "GetTopicInsight"
+    },
+    {
+      "q": "son 30 günde en çok devamsızlık yapanlar",
+      "intent": "GetAttendanceRanking"
+    },
+    {
+      "q": "bu ay en çok devamsızlık yapan öğrenciler",
+      "intent": "GetAttendanceRanking"
+    },
+    {
+      "q": "devamsızlık sıralaması",
+      "intent": "GetAttendanceRanking"
+    },
+    {
+      "q": "10-A sınıfının deneme eğilimi",
+      "intent": "GetExamTrend",
+      "grade": 10,
+      "section": "A"
+    },
+    {
+      "q": "son denemelerde matematik netleri düşüyor mu",
+      "intent": "GetExamTrend"
+    },
+    {
+      "q": "Ali Demir'in netleri artıyor mu",
+      "intent": "GetExamTrend"
+    },
+    {
+      "q": "denemelerde gidişatım nasıl",
+      "intent": "GetExamTrend"
+    },
+    {
+      "q": "sınıfları karşılaştır",
+      "intent": "CompareClasses"
+    },
+    {
+      "q": "hangi sınıfın ortalaması daha yüksek",
+      "intent": "CompareClasses"
+    },
+    {
+      "q": "10-A ile 10-B'yi kıyasla",
+      "intent": "CompareClasses"
+    },
+    {
+      "q": "risk altındaki öğrenciler",
+      "intent": "GetAtRiskStudents"
+    },
+    {
+      "q": "erken uyarı listesi",
+      "intent": "GetAtRiskStudents"
+    },
+    {
+      "q": "dikkat etmem gereken öğrenciler kimler",
+      "intent": "GetAtRiskStudents"
+    },
+    {
+      "q": "ekim ayı finans raporu",
+      "intent": "GetFinanceReport"
+    },
+    {
+      "q": "ayrıntılı tahsilat raporu",
+      "intent": "GetFinanceReport"
+    },
+    {
+      "q": "gecikmiş taksitlerin raporu",
+      "intent": "GetFinanceReport"
+    },
+    {
+      "q": "10-A sınıfının genel durumu",
+      "intent": "GetClassOverview",
+      "grade": 10,
+      "section": "A"
+    },
+    {
+      "q": "8B sınıfı nasıl gidiyor",
+      "intent": "GetClassOverview",
+      "grade": 8,
+      "section": "B"
+    },
+    {
+      "q": "Ali Demir'in genel raporu",
+      "intent": "GetStudentReport"
+    },
+    {
+      "q": "veli görüşmesi için Zeynep Kaya raporu hazırla",
+      "intent": "GetStudentReport"
+    },
+    {
+      "q": "Mehmet Arslan öğrenci dosyası",
+      "intent": "GetStudentReport"
+    },
+    {
+      "q": "Ali Demir",
+      "intent": "Unknown",
+      "note": "Yalnız ad: niyet Unknown kalır, servis kişinin yetki kapsamındaki öğrencilerde arar (tasarım)."
+    },
+    {
+      "q": "Zeynep Kaya kim",
+      "intent": "Unknown",
+      "note": "Yalnız ad: niyet Unknown kalır, servis kişinin yetki kapsamındaki öğrencilerde arar (tasarım)."
+    },
+    {
+      "q": "10000000146 TC'li öğrenciyi getir",
+      "intent": "SearchStudent"
+    },
+    {
+      "q": "kalan direksiyon ders hakkım",
+      "intent": "GetDrivingProgress"
+    },
+    {
+      "q": "direksiyon sınav durumum",
+      "intent": "GetDrivingExamStatus"
+    },
+    {
+      "q": "eksik belge var mı",
+      "intent": "GetDrivingDocuments"
+    },
+    {
+      "q": "yaklaşan randevuları göster",
+      "intent": "GetDrivingAppointments"
+    },
+    {
+      "q": "mezun oldu mu",
+      "intent": "GetDrivingGraduation"
+    },
+    {
+      "q": "Merhaba, Ali Demir'in notları",
+      "intent": "GetExamResults",
+      "note": "Selamla başlayan veri sorusu selam değildir."
+    },
+    {
+      "q": "teşekkürler, bugün devamsız olanlar kim",
+      "intent": "ListAbsentStudents",
+      "note": "Teşekkürle başlayan veri sorusu."
+    },
+    {
+      "q": "devamsızlık nasıl girilir",
+      "intent": "HowTo",
+      "note": "'devamsızlık' kelimesi geçse de nasıl-yapılır sorusu."
+    },
+    {
+      "q": "sınav nasıl oluşturulur",
+      "intent": "HowTo",
+      "note": "'sınav' kelimesi geçse de nasıl-yapılır sorusu."
+    },
+    {
+      "q": "ödeme nasıl alınır",
+      "intent": "HowTo",
+      "note": "'ödeme' kelimesi geçse de nasıl-yapılır sorusu."
+    },
+    {
+      "q": "slm",
+      "intent": "Greeting"
+    },
+    {
+      "q": "iyi geceler",
+      "intent": "Thanks"
+    },
+    {
+      "q": "kolay gelsin",
+      "intent": "Thanks",
+      "note": "İyi dilek; sohbet sınıflandırmasında teşekkür/veda grubuna girer."
+    },
+    {
+      "q": "hoşça kal",
+      "intent": "Thanks"
+    },
+    {
+      "q": "tşk",
+      "intent": "Thanks"
+    },
+    {
+      "q": "çok sağ ol, eline sağlık",
+      "intent": "Thanks"
+    },
+    {
+      "q": "nasılsın bugün",
+      "intent": "SmallTalk"
+    },
+    {
+      "q": "sen bir robot musun",
+      "intent": "SmallTalk"
+    },
+    {
+      "q": "kızımın devamsızlık durumu",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "devamsızlık bilgisi",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "Elif Şahin dün okula geldi mi",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "kaç gün devamsızlığım var",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "yoklamam",
+      "intent": "GetAttendance"
+    },
+    {
+      "q": "Elif Şahin'in notlarını göster",
+      "intent": "GetExamResults"
+    },
+    {
+      "q": "matematik sınavından kaç aldım",
+      "intent": "GetExamResults"
+    },
+    {
+      "q": "deneme sonuçlarım",
+      "intent": "GetExamResults"
+    },
+    {
+      "q": "karnem",
+      "intent": "GetStudentReport",
+      "note": "Karne isteği öğrencinin bütün durumunu toplayan rapora gider."
+    },
+    {
+      "q": "oğlumun sınav sonuçları",
+      "intent": "GetExamResults"
+    },
+    {
+      "q": "ortalamam",
+      "intent": "GetExamAverage"
+    },
+    {
+      "q": "not ortalaması kaç",
+      "intent": "GetExamAverage"
+    },
+    {
+      "q": "ödevlerim neler",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "yarına ödev var mı",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "teslim tarihi yaklaşan ödevler",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "homework please",
+      "intent": "GetHomework"
+    },
+    {
+      "q": "yarınki dersler",
+      "intent": "GetSchedule"
+    },
+    {
+      "q": "cuma günü hangi dersler var",
+      "intent": "GetSchedule"
+    },
+    {
+      "q": "bugün kaç dersim var",
+      "intent": "GetSchedule"
+    },
+    {
+      "q": "programım nedir bugün",
+      "intent": "GetSchedule"
+    },
+    {
+      "q": "yeni duyuru",
+      "intent": "GetAnnouncements"
+    },
+    {
+      "q": "okul duyuruları",
+      "intent": "GetAnnouncements"
+    },
+    {
+      "q": "mesaj geldi mi",
+      "intent": "GetUnreadMessages"
+    },
+    {
+      "q": "okunmamış mesaj",
+      "intent": "GetUnreadMessages"
+    },
+    {
+      "q": "taksitlerim ne zaman",
+      "intent": "GetPaymentSummary"
+    },
+    {
+      "q": "ne kadar borcumuz kaldı",
+      "intent": "GetPaymentSummary"
+    },
+    {
+      "q": "çocuğumun ödemesi",
+      "intent": "GetPaymentSummary"
+    },
+    {
+      "q": "Elif Şahin'in taksitleri",
+      "intent": "GetPaymentSummary"
+    },
+    {
+      "q": "servis şoförü kim",
+      "intent": "GetTransportStatus"
+    },
+    {
+      "q": "servise bindi mi",
+      "intent": "GetTransportStatus"
+    },
+    {
+      "q": "12-B öğrencileri",
+      "intent": "ListClassStudents"
+    },
+    {
+      "q": "5A sınıf listesi",
+      "intent": "ListClassStudents"
+    },
+    {
+      "q": "7/C sınıfındaki öğrenciler kimler",
+      "intent": "ListClassStudents"
+    },
+    {
+      "q": "bugün gelmeyen öğrencileri listele",
+      "intent": "ListAbsentStudents"
+    },
+    {
+      "q": "bugün devamsız öğrenciler",
+      "intent": "ListAbsentStudents"
+    },
+    {
+      "q": "70 puanın altında olanlar",
+      "intent": "ListLowScoreStudents"
+    },
+    {
+      "q": "40 altındaki öğrenciler",
+      "intent": "ListLowScoreStudents"
+    },
+    {
+      "q": "borcu olanları listele",
+      "intent": "ListStudentsWithDebt"
+    },
+    {
+      "q": "ödeme yapmayan öğrenciler kimler",
+      "intent": "ListStudentsWithDebt"
+    },
+    {
+      "q": "teslim etmem gereken kitaplar",
+      "intent": "GetLibraryLoans"
+    },
+    {
+      "q": "kütüphane kitaplarım",
+      "intent": "GetLibraryLoans"
+    },
+    {
+      "q": "bu ayki gelirimiz",
+      "intent": "GetFinanceOverview"
+    },
+    {
+      "q": "kasa durumu",
+      "intent": "GetFinanceOverview"
+    },
+    {
+      "q": "kurumda kaç öğrenci var",
+      "intent": "GetInstitutionSummary"
+    },
+    {
+      "q": "istatistikleri göster",
+      "intent": "GetInstitutionSummary"
+    },
+    {
+      "q": "Elif Şahin'in velisine devamsızlık mesajı gönder",
+      "intent": "NotifyParentAboutAbsence"
+    },
+    {
+      "q": "neye çalışmalıyım",
+      "intent": "GetTopicInsight"
+    },
+    {
+      "q": "konu analizim",
+      "intent": "GetTopicInsight"
+    },
+    {
+      "q": "eksiklerim neler",
+      "intent": "GetTopicInsight"
+    },
+    {
+      "q": "son bir haftada en çok devamsızlık yapanlar",
+      "intent": "GetAttendanceRanking"
+    },
+    {
+      "q": "devamsızlıkta en fazla olanlar",
+      "intent": "GetAttendanceRanking"
+    },
+    {
+      "q": "10-A sınıfının son denemelerdeki eğilimi",
+      "intent": "GetExamTrend"
+    },
+    {
+      "q": "matematik netlerim düşüyor mu",
+      "intent": "GetExamTrend"
+    },
+    {
+      "q": "sınıfları devamsızlığa göre karşılaştır",
+      "intent": "CompareClasses"
+    },
+    {
+      "q": "ödev teslimine göre sınıfları kıyasla",
+      "intent": "CompareClasses"
+    },
+    {
+      "q": "risk altında olan öğrencileri göster",
+      "intent": "GetAtRiskStudents"
+    },
+    {
+      "q": "10-A sınıfında risk altındakiler",
+      "intent": "GetAtRiskStudents"
+    },
+    {
+      "q": "gecikmiş taksitlerin yaşlandırması",
+      "intent": "GetFinanceReport"
+    },
+    {
+      "q": "bu ayın tahsilat dökümü",
+      "intent": "GetFinanceReport"
+    },
+    {
+      "q": "9-A sınıfının durumu",
+      "intent": "GetClassOverview"
+    },
+    {
+      "q": "11B sınıfı özeti",
+      "intent": "GetClassOverview"
+    },
+    {
+      "q": "Elif Şahin hakkında rapor hazırla",
+      "intent": "GetStudentReport"
+    },
+    {
+      "q": "Elif Şahin'in karnesi",
+      "intent": "GetStudentReport"
+    },
+    {
+      "q": "yoklama nasıl girilir",
+      "intent": "HowTo"
+    },
+    {
+      "q": "not nasıl girilir",
+      "intent": "HowTo"
+    },
+    {
+      "q": "velilere nasıl mesaj atarım",
+      "intent": "HowTo"
+    },
+    {
+      "q": "kütüphaneye kitap nasıl eklenir",
+      "intent": "HowTo"
+    },
+    {
+      "q": "12345 numaralı öğrenci",
+      "intent": "SearchStudent"
+    },
+    {
+      "q": "öğrenci ara Elif",
+      "intent": "SearchStudent"
+    }
+  ],
+  "roles": [
+    {
+      "intent": "ListClassStudents",
+      "role": "Student",
+      "allowed": false
+    },
+    {
+      "intent": "ListClassStudents",
+      "role": "Parent",
+      "allowed": false
+    },
+    {
+      "intent": "ListClassStudents",
+      "role": "Teacher",
+      "allowed": true
+    },
+    {
+      "intent": "ListAbsentStudents",
+      "role": "Student",
+      "allowed": false
+    },
+    {
+      "intent": "ListAbsentStudents",
+      "role": "Accounting",
+      "allowed": false
+    },
+    {
+      "intent": "ListStudentsWithDebt",
+      "role": "Teacher",
+      "allowed": false
+    },
+    {
+      "intent": "ListStudentsWithDebt",
+      "role": "Accounting",
+      "allowed": true
+    },
+    {
+      "intent": "GetPaymentSummary",
+      "role": "Teacher",
+      "allowed": false
+    },
+    {
+      "intent": "GetPaymentSummary",
+      "role": "Parent",
+      "allowed": true
+    },
+    {
+      "intent": "GetExamResults",
+      "role": "Accounting",
+      "allowed": false
+    },
+    {
+      "intent": "GetExamResults",
+      "role": "Administrative",
+      "allowed": false
+    },
+    {
+      "intent": "GetExamResults",
+      "role": "Student",
+      "allowed": true
+    },
+    {
+      "intent": "GetTopicInsight",
+      "role": "Accounting",
+      "allowed": false
+    },
+    {
+      "intent": "GetFinanceOverview",
+      "role": "Teacher",
+      "allowed": false
+    },
+    {
+      "intent": "GetFinanceOverview",
+      "role": "Parent",
+      "allowed": false
+    },
+    {
+      "intent": "GetFinanceReport",
+      "role": "Accounting",
+      "allowed": true
+    },
+    {
+      "intent": "GetInstitutionSummary",
+      "role": "Teacher",
+      "allowed": false
+    },
+    {
+      "intent": "GetInstitutionSummary",
+      "role": "Admin",
+      "allowed": true
+    },
+    {
+      "intent": "GetInstitutionSummary",
+      "role": "BranchManager",
+      "allowed": true
+    },
+    {
+      "intent": "CompareClasses",
+      "role": "Parent",
+      "allowed": false
+    },
+    {
+      "intent": "GetAtRiskStudents",
+      "role": "Student",
+      "allowed": false
+    },
+    {
+      "intent": "GetAttendanceRanking",
+      "role": "Parent",
+      "allowed": false
+    },
+    {
+      "intent": "NotifyParentAboutAbsence",
+      "role": "Student",
+      "allowed": false
+    },
+    {
+      "intent": "NotifyParentAboutAbsence",
+      "role": "Parent",
+      "allowed": false
+    },
+    {
+      "intent": "NotifyParentAboutAbsence",
+      "role": "Teacher",
+      "allowed": true
+    },
+    {
+      "intent": "Greeting",
+      "role": "Student",
+      "allowed": true
+    },
+    {
+      "intent": "HowTo",
+      "role": "Accounting",
+      "allowed": true
+    }
+  ]
+}

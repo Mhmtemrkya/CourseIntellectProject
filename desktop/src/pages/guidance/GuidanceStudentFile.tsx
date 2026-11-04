@@ -43,6 +43,8 @@ import { errorMessage, isRecord } from '../../lib/errors';
 import type { GuidanceStudentFile as StudentFileData } from '../../lib/api/guidance';
 import type { GuidanceSessionRecord } from '../../types/api/generated';
 import { useAssistantFocus } from '../../lib/assistantFocus';
+import { isAbsentStatus, isLateStatus } from '../../lib/attendanceStatus';
+import { localDateKey } from '../../lib/localDate';
 
 type AttendanceEntry = StudentFileData['attendance'][number];
 
@@ -123,9 +125,9 @@ function AttendanceHeatmap({ entries }: { entries: readonly AttendanceEntry[] })
     const byDay = new Map<string, { total: number; absent: number; late: number }>();
     entries.forEach((entry) => {
       const key = String(entry.lessonDate).slice(0, 10);
-      const status = String(entry.status || '').toLocaleLowerCase('tr-TR');
-      const absent = status.includes('absent') || status.includes('yok') || status.includes('gelmedi');
-      const late = status.includes('late') || status.includes('geç');
+      // Eskiden yalnız "absent/yok/gelmedi" aranıyordu; kanonik "Devamsiz" hiç sayılmıyordu.
+      const absent = isAbsentStatus(entry.status);
+      const late = isLateStatus(entry.status);
       const current = byDay.get(key) || { total: 0, absent: 0, late: 0 };
       current.total += 1;
       if (absent) current.absent += 1;
@@ -140,7 +142,7 @@ function AttendanceHeatmap({ entries }: { entries: readonly AttendanceEntry[] })
       for (let d = 0; d < 7; d += 1) {
         const date = new Date(today);
         date.setDate(today.getDate() - today.getDay() - w * 7 + d + 1);
-        const key = date.toISOString().slice(0, 10);
+        const key = localDateKey(date);
         week.push({ key, info: byDay.get(key) });
       }
       weeks.push(week);
@@ -497,10 +499,7 @@ export default function GuidanceStudentFile() {
             <AttendanceHeatmap entries={file.attendance || []} />
           </div>
           <div className="mt-6 grid gap-2">
-            {(file.attendance || []).filter((a) => {
-              const status = String(a.status || '').toLocaleLowerCase('tr-TR');
-              return status.includes('absent') || status.includes('yok') || status.includes('gelmedi');
-            }).slice(-8).reverse().map((entry, index) => (
+            {(file.attendance || []).filter((a) => isAbsentStatus(a.status)).slice(-8).reverse().map((entry, index) => (
               <div key={index} className="flex items-center justify-between rounded-xl border p-3 text-sm">
                 <span className="font-semibold">{formatDateTime(entry.lessonDate)}</span>
                 <span className="text-muted-foreground">{entry.lesson || 'Ders belirtilmemiş'}</span>

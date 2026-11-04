@@ -48,6 +48,7 @@ import type {
   StudentSummaryDto,
 } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { localDateKey } from '../../lib/localDate';
 
 type ViewMode = 'received' | 'planned';
 
@@ -490,7 +491,7 @@ export default function Collections() {
     const html = buildFinanceDocumentHtml({
       title: 'Tahsilat Export Özeti',
       subtitle: 'Dışa aktarılan tahsilat verileri için yönetim özeti',
-      code: `COL-EXP-${new Date().toISOString().slice(0, 10)}`,
+      code: `COL-EXP-${localDateKey()}`,
       accent: '#0b8f6f',
       badge: `${filteredCollections.length} kayıt`,
       summary: [

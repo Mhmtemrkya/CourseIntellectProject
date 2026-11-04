@@ -22,6 +22,9 @@ import type {
   StudentSummaryDto,
   StudyPlanStateDto,
 } from '../../types/api/generated';
+import { belongsToStudent } from '../studentRecords';
+import { isAbsentStatus, isAttendedStatus, toAttendanceStatus } from '../attendanceStatus';
+import { localDateKey } from '../localDate';
 
 type DateInput = string | number | Date | null | undefined;
 
@@ -199,24 +202,14 @@ function resolveStudentFromSession(user: UserLike | null | undefined, students: 
   );
 }
 
-function resolveParentChildren(user: UserLike | null | undefined, students: readonly StudentSummaryDto[]): StudentSummaryDto[] {
-  const name = normalizeText(user?.name);
-  const username = normalizeText(user?.username);
-  const email = normalizeText(user?.email);
-  const emailLocal = email.includes('@') ? (email.split('@')[0] ?? '') : email;
-
-  return students.filter((student) => {
-    const parentName = normalizeText(student.parentName);
-    const parentEmail = normalizeText(student.parentEmail);
-    return (
-      parentName === name ||
-      (name && parentName.includes(name)) ||
-      (parentName && name.includes(parentName)) ||
-      (username && (parentEmail.includes(username) || parentName.includes(username))) ||
-      (email && parentEmail === email) ||
-      (emailLocal && parentEmail.includes(emailLocal))
-    );
-  });
+/**
+ * Velinin çocukları. Sunucu /api/students'ı veliye zaten kendi çocuklarına süzerek döndürür
+ * (StudentScope: önce ParentUserId bağı, sonra birebir ad/e-posta). Eskiden istemci listeyi
+ * bir de "veli adı içeriyor mu" diye yeniden süzüyordu: "Ali Kaya" velisine "Ali Kayaoğlu"nun
+ * çocuğu eklenebiliyor, ParentUserId ile bağlı ama adı farklı yazılmış çocuk düşebiliyordu.
+ */
+function resolveParentChildren(_user: UserLike | null | undefined, students: readonly StudentSummaryDto[]): StudentSummaryDto[] {
+  return [...students];
 }
 
 // ─── Yönetici panosu ─────────────────────────────────────────────────────────
@@ -298,8 +291,8 @@ export async function fetchAdminDashboardData(): Promise<AdminDashboardData> {
   const todayAttendance = attendance.filter((item) => isToday(item.lessonDate));
   const uniquePresentStudents = new Set(
     todayAttendance
-      .filter((item) => normalizeText(item.status) === 'katildi')
-      .map((item) => item.studentName)
+      .filter((item) => isAttendedStatus(item.status))
+      .map((item) => item.studentId || normalizeText(item.studentName))
   ).size;
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -338,14 +331,12 @@ export async function fetchAdminDashboardData(): Promise<AdminDashboardData> {
     const dayRows = attendance.filter((item) => dateKey(item.lessonDate) === key);
     const uniqueRows = new Map<string, AttendanceEntryDto>();
     dayRows.forEach((item) => {
-      const studentKey = normalizeText(item.studentName);
+      // Aynı adlı iki öğrenci tek kişi sayılmasın: anahtar kimlik, yoksa ad.
+      const studentKey = item.studentId || normalizeText(item.studentName);
       if (studentKey) uniqueRows.set(studentKey, item);
     });
     const rows = [...uniqueRows.values()];
-    const present = rows.filter((item) => {
-      const status = normalizeText(item.status);
-      return status.includes('katildi') || status.includes('present') || status.includes('geldi');
-    }).length;
+    const present = rows.filter((item) => isAttendedStatus(item.status)).length;
     return {
       label: new Intl.DateTimeFormat('tr-TR', { weekday: 'short' }).format(day),
       value: rows.length > 0 ? Math.round((present / rows.length) * 100) : 0,
@@ -648,7 +639,8 @@ export async function fetchStudentDashboardData(user: UserLike | null | undefine
   const averageScore = examScores.length
     ? Math.round((examScores.reduce((sum, value) => sum + value, 0) / examScores.length) * 10) / 10
     : 0;
-  const presentCount = studentAttendance.filter((item) => normalizeText(item.status).includes('katildi')).length;
+  // Devam oranı her yerde aynı: gelen + geç gelen + izinli (eskiden yalnız "katildi").
+  const presentCount = studentAttendance.filter((item) => isAttendedStatus(item.status)).length;
   const attendanceRate = studentAttendance.length
     ? Math.round((presentCount / studentAttendance.length) * 100)
     : 0;
@@ -715,14 +707,14 @@ export async function fetchStudentDashboardData(user: UserLike | null | undefine
   const dayKey = (value: string | null | undefined) => {
     if (!value) return '';
     const parsed = parseHumanDateLabel(value) || new Date(value);
-    return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
+    return Number.isNaN(parsed.getTime()) ? '' : localDateKey(parsed);
   };
   // Haftalık seri yalnız sınav sonuçlarını sayar (ödev teslimi ve içerik
   // DTO'larında tarih alanı yok).
   const weeklySeries = Array.from({ length: 7 }).map((_, index) => {
     const day = new Date(today);
     day.setDate(today.getDate() - (6 - index));
-    const key = day.toISOString().slice(0, 10);
+    const key = localDateKey(day);
     return exams.filter((item) => dayKey(item.dateLabel) === key).length;
   });
   const weekly = {
@@ -1047,7 +1039,8 @@ export async function fetchParentDashboardData(user: UserLike | null | undefined
   const selectedChild = children[0] || null;
 
   const examResults = await Promise.allSettled(
-    children.map((child) => api.get<ExamResultDto[]>('/api/examresults', { params: { studentName: child.fullName } }))
+    // Kimlikle istenir: aynı adlı başka bir öğrencinin sonuçları bu çocuğa karışmaz.
+    children.map((child) => api.get<ExamResultDto[]>('/api/examresults', { params: child.id ? { studentId: child.id } : { studentName: child.fullName } }))
   );
   const examsByChild = new Map<string, ExamResultDto[]>();
   children.forEach((child, index) => {
@@ -1057,10 +1050,10 @@ export async function fetchParentDashboardData(user: UserLike | null | undefined
 
   const buildChildSummary = (child: StudentSummaryDto): ChildSummary => {
     const childExams = examsByChild.get(child.fullName) || [];
-    const childAttendance = attendance.filter((item) => normalizeText(item.studentName) === normalizeText(child.fullName));
-    const presentCount = childAttendance.filter((item) => normalizeText(item.status).includes('katildi')).length;
-    const excuseCount = childAttendance.filter((item) => normalizeText(item.status).includes('izinli')).length;
-    const absentCount = childAttendance.filter((item) => normalizeText(item.status).includes('devamsiz')).length;
+    const childAttendance = attendance.filter((item) => belongsToStudent(item, child));
+    const presentCount = childAttendance.filter((item) => isAttendedStatus(item.status)).length;
+    const excuseCount = childAttendance.filter((item) => toAttendanceStatus(item.status) === 'Izinli').length;
+    const absentCount = childAttendance.filter((item) => isAbsentStatus(item.status)).length;
     const totalAttendance = childAttendance.length;
     const attendanceRate = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
     // Çocuğun ödeme özeti VELİ KAPSAMLI uçtan gelir (/api/parent/finance/children).

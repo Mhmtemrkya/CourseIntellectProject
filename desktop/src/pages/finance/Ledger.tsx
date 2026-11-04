@@ -401,7 +401,7 @@ export default function Ledger() {
                       <TableCell className="text-right">
                         {item.totalDue === 0 && item.totalPaid === 0 ? (
                           <Button variant="ghost" size="sm" onClick={() => openEnroll(item)} title="Sözleşme / Ücret Ekle">
-                            <FilePlus2 className="h-4 w-4 text-[hsl(var(--brand-accent))]" />
+                            <FilePlus2 className="h-4 w-4 text-[hsl(var(--brand-accent-text,var(--brand-accent)))]" />
                           </Button>
                         ) : null}
                         <Button variant="ghost" size="sm" onClick={() => openDetail(item)}>

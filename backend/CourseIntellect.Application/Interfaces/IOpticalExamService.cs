@@ -23,5 +23,9 @@ public interface IOpticalExamService
     Task<OpticalImportResultDto> ImportAsync(Guid examId, byte[] file, string? encoding, string fileName,
         IReadOnlyList<OpticalMatchOverrideDto> overrides, Guid? importedByUserId, CancellationToken cancellationToken = default);
     Task<OpticalExamResultsDto?> GetResultsAsync(Guid examId, CancellationToken cancellationToken = default);
+    /// <summary>Soru konusu seçimi: hazır liste + kurumun eklediği konular + eski serbest kayıtlar.</summary>
+    Task<OpticalTopicCatalogDto> GetTopicsAsync(string? level, IReadOnlyList<string> subjects, CancellationToken cancellationToken = default);
+    Task<AddOpticalTopicResultDto> AddTopicAsync(AddOpticalTopicRequest request, Guid? userId, CancellationToken cancellationToken = default);
+    Task DeleteTopicAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<OpticalStudentCandidateDto>> SearchStudentsAsync(string? search, CancellationToken cancellationToken = default);
 }

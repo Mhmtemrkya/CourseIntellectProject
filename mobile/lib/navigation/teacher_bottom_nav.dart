@@ -1,6 +1,7 @@
 import 'package:student/pages/assistant_page.dart';
 import 'package:student/pages/preference_robot_page.dart';
 import 'package:flutter/material.dart';
+import 'package:student/pages/optical_exams_page.dart';
 import 'package:student/pages/student_insights_page.dart';
 import 'package:student/pages/clubs_page.dart';
 import 'package:student/i18n/app_locale.dart';
@@ -65,6 +66,12 @@ class TeacherBottomNav extends StatelessWidget {
           sidebarColor: const Color(0xFF0891B2),
         ),
         AdaptiveDestination(
+          icon: Icons.grading_rounded,
+          label: 'Optik Denemeler'.tr,
+          pageBuilder: (_) => const OpticalExamsPage(),
+          sidebarColor: const Color(0xFF0D9488),
+        ),
+        AdaptiveDestination(
           icon: Icons.track_changes_rounded,
           label: 'Tercih Robotu'.tr,
           pageBuilder: (_) => const PreferenceRobotPage(),
@@ -84,7 +91,7 @@ class TeacherBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.auto_awesome_rounded,
-          label: 'Asistan'.tr,
+          label: 'Maydi',
           pageBuilder: (_) => const AssistantPage(portal: 'teacher'),
           sidebarColor: const Color(0xFF4F46E5),
         ),

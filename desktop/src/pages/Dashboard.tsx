@@ -49,6 +49,7 @@ import type { KpiTone } from '../components/ui/kpi-card';
 import type { AdminAnalyticsBucket, AdminAnalyticsResponse } from '../types/api/generated';
 import type { IconComponent } from '../types/ui';
 import { logIgnored } from '../lib/logIgnored';
+import { localDateKey, localDateKeyOffset } from '../lib/localDate';
 
 type DashboardPeriod = 'day' | 'week' | 'month' | 'year' | 'custom';
 
@@ -136,7 +137,7 @@ const KPI_META: readonly KpiMeta[] = [
   ['activeAnnouncements', 'Duyuru', Megaphone, 'blue', 'Yayındaki duyuru', '/admin/announcements', { group: 'operations' }],
 ];
 
-const isoDay = (date: Date) => date.toISOString().slice(0, 10);
+const isoDay = (date: Date) => localDateKey(date);
 const localIsoDay = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 // Seçilen dönemi [from, to) aralığına çevirir. Bitiş HARİÇTİR (backend böyle bekler).
@@ -284,8 +285,8 @@ export default function Dashboard() {
 
   const [period, setPeriod] = useState<DashboardPeriod>('day');
   const [anchor, setAnchor] = useState(() => new Date());
-  const [customFrom, setCustomFrom] = useState(() => new Date(new Date().setDate(new Date().getDate() - 13)).toISOString().slice(0, 10));
-  const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [customFrom, setCustomFrom] = useState(() => localDateKeyOffset(-13));
+  const [customTo, setCustomTo] = useState(() => localDateKey());
   const [analytics, setAnalytics] = useState<AdminAnalyticsResponse | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [overview, setOverview] = useState<SchoolDashboard | null>(null);

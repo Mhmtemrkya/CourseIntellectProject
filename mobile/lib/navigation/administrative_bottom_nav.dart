@@ -77,7 +77,7 @@ class AdministrativeBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.auto_awesome_rounded,
-          label: 'Asistan'.tr,
+          label: 'Maydi',
           pageBuilder: (_) => const AssistantPage(portal: 'administrative'),
           sidebarColor: const Color(0xFF4F46E5),
         ),

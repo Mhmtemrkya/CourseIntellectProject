@@ -45,6 +45,7 @@ import {
 import { errorMessage } from '../../lib/errors';
 import type { AnnouncementDto, StudentSummaryDto } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { byRecordDateDesc } from '../../lib/studentRecords';
 
 interface AnnouncementForm {
   title: string;
@@ -131,7 +132,7 @@ export default function AdministrativeAnnouncements() {
       setAnnouncements(
         safeAnnouncements
           .filter((item) => !String(item.detail || '').startsWith('LIVE_LESSON'))
-          .sort((a, b) => `${b.dateLabel}`.localeCompare(`${a.dateLabel}`)),
+          .sort(byRecordDateDesc),
       );
       setStudents(safeStudents);
       setClasses([...classNames].sort((a, b) => a.localeCompare(b, 'tr')));

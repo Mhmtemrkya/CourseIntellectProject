@@ -130,7 +130,7 @@ export default function TeacherSchedule() {
       {/* Üst bar */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Öğretmen Ders Programı</h1>
+          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Öğretmen Ders Programı</h1>
           <p className="mt-1 text-sm text-muted-foreground">Haftalık ders programınızı görüntüleyin.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

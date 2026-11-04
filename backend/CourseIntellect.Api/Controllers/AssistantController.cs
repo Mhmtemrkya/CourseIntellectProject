@@ -96,6 +96,36 @@ public sealed class AssistantController(IAssistantService assistantService) : Co
         return Ok(await assistantService.GetUnansweredAsync(context!, days, ct));
     }
 
+    /// <summary>Asistanın rapor kartının PDF'i (yalnız kendi mesajı).</summary>
+    [HttpGet("messages/{messageId:guid}/pdf")]
+    [Produces("application/pdf")]
+    public async Task<IActionResult> GetReportPdf(Guid messageId, CancellationToken ct)
+    {
+        if (!TryContext(out var context, out var error)) return error!;
+        var result = await assistantService.GetReportPdfAsync(context!, messageId, ct);
+        return result is { } pdf ? File(pdf.Content, "application/pdf", pdf.FileName) : NotFound();
+    }
+
+    /// <summary>Asistanın rapor kartının Excel dökümü (yalnız kendi mesajı).</summary>
+    [HttpGet("messages/{messageId:guid}/xlsx")]
+    [Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+    public async Task<IActionResult> GetReportExcel(Guid messageId, CancellationToken ct)
+    {
+        if (!TryContext(out var context, out var error)) return error!;
+        var result = await assistantService.GetReportExcelAsync(context!, messageId, ct);
+        return result is { } xlsx ? File(xlsx.Content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx.FileName) : NotFound();
+    }
+
+    /// <summary>Öğrenci Başarı Raporu PDF'i (profil ya da kullanıcı kimliği). Rapor Merkezi ve mobil de bunu kullanır.</summary>
+    [HttpGet("students/{studentId:guid}/success-report")]
+    [Produces("application/pdf")]
+    public async Task<IActionResult> GetStudentSuccessReport(Guid studentId, [FromQuery] string? portal, CancellationToken ct)
+    {
+        if (!TryContext(out var context, out var error)) return error!;
+        var result = await assistantService.GetStudentSuccessPdfAsync(WithPortal(context!, portal, null), studentId, ct);
+        return result is { } pdf ? File(pdf.Content, "application/pdf", pdf.FileName) : NotFound();
+    }
+
     private static readonly string[] RolePriority = ["BranchManager", "Admin", "Administrative", "Accounting", "Teacher", "Parent", "Student", "Developer"];
 
     /// <summary>

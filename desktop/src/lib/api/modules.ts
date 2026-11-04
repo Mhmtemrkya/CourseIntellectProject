@@ -59,4 +59,5 @@ export * from './visitors';
 export * from './preferenceRobot';
 export * from './studentInsights';
 export * from './opticalExams';
+export * from './topics';
 export * from './assistant';

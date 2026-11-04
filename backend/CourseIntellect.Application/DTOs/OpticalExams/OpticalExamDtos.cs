@@ -46,7 +46,8 @@ public sealed record OpticalExamSummaryDto(
     int ImportedStudentCount,
     DateTime? ImportedAtUtc,
     int QuestionCount,
-    int TopicCoverage);
+    int TopicCoverage,
+    string Level = "");
 
 public sealed record OpticalExamDto(
     Guid Id,
@@ -60,7 +61,8 @@ public sealed record OpticalExamDto(
     string Status,
     string FileName,
     int ImportedStudentCount,
-    DateTime? ImportedAtUtc);
+    DateTime? ImportedAtUtc,
+    string Level = "");
 
 public sealed record SaveOpticalExamRequest(
     string Title,
@@ -69,7 +71,8 @@ public sealed record SaveOpticalExamRequest(
     int WrongPenalty,
     bool MultiMarkAsWrong,
     string CancelledMode,
-    IReadOnlyList<OpticalAnswerKeyDto> Keys);
+    IReadOnlyList<OpticalAnswerKeyDto> Keys,
+    string? Level = null);
 
 public sealed record OpticalSubjectScoreDto(string Subject, int Correct, int Wrong, int Blank, decimal Net);
 
@@ -120,3 +123,105 @@ public sealed record OpticalExamResultsDto(
     IReadOnlyList<string> Subjects,
     IReadOnlyList<OpticalExamResultRowDto> Rows,
     IReadOnlyList<OpticalSubjectScoreDto> Averages);
+
+/// <summary>Dosyadan şablon önerisi: tek alan. Confidence: high | medium | low | none (algılanamadı).</summary>
+public sealed record OpticalSuggestedFieldDto(string Key, string Label, int Start, int Length, string Confidence, string Reason);
+
+/// <summary>Rakamdan oluşan aday alan; öğrenci numarası mı kurum/sınav kodu mu görünüşten kesinleşmez.</summary>
+public sealed record OpticalNumberCandidateDto(string Id, int Start, int Length, int DistinctValues, bool Constant, bool LeadingZeros, string Note);
+
+/// <summary>Cevap bloğu; ders adı ve soru dağılımı dosyada yoksa uydurulmaz ("Cevap bloğu 1").</summary>
+public sealed record OpticalAnswerBlockDto(string Label, int Start, int Count, string Confidence, string Reason, bool CountNeedsConfirmation);
+
+/// <summary>Kind: header | answer-key | length | other.</summary>
+public sealed record OpticalFlaggedLineDto(int Line, string Kind, string Reason);
+
+/// <summary>
+/// Şablon önerisi. Hiçbir şey kaydetmez. AiStatus: used | not-needed | disabled | unavailable | timeout | invalid.
+/// Supported=false ise (ör. ayraçlı dosya) Message nedenini söyler ve elle giriş önerilir.
+/// </summary>
+public sealed record OpticalTemplateSuggestionDto(
+    bool Supported,
+    string Message,
+    string Encoding,
+    string Format,
+    int TotalLines,
+    int SampledLines,
+    int TypicalLineLength,
+    int MinLineLength,
+    int MaxLineLength,
+    IReadOnlyList<OpticalSuggestedFieldDto> Fields,
+    IReadOnlyList<OpticalNumberCandidateDto> NumberCandidates,
+    IReadOnlyList<OpticalAnswerBlockDto> AnswerBlocks,
+    IReadOnlyList<string> Booklets,
+    IReadOnlyList<OpticalFlaggedLineDto> FlaggedLines,
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<string> Confirmations,
+    string AiStatus,
+    IReadOnlyList<string> AiNotes,
+    bool ManualRecommended);
+
+// ── Soru konusu listesi ──────────────────────────────────────────────────────
+
+public sealed record OpticalTopicLevelDto(string Key, string Label);
+
+/// <summary>Bir başlık (ünite / tema / alt test) altındaki hazır konular.</summary>
+public sealed record OpticalTopicGroupDto(string Label, IReadOnlyList<string> Topics);
+
+public sealed record OpticalCustomTopicDto(Guid Id, string Subject, string Level, string Name);
+
+/// <summary>
+/// Bir dersin seçilebilir konuları: hazır liste (Groups), kurumun eklediği konular (Custom) ve kurumun
+/// denemelerinde daha önce yazılmış ama ikisinde de olmayan konular (Used; eski serbest kayıtlar).
+/// </summary>
+public sealed record OpticalSubjectTopicsDto(
+    string Subject,
+    IReadOnlyList<OpticalTopicGroupDto> Groups,
+    IReadOnlyList<OpticalCustomTopicDto> Custom,
+    IReadOnlyList<string> Used);
+
+public sealed record OpticalTopicCatalogDto(
+    string Level,
+    IReadOnlyList<OpticalTopicLevelDto> Levels,
+    IReadOnlyList<OpticalSubjectTopicsDto> Subjects);
+
+public sealed record AddOpticalTopicRequest(string Subject, string? Level, string Name);
+
+/// <summary>Status: created (listeye eklendi), exists-builtin (hazır listede zaten var), exists-custom (kurum listesinde zaten var).</summary>
+public sealed record AddOpticalTopicResultDto(string Status, string Name, OpticalCustomTopicDto? Topic);
+
+// ── Deneme sonrası çalışma planı ─────────────────────────────────────────────
+
+/// <summary>Öğrencinin bu denemede zorlandığı konu (yanlış + boş sayısına göre).</summary>
+public sealed record OpticalPlanTopicDto(string Subject, string Topic, int Correct, int Wrong, int Blank, int Total);
+
+/// <summary>Plan görevi; Date yyyy-MM-dd (İstanbul günü).</summary>
+public sealed record OpticalPlanTaskDto(string Title, string Subject, string Topic, string Date, int DurationMinutes);
+
+/// <summary>SkipReason doluysa plan yazılamaz (ör. aynı adlı iki öğrenci, zayıf konu yok).</summary>
+public sealed record OpticalStudyPlanRowDto(
+    Guid StudentUserId,
+    string StudentName,
+    string ClassName,
+    decimal Net,
+    IReadOnlyList<OpticalPlanTopicDto> WeakTopics,
+    IReadOnlyList<OpticalPlanTaskDto> Tasks,
+    string ParentSummary,
+    bool HasParent,
+    string? SkipReason,
+    bool AlreadyApplied);
+
+/// <summary>Önizleme hiçbir şey yazmaz. StudyPlanEnabled=false ise öğrenciler planı göremez (paket).</summary>
+public sealed record OpticalStudyPlanPreviewDto(
+    Guid ExamId,
+    string ExamTitle,
+    bool HasTopics,
+    bool StudyPlanEnabled,
+    IReadOnlyList<OpticalStudyPlanRowDto> Students,
+    string? Message);
+
+public sealed record OpticalStudyPlanApplyItem(Guid StudentUserId, IReadOnlyList<OpticalPlanTaskDto> Tasks, bool SendParentSummary, string? ParentSummary);
+
+public sealed record ApplyOpticalStudyPlansRequest(IReadOnlyList<OpticalStudyPlanApplyItem> Students);
+
+public sealed record OpticalStudyPlanApplyResultDto(int Applied, int TasksWritten, int ParentsNotified, IReadOnlyList<string> Skipped);

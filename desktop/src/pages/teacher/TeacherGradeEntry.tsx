@@ -13,6 +13,7 @@ import {
   approveExamSubmission,
   createExamResult,
   fetchExamResults,
+  updateExamResult,
   fetchPlannedExams,
   fetchPlannedExamSubmissions,
   fetchReportStudents,
@@ -24,6 +25,8 @@ import type { PlannedExam } from '../../lib/api/plannedExams';
 import type { ReportStudentRow } from '../../lib/api/reports';
 import type { ExamResultDto } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { belongsToStudent, byRecordDateDesc } from '../../lib/studentRecords';
+import { classifyAssessment, currentPeriod, GRADE_SLOT_LABELS, isInPeriod, periodOptions, type GradeSlot } from '../../lib/gradeEntry';
 
 type GradeKey = 'firstGrade' | 'secondGrade' | 'performanceGrade';
 type GradeRow = ReturnType<typeof buildRows>[number];
@@ -85,16 +88,21 @@ function downloadText(filename: string, content: string, type = 'text/csv;charse
   URL.revokeObjectURL(url);
 }
 
-function buildRows(students: readonly ReportStudentRow[], records: readonly ExamResultDto[], subjectFilter: string) {
+function buildRows(students: readonly ReportStudentRow[], records: readonly ExamResultDto[], subjectFilter: string, period: string) {
   return students.map((student) => {
     const name = decodeText(student.fullName || '');
     const className = decodeText(student.className || '');
+    // Yalnız seçili dönemin ve dersin sonuçları; sütun değerlendirme adından belirlenir
+    // (yoksa boş kalır — ilgisiz bir sınavın puanı yazılı notu sayılmaz).
     const related = records
-      .filter((item) => decodeText(item.studentName) === name)
-      .filter((item) => !subjectFilter || subjectFilter === 'Tüm Dersler' || decodeText(item.subject) === subjectFilter);
-    const first = related.find((item) => /1|bir/i.test(`${item.examTitle} ${item.type}`)) || related[0];
-    const second = related.find((item) => /2|iki/i.test(`${item.examTitle} ${item.type}`)) || related[1];
-    const performance = related.find((item) => /performans|performance/i.test(`${item.examTitle} ${item.type}`)) || related[2];
+      .filter((item) => belongsToStudent({ studentId: item.studentId, studentName: decodeText(item.studentName) }, { id: student.id, fullName: name }))
+      .filter((item) => !subjectFilter || subjectFilter === 'Tüm Dersler' || decodeText(item.subject) === subjectFilter)
+      .filter((item) => isInPeriod({ dateLabel: item.dateLabel, examTitle: decodeText(item.examTitle) }, period))
+      .sort(byRecordDateDesc);
+    const latestOf = (slot: GradeSlot) => related.find((item) => classifyAssessment(decodeText(item.examTitle), decodeText(item.type)) === slot);
+    const first = latestOf('first');
+    const second = latestOf('second');
+    const performance = latestOf('performance');
     const firstGrade: number | '' = first?.score ?? '';
     const secondGrade: number | '' = second?.score ?? '';
     const performanceGrade: number | '' = performance?.score ?? '';
@@ -104,6 +112,7 @@ function buildRows(students: readonly ReportStudentRow[], records: readonly Exam
       : average(entered);
     return {
       id: student.id || student.username || name,
+      studentId: student.id || null,
       fullName: name,
       username: student.username || '',
       className,
@@ -111,6 +120,7 @@ function buildRows(students: readonly ReportStudentRow[], records: readonly Exam
       firstGrade: firstGrade === '' ? '' : String(firstGrade),
       secondGrade: secondGrade === '' ? '' : String(secondGrade),
       performanceGrade: performanceGrade === '' ? '' : String(performanceGrade),
+      existing: { first, second, performance } satisfies Record<GradeSlot, ExamResultDto | undefined>,
       finalGrade: Number.isFinite(finalGrade) ? Number(finalGrade.toFixed(2)) : 0,
       recent: related.slice(0, 5),
     };
@@ -235,7 +245,7 @@ export default function TeacherGradeEntry() {
   const [drafts, setDrafts] = useState<Partial<Record<string, GradeDraft>>>({});
   const [selectedClass, setSelectedClass] = useState('Tüm Sınıflar');
   const [selectedSubject, setSelectedSubject] = useState('Tüm Dersler');
-  const [period, setPeriod] = useState('2024 - 2025 / 2. Dönem');
+  const [period, setPeriod] = useState(() => currentPeriod());
   const [assessment, setAssessment] = useState('2. Yazılı');
   const [search, setSearch] = useState('');
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
@@ -310,10 +320,10 @@ export default function TeacherGradeEntry() {
 
   const rows = useMemo(() => {
     const scopedStudents = students.filter((item) => selectedClass === 'Tüm Sınıflar' || decodeText(item.className) === selectedClass);
-    return buildRows(scopedStudents, records, selectedSubject)
+    return buildRows(scopedStudents, records, selectedSubject, period)
       .map((row) => ({ ...row, ...(drafts[row.id] || {}) }))
       .filter((row) => `${row.fullName} ${row.className}`.toLowerCase().includes(search.toLowerCase()));
-  }, [drafts, records, search, selectedClass, selectedSubject, students]);
+  }, [drafts, period, records, search, selectedClass, selectedSubject, students]);
 
   const selectedRow = rows.find((row) => row.id === selectedRowId) || rows[0] || null;
   const stats = useMemo(() => {
@@ -352,29 +362,59 @@ export default function TeacherGradeEntry() {
     ...rows.map((row, index) => [index + 1, row.fullName, row.className, row.firstGrade, row.secondGrade, row.performanceGrade, row.finalGrade.toFixed(2)]),
   ].map((line) => line.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
 
+  /**
+   * Yalnız değiştirilen notlar kaydedilir: o sütunun bu dönemdeki sonucu varsa güncellenir,
+   * yoksa "<dönem> <değerlendirme>" başlığıyla eklenir. Eskiden her kayıtta YENİ sonuç
+   * açılıyor ve 1./2. yazılı yerine ağırlıklı dönem sonu ortalaması, seçili değerlendirmenin
+   * adıyla yazılıyordu.
+   */
   const saveAll = async () => {
-    const invalid = rows.filter((row) => !row.firstGrade || !row.secondGrade || !row.performanceGrade);
-    if (invalid.length > 0) {
-      toast({ title: 'Eksik not var', description: '1. Yazılı, 2. Yazılı ve performans alanları boş bırakılamaz.' });
+    if (selectedSubject === 'Tüm Dersler') {
+      toast({ title: 'Ders seçin', description: 'Notlar bir derse kaydedilir; önce ders filtresinden ders seçin.' });
+      return;
+    }
+    const slots: ReadonlyArray<readonly [GradeKey, GradeSlot]> = [['firstGrade', 'first'], ['secondGrade', 'second'], ['performanceGrade', 'performance']];
+    const changes = rows.flatMap((row) => slots
+      .filter(([key]) => drafts[row.id]?.[key] !== undefined && row[key] !== '')
+      .map(([key, slot]) => ({ row, slot, score: Number(row[key]) })));
+    if (changes.length === 0) {
+      toast({ title: 'Kaydedilecek not yok', description: 'Bir öğrencinin notunu değiştirip tekrar deneyin.' });
       return;
     }
     try {
       setSaving(true);
-      for (const row of rows) {
-        await createExamResult({
-          examTitle: `${period} ${assessment}`,
-          type: assessment,
-          subject: selectedSubject === 'Tüm Dersler' ? (records.find((item) => item.studentName === row.fullName)?.subject || 'Genel') : selectedSubject,
-          dateLabel: new Intl.DateTimeFormat('tr-TR').format(new Date()),
-          studentName: row.fullName,
-          className: row.className,
-          score: Math.round(row.finalGrade),
-          net: 0,
-        });
+      const today = new Intl.DateTimeFormat('tr-TR').format(new Date());
+      for (const { row, slot, score } of changes) {
+        const existing = row.existing[slot];
+        if (existing) {
+          // eslint-disable-next-line no-await-in-loop
+          await updateExamResult(existing.id, {
+            examTitle: existing.examTitle,
+            type: existing.type,
+            subject: existing.subject,
+            dateLabel: existing.dateLabel,
+            className: existing.className,
+            score,
+            net: Number(existing.net || 0),
+          });
+        } else {
+          // eslint-disable-next-line no-await-in-loop
+          await createExamResult({
+            examTitle: `${period} ${GRADE_SLOT_LABELS[slot]}`,
+            type: GRADE_SLOT_LABELS[slot],
+            subject: selectedSubject,
+            dateLabel: today,
+            studentName: row.fullName,
+            studentId: row.studentId,
+            className: row.className,
+            score,
+            net: 0,
+          });
+        }
       }
       setDrafts({});
       await load();
-      toast({ title: 'Notlar kaydedildi', description: `${rows.length} öğrencinin not kaydı backend’e işlendi.` });
+      toast({ title: 'Notlar kaydedildi', description: `${changes.length} not kaydı işlendi.` });
     } catch (err) {
       toast({ title: 'Kayıt başarısız', description: errorMessage(err, 'Tekrar deneyin.') });
     } finally {
@@ -422,7 +462,7 @@ export default function TeacherGradeEntry() {
       <div className="mt-5 grid gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-foreground/10 dark:bg-[hsl(var(--ci-card))] lg:grid-cols-5">
         <SelectBox label="Sınıf" value={selectedClass} options={classOptions} onChange={setSelectedClass} />
         <SelectBox label="Ders" value={selectedSubject} options={subjectOptions} onChange={setSelectedSubject} />
-        <SelectBox label="Dönem" value={period} options={['2024 - 2025 / 1. Dönem', '2024 - 2025 / 2. Dönem', '2025 - 2026 / 1. Dönem']} onChange={setPeriod} />
+        <SelectBox label="Dönem" value={period} options={periodOptions()} onChange={setPeriod} />
         <SelectBox label="Değerlendirme Türü" value={assessment} options={[...new Set(['1. Yazılı', '2. Yazılı', 'Performans', 'Proje', ...planned.map((item) => decodeText(item.type)).filter((item) => item && item !== 'MockExam' && item !== 'Exam')])]} onChange={setAssessment} />
         <Button variant="outline" className="mt-6"><Settings2 className="mr-2 h-4 w-4" />Sınav Ayarları</Button>
       </div>

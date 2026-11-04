@@ -13,7 +13,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
-import { fetchReportStudents, fetchSolutionSession, fetchTeacherPdfReports, fetchTeacherReportAnalytics } from '../../lib/api/modules';
+import { fetchReportStudents, fetchSolutionSession, fetchStudentSuccessReportPdf, fetchTeacherPdfReports, fetchTeacherReportAnalytics } from '../../lib/api/modules';
 import { downloadExamPaperPdf, setExamPaperBrand } from '../../lib/examPaperPdf';
 import { useTheme } from '../../context/ThemeContext';
 import { useApp } from '../../context/AppContext';
@@ -22,6 +22,7 @@ import type { ReportStudentRow, TeacherClassReport, TeacherReportAnalytics } fro
 import type { TeacherExamPaperReportResponse } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
 import { useAssistantFocus } from '../../lib/assistantFocus';
+import { localDateKey } from '../../lib/localDate';
 
 /** Rapor kartı / önizleme modeli: canlı öğrenci raporu ya da sunucudaki sınav kağıdı. */
 interface ReportItem {
@@ -37,6 +38,8 @@ interface ReportItem {
   score: number;
   ready: boolean;
   source?: 'student-live' | 'teacher-pdf-report';
+  /** Canlı öğrenci raporunda öğrenci profil kimliği: PDF sunucuda (Öğrenci Başarı Raporu) üretilir. */
+  studentId?: string;
   downloadUrl?: string | null;
   status?: string;
   createdAtUtc?: string | null;
@@ -219,6 +222,7 @@ function buildStudentReport(student: ReportStudentRow | null): ReportItem {
     score: student.averageScore || 0,
     ready: true,
     source: 'student-live',
+    studentId: student.id || undefined,
     downloadUrl: null,
     status: 'LivePreview',
     createdAtUtc: new Date().toISOString(),
@@ -1044,6 +1048,12 @@ export default function TeacherPdfReportCenter() {
   }, []);
 
   const generatePdfBlob = useCallback(async () => {
+    // Öğrenci raporu sunucuda üretilir: asistan ve mobil ile aynı 6 sayfalık Öğrenci Başarı Raporu
+    // (gerçek metin, öğrencinin kendi ders/konu/gelişim verisi). Önizleme ekranda kalır.
+    if (selectedReport.source === 'student-live' && selectedReport.studentId) {
+      const blob = await fetchStudentSuccessReportPdf(selectedReport.studentId);
+      if (blob) return blob;
+    }
     const nodes = exportRef.current?.querySelectorAll<HTMLElement>('[data-export-page]');
     if (!nodes || nodes.length === 0) throw new Error('Önizleme sayfaları bulunamadı.');
     const pdf = new jsPDF({ unit: 'px', format: [PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT], orientation: 'portrait', compress: true });
@@ -1065,7 +1075,7 @@ export default function TeacherPdfReportCenter() {
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT);
     }
     return pdf.output('blob');
-  }, []);
+  }, [selectedReport.source, selectedReport.studentId]);
 
   const handleGeneratePdf = useCallback(async () => {
     if (exporting) return;
@@ -1178,7 +1188,7 @@ export default function TeacherPdfReportCenter() {
       const zip = new JSZip();
       files.forEach((file) => zip.file(file.name, file.blob));
       const archive = await zip.generateAsync({ type: 'blob' });
-      saveBlob(archive, `pdf-raporlari-${new Date().toISOString().slice(0, 10)}.zip`);
+      saveBlob(archive, `pdf-raporlari-${localDateKey()}.zip`);
       setActionMessage(`${files.length} PDF içeren ZIP indirildi.`);
     } catch (error) {
       setActionMessage(errorMessage(error, 'ZIP oluşturulamadı.'));

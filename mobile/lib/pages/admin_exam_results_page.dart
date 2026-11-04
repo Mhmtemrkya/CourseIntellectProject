@@ -31,15 +31,20 @@ class _AdminExamResultsPageState extends State<AdminExamResultsPage> {
       'Tümü',
       ..._records.map((item) => item.className).toSet().toList()..sort(),
     ];
-    final students = _records.map((item) => item.studentName).toSet().where((
-      student,
-    ) {
+    // Öğrenci kimlikle gruplanır (kimliği olmayan eski sonuçta adla): aynı adlı iki
+    // öğrencinin sonuçları tek kartta birleşmez.
+    String keyOf(ExamScoreRecord item) =>
+        (item.studentId?.isNotEmpty ?? false) ? item.studentId! : 'name:${item.studentName}';
+    final students = _records.map(keyOf).toSet().where((key) {
       if (_selectedClass == 'Tümü') return true;
       return _records.any(
-        (item) =>
-            item.studentName == student && item.className == _selectedClass,
+        (item) => keyOf(item) == key && item.className == _selectedClass,
       );
-    }).toList()..sort();
+    }).toList()
+      ..sort((a, b) {
+        String nameOf(String key) => _records.firstWhere((item) => keyOf(item) == key).studentName;
+        return nameOf(a).compareTo(nameOf(b));
+      });
 
     return AdminScaffold(
       appBar: AppBar(
@@ -105,8 +110,9 @@ class _AdminExamResultsPageState extends State<AdminExamResultsPage> {
           else
             ...students.map((student) {
               final studentRecords = _records
-                  .where((item) => item.studentName == student)
+                  .where((item) => keyOf(item) == student)
                   .toList();
+              final studentName = studentRecords.first.studentName;
               final average = studentRecords.isEmpty
                   ? 0.0
                   : studentRecords.fold<int>(
@@ -123,7 +129,8 @@ class _AdminExamResultsPageState extends State<AdminExamResultsPage> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => StudentExamHistoryPage(
-                        studentName: student,
+                        studentName: studentName,
+                        studentId: studentRecords.first.studentId,
                         title: 'Öğrenci Sonuç Geçmişi'.tr,
                       ),
                     ),
@@ -137,7 +144,7 @@ class _AdminExamResultsPageState extends State<AdminExamResultsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              student,
+                              studentName,
                               style: Theme.of(context).textTheme.titleSmall
                                   ?.copyWith(fontWeight: FontWeight.w800),
                             ),

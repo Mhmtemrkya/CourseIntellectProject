@@ -149,6 +149,16 @@ public sealed partial class AssistantService
     /// Velinin çocukları. Öncelik ParentUserId bağında; bağ kurulmamış eski kayıtlarda veli adı
     /// ya da e-postası eşleşir (rapor sayfalarındaki StudentScope ile aynı kural).
     /// </summary>
+    // Veli e-postası kullanıcı adıyla birebir ya da "@" öncesiyle eşleşmeli ("içeriyor" değil;
+    // kullanıcı adı "ali" olan veli e-postasında "ali" geçen her öğrenciyi görüyordu).
+    private static bool ParentEmailMatches(string email, string username)
+    {
+        if (email.Length == 0) return false;
+        if (email == username) return true;
+        var at = email.IndexOf('@');
+        return at > 0 && email[..at] == username;
+    }
+
     private async Task<List<StudentCandidate>> ParentChildrenAsync(AssistantRequestContext context, CancellationToken ct)
     {
         var user = await db.Users.AsNoTracking().Where(x => x.Id == context.UserId).Select(x => new { x.FullName, x.Username }).FirstOrDefaultAsync(ct);
@@ -160,7 +170,7 @@ public sealed partial class AssistantService
         return rows
             .Where(x => x.ParentUserId == context.UserId
                 || (parentName.Length > 0 && RuleBasedAssistantIntentResolver.Fold(x.ParentName) == parentName)
-                || (username.Length > 0 && (x.ParentEmail ?? string.Empty).ToLowerInvariant().Contains(username)))
+                || (username.Length > 0 && ParentEmailMatches((x.ParentEmail ?? string.Empty).Trim().ToLowerInvariant(), username)))
             .Select(x => x.Candidate)
             .ToList();
     }

@@ -344,7 +344,7 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
             return tenantId;
         }
 
-        var userRaw = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userRaw = User.FindFirstValue("user_id") ?? User.FindFirstValue("sub") ?? User.FindFirstValue("nameid") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userRaw, out var userId))
         {
             return null;

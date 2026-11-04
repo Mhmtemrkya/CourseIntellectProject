@@ -21,6 +21,7 @@ import {
 import { errorMessage } from '../../lib/errors';
 import type { MeetingAvailabilitySlot } from '../../lib/api/meetings';
 import type { MeetingRequestDto } from '../../types/api/generated';
+import { localDateKey } from '../../lib/localDate';
 
 interface SlotInfo {
   raw: string;
@@ -45,7 +46,7 @@ function parseSlot(slotValue: string | null | undefined): SlotInfo {
   if (!Number.isNaN(parsed.getTime())) {
     return {
       raw,
-      dateKey: parsed.toISOString().slice(0, 10),
+      dateKey: localDateKey(parsed),
       dayLabel: parsed.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
       timeLabel: parsed.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
       sortable: parsed.getTime(),

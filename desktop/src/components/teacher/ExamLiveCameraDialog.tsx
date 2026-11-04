@@ -68,7 +68,7 @@ export default function ExamLiveCameraDialog({ exam, onClose }: ExamLiveCameraDi
       <DialogContent className="w-[min(96vw,960px)] max-w-[960px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5 text-[hsl(var(--brand-accent))]" />
+            <Camera className="h-5 w-5 text-[hsl(var(--brand-accent-text,var(--brand-accent)))]" />
             Canlı Kamera İzleme — {exam.title}
           </DialogTitle>
         </DialogHeader>

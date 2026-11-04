@@ -96,7 +96,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
     final questionSets = _groupQuestionSets(questions);
     final now = DateTime.now();
     final monthlyCount = _store.questions.where((item) {
-      final createdAt = DateTime.tryParse(item.createdAt);
+      final createdAt = DateTime.tryParse(item.createdAt)?.toLocal();
       return createdAt != null &&
           createdAt.year == now.year &&
           createdAt.month == now.month;

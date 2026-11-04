@@ -44,7 +44,7 @@ void main() {
         } else if (path.endsWith('/suggestions')) {
           json = fixture('suggestions.json');
         } else if (path.endsWith('/assistant/messages')) {
-          json = fixture('student_list.json');
+          json = fixture(request.body.contains('devamsızlık yapanlar') ? 'report.json' : 'student_list.json');
         } else if (path.endsWith('/assistant/actions')) {
           json = fixture('${body['command']}'.contains('topics') ? 'topics.json' : 'summary.json');
         } else if (path.endsWith('/feedback')) {
@@ -143,6 +143,23 @@ void main() {
       await tester.pumpAndSettle();
       final context = (jsonDecode(requests.lastWhere((r) => r.url.path.endsWith('/assistant/messages')).body) as Map)['context'] as Map;
       expect(context['selectedStudentName'], isNull);
+    }, api);
+  });
+
+  testWidgets('analiz sorusu rapor kartı (metrik, tablo, PDF) olarak gösterilir', (tester) async {
+    await http.runWithClient(() async {
+      await pumpPage(tester);
+      await tester.enterText(find.byType(TextField), 'sınıflarımda en çok devamsızlık yapanlar');
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await tester.pumpAndSettle();
+      final report = jsonDecode(fixture('report.json')) as Map<String, dynamic>;
+      final data = report['data'] as Map<String, dynamic>;
+      expect(find.text(data['title'] as String), findsOneWidget);
+      final firstMetric = (data['metrics'] as List).first as Map<String, dynamic>;
+      expect(find.text(firstMetric['label'] as String), findsOneWidget);
+      final firstRow = (data['rows'] as List).first as Map<String, dynamic>;
+      expect(find.text(firstRow['student'] as String), findsWidgets);
+      expect(find.text('PDF aç'), findsOneWidget);
     }, api);
   });
 

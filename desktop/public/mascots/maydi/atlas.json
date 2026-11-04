@@ -1,0 +1,57 @@
+{
+  "frameWidth": 256,
+  "frameHeight": 320,
+  "spin": {
+    "columns": 8,
+    "rows": 6,
+    "frames": 48,
+    "durationMs": 1650,
+    "effect": "tapered-cyan-orbit",
+    "fadeInMs": 248,
+    "fadeOutMs": 413
+  },
+  "wink": {
+    "columns": 6,
+    "rows": 1,
+    "frames": 6,
+    "durationMs": 540
+  },
+  "expressions": {
+    "speaking": {
+      "poster": "speaking.webp",
+      "atlas": "speaking-loop.webp",
+      "columns": 4,
+      "rows": 3,
+      "frames": 12
+    },
+    "happy": {
+      "poster": "happy.webp",
+      "atlas": "happy-loop.webp",
+      "columns": 4,
+      "rows": 3,
+      "frames": 12
+    },
+    "thinking": {
+      "poster": "thinking.webp",
+      "atlas": "thinking-loop.webp",
+      "columns": 4,
+      "rows": 3,
+      "frames": 12
+    },
+    "guiding": {
+      "poster": "guiding.webp",
+      "atlas": "guiding-loop.webp",
+      "columns": 4,
+      "rows": 3,
+      "frames": 12
+    },
+    "love": {
+      "poster": "love.webp",
+      "atlas": "love-loop.webp",
+      "columns": 4,
+      "rows": 3,
+      "frames": 12
+    }
+  },
+  "source": "Maydi/output/states/maydi_states.blend"
+}

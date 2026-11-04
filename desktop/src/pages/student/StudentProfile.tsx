@@ -109,7 +109,7 @@ export default function StudentProfile() {
               <Separator className="my-4" />
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="ci-rise rounded-xl p-1"><p className="text-2xl font-black text-[hsl(var(--brand-primary-text))]"><AnimatedValue value={`%${stats.attendanceRate}`} /></p><p className="text-xs text-muted-foreground">Devam</p></div>
-                <div className="ci-rise rounded-xl p-1"><p className="text-2xl font-black text-[hsl(var(--brand-accent))]"><AnimatedValue value={stats.avgScore} /></p><p className="text-xs text-muted-foreground">Ortalama</p></div>
+                <div className="ci-rise rounded-xl p-1"><p className="text-2xl font-black text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><AnimatedValue value={stats.avgScore} /></p><p className="text-xs text-muted-foreground">Ortalama</p></div>
                 <div className="ci-rise rounded-xl p-1"><p className="text-2xl font-black text-emerald-400"><AnimatedValue value={stats.examCount} /></p><p className="text-xs text-muted-foreground">Sınav</p></div>
               </div>
             </CardContent>

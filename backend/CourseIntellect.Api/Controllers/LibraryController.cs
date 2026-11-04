@@ -5,6 +5,7 @@ using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Security;
 using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -540,11 +541,15 @@ public sealed class LibraryController(
     [Authorize(Roles = "Parent")]
     public async Task<IActionResult> GetParentChildren(CancellationToken cancellationToken)
     {
-        var callerName = Normalize(CallerName);
-        var username = Normalize(User.FindFirstValue(ClaimTypes.NameIdentifier));
-        var children = (await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken))
-            .Where(s => (!string.IsNullOrWhiteSpace(s.ParentName) && Normalize(s.ParentName).Contains(callerName)))
+        // Velinin çocukları ortak kuralla bulunur (önce ParentUserId bağı). Eskiden veli adı
+        // "içeriyor mu" diye bakılıyordu: "Ali Kaya" velisi "Ali Kayaoğlu"nun çocuklarını da
+        // görüyor, oturumda ad boşsa kurumdaki bütün öğrenciler listeleniyordu.
+        var childUserIds = (await StudentScope.ResolveParentChildrenAsync(User, dbContext, cancellationToken))
+            .Select(x => x.UserId)
             .ToList();
+        var children = await dbContext.Students.AsNoTracking()
+            .Where(s => childUserIds.Contains(s.UserId))
+            .ToListAsync(cancellationToken);
 
         var loans = await dbContext.LibraryLoans.AsNoTracking().ToListAsync(cancellationToken);
         var now = DateTime.UtcNow;

@@ -22,6 +22,7 @@ import { downloadBlob, parseFinanceMoney } from '../../lib/financeDocuments';
 import { formatDate } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
 import type { AccountingDashboard } from '../../lib/api/accounting';
+import { localDateKey } from '../../lib/localDate';
 
 type ExportField = 'invoices' | 'collections' | 'installments' | 'approvals' | 'summary';
 
@@ -67,7 +68,7 @@ export default function Export() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1, 12).toISOString().slice(0, 10);
   });
-  const [journalTo, setJournalTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [journalTo, setJournalTo] = useState(() => localDateKey());
   const [journalBusy, setJournalBusy] = useState(false);
 
   const handleJournalExport = async () => {
@@ -155,7 +156,7 @@ export default function Export() {
   }, [exportType, previewRows]);
 
   const handleExport = () => {
-    const fileName = `course-intellect-${reportType}-${new Date().toISOString().slice(0, 10)}`;
+    const fileName = `course-intellect-${reportType}-${localDateKey()}`;
     if (exportType === 'excel') {
       const csv = exportRows.map((row) => row.join(';')).join('\n');
       downloadBlob(`${fileName}.csv`, csv, 'text/csv;charset=utf-8');

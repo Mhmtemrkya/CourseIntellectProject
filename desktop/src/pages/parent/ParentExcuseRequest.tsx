@@ -26,6 +26,7 @@ import { createExcuseRequest, fetchAttendance, fetchMyExcuseRequests, fetchStude
 import { formatDate } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
 import type { AttendanceEntryDto, StudentSummaryDto } from '../../types/api/generated';
+import { localDateKey } from '../../lib/localDate';
 
 /** Listede gösterilen mazeret satırı (sunucu kaydı ya da yeni gönderilen). */
 interface ExcuseRow {
@@ -59,7 +60,7 @@ export default function ParentExcuseRequest() {
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [form, setForm] = useState({
     childName: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: localDateKey(),
     reason: '',
     type: 'health',
     notes: '',
@@ -134,7 +135,7 @@ export default function ParentExcuseRequest() {
       setOpen(false);
       setForm({
         childName: form.childName,
-        date: new Date().toISOString().slice(0, 10),
+        date: localDateKey(),
         reason: '',
         type: 'health',
         notes: '',

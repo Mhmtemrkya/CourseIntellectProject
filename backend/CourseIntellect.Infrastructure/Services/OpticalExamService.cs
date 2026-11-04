@@ -4,6 +4,7 @@ using CourseIntellect.Application.DTOs.OpticalExams;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
+using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,7 +22,7 @@ public sealed class OpticalExamService(CourseIntellectDbContext dbContext) : IOp
     private static readonly StringComparer TrComparer = StringComparer.Create(Tr, ignoreCase: true);
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    private sealed record RosterStudent(Guid UserId, string FullName, string ClassName, string SchoolNumber, Guid? BranchId, string NameKey, string NumberKey);
+    private sealed record RosterStudent(Guid UserId, string FullName, string ClassName, string SchoolNumber, Guid? BranchId, string NameKey, string NumberKey, Guid ProfileId);
 
     // ── Şablon ───────────────────────────────────────────────────────────────
 
@@ -67,6 +68,8 @@ public sealed class OpticalExamService(CourseIntellectDbContext dbContext) : IOp
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private static string Span(int start, int length) => length == 1 ? $"{start}. karakter" : $"{start}–{start + length - 1}. karakterler";
+
     private static void ValidateTemplate(SaveOpticalTemplateRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name)) throw new ArgumentException("Şablon adı zorunludur.");
@@ -93,7 +96,7 @@ public sealed class OpticalExamService(CourseIntellectDbContext dbContext) : IOp
         var defined = ranges.Where(item => item.Length > 0).ToList();
         foreach (var range in defined)
         {
-            if (range.Start < 1) throw new ArgumentException($"{range.Name}: başlangıç kolonu 1 ya da daha büyük olmalı.");
+            if (range.Start < 1) throw new ArgumentException($"{range.Name}: başlangıç konumu 1 ya da daha büyük olmalı (karakter sayımı 1'den başlar).");
         }
         for (var i = 0; i < defined.Count; i++)
         {
@@ -103,7 +106,11 @@ public sealed class OpticalExamService(CourseIntellectDbContext dbContext) : IOp
                 var b = defined[j];
                 if (a.Start < b.Start + b.Length && b.Start < a.Start + a.Length)
                 {
-                    throw new ArgumentException($"{a.Name} ile {b.Name} kolonları çakışıyor.");
+                    var from = Math.Max(a.Start, b.Start);
+                    var to = Math.Min(a.Start + a.Length, b.Start + b.Length) - 1;
+                    var shared = from == to ? $"{from}. karakter" : $"{from}–{to}. karakterler";
+                    throw new ArgumentException(
+                        $"{a.Name} ({Span(a.Start, a.Length)}) ile {b.Name} ({Span(b.Start, b.Length)}) çakışıyor: {shared} iki alana birden ayrılmış.");
                 }
             }
         }
@@ -144,7 +151,7 @@ public sealed class OpticalExamService(CourseIntellectDbContext dbContext) : IOp
             var topicCount = first?.Subjects.Sum(item => item.Topics.Count(topic => !string.IsNullOrWhiteSpace(topic))) ?? 0;
             return new OpticalExamSummaryDto(exam.Id, exam.Title, exam.ExamDateUtc, exam.TemplateId,
                 templates.GetValueOrDefault(exam.TemplateId) ?? "—", exam.Status, exam.ImportedStudentCount, exam.ImportedAtUtc,
-                questionCount, questionCount == 0 ? 0 : (int)Math.Round(topicCount * 100m / questionCount));
+                questionCount, questionCount == 0 ? 0 : (int)Math.Round(topicCount * 100m / questionCount), exam.Level);
         }).ToList();
     }
 
@@ -159,6 +166,8 @@ public sealed class OpticalExamService(CourseIntellectDbContext dbContext) : IOp
         if (string.IsNullOrWhiteSpace(request.Title)) throw new ArgumentException("Deneme adı zorunludur.");
         if (request.WrongPenalty is < 0 or > 10) throw new ArgumentException("Yanlış götürme oranı 0-10 arasında olmalı (LGS 3, TYT/AYT 4, 0 = götürmez).");
         var cancelledMode = request.CancelledMode == "correct" ? "correct" : "exclude";
+        var level = (request.Level ?? string.Empty).Trim();
+        if (level.Length > 0 && !OpticalTopicCatalog.IsLevel(level)) throw new ArgumentException("Seviye geçersiz (5, 6, 7, LGS, TYT, AYT ya da YDT).");
         var template = await dbContext.OpticalTemplates.AsNoTracking().FirstOrDefaultAsync(item => item.Id == request.TemplateId, cancellationToken)
             ?? throw new ArgumentException("Optik şablon bulunamadı.");
         var keys = NormalizeKeys(request.Keys, ToDto(template));
@@ -169,6 +178,8 @@ public sealed class OpticalExamService(CourseIntellectDbContext dbContext) : IOp
             : new OpticalExam { BranchId = dbContext.EffectiveBranchId };
         entity.Title = request.Title.Trim();
         entity.ExamDateUtc = DateTime.SpecifyKind(request.ExamDateUtc, DateTimeKind.Utc);
+        // Eski istemci seviye göndermezse (null) mevcut seviye korunur.
+        if (request.Level is not null) entity.Level = level;
         entity.TemplateId = template.Id;
         entity.WrongPenalty = request.WrongPenalty;
         entity.MultiMarkAsWrong = request.MultiMarkAsWrong;
@@ -230,7 +241,18 @@ public sealed class OpticalExamService(CourseIntellectDbContext dbContext) : IOp
 
     private static OpticalExamDto ToDto(OpticalExam exam) => new(exam.Id, exam.Title, exam.ExamDateUtc, exam.TemplateId,
         exam.WrongPenalty, exam.MultiMarkAsWrong, exam.CancelledMode, ReadKeys(exam), exam.Status, exam.FileName,
-        exam.ImportedStudentCount, exam.ImportedAtUtc);
+        exam.ImportedStudentCount, exam.ImportedAtUtc, exam.Level);
+
+    // ── Soru konusu listesi (ortak servise devredilir) ───────────────────────
+
+    public Task<OpticalTopicCatalogDto> GetTopicsAsync(string? level, IReadOnlyList<string> subjects, CancellationToken cancellationToken = default)
+        => new TopicCatalogService(dbContext).GetTopicsAsync(level, subjects, cancellationToken);
+
+    public Task<AddOpticalTopicResultDto> AddTopicAsync(AddOpticalTopicRequest request, Guid? userId, CancellationToken cancellationToken = default)
+        => new TopicCatalogService(dbContext).AddTopicAsync(request, userId, cancellationToken);
+
+    public Task DeleteTopicAsync(Guid id, CancellationToken cancellationToken = default)
+        => new TopicCatalogService(dbContext).DeleteTopicAsync(id, cancellationToken);
 
     // ── Önizleme ve aktarım ──────────────────────────────────────────────────
 
@@ -368,6 +390,7 @@ public sealed class OpticalExamService(CourseIntellectDbContext dbContext) : IOp
                 var total = score.Correct + score.Wrong + score.Blank;
                 var result = new ExamResult
                 {
+                    StudentId = student.ProfileId,
                     ExamTitle = exam.Title,
                     Type = ExamType.MockExam,
                     Subject = score.Subject,
@@ -476,7 +499,7 @@ public sealed class OpticalExamService(CourseIntellectDbContext dbContext) : IOp
     private async Task<List<RosterStudent>> LoadRosterAsync(CancellationToken cancellationToken) =>
         (await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken))
             .Select(item => new RosterStudent(item.UserId, item.FullName, item.ClassName.Trim(), item.SchoolNumber.Trim(), item.BranchId,
-                NameKey(item.FullName), OpticalParser.NormalizeStudentNo(item.SchoolNumber)))
+                NameKey(item.FullName), OpticalParser.NormalizeStudentNo(item.SchoolNumber), item.Id))
             .ToList();
 
     private static string NameKey(string? value) =>

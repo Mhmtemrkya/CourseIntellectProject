@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import type { SiteContent, ContentState } from "@/types/content"
 import { defaultContent } from "@/data/default-content"
 import { apiRequest } from "@/lib/api-client"
+import { sanitizeContentUrls } from "@/lib/safe-url"
 import { useLanguage } from "@/context/language-context"
 
 const HISTORY_LIMIT = 10
@@ -62,7 +63,8 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       if (result.status !== "fulfilled") return
       const payload = result.value
       const sectionKey = SECTION_KEYS[index]
-      setSection(nextContent, sectionKey, payload.content as SiteContent[typeof sectionKey])
+      // Panelden düzenlenen bağlantılar herkese açık sayfada çizilir: javascript:/data: adresleri süzülür.
+      setSection(nextContent, sectionKey, sanitizeContentUrls(payload.content) as SiteContent[typeof sectionKey])
 
       if (payload.updatedAt) {
         const updated = new Date(payload.updatedAt)
@@ -142,7 +144,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
       responses.forEach((payload) => {
         const sectionKey = payload.section as keyof SiteContent
         if (SECTION_KEYS.includes(sectionKey)) {
-          setSection(updatedContent, sectionKey, payload.content as SiteContent[typeof sectionKey])
+          setSection(updatedContent, sectionKey, sanitizeContentUrls(payload.content) as SiteContent[typeof sectionKey])
         }
         if (payload.updatedAt) {
           const updated = new Date(payload.updatedAt)
@@ -181,7 +183,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
   const importContent = useCallback(
     (jsonString: string): boolean => {
       try {
-        const parsed = JSON.parse(jsonString) as SiteContent
+        const parsed = sanitizeContentUrls(JSON.parse(jsonString) as SiteContent)
         setHistory((prev) => [...prev.slice(-HISTORY_LIMIT + 1), content])
         setContent(parsed)
         setIsDirty(true)

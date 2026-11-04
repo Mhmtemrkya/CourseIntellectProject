@@ -606,7 +606,7 @@ export default function TeacherContent() {
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6" data-testid="teacher-content-page">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Konu Anlatımı</h1>
+          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Konu Anlatımı</h1>
           <p className="mt-1 text-sm text-muted-foreground">Derslerinize ait konu anlatımlarınızı oluşturun, düzenleyin ve paylaşın.</p>
         </div>
         <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
@@ -1120,7 +1120,7 @@ export default function TeacherContent() {
                       <tr key={item.id || item.title} className="border-b border-foreground/[0.06] transition-colors hover:bg-foreground/[0.025]">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="grid h-10 w-12 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><TypeIcon className="h-4 w-4" /></div>
+                            <div className="grid h-10 w-12 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><TypeIcon className="h-4 w-4" /></div>
                             <div className="min-w-0">
                               <p className="truncate font-semibold">{item.title}</p>
                               {item.description ? <p className="truncate text-xs text-muted-foreground">{item.description}</p> : null}
@@ -1162,16 +1162,16 @@ export default function TeacherContent() {
           <PremiumPanel title="En Çok İzlenen İçerikler" description="En çok izlenen konular" contentClassName="space-y-2.5">
             {mostViewed.map((item, index) => (
               <button key={item.id || index} onClick={() => { setSelectedContent(item); setPlayInlineVideo(false); }} className="flex w-full items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left transition-colors hover:bg-[hsl(var(--brand-accent)/0.06)]">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.14)] text-xs font-black text-[hsl(var(--brand-accent))]">{index + 1}</span>
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.14)] text-xs font-black text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">{index + 1}</span>
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="truncate text-xs text-muted-foreground">{item.grade || '-'} • {item.views || 0} izlenme</p></div>
-                <Eye className="h-4 w-4 shrink-0 text-[hsl(var(--brand-accent))]" />
+                <Eye className="h-4 w-4 shrink-0 text-[hsl(var(--brand-accent-text,var(--brand-accent)))]" />
               </button>
             ))}
           </PremiumPanel>
           <PremiumPanel title="Son Eklenen İçerikler" description="Yeni yüklenen materyaller" contentClassName="space-y-2.5">
             {recentAdded.map((item, index) => (
               <button key={item.id || index} onClick={() => { setSelectedContent(item); setPlayInlineVideo(false); }} className="flex w-full items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left transition-colors hover:bg-[hsl(var(--brand-accent)/0.06)]">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><FileText className="h-4 w-4" /></span>
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><FileText className="h-4 w-4" /></span>
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="truncate text-xs text-muted-foreground">{''}</p></div>
               </button>
             ))}

@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Bot, Check, ExternalLink, History, MessageCircle, Pin, RotateCcw, Send, Sparkles, ThumbsDown, ThumbsUp, Trash2, Trophy, X } from 'lucide-react';
-import { Button } from '../ui/button';
+import { ArrowLeft, ArrowRight, BarChart3, Building2, CalendarDays, Check, Coins, ExternalLink, GraduationCap, History, MessageCircle, Pin, Presentation, RotateCcw, Send, ThumbsDown, ThumbsUp, Trash2, Trophy, Users, X, type LucideIcon } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useLanguage } from '../../lib/i18n/LanguageContext';
 import {
@@ -15,9 +14,15 @@ import {
   sendAssistantFeedback,
   sendAssistantMessage,
 } from '../../lib/api/modules';
+import AssistantReportCard from './AssistantReportCard';
+import MaydiMascot, { type MaydiResponseMood } from './MaydiMascot';
+import MaydiLauncher from './MaydiLauncher';
+import { maydiResponseMood } from './maydiReactions';
 import { clearStaleAssistantFocus, setAssistantFocus, useAssistantFocusValue } from '../../lib/assistantFocus';
 import { errorMessage, isRecord } from '../../lib/errors';
 import { diagnosisOf, formatPct } from '../../lib/insights';
+import { foldTr } from '../../lib/foldTr';
+import './AssistantPanel.css';
 import type {
   AssistantActionDto,
   AssistantBriefingDto,
@@ -27,7 +32,7 @@ import type {
   AssistantResponseDto,
 } from '../../types/api/generated';
 
-interface ChatMessage { id: string; from: 'user' | 'assistant'; text: string; response?: AssistantResponseDto; feedback?: number | null }
+interface ChatMessage { id: string; from: 'user' | 'assistant'; text: string; createdAtUtc?: string; response?: AssistantResponseDto; feedback?: number | null; mascotMood?: MaydiResponseMood }
 
 // ── Güvenli alan okuma (sunucu verisi `unknown` gelir) ──────────────────────
 const field = (value: unknown, key: string): unknown => (isRecord(value) ? value[key] : undefined);
@@ -42,7 +47,50 @@ const date = (value: unknown) => {
 };
 const DAYS = ['', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAYS_EN = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const TONE_DOT: Record<string, string> = { warn: 'bg-amber-500', good: 'bg-emerald-500', info: 'bg-brand-primary' };
+const TONE_DOT: Record<string, string> = { warn: 'bg-amber-500', good: 'bg-emerald-500', info: 'bg-[hsl(var(--brand-primary-text))]' };
+
+function messageDate(timestamp?: string): Date | null {
+  const parsed = timestamp ? new Date(timestamp) : null;
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
+}
+
+function dayLabel(timestamp: string | undefined, english: boolean): string {
+  const parsed = messageDate(timestamp);
+  if (!parsed) return '';
+  const today = new Date();
+  if (parsed.toDateString() === today.toDateString()) return english ? 'Today' : 'Bugün';
+  today.setDate(today.getDate() - 1);
+  if (parsed.toDateString() === today.toDateString()) return english ? 'Yesterday' : 'Dün';
+  return parsed.toLocaleDateString(english ? 'en-GB' : 'tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function MessageTime({ timestamp, english }: { timestamp?: string; english: boolean }) {
+  const parsed = messageDate(timestamp);
+  return parsed ? <time className="maydi-chat__time" dateTime={parsed.toISOString()} title={parsed.toLocaleString(english ? 'en-GB' : 'tr-TR')}>
+    {parsed.toLocaleTimeString(english ? 'en-GB' : 'tr-TR', { hour: '2-digit', minute: '2-digit' })}
+  </time> : null;
+}
+
+function metricIcon(label: string): LucideIcon {
+  const text = foldTr(label);
+  if (/ogretmen|teacher/.test(text)) return GraduationCap;
+  if (/devamsiz|absen/.test(text)) return CalendarDays;
+  if (/ogrenci|student/.test(text)) return Users;
+  if (/sinif|class/.test(text)) return Presentation;
+  return BarChart3;
+}
+
+function suggestionPresentation(label: string): { label: string; icon: LucideIcon } {
+  const text = foldTr(label);
+  const shorter: Record<string, string> = {
+    'bu ay tahsilat': 'Tahsilat', 'bugun devamsiz olanlar': 'Devamsızlık',
+    'institution summary': 'Overview', "this month's collections": 'Collections', 'absentees today': 'Attendance',
+  };
+  const icon = /tahsil|odeme|borc|collection|payment/.test(text) ? Coins
+    : /devamsiz|yoklama|attendance|absen/.test(text) ? CalendarDays
+      : /kurum|institution|overview/.test(text) ? Building2 : MessageCircle;
+  return { label: shorter[text] ?? label, icon };
+}
 
 /** Kullanıcının bulunduğu portal: önce adres (çok rollü kullanıcı için), sonra rol. */
 function portalOf(pathname: string, role: string | undefined): string | null {
@@ -63,11 +111,12 @@ function portalOf(pathname: string, role: string | undefined): string | null {
 
 /** Kayıtlı mesajı (geçmiş) canlı cevap biçimine çevirir; kartlar aynı şekilde çizilir. */
 function fromHistory(conversationId: string, message: AssistantMessageDto): ChatMessage {
-  if (message.sender === 'user') return { id: message.id, from: 'user', text: message.text };
+  if (message.sender === 'user') return { id: message.id, from: 'user', text: message.text, createdAtUtc: message.createdAtUtc };
   return {
     id: message.id,
     from: 'assistant',
     text: message.text,
+    createdAtUtc: message.createdAtUtc,
     feedback: message.feedback,
     response: {
       conversationId,
@@ -83,7 +132,7 @@ function fromHistory(conversationId: string, message: AssistantMessageDto): Chat
 }
 
 /**
- * SchoolAsist Asistan: her sayfadan açılan sohbet paneli. Cevaplar sunucudaki konuşma
+ * Maydi (SchoolAsist asistanı): her sayfadan açılan sohbet paneli. Cevaplar sunucudaki konuşma
  * katmanından gelir (sayılar veritabanından); her rol yalnız kendi portalının sorularını sorabilir.
  * Panel açılınca role göre günlük brifing gösterir; ekranda bir öğrenciye bakılıyorsa
  * ("son baktığınız öğrenci") sorular ad yazılmadan o öğrenciye yönelir.
@@ -103,8 +152,11 @@ export function AssistantPanel() {
   const [history, setHistory] = useState<AssistantConversationDto[] | null>(null);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [mascotSpin, setMascotSpin] = useState(0);
+  const [mascotAffection, setMascotAffection] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const wasOpen = useRef(false);
   const english = language === 'en';
   const student = portal === 'student';
   const t = (tr: string, en: string) => (english ? en : tr);
@@ -144,17 +196,25 @@ export function AssistantPanel() {
     fetchAssistantBriefing(portal, language)
       .then((result) => setBriefing(result ?? null))
       .catch(() => setBriefing(null));
-    window.setTimeout(() => inputRef.current?.focus(), 50);
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 50);
+    return () => window.clearTimeout(timer);
   }, [open, portal, language]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    if (wasOpen.current && !open) {
+      document.querySelector<HTMLButtonElement>('[data-testid="assistant-launcher"]')?.focus();
+    }
+    wasOpen.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }, [messages, busy]);
 
-  const push = useCallback((response: AssistantResponseDto | null) => {
+  const push = useCallback((response: AssistantResponseDto | null, requestText = '') => {
     if (!response) return;
     setConversationId(response.conversationId);
-    setMessages((current) => [...current, { id: response.messageId, from: 'assistant', text: response.text, response }]);
+    setMessages((current) => [...current, { id: response.messageId, from: 'assistant', text: response.text, createdAtUtc: new Date().toISOString(), response, mascotMood: maydiResponseMood(response, requestText) }]);
   }, []);
 
   const send = useCallback(async (text: string) => {
@@ -162,12 +222,12 @@ export function AssistantPanel() {
     if (!message || busy) return;
     setInput('');
     setView('chat');
-    setMessages((current) => [...current, { id: crypto.randomUUID(), from: 'user', text: message }]);
+    setMessages((current) => [...current, { id: crypto.randomUUID(), from: 'user', text: message, createdAtUtc: new Date().toISOString() }]);
     setBusy(true);
     try {
-      push(await sendAssistantMessage(conversationId, message, context));
+      push(await sendAssistantMessage(conversationId, message, context), message);
     } catch (error) {
-      setMessages((current) => [...current, { id: crypto.randomUUID(), from: 'assistant', text: errorMessage(error) }]);
+      setMessages((current) => [...current, { id: crypto.randomUUID(), from: 'assistant', text: errorMessage(error), createdAtUtc: new Date().toISOString() }]);
     } finally {
       setBusy(false);
     }
@@ -180,12 +240,12 @@ export function AssistantPanel() {
     }
     if (!conversationId || !action.command || busy) return;
     const studentId = str(field(action.parameters, 'studentId')) || null;
-    setMessages((current) => [...current, { id: crypto.randomUUID(), from: 'user', text: label }]);
+    setMessages((current) => [...current, { id: crypto.randomUUID(), from: 'user', text: label, createdAtUtc: new Date().toISOString() }]);
     setBusy(true);
     try {
       push(await runAssistantAction(conversationId, action.command, studentId, context));
     } catch (error) {
-      setMessages((current) => [...current, { id: crypto.randomUUID(), from: 'assistant', text: errorMessage(error) }]);
+      setMessages((current) => [...current, { id: crypto.randomUUID(), from: 'assistant', text: errorMessage(error), createdAtUtc: new Date().toISOString() }]);
     } finally {
       setBusy(false);
     }
@@ -197,6 +257,7 @@ export function AssistantPanel() {
 
   const rate = useCallback((messageId: string, helpful: boolean) => {
     setMessages((current) => current.map((item) => (item.id === messageId ? { ...item, feedback: helpful ? 1 : -1 } : item)));
+    if (helpful) setMascotAffection((current) => current + 1);
     sendAssistantFeedback(messageId, helpful).catch(() => undefined);
   }, []);
 
@@ -233,60 +294,60 @@ export function AssistantPanel() {
     : [];
   const chips = messages.length === 0 ? [...focusChips, ...suggestions] : lastSuggestions;
   const firstName = user.name.split(' ')[0] ?? '';
+  const latestResponseMessage = [...messages].reverse().find((message) => message.response);
+  const latestResponse = latestResponseMessage?.response;
+  const spinMascot = () => setMascotSpin((current) => current + 1);
 
   return createPortal(
     <>
-      {!open ? (
-        <button type="button" onClick={() => setOpen(true)} data-testid="assistant-launcher"
-          aria-label={t('Asistanı aç', 'Open assistant')}
-          className="pointer-events-auto fixed bottom-5 right-5 z-[60] flex h-14 items-center gap-2 rounded-full bg-brand-primary px-5 text-sm font-semibold text-white shadow-[0_18px_40px_-12px_hsl(var(--brand-primary)/0.7)] transition hover:scale-[1.03]">
-          <Sparkles className="h-5 w-5" />
-          <span className="hidden sm:inline">{t('Asistan', 'Assistant')}</span>
-        </button>
-      ) : null}
+      <MaydiLauncher routeKey={`${user.id}:${location.pathname}`} visible={!open}
+        label={t("Maydi'yi aç", 'Open Maydi')} onOpen={() => setOpen(true)} />
 
       {open ? (
-        <section role="dialog" aria-label={t('SchoolAsist Asistan', 'SchoolAsist Assistant')} data-testid="assistant-panel"
-          className="pointer-events-auto fixed inset-x-2 bottom-2 top-16 z-[60] flex flex-col overflow-hidden rounded-3xl border bg-card text-card-foreground shadow-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:top-auto sm:h-[min(640px,calc(100vh-6rem))] sm:w-[420px]">
-          <header className="flex items-center gap-2 border-b bg-gradient-to-r from-brand-primary/15 to-transparent px-4 py-3">
+        <section role="dialog" aria-label="Maydi" data-testid="assistant-panel"
+          className="maydi-chat" onKeyDown={(event) => {
+            if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); }
+          }}>
+          <header className="maydi-chat__header">
             {view === 'history' ? (
-              <Button size="icon" variant="ghost" aria-label={t('Sohbete dön', 'Back to chat')} onClick={() => setView('chat')}><ArrowLeft className="h-4 w-4" /></Button>
+              <button type="button" className="maydi-chat__icon-button" aria-label={t('Sohbete dön', 'Back to chat')} onClick={() => setView('chat')}><ArrowLeft size={16} /></button>
             ) : (
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-brand-primary text-white"><Bot className="h-5 w-5" /></div>
+              <button type="button" onClick={spinMascot} onPointerEnter={spinMascot} onFocus={spinMascot}
+                className="maydi-chat__avatar-button"
+                aria-label={t("Maydi'yi döndür", 'Make Maydi spin')}>
+                <MaydiMascot size={48} thinking={busy} spinSignal={mascotSpin}
+                  responseId={latestResponse?.messageId} responseMood={latestResponseMessage?.mascotMood ?? maydiResponseMood(latestResponse)} affectionSignal={mascotAffection} />
+              </button>
             )}
-            <div className="min-w-0 flex-1">
-              <p className="font-bold leading-tight">{view === 'history' ? t('Önceki sohbetler', 'Previous chats') : `SchoolAsist ${t('Asistan', 'Assistant')}`}</p>
-              <p className="text-xs text-muted-foreground">{busy ? t('yazıyor…', 'typing…') : t('Çevrimiçi', 'Online')}</p>
+            <div className="maydi-chat__identity">
+              <h2>{view === 'history' ? t('Önceki sohbetler', 'Previous chats') : 'Maydi'}</h2>
+              <p><span className={`maydi-chat__status ${busy ? 'maydi-chat__status--busy' : ''}`} />{busy ? t('yazıyor…', 'typing…') : t('Çevrimiçi', 'Online')}</p>
             </div>
-            <Button size="icon" variant="ghost" aria-label={t('Önceki sohbetler', 'Previous chats')} title={t('Önceki sohbetler', 'Previous chats')} onClick={openHistory} data-testid="assistant-history">
-              <History className="h-4 w-4" />
-            </Button>
-            <Button size="icon" variant="ghost" aria-label={t('Yeni sohbet', 'New chat')} title={t('Yeni sohbet', 'New chat')} onClick={reset}>
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-            <Button size="icon" variant="ghost" aria-label={t('Kapat', 'Close')} onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
+            <div className="maydi-chat__header-actions">
+              <button type="button" className="maydi-chat__icon-button" aria-label={t('Önceki sohbetler', 'Previous chats')} title={t('Önceki sohbetler', 'Previous chats')} onClick={openHistory} data-testid="assistant-history"><History size={16} /></button>
+              <button type="button" className="maydi-chat__icon-button" aria-label={t('Yeni sohbet', 'New chat')} title={t('Yeni sohbet', 'New chat')} onClick={reset}><RotateCcw size={16} /></button>
+              <button type="button" className="maydi-chat__icon-button" aria-label={t('Kapat', 'Close')} title={t('Kapat', 'Close')} onClick={() => setOpen(false)}><X size={17} /></button>
+            </div>
           </header>
 
           {view === 'history' ? (
-            <div className="flex-1 overflow-y-auto p-3" data-testid="assistant-history-list">
+            <div className="maydi-chat__thread maydi-chat__history" data-testid="assistant-history-list">
               {history === null ? <p className="p-3 text-sm text-muted-foreground">{t('Yükleniyor…', 'Loading…')}</p> : null}
               {history?.length === 0 ? <p className="p-3 text-sm text-muted-foreground">{t('Bu portalda henüz kayıtlı sohbet yok.', 'No saved chats in this portal yet.')}</p> : null}
               {history?.map((item) => (
-                <div key={item.id} className="group flex items-center gap-2 rounded-xl px-3 py-2.5 transition hover:bg-foreground/[0.05]">
+                <div key={item.id} className="maydi-chat__history-row">
                   <button type="button" className="min-w-0 flex-1 text-left" onClick={() => void loadConversation(item.id)}>
                     <p className="truncate text-sm font-medium">{item.title}</p>
                     <p className="text-[11px] text-muted-foreground">{new Date(item.lastMessageAtUtc ?? item.createdAtUtc).toLocaleString(english ? 'en-GB' : 'tr-TR', { dateStyle: 'medium', timeStyle: 'short' })}</p>
                   </button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8 opacity-60 group-hover:opacity-100" aria-label={t('Sohbeti sil', 'Delete chat')} onClick={() => removeConversation(item.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <button type="button" className="maydi-chat__icon-button" aria-label={t('Sohbeti sil', 'Delete chat')} onClick={() => removeConversation(item.id)}><Trash2 size={14} /></button>
                 </div>
               ))}
             </div>
           ) : (
-            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            <div ref={scrollRef} className="maydi-chat__thread" role="log" aria-label={t('Sohbet mesajları', 'Chat messages')}>
               {messages.length === 0 ? (
-                <div className="space-y-2 rounded-2xl bg-foreground/[0.04] p-4 text-sm" data-testid="assistant-briefing">
+                <div className="maydi-chat__briefing" data-testid="assistant-briefing">
                   <p className="flex items-center gap-2 font-semibold">
                     <MessageCircle className="h-4 w-4 shrink-0 text-brand-primary" />
                     {briefing?.greeting ?? t(`Merhaba ${firstName}!`, `Hi ${firstName}!`)}
@@ -312,25 +373,37 @@ export function AssistantPanel() {
                   </p>
                 </div>
               ) : null}
-              {messages.map((message) => (message.from === 'user' ? (
-                <div key={message.id} className="flex justify-end">
-                  <p className="max-w-[85%] rounded-2xl rounded-br-md bg-brand-primary px-3.5 py-2 text-sm text-white">{message.text}</p>
-                </div>
-              ) : (
-                <div key={message.id} className="flex gap-2">
-                  <div className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-primary/15 text-brand-primary"><Bot className="h-4 w-4" /></div>
-                  <div className="min-w-0 max-w-[88%] flex-1 space-y-2">
-                    <p className={`w-fit max-w-full rounded-2xl rounded-tl-md px-3.5 py-2 text-sm leading-relaxed ${message.response?.type === 'permission_denied' ? 'bg-amber-500/10 text-amber-900 dark:text-amber-100' : 'bg-foreground/[0.06]'}`}>{message.text}</p>
-                    {message.response ? <ResponseBody response={message.response} english={english} self={student} onAction={runAction} onPickStudent={pickStudent} /> : null}
-                    {message.response ? <FeedbackButtons value={message.feedback ?? null} english={english} onRate={(helpful) => rate(message.id, helpful)} /> : null}
-                  </div>
-                </div>
-              )))}
+              {messages.map((message, index) => {
+                const day = dayLabel(message.createdAtUtc, english);
+                const newDay = day && day !== dayLabel(messages[index - 1]?.createdAtUtc, english);
+                return <Fragment key={message.id}>
+                  {newDay ? <div className="maydi-chat__day"><span>{day}</span></div> : null}
+                  {message.from === 'user' ? (
+                    <div className="maydi-chat__user-row">
+                      <p className="maydi-chat__bubble maydi-chat__bubble--user">{message.text}</p>
+                      <MessageTime timestamp={message.createdAtUtc} english={english} />
+                    </div>
+                  ) : (
+                    <div className="maydi-chat__assistant-row">
+                      <MaydiMascot size={30} mood={message.feedback === 1 || message.mascotMood === 'love' ? 'love' : 'idle'} animated={false} className="maydi-chat__message-avatar" />
+                      <div className="maydi-chat__message-content">
+                        <p className={`maydi-chat__bubble maydi-chat__bubble--assistant ${message.response?.type === 'permission_denied' ? 'maydi-chat__bubble--warning' : ''}`}>{message.text}</p>
+                        {message.response ? <div className="maydi-chat__response"><ResponseBody response={message.response} english={english} self={student} onAction={runAction} onPickStudent={pickStudent} /></div> : null}
+                        <div className="maydi-chat__message-meta">
+                          <MessageTime timestamp={message.createdAtUtc} english={english} />
+                          {message.response ? <FeedbackButtons value={message.feedback ?? null} english={english} onRate={(helpful) => rate(message.id, helpful)} /> : null}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </Fragment>;
+              })}
               {busy ? (
-                <div className="flex gap-2" aria-live="polite">
-                  <div className="grid h-7 w-7 place-items-center rounded-full bg-brand-primary/15 text-brand-primary"><Bot className="h-4 w-4" /></div>
-                  <div className="flex items-center gap-1 rounded-2xl bg-foreground/[0.06] px-3.5 py-3">
-                    {[0, 1, 2].map((dot) => <span key={dot} className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" style={{ animationDelay: `${dot * 150}ms` }} />)}
+                <div className="maydi-chat__assistant-row" aria-live="polite">
+                  <MaydiMascot size={30} mood="thinking" animated={false} />
+                  <div className="maydi-chat__typing" role="status">
+                    <span className="maydi-chat__typing-dots" aria-hidden="true">{[0, 1, 2].map((dot) => <span key={dot} style={{ animationDelay: `${dot * 150}ms` }} />)}</span>
+                    <span>{t('Kayıtlara bakıyorum…', 'Checking the records…')}</span>
                   </div>
                 </div>
               ) : null}
@@ -338,7 +411,7 @@ export function AssistantPanel() {
           )}
 
           {view === 'chat' && focus ? (
-            <div className="flex items-center gap-2 border-t bg-brand-primary/[0.06] px-3 py-1.5 text-xs" data-testid="assistant-focus">
+            <div className="maydi-chat__focus" data-testid="assistant-focus">
               <Pin className="h-3.5 w-3.5 shrink-0 text-brand-primary" />
               <span className="min-w-0 flex-1 truncate">
                 {t('Ekrandaki öğrenci: ', 'Student on screen: ')}<strong>{focus.studentName || t('seçili öğrenci', 'selected student')}</strong>
@@ -350,23 +423,23 @@ export function AssistantPanel() {
           ) : null}
 
           {view === 'chat' && chips.length > 0 && !busy ? (
-            <div className="flex gap-1.5 overflow-x-auto border-t px-3 py-2">
-              {chips.map((chip) => (
-                <button key={chip} type="button" onClick={() => void send(chip)}
-                  className="shrink-0 rounded-full border bg-background px-3 py-1.5 text-xs font-medium transition hover:border-brand-primary hover:text-brand-primary">
-                  {chip}
-                </button>
-              ))}
+            <div className="maydi-chat__suggestions" aria-label={t('Önerilen sorular', 'Suggested questions')}>
+              {[...new Set(chips)].map((chip) => {
+                const presentation = suggestionPresentation(chip);
+                const Icon = presentation.icon;
+                return <button key={chip} type="button" title={chip} onClick={() => void send(chip)} className="maydi-chat__suggestion">
+                  <Icon size={13} /><span>{presentation.label}</span>
+                </button>;
+              })}
             </div>
           ) : null}
 
-          <form className="flex items-center gap-2 border-t p-3" onSubmit={(event) => { event.preventDefault(); void send(input); }}>
-            <input ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} maxLength={1000}
-              placeholder={english ? 'Ask something…' : student ? 'Bir şey sor…' : 'Sorunuzu yazın…'} aria-label={t('Mesaj', 'Message')}
-              className="h-11 min-w-0 flex-1 rounded-full border bg-background px-4 text-sm outline-none focus:border-brand-primary" />
-            <Button type="submit" size="icon" className="h-11 w-11 shrink-0 rounded-full" disabled={busy || !input.trim()} aria-label={t('Gönder', 'Send')}>
-              <Send className="h-4 w-4" />
-            </Button>
+          <form className="maydi-chat__composer" onSubmit={(event) => { event.preventDefault(); void send(input); }}>
+            <div className="maydi-chat__composer-field">
+              <input ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} maxLength={1000}
+                placeholder={t('Maydi’ye sor…', 'Ask Maydi…')} aria-label={t('Mesaj', 'Message')} autoComplete="off" />
+              <button type="submit" className="maydi-chat__send" disabled={busy || !input.trim()} aria-label={t('Gönder', 'Send')} title={t('Gönder', 'Send')}><Send size={17} /></button>
+            </div>
           </form>
         </section>
       ) : null}
@@ -375,18 +448,18 @@ export function AssistantPanel() {
   );
 }
 
-/** Cevap altında 👍/👎. "İşe yaramadı" işaretleri yöneticinin "Asistan Soruları" listesine düşer. */
+/** Cevap altında 👍/👎. "İşe yaramadı" işaretleri yöneticinin "Maydi Soruları" listesine düşer. */
 function FeedbackButtons({ value, english, onRate }: { value: number | null; english: boolean; onRate: (helpful: boolean) => void }) {
   if (value !== null) {
-    return <p className="text-[11px] text-muted-foreground">{english ? 'Thanks for the feedback.' : 'Geri bildiriminiz için teşekkürler.'}</p>;
+    return <p className="maydi-chat__feedback-note">{english ? 'Thanks for the feedback.' : 'Geri bildiriminiz için teşekkürler.'}</p>;
   }
   return (
-    <div className="flex items-center gap-1 text-muted-foreground">
-      <button type="button" className="rounded-full p-1 transition hover:bg-foreground/[0.06] hover:text-emerald-600" aria-label={english ? 'Helpful' : 'İşe yaradı'} title={english ? 'Helpful' : 'İşe yaradı'} onClick={() => onRate(true)}>
-        <ThumbsUp className="h-3.5 w-3.5" />
+    <div className="maydi-chat__feedback">
+      <button type="button" aria-label={english ? 'Helpful' : 'İşe yaradı'} title={english ? 'Helpful' : 'İşe yaradı'} onClick={() => onRate(true)}>
+        <ThumbsUp size={13} />
       </button>
-      <button type="button" className="rounded-full p-1 transition hover:bg-foreground/[0.06] hover:text-rose-600" aria-label={english ? 'Not helpful' : 'İşe yaramadı'} title={english ? 'Not helpful' : 'İşe yaramadı'} onClick={() => onRate(false)}>
-        <ThumbsDown className="h-3.5 w-3.5" />
+      <button type="button" aria-label={english ? 'Not helpful' : 'İşe yaramadı'} title={english ? 'Not helpful' : 'İşe yaramadı'} onClick={() => onRate(false)}>
+        <ThumbsDown size={13} />
       </button>
     </div>
   );
@@ -422,11 +495,14 @@ function MiniTable({ rows }: { rows: Array<[string, string, string?]> }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, icon: Icon }: { label: string; value: string; icon?: LucideIcon }) {
   return (
-    <div className="rounded-xl bg-foreground/[0.05] px-3 py-2">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className="text-base font-bold tabular-nums">{value}</p>
+    <div className="maydi-chat__stat">
+      {Icon ? <Icon size={20} /> : null}
+      <div>
+        <p className="maydi-chat__stat-label">{label}</p>
+        <p className="maydi-chat__stat-value">{value}</p>
+      </div>
     </div>
   );
 }
@@ -530,8 +606,14 @@ function ResponseBody({ response, english, self, onAction, onPickStudent }: {
       break;
     case 'institution_summary':
       body = (
-        <div className="grid grid-cols-2 gap-1.5">
-          {list(field(data, 'metrics')).map((metric) => <Stat key={str(field(metric, 'label'))} label={str(field(metric, 'label'))} value={str(field(metric, 'value'))} />)}
+        <div className="maydi-chat__summary" data-testid="assistant-summary">
+          <p className="maydi-chat__summary-title"><BarChart3 size={15} />{english ? 'Institution summary' : 'Kurum özeti'}</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {list(field(data, 'metrics')).map((metric) => {
+              const label = str(field(metric, 'label'));
+              return <Stat key={label} label={label} value={str(field(metric, 'value'))} icon={metricIcon(label)} />;
+            })}
+          </div>
         </div>
       );
       break;
@@ -561,6 +643,9 @@ function ResponseBody({ response, english, self, onAction, onPickStudent }: {
           ) : null}
         </div>
       );
+      break;
+    case 'report':
+      body = <AssistantReportCard messageId={response.messageId} data={data} english={english} />;
       break;
     case 'how_to':
       body = (

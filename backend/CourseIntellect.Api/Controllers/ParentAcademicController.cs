@@ -1,5 +1,6 @@
 using CourseIntellect.Api.Security;
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,21 +28,38 @@ public sealed class ParentAcademicController(CourseIntellectDbContext dbContext)
         var exams = await dbContext.ExamResults.AsNoTracking().ToListAsync(cancellationToken);
         var attendance = await dbContext.AttendanceEntries.AsNoTracking().ToListAsync(cancellationToken);
 
+        // Kimliğe bağlı yoklama kaydı yalnız kendi çocuğunun profiliyle eşleşir;
+        // aynı adlı başka ailenin çocuğunun kaydı bu özete karışmaz.
+        var scope = await StudentScope.ResolveStudentRecordScopeAsync(User, dbContext, cancellationToken);
+        var scopeIds = scope?.StudentIds ?? [];
+        var childProfileIds = (await dbContext.Students.AsNoTracking()
+                .Where(x => scopeIds.Contains(x.Id))
+                .Select(x => new { x.Id, x.FullName })
+                .ToListAsync(cancellationToken))
+            .GroupBy(x => CompatibilitySnapshotStore.NormalizeText(x.FullName))
+            .ToDictionary(g => g.Key, g => g.Select(x => (Guid?)x.Id).ToHashSet());
+
         var result = new List<object>();
         foreach (var name in allowed)
         {
             if (string.IsNullOrWhiteSpace(name)) continue;
             var normalized = CompatibilitySnapshotStore.NormalizeText(name);
 
+            var ownIds = childProfileIds.TryGetValue(normalized, out var ids) ? ids : [];
+
             var studentExams = exams
-                .Where(item => CompatibilitySnapshotStore.NormalizeText(item.StudentName) == normalized)
+                .Where(item => item.StudentId is not null
+                    ? ownIds.Contains(item.StudentId)
+                    : CompatibilitySnapshotStore.NormalizeText(item.StudentName) == normalized)
                 .OrderByDescending(item => CompatibilitySnapshotStore.ParseDateLabel(item.DateLabel))
                 .ToList();
             var studentAttendance = attendance
-                .Where(item => CompatibilitySnapshotStore.NormalizeText(item.StudentName) == normalized)
+                .Where(item => item.StudentId is not null
+                    ? ownIds.Contains(item.StudentId)
+                    : CompatibilitySnapshotStore.NormalizeText(item.StudentName) == normalized)
                 .ToList();
 
-            var present = studentAttendance.Count(item => item.Status.Contains("Kat", StringComparison.OrdinalIgnoreCase));
+            var present = studentAttendance.Count(item => AttendanceStatusMatcher.IsAttended(item.Status));
             var totalAtt = studentAttendance.Count;
 
             var avgScore = studentExams.Count > 0 ? Math.Round(studentExams.Average(item => item.Score), 1) : 0;

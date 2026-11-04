@@ -162,7 +162,7 @@ public sealed class AdminMfaTests : IDisposable
     public async Task LegacyPasswordPkceRefreshAndOrdinaryJwtCannotBypassCode()
     {
         var user=await Seed();Assert.Null(await Auth.LoginAsync(new(user.Username,"strong-test-password")));
-        Assert.Null(await Auth.PkceAuthorizeAsync(new(user.Username,"strong-test-password","desktop","app://cb","challenge","S256")));
+        Assert.Null(await Auth.PkceAuthorizeAsync(new(user.Username,"strong-test-password","desktop","courseintellect://callback","challenge","S256")));
         var jwt=new JwtTokenService(Options.Create(new JwtOptions{Key=new string('k',64)}));
         Assert.Throws<InvalidOperationException>(()=>jwt.CreateToken(user));
         var raw="legacy-refresh";

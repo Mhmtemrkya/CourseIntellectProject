@@ -1,4 +1,3 @@
-import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/assistant_page.dart';
 import 'package:flutter/material.dart';
 import '../pages/admin_academics_page.dart';
@@ -49,7 +48,7 @@ class AdminBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.auto_awesome_rounded,
-          label: 'Asistan'.tr,
+          label: 'Maydi',
           pageBuilder: (_) => const AssistantPage(portal: 'admin'),
           sidebarColor: const Color(0xFF4F46E5),
         ),

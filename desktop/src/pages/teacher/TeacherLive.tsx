@@ -32,6 +32,7 @@ import { formatDate } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
 import type { LiveRoomSession } from '../../lib/api/liveRoom';
 import type { IconComponent } from '../../types/ui';
+import { localDateKey } from '../../lib/localDate';
 
 type LessonStatus = 'live' | 'completed' | 'scheduled';
 type LessonTab = 'upcoming' | 'past';
@@ -66,7 +67,7 @@ function mapSessionToLesson(session: LiveRoomSession) {
   return {
     id: session.id,
     title: session.lessonTitle || 'Canlı Ders',
-    date: startedAt ? startedAt.toISOString().slice(0, 10) : '',
+    date: startedAt ? localDateKey(startedAt) : '',
     time: session.timeLabel || (startedAt ? startedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : ''),
     duration,
     class: session.className || 'Tüm Sınıflar',
@@ -92,7 +93,7 @@ export default function TeacherLive() {
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: localDateKey(),
     time: '14:00',
     duration: '60',
     className: '',
@@ -275,7 +276,7 @@ export default function TeacherLive() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Canlı Ders</h1>
+            <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Canlı Ders</h1>
             <PremiumStatusPill tone="soon">Yaklaşan</PremiumStatusPill>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">Derslerinizi canlı olarak başlatın, öğrencilerinizle etkileşimde bulunun.</p>
@@ -353,7 +354,7 @@ export default function TeacherLive() {
             <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
               <div className="flex flex-col justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><Video className="h-7 w-7" /></span>
+                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><Video className="h-7 w-7" /></span>
                   <div className="min-w-0">
                     <PremiumStatusPill tone={nextLesson.status === 'live' ? 'live' : 'soon'}>{nextLesson.class}</PremiumStatusPill>
                     <h3 className="mt-2 text-xl font-black leading-tight">{nextLesson.title}</h3>
@@ -422,7 +423,7 @@ export default function TeacherLive() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="shrink-0 rounded-lg bg-[hsl(var(--brand-accent)/0.14)] px-2 py-0.5 text-[11px] font-bold text-[hsl(var(--brand-accent))]">{lesson.class}</span>
+                    <span className="shrink-0 rounded-lg bg-[hsl(var(--brand-accent)/0.14)] px-2 py-0.5 text-[11px] font-bold text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">{lesson.class}</span>
                     <p className="truncate text-sm font-semibold">{lesson.title}</p>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{lesson.date ? formatDate(lesson.date) : ''}</p>
@@ -448,7 +449,7 @@ export default function TeacherLive() {
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
             {liveTools.map(([label, Icon, onClick]) => (
               <button key={label} onClick={onClick} className="ci-rise flex flex-col items-center gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-center hover:border-[hsl(var(--brand-accent)/0.28)]">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><Icon className="h-5 w-5" /></span>
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><Icon className="h-5 w-5" /></span>
                 <span className="text-[11px] font-semibold">{label}</span>
               </button>
             ))}

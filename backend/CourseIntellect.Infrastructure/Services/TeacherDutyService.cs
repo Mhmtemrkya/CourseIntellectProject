@@ -34,7 +34,7 @@ public sealed class TeacherDutyService(
         }
 
         var baseDate = DateTime.SpecifyKind(request.DutyDate.Date, DateTimeKind.Utc);
-        if (baseDate < DateTime.UtcNow.Date)
+        if (baseDate < AssistantDates.TodayTr)
         {
             throw new InvalidOperationException("Geçmiş bir tarihe nöbet oluşturulamaz.");
         }
@@ -175,7 +175,8 @@ public sealed class TeacherDutyService(
             (teacherUserId != null && item.TeacherUserId == teacherUserId)
             || (name != string.Empty && item.TeacherName == name));
 
-        var today = DateTime.UtcNow.Date;
+        // Nöbet günü Türkiye gününe göre; UTC günüyle gece 00:00–03:00 arası dünkü nöbet "yaklaşan" görünüyordu.
+        var today = AssistantDates.TodayTr;
         if (string.Equals(scope, "upcoming", StringComparison.OrdinalIgnoreCase))
         {
             query = query.Where(item => item.DutyDateUtc >= today).OrderBy(item => item.DutyDateUtc);

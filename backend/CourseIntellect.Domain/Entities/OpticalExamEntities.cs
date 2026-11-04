@@ -38,6 +38,8 @@ public sealed class OpticalExam : IBranchScopedEntity
     public Guid TemplateId { get; set; }
     public string Title { get; set; } = string.Empty;
     public DateTime ExamDateUtc { get; set; }
+    /// <summary>Konu listesinin seviyesi: 5, 6, 7, LGS, TYT, AYT, YDT; boş = belirtilmemiş (eski kayıtlar).</summary>
+    public string Level { get; set; } = string.Empty;
     /// <summary>Kaç yanlış bir doğruyu götürür: LGS 3, TYT/AYT 4, 0 = götürmez.</summary>
     public int WrongPenalty { get; set; }
     /// <summary>Çoklu işaretleme (*) yanlış mı sayılır (true) yoksa boş mu (false).</summary>
@@ -88,4 +90,21 @@ public sealed class OpticalExamStudentResult : IBranchScopedEntity
     public int Blank { get; set; }
     public decimal Net { get; set; }
     public Guid? ExamResultId { get; set; }
+}
+
+/// <summary>
+/// Kurumun hazır listede olmayan, kendi eklediği soru konusu. Ders ve seviyeye bağlıdır (seviye boş = her seviye).
+/// Denemelerde konu yine düz metin olarak saklanır; bu kayıt yalnız seçim listesini besler, silinmesi denemeleri etkilemez.
+/// </summary>
+public sealed class OpticalCustomTopic : ITenantScopedEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
+    public string Subject { get; set; } = string.Empty;
+    public string Level { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    /// <summary>Türkçe harf katlamalı tekilleştirme anahtarı (OpticalTopicCatalog.Fold).</summary>
+    public string NormalizedName { get; set; } = string.Empty;
+    public Guid? CreatedByUserId { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

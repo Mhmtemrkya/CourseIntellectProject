@@ -424,7 +424,7 @@ export default function DirectoryPage<TRow>({
             </>
           ) : (
             <>
-              <EmptyIcon className="mx-auto h-9 w-9 text-[hsl(var(--brand-accent)/0.7)]" />
+              <EmptyIcon className="mx-auto h-9 w-9 text-[hsl(var(--brand-accent-text,var(--brand-accent))/0.7)]" />
               <p className="mt-3 font-bold">{blankTitle || emptyTitle}</p>
               <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
                 {blankDescription || emptyDescription}
@@ -571,7 +571,7 @@ export default function DirectoryPage<TRow>({
             data-testid={testId ? `${testId}-bulkbar` : undefined}
           >
             <div className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--brand-accent)/0.4)] bg-[hsl(var(--ci-surface-1,var(--card)))] px-4 py-3 shadow-2xl backdrop-blur">
-              <span className="rounded-full bg-[hsl(var(--brand-accent)/0.15)] px-3 py-1 text-sm font-bold text-[hsl(var(--brand-accent))]">
+              <span className="rounded-full bg-[hsl(var(--brand-accent)/0.15)] px-3 py-1 text-sm font-bold text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">
                 {selectedIds.length} seçili
               </span>
               {bulkActions}

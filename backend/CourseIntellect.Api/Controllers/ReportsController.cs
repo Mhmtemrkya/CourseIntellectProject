@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
 
 namespace CourseIntellect.Api.Controllers;
 
@@ -31,10 +32,15 @@ public sealed class ReportsController(
     public async Task<IActionResult> GetExamAnalytics([FromQuery] string? studentName, CancellationToken cancellationToken)
     {
         var exams = await dbContext.ExamResults.AsNoTracking().ToListAsync(cancellationToken);
-        var allowedNames = await StudentScope.ResolveAllowedStudentNamesAsync(User, dbContext, cancellationToken);
-        if (allowedNames is not null)
+        // Kimliğe bağlı sonuçta yalnız kimlik geçerli; bağlanmamış eski sonuçta ada düşülür.
+        var scope = await StudentScope.ResolveStudentRecordScopeAsync(User, dbContext, cancellationToken);
+        if (scope is not null)
         {
-            exams = StudentScope.FilterByStudentNames(exams, allowedNames, item => item.StudentName).ToList();
+            var allowedIds = scope.StudentIds.ToHashSet();
+            var allowedNames = scope.StudentNames.Select(StudentIdentityResolver.NameKey).ToHashSet();
+            exams = exams.Where(item => item.StudentId is { } linked
+                ? allowedIds.Contains(linked)
+                : allowedNames.Contains(StudentIdentityResolver.NameKey(item.StudentName))).ToList();
         }
 
         if (!string.IsNullOrWhiteSpace(studentName))
@@ -96,9 +102,7 @@ public sealed class ReportsController(
             var classHomeworkIds = classHomework.Select(item => item.Id).ToHashSet();
             var classSubmissions = submissions.Where(item => classHomeworkIds.Contains(item.AssignmentId) && classStudentNames.Contains(item.StudentName)).ToList();
 
-            var presentCount = classAttendance.Count(item =>
-                item.Status.Contains("Kat", StringComparison.OrdinalIgnoreCase) ||
-                item.Status.Contains("Present", StringComparison.OrdinalIgnoreCase));
+            var presentCount = classAttendance.Count(item => AttendanceStatusMatcher.IsAttended(item.Status));
             var attendanceRate = classAttendance.Count == 0
                 ? 0
                 : (int)Math.Round((double)presentCount / classAttendance.Count * 100);
@@ -178,12 +182,11 @@ public sealed class ReportsController(
             {
                 var present = attendance.Count(item =>
                     CompatibilitySnapshotStore.NormalizeText(item.ClassName) == CompatibilitySnapshotStore.NormalizeText(group.Key) &&
-                    item.Status.Contains("Kat", StringComparison.OrdinalIgnoreCase));
+                    AttendanceStatusMatcher.IsAttended(item.Status));
 
                 var absent = attendance.Count(item =>
                     CompatibilitySnapshotStore.NormalizeText(item.ClassName) == CompatibilitySnapshotStore.NormalizeText(group.Key) &&
-                    (item.Status.Contains("Devam", StringComparison.OrdinalIgnoreCase) ||
-                     item.Status.Contains("Katil", StringComparison.OrdinalIgnoreCase)));
+                    AttendanceStatusMatcher.IsAbsent(item.Status));
 
                 var totalTracked = Math.Max(group.Count(), present + absent);
                 var rate = totalTracked > 0 ? (int)Math.Round((double)present / totalTracked * 100) : 0;
@@ -248,9 +251,9 @@ public sealed class ReportsController(
 
         var result = scoped.Select(student =>
         {
-            var studentExams = exams.Where(item => CompatibilitySnapshotStore.NormalizeText(item.StudentName) == CompatibilitySnapshotStore.NormalizeText(student.FullName)).ToList();
-            var studentAttendance = attendance.Where(item => CompatibilitySnapshotStore.NormalizeText(item.StudentName) == CompatibilitySnapshotStore.NormalizeText(student.FullName)).ToList();
-            var present = studentAttendance.Count(item => item.Status.Contains("Kat", StringComparison.OrdinalIgnoreCase));
+            var studentExams = exams.Where(item => item.StudentId == student.Id || (item.StudentId == null && CompatibilitySnapshotStore.NormalizeText(item.StudentName) == CompatibilitySnapshotStore.NormalizeText(student.FullName))).ToList();
+            var studentAttendance = attendance.Where(item => item.StudentId == student.Id || (item.StudentId == null && CompatibilitySnapshotStore.NormalizeText(item.StudentName) == CompatibilitySnapshotStore.NormalizeText(student.FullName))).ToList();
+            var present = studentAttendance.Count(item => AttendanceStatusMatcher.IsAttended(item.Status));
             var total = studentAttendance.Count;
             financeByName.TryGetValue(CompatibilitySnapshotStore.NormalizeText(student.FullName), out var finance);
             return new

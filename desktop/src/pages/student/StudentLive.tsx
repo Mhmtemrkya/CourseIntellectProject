@@ -16,6 +16,7 @@ import { openHttpUrl } from '../../lib/safeOpen';
 import { formatDate } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
 import type { LiveRoomSession } from '../../lib/api/liveRoom';
+import { localDateKey } from '../../lib/localDate';
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -51,7 +52,7 @@ function mapSessionToLesson(session: LiveRoomSession) {
     status,
     meetLink: session.meetingLink || '',
     className: session.className || 'Tüm Sınıflar',
-    date: startedAt ? startedAt.toISOString().slice(0, 10) : '',
+    date: startedAt ? localDateKey(startedAt) : '',
   };
 }
 
@@ -103,7 +104,7 @@ function MiniCalendar({ sessionDates }: { sessionDates: ReadonlySet<string> }) {
           return (
             <span
               key={iso}
-              className={`grid h-8 place-items-center rounded-lg text-xs font-medium ${isToday ? 'bg-[hsl(var(--brand-accent))] text-white' : hasSession ? 'bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]' : 'text-foreground'}`}
+              className={`grid h-8 place-items-center rounded-lg text-xs font-medium ${isToday ? 'bg-[hsl(var(--brand-accent))] text-white' : hasSession ? 'bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]' : 'text-foreground'}`}
             >
               {day}
             </span>
@@ -125,7 +126,7 @@ function LiveLessonRow({ lesson, onJoin }: { lesson: LiveLesson; onJoin: (lesson
     <div className="flex flex-col gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 sm:flex-row sm:items-center">
       <div className="w-16 shrink-0 text-center">
         <p className="text-sm font-bold tabular-nums">{lesson.startTime}</p>
-        {future ? <p className="text-[11px] text-[hsl(var(--brand-accent))]">{minutesUntil} dk sonra</p> : lesson.status === 'live' ? <p className="text-[11px] font-semibold text-emerald-400">Canlı</p> : null}
+        {future ? <p className="text-[11px] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">{minutesUntil} dk sonra</p> : lesson.status === 'live' ? <p className="text-[11px] font-semibold text-emerald-400">Canlı</p> : null}
       </div>
       <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-white ${lesson.status === 'live' ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : 'bg-gradient-to-br from-amber-400 to-orange-600'}`}>
         <Video className="h-5 w-5" />
@@ -200,7 +201,7 @@ export default function StudentLive() {
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-5" data-testid="student-live-page">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Canlı Derslerim</h1>
+        <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Canlı Derslerim</h1>
         <div className="flex rounded-full border border-foreground/10 bg-foreground/[0.04] p-0.5">
           {([['upcoming', 'Yaklaşan Dersler'], ['records', 'Ders Kayıtlarım']] satisfies ReadonlyArray<readonly [LiveTab, string]>).map(([value, label]) => (
             <button
@@ -257,7 +258,7 @@ export default function StudentLive() {
                 </div>
               )}
               {activeList.length ? (
-                <button onClick={() => setTab(tab === 'upcoming' ? 'records' : 'upcoming')} className="w-full pt-1 text-center text-xs font-semibold text-[hsl(var(--brand-accent))] hover:underline">
+                <button onClick={() => setTab(tab === 'upcoming' ? 'records' : 'upcoming')} className="w-full pt-1 text-center text-xs font-semibold text-[hsl(var(--brand-accent-text,var(--brand-accent)))] hover:underline">
                   {tab === 'upcoming' ? 'Tüm Ders Kayıtlarını Görüntüle →' : 'Yaklaşan Dersleri Görüntüle →'}
                 </button>
               ) : null}
@@ -289,7 +290,7 @@ export default function StudentLive() {
                       <p className="truncate text-sm font-semibold">{lesson.subject}</p>
                       <p className="truncate text-xs text-muted-foreground">{lesson.teacher}</p>
                     </div>
-                    <Play className="h-4 w-4 shrink-0 text-[hsl(var(--brand-accent))]" />
+                    <Play className="h-4 w-4 shrink-0 text-[hsl(var(--brand-accent-text,var(--brand-accent)))]" />
                   </button>
                 )) : (
                   <div className="rounded-2xl border border-dashed border-foreground/10 p-6 text-center text-sm text-muted-foreground">

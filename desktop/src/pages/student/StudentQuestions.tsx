@@ -314,7 +314,7 @@ export default function StudentQuestions() {
           <PremiumPanel title="Kazanım Testleri" description="Kazanımlarına göre test çöz, eksiklerini gör." contentClassName="space-y-2.5">
             {filteredQuestionSets.length ? filteredQuestionSets.slice(0, 6).map((set) => (
               <div key={set.key} className="flex items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><BookOpen className="h-4 w-4" /></span>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><BookOpen className="h-4 w-4" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{decodeSubject(set.subject)}</p>
                   <p className="truncate text-xs text-muted-foreground">{set.title}</p>
@@ -378,7 +378,7 @@ export default function StudentQuestions() {
           <PremiumPanel title="Son Çözülen Sorular" description="Son çözüm aktivitelerin" contentClassName="space-y-2.5">
             {recentSolved.length ? recentSolved.map((item, index) => (
               <div key={item.id || index} className="flex items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><BookOpen className="h-4 w-4" /></span>
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><BookOpen className="h-4 w-4" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{decodeSubject(item.subject)} - {item.topic || 'Konu'}</p>
                   <p className="truncate text-xs text-muted-foreground">{item.usageCount} çözüm</p>

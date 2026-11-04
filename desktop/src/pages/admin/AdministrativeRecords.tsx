@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  FolderKanban, Search, Users, BriefcaseBusiness, Eye, Download, Mail, Phone, School, Sparkles, Building2, ShieldCheck,
+  FolderKanban, Search, Users, BriefcaseBusiness, Eye, Download, Mail, Phone, School, Sparkles, Building2, ShieldCheck, Pencil,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -11,7 +11,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { IdentityCard } from '../../components/identity/IdentityCard';
-import { fetchStudents, fetchStaff } from '../../lib/api/modules';
+import { EditStudentDialog } from '../../components/students/EditStudentDialog';
+import { useApp } from '../../context/AppContext';
+import { fetchClasses, fetchStudents, fetchStaff } from '../../lib/api/modules';
+import { getUserRoles } from '../../lib/permissions';
 import { isUserPassive } from '../../lib/userStatus';
 import { formatDateTime } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
@@ -123,15 +126,24 @@ export default function AdministrativeRecords() {
   const [staff, setStaff] = useState<StaffSummaryDto[]>([]);
   const [search, setSearch] = useState('');
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
+  const [editingStudent, setEditingStudent] = useState<StudentSummaryDto | null>(null);
+  const [classNames, setClassNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useApp();
+  // Sunucudaki öğrenci güncelleme ucu yalnız Yönetici ve İdari role açık; düğme de onlara görünür.
+  const canEditStudents = useMemo(() => {
+    const roles = getUserRoles(user);
+    return roles.includes('admin') || roles.includes('administrative') || roles.includes('superadmin');
+  }, [user]);
   const [error, setError] = useState('');
 
   const loadRecords = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [studentItems, staffItems] = await Promise.all([fetchStudents().catch(() => []), fetchStaff().catch(() => [])]);
+      const [studentItems, staffItems, classItems] = await Promise.all([fetchStudents().catch(() => []), fetchStaff().catch(() => []), fetchClasses().catch(() => [])]);
       setStudents(studentItems ?? []);
+      setClassNames(Array.isArray(classItems) ? classItems.filter(Boolean) : []);
       setStaff(staffItems ?? []);
     } catch (err) {
       setError(errorMessage(err, 'İdari kayıtlar alınamadı.'));
@@ -171,6 +183,7 @@ export default function AdministrativeRecords() {
 
   const filteredRecords = useMemo(() => records.filter((item) => `${item.title} ${item.detail}`.toLowerCase().includes(search.toLowerCase())), [records, search]);
   const selectedPayload = selectedRecord?.payload || null;
+  const selectedStudent = selectedRecord?.type === 'Öğrenci' ? students.find((item) => item.id === selectedRecord.payload.id) ?? null : null;
   // Sayı ifadeleri pasifleri düşer (liste görünümü değişmez); "Toplam/Toplam Dosya"
   // ham record sayısıdır, dokunulmaz. Pasif öğrencisi kalmayan veli de düşer.
   const activeStudents = students.filter((item) => !isUserPassive(item.status));
@@ -271,13 +284,14 @@ export default function AdministrativeRecords() {
       </div>
 
       <Dialog open={!!selectedRecord} onOpenChange={(open) => !open && setSelectedRecord(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        {/* Uzun kayıtta pencere ekrana sığar: başlık (kapatma ikonu) ve alt düğmeler sabit, yalnız içerik kayar. */}
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-3xl flex-col gap-0 p-0">
+          <DialogHeader className="shrink-0 px-6 pt-6">
             <DialogTitle>{selectedRecord?.title || 'Kayıt detayı'}</DialogTitle>
             <DialogDescription>İdari kayıt için detay görünümü.</DialogDescription>
           </DialogHeader>
           {selectedRecord && selectedPayload ? (
-            <div className="space-y-5">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-5" data-testid="record-detail-body">
               <IdentityCard
                 type={`${selectedRecord.type} Kimlik Kartı`}
                 name={selectedRecord.title}
@@ -322,19 +336,19 @@ export default function AdministrativeRecords() {
                 <Card>
                   <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sparkles className="h-4 w-4 text-brand-primary" />Temel Bilgiler</CardTitle></CardHeader>
                   <CardContent className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Ad Soyad</span><span className="font-medium">{selectedPayload.fullName || '-'}</span></div>
-                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Rol / Tür</span><span className="font-medium">{selectedPayload.role || selectedRecord.type}</span></div>
-                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Sınıf / Birim</span><span className="font-medium">{selectedPayload.className || selectedPayload.departmentOrBranch || selectedPayload.campus || '-'}</span></div>
-                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Program</span><span className="font-medium">{selectedPayload.programType || '-'}</span></div>
+                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Ad Soyad</span><span className="min-w-0 break-words text-right font-medium">{selectedPayload.fullName || '-'}</span></div>
+                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Rol / Tür</span><span className="min-w-0 break-words text-right font-medium">{selectedPayload.role || selectedRecord.type}</span></div>
+                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Sınıf / Birim</span><span className="min-w-0 break-words text-right font-medium">{selectedPayload.className || selectedPayload.departmentOrBranch || selectedPayload.campus || '-'}</span></div>
+                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Program</span><span className="min-w-0 break-words text-right font-medium">{selectedPayload.programType || '-'}</span></div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader><CardTitle className="text-base flex items-center gap-2"><Building2 className="h-4 w-4 text-brand-primary" />İletişim ve Erişim</CardTitle></CardHeader>
                   <CardContent className="space-y-3 text-sm">
-                    <div className="flex items-center gap-3"><Mail className="h-4 w-4 text-muted-foreground" /><span>{selectedPayload.email || selectedPayload.parentEmail || 'E-posta yok'}</span></div>
-                    <div className="flex items-center gap-3"><Phone className="h-4 w-4 text-muted-foreground" /><span>{selectedPayload.phone || selectedPayload.parentPhone || 'Telefon yok'}</span></div>
-                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Veli</span><span className="font-medium">{selectedPayload.parentName || '-'}</span></div>
-                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Kullanıcı</span><span className="font-medium">{selectedPayload.username || '-'}</span></div>
+                    <div className="flex items-center gap-3"><Mail className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 break-all">{selectedPayload.email || selectedPayload.parentEmail || 'E-posta yok'}</span></div>
+                    <div className="flex items-center gap-3"><Phone className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="min-w-0 break-words">{selectedPayload.phone || selectedPayload.parentPhone || 'Telefon yok'}</span></div>
+                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Veli</span><span className="min-w-0 break-words text-right font-medium">{selectedPayload.parentName || '-'}</span></div>
+                    <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Kullanıcı</span><span className="min-w-0 break-words text-right font-medium">{selectedPayload.username || '-'}</span></div>
                   </CardContent>
                 </Card>
               </div>
@@ -359,8 +373,14 @@ export default function AdministrativeRecords() {
               </div>
             </div>
           ) : null}
-          <DialogFooter>
+          <DialogFooter className="shrink-0 px-6 pb-6">
             <Button variant="outline" onClick={() => setSelectedRecord(null)}>Kapat</Button>
+            {selectedStudent && canEditStudents ? (
+              <Button variant="outline" data-testid="record-edit-student" onClick={() => { setEditingStudent(selectedStudent); setSelectedRecord(null); }}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Düzenle
+              </Button>
+            ) : null}
             {selectedRecord ? (
               <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => downloadRecord(`${selectedRecord.title.replaceAll(' ', '_')}_kayit_ozeti.txt`, selectedRecord)}>
                 <Download className="mr-2 h-4 w-4" />
@@ -370,6 +390,14 @@ export default function AdministrativeRecords() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <EditStudentDialog
+        student={editingStudent}
+        open={Boolean(editingStudent)}
+        onOpenChange={(open) => !open && setEditingStudent(null)}
+        classes={classNames}
+        onUpdated={loadRecords}
+      />
     </motion.div>
   );
 }

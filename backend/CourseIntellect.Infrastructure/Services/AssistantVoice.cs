@@ -83,6 +83,52 @@ public sealed class AssistantVoice
             T(S("Hazırım, ne soracaksın?", "Hazırım, ne sormak istersiniz?"), "I'm ready — what would you like to ask?"));
     }
 
+    /// <summary>Sohbet cümlesine türüne göre insanca, kısa ve kibar cevap.</summary>
+    public string Social(SocialKind kind, string folded) => kind switch
+    {
+        SocialKind.Greeting => Greeting(folded),
+        SocialKind.HowAreYou => (AssistantSmallTalk.Has(folded, SocialKind.Greeting) ? HelloPrefix(folded) + " " : string.Empty) + HowAreYou(),
+        SocialKind.Identity => AssistantSmallTalk.Has(folded, SocialKind.Identity)
+            ? T($"İnsan değilim; ben {AssistantSmallTalk.Name}, SchoolAsist'in dijital asistanıyım. ", $"I'm not a person — I'm {AssistantSmallTalk.Name}, SchoolAsist's digital assistant. ") + IntroBody()
+            : Intro(),
+        SocialKind.Thanks => AssistantSmallTalk.Has(folded, SocialKind.Farewell)
+            ? T(S("Rica ederim! Görüşmek üzere, kendine iyi bak.", "Rica ederim! Görüşmek üzere, iyi çalışmalar dilerim."), "You're welcome! See you soon, take care.")
+            : folded.Contains("isime yaradi") || folded.Contains("yardimci oldu")
+                ? T("Yardımcı olabildiysem ne mutlu bana! Başka bir şey olursa buradayım.", "Glad I could help! I'm here if you need anything else.")
+                : Thanks(),
+        SocialKind.Farewell => Farewell(folded),
+        SocialKind.WellWish => folded.Contains("iyi calismalar") || folded.Contains("hayirli")
+            ? T(S($"Sağ ol{Comma}, sana da iyi çalışmalar! Bir şey lazım olursa buradayım.", $"Sağ olun{Comma}, size de iyi çalışmalar! Bir şeye ihtiyacınız olursa buradayım."), "Thank you, have a productive day too! I'm here if you need anything.")
+            : T(S($"Sağ ol{Comma}, sana da kolay gelsin! Bir şey lazım olursa buradayım.", $"Sağ olun{Comma}, size de kolay gelsin! Bir şeye ihtiyacınız olursa buradayım."), "Thank you, good luck with your work too! I'm here if you need anything."),
+        SocialKind.Compliment => Pick(
+            T(S("Çok naziksin, teşekkür ederim! Yardımcı olabildiğime sevindim.", "Çok naziksiniz, teşekkür ederim! Yardımcı olabildiğime sevindim."), "That's very kind of you, thank you! Glad I could help."),
+            T(S("Bunu duymak çok güzel, teşekkürler! Başka neye bakalım?", "Bunu duymak çok güzel, teşekkür ederim! Başka neye bakalım?"), "That's lovely to hear, thanks! What else shall we look at?")),
+        SocialKind.Apology => T(S("Hiç sorun değil! Nereden devam edelim?", "Hiç sorun değil, lütfen rahat olun! Nereden devam edelim?"), "No problem at all! Where shall we continue?"),
+        SocialKind.Frustration => T(
+            S("Kusura bakma, bu sefer seni doğru anlayamadım. Sorunu biraz farklı yazarsan tekrar deneyeyim; öğrenci adı, sınıf ya da tarih eklemek çok işe yarar.",
+              "Kusura bakmayın, bu sefer sizi doğru anlayamadım. Sorunuzu biraz farklı yazarsanız tekrar deneyeyim; öğrenci adı, sınıf ya da tarih eklemek çok işe yarar."),
+            "Sorry, I didn't get that right this time. If you rephrase it I'll try again — adding a student name, class or date helps a lot."),
+        SocialKind.Acknowledge => Pick(
+            T(S("Tamamdır! Başka bir şey olursa buradayım.", "Tamamdır! Başka bir şey olursa buradayım."), "Great! I'm here if you need anything else."),
+            T(S("Süper. Başka neye bakmamı istersin?", "Harika. Başka neye bakmamı istersiniz?"), "Great. What else would you like me to check?")),
+        _ => Unknown(),
+    };
+
+    private string Comma => Address.Length > 0 ? $" {Address}" : string.Empty;
+
+    private string HelloPrefix(string folded)
+    {
+        var hello = Greeting(folded);
+        var end = hello.IndexOf('!');
+        return end > 0 ? hello[..(end + 1)] : hello;
+    }
+
+    public string Farewell(string folded) => folded.Contains("iyi geceler") || folded.Contains("good night")
+        ? T($"İyi geceler{Comma}! Görüşmek üzere.", "Good night! See you soon.")
+        : Pick(
+            T(S($"Görüşmek üzere{Comma}! Kendine iyi bak.", $"Görüşmek üzere{Comma}! İyi çalışmalar dilerim."), "See you soon! Take care."),
+            T(S($"Hoşça kal{Comma}! İhtiyacın olunca buradayım.", $"Hoşça kalın{Comma}! İhtiyacınız olunca buradayım."), "Bye for now! I'm here whenever you need me."));
+
     public string Thanks() => Pick(
         T(S("Rica ederim! Başka bir şey olursa buradayım.", "Rica ederim! Başka bir konuda yardımcı olabilirsem buradayım."), "You're welcome! I'm here if you need anything else."),
         T(S("Ne demek, her zaman! Kolay gelsin.", "Ne demek, her zaman! İyi çalışmalar dilerim."), "Anytime! Have a good day."),
@@ -93,7 +139,9 @@ public sealed class AssistantVoice
         T(S("Teşekkürler, her şey yolunda. Bugün ne yapıyoruz?", "Teşekkürler, her şey yolunda. Bugün nasıl yardımcı olabilirim?"), "All good, thank you. How can I help today?"));
 
     /// <summary>"Sen kimsin / neler yapabilirsin": portala özel tanıtım.</summary>
-    public string Intro() => T("Ben SchoolAsist Asistanı. ", "I'm the SchoolAsist Assistant. ") + Portal switch
+    public string Intro() => T($"Ben {AssistantSmallTalk.Name}, SchoolAsist'in asistanıyım. ", $"I'm {AssistantSmallTalk.Name}, SchoolAsist's assistant. ") + IntroBody();
+
+    private string IntroBody() => Portal switch
     {
         "student" => T("Senin ders programını, ödevlerini, sınav sonuçlarını, devamsızlığını ve çalışman gereken konuları gösterebilirim. Bir şeyin nasıl yapıldığını da sorabilirsin; seni doğru sayfaya götürürüm.",
             "I can show your timetable, homework, exam results, attendance and the topics you should study. You can also ask how to do something and I'll take you to the right page."),
@@ -309,8 +357,8 @@ public sealed class AssistantVoice
     // ── Günlük brifing ──────────────────────────────────────────────────────
 
     public string BriefingGreeting() => Address.Length > 0
-        ? T($"{TimeGreeting} {Address}! Bugün için kısa bir özet:", $"{TimeGreeting} {Address}! Here's a quick look at today:")
-        : T($"{TimeGreeting}! Bugün için kısa bir özet:", $"{TimeGreeting}! Here's a quick look at today:");
+        ? T($"{TimeGreeting} {Address}! Ben {AssistantSmallTalk.Name}. Bugün için kısa bir özet:", $"{TimeGreeting} {Address}! I'm {AssistantSmallTalk.Name}. Here's a quick look at today:")
+        : T($"{TimeGreeting}! Ben {AssistantSmallTalk.Name}. Bugün için kısa bir özet:", $"{TimeGreeting}! I'm {AssistantSmallTalk.Name}. Here's a quick look at today:");
 
     public string BriefingLessons(int count, string? first) => count == 0
         ? T(S("Bugün dersin görünmüyor.", "Bugün programınızda ders görünmüyor."), "No lessons on your timetable today.")
@@ -345,6 +393,27 @@ public sealed class AssistantVoice
 
     public string BriefingCollected(decimal amount) =>
         T($"Bu ay şu ana kadar {Money(amount)} tahsil edildi.", $"{Money(amount)} has been collected so far this month.");
+
+    public string BriefingAtRisk(int count, bool ownClasses) =>
+        T(ownClasses ? $"Sınıflarınızda {N(count)} öğrenci erken uyarı listesinde (devamsızlık, düşen not ya da geciken ödev)." : $"{N(count)} öğrenci erken uyarı listesinde (devamsızlık, düşen not ya da geciken ödev).",
+          ownClasses ? $"{N(count)} students in your classes are on the early-warning list." : $"{N(count)} students are on the early-warning list.");
+
+    // ── Analiz ve rapor (yerel model ajanı) ─────────────────────────────────
+
+    /// <summary>Uygulamayla ilgisi olmayan soru: kibarca kapsamı hatırlatır.</summary>
+    public string OutOfScope() => T(
+        S("Ben yalnız SchoolAsist'teki bilgilerinle ilgili yardımcı olabiliyorum: derslerin, ödevlerin, sınavların, devamsızlığın ve uygulamanın nasıl kullanıldığı gibi. Bunlardan birini sormak ister misin?",
+          "Ben yalnız SchoolAsist'teki bilgiler ve uygulamanın kullanımıyla ilgili yardımcı olabiliyorum. Kurumunuzla ilgili bir şey sormak ister misiniz?"),
+        "I can only help with information in SchoolAsist and how to use the app. Would you like to ask something about your school?");
+
+    public string ClassNotFound(string requested, IReadOnlyList<string> available) => available.Count == 0
+        ? T($"\"{requested}\" sınıfını bulamadım.", $"I couldn't find the class \"{requested}\".")
+        : T($"\"{requested}\" sınıfını erişebildiğiniz sınıflar arasında bulamadım. Şunlardan birini yazabilirsiniz: {string.Join(", ", available.Take(12))}.",
+            $"I couldn't find \"{requested}\" among the classes you can access. Try one of: {string.Join(", ", available.Take(12))}.");
+
+    public string ReportEmpty() => T("Bu kriterlere uyan kayıt bulamadım.", "I couldn't find any records matching that.");
+
+    public string ReportReady(string title) => T($"{title} hazır. Kartın altından PDF olarak indirebilirsiniz.", $"{title} is ready. You can download it as a PDF below the card.");
 
     public string BriefingAllClear() =>
         T(S("Bugün için dikkat etmen gereken bir şey görünmüyor. Bir şey sormak istersen buradayım.", "Bugün için öne çıkan bir konu görünmüyor. Bir şey sormak isterseniz buradayım."),

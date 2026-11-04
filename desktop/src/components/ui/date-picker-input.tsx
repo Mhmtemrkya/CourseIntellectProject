@@ -138,7 +138,7 @@ const DatePickerInput = React.forwardRef<HTMLButtonElement, DatePickerInputProps
               : placeholder}
           </span>
           <span className="flex shrink-0 items-center gap-1.5">
-            <CalendarDays className="h-4 w-4 text-[hsl(var(--brand-accent))]" />
+            <CalendarDays className="h-4 w-4 text-[hsl(var(--brand-accent-text,var(--brand-accent)))]" />
           </span>
         </button>
       </PopoverTrigger>
@@ -155,7 +155,7 @@ const DatePickerInput = React.forwardRef<HTMLButtonElement, DatePickerInputProps
         <div className="border-b border-foreground/10 bg-gradient-to-br from-[hsl(var(--brand-accent)/0.16)] via-transparent to-[hsl(var(--brand-primary)/0.08)] px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[hsl(var(--brand-accent))]">
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">
                 Tarih seçimi
               </p>
               <p className="mt-1 text-sm font-semibold text-foreground">

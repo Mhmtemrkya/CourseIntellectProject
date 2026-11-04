@@ -14,6 +14,7 @@ import '../services/auth_session_store.dart';
 import '../services/credentials_pdf_service.dart';
 import '../services/registration_api_service.dart';
 import '../widgets/admin_ui.dart';
+import '../utils/format.dart';
 
 class AdminStudentRegistrationPage extends StatefulWidget {
   const AdminStudentRegistrationPage({super.key});
@@ -814,7 +815,7 @@ class _AdminStudentRegistrationPageState
         title: 'Yeni öğrenci kaydı tamamlandı'.tr,
         detail:
             '${_fullNameController.text.trim()} • ${_classController.text.trim()} kaydı açıldı. Veli bilgilendirmesi otomatik oluşturuldu.',
-        date: '15 Mart 2026 • 12:10',
+        date: '${formatDateLong(DateTime.now())} • ${formatTime(DateTime.now())}',
         color: const Color(0xFF0F766E),
         icon: Icons.person_add_alt_1_outlined,
       );

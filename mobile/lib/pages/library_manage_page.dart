@@ -318,7 +318,8 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
         else
           ...items.map((loan) {
             final overdue = loan['overdue'] == true;
-            final due = DateTime.tryParse(loan['dueAtUtc']?.toString() ?? '');
+            // UTC zaman damgası yerel güne çevrilir (yoksa TR'de gün bir eksik görünebilir).
+            final due = DateTime.tryParse(loan['dueAtUtc']?.toString() ?? '')?.toLocal();
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),

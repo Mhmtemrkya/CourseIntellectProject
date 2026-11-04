@@ -140,6 +140,9 @@ public static class DependencyInjection
         services.AddHttpClient<IInsightTextGenerator, OllamaInsightTextGenerator>();
         services.AddScoped<IStudentInsightService, StudentInsightService>();
         services.AddScoped<IOpticalExamService, OpticalExamService>();
+        services.AddScoped<ITopicCatalogService, TopicCatalogService>();
+        services.AddScoped<IOpticalStudyPlanService, OpticalStudyPlanService>();
+        services.AddScoped<IOpticalTemplateSuggester, OpticalTemplateSuggester>();
         services.AddScoped<IOverdueRuleReminderService, OverdueRuleReminderService>();
         services.AddScoped<IFinanceJournalExportService, FinanceJournalExportService>();
         // Kural motoru her zaman kayıtlı: hem kendi başına hem hibrit'in temeli.
@@ -156,6 +159,9 @@ public static class DependencyInjection
         else
             services.AddSingleton<IAssistantIntentResolver>(sp => sp.GetRequiredService<RuleBasedAssistantIntentResolver>());
 
+        // Asistan ajanı (araç çağıran yerel model). Varsayılan KAPALI (Assistant:Agent:Enabled);
+        // kapalıyken asistan kural motoru + kural tabanlı analiz araçlarıyla çalışır.
+        services.AddHttpClient<IAssistantChatModel, OllamaAgentChatModel>();
         services.AddScoped<IAssistantService, AssistantService>();
 
         return services;

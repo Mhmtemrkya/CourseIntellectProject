@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../../components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import { cn } from '../../lib/utils';
+import { foldTr } from '../../lib/foldTr';
 
 export interface SearchSelectOption {
   value: string;
@@ -16,20 +17,7 @@ export interface SearchSelectOption {
 
 const RENDER_LIMIT = 200;
 
-/** Türkçe harfleri katlar: "İSTANBUL" ile "istanbul", "Ğ" ile "g" eşleşir. */
-export const foldTr = (text: string) =>
-  text
-    .toLocaleLowerCase('tr-TR')
-    .replace(/\u0307/g, '')
-    .replace(/ı/g, 'i')
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c')
-    .replace(/[âà]/g, 'a')
-    .replace(/[îì]/g, 'i')
-    .replace(/[ûù]/g, 'u');
+export { foldTr };
 
 /**
  * Aranabilir tek seçim listesi (il, üniversite, bölüm). Boş değer "Tümü" demektir.

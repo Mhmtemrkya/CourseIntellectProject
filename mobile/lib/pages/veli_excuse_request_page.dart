@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 
 import '../services/content_api_service.dart';
 import '../widgets/app_header.dart';
+import '../utils/format.dart';
 
 class VeliExcuseRequestPage extends StatefulWidget {
   const VeliExcuseRequestPage({super.key});
@@ -20,7 +21,9 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
   );
 
   String _selectedType = 'Sağlık';
-  String _selectedDate = '14 Mart 2026';
+  // Tarihler bugüne göre üretilir (eskiden 14–17 Mart 2026'ya sabitti; veli bugün için
+  // mazeret bildiremiyordu): son 7 gün, bugün ve önümüzdeki 3 gün.
+  String _selectedDate = formatDateLong(DateTime.now());
   bool _documentAttached = false;
   bool _uploadingAttachment = false;
   String _attachmentLabel = '';
@@ -32,11 +35,15 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
     'Ulaşım sorunu',
   ];
 
-  final List<String> _dates = const [
-    '14 Mart 2026',
-    '15 Mart 2026',
-    '16 Mart 2026',
-    '17 Mart 2026',
+  final List<String> _dates = [
+    for (var offset = -7; offset <= 3; offset++)
+      formatDateLong(
+        DateTime(
+          DateTime.now().year,
+          DateTime.now().month,
+          DateTime.now().day + offset,
+        ),
+      ),
   ];
 
   @override

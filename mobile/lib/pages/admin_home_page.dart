@@ -1,3 +1,4 @@
+import 'package:student/pages/optical_exams_page.dart';
 import 'package:student/pages/student_insights_page.dart';
 import 'package:student/pages/preference_robot_page.dart';
 import 'package:student/widgets/card_system.dart';
@@ -1235,6 +1236,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
       const Color(0xFF0891B2),
       Icons.insights_rounded,
       () => const StudentInsightsPage(),
+    ),
+    _QuickLink(
+      'Optik Denemeler'.tr,
+      'Cevap anahtarı ve soru konuları'.tr,
+      const Color(0xFF0D9488),
+      Icons.grading_rounded,
+      () => const OpticalExamsPage(),
     ),
     _QuickLink(
       'Tercih Robotu'.tr,

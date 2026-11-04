@@ -62,7 +62,7 @@ export function SectionHubTabs() {
                   'inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--brand-accent)/0.4)]',
                   isActive
-                    ? 'bg-[hsl(var(--brand-accent)/0.13)] text-[hsl(var(--brand-accent))] shadow-[inset_0_0_0_1px_hsl(var(--brand-accent)/0.25)]'
+                    ? 'bg-[hsl(var(--brand-accent)/0.13)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))] shadow-[inset_0_0_0_1px_hsl(var(--brand-accent)/0.25)]'
                     : 'hover:text-foreground',
                 )
               }

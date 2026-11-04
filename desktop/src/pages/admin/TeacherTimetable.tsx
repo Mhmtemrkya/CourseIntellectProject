@@ -169,9 +169,9 @@ export default function TeacherTimetable() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5" data-testid="teacher-timetable-page">
       <div className="flex items-center gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><CalendarRange className="h-6 w-6" /></div>
+        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><CalendarRange className="h-6 w-6" /></div>
         <div>
-          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Öğretmen Ders Programı</h1>
+          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Öğretmen Ders Programı</h1>
           <p className="text-sm text-muted-foreground">Haftalık ders saatleri; nöbet atamasında ders-saati çakışması bunlarla denetlenir.</p>
         </div>
       </div>

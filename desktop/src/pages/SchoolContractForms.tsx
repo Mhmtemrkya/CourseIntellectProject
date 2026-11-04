@@ -427,7 +427,7 @@ export default function SchoolContractForms() {
                         className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div className="flex min-w-0 items-start gap-3">
-                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]">
+                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">
                             {isPdf ? <FileText className="h-5 w-5" /> : <FileSignature className="h-5 w-5" />}
                           </div>
                           <div className="min-w-0">
@@ -818,7 +818,7 @@ function UploadDocumentDialog({ contextKinds, onClose, onSaved }: {
                       className={cn(
                         'rounded-full border px-3 py-1 text-xs transition',
                         active
-                          ? 'border-[hsl(var(--brand-accent)/0.5)] bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]'
+                          ? 'border-[hsl(var(--brand-accent)/0.5)] bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]'
                           : 'border-border/60 text-muted-foreground hover:bg-muted/50',
                       )}
                     >

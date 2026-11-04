@@ -10,6 +10,7 @@ import { fetchCafeteriaWeek } from '../../lib/api/modules';
 import { formatDate } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
 import type { CafeteriaMealEntry, CafeteriaWeekSnapshot } from '../../types/api/generated';
+import { localDateKey } from '../../lib/localDate';
 
 const MEAL_LABEL: Partial<Record<string, string>> = { Breakfast: 'Kahvaltı', Lunch: 'Öğle Yemeği', Dinner: 'Akşam Yemeği', Snack: 'İkindi' };
 const DAY_NAMES = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
@@ -20,7 +21,7 @@ function mondayOf(date: Date | string): Date {
   d.setDate(d.getDate() - offset);
   return d;
 }
-function iso(d: Date): string { return d.toISOString().slice(0, 10); }
+function iso(d: Date): string { return localDateKey(d); }
 
 export default function ParentCafeteria() {
   const [weekStart, setWeekStart] = useState(() => iso(mondayOf(new Date())));

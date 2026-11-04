@@ -10,6 +10,7 @@ import 'exam_results_store.dart';
 import 'linked_children_service.dart';
 import 'live_room_api_service.dart';
 import 'student_registry_store.dart';
+import 'student_record_match.dart';
 
 class SchoolFeedApiException implements Exception {
   final String message;
@@ -212,6 +213,7 @@ class SchoolFeedApiService {
   Future<List<ExamScoreRecord>> fetchExamResults({
     String? studentName,
     String? className,
+    String? studentId,
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
@@ -222,10 +224,15 @@ class SchoolFeedApiService {
 
     final queryParameters = <String, String>{};
     if (studentName != null && studentName.trim().isNotEmpty) {
-      queryParameters['studentName'] = _normalizeText(studentName);
+      // Ad olduğu gibi gönderilir; sunucu harf/Türkçe-bağımsız karşılaştırır.
+      // Eskiden "Ayşe" → "Ayse" katlanıp gönderiliyordu ve personel aramasında eşleşmiyordu.
+      queryParameters['studentName'] = studentName.trim();
     }
     if (className != null && className.trim().isNotEmpty) {
       queryParameters['className'] = className.trim();
+    }
+    if (studentId != null && studentId.trim().isNotEmpty) {
+      queryParameters['studentId'] = studentId.trim();
     }
 
     final response = await http.get(
@@ -247,6 +254,7 @@ class SchoolFeedApiService {
             .map(
               (map) => ExamScoreRecord(
                 id: map['id'] as String?,
+                studentId: map['studentId']?.toString(),
                 examTitle: map['examTitle'] as String,
                 type: _mapExamType(map['type'] as String),
                 subject: map['subject'] as String,
@@ -260,7 +268,7 @@ class SchoolFeedApiService {
               ),
             )
             .toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
+          ..sort((a, b) => compareRecordDateDesc(a.date, b.date));
 
     ExamResultsStore.instance.replaceRecords(records);
     return records;
@@ -514,6 +522,7 @@ class SchoolFeedApiService {
     required String className,
     required int score,
     required double net,
+    String? studentId,
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
@@ -533,7 +542,10 @@ class SchoolFeedApiService {
         'type': type,
         'subject': subject.trim(),
         'dateLabel': dateLabel.trim(),
-        'studentName': _normalizeText(studentName),
+        // Ad katlanmadan gönderilir ("Ayşe" "Ayse" olarak kaydediliyordu); kimlik
+        // varsa sonuç ada değil öğrenciye bağlanır.
+        'studentName': studentName.trim(),
+        if (studentId != null && studentId.isNotEmpty) 'studentId': studentId,
         'className': className.trim(),
         'score': score,
         'net': net,
@@ -549,6 +561,7 @@ class SchoolFeedApiService {
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
     final record = ExamScoreRecord(
       id: map['id'] as String?,
+      studentId: map['studentId']?.toString(),
       examTitle: map['examTitle'] as String,
       type: _mapExamType(map['type'] as String),
       subject: map['subject'] as String,

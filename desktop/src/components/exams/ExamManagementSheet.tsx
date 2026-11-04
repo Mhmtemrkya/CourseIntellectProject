@@ -72,6 +72,8 @@ export interface ExamRosterStudent {
   className?: string | null;
 }
 
+const draftKey = (student: ExamRosterStudent) => student.id || `name:${student.fullName}`;
+
 export interface ExamManagementSheetProps {
   exam: ManagedExam | null;
   results?: readonly ManagedExamResult[];
@@ -95,6 +97,7 @@ interface ScoreDraft {
 
 const EMPTY_DRAFT: ScoreDraft = { score: '', net: '', id: null };
 import { StatusBadge } from '../ui/status-badge';
+import { belongsToStudent } from '../../lib/studentRecords';
 
 export const EXAM_TYPES = ['Yazılı', 'Deneme', 'Ünite', 'Quiz', 'Proje'];
 export const EXAM_STATUSES = ['Taslak', 'Planlandı', 'Tamamlandı', 'İptal'];
@@ -150,7 +153,7 @@ function MenuRow({ icon: Icon, label, description, onClick, destructive = false,
       }`}
     >
       <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
-        destructive ? 'bg-red-500/10 text-red-600' : 'bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]'
+        destructive ? 'bg-red-500/10 text-red-600' : 'bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]'
       }`}
       >
         <Icon className="h-5 w-5" />
@@ -685,9 +688,10 @@ function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }: ExamScoreEn
   // Girilmiş sonuçlar forma önceden yüklenir; boş bırakılan öğrenci atlanır.
   useEffect(() => {
     const initial: Record<string, ScoreDraft> = {};
+    // Taslak öğrenci kimliğiyle tutulur: aynı adlı iki öğrencinin puanı tek satıra düşmez.
     roster.forEach((student) => {
-      const existing = rows.find((row) => row.studentName === student.fullName);
-      initial[student.fullName] = {
+      const existing = rows.find((row) => belongsToStudent(row, student));
+      initial[draftKey(student)] = {
         score: existing ? String(existing.score ?? '') : '',
         net: existing ? String(existing.net ?? '') : '',
         id: existing?.id || null,
@@ -712,13 +716,15 @@ function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }: ExamScoreEn
       setSaving(true);
       let created = 0;
       let updated = 0;
-      for (const [studentName, value] of entries) {
-        const student = roster.find((item) => item.fullName === studentName);
+      for (const [key, value] of entries) {
+        const student = roster.find((item) => draftKey(item) === key);
+        if (!student) continue;
+        const studentName = student.fullName;
         const payload = {
           examTitle: exam.title || '',
           type: exam.type || 'Yazılı',
           subject: exam.subject || '',
-          className: student?.className || exam.className || '',
+          className: student.className || exam.className || '',
           dateLabel: exam.dateLabel || new Intl.DateTimeFormat('tr-TR').format(new Date()),
           score: Number(value.score),
           net: Number(value.net || 0),
@@ -729,7 +735,7 @@ function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }: ExamScoreEn
           updated += 1;
         } else {
           // eslint-disable-next-line no-await-in-loop
-          await createExamResult({ ...payload, studentName });
+          await createExamResult({ ...payload, studentName, studentId: student.id ?? null });
           created += 1;
         }
       }
@@ -773,20 +779,20 @@ function ExamScoreEntryView({ exam, roster, rows, onBack, onSaved }: ExamScoreEn
                 min="0"
                 max="100"
                 className="h-9 text-center"
-                value={draft[student.fullName]?.score ?? ''}
+                value={draft[draftKey(student)]?.score ?? ''}
                 onChange={(e) => setDraft((prev) => ({
                   ...prev,
-                  [student.fullName]: { ...(prev[student.fullName] ?? EMPTY_DRAFT), score: e.target.value },
+                  [draftKey(student)]: { ...(prev[draftKey(student)] ?? EMPTY_DRAFT), score: e.target.value },
                 }))}
               />
               <Input
                 type="number"
                 step="0.01"
                 className="h-9 text-center"
-                value={draft[student.fullName]?.net ?? ''}
+                value={draft[draftKey(student)]?.net ?? ''}
                 onChange={(e) => setDraft((prev) => ({
                   ...prev,
-                  [student.fullName]: { ...(prev[student.fullName] ?? EMPTY_DRAFT), net: e.target.value },
+                  [draftKey(student)]: { ...(prev[draftKey(student)] ?? EMPTY_DRAFT), net: e.target.value },
                 }))}
               />
             </div>

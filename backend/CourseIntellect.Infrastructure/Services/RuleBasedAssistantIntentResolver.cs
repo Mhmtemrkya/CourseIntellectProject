@@ -76,7 +76,8 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
         // Kısa kelimeler ("hi") başka kelimenin içinde ("this") eşleşmesin diye kenarlar boşlukla doldurulur.
         var padded = $" {text.TrimEnd('!', '?', '.', ',')} ";
         var extra = EnglishKeywords.Where(pair => padded.Contains(pair.English, StringComparison.Ordinal)).Select(pair => pair.Turkish).ToList();
-        return extra.Count == 0 ? text : text + " " + string.Join(' ', extra);
+        // Karşılıklar başa eklenir: sona eklenen "nasil" cümleyi "... nasıl" durum sorusu gibi gösteriyordu.
+        return extra.Count == 0 ? text : string.Join(' ', extra) + " " + text;
     }
 
     public static string Normalize(string value) => MultiSpaceRegex().Replace((value ?? string.Empty).Trim().ToLower(new CultureInfo("tr-TR")), " ");
@@ -91,35 +92,46 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
         // çalıştırılmaz; servis katmanı önce onay kartı üretir.
         if (ContainsAny(text, "hatirlatma gonder", "hatirlat", "uyari gonder") && ContainsAny(text, "evrak", "belge"))
             return AssistantIntent.SendDocumentReminder;
-        if (ContainsAny(text, "veliye bildir", "veliyi bilgilendir", "veliye haber", "veliye mesaj"))
+        if (ContainsAny(text, "veliye bildir", "veliyi bilgilendir", "veliye haber", "veliye mesaj")
+            || (ContainsAny(text, "velisine", "veliye") && ContainsAny(text, "devamsiz") && ContainsAny(text, "bildir", "gonder", "mesaj", "haber", "bilgilendir")))
             return AssistantIntent.NotifyParentAboutAbsence;
 
+        // "8B sınıfı nasıl gidiyor" sohbet değil, sınıfın durum sorusudur.
+        if (grade.HasValue && ContainsAny(text, "nasil gidiyor", "genel durum")) return AssistantIntent.GetClassOverview;
+
         // Sohbet kalıpları "nasıl" içerdiği için yardım sorusundan önce ayıklanır.
-        if (ContainsAny(text, "nasilsin", "naber", "ne haber", "iyi misin")) return AssistantIntent.SmallTalk;
-        if (ContainsAny(text, "neler yapabilir", "ne yapabilir", "sen kimsin", "kimsin", "kendini tanit", "sistemi tanit", "sistemi anlat", "bu sistem ne"))
-            return AssistantIntent.SmallTalk;
+        if (AssistantSmallTalk.Early(text) != SocialKind.None) return AssistantIntent.SmallTalk;
 
         // "... nasıl yapılır / nerede / ne işe yarar": portal içi yardım makalesi.
         // Cümle "nasıl" ile BİTİYORSA ("kızımın devamsızlığı nasıl") bu bir durum
         // sorusudur, yardım değil; veri kurallarına bırakılır.
         var statusQuestion = text.TrimEnd('?', '.', '!', ' ').EndsWith("nasil", StringComparison.Ordinal);
-        if (!statusQuestion && ContainsAny(text, "nasil ", "ne ise yarar", "nedir", "nereden ", "nerede bulur", "nereye ", "yardim et", "ogret"))
+        // "programım nedir", "notlarım nedir": kişinin kendi verisi sorulur, yardım makalesi değil.
+        var personalData = ContainsAny(text, "programim", "derslerim", "notlarim", "odevlerim", "borcum", "devamsizligim", "sinavlarim");
+        if (!statusQuestion && !personalData && ContainsAny(text, "nasil ", "ne ise yarar", "nedir", "nereden ", "nerede bulur", "nereye ", "yardim et", "ogret"))
             return AssistantIntent.HowTo;
         if (text.TrimEnd('?', '.', '!', ' ').EndsWith("nerede", StringComparison.Ordinal) && !ContainsAny(text, "servis", "arac"))
             return AssistantIntent.HowTo;
 
         // Konu analizi: zayıf konular ve çalışma önerisi.
-        if (ContainsAny(text, "zayif", "hangi konu", "konulara", "konularda", "konularim", "calismaliyim", "calismam gereken", "eksik konu", "eksiklerim", "konu analiz", "neye calis"))
+        if (ContainsAny(text, "zayif", "zorland", "hangi konu", "konulara", "konularda", "konularim", "calismaliyim", "calismam gereken", "eksik konu", "eksiklerim", "konu analiz", "neye calis"))
             return AssistantIntent.GetTopicInsight;
 
         // Analitik özetler: tek öğrenciye değil kuruma bakan sorular. "kaç",
         // "toplam", "özet", "genel" gibi niceleyiciler bunları ayırır. Finans
         // özeti, borç LİSTESİNDEN (ListStudentsWithDebt) önce gelmeli ki
         // "toplam borç ne kadar" liste değil özet dönsün.
-        if (ContainsAny(text, "tahsilat", "ciro", "gelir", "kasa")
+        // Kişinin kendi borcu ("borcum ne kadar", "çocuğumun taksiti") kurum özetine değil ödeme durumuna gider.
+        if (ContainsAny(text, "borcum", "borcumuz", "odemem", "odemelerim", "taksitim", "taksitlerim", "aidatim"))
+            return AssistantIntent.GetPaymentSummary;
+        // "gelir" tek başına aranmaz: "servis ne zaman gelir" bir gelir sorusu değildir.
+        if (ContainsAny(text, "tahsilat", "ciro", "gelirimiz", "gelirler", "toplam gelir", "gelir gider", "kasa")
             || (ContainsAny(text, "borc", "odeme") && ContainsAny(text, "toplam", "ne kadar", "genel", "ozet")))
             return AssistantIntent.GetFinanceOverview;
-        if (ContainsAny(text, "kac kursiyer", "kac ogrenci", "kac mezun", "kac kisi", "kurum ozet", "genel durum", "istatistik", "ozet ver"))
+        // Sınıf belirtilmişse "genel durum" sınıf özetidir; kurum özetine gitmesin.
+        if (grade.HasValue && ContainsAny(text, "genel durum", "durumu", "nasil gidiyor", "ozeti"))
+            return AssistantIntent.GetClassOverview;
+        if (ContainsAny(text, "kac kursiyer", "kac ogrenci", "kac mezun", "kac kisi", "ogrenci sayisi", "toplam ogrenci", "kurum ozet", "genel durum", "istatistik", "ozet ver"))
             return AssistantIntent.GetInstitutionSummary;
 
         // Faz 2 niyetleri, daha genel sürücü kuralları TARAFINDAN YUTULMAMASI için
@@ -137,7 +149,7 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
         if (ContainsAny(text, "kurs ilerleme", "ders hakk", "kalan dakika", "surus ilerleme")) return AssistantIntent.GetDrivingProgress;
         if (ContainsAny(text, "direksiyon sinav", "e-sinav", "sinav durum")) return AssistantIntent.GetDrivingExamStatus;
         if (ContainsAny(text, "direksiyon ders", "surus ders")) return AssistantIntent.GetDrivingLessons;
-        if (ContainsAny(text, "devamsiz", "yoklama", "gec kal", "kac gun yok", "okula gelmedi", "gelmeyen"))
+        if (ContainsAny(text, "devamsiz", "yoklama", "gec kal", "kac gun yok", "gelmedi", "gelmeyen", "okula gitmis", "okula gitti", "okula gelmis", "okula geldi"))
             return ContainsAny(text, "bugun", "gelmeyen") && ContainsAny(text, "olanlar", "kimler", "listele", "gelmeyen", "ogrenciler") && !ContainsAny(text, "devamsizligim", "cocugum")
                 ? AssistantIntent.ListAbsentStudents
                 : AssistantIntent.GetAttendance;
@@ -150,14 +162,24 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
         if (ContainsAny(text, "borc", "odeme", "taksit", "tahsilat", "aidat", "ucret")) return ContainsAny(text, "ogrenciler", "olanlar", "listele", "kimler") ? AssistantIntent.ListStudentsWithDebt : AssistantIntent.GetPaymentSummary;
         // "50 puanın altındakiler": sınav kelimesi geçmese de puan eşiği listesidir (sayı öğrenci no değildir).
         if (ContainsAny(text, "puan") && ContainsAny(text, "altinda")) return AssistantIntent.ListLowScoreStudents;
+        // "Düşük not alanlar" listedir; tek öğrencinin notu değil (eşik verilmezse servis 50 kullanır).
+        if (ContainsAny(text, "dusuk not", "dusuk puan", "kotu not", "zayif not") && ContainsAny(text, "alan", "olan", "ogrenciler", "kimler", "listele"))
+            return AssistantIntent.ListLowScoreStudents;
         if (ContainsAny(text, "ortalama")) return AssistantIntent.GetExamAverage;
-        if (ContainsAny(text, "sinav", "not", "sonuc", "karne", "deneme")) return text.Contains("altinda") ? AssistantIntent.ListLowScoreStudents : AssistantIntent.GetExamResults;
+        if (ContainsAny(text, "sinav", "not", "sonuc", "karne", "deneme")) return ScoreRegex().IsMatch(text) ? AssistantIntent.ListLowScoreStudents : AssistantIntent.GetExamResults;
+        // "40 altındaki öğrenciler": puan kelimesi olmasa da eşik listesidir.
+        if (ScoreRegex().IsMatch(text) && ContainsAny(text, "ogrenci", "olanlar", "alanlar", "kimler")) return AssistantIntent.ListLowScoreStudents;
         if (grade.HasValue && ContainsAny(text, "sinif", "ogrenciler", "listele", "kimler")) return AssistantIntent.ListClassStudents;
         if (tc is not null || studentNumber is not null || grade.HasValue || ContainsAny(text, "ogrenci", "kursiyer", "bul", "getir", "ara ", "kimdir")) return AssistantIntent.SearchStudent;
 
-        // Sohbet: selam, teşekkür, yardım (veri sorusu yoksa).
-        if (ContainsAny(text, "tesekkur", "sag ol", "sagol", "eyvallah", "gorusuruz", "hosca kal", "iyi calismalar", "kolay gelsin")) return AssistantIntent.Thanks;
-        if (ContainsAny(text, "merhaba", "selam", "gunaydin", "iyi aksamlar", "iyi gunler", "mrb", "slm", "hey")) return AssistantIntent.Greeting;
+        // Sohbet: selam, teşekkür, veda, iltifat, özür, sitem, onay (veri sorusu yoksa).
+        switch (AssistantSmallTalk.Late(text))
+        {
+            case SocialKind.Thanks or SocialKind.Farewell or SocialKind.WellWish: return AssistantIntent.Thanks;
+            case SocialKind.Greeting: return AssistantIntent.Greeting;
+            case SocialKind.None: break;
+            default: return AssistantIntent.SmallTalk;
+        }
         if (ContainsAny(text, "yardim", "komutlar", "ne sorabilirim")) return AssistantIntent.Help;
         // Yalnız bir ad yazılmışsa servis kişinin yetki kapsamındaki öğrencilerde arar.
         return AssistantIntent.Unknown;
@@ -186,5 +208,6 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
     [GeneratedRegex(@"\s+")] private static partial Regex MultiSpaceRegex();
     [GeneratedRegex(@"(?<!\d)(\d{2,11})(?!\d)")] private static partial Regex NumberRegex();
     [GeneratedRegex(@"\b(\d{1,2})\s*(?:[.\-/ ]\s*)?(?:sinif\s*)?([a-z])(?:\s*subesi)?\b", RegexOptions.IgnoreCase)] private static partial Regex ClassRegex();
-    [GeneratedRegex(@"(\d{1,3})\s*(?:puan(?:in)?|nin)?\s*altinda", RegexOptions.IgnoreCase)] private static partial Regex ScoreRegex();
+    // "50 altında", "50 puanın altında", "45'in altında", "60 altı".
+    [GeneratedRegex(@"(\d{1,3})\s*(?:puan(?:in)?|'?n?[iu]n)?\s*alti(?:nda\w*)?\b", RegexOptions.IgnoreCase)] private static partial Regex ScoreRegex();
 }

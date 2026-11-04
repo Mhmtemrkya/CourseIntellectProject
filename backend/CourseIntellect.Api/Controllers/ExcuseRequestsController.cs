@@ -1,6 +1,8 @@
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using CourseIntellect.Api.Authorization;
+using CourseIntellect.Api.Security;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -46,11 +48,16 @@ public sealed class ExcuseRequestsController(CourseIntellectDbContext dbContext)
             return Unauthorized();
         }
 
-        var key = CompatibilitySnapshotStore.NormalizeText(parentName ?? userName);
+        // Talep kullanıcı adıyla eşleşir (benzersiz). Eskiden ad ile bakılıyordu ve kullanıcı
+        // adı alanı da ada karşı karşılaştırılıyordu: aynı adlı iki veli birbirinin mazeret
+        // taleplerini görüyordu. Kullanıcı adı olmayan eski kayıtlarda ada düşülür.
+        var usernameKey = CompatibilitySnapshotStore.NormalizeText(userName);
+        var nameKey = CompatibilitySnapshotStore.NormalizeText(parentName);
         var list = await CompatibilitySnapshotStore.LoadListAsync<ExcuseRequestSnapshot>(dbContext, SectionKey, cancellationToken);
         var mine = list
-            .Where(item => CompatibilitySnapshotStore.NormalizeText(item.ParentName) == key
-                || CompatibilitySnapshotStore.NormalizeText(item.ParentUsername) == key)
+            .Where(item => !string.IsNullOrWhiteSpace(item.ParentUsername)
+                ? usernameKey.Length > 0 && CompatibilitySnapshotStore.NormalizeText(item.ParentUsername) == usernameKey
+                : nameKey.Length > 0 && CompatibilitySnapshotStore.NormalizeText(item.ParentName) == nameKey)
             .OrderByDescending(item => item.CreatedAtUtc)
             .ToList();
         return Ok(mine);
@@ -69,6 +76,14 @@ public sealed class ExcuseRequestsController(CourseIntellectDbContext dbContext)
 
         var parentName = User.FindFirstValue("name") ?? User.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
         var userName = User.FindFirstValue("unique_name") ?? User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
+        // Veli yalnız kendi çocuğu için mazeret gönderebilir (eskiden her öğrenci adı kabul ediliyordu).
+        var allowedNames = await StudentScope.ResolveAllowedStudentNamesAsync(User, dbContext, cancellationToken);
+        if (allowedNames is not null
+            && !allowedNames.Any(name => StudentIdentityResolver.NameKey(name) == StudentIdentityResolver.NameKey(request.ChildName)))
+        {
+            return BadRequest(new { message = "Yalnız kendi çocuğunuz için mazeret bildirebilirsiniz." });
+        }
 
         var list = await CompatibilitySnapshotStore.LoadListAsync<ExcuseRequestSnapshot>(dbContext, SectionKey, cancellationToken);
         var entry = new ExcuseRequestSnapshot

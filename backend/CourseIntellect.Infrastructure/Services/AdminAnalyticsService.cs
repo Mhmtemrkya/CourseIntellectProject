@@ -24,35 +24,41 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
         var normalizedPeriod = (period ?? "week").Trim().ToLowerInvariant();
         var (buckets, granularity, rangeStart, rangeEnd) = BuildBuckets(normalizedPeriod, from, to);
 
+        // Kovalar Türkiye takvimindedir (etiketler TR günü); sorgu aynı aralığın UTC karşılığıyla
+        // yapılır, kayıtlar TR saatine çevrilip kovaya konur. Eskiden kovalar UTC günüydü: gece
+        // 00:00–03:00 arasındaki tahsilat/kayıt bir önceki güne yazılıyordu.
+        var queryStart = rangeStart.AddHours(-TurkeyUtcOffsetHours);
+        var queryEnd = rangeEnd.AddHours(-TurkeyUtcOffsetHours);
+
         // Kazanç: normalize finans tahsilatları (kesin tarih + decimal tutar).
         var payments = await dbContext.FinancePayments.AsNoTracking()
             // Grafik TL'dir; döviz cinsinden tahsilat TL toplamına karışmaz.
-            .Where(p => p.PaidAtUtc >= rangeStart && p.PaidAtUtc < rangeEnd && p.Currency == "TRY")
+            .Where(p => p.PaidAtUtc >= queryStart && p.PaidAtUtc < queryEnd && p.Currency == "TRY")
             .Select(p => new { p.PaidAtUtc, p.Amount })
             .ToListAsync(cancellationToken);
 
         // Kayıt olan öğrenci: StudentProfile.CreatedAtUtc.
         var registrations = await dbContext.Students.AsNoTracking()
-            .Where(s => s.CreatedAtUtc >= rangeStart && s.CreatedAtUtc < rangeEnd)
+            .Where(s => s.CreatedAtUtc >= queryStart && s.CreatedAtUtc < queryEnd)
             .Select(s => s.CreatedAtUtc)
             .ToListAsync(cancellationToken);
 
         // Gider kuralı ana paneldeki "Gider" sayacıyla aynıdır (FinanceExpenseRules):
         // onaylı işletme gideri gider tarihinde; maaş ve fatura yalnız ödendiği gün.
         var operationalExpenses = (await dbContext.DrivingExpenses.AsNoTracking()
-            .Where(e => e.ExpenseDateUtc >= rangeStart && e.ExpenseDateUtc < rangeEnd)
+            .Where(e => e.ExpenseDateUtc >= queryStart && e.ExpenseDateUtc < queryEnd)
             .Select(e => new { e.ExpenseDateUtc, e.Amount, e.ApprovalStatus })
             .ToListAsync(cancellationToken))
             .Where(e => FinanceExpenseRules.ExpenseCountsAsExpense(e.ApprovalStatus))
             .ToList();
         var salaries = (await dbContext.AccountingSalaries.AsNoTracking()
-            .Where(s => (s.PaidAtUtc ?? s.CreatedAtUtc) >= rangeStart && (s.PaidAtUtc ?? s.CreatedAtUtc) < rangeEnd)
+            .Where(s => (s.PaidAtUtc ?? s.CreatedAtUtc) >= queryStart && (s.PaidAtUtc ?? s.CreatedAtUtc) < queryEnd)
             .Select(s => new { CreatedAtUtc = s.PaidAtUtc ?? s.CreatedAtUtc, s.Amount, s.Status })
             .ToListAsync(cancellationToken))
             .Where(s => FinanceExpenseRules.SalaryCountsAsExpense(s.Status))
             .ToList();
         var invoices = (await dbContext.AccountingInvoices.AsNoTracking()
-            .Where(i => (i.PaidAtUtc ?? i.IssueDateUtc) >= rangeStart && (i.PaidAtUtc ?? i.IssueDateUtc) < rangeEnd)
+            .Where(i => (i.PaidAtUtc ?? i.IssueDateUtc) >= queryStart && (i.PaidAtUtc ?? i.IssueDateUtc) < queryEnd)
             .Select(i => new { CreatedAtUtc = i.PaidAtUtc ?? i.IssueDateUtc, i.Amount, i.Status })
             .ToListAsync(cancellationToken))
             .Where(i => FinanceExpenseRules.InvoiceCountsAsExpense(i.Status))
@@ -64,27 +70,27 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
 
         foreach (var payment in payments)
         {
-            var index = IndexOf(working, payment.PaidAtUtc);
+            var index = IndexOf(working, payment.PaidAtUtc.AddHours(TurkeyUtcOffsetHours));
             if (index >= 0) working[index].Revenue += payment.Amount;
         }
         foreach (var createdAt in registrations)
         {
-            var index = IndexOf(working, createdAt);
+            var index = IndexOf(working, createdAt.AddHours(TurkeyUtcOffsetHours));
             if (index >= 0) working[index].Registrations += 1;
         }
         foreach (var expense in operationalExpenses)
         {
-            var index = IndexOf(working, expense.ExpenseDateUtc);
+            var index = IndexOf(working, expense.ExpenseDateUtc.AddHours(TurkeyUtcOffsetHours));
             if (index >= 0) working[index].Expense += expense.Amount;
         }
         foreach (var salary in salaries)
         {
-            var index = IndexOf(working, salary.CreatedAtUtc);
+            var index = IndexOf(working, salary.CreatedAtUtc.AddHours(TurkeyUtcOffsetHours));
             if (index >= 0) working[index].Expense += ParseAmount(salary.Amount);
         }
         foreach (var invoice in invoices)
         {
-            var index = IndexOf(working, invoice.CreatedAtUtc);
+            var index = IndexOf(working, invoice.CreatedAtUtc.AddHours(TurkeyUtcOffsetHours));
             if (index >= 0) working[index].Expense += ParseAmount(invoice.Amount);
         }
 
@@ -111,6 +117,8 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
             totals);
     }
 
+    private const int TurkeyUtcOffsetHours = 3;
+
     private static int IndexOf(List<MutableBucket> buckets, DateTime moment)
     {
         for (var i = 0; i < buckets.Count; i++)
@@ -123,7 +131,8 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
     private static (List<(DateTime Start, DateTime End)> Buckets, Granularity Granularity, DateTime RangeStart, DateTime RangeEnd)
         BuildBuckets(string period, DateTime? from, DateTime? to)
     {
-        var todayUtc = DateTime.UtcNow.Date;
+        // Türkiye günü (UTC+3, yaz saati yok).
+        var todayTr = DateTime.SpecifyKind(DateTime.UtcNow.AddHours(TurkeyUtcOffsetHours).Date, DateTimeKind.Utc);
 
         // Özel tarih aralığı: gün bazlı kovalar.
         if (from is not null && to is not null)
@@ -144,7 +153,7 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
             case "year":
             {
                 const int count = 5;
-                var startYear = new DateTime(todayUtc.Year - (count - 1), 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                var startYear = new DateTime(todayTr.Year - (count - 1), 1, 1, 0, 0, 0, DateTimeKind.Utc);
                 var buckets = new List<(DateTime, DateTime)>();
                 for (var i = 0; i < count; i++)
                 {
@@ -156,7 +165,7 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
             case "month":
             {
                 const int count = 12;
-                var firstOfThisMonth = new DateTime(todayUtc.Year, todayUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                var firstOfThisMonth = new DateTime(todayTr.Year, todayTr.Month, 1, 0, 0, 0, DateTimeKind.Utc);
                 var start = firstOfThisMonth.AddMonths(-(count - 1));
                 var buckets = new List<(DateTime, DateTime)>();
                 for (var i = 0; i < count; i++)
@@ -169,7 +178,7 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
             case "week":
             {
                 const int count = 12;
-                var monday = StartOfWeek(todayUtc);
+                var monday = StartOfWeek(todayTr);
                 var start = monday.AddDays(-7 * (count - 1));
                 var buckets = new List<(DateTime, DateTime)>();
                 for (var i = 0; i < count; i++)
@@ -183,7 +192,7 @@ public sealed class AdminAnalyticsService(CourseIntellectDbContext dbContext) : 
             default:
             {
                 const int count = 14;
-                var start = DateTime.SpecifyKind(todayUtc.AddDays(-(count - 1)), DateTimeKind.Utc);
+                var start = DateTime.SpecifyKind(todayTr.AddDays(-(count - 1)), DateTimeKind.Utc);
                 var buckets = new List<(DateTime, DateTime)>();
                 for (var i = 0; i < count; i++)
                 {

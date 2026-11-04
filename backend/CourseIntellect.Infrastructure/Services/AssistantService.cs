@@ -17,7 +17,8 @@ public sealed partial class AssistantService(
     IEntitlementService entitlementService,
     IParentNotifier parentNotifier,
     ILogger<AssistantService> logger,
-    IStudentInsightService insights) : IAssistantService
+    IStudentInsightService insights,
+    IAssistantChatModel? chatModel = null) : IAssistantService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly System.Globalization.CultureInfo TrCulture = new("tr-TR");
@@ -286,7 +287,9 @@ public sealed partial class AssistantService(
             Text = rawMessage, ClientMessageId = request.ClientMessageId,
         });
 
-        var parsed = await resolver.ResolveAsync(rawMessage, cancellationToken);
+        // Hitap edilen ad ("Maydi, …") soru metninden çıkarılır; kayıtlı mesaj olduğu gibi kalır.
+        var query = AssistantSmallTalk.WithoutName(rawMessage);
+        var parsed = await resolver.ResolveAsync(query, cancellationToken);
         AssistantResponseDto response;
         // Hedef önceliği: butondaki öğrenci > ekranda bakılan öğrenci > sohbette en son konuşulan.
         // Ekran ipucu yalnız aday seçer; rol kapsamı ResolveTargetAsync'te yine uygulanır.
@@ -298,14 +301,30 @@ public sealed partial class AssistantService(
         {
             var voice = Voice(context, request.ClientMessageId);
             var portal = voice.Portal;
-            var folded = RuleBasedAssistantIntentResolver.Fold(rawMessage);
+            var folded = RuleBasedAssistantIntentResolver.Fold(query);
             var intent = parsed.Intent;
             var isServiceDriver = await db.ServiceDrivers.AsNoTracking().AnyAsync(x => x.UserId == context.UserId && x.IsActive, cancellationToken);
             var institutionType = await ResolveInstitutionTypeAsync(context, cancellationToken);
             var requiredModule = AssistantIntentCatalog.RequiredModule(intent);
             var conversational = intent is AssistantIntent.Greeting or AssistantIntent.Thanks or AssistantIntent.SmallTalk or AssistantIntent.Help or AssistantIntent.HowTo or AssistantIntent.Unknown;
 
-            if (portal.Length == 0)
+            // Yerel model ajanı: kuralın anlamadığı ya da analiz/rapor isteyen sorular. Model kapalı ya da
+            // cevap veremezse analiz ifadeleri doğrudan ilgili araca gider (yorumsuz), kalanı kural motoruna.
+            var agentState = new AgentState(context, conversation, voice, query, folded, parsed, targetStudentId, explicitStudentId is null ? focusName : null);
+            AssistantResponseDto? routed = null;
+            if (ShouldUseAgent(intent, folded, portal, isServiceDriver, explicitStudentId))
+                routed = await RunAgentAsync(agentState, cancellationToken);
+            if (routed is null && portal.Length > 0 && !isServiceDriver && explicitStudentId is null
+                && intent is not (AssistantIntent.Greeting or AssistantIntent.Thanks or AssistantIntent.SmallTalk or AssistantIntent.Help)
+                && intent != AssistantIntent.HowTo && !AssistantIntentCatalog.IsWriteAction(intent) && HasAnalyticCue(folded))
+                routed = await RunRuleToolAsync(agentState, cancellationToken);
+
+            if (routed is not null)
+            {
+                response = routed;
+                targetStudentId = conversation.SelectedStudentId ?? targetStudentId;
+            }
+            else if (portal.Length == 0)
             {
                 authorized = false;
                 failureCode = "PORTAL_UNKNOWN";
@@ -318,14 +337,18 @@ public sealed partial class AssistantService(
                 response = Build(conversation.Id, "permission_denied", voice.DriverDenied(), null, intent);
             }
             // ── Sohbet ──
-            else if (intent is AssistantIntent.Greeting)
-                response = Build(conversation.Id, "text", voice.Greeting(folded), null, intent, suggestions: await SuggestionLabelsAsync(context, voice, 4, cancellationToken));
-            else if (intent is AssistantIntent.Thanks)
-                response = Build(conversation.Id, "text", voice.Thanks(), null, intent, suggestions: await SuggestionLabelsAsync(context, voice, 3, cancellationToken));
-            else if (intent is AssistantIntent.SmallTalk)
-                response = Build(conversation.Id, "text",
-                    folded.Contains("nasilsin") || folded.Contains("naber") || folded.Contains("haber") || folded.Contains("iyi misin") ? voice.HowAreYou() : voice.Intro(),
-                    null, intent, suggestions: await SuggestionLabelsAsync(context, voice, 4, cancellationToken));
+            else if (intent is AssistantIntent.Greeting or AssistantIntent.Thanks or AssistantIntent.SmallTalk)
+            {
+                // Tür, cevabın tonunu seçer; vedalaşmada öneri gösterilmez (sohbet kapanıyor).
+                var social = AssistantSmallTalk.Classify(folded) switch
+                {
+                    SocialKind.None => intent == AssistantIntent.Thanks ? SocialKind.Thanks : intent == AssistantIntent.Greeting ? SocialKind.Greeting : SocialKind.Identity,
+                    var kind => kind,
+                };
+                var suggestionCount = social switch { SocialKind.Farewell => 0, SocialKind.Thanks or SocialKind.WellWish or SocialKind.Apology or SocialKind.Acknowledge => 3, _ => 4 };
+                response = Build(conversation.Id, "text", voice.Social(social, folded), null, intent,
+                    suggestions: suggestionCount > 0 ? await SuggestionLabelsAsync(context, voice, suggestionCount, cancellationToken) : null);
+            }
             else if (intent is AssistantIntent.Help)
                 response = Build(conversation.Id, "quick_actions", voice.Help(), null, intent, suggestions: await SuggestionLabelsAsync(context, voice, 8, cancellationToken));
             else if (intent is AssistantIntent.HowTo)
@@ -445,7 +468,7 @@ public sealed partial class AssistantService(
         db.AssistantAuditLogs.Add(new AssistantAuditLog
         {
             TenantId = context.TenantId, UserId = context.UserId, ConversationId = conversation.Id, Intent = parsed.Intent,
-            ToolName = ToolName(parsed.Intent), TargetStudentId = targetStudentId, WasAuthorized = authorized,
+            ToolName = ToolName(response.Intent), TargetStudentId = targetStudentId, WasAuthorized = authorized,
             FailureReasonCode = failureCode, CorrelationId = context.CorrelationId,
             IpAddressMasked = MaskIp(context.IpAddress), UserAgent = Truncate(context.UserAgent, 250),
         });
@@ -519,10 +542,10 @@ public sealed partial class AssistantService(
     /// </summary>
     private async Task<AssistantResponseDto> InstitutionSummaryAsync(Guid conversationId, AssistantVoice voice, CancellationToken ct)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = AssistantDates.TodayTr;
         var totalStudents = await db.Students.AsNoTracking().CountAsync(ct);
         var absentNames = await db.AttendanceEntries.AsNoTracking()
-            .Where(x => x.LessonDate >= today && x.LessonDate < today.AddDays(1) && x.Status.ToLower().Contains("gelmedi"))
+            .Where(x => x.LessonDate >= today && x.LessonDate < today.AddDays(1) && AttendanceStatusMatcher.AbsentStatuses.Contains(x.Status))
             .Select(x => x.StudentName).Distinct().CountAsync(ct);
 
         return Build(conversationId, "institution_summary",
@@ -572,8 +595,8 @@ public sealed partial class AssistantService(
         }
         if (parsed.Intent == AssistantIntent.ListAbsentStudents)
         {
-            var today = DateTime.UtcNow.Date;
-            var absentNames = await db.AttendanceEntries.AsNoTracking().Where(x => x.LessonDate >= today && x.LessonDate < today.AddDays(1) && x.Status.ToLower().Contains("gelmedi")).Select(x => x.StudentName).Distinct().ToListAsync(ct);
+            var today = AssistantDates.TodayTr;
+            var absentNames = await db.AttendanceEntries.AsNoTracking().Where(x => x.LessonDate >= today && x.LessonDate < today.AddDays(1) && AttendanceStatusMatcher.AbsentStatuses.Contains(x.Status)).Select(x => x.StudentName).Distinct().ToListAsync(ct);
             students = students.Where(x => absentNames.Contains(x.FullName));
         }
         if (parsed.Intent == AssistantIntent.ListLowScoreStudents)
@@ -594,14 +617,15 @@ public sealed partial class AssistantService(
 
     private async Task<AssistantResponseDto> AttendanceAsync(Guid conversationId, StudentCandidate student, bool self, AssistantVoice voice, CancellationToken ct)
     {
-        var rows = await db.AttendanceEntries.AsNoTracking().Where(x => x.StudentName == student.FullName).OrderByDescending(x => x.LessonDate).Take(30).Select(x => new { date = x.LessonDate, x.Status, x.Lesson }).ToListAsync(ct);
+        var rows = await db.AttendanceEntries.AsNoTracking().Where(x => x.StudentId == student.Id || (x.StudentId == null && x.StudentName == student.FullName)).OrderByDescending(x => x.LessonDate).Take(30).Select(x => new { date = x.LessonDate, x.Status, x.Lesson }).ToListAsync(ct);
         var data = new { studentId = student.Id, student.FullName, total = rows.Count, absent = rows.Count(x => AttendanceStatusMatcher.IsAbsent(x.Status)), late = rows.Count(x => AttendanceStatusMatcher.IsLate(x.Status)), recent = rows };
         return Build(conversationId, "attendance_summary", voice.Attendance(student.FullName, self, data.total, data.absent, data.late), data, AssistantIntent.GetAttendance);
     }
 
     private async Task<AssistantResponseDto> ExamResultsAsync(Guid conversationId, StudentCandidate student, bool self, AssistantVoice voice, CancellationToken ct)
     {
-        var rows = await db.ExamResults.AsNoTracking().Where(x => x.StudentName == student.FullName).OrderByDescending(x => x.DateLabel).Take(20).Select(x => new { x.ExamTitle, x.Subject, date = x.DateLabel, x.Score, x.Net }).ToListAsync(ct);
+        // DateLabel metindir ("05.11.2026"); metin sıralaması son sınavları kaçırır, tarih ayrıştırılarak sıralanır.
+        var rows = (await db.ExamResults.AsNoTracking().Where(x => x.StudentId == student.Id || (x.StudentId == null && x.StudentName == student.FullName)).Select(x => new { x.ExamTitle, x.Subject, date = x.DateLabel, x.Score, x.Net }).ToListAsync(ct)).OrderByDescending(x => AssistantDates.TryParse(x.date) ?? DateTime.MinValue).Take(20).ToList();
         var best = rows.OrderByDescending(x => x.Score).FirstOrDefault();
         var average = rows.Count == 0 ? 0 : rows.Average(x => x.Score);
         return Build(conversationId, "exam_results", voice.ExamResults(student.FullName, self, rows.Count, average, best?.Subject, best?.Score),
@@ -611,7 +635,14 @@ public sealed partial class AssistantService(
     private async Task<AssistantResponseDto> HomeworkAsync(Guid conversationId, StudentCandidate student, bool self, AssistantVoice voice, CancellationToken ct)
     {
         var submitted = db.HomeworkSubmissions.AsNoTracking().Where(x => x.StudentName == student.FullName).Select(x => x.AssignmentId);
-        var rows = await db.HomeworkAssignments.AsNoTracking().Where(x => x.ClassName == student.ClassName && !submitted.Contains(x.Id)).OrderBy(x => x.DeadlineLabel).Take(30).Select(x => new { id = x.Id, x.Title, x.Subject, teacher = x.Teacher, deadline = x.DeadlineLabel, status = "pending" }).ToListAsync(ct);
+        // Teslim tarihi metin olarak saklanır; sıralama tarihe çevrilerek yapılır (yaklaşanlar önce, gecikenler sonra).
+        var today = AssistantDates.TodayTr;
+        var rows = (await db.HomeworkAssignments.AsNoTracking().Where(x => x.ClassName == student.ClassName && !submitted.Contains(x.Id)).Take(200).Select(x => new { id = x.Id, x.Title, x.Subject, teacher = x.Teacher, deadline = x.DeadlineLabel }).ToListAsync(ct))
+            .Select(x => (Row: x, Due: AssistantDates.TryParse(x.deadline)))
+            .OrderBy(x => x.Due is null ? 2 : x.Due < today ? 1 : 0).ThenBy(x => x.Due)
+            .Take(30)
+            .Select(x => new { x.Row.id, x.Row.Title, x.Row.Subject, x.Row.teacher, deadline = x.Due is DateTime due ? AssistantDates.Short(due) : x.Row.deadline, status = x.Due < today ? "overdue" : "pending" })
+            .ToList();
         var nearest = rows.FirstOrDefault();
         return Build(conversationId, "homework_list", voice.Homework(student.FullName, self, rows.Count, nearest?.Title, nearest?.deadline),
             new { studentId = student.Id, student.FullName, items = rows }, AssistantIntent.GetHomework);
@@ -638,7 +669,9 @@ public sealed partial class AssistantService(
     {
         var role = context.PrimaryRole;
         var className = student?.ClassName;
-        var rows = await db.Announcements.AsNoTracking().Where(x => x.ClassName == null || (className != null && x.ClassName == className) || x.Audience.ToLower().Contains(role.ToLower())).OrderByDescending(x => x.DateLabel).Take(20).Select(x => new { x.Title, x.Detail, date = x.DateLabel }).ToListAsync(ct);
+        var rows = await db.Announcements.AsNoTracking().Where(x => x.ClassName == null || (className != null && x.ClassName == className) || x.Audience.ToLower().Contains(role.ToLower())).Select(x => new { x.Title, x.Detail, date = x.DateLabel }).ToListAsync(ct);
+        // Metin etiketi değil tarih sırası: en yeni duyuru önce.
+        rows = rows.OrderByDescending(x => AssistantDates.TryParse(x.date) ?? DateTime.MinValue).Take(20).ToList();
         return Build(conversationId, "announcement_list", voice.Announcements(rows.Count, rows.FirstOrDefault()?.Title), new { items = rows }, AssistantIntent.GetAnnouncements);
     }
 
@@ -715,7 +748,7 @@ public sealed partial class AssistantService(
     private async Task<AssistantResponseDto> NotifyParentAboutAbsenceAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
     {
         var rows = await db.AttendanceEntries.AsNoTracking()
-            .Where(x => x.StudentName == student.FullName)
+            .Where(x => x.StudentId == student.Id || (x.StudentId == null && x.StudentName == student.FullName))
             .OrderByDescending(x => x.LessonDate)
             .Take(30)
             .Select(x => x.Status)

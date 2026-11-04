@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import 'accounting_installment_detail_page.dart';
+import '../services/accounting_api_service.dart';
 import '../services/accounting_finance_store.dart';
+import '../services/installment_plan.dart';
+import '../utils/format.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/responsive_overlays.dart';
@@ -314,10 +317,15 @@ class _AccountingInstallmentsPageState
             .toList()
           ..sort();
     String selectedStudent = students.isNotEmpty ? students.first : '';
-    final totalController = TextEditingController(text: '120000');
-    final countController = TextEditingController(text: '12');
-    final startDateController = TextEditingController(text: '01.04.2026');
-    final firstInstallmentController = TextEditingController(text: '10000');
+    // Tutarlar boş gelir (eskiden 120.000 / 10.000 TL hazır dolu geliyordu, gözden kaçarsa
+    // gerçek öğrenciye uydurma plan yazılırdı); ilk vade önümüzdeki ayın 1'i (eskiden 01.04.2026).
+    final now = DateTime.now();
+    final totalController = TextEditingController();
+    final countController = TextEditingController(text: '1');
+    final startDateController = TextEditingController(
+      text: formatDate(DateTime(now.year, now.month + 1, 1)),
+    );
+    final firstInstallmentController = TextEditingController();
     final noteController = TextEditingController();
 
     showModalBottomSheet<void>(
@@ -426,7 +434,7 @@ class _AccountingInstallmentsPageState
                         AccountingPanel(
                           padding: const EdgeInsets.all(14),
                           child: Text(
-                            'Aylara göre bölme önizlemesi: ilk taksit ₺${firstInstallmentController.text}, kalan tutar eşit bölünecek.',
+                            'Aylara göre bölme: ilk taksit ayrı, kalan tutar kalan taksitlere eşit bölünür ve her ay aynı gün vadelenir.'.tr,
                             style: Theme.of(sheetContext).textTheme.bodyMedium,
                           ),
                         ),
@@ -456,15 +464,44 @@ class _AccountingInstallmentsPageState
                                 );
                                 return;
                               }
+                              // Toplam ve taksit sayısı artık gerçekten kullanılır: eskiden
+                              // "kalan tutar eşit bölünecek" yazıp yalnız İLK taksit ekleniyordu.
+                              final first = parseMoney(firstInstallmentController.text);
+                              final total = parseMoney(totalController.text);
+                              final count = int.tryParse(countController.text.trim()) ?? 1;
+                              final start = _parseFinanceDate(startDateController.text);
+                              if (first <= 0 || start == null || (count > 1 && total <= first)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'İlk taksit tutarını, geçerli bir başlangıç tarihini ve (birden çok taksitte) ilk taksitten büyük toplam tutarı girin.'
+                                          .tr,
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                return;
+                              }
+                              final plan = buildInstallmentPlan(
+                                total: total,
+                                count: count,
+                                first: first,
+                                start: start,
+                              );
                               final messenger = ScaffoldMessenger.of(context);
                               Navigator.pop(sheetContext);
+                              var createdCount = 0;
                               try {
-                                await _store.addInstallment(
-                                  student: selectedStudent,
-                                  amount: firstInstallmentController.text,
-                                  due: startDateController.text,
-                                  note: noteController.text,
-                                );
+                                for (final item in plan) {
+                                  await AccountingApiService.instance.createInstallment(
+                                    student: selectedStudent,
+                                    amount: item.amount.toStringAsFixed(2),
+                                    due: formatDate(item.due),
+                                    note: noteController.text,
+                                  );
+                                  createdCount++;
+                                }
+                                await _store.loadDashboard();
                                 if (!mounted) return;
                                 messenger.showSnackBar(
                                   SnackBar(
@@ -475,10 +512,15 @@ class _AccountingInstallmentsPageState
                                   ),
                                 );
                               } catch (error) {
+                                if (createdCount > 0) await _store.loadDashboard();
                                 if (!mounted) return;
                                 messenger.showSnackBar(
                                   SnackBar(
-                                    content: Text(error.toString()),
+                                    content: Text(
+                                      createdCount > 0
+                                          ? '${plan.length} taksitten $createdCount tanesi oluşturuldu, kalanı oluşturulamadı: $error. Eksik taksitleri listeden kontrol edin.'
+                                          : error.toString(),
+                                    ),
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );

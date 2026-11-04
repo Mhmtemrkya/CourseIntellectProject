@@ -236,6 +236,7 @@ public sealed class ExamSessionsController(
                 var result = new ExamResult
                 {
                     Id = Guid.NewGuid(),
+                    StudentId = await ResolveStudentProfileIdAsync(session.StudentUsername, cancellationToken),
                     ExamTitle = session.ExamTitle,
                     Type = ExamType.MockExam,
                     Subject = session.Subject,
@@ -391,6 +392,7 @@ public sealed class ExamSessionsController(
         var result = new ExamResult
         {
             Id = Guid.NewGuid(),
+            StudentId = await ResolveStudentProfileIdAsync(session.StudentUsername, cancellationToken),
             ExamTitle = examTitle,
             Type = ParseAssessmentType(label),
             Subject = session.Subject,
@@ -418,6 +420,17 @@ public sealed class ExamSessionsController(
         await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, sessions, User.Identity?.Name ?? "system", cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return Ok(new { message = "Sonuç onaylandı ve not girişine işlendi.", examResultId = result.Id, score, assessmentLabel = label });
+    }
+
+    /// <summary>Oturumu çözen öğrencinin profil kimliği (kullanıcı adından); sınav sonucu adla değil buna bağlanır.</summary>
+    private async Task<Guid?> ResolveStudentProfileIdAsync(string? studentUsername, CancellationToken cancellationToken)
+    {
+        var username = studentUsername?.Trim();
+        if (string.IsNullOrEmpty(username)) return null;
+        return await dbContext.Users.AsNoTracking()
+            .Where(user => user.Username == username)
+            .Join(dbContext.Students.AsNoTracking(), user => user.Id, student => student.UserId, (_, student) => (Guid?)student.Id)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private async Task NotifyTeacherForApprovalAsync(ExamSessionSnapshot session, int score, CancellationToken cancellationToken)

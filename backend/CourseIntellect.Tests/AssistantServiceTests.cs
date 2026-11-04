@@ -160,6 +160,54 @@ public sealed class AssistantServiceTests : IDisposable
         Assert.Contains(empty.Items, item => item.Text.Contains("dikkat etmen gereken bir şey görünmüyor"));
     }
 
+    /// <summary>Sohbet cümleleri kibar, türüne uygun cevap alır; öğretmene "Hoca" diye, siz diliyle hitap edilir.</summary>
+    [Theory]
+    [InlineData("teşekkürler", "Rica ederim|Ne demek|Memnuniyetle")]
+    [InlineData("görüşürüz", "Görüşmek üzere Hasan Hoca|Hoşça kalın Hasan Hoca")]
+    [InlineData("iyi geceler", "İyi geceler Hasan Hoca")]
+    [InlineData("kolay gelsin", "Sağ olun Hasan Hoca, size de kolay gelsin")]
+    [InlineData("iyi çalışmalar", "size de iyi çalışmalar")]
+    [InlineData("harikasın", "teşekkür ederim")]
+    [InlineData("özür dilerim", "Hiç sorun değil")]
+    [InlineData("beni anlamıyorsun", "Kusura bakmayın")]
+    [InlineData("bot musun", "İnsan değilim")]
+    [InlineData("ne yapabiliyorsun", "Ben Maydi, SchoolAsist'in asistanıyım")]
+    [InlineData("adın ne", "Ben Maydi")]
+    [InlineData("Maydi kim?", "Ben Maydi")]
+    [InlineData("Maydi, bot musun", "ben Maydi")]
+    [InlineData("Maydi!", "Hasan Hoca!")]
+    [InlineData("teşekkürler Maydi'ciğim", "Rica ederim|Ne demek|Memnuniyetle")]
+    [InlineData("merhaba nasılsın", "İyiyim|her şey yolunda")]
+    [InlineData("eyvallah çok işime yaradı", "Yardımcı olabildiysem ne mutlu bana")]
+    public async Task SmallTalk_RepliesPolitelyByKind(string message, string expected)
+    {
+        var response = await Service().SendAsync(Context(Guid.NewGuid(), "Teacher", "Hasan Yılmaz"), Ask(message), CancellationToken.None);
+        Assert.Equal("text", response.Type);
+        Assert.True(expected.Split('|').Any(response.Text.Contains), response.Text);
+    }
+
+    /// <summary>"Maydi" hitabı sorudan çıkar; ad bir öğrenci sanılmaz, kalan soru aynen anlaşılır.</summary>
+    [Theory]
+    [InlineData("Maydi, bugün kim gelmedi?", "bugün kim gelmedi?")]
+    [InlineData("selam maydi", "selam")]
+    [InlineData("MAYDİ nasılsın", "nasılsın")]
+    [InlineData("Maydi'ye bir sorum var: Ali'nin notları", "bir sorum var: Ali'nin notları")]
+    [InlineData("maydanoz kaç para", "maydanoz kaç para")]
+    [InlineData("Ali'nin notları", "Ali'nin notları")]
+    public void WithoutName_StripsOnlyTheAddress(string message, string expected) =>
+        Assert.Equal(expected, AssistantSmallTalk.WithoutName(message));
+
+    [Fact]
+    public async Task SmallTalk_GreetingWithHowAreYou_GreetsBack_AndFarewellHasNoSuggestions()
+    {
+        var hello = await Service().SendAsync(Context(Guid.NewGuid(), "Student", "Ali Yılmaz"), Ask("selam nasılsın"), CancellationToken.None);
+        Assert.StartsWith("Selam Ali!", hello.Text);
+        Assert.True(hello.Text.Contains("sorduğun için") || hello.Text.Contains("her şey yolunda"), hello.Text);
+
+        var bye = await Service().SendAsync(Context(Guid.NewGuid(), "Student", "Ali Yılmaz"), Ask("hoşça kal"), CancellationToken.None);
+        Assert.Empty(bye.Suggestions ?? []);
+    }
+
     [Fact]
     public async Task Feedback_OnlyOwnAssistantMessages()
     {

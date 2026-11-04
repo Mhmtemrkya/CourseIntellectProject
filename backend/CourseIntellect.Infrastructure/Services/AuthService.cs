@@ -797,6 +797,11 @@ public sealed class AuthService(
         }
     }
 
+    private static readonly HashSet<string> AllowedPkceRedirectUris = new(StringComparer.Ordinal)
+    {
+        "courseintellect://callback",
+    };
+
     public async Task<PkceAuthorizeResponse?> PkceAuthorizeAsync(PkceAuthorizeRequest request, CancellationToken cancellationToken = default)
     {
         var allowedClients = new[] { "desktop", "mobile" };
@@ -804,6 +809,12 @@ public sealed class AuthService(
             return null;
 
         if (request.CodeChallengeMethod != "S256")
+            return null;
+
+        // Yönlendirme adresi sunucuda da izin listesiyle sınırlanır. Yalnız istemci
+        // denetimine güvenilseydi, uca doğrudan gelen bir istekte kod herhangi bir siteye
+        // yönlendirilebilir ve (saldırganın kendi code_challenge'ıyla) oturuma çevrilebilirdi.
+        if (!AllowedPkceRedirectUris.Contains(request.RedirectUri))
             return null;
 
         // Güvenlik: bu yol eskiden parola girişinin denetimlerini atlıyordu — pasif

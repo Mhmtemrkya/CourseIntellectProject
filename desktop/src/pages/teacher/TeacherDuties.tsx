@@ -242,9 +242,9 @@ export default function TeacherDuties() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5" data-testid="teacher-duties-page">
       <div className="flex items-center gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><ShieldCheck className="h-6 w-6" /></div>
+        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><ShieldCheck className="h-6 w-6" /></div>
         <div>
-          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Görevlerim</h1>
+          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Görevlerim</h1>
           <p className="text-sm text-muted-foreground">Size atanan idari görevleri kabul edebilir, nöbetlerinizi görüntüleyebilirsiniz.</p>
         </div>
       </div>

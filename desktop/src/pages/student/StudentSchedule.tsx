@@ -122,7 +122,7 @@ export default function StudentSchedule() {
       {/* Üst kontrol çubuğu */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Ders Programı</h1>
+          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Ders Programı</h1>
           <div className="flex rounded-full border border-foreground/10 bg-foreground/[0.04] p-0.5">
             {([['weekly', 'Haftalık'], ['monthly', 'Aylık']] satisfies ReadonlyArray<readonly [ScheduleViewMode, string]>).map(([value, label]) => (
               <button

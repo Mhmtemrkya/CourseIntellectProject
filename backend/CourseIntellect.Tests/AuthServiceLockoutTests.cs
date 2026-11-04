@@ -67,10 +67,23 @@ public sealed class AuthServiceLockoutTests : IDisposable
         user.Status = UserStatus.Passive;
         await db.Context.SaveChangesAsync();
 
-        var request = new PkceAuthorizeRequest("pasif", "correct-horse", "desktop", "app://cb", "challenge", "S256");
+        var request = new PkceAuthorizeRequest("pasif", "correct-horse", "desktop", "courseintellect://callback", "challenge", "S256");
         Assert.Null(await BuildService().PkceAuthorizeAsync(request));
         // Başarısız deneme kaydı tutulur (kilitleme bu kayıtlarla çalışır).
         Assert.Contains(db.Context.LoginAttempts, x => x.Email == "pasif" && !x.Success);
+    }
+
+    [Fact]
+    public async Task PkceAuthorize_RejectsForeignRedirectUri_EvenWithCorrectPassword()
+    {
+        await SeedUserAsync("aktif", "correct-horse");
+
+        // Kod yalnız uygulamanın kendi adresine gidebilir; saldırganın sitesine değil.
+        var foreign = new PkceAuthorizeRequest("aktif", "correct-horse", "desktop", "https://evil.example/cb", "challenge", "S256");
+        Assert.Null(await BuildService().PkceAuthorizeAsync(foreign));
+
+        var allowed = new PkceAuthorizeRequest("aktif", "correct-horse", "desktop", "courseintellect://callback", "challenge", "S256");
+        Assert.NotNull(await BuildService().PkceAuthorizeAsync(allowed));
     }
 
     [Fact]
@@ -78,7 +91,7 @@ public sealed class AuthServiceLockoutTests : IDisposable
     {
         await SeedUserAsync("kilit", "correct-horse");
         var service = BuildService(maxFailed: 2);
-        var wrong = new PkceAuthorizeRequest("kilit", "yanlis", "desktop", "app://cb", "challenge", "S256");
+        var wrong = new PkceAuthorizeRequest("kilit", "yanlis", "desktop", "courseintellect://callback", "challenge", "S256");
         Assert.Null(await service.PkceAuthorizeAsync(wrong));
         Assert.Null(await service.PkceAuthorizeAsync(wrong));
         var right = wrong with { Password = "correct-horse" };

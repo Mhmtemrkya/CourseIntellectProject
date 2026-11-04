@@ -1,0 +1,212 @@
+.maydi-chat {
+  --maydi-surface: 0 0% 100%;
+  --maydi-ink: 216 38% 21%;
+  --maydi-secondary: 215 17% 44%;
+  --maydi-line: 214 30% 87%;
+  --maydi-soft: 214 38% 96%;
+  --maydi-user: 207 90% 92%;
+  --maydi-user-ink: 210 64% 24%;
+  --maydi-blue: 211 72% 42%;
+  --maydi-blue-ink: 212 72% 37%;
+  --maydi-send: 175 83% 31%;
+  --background: var(--maydi-surface);
+  --card: var(--maydi-surface);
+  --card-foreground: var(--maydi-ink);
+  --foreground: var(--maydi-ink);
+  --muted: var(--maydi-soft);
+  --muted-foreground: var(--maydi-secondary);
+  --border: var(--maydi-line);
+  --brand-primary: var(--maydi-blue);
+  --brand-primary-text: var(--maydi-blue-ink);
+  pointer-events: auto;
+  position: fixed;
+  z-index: 60;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  width: min(360px, calc(100vw - 24px));
+  height: min(560px, calc(100vh - 88px));
+  height: min(560px, calc(100dvh - 88px));
+  overflow: hidden;
+  border: 1px solid hsl(var(--maydi-line));
+  border-radius: 19px;
+  background: hsl(var(--maydi-surface));
+  color: hsl(var(--maydi-ink));
+  box-shadow: 0 20px 64px -20px rgb(27 50 80 / 26%), 0 3px 12px rgb(27 50 80 / 5%);
+  font-size: 13px;
+  line-height: 1.5;
+  color-scheme: light;
+  isolation: isolate;
+}
+
+.dark .maydi-chat {
+  --maydi-surface: 216 42% 11%;
+  --maydi-ink: 210 40% 97%;
+  --maydi-secondary: 215 22% 69%;
+  --maydi-line: 213 28% 24%;
+  --maydi-soft: 214 37% 17%;
+  --maydi-user: 207 56% 28%;
+  --maydi-user-ink: 207 75% 97%;
+  --maydi-blue: 210 72% 44%;
+  --maydi-blue-ink: 208 90% 77%;
+  box-shadow: 0 24px 72px -20px rgb(0 0 0 / 52%), 0 3px 12px rgb(0 0 0 / 15%);
+  color-scheme: dark;
+}
+
+.maydi-chat button { -webkit-tap-highlight-color: transparent; }
+.maydi-chat button:focus-visible,
+.maydi-chat input:focus-visible {
+  outline: 2px solid hsl(var(--maydi-blue-ink));
+  outline-offset: 3px;
+}
+.maydi-chat .text-brand-primary { color: hsl(var(--maydi-blue-ink)); }
+
+.maydi-chat__header {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 8px;
+  min-height: 64px;
+  padding: 9px 12px;
+  border-bottom: 1px solid hsl(var(--maydi-line) / 70%);
+}
+.maydi-chat__avatar-button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 44px;
+  padding: 0;
+  border-radius: 10px;
+  background: transparent;
+}
+.maydi-chat__identity { min-width: 0; flex: 1; }
+.maydi-chat__identity h2 {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.35px;
+  line-height: 21px;
+}
+.maydi-chat__identity p {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 1px 0 0;
+  color: hsl(var(--maydi-secondary));
+  font-size: 11px;
+  line-height: 16px;
+}
+.maydi-chat__status { width: 6px; height: 6px; flex: none; border-radius: 50%; background: #10b981; }
+.maydi-chat__status--busy { background: #27a6d8; }
+.maydi-chat__header-actions { display: flex; gap: 3px; flex: none; }
+.maydi-chat__icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: hsl(var(--maydi-secondary));
+  transition: background 140ms ease, color 140ms ease;
+}
+.maydi-chat__icon-button:hover,
+.maydi-chat__avatar-button:hover { background: hsl(var(--maydi-soft)); color: hsl(var(--maydi-ink)); }
+
+.maydi-chat__thread {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--maydi-secondary) / 30%) transparent;
+}
+.maydi-chat__day { display: flex; align-items: center; gap: 10px; margin: 1px 0 3px; flex: none; color: hsl(var(--maydi-secondary)); font-size: 10px; }
+.maydi-chat__day::before,
+.maydi-chat__day::after { content: ''; height: 1px; flex: 1; background: hsl(var(--maydi-line) / 75%); }
+.maydi-chat__briefing { padding: 12px; border: 1px solid hsl(var(--maydi-line) / 60%); border-radius: 13px; background: hsl(var(--maydi-soft) / 70%); }
+.maydi-chat__briefing > * + * { margin-top: 7px; }
+.maydi-chat__briefing > p:last-child { font-size: 11px; line-height: 1.6; }
+.maydi-chat__user-row { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: 4px; padding-left: 36px; }
+.maydi-chat__assistant-row { display: flex; align-items: flex-start; gap: 7px; flex: none; min-width: 0; }
+.maydi-chat__message-avatar { margin-top: 2px; }
+.maydi-chat__message-content { display: flex; min-width: 0; flex: 1; flex-direction: column; align-items: flex-start; gap: 6px; }
+.maydi-chat__bubble {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 13px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.maydi-chat__bubble--user { border-bottom-right-radius: 5px; background: hsl(var(--maydi-user)); color: hsl(var(--maydi-user-ink)); }
+.maydi-chat__bubble--assistant { border-top-left-radius: 5px; background: hsl(var(--maydi-soft)); }
+.maydi-chat__bubble--warning { background: rgb(245 158 11 / 12%); color: #854d0e; }
+.dark .maydi-chat__bubble--warning { color: #fde68a; }
+.maydi-chat__message-meta { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; min-height: 20px; color: hsl(var(--maydi-secondary)); }
+.maydi-chat__time { color: hsl(var(--maydi-secondary)); font-size: 10px; line-height: 16px; font-variant-numeric: tabular-nums; }
+.maydi-chat__feedback { display: flex; align-items: center; gap: 2px; }
+.maydi-chat__feedback button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: hsl(var(--maydi-secondary)); }
+.maydi-chat__feedback button:hover { color: hsl(var(--maydi-blue-ink)); background: hsl(var(--maydi-soft)); }
+.maydi-chat__feedback-note { margin: 0; color: hsl(var(--maydi-secondary)); font-size: 10px; line-height: 16px; }
+.maydi-chat__response { display: grid; gap: 7px; width: 100%; min-width: 0; overflow-wrap: anywhere; }
+.maydi-chat__response:empty { display: none; }
+.maydi-chat__response > * { min-width: 0; max-width: 100%; }
+.maydi-chat__response button { white-space: normal; }
+.maydi-chat__summary { padding: 9px; border: 1px solid hsl(var(--maydi-line)); border-radius: 12px; background: hsl(var(--maydi-soft) / 40%); }
+.maydi-chat__summary-title { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; font-size: 12px; font-weight: 650; }
+.maydi-chat__summary-title svg { color: hsl(var(--maydi-blue-ink)); }
+.maydi-chat__stat { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 7px 8px; border: 1px solid hsl(var(--maydi-line) / 75%); border-radius: 9px; background: hsl(var(--maydi-surface) / 48%); }
+.maydi-chat__stat > svg { flex: none; color: hsl(var(--maydi-secondary)); }
+.maydi-chat__stat > div { min-width: 0; }
+.maydi-chat__stat-label { margin: 0 0 1px; color: hsl(var(--maydi-secondary)); font-size: 10px; line-height: 1.4; }
+.maydi-chat__stat-value { margin: 0; color: hsl(var(--maydi-ink)); font-size: 16px; line-height: 1.3; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; }
+.maydi-chat__response [data-testid='assistant-report'] { padding: 9px; }
+.maydi-chat__typing { display: flex; align-items: center; gap: 7px; padding: 9px 10px; border-radius: 5px 13px 13px; background: hsl(var(--maydi-soft)); color: hsl(var(--maydi-secondary)); font-size: 11px; }
+.maydi-chat__typing-dots { display: inline-flex; gap: 3px; }
+.maydi-chat__typing-dots > span { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: maydi-chat-typing 1s ease-in-out infinite; }
+@keyframes maydi-chat-typing { 0%, 70%, 100% { opacity: .4; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-3px); } }
+
+.maydi-chat__focus { display: flex; align-items: center; gap: 6px; flex: none; padding: 7px 12px; border-top: 1px solid hsl(var(--maydi-line) / 70%); background: hsl(var(--maydi-soft)); font-size: 10px; }
+.maydi-chat__suggestions { display: flex; gap: 6px; flex: none; overflow-x: auto; overscroll-behavior-x: contain; padding: 9px 12px 0; border-top: 1px solid hsl(var(--maydi-line) / 75%); scrollbar-width: thin; scrollbar-color: hsl(var(--maydi-secondary) / 20%) transparent; }
+.maydi-chat__suggestion { display: inline-flex; align-items: center; gap: 5px; flex: none; max-width: 170px; min-height: 29px; padding: 5px 8px; border: 1px solid hsl(var(--maydi-line)); border-radius: 999px; background: hsl(var(--maydi-surface)); color: hsl(var(--maydi-ink)); font-size: 10px; font-weight: 550; line-height: 16px; }
+.maydi-chat__suggestion svg { flex: none; }
+.maydi-chat__suggestion span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.maydi-chat__suggestion:hover { border-color: hsl(var(--maydi-blue-ink) / 60%); background: hsl(var(--maydi-soft)); }
+.maydi-chat__composer { flex: none; padding: 9px 12px 12px; }
+.maydi-chat__composer-field { display: flex; align-items: center; gap: 5px; min-height: 47px; padding: 4px 4px 4px 12px; border: 1px solid hsl(var(--maydi-line)); border-radius: 13px; background: hsl(var(--maydi-soft) / 45%); transition: border-color 140ms ease, box-shadow 140ms ease; }
+.maydi-chat__composer-field:focus-within { border-color: hsl(var(--maydi-blue-ink) / 65%); box-shadow: 0 0 0 2px hsl(var(--maydi-blue-ink) / 10%); }
+.maydi-chat__composer input { display: block; width: 100%; min-width: 0; flex: 1; height: 34px; padding: 0; border: 0; border-radius: 0; outline: none; background: transparent; color: hsl(var(--maydi-ink)); box-shadow: none; font-size: 13px; line-height: 20px; }
+.maydi-chat__composer input::placeholder { color: hsl(var(--maydi-secondary)); opacity: 1; }
+.maydi-chat__composer input:focus-visible { outline: none; }
+.maydi-chat__send { display: grid; place-items: center; width: 34px; height: 34px; flex: none; padding: 0; border: 0; border-radius: 10px; background: hsl(var(--maydi-send)); color: #fff; transition: opacity 140ms ease, background 140ms ease; }
+.maydi-chat__send:hover:not(:disabled) { background: hsl(175 78% 26%); }
+.maydi-chat__send:disabled { opacity: .45; cursor: not-allowed; }
+.maydi-chat__history { gap: 4px; }
+.maydi-chat__history-row { display: flex; align-items: center; gap: 7px; flex: none; padding: 9px 8px; border: 1px solid transparent; border-radius: 10px; }
+.maydi-chat__history-row:hover { border-color: hsl(var(--maydi-line)); background: hsl(var(--maydi-soft)); }
+.maydi-chat__history-row > button:first-child { padding: 0; }
+.maydi-chat__history-row p:first-child { font-size: 12px; }
+.maydi-chat__history-row p + p { margin-top: 3px; font-size: 10px; }
+
+@media (max-width: 480px) { .maydi-chat { right: 12px; bottom: 12px; } }
+@media (hover: none) and (pointer: coarse) { .maydi-chat__composer input { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) {
+  .maydi-chat__typing-dots > span { animation: none; }
+  .maydi-chat *, .maydi-chat *::before, .maydi-chat *::after { scroll-behavior: auto; }
+}

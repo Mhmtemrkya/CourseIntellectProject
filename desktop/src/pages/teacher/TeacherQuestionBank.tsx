@@ -33,6 +33,7 @@ import {
 import { errorMessage, isRecord } from '../../lib/errors';
 import type { CreateQuestionBankItemRequest, QuestionBankItemDto } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { localDateKey } from '../../lib/localDate';
 
 /** Soru ekleme/düzenleme penceresindeki tek soru kartı. */
 interface QuestionDraft {
@@ -674,7 +675,7 @@ export default function TeacherQuestionBank() {
       classTargets: item.classTargets || [],
     }));
     downloadTextFile(
-      `soru-bankasi-${new Date().toISOString().slice(0, 10)}.json`,
+      `soru-bankasi-${localDateKey()}.json`,
       JSON.stringify(payload, null, 2),
     );
     toast({

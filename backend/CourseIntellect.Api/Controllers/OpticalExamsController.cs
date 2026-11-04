@@ -16,7 +16,11 @@ namespace CourseIntellect.Api.Controllers;
 [Authorize(Roles = "Admin,Teacher")]
 [Route("api/optical-exams")]
 [RequireEntitlement("optical-exams")]
-public sealed class OpticalExamsController(IOpticalExamService service) : ControllerBase
+public sealed class OpticalExamsController(
+    IOpticalExamService service,
+    IOpticalTemplateSuggester suggester,
+    IOpticalStudyPlanService studyPlans,
+    IEntitlementService entitlements) : ControllerBase
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -30,6 +34,12 @@ public sealed class OpticalExamsController(IOpticalExamService service) : Contro
     [HttpPut("templates/{id:guid}")]
     public Task<IActionResult> UpdateTemplate(Guid id, [FromBody] SaveOpticalTemplateRequest request, CancellationToken cancellationToken)
         => Run(async () => Ok(await service.SaveTemplateAsync(id, request, cancellationToken)));
+
+    /// <summary>Dosyadan şablon önerisi. Yalnız öneri döner; şablon, öğrenci ya da sonuç kaydetmez.</summary>
+    [HttpPost("templates/suggest")]
+    [RequestSizeLimit(6_000_000)]
+    public Task<IActionResult> SuggestTemplate(IFormFile file, [FromForm] string? encoding, CancellationToken cancellationToken)
+        => Run(async () => Ok(await suggester.SuggestAsync(await ReadAsync(file, cancellationToken), encoding, cancellationToken)));
 
     [HttpDelete("templates/{id:guid}")]
     public Task<IActionResult> DeleteTemplate(Guid id, CancellationToken cancellationToken)
@@ -81,6 +91,30 @@ public sealed class OpticalExamsController(IOpticalExamService service) : Contro
         var result = await service.GetResultsAsync(id, cancellationToken);
         return result is null ? NotFound(new { message = "Deneme bulunamadı." }) : Ok(result);
     }
+
+    /// <summary>Soru konusu listesi: ?level=LGS&amp;subject=Türkçe&amp;subject=Matematik</summary>
+    [HttpGet("topics")]
+    public async Task<IActionResult> Topics([FromQuery] string? level, [FromQuery(Name = "subject")] string[]? subjects, CancellationToken cancellationToken)
+        => Ok(await service.GetTopicsAsync(level, subjects ?? [], cancellationToken));
+
+    /// <summary>Kurum listesine konu ekler; hazır listede ya da kurum listesinde varsa mevcut yazımı döner.</summary>
+    [HttpPost("topics")]
+    public Task<IActionResult> AddTopic([FromBody] AddOpticalTopicRequest request, CancellationToken cancellationToken)
+        => Run(async () => Ok(await service.AddTopicAsync(request, StudentScope.ResolveUserId(User), cancellationToken)));
+
+    [HttpDelete("topics/{id:guid}")]
+    public Task<IActionResult> DeleteTopic(Guid id, CancellationToken cancellationToken)
+        => Run(async () => { await service.DeleteTopicAsync(id, cancellationToken); return NoContent(); });
+
+    /// <summary>Deneme sonrası çalışma planı önizlemesi (hiçbir şey yazmaz).</summary>
+    [HttpGet("{id:guid}/study-plans")]
+    public Task<IActionResult> StudyPlans(Guid id, CancellationToken cancellationToken)
+        => Run(async () => Ok(await studyPlans.PreviewAsync(id, await entitlements.IsAllowedAsync(User, "study-plan", null, cancellationToken), cancellationToken)));
+
+    /// <summary>Öğretmenin onayladığı görevleri öğrencilerin çalışma programına ekler; isteğe bağlı veli özeti.</summary>
+    [HttpPost("{id:guid}/study-plans/apply")]
+    public Task<IActionResult> ApplyStudyPlans(Guid id, [FromBody] ApplyOpticalStudyPlansRequest request, CancellationToken cancellationToken)
+        => Run(async () => Ok(await studyPlans.ApplyAsync(id, request, StudentScope.ResolveUserId(User), cancellationToken)));
 
     [HttpGet("students")]
     public async Task<IActionResult> SearchStudents([FromQuery] string? search, CancellationToken cancellationToken)

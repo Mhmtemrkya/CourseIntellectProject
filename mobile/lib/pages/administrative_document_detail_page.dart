@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import '../widgets/admin_ui.dart';
 import 'administrative_chat_page.dart';
+import '../utils/format.dart';
 
 class AdministrativeDocumentDetailPage extends StatelessWidget {
   final String studentName;
@@ -302,7 +303,7 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '14.03.2026',
+                            formatDate(DateTime.now()),
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),

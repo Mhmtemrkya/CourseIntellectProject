@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'student_record_match.dart';
 
 class ExamScoreRecord {
   /// Sunucu kimliği — düzeltme/silme bu kimlikle yapılır (eski kayıtlarda null).
   final String? id;
+
+  /// Öğrenci profil kimliği (StudentProfile.Id); eski/bağlanmamış sonuçta null.
+  final String? studentId;
   final String examTitle;
   final String type;
   final String subject;
@@ -16,6 +20,7 @@ class ExamScoreRecord {
 
   ExamScoreRecord({
     this.id,
+    this.studentId,
     required this.examTitle,
     required this.type,
     required this.subject,
@@ -57,7 +62,7 @@ class ExamResultsStore extends ChangeNotifier {
     final list = _records
         .where((item) => item.studentName == studentName)
         .toList();
-    list.sort((a, b) => b.date.compareTo(a.date));
+    list.sort((a, b) => compareRecordDateDesc(a.date, b.date));
     return list;
   }
 

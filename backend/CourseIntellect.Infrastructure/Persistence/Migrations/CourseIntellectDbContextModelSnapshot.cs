@@ -1173,6 +1173,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(30)")
                         .HasColumnName("status");
 
+                    b.Property<Guid?>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
                     b.Property<string>("StudentName")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -1190,6 +1194,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.HasIndex("ClassName");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "StudentId");
 
                     b.ToTable("attendance_entries", (string)null);
                 });
@@ -5694,6 +5700,9 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<int>("Score")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("StudentId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("StudentName")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -5714,6 +5723,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "StudentId");
 
                     b.ToTable("exam_results", (string)null);
                 });
@@ -7455,6 +7466,52 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.ToTable("OnboardingEmail");
                 });
 
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.OpticalCustomTopic", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "Subject", "Level", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("optical_custom_topics", (string)null);
+                });
+
             modelBuilder.Entity("CourseIntellect.Domain.Entities.OpticalExam", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7493,6 +7550,13 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<string>("KeysJson")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasDefaultValue("");
 
                     b.Property<bool>("MultiMarkAsWrong")
                         .HasColumnType("boolean");
@@ -12652,6 +12716,14 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("CourseIntellect.Domain.Entities.NotificationItem", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.OpticalCustomTopic", b =>
                 {
                     b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
                         .WithMany()

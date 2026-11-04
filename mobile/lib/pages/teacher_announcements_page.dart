@@ -6,6 +6,7 @@ import '../services/school_feed_api_service.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/premium_modal_shell.dart';
+import '../services/student_record_match.dart';
 
 class TeacherAnnouncementsPage extends StatefulWidget {
   const TeacherAnnouncementsPage({super.key});
@@ -56,7 +57,7 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
       final studentItems = List<AnnouncementFeedItem>.from(results[1] as List);
       setState(() {
         _announcements = [...teacherItems, ...studentItems]
-          ..sort((left, right) => right.date.compareTo(left.date));
+          ..sort((left, right) => compareRecordDateDesc(left.date, right.date));
         _students = studentList;
         _classes = classes;
       });

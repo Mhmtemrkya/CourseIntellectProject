@@ -6,4 +6,5 @@ public sealed record AttendanceEntryDto(
     string ClassName,
     DateTime LessonDate,
     string Status,
-    string Lesson);
+    string Lesson,
+    Guid? StudentId = null);

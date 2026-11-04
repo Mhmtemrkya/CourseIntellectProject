@@ -14,6 +14,8 @@ import { fetchAttendance, fetchStudents } from '../../lib/api/modules';
 import { errorMessage } from '../../lib/errors';
 import type { AttendanceEntryDto, StudentSummaryDto } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { localDateKey } from '../../lib/localDate';
+import { absenceDayCounts, absenceLimitFor } from '../../lib/absenceLimits';
 
 type MetricTone = 'green' | 'orange' | 'blue' | 'purple';
 
@@ -111,8 +113,18 @@ export default function ParentAttendance() {
     const total = attendance.length || 0;
     const rate = total ? Math.round(((present + late + excuse) / total) * 100) : 0;
     const absentRate = total ? Math.round((absent / total) * 100) : 0;
-    return { present, late, excuse, absent, total, rate, absentRate, remaining: Math.max(0, 20 - absent) };
-  }, [attendance]);
+    // Kayıtlar ders bazındadır; "gün" sayıları ayrı tarihlerden çıkar. Eskiden devamsız
+    // DERS sayısı "gün" diye gösteriliyor ve 20 günlük haktan düşülüyordu (bir günde 6 ders
+    // kaçıran öğrencinin 6 günü gitmiş görünüyordu).
+    const dayOf = (item: { lessonDate?: string | null }) => String(item.lessonDate || '').slice(0, 10);
+    const absentDays = new Set(attendance.filter((item) => toStatus(item.status) === 'absent').map(dayOf).filter(Boolean)).size;
+    const attendedDays = new Set(attendance.filter((item) => toStatus(item.status) !== 'absent').map(dayOf).filter(Boolean)).size;
+    // Yönetmelik sınırı sınıf seviyesine göre (lisede özürsüz 10 / toplam 30 gün); ilkokul/ortaokulda
+    // doğrulanmış sabit sayı olmadığından gösterilmez. Eskiden herkese "20 gün" ve "%30" yazılıyordu.
+    const days = absenceDayCounts(attendance);
+    const limit = absenceLimitFor(selectedChild?.className);
+    return { present, late, excuse, absent, total, rate, absentRate, absentDays, attendedDays, days, limit };
+  }, [attendance, selectedChild?.className]);
 
   const subjectRows = useMemo(() => {
     const map = new Map<string, { subject: string; present: number; absent: number; total: number }>();
@@ -140,7 +152,7 @@ export default function ParentAttendance() {
     const startOffset = (first.getDay() + 6) % 7;
     return Array.from({ length: 35 }, (_, index) => {
       const date = new Date(year, month, index - startOffset + 1);
-      const iso = date.toISOString().slice(0, 10);
+      const iso = localDateKey(date);
       const dayRecords = attendance.filter((item) => String(item.lessonDate || '').slice(0, 10) === iso);
       const hasAbsent = dayRecords.some((item) => toStatus(item.status) === 'absent');
       const hasPresent = dayRecords.some((item) => toStatus(item.status) !== 'absent');
@@ -181,16 +193,18 @@ export default function ParentAttendance() {
       {error ? <ErrorBanner title="Devamsızlık alınamadı" message={error} onRetry={loadAttendance} /> : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={CheckCircle2} label="Toplam Devam Günü" value={stats.present + stats.late + stats.excuse} hint={`%${stats.rate}.0`} tone="green" />
-        <Metric icon={XCircle} label="Toplam Devamsız Gün" value={stats.absent} hint={`%${stats.absentRate}.0`} tone="orange" />
-        <Metric icon={CalendarDays} label="Devamsızlık Hakkı" value="20" hint="Gün / Dönem" tone="blue" />
-        <Metric icon={ShieldAlert} label="Kalan Hakkı" value={stats.remaining} hint="Gün" tone="purple" />
+        <Metric icon={CheckCircle2} label="Toplam Devam Günü" value={stats.attendedDays} hint={`${stats.present + stats.late + stats.excuse} ders · %${stats.rate}`} tone="green" />
+        <Metric icon={XCircle} label="Toplam Devamsız Gün" value={stats.absentDays} hint={`${stats.absent} ders · %${stats.absentRate}`} tone="orange" />
+        <Metric icon={CalendarDays} label="Devamsızlık Sınırı" value={stats.limit ? `${stats.limit.unexcusedDays} / ${stats.limit.totalDays}` : '—'} hint={stats.limit ? 'Özürsüz / toplam gün' : 'Kurum yönetmeliğine göre'} tone="blue" />
+        <Metric icon={ShieldAlert} label="Kalan Hakkı" value={stats.limit ? `${Math.max(0, stats.limit.unexcusedDays - stats.days.unexcusedDays)} / ${Math.max(0, stats.limit.totalDays - stats.days.totalDays)}` : '—'} hint={`Özürsüz ${stats.days.unexcusedDays} · özürlü ${stats.days.excusedDays} gün`} tone="purple" />
       </div>
 
       {stats.absentRate > 0 ? (
         <div className="rounded-2xl border border-orange-500/25 bg-orange-500/10 p-4 text-sm text-orange-800 dark:text-orange-100">
           <AlertTriangle className="mr-2 inline h-5 w-5" />
-          Devamsızlık sınırı %30'dur. Lütfen düzenli devam etmesine özen gösteriniz.
+          {stats.limit
+            ? `Sınır özürsüz ${stats.limit.unexcusedDays}, toplam ${stats.limit.totalDays} gündür (${stats.limit.source}). Lütfen düzenli devam etmesine özen gösteriniz.`
+            : 'Devamsızlık sınırı kurumunuzun bağlı olduğu yönetmeliğe göre belirlenir. Lütfen düzenli devam etmesine özen gösteriniz.'}
         </div>
       ) : null}
 
@@ -200,15 +214,15 @@ export default function ParentAttendance() {
           <div className="mt-5 grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center">
             <div className="relative flex h-56 w-56 items-center justify-center rounded-full bg-[conic-gradient(#22C55E_0_var(--rate),#EF4444_var(--rate)_100%)]" style={{ '--rate': `${stats.rate}%` }}>
               <div className="flex h-40 w-40 flex-col items-center justify-center rounded-full bg-card">
-                <span className="text-3xl font-black">%{stats.absentRate}.0</span>
+                <span className="text-3xl font-black">%{stats.absentRate}</span>
                 <span className="text-xs text-muted-foreground">Devamsızlık Oranı</span>
               </div>
             </div>
             <div className="space-y-4">
-              <Legend label="Devam Günü" value={`${stats.present + stats.late + stats.excuse} Gün (%${stats.rate}.0)`} color="bg-emerald-500" />
-              <Legend label="Devamsız Gün" value={`${stats.absent} Gün (%${stats.absentRate}.0)`} color="bg-rose-500" />
-              <Legend label="Kalan Hakkı" value={`${stats.remaining} Gün`} color="bg-purple-500" />
-              <Legend label="Sınır" value="%30.0" color="bg-orange-500" />
+              <Legend label="Devam Günü" value={`${stats.attendedDays} Gün (%${stats.rate})`} color="bg-emerald-500" />
+              <Legend label="Devamsız Gün" value={`${stats.absentDays} Gün (%${stats.absentRate})`} color="bg-rose-500" />
+              <Legend label="Özürsüz / Özürlü" value={`${stats.days.unexcusedDays} / ${stats.days.excusedDays} Gün`} color="bg-purple-500" />
+              <Legend label="Sınır" value={stats.limit ? `${stats.limit.unexcusedDays} / ${stats.limit.totalDays} Gün` : '—'} color="bg-orange-500" />
             </div>
           </div>
         </div>

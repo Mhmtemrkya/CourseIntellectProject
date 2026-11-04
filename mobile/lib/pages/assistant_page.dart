@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/module_api_client.dart';
+import '../widgets/assistant_report_card.dart';
 import '../widgets/topic_recommendations_card.dart';
 import '../services/assistant_focus.dart';
 
@@ -37,7 +38,7 @@ String _clientId() {
   return '${hex(8)}-${hex(4)}-4${hex(3)}-a${hex(3)}-${hex(12)}';
 }
 
-/// SchoolAsist Asistan (mobil). Masaüstü paneliyle aynı uçları kullanır; cevap metni ve
+/// Maydi, SchoolAsist asistanı (mobil). Masaüstü paneliyle aynı uçları kullanır; cevap metni ve
 /// rol kapsamı sunucudan gelir. [portal] kullanıcının bulunduğu paneldir (student, parent,
 /// teacher, admin, administrative, accounting): her rol yalnız kendi portalının sorularını sorabilir.
 class AssistantPage extends StatefulWidget {
@@ -256,7 +257,7 @@ class _AssistantPageState extends State<AssistantPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_english ? 'SchoolAsist Assistant' : 'SchoolAsist Asistan', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                const Text('Maydi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                 Text(
                   _busy ? (_english ? 'typing…' : 'yazıyor…') : (_english ? 'Online' : 'Çevrimiçi'),
                   style: TextStyle(fontSize: 11, color: Theme.of(context).hintColor),
@@ -338,7 +339,7 @@ class _AssistantPageState extends State<AssistantPage> {
                       onSubmitted: _send,
                       decoration: InputDecoration(
                         counterText: '',
-                        hintText: _english ? 'Ask something…' : _student ? 'Bir şey sor…' : 'Sorunuzu yazın…',
+                        hintText: _english ? 'Ask Maydi…' : _student ? "Maydi'ye bir şey sor…" : "Maydi'ye sorunuzu yazın…",
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(999)),
@@ -426,7 +427,7 @@ class _AssistantPageState extends State<AssistantPage> {
           children: [
             const CircleAvatar(radius: 13, backgroundColor: Color(0x224F46E5), child: Icon(Icons.smart_toy_rounded, size: 15, color: _brand)),
             const SizedBox(width: 8),
-            Text(_english ? 'typing…' : 'yazıyor…', style: TextStyle(color: Theme.of(context).hintColor, fontStyle: FontStyle.italic)),
+            Text(_english ? 'Checking the records…' : 'Kayıtlara bakıyorum…', style: TextStyle(color: Theme.of(context).hintColor, fontStyle: FontStyle.italic)),
           ],
         ),
       );
@@ -465,7 +466,7 @@ class _AssistantPageState extends State<AssistantPage> {
     );
   }
 
-  /// Cevap altında 👍/👎; "işe yaramadı" yöneticinin "Asistan Soruları" listesine düşer.
+  /// Cevap altında 👍/👎; "işe yaramadı" yöneticinin "Maydi Soruları" listesine düşer.
   Widget _feedback(BuildContext context, _ChatMessage message) {
     final hint = Theme.of(context).hintColor;
     if (message.feedback != null) {
@@ -584,6 +585,8 @@ class _AssistantPageState extends State<AssistantPage> {
             ),
           )));
         }
+      case 'report':
+        widgets.add(AssistantReportCard(messageId: _str(response['messageId']), data: data, english: _english));
       case 'how_to':
         final steps = (data['steps'] as List?)?.map(_str).toList() ?? const <String>[];
         widgets.add(_card(context, Padding(

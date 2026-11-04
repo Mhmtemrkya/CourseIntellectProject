@@ -12,13 +12,19 @@ import '../services/api_config.dart';
 import '../services/planned_exam_api_service.dart';
 import '../services/question_bank_api_service.dart';
 import '../services/question_bank_store.dart';
+import '../services/subject_catalog.dart';
+import '../services/topic_catalog.dart';
 import '../services/uploads_api_service.dart';
 import '../widgets/solution_drawing_canvas.dart';
+import '../widgets/topic_picker.dart';
 
 class TeacherQuestionStudioPage extends StatefulWidget {
   final bool examMode;
 
-  const TeacherQuestionStudioPage({super.key, this.examMode = false});
+  const TeacherQuestionStudioPage({super.key, this.examMode = false, this.topicApi = const TopicCatalogApi()});
+
+  /// Konu listesi uçları (testlerde sahtesi).
+  final TopicCatalogApi topicApi;
 
   @override
   State<TeacherQuestionStudioPage> createState() =>
@@ -45,6 +51,10 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
   String _difficulty = 'Orta';
   String _type = 'Çoktan Seçmeli';
   String _classLevel = 'Tüm Sınıflar';
+  // Konu listesinin seviyesi yalnız listeyi daraltır (soruya kaydedilmez); sınıftan tahmin edilir.
+  String _topicLevel = '';
+  bool _topicLevelTouched = false;
+  late final TopicCatalogStore _topics = TopicCatalogStore(widget.topicApi)..addListener(_onTopics);
   int _correctIndex = 0;
   bool _saving = false;
   String? _imagePath;
@@ -175,6 +185,54 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
     for (final controller in _optionControllers) {
       controller.addListener(_scheduleDraftSave);
     }
+    _loadTopics();
+  }
+
+  void _onTopics() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadTopics() => _topics.load(_topicLevel, [_subject]);
+
+  Future<void> _pickStudioTopic() async {
+    final chosen = await pickTopic(
+      context,
+      store: _topics,
+      subject: _subject,
+      level: _topicLevel,
+      title: '$_subject · ${'Konu'.tr}',
+      initial: _topicController.text,
+    );
+    if (chosen != null && mounted) setState(() => _topicController.text = chosen);
+  }
+
+  /// Ders listesi gruplu gelir; listede olmayan eski kayıt "(mevcut kayıt)" olarak korunur.
+  Widget _subjectDropdown() {
+    final legacy = _subject.isNotEmpty && !allSubjects.contains(_subject);
+    return DropdownButtonFormField<String>(
+      key: ValueKey('studio-subject-$_subject'),
+      initialValue: _subject,
+      isExpanded: true,
+      decoration: _input('Ders'),
+      menuMaxHeight: 420,
+      items: [
+        if (legacy) DropdownMenuItem(value: _subject, child: Text('$_subject (${'mevcut kayıt'.tr})')),
+        for (final (label, subjects) in subjectGroups) ...[
+          DropdownMenuItem<String>(
+            enabled: false,
+            value: '__group__$label',
+            child: Text(label.tr, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Theme.of(context).hintColor)),
+          ),
+          for (final subject in subjects) DropdownMenuItem(value: subject, child: Text(subject)),
+        ],
+      ],
+      onChanged: (value) {
+        if (value == null || value.startsWith('__group__')) return;
+        setState(() => _subject = value);
+        _loadTopics();
+        _scheduleDraftSave();
+      },
+    );
   }
 
   @override
@@ -184,6 +242,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
     _solutionController.dispose();
     _expectedAnswerController.dispose();
     _topicController.dispose();
+    _topics.dispose();
     _tagController.dispose();
     _examTitleController.dispose();
     _examClassController.dispose();
@@ -1177,27 +1236,60 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 16),
-              _dropdown(
-                'Ders',
-                _subject,
-                [
-                  'Matematik',
-                  'Türkçe',
-                  'Fizik',
-                  'Kimya',
-                  'Biyoloji',
-                  'İngilizce',
+              _subjectDropdown(),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                key: ValueKey('studio-topic-level-$_topicLevel'),
+                initialValue: _topicLevel,
+                isExpanded: true,
+                decoration: _input('Seviye (konu listesi)'),
+                items: [
+                  DropdownMenuItem(value: '', child: Text('Tüm seviyeler'.tr)),
+                  for (final (key, label) in topicLevels) DropdownMenuItem(value: key, child: Text(label.tr)),
                 ],
-                (v) {
-                  setState(() => _subject = v);
-                  _scheduleDraftSave();
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _topicLevel = value;
+                    _topicLevelTouched = true;
+                  });
+                  _loadTopics();
                 },
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: _topicController,
-                decoration: _input('Konu'),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _topicController,
+                builder: (context, value, _) {
+                  final options = _topics.optionsFor(_subject);
+                  return TextField(
+                    key: const ValueKey('studio-topic'),
+                    controller: _topicController,
+                    maxLength: 150,
+                    decoration: InputDecoration(
+                      hintText: options.isEmpty ? 'Konu'.tr : 'Konu — yazın ya da listeden seçin'.tr,
+                      counterText: '',
+                      helperText: isUnlistedTopic(options, value.text) ? 'listede yok — yalnız bu soruya yazıldı'.tr : null,
+                      helperStyle: const TextStyle(color: Color(0xFFB45309), fontSize: 11),
+                      suffixIcon: IconButton(
+                        key: const ValueKey('studio-topic-pick'),
+                        tooltip: 'Listeden seç'.tr,
+                        icon: const Icon(Icons.manage_search_rounded),
+                        onPressed: _pickStudioTopic,
+                      ),
+                    ),
+                    // Yazılan metin listedeki bir konuyla aynıysa listedeki yazım kullanılır.
+                    onSubmitted: (text) {
+                      final match = matchTopic(options, text);
+                      if (match != null && match.name != text) _topicController.text = match.name;
+                    },
+                  );
+                },
               ),
+              if (_topics.error)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('Konu listesi alınamadı; konuyu elle yazabilirsiniz.'.tr, style: const TextStyle(fontSize: 12, color: Color(0xFFB45309))),
+                ),
               const SizedBox(height: 12),
               _dropdown('Zorluk', _difficulty, ['Kolay', 'Orta', 'Zor'], (v) {
                 setState(() => _difficulty = v);
@@ -1215,7 +1307,11 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                   '12. Sınıf',
                 ],
                 (v) {
-                  setState(() => _classLevel = v);
+                  setState(() {
+                    _classLevel = v;
+                    if (!_topicLevelTouched) _topicLevel = levelForClass(v);
+                  });
+                  _loadTopics();
                   _scheduleDraftSave();
                 },
               ),

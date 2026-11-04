@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="tr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maydi</title>
+<link rel="stylesheet" href="mascot.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #eef3fb; }
+  button { padding: 0; border: 0; border-radius: 24px; background: transparent; cursor: pointer; }
+  button:focus-visible { outline: 2px solid #409de2; outline-offset: 12px; }
+  .maydi-mascot { width: min(72vw, 320px); height: min(90vw, 400px); }
+  @media (prefers-color-scheme: dark) { body { background: #0c172e; } }
+</style>
+<button type="button" id="replay" aria-label="Maydi'nin platformdan çıkışını tekrar oynat">
+  <span aria-hidden="true" id="mascot" data-maydi-state="idle" class="maydi-mascot maydi-mascot--platform">
+    <span class="maydi-mascot__platform"></span>
+    <span class="maydi-mascot__viewport">
+      <span class="maydi-mascot__rise">
+        <span class="maydi-mascot__float">
+          <span id="art" class="maydi-mascot__art maydi-mascot__art--idle" style="background-image: url('idle.webp')"></span>
+        </span>
+      </span>
+    </span>
+  </span>
+</button>
+<script>
+  const mascot = document.querySelector('#mascot');
+  const art = document.querySelector('#art');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const expressionDemo = new URLSearchParams(location.search).has('expressions');
+  const expressions = ['idle', 'speaking', 'happy', 'thinking', 'guiding', 'love'];
+  const expressionPoses = expressions.slice(1);
+  let state = 'idle';
+  let expressionIndex = 0, expressionTimer = 0;
+  if (expressionDemo) document.querySelector('#replay').ariaLabel = "Maydi'nin sonraki ifadesini göster";
+  const ready = Promise.all(['idle', 'spin', 'wink', ...expressionPoses, ...expressionPoses.map(name => name + '-loop')].map(name => new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = resolve;
+    image.onerror = reject;
+    image.src = name + '.webp';
+  })));
+  function show(next) {
+    state = next;
+    mascot.dataset.maydiState = next;
+    mascot.classList.toggle('maydi-mascot--animated', !reduced.matches && !document.hidden);
+    mascot.classList.toggle('maydi-mascot--entrance', next === 'entrance');
+    art.className = 'maydi-mascot__art maydi-mascot__art--' + next;
+    const loop = expressionPoses.includes(next) && !reduced.matches && !document.hidden;
+    const asset = next === 'entrance' ? 'spin' : loop ? next + '-loop' : next;
+    art.style.backgroundImage = 'url("' + asset + '.webp")';
+  }
+  function scheduleExpression() {
+    clearTimeout(expressionTimer);
+    if (!expressionDemo || reduced.matches || document.hidden) return;
+    expressionTimer = setTimeout(nextExpression, 2400);
+  }
+  function nextExpression() {
+    expressionIndex = (expressionIndex + 1) % expressions.length;
+    show(expressions[expressionIndex]);
+    scheduleExpression();
+  }
+  async function replay() {
+    await ready;
+    if (expressionDemo) { nextExpression(); return; }
+    if (reduced.matches || document.hidden || state === 'entrance') return;
+    show('entrance');
+  }
+  art.addEventListener('animationend', event => {
+    if (event.target === art && !expressionPoses.includes(state)) show(state === 'entrance' ? 'wink' : 'idle');
+  });
+  document.querySelector('#replay').addEventListener('click', replay);
+  setInterval(() => { if (!expressionDemo && state === 'idle' && !document.hidden && !reduced.matches) show('wink'); }, 6200);
+  const refresh = () => { show(expressionDemo ? expressions[expressionIndex] : 'idle'); scheduleExpression(); };
+  reduced.addEventListener('change', refresh);
+  document.addEventListener('visibilitychange', refresh);
+  ready.then(() => { show('idle'); if (expressionDemo) scheduleExpression(); else replay(); }).catch(() => show('idle'));
+</script>
+</html>

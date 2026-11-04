@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CourseIntellect.Application.DTOs.Students;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,6 +42,37 @@ public static class StudentScope
     }
 
     /// <summary>
+    /// Öğrenci/veli için yoklama kapsamı: kendi (çocuklarının) profil kimlikleri ve
+    /// kimliğe bağlanmamış eski kayıtlar için adlar. null → personel, kısıt yok.
+    /// Kimlikle bağlı kayıtta ad eşleşmesi kullanılmaz; aynı adlı başka ailenin
+    /// çocuğunun yoklaması veliye görünmez.
+    /// </summary>
+    public static async Task<StudentRecordScope?> ResolveStudentRecordScopeAsync(
+        ClaimsPrincipal user,
+        CourseIntellectDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var names = await ResolveAllowedStudentNamesAsync(user, dbContext, cancellationToken);
+        if (names is null) return null;
+
+        IReadOnlyList<Guid> userIds = user.IsInRole("Student")
+            ? ResolveUserId(user) is { } self ? [self] : []
+            : (await ResolveParentChildrenAsync(user, dbContext, cancellationToken))
+                .Select(x => x.UserId)
+                .Where(id => id != Guid.Empty)
+                .ToList();
+
+        var profileIds = userIds.Count == 0
+            ? []
+            : await dbContext.Students.AsNoTracking()
+                .Where(x => userIds.Contains(x.UserId))
+                .Select(x => x.Id)
+                .ToListAsync(cancellationToken);
+
+        return new StudentRecordScope(profileIds, names);
+    }
+
+    /// <summary>
     /// Velinin çocukları, kullanıcı kimlikleriyle. Finans gibi para gösteren uçlar
     /// adla değil bununla çalışmalı: aynı adlı başka bir öğrencinin hesabı veliye
     /// karışmasın. Veli değilse boş liste döner.
@@ -71,11 +103,24 @@ public static class StudentScope
             .Where(x =>
                 (parentUserId != Guid.Empty && x.ParentUserId == parentUserId)
                 || (parentName.Length > 0 && Normalize(x.ParentName) == parentName)
-                || (username.Length > 0 && Normalize(x.ParentEmail).Contains(username)))
+                || (username.Length > 0 && EmailMatchesUsername(Normalize(x.ParentEmail), username)))
             .Where(x => !string.IsNullOrWhiteSpace(x.FullName))
             .Select(x => (x.UserId, x.FullName.Trim()))
             .Distinct()
             .ToList();
+    }
+
+    /// <summary>
+    /// Veli e-postası kullanıcı adıyla birebir ya da "@" öncesi kısmıyla eşleşmeli. Eskiden
+    /// "içeriyor mu" bakılıyordu: kullanıcı adı "ali" olan veli, e-postasında "ali" geçen
+    /// her öğrenciyi kendi çocuğu sayıyordu.
+    /// </summary>
+    public static bool EmailMatchesUsername(string normalizedEmail, string normalizedUsername)
+    {
+        if (normalizedEmail.Length == 0 || normalizedUsername.Length == 0) return false;
+        if (normalizedEmail == normalizedUsername) return true;
+        var at = normalizedEmail.IndexOf('@');
+        return at > 0 && normalizedEmail[..at] == normalizedUsername;
     }
 
     /// <summary>

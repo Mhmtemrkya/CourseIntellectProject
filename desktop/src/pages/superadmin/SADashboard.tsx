@@ -119,7 +119,7 @@ export default function SADashboard() {
             </div>
         </PremiumPanel>
 
-        <PremiumPanel title="Sistem Durumu" description="Sunucu, veritabanı ve destek sinyalleri" action={<Server className="h-5 w-5 text-[hsl(var(--brand-accent))]" />}>
+        <PremiumPanel title="Sistem Durumu" description="Sunucu, veritabanı ve destek sinyalleri" action={<Server className="h-5 w-5 text-[hsl(var(--brand-accent-text,var(--brand-accent)))]" />}>
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-sm mb-2">

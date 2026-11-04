@@ -46,6 +46,7 @@ import { errorMessage } from '../../lib/errors';
 import type { AccountingDashboard } from '../../lib/api/accounting';
 import type { AccountingCollectionDto, AccountingInvoiceDto, StudentSummaryDto } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { localDateKey } from '../../lib/localDate';
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -114,8 +115,8 @@ function InvoiceCreateDialog({
     invoiceNumber: '',
     amount: '',
     category: 'Öğrenci Faturaları',
-    date: new Date().toISOString().slice(0, 10),
-    dueDate: new Date().toISOString().slice(0, 10),
+    date: localDateKey(),
+    dueDate: localDateKey(),
     reason: '',
     paymentStatus: 'unpaid',
     paymentMethod: 'Nakit',
@@ -130,8 +131,8 @@ function InvoiceCreateDialog({
         invoiceNumber: '',
         amount: '',
         category: 'Öğrenci Faturaları',
-        date: new Date().toISOString().slice(0, 10),
-        dueDate: new Date().toISOString().slice(0, 10),
+        date: localDateKey(),
+        dueDate: localDateKey(),
         reason: '',
         paymentStatus: 'unpaid',
         paymentMethod: 'Nakit',
@@ -393,13 +394,13 @@ function MarkPaidDialog({
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('Nakit');
-  const [paidDate, setPaidDate] = useState(new Date().toISOString().slice(0, 10));
+  const [paidDate, setPaidDate] = useState(localDateKey());
   const [note, setNote] = useState('');
 
   useEffect(() => {
     if (!invoice) {
       setPaymentMethod('Nakit');
-      setPaidDate(new Date().toISOString().slice(0, 10));
+      setPaidDate(localDateKey());
       setNote('');
     }
   }, [invoice]);
@@ -492,8 +493,9 @@ function InvoiceEditDialog({ invoice, onOpenChange, onSaved }: {
       title: invoice.title,
       category: invoice.category,
       amount: String(parseFinanceMoney(invoice.amount)),
-      date: (invoice.issueDateUtc || '').slice(0, 10),
-      dueDate: (invoice.dueDateUtc || '').slice(0, 10),
+      // Sunucu zaman damgası UTC; gün yerel saate göre alınır (UTC kesimi TR gece yarısında önceki günü verir).
+      date: invoice.issueDateUtc ? localDateKey(new Date(invoice.issueDateUtc)) : '',
+      dueDate: invoice.dueDateUtc ? localDateKey(new Date(invoice.dueDateUtc)) : '',
       counterparty: invoice.counterparty || '',
       note: invoice.note || '',
     });
@@ -743,7 +745,7 @@ export default function InvoicesReceipts() {
     const html = buildFinanceDocumentHtml({
       title: activeTab === 'invoices' ? 'Toplu Fatura Dökümü' : 'Toplu Makbuz Dökümü',
       subtitle: 'Yazdırma için hazır toplu belge görünümü',
-      code: `BATCH-${activeTab === 'invoices' ? 'INV' : 'REC'}-${new Date().toISOString().slice(0, 10)}`,
+      code: `BATCH-${activeTab === 'invoices' ? 'INV' : 'REC'}-${localDateKey()}`,
       accent: activeTab === 'invoices' ? getBrandAccentHex() : '#0b8f6f',
       summary: [
         { label: 'Belge Sayısı', value: String(activeTab === 'invoices' ? filteredInvoices.length : filteredReceipts.length) },

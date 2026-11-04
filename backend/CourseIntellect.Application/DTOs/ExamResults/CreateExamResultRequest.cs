@@ -11,5 +11,6 @@ public sealed record CreateExamResultRequest(
     decimal Net,
     int? CorrectCount = null,
     int? WrongCount = null,
-    int? TotalQuestions = null
+    int? TotalQuestions = null,
+    Guid? StudentId = null
 );

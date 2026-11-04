@@ -1,5 +1,7 @@
 using CourseIntellect.Api.Security;
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -136,6 +138,7 @@ public sealed class AttendanceQrSessionsController(CourseIntellectDbContext dbCo
         // yoklama verir (gövdedeki ad yok sayılır). Personel öğrenci adına
         // işaretleyebilir; diğer roller (veli vb.) yoklama veremez.
         string studentName;
+        Guid? studentId = null;
         if (IsStaff())
         {
             studentName = string.IsNullOrWhiteSpace(request.StudentName)
@@ -151,6 +154,19 @@ public sealed class AttendanceQrSessionsController(CourseIntellectDbContext dbCo
             }
 
             studentName = StudentScope.ResolveDisplayName(User);
+            // Öğrenci kendisi okuttuğunda profil kimliği oturumdan bulunur.
+            if (StudentScope.ResolveUserId(User) is { } userId)
+            {
+                var profile = await dbContext.Students.AsNoTracking()
+                    .Where(x => x.UserId == userId)
+                    .Select(x => new { x.Id, x.FullName })
+                    .FirstOrDefaultAsync(cancellationToken);
+                if (profile is not null)
+                {
+                    studentId = profile.Id;
+                    studentName = profile.FullName;
+                }
+            }
         }
         else
         {
@@ -162,12 +178,29 @@ public sealed class AttendanceQrSessionsController(CourseIntellectDbContext dbCo
             return BadRequest(new { message = "Öğrenci bilgisi gerekli." });
         }
 
+        // Personel ad yazarak işaretlediyse, oturumun sınıfında TEK eşleşen öğrenciye bağlanır.
+        if (studentId is null)
+        {
+            var identity = (await StudentIdentityResolver.ResolveAsync(
+                    dbContext, [studentName], _ => null, name => name, _ => session.ClassName, cancellationToken))
+                .Select(x => x.Identity)
+                .FirstOrDefault();
+            studentId = identity?.StudentId;
+            if (identity?.StudentId is not null) studentName = identity.Name;
+        }
+
+        // Aynı öğrencinin ikinci okutması eklenmez: kimlikle (yoksa adla) tekilleştirilir.
+        // Eskiden yalnız adla bakılıyordu; aynı adlı iki öğrenciden ikincisi hiç işaretlenemiyordu.
         var key = CompatibilitySnapshotStore.NormalizeText(studentName);
-        if (!session.ScannedStudents.Any(item => CompatibilitySnapshotStore.NormalizeText(item.StudentName) == key))
+        var alreadyScanned = session.ScannedStudents.Any(item => studentId is not null && item.StudentId is not null
+            ? item.StudentId == studentId
+            : item.StudentId is null && studentId is null && CompatibilitySnapshotStore.NormalizeText(item.StudentName) == key);
+        if (!alreadyScanned)
         {
             session.ScannedStudents.Add(new AttendanceQrScanEntry
             {
                 StudentName = studentName,
+                StudentId = studentId,
                 ScannedAtUtc = DateTime.UtcNow,
             });
             await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, sessions, session.TeacherName, cancellationToken);
@@ -240,5 +273,8 @@ public sealed class AttendanceQrSessionSnapshot
 public sealed class AttendanceQrScanEntry
 {
     public string StudentName { get; set; } = string.Empty;
+
+    /// <summary>Öğrenci profil kimliği; eski kayıtlarda null (adla eşleşir).</summary>
+    public Guid? StudentId { get; set; }
     public DateTime ScannedAtUtc { get; set; } = DateTime.UtcNow;
 }

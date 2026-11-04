@@ -18,6 +18,7 @@ import { getUserRoles } from '../../lib/permissions';
 import { errorMessage } from '../../lib/errors';
 import type { AccountingDashboard } from '../../lib/api/accounting';
 import type { AdminAnalyticsResponse } from '../../types/api/generated';
+import { localDateKey } from '../../lib/localDate';
 
 type OperationsPeriod = 'day' | 'week' | 'month' | 'year';
 
@@ -53,7 +54,7 @@ function periodRange(period: OperationsPeriod): { from: string; to: string } {
   else if (period === 'month') from.setUTCDate(from.getUTCDate() - 29);
   else if (period === 'year') from.setUTCDate(from.getUTCDate() - 364);
   // 'day' → from === to (yalnızca bugün)
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const fmt = (d: Date) => localDateKey(d);
   return { from: fmt(from), to: fmt(to) };
 }
 

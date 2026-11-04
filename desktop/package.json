@@ -125,7 +125,9 @@
       "typescript": "~5.9.3"
     },
     "@svgr/webpack": "^8.1.0",
-    "@humanfs/node": "^0.16.8"
+    "@humanfs/node": "^0.16.8",
+    "proxy-addr": "^2.0.8",
+    "body-parser": "^1.20.9"
   },
   "resolutions": {
     "nth-check": "^2.1.1",

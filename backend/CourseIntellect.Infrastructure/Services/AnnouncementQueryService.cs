@@ -38,10 +38,14 @@ public sealed class AnnouncementQueryService(
             query = query.Where(x => x.TeacherName == null || x.TeacherName == string.Empty || x.TeacherName == t);
         }
 
-        return await query
-            .OrderByDescending(x => x.DateLabel)
+        // DateLabel metindir ("05 Kasım 2026"); metin sıralamasında "28 Ekim" > "05 Kasım"
+        // çıktığı için en yeni duyuru başa gelmiyordu. Tarih ayrıştırılarak sıralanır.
+        var items = await query
             .Select(item => new AnnouncementDto(item.Id, item.Title, item.Detail, item.Audience, item.DateLabel, item.ClassName, item.TeacherName))
             .ToListAsync(cancellationToken);
+        return items
+            .OrderByDescending(item => AssistantDates.TryParse(item.DateLabel) ?? DateTime.MinValue)
+            .ToList();
     }
 
     public async Task<AnnouncementDto> CreateAnnouncementAsync(CreateAnnouncementRequest request, CancellationToken cancellationToken = default)

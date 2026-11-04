@@ -207,7 +207,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }: { editable?: b
     <motion.main
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-[calc(100vh-2rem)] rounded-[30px] border border-foreground/10 bg-[hsl(var(--ci-card-muted))] p-5 text-slate-100 shadow-2xl shadow-slate-950/30 md:p-7"
+      className="min-h-[calc(100vh-2rem)] rounded-[30px] border border-foreground/10 bg-[hsl(var(--ci-card-muted))] p-5 text-foreground shadow-2xl shadow-slate-950/30 md:p-7"
     >
       <header className="mb-7 flex flex-wrap items-start justify-between gap-5">
         <div>
@@ -264,7 +264,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }: { editable?: b
                   <div className="p-4 text-sm font-semibold text-slate-400">Öğünler</div>
                   {days.map((day, index) => (
                     <div key={day} className="border-l border-foreground/5 px-4 py-4">
-                      <p className="text-sm font-semibold text-slate-100">{day}</p>
+                      <p className="text-sm font-semibold text-foreground">{day}</p>
                       <p className="mt-1 text-xs text-slate-400">{formatDay(addDays(weekStart, index))}</p>
                     </div>
                   ))}
@@ -363,7 +363,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }: { editable?: b
             </div>
           </div>
           <div className="rounded-xl border border-foreground/10 p-4 text-sm text-slate-400">
-            <p className="mb-2 flex items-center gap-2 font-semibold text-slate-100"><Info className="h-4 w-4 text-sky-400" /> Bilgilendirme</p>
+            <p className="mb-2 flex items-center gap-2 font-semibold text-foreground"><Info className="h-4 w-4 text-sky-400" /> Bilgilendirme</p>
             Menüler kurum yemekhanesi tarafından haftalık olarak hazırlanır ve besin değerleri porsiyon bazında gösterilir.
           </div>
         </section>

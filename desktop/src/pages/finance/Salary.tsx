@@ -26,6 +26,7 @@ import { fetchStaff, createSalary, fetchAccountingDashboard, paySalary } from '.
 import { parseFinanceMoney } from '../../lib/financeDocuments';
 import { errorMessage } from '../../lib/errors';
 import type { AccountingSalaryDto, StaffSummaryDto } from '../../types/api/generated';
+import { localDateKey } from '../../lib/localDate';
 
 interface SalaryForm {
   staffName: string;
@@ -82,7 +83,7 @@ export default function Salary() {
   // Ödeme kaydı: yalnız yönetici onaylı (Planlandı) bordro için.
   const [payTarget, setPayTarget] = useState<AccountingSalaryDto | null>(null);
   const [payMethod, setPayMethod] = useState('Havale');
-  const [payDate, setPayDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [payDate, setPayDate] = useState(() => localDateKey());
   const [paying, setPaying] = useState(false);
 
   const [form, setForm] = useState<SalaryForm>({
@@ -412,7 +413,7 @@ export default function Salary() {
               </div>
               <div>
                 <Label htmlFor="salary-paid-date">Ödeme Tarihi</Label>
-                <Input id="salary-paid-date" type="date" value={payDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setPayDate(e.target.value)} />
+                <Input id="salary-paid-date" type="date" value={payDate} max={localDateKey()} onChange={(e) => setPayDate(e.target.value)} />
               </div>
             </div>
           ) : null}

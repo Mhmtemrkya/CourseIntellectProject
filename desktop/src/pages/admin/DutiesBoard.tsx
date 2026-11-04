@@ -23,6 +23,7 @@ import {
 } from '../../lib/api/modules';
 import { errorMessage } from '../../lib/errors';
 import type { DutyResponse, TeacherDutyLoadDto } from '../../types/api/generated';
+import { localDateKey, localDateKeyOffset } from '../../lib/localDate';
 
 type EditingDuty = DutyResponse & { date: string };
 
@@ -43,13 +44,13 @@ function fmtDate(value: string | null | undefined): string {
 }
 function isoDay(value: string | null | undefined): string {
   const d = value ? new Date(value) : null;
-  return d ? d.toISOString().slice(0, 10) : '';
+  return d ? localDateKey(d) : '';
 }
 
 export default function DutiesBoard() {
   const { toast } = useToast();
-  const today = new Date().toISOString().slice(0, 10);
-  const in14 = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  const today = localDateKey();
+  const in14 = localDateKeyOffset(14);
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(in14);
   const [dutyType, setDutyType] = useState('Tümü');
@@ -98,7 +99,7 @@ export default function DutiesBoard() {
     const start = new Date(from);
     const end = new Date(to);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const iso = d.toISOString().slice(0, 10);
+      const iso = localDateKey(d);
       if (!have.has(iso)) days.push(iso);
     }
     return days;
@@ -144,9 +145,9 @@ export default function DutiesBoard() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5" data-testid="duties-board-page">
       <div className="flex items-center gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><ShieldCheck className="h-6 w-6" /></div>
+        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><ShieldCheck className="h-6 w-6" /></div>
         <div>
-          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Tüm Nöbetler</h1>
+          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Tüm Nöbetler</h1>
           <p className="text-sm text-muted-foreground">Nöbet çizelgesini yönet, denge ve boş günleri izle.</p>
         </div>
       </div>
@@ -209,7 +210,7 @@ export default function DutiesBoard() {
                 {load.map((row) => (
                   <div key={row.teacherName} className="flex items-center justify-between rounded-xl border border-foreground/10 bg-foreground/[0.035] px-3 py-2">
                     <span className="truncate text-sm">{row.teacherName}</span>
-                    <span className="rounded-full bg-[hsl(var(--brand-accent)/0.14)] px-2.5 py-0.5 text-xs font-bold text-[hsl(var(--brand-accent))]">{row.count}</span>
+                    <span className="rounded-full bg-[hsl(var(--brand-accent)/0.14)] px-2.5 py-0.5 text-xs font-bold text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">{row.count}</span>
                   </div>
                 ))}
               </div>

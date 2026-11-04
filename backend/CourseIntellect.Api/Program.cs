@@ -76,6 +76,8 @@ builder.Services.AddControllers(options =>
     // Z'siz gelen tarihler Kind=Unspecified olur ve timestamptz sorgularında
     // Npgsql'i patlatır (uç nokta 500 döner). Bağlamada UTC'ye sabitlenir.
     options.ModelBinderProviders.Insert(0, new UtcDateTimeModelBinderProvider());
+    // Url/Link/Href alanlarında javascript:/vbscript:/data:(resim dışı) adresi reddedilir (kayıtlı XSS).
+    options.Filters.Add<CourseIntellect.Api.Security.ExecutableUrlFilter>();
 });
 // Kütüphane ISBN sorgusu (Open Library) sunucu tarafında yapılır.
 builder.Services.AddHttpClient();

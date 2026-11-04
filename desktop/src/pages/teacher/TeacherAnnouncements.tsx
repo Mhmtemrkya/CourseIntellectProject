@@ -18,6 +18,7 @@ import { useApp } from '../../context/AppContext';
 import { createAnnouncement, fetchAnnouncements, fetchClasses, fetchStudents } from '../../lib/api/modules';
 import { errorMessage } from '../../lib/errors';
 import type { AnnouncementDto, StudentSummaryDto } from '../../types/api/generated';
+import { byRecordDateDesc } from '../../lib/studentRecords';
 
 interface RecipientOption {
   keys: string[];
@@ -121,7 +122,7 @@ export default function TeacherAnnouncements() {
       setAnnouncements(
         [...(teacherItems ?? []), ...(parentItems ?? []), ...(studentItems ?? [])]
           .filter((item) => !String(item.detail || '').startsWith('LIVE_LESSON'))
-          .sort((a, b) => `${b.dateLabel}`.localeCompare(`${a.dateLabel}`)),
+          .sort(byRecordDateDesc),
       );
       setForm((prev) => ({
         ...prev,

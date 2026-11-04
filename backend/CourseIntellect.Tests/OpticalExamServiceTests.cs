@@ -232,6 +232,9 @@ public sealed class OpticalExamServiceTests : IDisposable
     {
         var error = await Assert.ThrowsAsync<ArgumentException>(() => Service().SaveTemplateAsync(null, Template(nameLength)));
         Assert.Contains(message, error.Message);
+        // Hangi iki alanın ve hangi karakterlerin çakıştığı yazılır.
+        Assert.Contains("iki alana birden ayrılmış", error.Message);
+        Assert.Matches(@"\(\d+–\d+\. karakterler\) ile .+ \(\d+", error.Message);
     }
 
     [Fact]

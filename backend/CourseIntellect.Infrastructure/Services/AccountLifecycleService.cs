@@ -92,8 +92,23 @@ public sealed class AccountLifecycleService(
         var studentProfile = await dbContext.Students
             .IgnoreQueryFilters()
             .Where(x => x.TenantId == tenantId && x.UserId == userId)
-            .Select(x => new { x.FullName, x.ClassName })
+            .Select(x => new { x.Id, x.FullName, x.ClassName })
             .FirstOrDefaultAsync(cancellationToken);
+        if (studentProfile is not null)
+        {
+            // Kimliğe bağlı yoklama ve sınav kayıtları ad çakışmasından bağımsız anonimleşir;
+            // bağ da kopar ki satır kişiye geri izlenemesin.
+            retainedEducation += await dbContext.AttendanceEntries
+                .Where(x => x.StudentId == studentProfile.Id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(p => p.StudentName, Tombstone)
+                    .SetProperty(p => p.StudentId, (Guid?)null), cancellationToken);
+            retainedEducation += await dbContext.ExamResults
+                .Where(x => x.StudentId == studentProfile.Id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(p => p.StudentName, Tombstone)
+                    .SetProperty(p => p.StudentId, (Guid?)null), cancellationToken);
+        }
         if (studentProfile is not null && !string.IsNullOrWhiteSpace(studentProfile.FullName))
         {
             var sameNameClass = await dbContext.Students
@@ -104,10 +119,10 @@ public sealed class AccountLifecycleService(
             if (sameNameClass <= 1)
             {
                 retainedEducation += await dbContext.ExamResults
-                    .Where(x => x.StudentName == studentProfile.FullName && x.ClassName == studentProfile.ClassName)
+                    .Where(x => x.StudentId == null && x.StudentName == studentProfile.FullName && x.ClassName == studentProfile.ClassName)
                     .ExecuteUpdateAsync(s => s.SetProperty(p => p.StudentName, Tombstone), cancellationToken);
                 retainedEducation += await dbContext.AttendanceEntries
-                    .Where(x => x.StudentName == studentProfile.FullName && x.ClassName == studentProfile.ClassName)
+                    .Where(x => x.StudentId == null && x.StudentName == studentProfile.FullName && x.ClassName == studentProfile.ClassName)
                     .ExecuteUpdateAsync(s => s.SetProperty(p => p.StudentName, Tombstone), cancellationToken);
             }
             else
@@ -291,10 +306,10 @@ public sealed class AccountLifecycleService(
         await dbContext.FinanceInstallments.Where(x => x.TenantId == tenantId).ExecuteUpdateAsync(s => s.SetProperty(p => p.StudentName, Tombstone), cancellationToken);
         await dbContext.EnrollmentContracts.Where(x => x.TenantId == tenantId).ExecuteUpdateAsync(s => s
             .SetProperty(p => p.StudentName, Tombstone).SetProperty(p => p.Note, string.Empty), cancellationToken);
-        await dbContext.ExamResults.Where(x => x.TenantId == tenantId).ExecuteUpdateAsync(s => s.SetProperty(p => p.StudentName, Tombstone), cancellationToken);
+        await dbContext.ExamResults.Where(x => x.TenantId == tenantId).ExecuteUpdateAsync(s => s.SetProperty(p => p.StudentName, Tombstone).SetProperty(p => p.StudentId, (Guid?)null), cancellationToken);
         await dbContext.ExamSessions.Where(x => x.TenantId == tenantId).ExecuteUpdateAsync(s => s
             .SetProperty(p => p.StudentName, Tombstone), cancellationToken);
-        await dbContext.AttendanceEntries.Where(x => x.TenantId == tenantId).ExecuteUpdateAsync(s => s.SetProperty(p => p.StudentName, Tombstone), cancellationToken);
+        await dbContext.AttendanceEntries.Where(x => x.TenantId == tenantId).ExecuteUpdateAsync(s => s.SetProperty(p => p.StudentName, Tombstone).SetProperty(p => p.StudentId, (Guid?)null), cancellationToken);
         await dbContext.HomeworkSubmissions.Where(x => x.TenantId == tenantId).ExecuteUpdateAsync(s => s.SetProperty(p => p.StudentName, Tombstone), cancellationToken);
         await dbContext.StudentQuestionThreads.Where(x => x.TenantId == tenantId).ExecuteUpdateAsync(s => s
             .SetProperty(p => p.StudentName, Tombstone).SetProperty(p => p.TeacherName, Tombstone), cancellationToken);

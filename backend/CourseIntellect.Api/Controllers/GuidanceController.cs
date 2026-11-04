@@ -1,10 +1,12 @@
 using System.Security.Claims;
+using CourseIntellect.Api.Security;
 using CourseIntellect.Api.Authorization;
 using CourseIntellect.Application.DTOs.StudyPlans;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -90,12 +92,26 @@ public sealed class GuidanceController(
         var sessions = await dbContext.GuidanceSessions.AsNoTracking().ToListAsync(cancellationToken);
         var reviews = await dbContext.GuidanceRiskReviews.AsNoTracking().ToListAsync(cancellationToken);
 
-        var attendanceByStudent = attendance
+        // Kimliğe bağlı kayıt kimlikle, bağlanmamış eski kayıt adla eşleşir; aynı
+        // adlı iki öğrencinin devamsızlığı birbirinin risk puanına karışmaz.
+        var attendanceById = attendance
+            .Where(a => a.StudentId != null)
+            .GroupBy(a => a.StudentId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        var unlinkedAttendanceByName = attendance
+            .Where(a => a.StudentId == null)
             .GroupBy(a => Normalize(a.StudentName))
             .ToDictionary(g => g.Key, g => g.ToList());
-        var examsByStudent = examResults
+        // Sınav sonuçları da kimlikle eşlenir. Tarih etiketi metin olarak sıralanınca
+        // ("05.11.2026" < "28.10.2026") son sınavlar yanlış seçiliyordu; tarih ayrıştırılır.
+        var examsById = examResults
+            .Where(e => e.StudentId != null)
+            .GroupBy(e => e.StudentId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        var unlinkedExamsByName = examResults
+            .Where(e => e.StudentId == null)
             .GroupBy(e => Normalize(e.StudentName))
-            .ToDictionary(g => g.Key, g => g.OrderBy(x => x.DateLabel).ToList());
+            .ToDictionary(g => g.Key, g => g.ToList());
         var submissionsByStudent = submissions
             .GroupBy(s => Normalize(s.StudentName))
             .ToDictionary(g => g.Key, g => g.Select(x => x.AssignmentId).ToHashSet());
@@ -114,12 +130,15 @@ public sealed class GuidanceController(
             var score = 0;
 
             // Devamsızlık: son 30 gün / önceki 30 gün kıyası + mutlak oran
-            if (attendanceByStudent.TryGetValue(key, out var entries))
+            var entries = (attendanceById.TryGetValue(student.Id, out var linked) ? linked : [])
+                .Concat(unlinkedAttendanceByName.TryGetValue(key, out var unlinked) ? unlinked : [])
+                .ToList();
+            if (entries.Count > 0)
             {
                 var recent = entries.Where(a => a.LessonDate >= now.AddDays(-30)).ToList();
                 var previous = entries.Where(a => a.LessonDate < now.AddDays(-30)).ToList();
-                var recentAbsent = recent.Count(a => Normalize(a.Status).Contains("absent") || Normalize(a.Status).Contains("yok") || Normalize(a.Status).Contains("gelmedi"));
-                var previousAbsent = previous.Count(a => Normalize(a.Status).Contains("absent") || Normalize(a.Status).Contains("yok") || Normalize(a.Status).Contains("gelmedi"));
+                var recentAbsent = recent.Count(a => AttendanceStatusMatcher.IsAbsent(a.Status));
+                var previousAbsent = previous.Count(a => AttendanceStatusMatcher.IsAbsent(a.Status));
                 if (recent.Count > 0 && recentAbsent * 100 / Math.Max(recent.Count, 1) >= 25)
                 {
                     score += 2;
@@ -135,7 +154,11 @@ public sealed class GuidanceController(
             // Sınav: son 2 sınav ortalaması, önceki ortalamaya göre düşüş
             decimal? lastAvg = null;
             decimal? prevAvg = null;
-            if (examsByStudent.TryGetValue(key, out var exams) && exams.Count >= 2)
+            var exams = (examsById.TryGetValue(student.Id, out var linkedExams) ? linkedExams : [])
+                .Concat(unlinkedExamsByName.TryGetValue(key, out var unlinkedExams) ? unlinkedExams : [])
+                .OrderBy(e => CompatibilitySnapshotStore.ParseDateLabel(e.DateLabel))
+                .ToList();
+            if (exams.Count >= 2)
             {
                 var lastTwo = exams.TakeLast(2).ToList();
                 var older = exams.SkipLast(2).ToList();
@@ -215,8 +238,8 @@ public sealed class GuidanceController(
         if (profile is null) return NotFound(new { message = "Öğrenci bulunamadı." });
 
         var exams = (await dbContext.ExamResults.AsNoTracking().ToListAsync(cancellationToken))
-            .Where(e => Normalize(e.StudentName) == normalized)
-            .OrderBy(e => e.DateLabel)
+            .Where(e => e.StudentId == profile.Id || (e.StudentId == null && Normalize(e.StudentName) == normalized))
+            .OrderBy(e => CompatibilitySnapshotStore.ParseDateLabel(e.DateLabel))
             .Select(e => new { e.ExamTitle, e.Subject, e.DateLabel, e.Score, e.Net, type = e.Type.ToString() })
             .ToList();
 
@@ -229,9 +252,9 @@ public sealed class GuidanceController(
         var since = DateTime.UtcNow.AddDays(-120);
         var attendance = (await dbContext.AttendanceEntries.AsNoTracking()
                 .Where(a => a.LessonDate >= since).ToListAsync(cancellationToken))
-            .Where(a => Normalize(a.StudentName) == normalized)
+            .Where(a => a.StudentId == profile.Id || (a.StudentId == null && Normalize(a.StudentName) == normalized))
             .OrderBy(a => a.LessonDate)
-            .Select(a => new { a.LessonDate, a.Status, a.Lesson })
+            .Select(a => new { a.LessonDate, Status = AttendanceStatusMatcher.Canonicalize(a.Status), a.Lesson })
             .ToList();
 
         var assignments = (await dbContext.HomeworkAssignments.AsNoTracking().ToListAsync(cancellationToken))
@@ -675,13 +698,15 @@ public sealed class GuidanceController(
     {
         var caller = await ResolveCallerAsync(cancellationToken);
         if (caller is null) return Unauthorized();
-        var callerName = Normalize(caller.FullName);
-        var callerUsername = Normalize(caller.Username);
-
-        var children = (await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken))
-            .Where(s => (!string.IsNullOrWhiteSpace(s.ParentName) && Normalize(s.ParentName).Contains(callerName))
-                || (!string.IsNullOrWhiteSpace(callerUsername) && Normalize(s.ParentEmail).Contains(callerUsername)))
+        // Velinin çocukları ortak kuralla bulunur (önce ParentUserId bağı). Eskiden veli adı
+        // "içeriyor mu" diye bakılıyordu: "Ali Kaya" velisi "Ali Kayaoğlu"nun çocuklarını da
+        // görüyor, oturumda ad boşsa kurumdaki bütün öğrenciler listeleniyordu.
+        var childUserIds = (await StudentScope.ResolveParentChildrenAsync(User, dbContext, cancellationToken))
+            .Select(x => x.UserId)
             .ToList();
+        var children = await dbContext.Students.AsNoTracking()
+            .Where(s => childUserIds.Contains(s.UserId))
+            .ToListAsync(cancellationToken);
 
         var goals = await dbContext.GuidanceGoals.AsNoTracking().ToListAsync(cancellationToken);
         var appointments = await dbContext.GuidanceAppointments.AsNoTracking().ToListAsync(cancellationToken);

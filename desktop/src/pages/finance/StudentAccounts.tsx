@@ -57,6 +57,7 @@ import type {
   StudentFinanceSummaryDto,
   StudentSummaryDto,
 } from '../../types/api/generated';
+import { containsWholeName } from '../../lib/studentRecords';
 
 type AccountStatus = 'paid' | 'current' | 'overdue';
 
@@ -94,7 +95,7 @@ function buildAccount(
   dashboard: AccountingDashboard | null,
   summary: StudentFinanceSummaryDto | undefined,
 ) {
-  const invoices = (dashboard?.invoices || []).filter((item) => String(item.title || '').toLowerCase().includes(String(student.fullName).toLowerCase()));
+  const invoices = (dashboard?.invoices || []).filter((item) => containsWholeName(item.title, student.fullName));
   const collections = (dashboard?.collections || []).filter((item) => String(item.name || '').toLowerCase() === String(student.fullName).toLowerCase());
   const installments = (dashboard?.installments || []).filter((item) => String(item.student || '').toLowerCase() === String(student.fullName).toLowerCase());
   const installmentTotal = installments.reduce((sum, item) => sum + parseMoney(item.amount), 0);

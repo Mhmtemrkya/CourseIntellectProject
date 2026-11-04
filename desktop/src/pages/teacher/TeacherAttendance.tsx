@@ -30,6 +30,8 @@ import type {
   AttendanceEntryDto, AttendanceQrSessionSnapshot, ScheduleEntryDto, StudentSummaryDto,
 } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { belongsToStudent } from '../../lib/attendanceStatus';
+import { localDateKey } from '../../lib/localDate';
 
 type AttendanceUiStatus = 'present' | 'late' | 'absent';
 type StatTone = 'blue' | 'green' | 'amber' | 'red';
@@ -96,6 +98,13 @@ function StatCard({ icon: Icon, label, value, tone }: { icon: IconComponent; lab
   return <KpiCard icon={Icon} label={label} value={value} caption={undefined} tone={tone === 'green' ? 'emerald' : tone === 'red' ? 'rose' : tone} />;
 }
 
+function attendanceRing(present: number, late: number, total: number): string {
+  if (total <= 0) return 'hsl(var(--muted))';
+  const presentPct = Math.round((present / total) * 100);
+  const lateEnd = Math.min(100, presentPct + Math.round((late / total) * 100));
+  return `conic-gradient(#22C55E 0 ${presentPct}%, #F59E0B ${presentPct}% ${lateEnd}%, #EF4444 ${lateEnd}% 100%)`;
+}
+
 export default function TeacherAttendance() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -107,7 +116,7 @@ export default function TeacherAttendance() {
   const [qrSessions, setQrSessions] = useState<AttendanceQrSessionSnapshot[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedLesson, setSelectedLesson] = useState('');
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState(() => localDateKey());
   const [method, setMethod] = useState<'qr' | 'manual'>('qr');
   const [studentStatuses, setStudentStatuses] = useState<Partial<Record<string, AttendanceUiStatus>>>({});
   const [search, setSearch] = useState('');
@@ -172,7 +181,7 @@ export default function TeacherAttendance() {
     const next: Partial<Record<string, AttendanceUiStatus>> = {};
     classStudents.forEach((student) => {
       const existing = attendanceRecords.find((record) => (
-        normalize(record.studentName) === normalize(student.fullName)
+        belongsToStudent(record, student)
         && normalize(record.className) === normalize(selectedClass)
         && normalize(record.lesson) === normalize(selectedLesson)
         && String(record.lessonDate || '').slice(0, 10) === selectedDate
@@ -260,7 +269,8 @@ export default function TeacherAttendance() {
     const scanned = selectedQrSession.scannedStudents || [];
     const next: Partial<Record<string, AttendanceUiStatus>> = {};
     classStudents.forEach((student) => {
-      const matched = scanned.some((scan) => normalize(scan.studentName) === normalize(student.fullName));
+      // Okutma kimlikle eşleşir (eski okutmada adla): aynı adlı iki öğrenciden yalnız okutan "geldi" olur.
+      const matched = scanned.some((scan) => belongsToStudent(scan, student));
       next[student.id || student.fullName] = matched ? 'present' : (studentStatuses[student.id || student.fullName] || 'absent');
     });
     setStudentStatuses(next);
@@ -278,6 +288,7 @@ export default function TeacherAttendance() {
           const uiStatus = studentStatuses[student.id || student.fullName] || 'present';
           return {
             name: student.fullName,
+            studentId: student.id,
             status: statuses.find((item) => item.value === uiStatus)?.api || 'present',
           };
         }),
@@ -498,7 +509,8 @@ export default function TeacherAttendance() {
           <div className="rounded-2xl border bg-card p-5 shadow-sm">
             <h2 className="font-black">Günlük Devamsızlık Özeti</h2>
             <div className="mt-5 flex items-center gap-5">
-              <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-[conic-gradient(#22C55E_0_var(--rate),#F59E0B_var(--rate)_calc(var(--rate)+10%),#EF4444_calc(var(--rate)+10%)_100%)]" style={{ '--rate': `${attendanceRate}%` }}>
+              {/* Dilimler gerçek sayılardan: gelen (yeşil), geç gelen (turuncu), gelmeyen (kırmızı). Eskiden geç dilimi hep %10 çiziliyordu. */}
+              <div className="relative flex h-32 w-32 items-center justify-center rounded-full" style={{ background: attendanceRing(counts.present, counts.late, classStudents.length) }}>
                 <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-card">
                   <span className="text-2xl font-black">%{attendanceRate}</span>
                   <span className="text-xs text-muted-foreground">Katılım</span>

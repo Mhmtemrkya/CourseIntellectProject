@@ -1,8 +1,10 @@
 using CourseIntellect.Api.Authorization;
 using CourseIntellect.Api.Security;
 using CourseIntellect.Application.DTOs.Attendance;
+using CourseIntellect.Application.DTOs.Students;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,38 +21,37 @@ public sealed class AttendanceController(
     public async Task<IActionResult> Get(
         [FromQuery] string? studentName,
         [FromQuery] string? className,
+        [FromQuery] Guid? studentId,
         CancellationToken cancellationToken)
     {
         // Kapsam: öğrenci yalnızca kendi kayıtlarını, veli yalnızca kendi
         // çocuklarının kayıtlarını görebilir; personel rolleri kısıtsızdır.
-        var allowedNames = await StudentScope.ResolveAllowedStudentNamesAsync(User, dbContext, cancellationToken);
-        if (allowedNames is { Count: 0 })
+        // Kimliğe bağlı kayıtlar kimlikle, bağlanmamış eski kayıtlar adla süzülür.
+        var scope = await StudentScope.ResolveStudentRecordScopeAsync(User, dbContext, cancellationToken);
+        if (scope is { StudentIds.Count: 0, StudentNames.Count: 0 })
         {
             return Ok(Array.Empty<AttendanceEntryDto>());
         }
 
-        if (allowedNames is { Count: 1 })
+        if (scope is not null)
         {
-            studentName = allowedNames[0];
-        }
-        else if (allowedNames is { Count: > 1 })
-        {
-            // Veli birden fazla çocuğa sahipse: istenen isim izinli listedeyse
-            // korunur, değilse/boşsa tüm çocuklarına daraltılır.
+            // Kapsam dışı öğrenci istenirse boş döner. Eskiden istek yok sayılıp tüm kapsam
+            // dönüyordu: çok çocuklu velide bir çocuğun kartına kardeşlerinin kayıtları karışabilirdi.
+            if (studentId is { } requestedId && !scope.StudentIds.Contains(requestedId))
+            {
+                return Ok(Array.Empty<object>());
+            }
+
+            // Ad harf/Türkçe karakterden bağımsız karşılaştırılır: mobil adı "Ayse" diye
+            // gönderebilir, kayıtta "Ayşe" yazar.
             var requested = studentName?.Trim();
             studentName = !string.IsNullOrWhiteSpace(requested)
-                && allowedNames.Any(name => string.Equals(name.Trim(), requested, StringComparison.OrdinalIgnoreCase))
+                && scope.StudentNames.Any(name => StudentIdentityResolver.NameKey(name) == StudentIdentityResolver.NameKey(requested))
                 ? requested
                 : null;
         }
 
-        var items = await attendanceService.GetAttendanceAsync(studentName, className, cancellationToken);
-
-        if (allowedNames is { Count: > 1 } && string.IsNullOrWhiteSpace(studentName))
-        {
-            items = StudentScope.FilterByStudentNames(items, allowedNames, item => item.StudentName);
-        }
-
+        var items = await attendanceService.GetAttendanceAsync(studentName, className, studentId, scope, cancellationToken);
         return Ok(items);
     }
 

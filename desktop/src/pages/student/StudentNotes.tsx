@@ -150,7 +150,7 @@ export default function StudentNotes() {
               <div key={item.contentId} className="flex flex-col gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2.5">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><BookOpen className="h-4 w-4" /></span>
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><BookOpen className="h-4 w-4" /></span>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{item.content.title}</p>
                       <p className="truncate text-xs text-muted-foreground">{item.content.subject}</p>

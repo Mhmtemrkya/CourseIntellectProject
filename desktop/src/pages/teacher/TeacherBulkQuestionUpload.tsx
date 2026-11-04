@@ -193,6 +193,15 @@ function MetricCard({ label, value, icon: Icon }: { label: string; value: number
   return <KpiCard icon={Icon} label={label} value={value} />;
 }
 
+/** Yükleme özeti halkası: hazır (yeşil), hatalı (kırmızı), kalan (gri) — gerçek sayılardan. */
+function uploadRing(ready: number, failed: number, total: number): string {
+  if (total <= 0) return 'hsl(var(--muted))';
+  const readyPct = Math.min(100, Math.round((ready / total) * 100));
+  const failedPct = Math.min(100 - readyPct, Math.round((failed / total) * 100));
+  const failedEnd = readyPct + failedPct;
+  return `conic-gradient(#30D158 0 ${readyPct}%, #ef4444 ${readyPct}% ${failedEnd}%, hsl(var(--muted)) ${failedEnd}% 100%)`;
+}
+
 export default function TeacherBulkQuestionUpload() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -742,7 +751,11 @@ export default function TeacherBulkQuestionUpload() {
             <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.04] p-5">
               <h3 className="font-black text-white">Yükleme Özeti</h3>
               <div className="mt-5 flex items-center gap-4">
-                <div className="relative flex h-28 w-28 items-center justify-center rounded-full bg-[conic-gradient(#30D158_0_72%,#FF9D2E_72%_88%,#ef4444_88%_100%)]">
+                {/* Halka gerçek hazır/hatalı oranından çizilir; eskiden sabit %72/%16/%12 boyanıyordu. */}
+                <div
+                  className="relative flex h-28 w-28 items-center justify-center rounded-full"
+                  style={{ background: uploadRing(questions.filter((item) => item.importStatus !== 'Failed').length, job?.failedQuestionCount || 0, job?.totalQuestions || questions.length) }}
+                >
                   <div className="flex h-20 w-20 flex-col items-center justify-center rounded-full bg-[hsl(var(--ci-card))]">
                     <span className="text-2xl font-black text-white">{job?.totalQuestions || 0}</span>
                     <span className="text-xs text-slate-400">Toplam</span>

@@ -9,7 +9,7 @@ import type {
   AssistantSuggestionDto,
 } from '../../types/api/generated';
 
-// ─── SchoolAsist Asistan ─────────────────────────────────────────────────────
+// ─── Maydi (SchoolAsist asistanı) ─────────────────────────────────────────────────────
 // Portal: istemcinin bulunduğu panel; sunucu yalnız kullanıcının gerçek rolüyse kabul eder.
 
 export const sendAssistantMessage = (conversationId: string | null, message: string, context: AssistantClientContext) =>
@@ -44,3 +44,14 @@ export const deleteAssistantConversation = (conversationId: string) =>
 
 export const fetchAssistantUnanswered = (days: number) =>
   api.get<AssistantUnansweredDto[]>('/api/assistant/unanswered', { params: { days } });
+
+/** Rapor kartının PDF'i; sunucu yalnız kullanıcının kendi mesajını verir. */
+export const fetchAssistantReportPdf = (messageId: string) =>
+  api.get(`/api/assistant/messages/${messageId}/pdf`, { responseType: 'blob' });
+/** Rapor kartının Excel dökümü (tablo sayısal hücrelerle + özet sayfası). */
+export const fetchAssistantReportExcel = (messageId: string) =>
+  api.get(`/api/assistant/messages/${messageId}/xlsx`, { responseType: 'blob' });
+
+/** 6 sayfalık Öğrenci Başarı Raporu (profil ya da kullanıcı kimliği); Rapor Merkezi ve asistan aynı PDF'i kullanır. */
+export const fetchStudentSuccessReportPdf = (studentId: string) =>
+  api.get(`/api/assistant/students/${studentId}/success-report`, { responseType: 'blob' });

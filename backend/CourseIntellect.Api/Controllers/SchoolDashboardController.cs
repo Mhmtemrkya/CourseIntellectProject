@@ -3,6 +3,7 @@ using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +34,6 @@ public sealed class SchoolDashboardController(
     IMessageService messageService,
     ITenantContext tenantContext) : ControllerBase
 {
-    private static readonly string[] PresentStatuses = ["Katildi", "Gec", "Izinli"];
 
     // Sınıf defteri ClassesController ile AYNI iki yapılandırma türünde tutulur.
     private const string ClassRegistryType = "class-registry";
@@ -103,7 +103,7 @@ public sealed class SchoolDashboardController(
         if (canSee.Attendance)
         {
             todayAbsent = await dbContext.AttendanceEntries.AsNoTracking()
-                .Where(x => x.LessonDate >= todayStart && x.LessonDate < todayEnd && x.Status == "Devamsiz")
+                .Where(x => x.LessonDate >= todayStart && x.LessonDate < todayEnd && AttendanceStatusMatcher.AbsentStatuses.Contains(x.Status))
                 .Select(x => x.StudentName)
                 .Distinct()
                 .CountAsync(cancellationToken);
@@ -116,7 +116,7 @@ public sealed class SchoolDashboardController(
             var total = statusCounts.Sum(x => x.Count);
             attendanceRate = total == 0
                 ? 0
-                : (int)Math.Round(100m * statusCounts.Where(x => PresentStatuses.Contains(x.Status)).Sum(x => x.Count) / total);
+                : (int)Math.Round(100m * statusCounts.Where(x => AttendanceStatusMatcher.IsAttended(x.Status)).Sum(x => x.Count) / total);
 
             if (todayAbsent > 0)
             {

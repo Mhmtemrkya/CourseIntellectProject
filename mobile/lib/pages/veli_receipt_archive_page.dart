@@ -93,9 +93,10 @@ class VeliReceiptArchivePage extends StatelessWidget {
   Widget _line(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(color: Colors.black87, height: 1.45),
+      // Text.rich tema yazı rengini alır (RichText + siyah, koyu temada diyalogda görünmüyordu).
+      child: Text.rich(
+        TextSpan(
+          style: const TextStyle(height: 1.45),
           children: [
             TextSpan(
               text: '$label: ',

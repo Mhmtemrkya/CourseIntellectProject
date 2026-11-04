@@ -18,6 +18,7 @@ import { useToast } from '../../hooks/use-toast';
 import { fetchStaff, createDuty } from '../../lib/api/modules';
 import { errorMessage } from '../../lib/errors';
 import type { StaffSummaryDto } from '../../types/api/generated';
+import { localDateKey } from '../../lib/localDate';
 
 const DUTY_TYPES = ['Sabah Nöbeti', 'Öğle Arası', 'İdari Nöbet', 'Diğer'];
 const LOCATIONS = [
@@ -52,7 +53,7 @@ function initials(name: string): string {
 const emptyForm = {
   dutyType: 'Sabah Nöbeti',
   location: 'A Blok - Zemin Kat',
-  date: new Date().toISOString().slice(0, 10),
+  date: localDateKey(),
   startTime: '07:30',
   endTime: '08:00',
   description: '',
@@ -121,7 +122,7 @@ export default function DutyCreate() {
       toast({ title: 'Geçersiz saat', description: 'Bitiş saati başlangıçtan sonra olmalıdır.', variant: 'destructive' });
       return;
     }
-    if (form.date < new Date().toISOString().slice(0, 10)) {
+    if (form.date < localDateKey()) {
       toast({ title: 'Geçersiz tarih', description: 'Geçmiş bir tarihe nöbet oluşturulamaz.', variant: 'destructive' });
       return;
     }
@@ -173,9 +174,9 @@ export default function DutyCreate() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5" data-testid="duty-create-page">
       <div className="flex items-center gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><CalendarPlus className="h-6 w-6" /></div>
+        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><CalendarPlus className="h-6 w-6" /></div>
         <div>
-          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Nöbet Oluştur</h1>
+          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Nöbet Oluştur</h1>
           <p className="text-sm text-muted-foreground">Yeni nöbet oluşturun ve öğretmenlere atayın.</p>
         </div>
       </div>
@@ -279,7 +280,7 @@ export default function DutyCreate() {
 
             {/* Orta: oklar */}
             <div className="flex flex-col items-center justify-center gap-2">
-              <button type="button" onClick={moveSelected} title="Ekle" className="grid h-9 w-9 place-items-center rounded-xl border border-foreground/10 text-muted-foreground hover:border-[hsl(var(--brand-accent)/0.4)] hover:text-[hsl(var(--brand-accent))]"><ChevronRight className="h-4 w-4" /></button>
+              <button type="button" onClick={moveSelected} title="Ekle" className="grid h-9 w-9 place-items-center rounded-xl border border-foreground/10 text-muted-foreground hover:border-[hsl(var(--brand-accent)/0.4)] hover:text-[hsl(var(--brand-accent-text,var(--brand-accent)))]"><ChevronRight className="h-4 w-4" /></button>
               <button type="button" onClick={() => { setSelected([]); setStaged(new Set()); }} title="Tümünü kaldır" className="grid h-9 w-9 place-items-center rounded-xl border border-foreground/10 text-muted-foreground hover:text-foreground"><ChevronLeft className="h-4 w-4" /></button>
             </div>
 
@@ -293,7 +294,7 @@ export default function DutyCreate() {
                   const id = teacherId(t);
                   return (
                     <div key={id} className="flex items-center gap-2.5 rounded-lg border border-foreground/10 bg-foreground/[0.035] p-2">
-                      <span className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--brand-accent)/0.14)] text-[11px] font-bold text-[hsl(var(--brand-accent))]">{initials(teacherName(t))}</span>
+                      <span className="grid h-8 w-8 place-items-center rounded-full bg-[hsl(var(--brand-accent)/0.14)] text-[11px] font-bold text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">{initials(teacherName(t))}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{teacherName(t)}</span>
                         <span className="block truncate text-[11px] text-muted-foreground">{teacherBranch(t)}</span>

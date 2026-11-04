@@ -15,6 +15,7 @@ import '../services/planned_exam_api_service.dart';
 import '../services/school_feed_api_service.dart';
 import '../widgets/responsive_overlays.dart';
 import '../services/pdf_fonts.dart';
+import '../services/student_record_match.dart';
 
 /// Masaüstündeki "Yönet" penceresinin mobil karşılığı.
 ///
@@ -808,6 +809,10 @@ class _ExamScoreEntryPage extends StatefulWidget {
 }
 
 class _ExamScoreEntryPageState extends State<_ExamScoreEntryPage> {
+  // Taslak öğrenci kimliğiyle tutulur: aynı adlı iki öğrencinin puanı tek satıra düşmez.
+  String _draftKey(AdminStudentRecord student) =>
+      student.id.isNotEmpty ? student.id : 'name:${student.fullName}';
+
   bool _loading = true;
   bool _saving = false;
   String _search = '';
@@ -842,12 +847,19 @@ class _ExamScoreEntryPageState extends State<_ExamScoreEntryPage> {
       final roster = matched.isEmpty ? students : matched;
       for (final student in roster) {
         final existing = widget.rows
-            .where((row) => row.studentName == student.fullName)
+            .where(
+              (row) => recordBelongsToStudent(
+                recordStudentId: row.studentId,
+                recordStudentName: row.studentName,
+                studentId: student.id,
+                fullName: student.fullName,
+              ),
+            )
             .firstOrNull;
-        _scores[student.fullName] = TextEditingController(
+        _scores[_draftKey(student)] = TextEditingController(
           text: existing == null ? '' : '${existing.score}',
         );
-        _nets[student.fullName] = TextEditingController(
+        _nets[_draftKey(student)] = TextEditingController(
           text: existing == null ? '' : '${existing.net}',
         );
       }
@@ -867,7 +879,7 @@ class _ExamScoreEntryPageState extends State<_ExamScoreEntryPage> {
 
   Future<void> _save() async {
     final entries = _roster
-        .where((student) => (_scores[student.fullName]?.text ?? '').trim().isNotEmpty)
+        .where((student) => (_scores[_draftKey(student)]?.text ?? '').trim().isNotEmpty)
         .toList();
     if (entries.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -881,12 +893,19 @@ class _ExamScoreEntryPageState extends State<_ExamScoreEntryPage> {
     var updated = 0;
     try {
       for (final student in entries) {
-        final score = int.tryParse(_scores[student.fullName]!.text.trim()) ?? 0;
+        final score = int.tryParse(_scores[_draftKey(student)]!.text.trim()) ?? 0;
         final net =
-            double.tryParse(_nets[student.fullName]!.text.trim().replaceAll(',', '.')) ??
+            double.tryParse(_nets[_draftKey(student)]!.text.trim().replaceAll(',', '.')) ??
             0;
         final existing = widget.rows
-            .where((row) => row.studentName == student.fullName)
+            .where(
+              (row) => recordBelongsToStudent(
+                recordStudentId: row.studentId,
+                recordStudentName: row.studentName,
+                studentId: student.id,
+                fullName: student.fullName,
+              ),
+            )
             .firstOrNull;
 
         if (existing?.id != null) {
@@ -908,6 +927,7 @@ class _ExamScoreEntryPageState extends State<_ExamScoreEntryPage> {
             subject: widget.exam.subject,
             dateLabel: widget.exam.dateLabel,
             studentName: student.fullName,
+            studentId: student.id,
             className: student.className,
             score: score,
             net: net,
@@ -1011,7 +1031,7 @@ class _ExamScoreEntryPageState extends State<_ExamScoreEntryPage> {
                                 SizedBox(
                                   width: 72,
                                   child: TextField(
-                                    controller: _scores[student.fullName],
+                                    controller: _scores[_draftKey(student)],
                                     keyboardType: TextInputType.number,
                                     textAlign: TextAlign.center,
                                     decoration: const InputDecoration(
@@ -1025,7 +1045,7 @@ class _ExamScoreEntryPageState extends State<_ExamScoreEntryPage> {
                                 SizedBox(
                                   width: 72,
                                   child: TextField(
-                                    controller: _nets[student.fullName],
+                                    controller: _nets[_draftKey(student)],
                                     keyboardType:
                                         const TextInputType.numberWithOptions(
                                           decimal: true,

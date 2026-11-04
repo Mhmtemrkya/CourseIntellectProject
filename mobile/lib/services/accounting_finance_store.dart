@@ -870,8 +870,10 @@ class AccountingFinanceStore extends ChangeNotifier {
     for (final item in installments.where(
       (record) => record.status == 'Geciken',
     )) {
+      // Başlık birebir karşılaştırılır: "içeriyor" bakılınca "Ali Kayaoğlu"nun uyarısı
+      // "Ali Kaya"nınkini engelliyordu.
       final exists = notifications.any(
-        (note) => note.title.contains(item.student),
+        (note) => note.title.trim() == '${item.student} ödemesi gecikti',
       );
       if (!exists) {
         await addFinanceNotification(

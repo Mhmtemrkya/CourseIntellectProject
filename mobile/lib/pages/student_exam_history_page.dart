@@ -9,6 +9,7 @@ import '../services/school_feed_api_service.dart';
 import 'student_exam_group_detail_page.dart';
 import '../widgets/responsive_layout.dart';
 import '../services/assistant_focus.dart';
+import '../services/student_record_match.dart';
 
 class StudentExamHistoryPage extends StatefulWidget {
   final String studentName;
@@ -17,11 +18,16 @@ class StudentExamHistoryPage extends StatefulWidget {
   /// Personel görünümünde konu önerileri için öğrenci kimliği (öğrenci/veli için gerekmez).
   final String? studentUserId;
 
+  /// Öğrenci profil kimliği; verilirse sonuçlar adla değil kimlikle istenir
+  /// (aynı adlı başka öğrencinin sonuçları karışmaz).
+  final String? studentId;
+
   const StudentExamHistoryPage({
     super.key,
     required this.studentName,
     required this.title,
     this.studentUserId,
+    this.studentId,
   });
 
   @override
@@ -163,7 +169,7 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
                     ...lessons.entries.map((entry) {
                       final color = _subjectColor(entry.key);
                       final sorted = [...entry.value]
-                        ..sort((a, b) => b.date.compareTo(a.date));
+                        ..sort((a, b) => compareRecordDateDesc(a.date, b.date));
                       final oralCount = entry.value
                           .where((item) => item.type == 'Sözlü')
                           .length;
@@ -223,6 +229,7 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
           : SchoolFeedApiService.normalizeStudentQuery(widget.studentName);
       final records = await SchoolFeedApiService.instance.fetchExamResults(
         studentName: studentName,
+        studentId: session?.primaryRole == 'Student' ? null : widget.studentId,
       );
       if (!mounted) return;
       setState(() {

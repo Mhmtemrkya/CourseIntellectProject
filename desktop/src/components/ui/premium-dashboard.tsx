@@ -470,7 +470,7 @@ export function PremiumPanel({ title, description, action, children, className, 
 
 const statusToneClass: Record<StatusPillTone, string> = {
   done: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-  live: "border-[hsl(var(--brand-accent)/0.4)] bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]",
+  live: "border-[hsl(var(--brand-accent)/0.4)] bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]",
   soon: "border-sky-500/25 bg-sky-500/12 text-sky-300",
   warn: "border-amber-500/25 bg-amber-500/12 text-amber-300",
   danger: "border-rose-500/30 bg-rose-500/12 text-rose-300",
@@ -521,7 +521,7 @@ export function PremiumProgressRow({ icon: Icon, title, subtitle, value, valueLa
         </div>
         <div className="flex shrink-0 items-baseline gap-1.5">
           <span className="text-2xl font-black tracking-tight">{value}</span>
-          {valueLabel ? <span className="text-sm font-bold text-[hsl(var(--brand-accent))]">{valueLabel}</span> : null}
+          {valueLabel ? <span className="text-sm font-bold text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">{valueLabel}</span> : null}
         </div>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.07]">
@@ -558,7 +558,7 @@ export function PremiumScheduleRow({ time, title, subtitle, icon: Icon, status, 
     >
       {time ? <div className="w-[64px] shrink-0 text-xs font-bold tabular-nums text-muted-foreground">{time}</div> : null}
       {Icon ? (
-        <div className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl", active ? "bg-[hsl(var(--brand-accent)/0.16)] text-[hsl(var(--brand-accent))]" : "bg-muted/70 text-muted-foreground")}>
+        <div className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl", active ? "bg-[hsl(var(--brand-accent)/0.16)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]" : "bg-muted/70 text-muted-foreground")}>
           <Icon className="h-4 w-4" />
         </div>
       ) : null}
@@ -592,7 +592,7 @@ export function PremiumScoreCard({ subject, score, grade, date, values, tone = "
           <p className="truncate text-xs font-semibold text-muted-foreground">{subject}</p>
           <div className="flex items-baseline gap-1.5">
             <span className="text-3xl font-black tracking-[-0.04em]">{score}</span>
-            {grade ? <span className="text-base font-bold text-[hsl(var(--brand-accent))]">{grade}</span> : null}
+            {grade ? <span className="text-base font-bold text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">{grade}</span> : null}
           </div>
           <MiniLineChart values={sparkline} tone={tone} className="h-12" />
           {date ? <p className="text-[11px] text-muted-foreground">{date}</p> : null}
@@ -619,7 +619,7 @@ export function PremiumListRow({ icon: Icon, title, subtitle, meta, accent = fal
     >
       <div className="flex min-w-0 items-center gap-3">
         {Icon ? (
-          <div className={cn("grid h-10 w-10 place-items-center rounded-2xl", accent ? "bg-[hsl(var(--brand-accent)/0.16)] text-[hsl(var(--brand-accent))]" : "bg-muted/70 text-muted-foreground")}>
+          <div className={cn("grid h-10 w-10 place-items-center rounded-2xl", accent ? "bg-[hsl(var(--brand-accent)/0.16)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]" : "bg-muted/70 text-muted-foreground")}>
             <Icon className="h-4 w-4" />
           </div>
         ) : null}

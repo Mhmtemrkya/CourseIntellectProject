@@ -19,10 +19,12 @@ import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { deleteAttendanceRecord, fetchAttendance, fetchClasses, fetchStudents, saveAttendance } from '../lib/api/modules';
 import { errorMessage } from '../lib/errors';
+import { belongsToStudent, toAttendanceStatus, type AttendanceStatus } from '../lib/attendanceStatus';
 import type { AttendanceEntryDto, StudentSummaryDto } from '../types/api/generated';
 import type { IconComponent } from '../types/ui';
+import { localDateKey, localDateKeyOffset } from '../lib/localDate';
+import { absenceDayCounts, absenceLimitFor } from '../lib/absenceLimits';
 
-type AttendanceStatus = 'Katildi' | 'Gec' | 'Izinli' | 'Devamsiz';
 type StatTone = 'blue' | 'green' | 'amber' | 'purple' | 'red';
 type MiniTone = 'green' | 'red' | 'amber' | 'blue';
 
@@ -47,6 +49,26 @@ interface CalendarDay {
 
 const byLessonDateDesc = (a: AttendanceEntryDto, b: AttendanceEntryDto) => new Date(b.lessonDate).getTime() - new Date(a.lessonDate).getTime();
 
+const dayKey = (value: string | null | undefined) => String(value || '').slice(0, 10);
+
+/** Sunucu, kaydedilen öğrencinin o ders/günkü eski kaydının yerine yenisini yazar; listede de aynısı yapılır. */
+function mergeSaved(prev: readonly AttendanceEntryDto[], saved: readonly AttendanceEntryDto[]): AttendanceEntryDto[] {
+  const sameSlot = (a: AttendanceEntryDto, b: AttendanceEntryDto) =>
+    normalize(a.className) === normalize(b.className)
+    && normalize(a.lesson) === normalize(b.lesson)
+    && dayKey(a.lessonDate) === dayKey(b.lessonDate)
+    && (b.studentId ? a.studentId === b.studentId || (!a.studentId && normalize(a.studentName) === normalize(b.studentName)) : !a.studentId && normalize(a.studentName) === normalize(b.studentName));
+  return [...saved, ...prev.filter((item) => !saved.some((entry) => sameSlot(item, entry)))];
+}
+
+const toApiStatus = (status: string) => {
+  const canonical = toAttendanceStatus(status);
+  return canonical === 'Katildi' ? 'present' : canonical === 'Gec' ? 'late' : canonical === 'Izinli' ? 'excuse' : 'absent';
+};
+
+const studentOptionLabel = (student: StudentSummaryDto) =>
+  [student.fullName, student.className, student.schoolNumber ? `No ${student.schoolNumber}` : ''].filter(Boolean).join(' · ');
+
 const statusLabels: Record<AttendanceStatus, string> = {
   Katildi: 'Devam Etti',
   Gec: 'Gecikmeli',
@@ -64,14 +86,6 @@ function normalize(value: string | null | undefined = '') {
     .replaceAll('ö', 'o')
     .replaceAll('ş', 's')
     .replaceAll('ü', 'u');
-}
-
-function toStatus(value: string | null | undefined = ''): AttendanceStatus {
-  const key = normalize(value);
-  if (key.includes('katildi') || key.includes('present')) return 'Katildi';
-  if (key.includes('gec') || key.includes('late')) return 'Gec';
-  if (key.includes('izin')) return 'Izinli';
-  return 'Devamsiz';
 }
 
 function formatDate(value: string | null | undefined) {
@@ -107,15 +121,15 @@ export default function Attendance() {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedLesson, setSelectedLesson] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
-  const [dateFrom, setDateFrom] = useState(() => new Date(new Date().setDate(new Date().getDate() - 14)).toISOString().slice(0, 10));
-  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dateFrom, setDateFrom] = useState(() => localDateKeyOffset(-14));
+  const [dateTo, setDateTo] = useState(() => localDateKey());
   const [selectedStudent, setSelectedStudent] = useState<StudentAttendanceRow | null>(null);
   const [manageStudent, setManageStudent] = useState<StudentAttendanceRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
-  const [addForm, setAddForm] = useState({ studentName: '', lesson: 'Genel Ders', date: new Date().toISOString().slice(0, 10), status: 'Devamsiz' });
+  const [addForm, setAddForm] = useState({ studentId: '', lesson: 'Genel Ders', date: localDateKey(), status: 'Devamsiz' });
 
   const load = useCallback(async () => {
     try {
@@ -156,20 +170,20 @@ export default function Attendance() {
     const date = String(item.lessonDate || '').slice(0, 10);
     const matchesClass = !selectedClass || item.className === selectedClass;
     const matchesLesson = selectedLesson === 'all' || item.lesson === selectedLesson;
-    const matchesType = selectedType === 'all' || toStatus(item.status) === selectedType;
+    const matchesType = selectedType === 'all' || toAttendanceStatus(item.status) === selectedType;
     const matchesDate = (!dateFrom || date >= dateFrom) && (!dateTo || date <= dateTo);
     return matchesClass && matchesLesson && matchesType && matchesDate;
   }), [dateFrom, dateTo, records, selectedClass, selectedLesson, selectedType]);
 
   const studentRows = useMemo(() => classStudents.map((student): StudentAttendanceRow => {
-    const studentRecords = filteredRecords.filter((item) => normalize(item.studentName) === normalize(student.fullName));
-    const absent = studentRecords.filter((item) => toStatus(item.status) === 'Devamsiz').length;
-    const late = studentRecords.filter((item) => toStatus(item.status) === 'Gec').length;
-    const present = studentRecords.filter((item) => ['Katildi', 'Gec', 'Izinli'].includes(toStatus(item.status))).length;
+    const studentRecords = filteredRecords.filter((item) => belongsToStudent(item, student));
+    const absent = studentRecords.filter((item) => toAttendanceStatus(item.status) === 'Devamsiz').length;
+    const late = studentRecords.filter((item) => toAttendanceStatus(item.status) === 'Gec').length;
+    const present = studentRecords.filter((item) => ['Katildi', 'Gec', 'Izinli'].includes(toAttendanceStatus(item.status))).length;
     const total = studentRecords.length || 0;
     const absenceRate = total ? Math.round((absent / total) * 100) : 0;
     const latestAbsence = studentRecords
-      .filter((item) => toStatus(item.status) === 'Devamsiz')
+      .filter((item) => toAttendanceStatus(item.status) === 'Devamsiz')
       .sort(byLessonDateDesc)[0];
     return { ...student, present, absent, late, total, absenceRate, latestAbsence, records: studentRecords };
   }), [classStudents, filteredRecords]);
@@ -179,20 +193,48 @@ export default function Attendance() {
     const absentStudents = studentRows.filter((item) => item.absent > 0).length;
     const presentStudents = Math.max(0, totalStudents - absentStudents);
     const totalAbsent = studentRows.reduce((sum, item) => sum + item.absent, 0);
-    const totalDays = filteredRecords.length;
+    // Kayıt sayısı öğrenci × ders'tir; gün sayısı ayrı tarihlerden çıkar.
+    const totalLessons = filteredRecords.length;
+    const totalDays = new Set(filteredRecords.map((item) => dayKey(item.lessonDate)).filter(Boolean)).size;
     return {
       totalStudents,
       presentStudents,
       absentStudents,
       totalDays,
+      totalLessons,
       totalAbsent,
-      absenceRate: totalDays ? Math.round((totalAbsent / totalDays) * 100) : 0,
+      absenceRate: totalLessons ? Math.round((totalAbsent / totalLessons) * 100) : 0,
     };
   }, [classStudents.length, filteredRecords.length, studentRows]);
 
+  // Lisede yönetmelik sınırı gün bazındadır (özürsüz 10 / toplam 30). Diğer seviyelerde
+  // doğrulanmış sabit sayı olmadığından yalnız "yüksek devamsızlık" eşiği (%30) uyarı olarak
+  // gösterilir; eskiden bu eşik herkese yasal sınır gibi yazılıyordu.
+  const absenceWarning = useMemo(() => {
+    let overLimit = 0;
+    let nearLimit = 0;
+    let highRate = 0;
+    studentRows.forEach((row) => {
+      const limit = absenceLimitFor(row.className);
+      if (limit) {
+        const days = absenceDayCounts(row.records);
+        if (days.unexcusedDays > limit.unexcusedDays || days.totalDays > limit.totalDays) overLimit += 1;
+        else if (days.unexcusedDays >= limit.unexcusedDays - 2 || days.totalDays >= limit.totalDays - 5) nearLimit += 1;
+      } else if (row.absenceRate >= 30) {
+        highRate += 1;
+      }
+    });
+    const parts = [
+      overLimit ? `${overLimit} öğrenci yönetmelik sınırını aştı (özürsüz 10 / toplam 30 gün).` : '',
+      nearLimit ? `${nearLimit} öğrenci sınıra yaklaştı.` : '',
+      highRate ? `${highRate} öğrencinin devamsızlığı derslerin %30'unu geçti.` : '',
+    ].filter(Boolean);
+    return parts.length ? parts.join(' ') : 'Sınıra ulaşan ya da yüksek devamsızlığı olan öğrenci yok.';
+  }, [studentRows]);
+
   const selectedDetail = useMemo(() => {
     if (!selectedStudent) return null;
-    return studentRows.find((item) => item.id === selectedStudent.id || item.fullName === selectedStudent.fullName) || selectedStudent;
+    return studentRows.find((item) => item.id === selectedStudent.id) || selectedStudent;
   }, [selectedStudent, studentRows]);
 
   const calendarDays = useMemo((): CalendarDay[] => {
@@ -203,17 +245,17 @@ export default function Attendance() {
     const startOffset = (first.getDay() + 6) % 7;
     return Array.from({ length: 35 }, (_, index) => {
       const date = new Date(year, month, index - startOffset + 1);
-      const iso = date.toISOString().slice(0, 10);
+      const iso = localDateKey(date);
       const dayRecords = selectedDetail?.records?.filter((item) => String(item.lessonDate || '').slice(0, 10) === iso) || [];
-      const hasAbsent = dayRecords.some((item) => toStatus(item.status) === 'Devamsiz');
-      const hasPresent = dayRecords.some((item) => ['Katildi', 'Gec', 'Izinli'].includes(toStatus(item.status)));
+      const hasAbsent = dayRecords.some((item) => toAttendanceStatus(item.status) === 'Devamsiz');
+      const hasPresent = dayRecords.some((item) => ['Katildi', 'Gec', 'Izinli'].includes(toAttendanceStatus(item.status)));
       return { date, iso, inMonth: date.getMonth() === month, hasAbsent, hasPresent };
     });
   }, [dateTo, selectedDetail]);
 
   const exportReport = () => {
     downloadCsv('devamsizlik-raporu.csv', [
-      ['Öğrenci', 'Sınıf', 'Devam Eden Gün', 'Devamsız Gün', 'Oran', 'Son Devamsızlık'],
+      ['Öğrenci', 'Sınıf', 'Katıldığı Ders', 'Devamsız Ders', 'Devamsızlık Oranı', 'Son Devamsızlık'],
       ...studentRows.map((item) => [item.fullName, item.className, item.present, item.absent, `%${item.absenceRate}`, formatDate(item.latestAbsence?.lessonDate)]),
     ]);
     toast({ title: 'Devamsızlık raporu indirildi' });
@@ -222,7 +264,7 @@ export default function Attendance() {
   const manageRecords = useMemo(() => {
     if (!manageStudent) return [];
     return records
-      .filter((item) => normalize(item.studentName) === normalize(manageStudent.fullName))
+      .filter((item) => belongsToStudent(item, manageStudent))
       .sort(byLessonDateDesc);
   }, [manageStudent, records]);
 
@@ -240,7 +282,7 @@ export default function Attendance() {
   };
 
   const saveSingleAbsence = async () => {
-    const student = students.find((item) => normalize(item.fullName) === normalize(addForm.studentName));
+    const student = students.find((item) => item.id === addForm.studentId);
     if (!student) {
       toast({ title: 'Öğrenci bulunamadı', description: 'Listeden geçerli bir öğrenci seçin.', variant: 'destructive' });
       return;
@@ -251,9 +293,9 @@ export default function Attendance() {
         className: student.className,
         lesson: addForm.lesson || 'Genel Ders',
         lessonDate: addForm.date,
-        students: [{ name: student.fullName, status: addForm.status === 'Katildi' ? 'present' : addForm.status === 'Gec' ? 'late' : addForm.status === 'Izinli' ? 'excuse' : 'absent' }],
+        students: [{ name: student.fullName, studentId: student.id, status: toApiStatus(addForm.status) }],
       });
-      setRecords((prev) => [...(payload ?? []), ...prev]);
+      setRecords((prev) => mergeSaved(prev, payload ?? []));
       setAddOpen(false);
       toast({ title: 'Devamsızlık kaydı eklendi' });
     } catch (err) {
@@ -272,22 +314,36 @@ export default function Attendance() {
     try {
       setSaving(true);
       const created: AttendanceEntryDto[] = [];
+      const skipped: string[] = [];
       for (const row of rows) {
-        const [studentName, lesson = 'Genel Ders', date = new Date().toISOString().slice(0, 10), status = 'Devamsiz'] = row;
-        const student = students.find((item) => normalize(item.fullName) === normalize(studentName));
-        if (!student) continue;
+        const [studentName, lesson = 'Genel Ders', date = localDateKey(), status = 'Devamsiz'] = row;
+        // Aynı adlı birden çok öğrenci varsa tahmin edilmez; satır atlanıp bildirilir.
+        const matches = students.filter((item) => normalize(item.fullName) === normalize(studentName));
+        const student = matches.length === 1 ? matches[0] : undefined;
+        if (!student) {
+          skipped.push(matches.length > 1 ? `${studentName} (aynı adlı ${matches.length} öğrenci)` : `${studentName} (bulunamadı)`);
+          continue;
+        }
         const payload = await saveAttendance({
           className: student.className,
           lesson,
           lessonDate: date,
-          students: [{ name: student.fullName, status: toStatus(status) === 'Katildi' ? 'present' : toStatus(status) === 'Gec' ? 'late' : toStatus(status) === 'Izinli' ? 'excuse' : 'absent' }],
+          students: [{ name: student.fullName, studentId: student.id, status: toApiStatus(status) }],
         });
         created.push(...(payload ?? []));
       }
-      setRecords((prev) => [...created, ...prev]);
-      setBulkOpen(false);
-      setBulkText('');
-      toast({ title: 'Toplu giriş tamamlandı', description: `${created.length} kayıt işlendi.` });
+      setRecords((prev) => mergeSaved(prev, created));
+      if (skipped.length === 0) {
+        setBulkOpen(false);
+        setBulkText('');
+      }
+      toast({
+        title: 'Toplu giriş tamamlandı',
+        description: skipped.length
+          ? `${created.length} kayıt işlendi. İşlenmeyen satırlar: ${skipped.join(', ')}. Bunları tek tek "Devamsızlık Ekle" ile girin.`
+          : `${created.length} kayıt işlendi.`,
+        variant: skipped.length ? 'destructive' : undefined,
+      });
     } catch (err) {
       toast({ title: 'Toplu giriş başarısız', description: errorMessage(err, 'Tekrar deneyin.'), variant: 'destructive' });
     } finally {
@@ -353,10 +409,10 @@ export default function Attendance() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatCard icon={Users} label="Toplam Öğrenci" value={summary.totalStudents} tone="blue" />
-        <StatCard icon={CheckCircle2} label="Toplam Devam Eden" value={summary.presentStudents} hint={`%${summary.totalStudents ? Math.round((summary.presentStudents / summary.totalStudents) * 100) : 0}`} tone="green" />
-        <StatCard icon={Clock} label="Toplam Devamsız" value={summary.absentStudents} hint={`%${summary.totalStudents ? Math.round((summary.absentStudents / summary.totalStudents) * 100) : 0}`} tone="amber" />
-        <StatCard icon={Calendar} label="Toplam Gün" value={summary.totalDays} tone="purple" />
-        <StatCard icon={CalendarDays} label="Toplam Devamsızlık" value={summary.totalAbsent} hint="Gün" tone="red" />
+        <StatCard icon={CheckCircle2} label="Devamsızlığı Olmayan" value={summary.presentStudents} hint={`%${summary.totalStudents ? Math.round((summary.presentStudents / summary.totalStudents) * 100) : 0}`} tone="green" />
+        <StatCard icon={Clock} label="Devamsızlığı Olan" value={summary.absentStudents} hint={`%${summary.totalStudents ? Math.round((summary.absentStudents / summary.totalStudents) * 100) : 0}`} tone="amber" />
+        <StatCard icon={Calendar} label="Toplam Gün" value={summary.totalDays} hint={`${summary.totalLessons} ders kaydı`} tone="purple" />
+        <StatCard icon={CalendarDays} label="Toplam Devamsızlık" value={summary.totalAbsent} hint="Ders" tone="red" />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -377,8 +433,8 @@ export default function Attendance() {
                 <tr>
                   <th className="px-5 py-4 text-left">No</th>
                   <th className="px-5 py-4 text-left">Öğrenci Adı Soyadı</th>
-                  <th className="px-5 py-4 text-center">Devam Eden Gün</th>
-                  <th className="px-5 py-4 text-center">Devamsız Gün</th>
+                  <th className="px-5 py-4 text-center">Katıldığı Ders</th>
+                  <th className="px-5 py-4 text-center">Devamsız Ders</th>
                   <th className="px-5 py-4 text-center">Devamsızlık Oranı</th>
                   <th className="px-5 py-4 text-center">Son Devamsızlık</th>
                   <th className="px-5 py-4 text-right">İşlemler</th>
@@ -386,7 +442,7 @@ export default function Attendance() {
               </thead>
               <tbody>
                 {studentRows.map((student, index) => (
-                  <tr key={student.id || student.fullName} className={`border-b last:border-b-0 ${selectedDetail?.fullName === student.fullName ? 'bg-blue-500/10' : ''}`}>
+                  <tr key={student.id || student.fullName} className={`border-b last:border-b-0 ${selectedDetail?.id === student.id ? 'bg-blue-500/10' : ''}`}>
                     <td className="px-5 py-4">{index + 1}</td>
                     <td className="cursor-pointer px-5 py-4" onClick={() => setSelectedStudent(student)}>
                       <div className="flex items-center gap-3">
@@ -401,7 +457,7 @@ export default function Attendance() {
                     <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setSelectedStudent(student)}><Eye className="h-4 w-4" /></Button>
-                        <Button variant="outline" size="icon" className="rounded-xl" onClick={() => { setAddForm((prev) => ({ ...prev, studentName: student.fullName })); setAddOpen(true); }}><Calendar className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="icon" className="rounded-xl" onClick={() => { setAddForm((prev) => ({ ...prev, studentId: student.id })); setAddOpen(true); }}><Calendar className="h-4 w-4" /></Button>
                         <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setManageStudent(student)}><MoreVertical className="h-4 w-4" /></Button>
                       </div>
                     </td>
@@ -421,8 +477,8 @@ export default function Attendance() {
             {selectedDetail ? (
               <>
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  <StatMini label="Devam Eden Gün" value={selectedDetail.present} tone="green" />
-                  <StatMini label="Devamsız Gün" value={selectedDetail.absent} tone="red" />
+                  <StatMini label="Katıldığı Ders" value={selectedDetail.present} tone="green" />
+                  <StatMini label="Devamsız Ders" value={selectedDetail.absent} tone="red" />
                   <StatMini label="Devamsızlık Oranı" value={`%${selectedDetail.absenceRate}`} tone="amber" />
                   <StatMini label="Son Devamsızlık" value={formatDate(selectedDetail.latestAbsence?.lessonDate)} tone="blue" />
                 </div>
@@ -436,7 +492,11 @@ export default function Attendance() {
           <div className="rounded-2xl border bg-card p-5 shadow-sm">
             <h2 className="font-black">Devamsızlık Dağılımı</h2>
             <div className="mt-5 flex items-center gap-5">
-              <div className="relative flex h-32 w-32 items-center justify-center rounded-full bg-[conic-gradient(#22C55E_0_70%,#EF4444_70%_100%)]">
+              {/* Halka gerçek orandan çizilir; eskiden sabit %70/%30 boyanıyordu. */}
+              <div
+                className="relative flex h-32 w-32 items-center justify-center rounded-full"
+                style={{ background: summary.totalLessons ? `conic-gradient(#22C55E 0 ${100 - summary.absenceRate}%, #EF4444 ${100 - summary.absenceRate}% 100%)` : 'hsl(var(--muted))' }}
+              >
                 <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-card">
                   <span className="text-2xl font-black">%{summary.absenceRate}</span>
                   <span className="text-xs text-muted-foreground">Oran</span>
@@ -453,9 +513,7 @@ export default function Attendance() {
             <h2 className="font-black">Devamsızlık Uyarıları</h2>
             <div className="mt-4 rounded-xl border border-orange-500/25 bg-orange-500/10 p-4 text-sm text-orange-800 dark:text-orange-100">
               <AlertTriangle className="mb-2 h-5 w-5" />
-              {studentRows.some((item) => item.absenceRate >= 30)
-                ? 'Bazı öğrenciler %30 sınırına ulaştı veya geçti.'
-                : 'Kritik devamsızlık sınırına ulaşan öğrenci yok.'}
+              {absenceWarning}
             </div>
           </div>
         </aside>
@@ -477,7 +535,7 @@ export default function Attendance() {
                   <p className="text-sm text-muted-foreground">{formatDate(item.lessonDate)}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-muted px-3 py-1 text-xs font-bold">{statusLabels[toStatus(item.status)]}</span>
+                  <span className="rounded-full bg-muted px-3 py-1 text-xs font-bold">{statusLabels[toAttendanceStatus(item.status)]}</span>
                   <Button
                     variant="outline"
                     size="icon"
@@ -498,7 +556,7 @@ export default function Attendance() {
         <SheetContent side="right" className="w-full bg-background sm:max-w-md">
           <SheetHeader><SheetTitle>Devamsızlık Ekle</SheetTitle></SheetHeader>
           <div className="mt-6 space-y-4">
-            <label><span className="mb-1 block text-xs text-muted-foreground">Öğrenci</span><Input list="student-list" value={addForm.studentName} onChange={(event) => setAddForm((prev) => ({ ...prev, studentName: event.target.value }))} /><datalist id="student-list">{students.map((item) => <option key={item.id || item.fullName} value={item.fullName} />)}</datalist></label>
+            <label><span className="mb-1 block text-xs text-muted-foreground">Öğrenci</span><select value={addForm.studentId} onChange={(event) => setAddForm((prev) => ({ ...prev, studentId: event.target.value }))} className="h-10 w-full rounded-xl border bg-background px-3 text-sm" data-testid="attendance-add-student"><option value="">Öğrenci seçin</option>{students.map((item) => <option key={item.id} value={item.id}>{studentOptionLabel(item)}</option>)}</select></label>
             <label><span className="mb-1 block text-xs text-muted-foreground">Ders</span><Input value={addForm.lesson} onChange={(event) => setAddForm((prev) => ({ ...prev, lesson: event.target.value }))} /></label>
             <label><span className="mb-1 block text-xs text-muted-foreground">Tarih</span><Input type="date" value={addForm.date} onChange={(event) => setAddForm((prev) => ({ ...prev, date: event.target.value }))} /></label>
             <label><span className="mb-1 block text-xs text-muted-foreground">Durum</span><select value={addForm.status} onChange={(event) => setAddForm((prev) => ({ ...prev, status: event.target.value }))} className="h-10 w-full rounded-xl border bg-background px-3 text-sm"><option value="Devamsiz">Devamsız</option><option value="Gec">Gecikmeli</option><option value="Izinli">İzinli</option><option value="Katildi">Devam Etti</option></select></label>

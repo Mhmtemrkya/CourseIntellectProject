@@ -62,7 +62,25 @@ public enum AssistantIntent
     /// <summary>"... nasıl yapılır / nerede" — yardım kataloğundan portal içi makale.</summary>
     HowTo,
     /// <summary>Öğrencinin zayıf konuları ve sabit öneriler (konu analizi).</summary>
-    GetTopicInsight
+    GetTopicInsight,
+
+    // ─── Faz 7: yerel model ajanı — analiz ve rapor araçları ───
+    /// <summary>Bir dönemde en çok devamsızlık yapanlar.</summary>
+    GetAttendanceRanking,
+    /// <summary>Sınıfın ya da öğrencinin son denemelerdeki ders bazlı eğilimi.</summary>
+    GetExamTrend,
+    /// <summary>Sınıfların sınav/devamsızlık/ödev kıyası.</summary>
+    CompareClasses,
+    /// <summary>Erken uyarı: devamsızlık, düşen not ve zayıf konulara göre risk altındakiler.</summary>
+    GetAtRiskStudents,
+    /// <summary>Aylık tahsilat dökümü, gecikme yaşlandırması ve en yüksek borçlar.</summary>
+    GetFinanceReport,
+    /// <summary>Tek sınıfın özeti: mevcut, devam oranı, sınav ortalaması, bekleyen ödev.</summary>
+    GetClassOverview,
+    /// <summary>Tek öğrencinin rol kapsamındaki bütün bilgilerini toplayan rapor (veli görüşmesi notu).</summary>
+    GetStudentReport,
+    /// <summary>Uygulamayla ilgisi olmayan soru (genel kültür, kod, sohbet dışı konu).</summary>
+    OutOfScope
 }
 
 public enum AssistantSenderType { User = 1, Assistant = 2, System = 3 }

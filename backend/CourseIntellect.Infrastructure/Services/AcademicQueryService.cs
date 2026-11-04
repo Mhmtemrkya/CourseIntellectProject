@@ -71,16 +71,49 @@ public sealed class AcademicQueryService(
             .ToList();
     }
 
-    public async Task<IReadOnlyList<ExamResultDto>> GetExamResultsAsync(string? studentName, string? className, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ExamResultDto>> GetExamResultsAsync(
+        string? studentName,
+        string? className,
+        Guid? studentId = null,
+        StudentRecordScope? scope = null,
+        CancellationToken cancellationToken = default)
     {
         var rankingPool = await dbContext.ExamResults
             .AsNoTracking()
             .ToListAsync(cancellationToken);
         IEnumerable<ExamResult> query = rankingPool;
 
-        if (!string.IsNullOrWhiteSpace(studentName))
+        if (studentId is { } id)
         {
-            query = query.Where(x => x.StudentName.Contains(studentName, StringComparison.OrdinalIgnoreCase));
+            // Kimlikle bağlı sonuçlar + henüz bağlanamamış (eski) sonuçlarda aynı ad.
+            var profileName = await dbContext.Students.AsNoTracking()
+                .Where(x => x.Id == id)
+                .Select(x => x.FullName)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (profileName is null) return [];
+            var key = StudentIdentityResolver.NameKey(profileName);
+            query = query.Where(x => x.StudentId == id || (x.StudentId == null && StudentIdentityResolver.NameKey(x.StudentName) == key));
+        }
+        else if (!string.IsNullOrWhiteSpace(studentName))
+        {
+            // Öğrenci/veli kapsamında ad birebir eşleşir. Eskiden "içeriyor" aranıyordu:
+            // "Ali Kaya" adlı öğrenci "Ali Kayaoğlu"nun sonuçlarını da görüyordu.
+            // Personelin arama kutusu için kısmi eşleşme korunur.
+            var key = StudentIdentityResolver.NameKey(studentName);
+            query = scope is null
+                ? query.Where(x => StudentIdentityResolver.NameKey(x.StudentName).Contains(key, StringComparison.Ordinal))
+                : query.Where(x => StudentIdentityResolver.NameKey(x.StudentName) == key);
+        }
+
+        if (scope is not null)
+        {
+            // Kimliğe bağlı sonuçta yalnız kimlik geçerlidir; aynı adlı başka ailenin
+            // çocuğunun sonucu veliye görünmez. Bağlanmamış eski kayıtta ada düşülür.
+            var allowedIds = scope.StudentIds.ToHashSet();
+            var allowedNames = scope.StudentNames.Select(StudentIdentityResolver.NameKey).ToHashSet();
+            query = query.Where(x => x.StudentId is { } linked
+                ? allowedIds.Contains(linked)
+                : allowedNames.Contains(StudentIdentityResolver.NameKey(x.StudentName)));
         }
 
         if (!string.IsNullOrWhiteSpace(className))
@@ -88,8 +121,10 @@ public sealed class AcademicQueryService(
             query = query.Where(x => string.Equals(x.ClassName, className, StringComparison.OrdinalIgnoreCase));
         }
 
+        // DateLabel metindir ("05.11.2026", "13 Mart 2026"); metin sıralaması en yeni
+        // sınavı başa getirmez (velinin "son sınav" kartı yanlış sınavı gösteriyordu).
         var results = query
-            .OrderByDescending(x => x.DateLabel)
+            .OrderByDescending(x => AssistantDates.TryParse(x.DateLabel) ?? DateTime.MinValue)
             .ToList();
 
         return results.Select(result => ToExamResultDto(result, rankingPool)).ToList();
@@ -98,15 +133,20 @@ public sealed class AcademicQueryService(
     public async Task<ExamResultDto> CreateExamResultAsync(CreateExamResultRequest request, CancellationToken cancellationToken = default)
     {
         var normalized = NormalizeExamScoring(request.Score, request.Net, request.CorrectCount, request.WrongCount, request.TotalQuestions);
+        var identity = (await StudentIdentityResolver.ResolveAsync(
+                dbContext, [request], x => x.StudentId, x => x.StudentName, x => x.ClassName, cancellationToken))
+            .Select(x => x.Identity)
+            .FirstOrDefault();
         var result = new ExamResult
         {
+            StudentId = identity?.StudentId,
             ExamTitle = request.ExamTitle.Trim(),
             Type = ParseExamType(request.Type),
             Subject = request.Subject.Trim(),
             DateLabel = string.IsNullOrWhiteSpace(request.DateLabel)
                 ? DateTime.UtcNow.AddHours(3).ToString("dd MMMM yyyy")
                 : request.DateLabel.Trim(),
-            StudentName = request.StudentName.Trim(),
+            StudentName = identity?.Name ?? request.StudentName.Trim(),
             ClassName = request.ClassName.Trim(),
             Score = normalized.ScorePercent,
             Net = normalized.Net
@@ -115,12 +155,15 @@ public sealed class AcademicQueryService(
         await dbContext.ExamResults.AddAsync(result, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        // Sınav sonucu girilince veliye anlık bildirim.
+        // Sınav sonucu girilince veliye anlık bildirim. Kimlik biliniyorsa veli onunla
+        // bulunur; aynı adlı başka öğrencinin velisine gitmez.
         await parentNotifier.NotifyStudentParentAsync(
+            identity?.UserId,
             result.StudentName,
             "Sınav sonucu açıklandı",
             $"{result.ExamTitle}: {result.Score} puan / {result.Net} net",
             "ExamResult",
+            null,
             cancellationToken);
 
         var rankingPool = await dbContext.ExamResults
@@ -165,11 +208,16 @@ public sealed class AcademicQueryService(
         // gereksiz bildirim gitmez.
         if (previousScore != result.Score)
         {
+            var studentUserId = result.StudentId is { } linkedId
+                ? await dbContext.Students.AsNoTracking().Where(x => x.Id == linkedId).Select(x => (Guid?)x.UserId).FirstOrDefaultAsync(cancellationToken)
+                : null;
             await parentNotifier.NotifyStudentParentAsync(
+                studentUserId,
                 result.StudentName,
                 "Sınav sonucu güncellendi",
                 $"{result.ExamTitle}: {result.Score} puan / {result.Net} net",
                 "ExamResult",
+                null,
                 cancellationToken);
         }
 
@@ -230,7 +278,8 @@ public sealed class AcademicQueryService(
             decimal.Round(result.Net, 2),
             Math.Clamp(result.Score, 0, 100),
             classRank,
-            overallRank);
+            overallRank,
+            result.StudentId);
     }
 
     private static int? RankWithin(IEnumerable<ExamResult> rows, ExamResult result)
@@ -458,6 +507,8 @@ public sealed class AcademicQueryService(
         await EnsureTcNoAvailableAsync(user.TenantId, tcNo, user.Id, cancellationToken);
 
         var fullName = PersonNameFormatter.FormatFullName(request.FullName);
+        var previousName = student.FullName;
+        var before = StudentAuditSnapshot(student);
         student.FullName = fullName;
         student.TcNo = tcNo;
         student.ClassName = request.ClassName;
@@ -478,6 +529,30 @@ public sealed class AcademicQueryService(
         user.TcNo = tcNo;
         if (request.PhotoUrl is not null) user.PhotoUrl = request.PhotoUrl.Trim();
 
+        // Çalışma programı öğrenci adıyla tutulur; ad düzeltilince program, XP ve seri yeni ada taşınır.
+        // Yeni adda zaten bir program varsa (aynı adlı başka öğrenci olabilir) birleştirilmez, olduğu gibi bırakılır.
+        var planNote = await MoveStudyPlanAsync(previousName, fullName, cancellationToken);
+
+        // Kimliğe bağlı yoklama ve sınav sonuçları yeni adı gösterir (bağ kimlikte, ad görüntü içindir).
+        if (!string.Equals(previousName, student.FullName, StringComparison.Ordinal))
+        {
+            var linkedAttendance = await dbContext.AttendanceEntries
+                .Where(x => x.StudentId == student.Id)
+                .ToListAsync(cancellationToken);
+            foreach (var entry in linkedAttendance)
+            {
+                entry.StudentName = student.FullName;
+            }
+
+            var linkedResults = await dbContext.ExamResults
+                .Where(x => x.StudentId == student.Id)
+                .ToListAsync(cancellationToken);
+            foreach (var linkedResult in linkedResults)
+            {
+                linkedResult.StudentName = student.FullName;
+            }
+        }
+
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -485,6 +560,21 @@ public sealed class AcademicQueryService(
         catch (DbUpdateException)
         {
             throw new InvalidOperationException("Bu TC kimlik numarasıyla kurumda daha önce kayıt oluşturulmuş.");
+        }
+
+        var after = StudentAuditSnapshot(student);
+        var changed = before.Where(pair => !string.Equals(pair.Value, after[pair.Key], StringComparison.Ordinal)).Select(pair => pair.Key).ToList();
+        if (changed.Count > 0)
+        {
+            await auditLogService.LogChangeAsync(
+                "Öğrenci bilgileri güncellendi",
+                "Registration",
+                "StudentProfile",
+                student.Id.ToString(),
+                $"{student.FullName}: {string.Join("; ", changed.Select(key => key == "Fotoğraf" ? "fotoğraf değişti" : $"{key}: {Short(before[key])} → {Short(after[key])}"))}.{planNote}",
+                changed.ToDictionary(key => key, key => before[key]),
+                changed.ToDictionary(key => key, key => after[key]),
+                cancellationToken);
         }
 
         return new StudentSummaryDto(
@@ -507,6 +597,55 @@ public sealed class AcademicQueryService(
             user.Status.ToString(),
             user.LastLoginAtUtc,
             user.ExtraRoles.Select(r => r.ToString()).ToList());
+    }
+
+    /// <summary>
+    /// Değişiklik kaydının alanları (eski/yeni değer). TC kimlik maskelenir, fotoğraf yalnız
+    /// değişti/değişmedi olarak izlenir; kayıt geçmişini gören herkes tam kimliği görmesin.
+    /// </summary>
+    private static Dictionary<string, string> StudentAuditSnapshot(StudentProfile student) => new()
+    {
+        ["Ad soyad"] = student.FullName,
+        ["TC kimlik"] = MaskTcNo(student.TcNo),
+        ["Sınıf"] = student.ClassName,
+        ["Mevcut okul"] = student.CurrentSchool,
+        ["Doğum tarihi"] = student.BirthDate,
+        ["Eğitim seviyesi"] = student.ProgramType,
+        ["Veli adı"] = student.ParentName,
+        ["Veli telefonu"] = student.ParentPhone,
+        ["Veli e-postası"] = student.ParentEmail,
+        ["Adres"] = student.Address,
+        ["Not"] = student.Note,
+        ["Fotoğraf"] = string.IsNullOrWhiteSpace(student.PhotoUrl) ? "yok" : $"var ({Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(student.PhotoUrl)))[..8].ToLowerInvariant()})",
+    };
+
+    private static string Short(string? value)
+    {
+        var text = (value ?? string.Empty).Trim();
+        if (text.Length == 0) return "(boş)";
+        return text.Length <= 40 ? text : $"{text[..40]}…";
+    }
+
+    private static string MaskTcNo(string? tcNo) =>
+        string.IsNullOrEmpty(tcNo) || tcNo.Length < 5 ? tcNo ?? string.Empty : $"{tcNo[..3]}{new string('*', tcNo.Length - 5)}{tcNo[^2..]}";
+
+    /// <summary>Ad değişince çalışma programını yeni ada taşır; kayıt geçmişine eklenecek notu döner.</summary>
+    private async Task<string> MoveStudyPlanAsync(string previousName, string newName, CancellationToken cancellationToken)
+    {
+        var oldKey = (previousName ?? string.Empty).Trim();
+        var newKey = newName.Trim();
+        if (oldKey.Length == 0 || string.Equals(oldKey, newKey, StringComparison.Ordinal)) return string.Empty;
+
+        var plan = await dbContext.StudyPlanStates.FirstOrDefaultAsync(x => x.StudentName == oldKey, cancellationToken);
+        if (plan is null) return string.Empty;
+        // Eski adı taşıyan başka bir öğrenci varsa program ona da ait olabilir; taşınmaz.
+        var sharedOldName = await dbContext.Students.CountAsync(x => x.FullName == oldKey, cancellationToken) > 1;
+        if (sharedOldName) return " Eski adı taşıyan başka öğrenci olduğu için çalışma programı taşınmadı.";
+        if (await dbContext.StudyPlanStates.AnyAsync(x => x.StudentName == newKey, cancellationToken))
+            return " Yeni adda zaten bir çalışma programı olduğu için eski program taşınmadı.";
+
+        plan.StudentName = newKey;
+        return " Çalışma programı yeni ada taşındı.";
     }
 
     /// <summary>

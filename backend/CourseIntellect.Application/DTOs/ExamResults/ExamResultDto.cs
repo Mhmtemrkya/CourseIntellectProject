@@ -12,5 +12,6 @@ public sealed record ExamResultDto(
     decimal Net,
     int ScorePercent,
     int? ClassRank,
-    int? OverallRank
+    int? OverallRank,
+    Guid? StudentId = null
 );

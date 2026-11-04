@@ -416,7 +416,7 @@ export default function ConsentTemplates() {
                           className={cn(
                             'rounded-full border px-3 py-1 text-xs transition',
                             active
-                              ? 'border-[hsl(var(--brand-accent)/0.5)] bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]'
+                              ? 'border-[hsl(var(--brand-accent)/0.5)] bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]'
                               : 'border-border/60 text-muted-foreground hover:bg-muted/50',
                           )}
                         >

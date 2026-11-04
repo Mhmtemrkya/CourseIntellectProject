@@ -190,6 +190,9 @@ class AttendanceApiService {
               (student) => {
                 'name': student['name'],
                 'status': student['status'],
+                // Kimlik gönderilirse aynı adlı iki öğrencinin kaydı karışmaz.
+                if (student['studentId'] != null)
+                  'studentId': student['studentId'],
               },
             )
             .toList(),

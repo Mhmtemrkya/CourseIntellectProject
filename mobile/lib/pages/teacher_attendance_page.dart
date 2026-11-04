@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/attendance_api_service.dart';
 import 'package:student/services/attendance_service.dart';
+import 'package:student/services/student_record_match.dart';
 import 'package:student/services/school_feed_api_service.dart';
 import 'package:student/services/student_registry_store.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -79,12 +80,13 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
     final liveLessons = await SchoolFeedApiService.instance.fetchLiveLessons();
     final teacherLessons = liveLessons.where((lesson) {
       if (session == null) return true;
-      final lessonTeacher = _normalizeText(lesson.teacher);
-      final fullName = _normalizeText(session.fullName);
-      final username = _normalizeText(session.username);
-      return lessonTeacher.contains(fullName) ||
-          fullName.contains(lessonTeacher) ||
-          lessonTeacher.contains(username);
+      final lessonTeacher = studentNameKey(lesson.teacher);
+      final fullName = studentNameKey(session.fullName);
+      final username = studentNameKey(session.username);
+      // Birebir eşleşme: eskiden "içeriyor" bakılıyordu; öğretmeni boş dersler herkese,
+      // "Ali" öğretmenine "Ali Veli"nin dersleri de görünüyordu.
+      if (lessonTeacher.isEmpty) return false;
+      return lessonTeacher == fullName || lessonTeacher == username;
     }).toList();
 
     final builtLessons = teacherLessons.map((lesson) {
@@ -122,9 +124,11 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
         final student = entry.value;
         final latestRecord = existingRecords
             .where(
-              (record) =>
-                  _normalizeText(record.studentName) ==
-                  _normalizeText(student.fullName),
+              (record) => attendanceBelongsTo(
+                record,
+                studentId: student.id,
+                fullName: student.fullName,
+              ),
             )
             .fold<AttendanceRecord?>(null, (previous, current) {
               if (previous == null) return current;
@@ -135,6 +139,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
               ? student.schoolNumber
               : (entry.key + 1).toString().padLeft(3, '0'),
           "name": student.fullName,
+          "studentId": student.id,
           "status": _attendanceStatusToUi(latestRecord?.status),
         };
       }).toList();
@@ -252,21 +257,30 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
         (item) => item['id']?.toString() == sessionId,
         orElse: () => const {},
       );
-      final scanned = (current['scannedStudents'] as List<dynamic>? ?? [])
-          .map(
-            (item) =>
-                _normalizeText((item as Map)['studentName']?.toString() ?? ''),
-          )
+      // Okutma kimlikle eşleşir (kimliği olmayan eski okutmada adla): aynı adlı iki
+      // öğrenciden yalnız okutan "geldi" olur.
+      final scanEntries = (current['scannedStudents'] as List<dynamic>? ?? [])
+          .whereType<Map>()
+          .toList();
+      final scannedIds = scanEntries
+          .map((item) => item['studentId']?.toString() ?? '')
           .where((item) => item.isNotEmpty)
           .toSet();
-      if (scanned.isEmpty) {
+      final scanned = scanEntries
+          .where((item) => (item['studentId']?.toString() ?? '').isEmpty)
+          .map((item) => studentNameKey(item['studentName']?.toString() ?? ''))
+          .where((item) => item.isNotEmpty)
+          .toSet();
+      if (scannedIds.isEmpty && scanned.isEmpty) {
         _showInfo('Henüz QR ile katılan öğrenci yok.');
         return;
       }
       var matched = 0;
       setState(() {
         for (final student in students) {
-          if (scanned.contains(_normalizeText(student['name'] as String))) {
+          final id = student['studentId']?.toString() ?? '';
+          if ((id.isNotEmpty && scannedIds.contains(id)) ||
+              scanned.contains(studentNameKey(student['name'] as String))) {
             student['status'] = 'present';
             matched++;
           }

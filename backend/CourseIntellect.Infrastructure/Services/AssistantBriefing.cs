@@ -46,6 +46,7 @@ public sealed partial class AssistantService
                         items.Add(new(voice.BriefingAbsentToday(absent, true), absent > 0 ? ToneWarn : ToneGood, absent > 0 ? ask("Bugün devamsız olanlar", "Absent today") : null));
                     }
                 }
+                await AtRiskBriefingAsync(context, voice, items, ask, cancellationToken);
                 break;
             case "admin":
             case "administrative":
@@ -55,7 +56,10 @@ public sealed partial class AssistantService
                     items.Add(new(voice.BriefingAbsentToday(absent, false), absent > 0 ? ToneWarn : ToneGood, absent > 0 ? ask("Bugün devamsız olanlar", "Absent today") : null));
                 }
                 if (voice.Portal == "admin")
+                {
+                    await AtRiskBriefingAsync(context, voice, items, ask, cancellationToken);
                     await FinanceBriefingAsync(context, voice, items, ask, cancellationToken);
+                }
                 break;
             case "accounting":
                 await FinanceBriefingAsync(context, voice, items, ask, cancellationToken);
@@ -147,6 +151,14 @@ public sealed partial class AssistantService
         items.Add(new(voice.BriefingCollected(collected), ToneInfo, ask("Bu ay tahsilat", "Collections this month")));
     }
 
+    /// <summary>Erken uyarı: risk altındaki öğrenci varsa tek satır; yoksa satır eklenmez (gürültü olmasın).</summary>
+    private async Task AtRiskBriefingAsync(AssistantRequestContext context, AssistantVoice voice, List<AssistantBriefingItemDto> items, Func<string, string, string> ask, CancellationToken ct)
+    {
+        if (!await CanAsync(context, AssistantIntent.GetAtRiskStudents, ct)) return;
+        var count = await AtRiskCountAsync(context, voice.Portal, ct);
+        if (count > 0) items.Add(new(voice.BriefingAtRisk(count, voice.Portal == "teacher"), ToneWarn, ask("Risk altındaki öğrenciler", "Students at risk")));
+    }
+
     /// <summary>Sohbetteki soruyla aynı kapı: kurum türü + rol izni + paket.</summary>
     private async Task<bool> CanAsync(AssistantRequestContext context, AssistantIntent intent, CancellationToken ct)
     {
@@ -165,7 +177,8 @@ public sealed partial class AssistantService
 
     private async Task<int> AbsentTodayAsync(IReadOnlyCollection<string>? classes, CancellationToken ct)
     {
-        var today = DateTime.UtcNow.Date;
+        // Yoklama günü Türkiye gününe göre yazılır; UTC günüyle gece 00:00–03:00 arası dün sayılıyordu.
+        var today = AssistantDates.TodayTr;
         var rows = await db.AttendanceEntries.AsNoTracking()
             .Where(x => x.LessonDate >= today && x.LessonDate < today.AddDays(1))
             .Select(x => new { x.StudentName, x.Status }).ToListAsync(ct);
@@ -179,11 +192,15 @@ public sealed partial class AssistantService
     private async Task<(int Count, string? Nearest, string? Deadline)> PendingHomeworkAsync(StudentCandidate student, CancellationToken ct)
     {
         var submitted = db.HomeworkSubmissions.AsNoTracking().Where(x => x.StudentName == student.FullName).Select(x => x.AssignmentId);
-        var rows = await db.HomeworkAssignments.AsNoTracking()
+        var today = AssistantDates.TodayTr;
+        var rows = (await db.HomeworkAssignments.AsNoTracking()
             .Where(x => x.ClassName == student.ClassName && !submitted.Contains(x.Id))
-            .OrderBy(x => x.DeadlineLabel).Select(x => new { x.Title, x.DeadlineLabel }).Take(30).ToListAsync(ct);
+            .Select(x => new { x.Title, x.DeadlineLabel }).Take(200).ToListAsync(ct))
+            .Select(x => (x.Title, x.DeadlineLabel, Due: AssistantDates.TryParse(x.DeadlineLabel)))
+            .OrderBy(x => x.Due is null ? 2 : x.Due < today ? 1 : 0).ThenBy(x => x.Due)
+            .ToList();
         var first = rows.FirstOrDefault();
-        return (rows.Count, first?.Title, first?.DeadlineLabel);
+        return (rows.Count, first.Title, first.Due is DateTime due ? AssistantDates.Short(due) : first.DeadlineLabel);
     }
 
     // ── Geri bildirim ve cevaplanamayan sorular ─────────────────────────────
@@ -209,14 +226,17 @@ public sealed partial class AssistantService
         var conversations = db.AssistantConversations.AsNoTracking();
         var answers = await db.AssistantMessages.AsNoTracking()
             .Where(x => x.SenderType == AssistantSenderType.Assistant && x.CreatedAtUtc >= since && x.ClientMessageId != null)
-            .Where(x => x.Intent == AssistantIntent.Unknown || x.Intent == AssistantIntent.HowTo || x.Feedback == -1)
+            .Where(x => x.Intent == AssistantIntent.Unknown || x.Intent == AssistantIntent.HowTo || x.Intent == AssistantIntent.OutOfScope || x.Feedback == -1)
             .Join(conversations, message => message.ConversationId, conversation => conversation.Id, (message, conversation) => new { message, conversation.Portal })
             .OrderByDescending(x => x.message.CreatedAtUtc)
             .Take(500)
             .ToListAsync(cancellationToken);
 
         var flagged = answers
-            .Select(x => (x.message, x.Portal, Reason: x.message.Feedback == -1 ? "negative" : x.message.Intent == AssistantIntent.Unknown ? "unknown" : HowToMissing(x.message) ? "no_guide" : null))
+            .Select(x => (x.message, x.Portal, Reason: x.message.Feedback == -1 ? "negative"
+                : x.message.Intent == AssistantIntent.Unknown ? "unknown"
+                : x.message.Intent == AssistantIntent.OutOfScope ? "out_of_scope"
+                : HowToMissing(x.message) ? "no_guide" : null))
             .Where(x => x.Reason is not null)
             .Take(200)
             .ToList();

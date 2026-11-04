@@ -1,5 +1,6 @@
 using CourseIntellect.Application.DTOs.SiteContent;
 using CourseIntellect.Application.Interfaces;
+using CourseIntellect.Domain.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,6 +24,14 @@ public sealed class SiteContentsController(ISiteContentService siteContentServic
     [Authorize(Policy = "PlatformAdmin")]
     public async Task<IActionResult> CreateOrUpdate(string sectionKey, [FromBody] UpdateSiteContentRequest request, CancellationToken cancellationToken = default)
     {
+        // İçerikteki bağlantılar herkese açık sayfada çizilir; javascript:/data: gibi adresler
+        // kayıtlı XSS olurdu. Site de çizimde süzer; bu sunucu tarafı ilk savunma hattıdır.
+        var unsafeLinks = SafeUrlRules.FindUnsafeLinks(request.Content);
+        if (unsafeLinks.Count > 0)
+        {
+            return BadRequest(new { message = $"Güvensiz bağlantı adresi: {string.Join(", ", unsafeLinks.Take(5))}. Yalnız site içi yol, http(s), mailto ve tel kabul edilir." });
+        }
+
         var item = await siteContentService.CreateOrUpdateAsync(sectionKey, request, cancellationToken);
         return Ok(item);
     }

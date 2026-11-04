@@ -31,6 +31,7 @@ import type {
   AttendanceEntryDto, ScheduleEntryDto, StaffLeaveDto, StaffSummaryDto, StudentSummaryDto,
 } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { isAttendedStatus } from '../../lib/attendanceStatus';
 
 interface AcademicsPayload {
   students: StudentSummaryDto[];
@@ -57,10 +58,7 @@ function normalizeText(value: string | null | undefined = ''): string {
 
 function attendanceRate(entries: readonly AttendanceEntryDto[]): number {
   if (entries.length === 0) return 0;
-  const present = entries.filter((item) => {
-    const status = normalizeText(item.status);
-    return status.includes('katildi') || status.includes('present');
-  }).length;
+  const present = entries.filter((item) => isAttendedStatus(item.status)).length;
   return Math.round((present / entries.length) * 100);
 }
 

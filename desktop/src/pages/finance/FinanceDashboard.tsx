@@ -598,10 +598,10 @@ export default function FinanceDashboard() {
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Tahsil Edilen</p>
-                  <p className="mt-1 text-3xl font-black tabular-nums text-[hsl(var(--brand-accent))]">{formatTry(periodStats.collected)}</p>
+                  <p className="mt-1 text-3xl font-black tabular-nums text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">{formatTry(periodStats.collected)}</p>
                   <p className="mt-1 text-xs text-muted-foreground">Hedef: {formatTry(periodStats.target)}</p>
                 </div>
-                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]">
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">
                   <Target className="h-6 w-6" />
                 </div>
               </div>

@@ -185,7 +185,7 @@ export default function PasswordResetRequests() {
                 <p className="text-sm text-muted-foreground">{label}</p>
                 <p className="mt-1 text-2xl font-bold">{value}</p>
               </div>
-              <Icon className="h-5 w-5 text-[hsl(var(--brand-accent))]" />
+              <Icon className="h-5 w-5 text-[hsl(var(--brand-accent-text,var(--brand-accent)))]" />
             </CardContent>
           </Card>
         ))}

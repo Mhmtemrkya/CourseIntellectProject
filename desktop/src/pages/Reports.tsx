@@ -51,7 +51,8 @@ import {
   updateStudent,
 } from '../lib/api/modules';
 import { fetchReportStudents, type ReportStudentRow } from '../lib/api/reports';
-import { formatCurrency, parseFinanceMoney } from '../lib/financeDocuments';
+import { downloadFileBlob, formatCurrency, parseFinanceMoney } from '../lib/financeDocuments';
+import { fetchStudentSuccessReportPdf } from '../lib/api/modules';
 import { downloadSchoolAsistReportPdf } from '../lib/schoolAsistReportPdf';
 import { useToast } from '../hooks/use-toast';
 import { formatDate as formatShortDate, formatMoney } from '../lib/format';
@@ -64,6 +65,8 @@ import type {
 } from '../types/api/generated';
 import type { IconComponent } from '../types/ui';
 import { useAssistantFocus } from '../lib/assistantFocus';
+import { belongsToStudent, isAttendedStatus } from '../lib/attendanceStatus';
+import { containsWholeName } from '../lib/studentRecords';
 
 interface ReportType {
   id: 'performance' | 'students' | 'teachers';
@@ -174,16 +177,17 @@ function recordMatchesStudent(record: StudentLinkedRecord, student: StudentSumma
     student.username,
   ].filter(Boolean).map((value) => normalizeLookup(value));
 
-  const recordTexts = [
-    record.studentName,
-    record.student,
-    record.name,
-    record.title,
-    record.subtitle,
-    record.note,
-  ].filter(Boolean).map((value) => normalizeLookup(value));
+  // Ad alanları birebir eşleşmeli; serbest metinde (başlık/not) ad tam kelime olarak
+  // geçmeli. Eskiden "içeriyor" aranıyordu: "Ali Kaya"nın raporuna "Ali Kayaoğlu"nun
+  // taksit/tahsilat/faturası da karışıyordu.
+  const nameFields = [record.studentName, record.student, record.name]
+    .filter(Boolean).map((value) => normalizeLookup(value));
+  const freeTexts = [record.title, record.subtitle, record.note]
+    .filter(Boolean).map((value) => normalizeLookup(value));
+  const validNames = studentNames.filter((name) => name.length > 2);
 
-  return recordTexts.some((text) => studentNames.some((name) => name.length > 2 && (text === name || text.includes(name))));
+  if (nameFields.some((field) => validNames.includes(field))) return true;
+  return freeTexts.some((text) => validNames.some((name) => containsWholeName(text, name)));
 }
 
 function buildStudentUpdatePayload(student: StudentSummaryDto, note: string): UpdateStudentRequest {
@@ -216,6 +220,20 @@ function readSavedNotes(): Record<string, string> {
 
 function AdministrativeReportOverview() {
   const { toast } = useToast();
+  const [successPdfBusy, setSuccessPdfBusy] = useState(false);
+
+  /** 6 sayfalık Öğrenci Başarı Raporu: sunucuda üretilir (asistan, Rapor Merkezi ve mobil ile aynı). */
+  const downloadSuccessReport = useCallback(async (studentId: string, name: string) => {
+    setSuccessPdfBusy(true);
+    try {
+      const blob = await fetchStudentSuccessReportPdf(studentId);
+      if (blob) downloadFileBlob(`${name || 'ogrenci'} Başarı Raporu.pdf`, blob);
+    } catch (error) {
+      toast({ title: 'Rapor hazırlanamadı', description: errorMessage(error), variant: 'destructive' });
+    } finally {
+      setSuccessPdfBusy(false);
+    }
+  }, [toast]);
   const [selectedReport, setSelectedReport] = useState<ReportType>(PERFORMANCE_REPORT);
   const [classFilter, setClassFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('month');
@@ -306,12 +324,12 @@ function AdministrativeReportOverview() {
 
   const displayStudentRows = useMemo(() => (
     filteredStudents.map((student): StudentReportRow => {
-      const examScores = filteredExams.filter((exam) => recordMatchesStudent(exam, student));
+      const examScores = filteredExams.filter((exam) => belongsToStudent(exam, student));
       const averageScore = examScores.length
         ? Math.round(examScores.reduce((sum, item) => sum + Number(item.score || 0), 0) / examScores.length)
         : 0;
-      const studentAttendance = attendance.filter((item) => recordMatchesStudent(item, student));
-      const presentCount = studentAttendance.filter((item) => normalizeLookup(item.status).includes('katildi')).length;
+      const studentAttendance = attendance.filter((item) => belongsToStudent(item, student));
+      const presentCount = studentAttendance.filter((item) => isAttendedStatus(item.status)).length;
       const attendanceRate = studentAttendance.length
         ? Math.round((presentCount / studentAttendance.length) * 100)
         : 0;
@@ -347,15 +365,15 @@ function AdministrativeReportOverview() {
     if (!selectedStudent) return null;
 
     const student = selectedStudent.raw;
-    const studentExams = exams.filter((exam) => recordMatchesStudent(exam, student));
-    const studentAttendance = attendance.filter((item) => recordMatchesStudent(item, student));
+    const studentExams = exams.filter((exam) => belongsToStudent(exam, student));
+    const studentAttendance = attendance.filter((item) => belongsToStudent(item, student));
     const installments = (accountingDashboard?.installments || []).filter((item) => recordMatchesStudent(item, student));
     const collections = (accountingDashboard?.collections || []).filter((item) => recordMatchesStudent(item, student));
     const invoices = (accountingDashboard?.invoices || []).filter((item) => recordMatchesStudent(item, student));
     const averageScore = studentExams.length
       ? Math.round(studentExams.reduce((sum, item) => sum + Number(item.score || 0), 0) / studentExams.length)
       : selectedStudent.averageScore || 0;
-    const presentLessons = studentAttendance.filter((item) => normalizeLookup(item.status).includes('katildi')).length;
+    const presentLessons = studentAttendance.filter((item) => isAttendedStatus(item.status)).length;
     const attendanceRate = studentAttendance.length ? Math.round((presentLessons / studentAttendance.length) * 100) : 0;
     const paidInstallments = installments.filter((item) => isPaidStatus(item.status));
     const unpaidInstallments = installments.filter((item) => !isPaidStatus(item.status));
@@ -748,9 +766,17 @@ function AdministrativeReportOverview() {
                       </DialogDescription>
                     </div>
                   </div>
-                  <Badge variant="outline" className="w-fit">
-                    {selectedStudentDetail.student.className || selectedStudent?.className || 'Sınıf yok'}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="w-fit">
+                      {selectedStudentDetail.student.className || selectedStudent?.className || 'Sınıf yok'}
+                    </Badge>
+                    {selectedStudent ? (
+                      <Button size="sm" variant="outline" disabled={successPdfBusy} onClick={() => void downloadSuccessReport(selectedStudent.id, selectedStudentDetail.name)}>
+                        <Download className="mr-1.5 h-4 w-4" />
+                        {successPdfBusy ? 'Hazırlanıyor…' : 'Başarı Raporu (PDF)'}
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </DialogHeader>
 

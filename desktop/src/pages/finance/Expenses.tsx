@@ -14,6 +14,7 @@ import { formatDate, formatDateTime } from '../../lib/format';
 import { errorMessage } from '../../lib/errors';
 import type { ExpenseItem, ExpenseListResponse, ExpenseQuery } from '../../lib/api/expenses';
 import type { ExpenseRequest } from '../../types/api/generated';
+import { localDateKey } from '../../lib/localDate';
 
 /** Gider formu: tutar/tarih metin olarak tutulur, kaydederken çevrilir. */
 interface ExpenseForm {
@@ -47,7 +48,7 @@ const CATEGORY_LABEL: Partial<Record<string, string>> = Object.fromEntries(CATEG
 const money = (v: unknown) => `${Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`;
 const dateTime = (v: string | null | undefined) => (v ? formatDateTime(v) : '—');
 const dateOnly = (v: string | null | undefined) => (v ? formatDate(v) : '—');
-const todayInput = () => new Date().toISOString().slice(0, 10);
+const todayInput = () => localDateKey();
 
 const EMPTY_FORM: ExpenseForm = { category: 'Fuel', title: '', amount: '', expenseDate: todayInput(), vendorName: '', invoiceNo: '', vehicleId: '', note: '', paymentMethod: 'Havale' };
 
@@ -306,7 +307,7 @@ export default function Expenses() {
                   ) : null}
                   <Button size="sm" variant="outline" onClick={() => setModal({
                     id: item.id, category: item.category, title: item.title, amount: String(item.amount),
-                    expenseDate: item.expenseDateUtc ? item.expenseDateUtc.slice(0, 10) : todayInput(),
+                    expenseDate: item.expenseDateUtc ? localDateKey(new Date(item.expenseDateUtc)) : todayInput(),
                     vendorName: item.vendorName || '', invoiceNo: item.invoiceNo || '', vehicleId: item.vehicleId || '', note: item.note || '',
                     paymentMethod: item.paymentMethod || 'Havale',
                   })}>Düzenle</Button>

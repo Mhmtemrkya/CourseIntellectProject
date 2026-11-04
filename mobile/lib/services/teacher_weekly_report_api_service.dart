@@ -63,6 +63,8 @@ class TeacherWeeklyReportAttachmentRecord {
 }
 
 class TeacherWeeklyReportStudentRecord {
+  /// Öğrenci profil kimliği (/api/reports/students verir); Öğrenci Başarı Raporu PDF'i için.
+  final String id;
   final String fullName;
   final String username;
   final String className;
@@ -70,6 +72,7 @@ class TeacherWeeklyReportStudentRecord {
   final String parentEmail;
 
   const TeacherWeeklyReportStudentRecord({
+    this.id = '',
     required this.fullName,
     required this.username,
     required this.className,
@@ -79,6 +82,7 @@ class TeacherWeeklyReportStudentRecord {
 
   factory TeacherWeeklyReportStudentRecord.fromMap(Map<String, dynamic> map) {
     return TeacherWeeklyReportStudentRecord(
+      id: map['id']?.toString() ?? '',
       fullName: _decodeHtmlEntities(map['fullName'] as String? ?? ''),
       username: _decodeHtmlEntities(map['username'] as String? ?? ''),
       className: _decodeHtmlEntities(map['className'] as String? ?? ''),

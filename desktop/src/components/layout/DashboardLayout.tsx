@@ -132,7 +132,7 @@ export function DashboardLayout() {
         </main>
       </motion.div>
 
-      {/* SchoolAsist Asistan (portal ile body'ye çizilir; .app-shell konum tuzağına takılmaz) */}
+      {/* Maydi asistanı (portal ile body'ye çizilir; .app-shell konum tuzağına takılmaz) */}
       <AssistantPanel />
 
       {/* Right Drawer */}

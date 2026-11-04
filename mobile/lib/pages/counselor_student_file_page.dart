@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/pages/counselor_planner_page.dart';
+import 'package:student/services/attendance_service.dart';
 import 'package:student/services/guidance_api_service.dart';
 import 'package:student/utils/log_ignored.dart';
 
@@ -471,10 +472,9 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
   // ── Devam ───────────────────────────────────────────────────────────
   List<Widget> _attendanceSection(ThemeData theme, bool isDark) {
     final entries = _list('attendance');
-    bool isAbsent(Map<String, dynamic> e) {
-      final s = (e['status'] as String? ?? '').toLowerCase();
-      return s.contains('absent') || s.contains('yok') || s.contains('gelmedi');
-    }
+    // Eskiden yalnız "absent/yok/gelmedi" aranıyordu; kanonik "Devamsiz" sayılmıyordu.
+    bool isAbsent(Map<String, dynamic> e) =>
+        canonicalAttendanceStatus(e['status'] as String?) == 'Devamsiz';
 
     final absents = entries.where(isAbsent).toList().reversed.take(15).toList();
     final absentCount = entries.where(isAbsent).length;

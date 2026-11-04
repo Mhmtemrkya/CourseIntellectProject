@@ -17,6 +17,7 @@ import { errorMessage } from '../../lib/errors';
 import type {
   PreferenceEstimateDto, PreferenceMatchDto, PreferenceMetaDto, PreferenceNetInput, PreferenceOptionsDto, PreferenceSearchResultDto,
 } from '../../types/api/generated';
+import { isHttpUrl } from '../../lib/safeOpen';
 
 type Exam = 'YKS' | 'LGS';
 type NetKey = Exclude<keyof PreferenceNetInput, 'exam' | 'diplomaGrade'>;
@@ -274,7 +275,7 @@ export default function PreferenceRobotPage({ canSave = false }: { canSave?: boo
           ) : datasets.map((item) => (
             <p key={`${item.exam}-${item.year}`} className="text-muted-foreground">
               <span>{`${item.year}: ${item.count.toLocaleString('tr-TR')} program`}</span> • {item.source}{' '}
-              <a className="inline-flex items-center gap-1 text-brand-primary hover:underline" href={item.sourceUrl} target="_blank" rel="noopener noreferrer">kaynak<ExternalLink className="h-3 w-3" /></a>
+              <a className="inline-flex items-center gap-1 text-brand-primary hover:underline" href={isHttpUrl(item.sourceUrl) ? item.sourceUrl : undefined} target="_blank" rel="noopener noreferrer">kaynak<ExternalLink className="h-3 w-3" /></a>
             </p>
           ))}
         </div>
@@ -526,7 +527,7 @@ function ProgramRow({ item, canSave, added, onAdd }: { item: PreferenceMatchDto;
           {item.level ? <Badge variant="outline">{item.level}</Badge> : null}
           {item.quota !== null ? <Badge variant="outline">{`Kontenjan ${item.quota}`}</Badge> : null}
           {item.percentile !== null ? <Badge variant="outline">{`Yüzdelik %${fmt(item.percentile)}`}</Badge> : null}
-          <a className="inline-flex items-center gap-1 text-muted-foreground hover:text-brand-primary" href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{`${item.year} kaynak`}<ExternalLink className="h-3 w-3" /></a>
+          <a className="inline-flex items-center gap-1 text-muted-foreground hover:text-brand-primary" href={isHttpUrl(item.sourceUrl) ? item.sourceUrl : undefined} target="_blank" rel="noopener noreferrer">{`${item.year} kaynak`}<ExternalLink className="h-3 w-3" /></a>
         </div>
       </div>
       <div className="text-right">

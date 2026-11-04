@@ -73,7 +73,7 @@ export default function PremiumWeeklySchedule({ days, timeSlots, lessons, weekDa
               const today = todayName === day;
               return (
                 <div key={day} className={cn('border-b border-r border-foreground/10 p-3 text-center last:border-r-0', today && 'bg-[hsl(var(--brand-accent)/0.1)]')}>
-                  <p className={cn('text-sm font-bold', today ? 'text-[hsl(var(--brand-accent))]' : 'text-foreground')}>{day}</p>
+                  <p className={cn('text-sm font-bold', today ? 'text-[hsl(var(--brand-accent-text,var(--brand-accent)))]' : 'text-foreground')}>{day}</p>
                   {weekDates[day] ? <p className="mt-0.5 text-[11px] text-muted-foreground">{weekDates[day]}</p> : null}
                 </div>
               );
@@ -98,7 +98,7 @@ export default function PremiumWeeklySchedule({ days, timeSlots, lessons, weekDa
                         <div className="flex items-center gap-1.5">
                           <span className={cn('h-2 w-2 shrink-0 rounded-full', tone.dot)} />
                           <p className="truncate text-[13px] font-semibold text-foreground">{lesson.title || lesson.subject || 'Ders'}</p>
-                          {tone.live ? <span className="ml-auto shrink-0 rounded-full bg-[hsl(var(--brand-accent)/0.2)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[hsl(var(--brand-accent))]">Canlı</span> : null}
+                          {tone.live ? <span className="ml-auto shrink-0 rounded-full bg-[hsl(var(--brand-accent)/0.2)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">Canlı</span> : null}
                         </div>
                         <p className="truncate text-[11px] text-muted-foreground">Derslik: {lesson.className || lesson.room || '-'}</p>
                       </div>

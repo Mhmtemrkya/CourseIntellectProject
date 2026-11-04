@@ -14,6 +14,8 @@ import { fetchAttendance } from '../../lib/api/modules';
 import { errorMessage } from '../../lib/errors';
 import type { AttendanceEntryDto } from '../../types/api/generated';
 import type { IconComponent } from '../../types/ui';
+import { localDateKey } from '../../lib/localDate';
+import { absenceDayCounts, absenceLimitFor } from '../../lib/absenceLimits';
 
 type MetricTone = 'green' | 'orange' | 'blue' | 'purple';
 
@@ -107,7 +109,17 @@ export default function StudentAttendance() {
     const absent = records.filter((item) => toStatus(item.status) === 'absent').length;
     const total = records.length || 0;
     const rate = total ? Math.round(((present + late + excuse) / total) * 100) : 0;
-    return { present, late, excuse, absent, total, rate, remaining: Math.max(0, 20 - absent) };
+    // Kayıtlar ders bazındadır; "gün" sayıları ayrı tarihlerden çıkar. Eskiden devamsız
+    // DERS sayısı "gün" diye gösteriliyor ve 20 günlük haktan düşülüyordu (bir günde 6 ders
+    // kaçıran öğrencinin 6 günü gitmiş görünüyordu).
+    const dayOf = (item: { lessonDate?: string | null }) => String(item.lessonDate || '').slice(0, 10);
+    const absentDays = new Set(records.filter((item) => toStatus(item.status) === 'absent').map(dayOf).filter(Boolean)).size;
+    const attendedDays = new Set(records.filter((item) => toStatus(item.status) !== 'absent').map(dayOf).filter(Boolean)).size;
+    // Yönetmelik sınırı sınıf seviyesine göre (lisede özürsüz 10 / toplam 30 gün); ilkokul/ortaokulda
+    // doğrulanmış sabit sayı olmadığından gösterilmez. Eskiden herkese "20 gün" ve "%30" yazılıyordu.
+    const days = absenceDayCounts(records);
+    const limit = absenceLimitFor(records[0]?.className);
+    return { present, late, excuse, absent, total, rate, absentDays, attendedDays, days, limit };
   }, [records]);
 
   const bySubject = useMemo(() => {
@@ -139,7 +151,7 @@ export default function StudentAttendance() {
     const startOffset = (first.getDay() + 6) % 7;
     return Array.from({ length: 35 }, (_, index) => {
       const date = new Date(year, month, index - startOffset + 1);
-      const iso = date.toISOString().slice(0, 10);
+      const iso = localDateKey(date);
       const dayRecords = records.filter((item) => String(item.lessonDate || '').slice(0, 10) === iso);
       const hasAbsent = dayRecords.some((item) => toStatus(item.status) === 'absent');
       const hasPresent = dayRecords.some((item) => toStatus(item.status) !== 'absent');
@@ -170,22 +182,22 @@ export default function StudentAttendance() {
       {error ? <ErrorBanner title="Devamsızlık alınamadı" message={error} onRetry={loadAttendance} /> : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={CheckCircle2} label="Toplam Devam Günü" value={stats.present + stats.late + stats.excuse} hint={`%${stats.rate}.0`} tone="green" />
-        <Metric icon={XCircle} label="Toplam Devamsız Gün" value={stats.absent} hint={`%${stats.total ? Math.round((stats.absent / stats.total) * 100) : 0}.0`} tone="orange" />
-        <Metric icon={CalendarDays} label="Devamsızlık Hakkım" value="20" hint="Günden / Dönem" tone="blue" />
-        <Metric icon={ShieldCheck} label="Kalan Hakkım" value={stats.remaining} hint="Gün" tone="purple" />
+        <Metric icon={CheckCircle2} label="Toplam Devam Günü" value={stats.attendedDays} hint={`${stats.present + stats.late + stats.excuse} ders · %${stats.rate}`} tone="green" />
+        <Metric icon={XCircle} label="Toplam Devamsız Gün" value={stats.absentDays} hint={`${stats.absent} ders · %${stats.total ? Math.round((stats.absent / stats.total) * 100) : 0}`} tone="orange" />
+        <Metric icon={CalendarDays} label="Devamsızlık Sınırım" value={stats.limit ? `${stats.limit.unexcusedDays} / ${stats.limit.totalDays}` : '—'} hint={stats.limit ? 'Özürsüz / toplam gün' : 'Kurum yönetmeliğine göre'} tone="blue" />
+        <Metric icon={ShieldCheck} label="Kalan Hakkım" value={stats.limit ? `${Math.max(0, stats.limit.unexcusedDays - stats.days.unexcusedDays)} / ${Math.max(0, stats.limit.totalDays - stats.days.totalDays)}` : '—'} hint={`Özürsüz ${stats.days.unexcusedDays} · özürlü ${stats.days.excusedDays} gün`} tone="purple" />
       </div>
 
       <div className="rounded-2xl border bg-card p-5 shadow-sm">
         <h2 className="font-black">Devam Oranım</h2>
         <div className="mt-5 flex items-center gap-4">
-          <span className="text-3xl font-black text-emerald-500">%{stats.rate}.0</span>
+          <span className="text-3xl font-black text-emerald-500">%{stats.rate}</span>
           <Progress value={stats.rate} className="h-3 flex-1" />
-          <span className="text-sm font-bold">%{stats.rate}.0</span>
+          <span className="text-sm font-bold">%{stats.rate}</span>
         </div>
         <div className="mt-3 flex justify-between text-xs text-muted-foreground">
-          <span>Dönem sonu devamsızlık sınırı %30'dur.</span>
-          <span>Sınır: %30.0</span>
+          <span>{stats.limit ? `Sınır: özürsüz ${stats.limit.unexcusedDays}, toplam ${stats.limit.totalDays} gün (${stats.limit.source}).` : 'Devamsızlık sınırı okulunun bağlı olduğu yönetmeliğe göre belirlenir.'}</span>
+          <span>%{stats.rate}</span>
         </div>
       </div>
 
@@ -246,7 +258,7 @@ export default function StudentAttendance() {
         </div>
         <div className="rounded-2xl border bg-card p-5 shadow-sm">
           <FileText className="h-8 w-8 text-blue-500" />
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">Devamsızlık sınırınız %30'dur. Sınırı aştığınız takdirde dönem sonu başarınızı olumsuz etkileyebilir.</p>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">{stats.limit ? `Devamsızlık sınırın özürsüz ${stats.limit.unexcusedDays}, toplam ${stats.limit.totalDays} gün. Sınırı aşarsan dönem sonu başarın olumsuz etkilenir.` : 'Devamsızlık sınırı okulunun bağlı olduğu yönetmeliğe göre belirlenir; sınırı aşmak dönem sonu başarını olumsuz etkileyebilir.'}</p>
         </div>
       </div>
     </motion.div>

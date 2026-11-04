@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  AlertTriangle, BarChart3, CheckCircle2, FileUp, LayoutTemplate, Pencil, Plus, ScanLine, Search, Trash2, XCircle,
+  AlertTriangle, BarChart3, CalendarCheck, CheckCircle2, FileUp, LayoutTemplate, Pencil, Plus, ScanLine, Search, Trash2, XCircle,
 } from 'lucide-react';
 import { Page, PageHeader, PageLoading, PageNotice } from '../../components/layout/PageKit';
 import { Badge } from '../../components/ui/badge';
@@ -21,6 +21,7 @@ import type {
   OpticalStudentCandidateDto, OpticalTemplateDto,
 } from '../../types/api/generated';
 import { OpticalExamEditor, OpticalTemplateEditor } from './OpticalEditors';
+import { OpticalStudyPlanDialog } from './OpticalStudyPlanDialog';
 
 const net = (value: number) => value.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
 const formatDate = (value: string) => new Date(value).toLocaleDateString('tr-TR');
@@ -39,6 +40,7 @@ export default function OpticalExamsPage() {
   const [examEditor, setExamEditor] = useState<{ open: boolean; exam: OpticalExamDto | null }>({ open: false, exam: null });
   const [importExam, setImportExam] = useState<OpticalExamSummaryDto | null>(null);
   const [resultsExam, setResultsExam] = useState<OpticalExamSummaryDto | null>(null);
+  const [planExam, setPlanExam] = useState<OpticalExamSummaryDto | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -90,14 +92,14 @@ export default function OpticalExamsPage() {
       />
 
       {templates.length === 0 ? (
-        <PageNotice icon={LayoutTemplate} title="Önce optik şablonu tanımlayın" message="Optik okuyucunuzun çıktı dosyasında öğrenci numarası, ad ve cevapların hangi kolonlarda olduğunu bir kez girin; sonraki denemelerde yeniden kullanılır."
+        <PageNotice icon={LayoutTemplate} title="Önce optik şablonu tanımlayın" message="Optik okuyucunuzun çıktı dosyasında öğrenci numarası, ad ve cevapların satırın hangi karakterlerinde olduğunu bir kez girin; sonraki denemelerde yeniden kullanılır."
           action={<Button onClick={() => setTemplateEditor({ open: true, template: null })}><Plus className="mr-2 h-4 w-4" />Şablon oluştur</Button>} />
       ) : exams.length === 0 ? (
         <PageNotice icon={ScanLine} title="Henüz deneme yok" message="Yeni deneme oluşturup cevap anahtarını girin, ardından optik dosyasını yükleyin." />
       ) : (
         <section className="overflow-hidden rounded-2xl border bg-card">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
+            <table className="w-full min-w-[880px] text-sm">
               <thead className="bg-foreground/[0.03] text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2">Deneme</th>
@@ -126,6 +128,7 @@ export default function OpticalExamsPage() {
                       <div className="flex justify-end gap-1">
                         <Button size="sm" onClick={() => setImportExam(exam)}><FileUp className="mr-1 h-4 w-4" />Dosya yükle</Button>
                         {exam.status === 'Imported' ? <Button size="sm" variant="outline" onClick={() => setResultsExam(exam)}><BarChart3 className="mr-1 h-4 w-4" />Sonuçlar</Button> : null}
+                        {exam.status === 'Imported' ? <Button size="sm" variant="outline" onClick={() => setPlanExam(exam)}><CalendarCheck className="mr-1 h-4 w-4" />Çalışma planı</Button> : null}
                         <Button size="icon" variant="ghost" aria-label="Düzenle" onClick={() => void editExam(exam.id)}><Pencil className="h-4 w-4" /></Button>
                         <Button size="icon" variant="ghost" aria-label="Sil" onClick={() => void removeExam(exam)}><Trash2 className="h-4 w-4 text-rose-600" /></Button>
                       </div>
@@ -146,6 +149,7 @@ export default function OpticalExamsPage() {
         onClose={() => setExamEditor({ open: false, exam: null })} onSaved={() => void load()} />
       <ImportDialog exam={importExam} templates={templates} onClose={() => setImportExam(null)} onImported={() => void load()} />
       <ResultsDialog exam={resultsExam} onClose={() => setResultsExam(null)} />
+      <OpticalStudyPlanDialog examId={planExam?.id ?? null} examTitle={planExam?.title ?? ''} onClose={() => setPlanExam(null)} />
     </Page>
   );
 }
@@ -168,7 +172,7 @@ function TemplatesDialog({ open, templates, onClose, onEdit, onChanged }: {
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Optik şablonlar</DialogTitle>
-          <DialogDescription>Her optik okuyucu çıktısı için kolon düzeni bir kez tanımlanır.</DialogDescription>
+          <DialogDescription>Her optik okuyucu çıktısı için karakter düzeni bir kez tanımlanır.</DialogDescription>
         </DialogHeader>
         <ul className="divide-y rounded-xl border">
           {templates.map((template) => (

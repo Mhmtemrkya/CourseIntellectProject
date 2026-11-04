@@ -305,7 +305,7 @@ export const menuConfigs: Partial<Record<DesktopRole, SidebarMenuItem[]>> = {
     {
       path: "/admin/assistant-questions",
       icon: CheckSquare,
-      label: "Asistan Soruları",
+      label: "Maydi Soruları",
       color: "#4f46e5",
     },
     {

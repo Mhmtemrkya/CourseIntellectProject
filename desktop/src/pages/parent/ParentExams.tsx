@@ -312,7 +312,7 @@ export default function ParentExams() {
                 <div className="flex items-center gap-3">
                   <IconTile icon={Target} tone="orange" />
                   <div>
-                    <p className="font-black text-white">{exam._subject}</p>
+                    <p className="font-black text-foreground">{exam._subject}</p>
                     <p className="text-xs text-slate-400">{exam._title}</p>
                   </div>
                 </div>
@@ -327,7 +327,7 @@ export default function ParentExams() {
           <div className="flex items-center gap-3 rounded-[12px] border border-emerald-400/15 bg-emerald-500/[0.06] p-4">
             <IconTile icon={GraduationCap} tone="green" />
             <div>
-              <p className="font-black text-white">Riskli sınav sonucu görünmüyor</p>
+              <p className="font-black text-foreground">Riskli sınav sonucu görünmüyor</p>
               <p className="text-sm text-slate-400">Canlı sonuçlar içinde 70 puan altı kayıt bulunamadı.</p>
             </div>
           </div>

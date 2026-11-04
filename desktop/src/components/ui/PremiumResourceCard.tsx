@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
+import { useTheme } from '../../context/ThemeContext';
+import { generatePalette } from '../../lib/colorPalette';
 import type { IconComponent } from '@/types/ui';
 
 export interface ResourceTheme {
@@ -83,6 +85,10 @@ export default function PremiumResourceCard({
   onClick?: () => void;
 }) {
   const theme = getResourceTheme(subject);
+  // Ders renkleri parlak (#34D399, #FBBF24…): koyu kartta okunur ama açık temada beyaz kartta
+  // kayboluyordu. Yazı olarak kullanılan ton açık temada aynı rengin koyu (700) tonu.
+  const { resolvedTheme } = useTheme();
+  const ink = resolvedTheme === 'light' ? generatePalette(theme.hue)[700] : theme.hue;
   const clickable = typeof onClick === 'function';
   const Wrapper = clickable ? 'button' : 'div';
 
@@ -107,12 +113,12 @@ export default function PremiumResourceCard({
           <div className="flex items-center gap-3">
             <div
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-base font-black"
-              style={{ borderColor: `${theme.hue}40`, backgroundColor: `${theme.hue}1f`, color: theme.hue }}
+              style={{ borderColor: `${theme.hue}40`, backgroundColor: `${theme.hue}1f`, color: ink }}
             >
               {theme.mark}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: theme.hue }}>
+              <p className="truncate text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: ink }}>
                 {eyebrow || subject || 'Genel'}
               </p>
               <p className="truncate text-[10px] font-bold tracking-[0.18em] text-slate-500">{theme.tagline}</p>
@@ -123,7 +129,7 @@ export default function PremiumResourceCard({
               className={`shrink-0 rounded-full border px-3 py-1 text-xs font-black ${badgeTone === 'muted'
                 ? 'border-foreground/10 bg-foreground/[0.06] text-slate-300'
                 : ''}`}
-              style={badgeTone === 'muted' ? undefined : { borderColor: `${theme.hue}38`, backgroundColor: `${theme.hue}1a`, color: theme.hue }}
+              style={badgeTone === 'muted' ? undefined : { borderColor: `${theme.hue}38`, backgroundColor: `${theme.hue}1a`, color: ink }}
             >
               {badge}
             </span>

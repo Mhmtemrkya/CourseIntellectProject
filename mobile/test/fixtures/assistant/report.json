@@ -1,0 +1,103 @@
+{
+ "conversationId": "9a685152-2b6f-4704-a00c-af870f554790",
+ "messageId": "6b2ea810-df0b-44b9-9b32-f0a822b6886e",
+ "type": "report",
+ "text": "Son 30 gün içinde en çok devamsızlık yapanlar: Ali YİLMAZ (7), Ayşe Demir (4), Burak Öztürk (3).",
+ "data": {
+  "kind": "attendance_ranking",
+  "title": "En çok devamsızlık yapanlar",
+  "subtitle": "10-A · Son 30 gün",
+  "metrics": [
+   {
+    "label": "Devamsızlığı olan öğrenci",
+    "value": "3",
+    "tone": "warn"
+   },
+   {
+    "label": "Toplam devamsız ders",
+    "value": "14",
+    "tone": "info"
+   },
+   {
+    "label": "Dönem",
+    "value": "Son 30 gün",
+    "tone": "info"
+   }
+  ],
+  "columns": [
+   {
+    "key": "rank",
+    "label": "#",
+    "align": "right"
+   },
+   {
+    "key": "student",
+    "label": "Öğrenci",
+    "align": "left"
+   },
+   {
+    "key": "className",
+    "label": "Sınıf",
+    "align": "left"
+   },
+   {
+    "key": "absent",
+    "label": "Devamsız ders",
+    "align": "right"
+   },
+   {
+    "key": "late",
+    "label": "Geç",
+    "align": "right"
+   },
+   {
+    "key": "total",
+    "label": "Yoklama",
+    "align": "right"
+   }
+  ],
+  "rows": [
+   {
+    "rank": 1,
+    "student": "Ali YİLMAZ",
+    "className": "10-A",
+    "absent": 7,
+    "late": 0,
+    "total": 20
+   },
+   {
+    "rank": 2,
+    "student": "Ayşe Demir",
+    "className": "10-A",
+    "absent": 4,
+    "late": 0,
+    "total": 20
+   },
+   {
+    "rank": 3,
+    "student": "Burak Öztürk",
+    "className": "10-A",
+    "absent": 3,
+    "late": 0,
+    "total": 20
+   }
+  ],
+  "chart": {
+   "kind": "bar",
+   "x": "student",
+   "series": [
+    {
+     "key": "absent",
+     "label": "Devamsız ders"
+    }
+   ]
+  },
+  "sections": [],
+  "notes": [
+   "Sayılar ders bazındadır: bir gün 6 derse gelmeyen öğrenci 6 devamsız ders sayılır."
+  ]
+ },
+ "actions": [],
+ "suggestions": [],
+ "intent": 35
+}

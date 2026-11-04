@@ -23,7 +23,7 @@ export const STATUS_TONES: Record<StatusTone, string> = {
   danger: 'bg-red-500/15 text-red-600 dark:text-red-400',
   warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
   info: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
-  brand: 'bg-[hsl(var(--brand-accent)/0.15)] text-[hsl(var(--brand-accent))]',
+  brand: 'bg-[hsl(var(--brand-accent)/0.15)] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]',
   neutral: 'bg-slate-500/15 text-slate-600 dark:text-slate-300',
 };
 

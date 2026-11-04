@@ -88,15 +88,15 @@ public sealed class SecurityAuthOnboardingRemediationTests : IDisposable
 
         user.MustChangePassword = true;
         await db.Context.SaveChangesAsync();
-        Assert.Null(await service.PkceAuthorizeAsync(new PkceAuthorizeRequest(user.Username, "Password1", "desktop", "app://callback", challenge, "S256")));
+        Assert.Null(await service.PkceAuthorizeAsync(new PkceAuthorizeRequest(user.Username, "Password1", "desktop", "courseintellect://callback", challenge, "S256")));
 
         user.MustChangePassword = false;
         await db.Context.SaveChangesAsync();
-        var authorized = await service.PkceAuthorizeAsync(new PkceAuthorizeRequest(user.Username, "Password1", "desktop", "app://callback", challenge, "S256"));
+        var authorized = await service.PkceAuthorizeAsync(new PkceAuthorizeRequest(user.Username, "Password1", "desktop", "courseintellect://callback", challenge, "S256"));
         Assert.NotNull(authorized);
         user.Status = UserStatus.Passive;
         await db.Context.SaveChangesAsync();
-        Assert.Null(await service.PkceTokenExchangeAsync(new PkceTokenRequest(authorized!.Code, verifier, "desktop", "app://callback")));
+        Assert.Null(await service.PkceTokenExchangeAsync(new PkceTokenRequest(authorized!.Code, verifier, "desktop", "courseintellect://callback")));
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public sealed class SecurityAuthOnboardingRemediationTests : IDisposable
         var verifier = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG";
         var challenge = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
         var authorized = await service.PkceAuthorizeAsync(
-            new PkceAuthorizeRequest(user.Username, "Password1", "desktop", "app://callback", challenge, "S256"));
+            new PkceAuthorizeRequest(user.Username, "Password1", "desktop", "courseintellect://callback", challenge, "S256"));
         Assert.NotNull(authorized);
 
         user.SecurityVersion++;
@@ -124,7 +124,7 @@ public sealed class SecurityAuthOnboardingRemediationTests : IDisposable
 
         Assert.Null(await service.RefreshAsync(new RefreshTokenRequest(login!.RefreshToken)));
         Assert.Null(await service.PkceTokenExchangeAsync(
-            new PkceTokenRequest(authorized!.Code, verifier, "desktop", "app://callback")));
+            new PkceTokenRequest(authorized!.Code, verifier, "desktop", "courseintellect://callback")));
     }
 
     [Fact]

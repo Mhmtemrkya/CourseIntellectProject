@@ -12,7 +12,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Checkbox } from '../../components/ui/checkbox';
@@ -35,6 +35,10 @@ import {
   uploadFile,
 } from '../../lib/api/modules';
 import { errorMessage, isRecord } from '../../lib/errors';
+import { TopicPicker } from '../../components/topics/TopicPicker';
+import { useTopicCatalog } from '../../components/topics/useTopicCatalog';
+import { ALL_SUBJECTS, SUBJECT_GROUPS } from '../../lib/subjectCatalog';
+import { levelForClass, TOPIC_LEVELS } from '../../lib/topicCatalog';
 import type { CreateQuestionBankItemRequest, QuestionBankItemDto } from '../../types/api/generated';
 
 interface StudioOption {
@@ -190,6 +194,13 @@ export default function TeacherQuestionStudio() {
   const [expectedAnswer, setExpectedAnswer] = useState('');
   const [options, setOptions] = useState<StudioOption[]>(freshOptions);
   const [settings, setSettings] = useState<StudioSettings>(freshSettings);
+  // Konu listesinin seviyesi yalnız listeyi daraltır (soruya kaydedilmez); sınıftan tahmin edilir, elle değiştirilebilir.
+  const [topicLevel, setTopicLevel] = useState('');
+  const topicLevelTouched = useRef(false);
+  useEffect(() => {
+    if (!topicLevelTouched.current) setTopicLevel(levelForClass(settings.classLevel));
+  }, [settings.classLevel]);
+  const topics = useTopicCatalog(topicLevel, [settings.subject], true);
   const [visual, setVisual] = useState<StudioVisual>({ align: 'center', width: 65, rotation: 0, caption: '' });
   const [assetPath, setAssetPath] = useState('');
   const [solutionAssetPath, setSolutionAssetPath] = useState('');
@@ -880,8 +891,38 @@ export default function TeacherQuestionStudio() {
         <aside className="overflow-y-auto border-t border-foreground/10 bg-[hsl(var(--ci-card))] p-5 xl:border-l xl:border-t-0">
           <h2 className="mb-5 text-lg font-black">Soru Ayarları</h2>
           <div className="space-y-4">
-            <Field label="Ders"><Select value={settings.subject} onValueChange={(value) => updateSetting('subject', value)}><SelectTrigger className="border-foreground/15 bg-background/80 text-foreground"><SelectValue /></SelectTrigger><SelectContent>{['Matematik', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji', 'İngilizce'].map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select></Field>
-            <Field label="Konu"><Input value={settings.topic} onChange={(event) => updateSetting('topic', event.target.value)} className="border-foreground/15 bg-background/80 text-foreground" /></Field>
+            <Field label="Ders">
+              <Select value={settings.subject} onValueChange={(value) => updateSetting('subject', value)}>
+                <SelectTrigger aria-label="Ders" className="border-foreground/15 bg-background/80 text-foreground"><SelectValue placeholder="Ders seçin" /></SelectTrigger>
+                <SelectContent className="max-h-80">
+                  {settings.subject && !ALL_SUBJECTS.includes(settings.subject) ? (
+                    <SelectItem value={settings.subject}>{`${settings.subject} (mevcut kayıt)`}</SelectItem>
+                  ) : null}
+                  {SUBJECT_GROUPS.map((group) => (
+                    <SelectGroup key={group.label}>
+                      <SelectLabel className="text-xs text-muted-foreground">{group.label}</SelectLabel>
+                      {group.subjects.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Seviye (konu listesi)">
+              <Select value={topicLevel || 'all'} onValueChange={(value) => { topicLevelTouched.current = true; setTopicLevel(value === 'all' ? '' : value); }}>
+                <SelectTrigger aria-label="Seviye (konu listesi)" className="border-foreground/15 bg-background/80 text-foreground"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm seviyeler</SelectItem>
+                  {TOPIC_LEVELS.map((item) => <SelectItem key={item.key} value={item.key}>{item.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Konu">
+              <TopicPicker inputId="studio-topic" value={settings.topic} options={topics.optionsFor(settings.subject)} label="Konu"
+                className="h-10 border-foreground/15 bg-background/80 text-foreground"
+                onChange={(value) => updateSetting('topic', value)}
+                onAdd={(name) => topics.add(settings.subject, name)} onRemove={(option) => void topics.remove(option)} />
+              {topics.error ? <p className="text-xs text-amber-700 dark:text-amber-300">Konu listesi alınamadı; konuyu elle yazabilirsiniz.</p> : null}
+            </Field>
             <Field label="Kazanım"><Input value={settings.outcome} onChange={(event) => updateSetting('outcome', event.target.value)} className="border-foreground/15 bg-background/80 text-foreground" /></Field>
             <Field label="Zorluk Seviyesi"><div className="grid grid-cols-3 gap-2">{['Kolay', 'Orta', 'Zor'].map((item) => <button key={item} type="button" onClick={() => updateSetting('difficulty', item)} className={`rounded-2xl border px-3 py-2 text-sm font-bold ${settings.difficulty === item ? 'border-orange-500 bg-orange-500/15 text-orange-700 dark:text-orange-100' : 'border-foreground/10 bg-background/65 text-foreground/75'}`}>{item}</button>)}</div></Field>
             <div className="grid grid-cols-2 gap-3"><Field label="Puan"><Input value={settings.point} onChange={(event) => updateSetting('point', event.target.value)} className="border-foreground/15 bg-background/80 text-foreground" /></Field><Field label="Süre (sn)"><Input value={settings.estimatedSeconds} onChange={(event) => updateSetting('estimatedSeconds', event.target.value)} className="border-foreground/15 bg-background/80 text-foreground" /></Field></div>
