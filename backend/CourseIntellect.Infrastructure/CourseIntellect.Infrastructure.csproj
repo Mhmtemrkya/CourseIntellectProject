@@ -28,9 +28,13 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="PDFsharp" Version="6.2.4" />
-    <!-- Dolaylı bağımlılık güvenlik yamaları: FaceAiSharp ImageSharp 3.1.12 (GHSA-v76p-62qx-wwq2, TIFF yığın taşması),
-         PDFsharp Pkcs 8.0.1 (CVE-2026-84008, DoS) getiriyor. -->
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.2.0" />
+    <!-- Dolaylı bağımlılık güvenlik yaması: PDFsharp Pkcs 8.0.1 (CVE-2026-84008, DoS) getiriyor.
+         ImageSharp 3.1.12'de kalır: 3.2.0 Release derlemesinde Six Labors lisans anahtarı ister
+         (canlı yayını durdurdu). GHSA-v76p-62qx-wwq2 yalnız TIFF çözücüsünde; ImageSharp'ı kullanan
+         tek yer (logo yükleme, PlatformConfigurationsController) dosyayı önce PNG/JPEG/WebP imza
+         baytlarıyla doğrular, sonra yalnız Identify çağırır → TIFF yolu erişilemez. Lisans anahtarı
+         alınınca 3.2.0+'ya geçin. -->
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
     <PackageReference Include="QRCoder" Version="1.8.0" />
     <PackageReference Include="QuestPDF" Version="2024.12.3" />
