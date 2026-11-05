@@ -287,7 +287,7 @@ public sealed class GuidanceController(
             .OrderByDescending(a => a.CreatedAtUtc)
             .ToList();
 
-        var studyPlan = await studyPlanService.GetOrCreateAsync(profile.FullName, cancellationToken);
+        var studyPlan = await studyPlanService.GetOrCreateAsync(profile.UserId, profile.FullName, cancellationToken);
 
         return Ok(new
         {
@@ -666,6 +666,25 @@ public sealed class GuidanceController(
         return Ok(item);
     }
 
+    /// <summary>
+    /// Rehber ekranı öğrenciyi adla gönderir; program öğrenci kimliğiyle tutulur. Ad kurumda tek öğrenciye
+    /// aitse o öğrenci döner; aynı adlı birden çok öğrenci varsa yanlış kişinin programı açılmasın diye reddedilir.
+    /// </summary>
+    private async Task<(StudentProfile? Owner, IActionResult? Error)> ResolvePlanStudentAsync(string name, CancellationToken cancellationToken)
+    {
+        var key = Normalize(name);
+        var matches = (await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken))
+            .Where(s => Normalize(s.FullName) == key)
+            .Take(2)
+            .ToList();
+        return matches.Count switch
+        {
+            0 => (null, NotFound(new { message = "Öğrenci bulunamadı." })),
+            1 => (matches[0], null),
+            _ => (null, Conflict(new { code = "AMBIGUOUS_STUDENT", message = "Bu adla birden çok öğrenci var; öğrenciyi öğrenci dosyasından açın." })),
+        };
+    }
+
     // ─── Rehberin öğrenci adına çalışma programı yönetimi ────────────────
     [HttpGet("study-plan")]
     [Authorize(Roles = "Teacher,Admin")]
@@ -674,8 +693,9 @@ public sealed class GuidanceController(
         var counselor = await ResolveCounselorAsync(cancellationToken);
         if (counselor is null) return Forbid();
         if (string.IsNullOrWhiteSpace(student)) return BadRequest(new { message = "Öğrenci adı gerekli." });
-        var plan = await studyPlanService.GetOrCreateAsync(student.Trim(), cancellationToken);
-        return Ok(plan);
+        var (owner, error) = await ResolvePlanStudentAsync(student, cancellationToken);
+        if (owner is null) return error!;
+        return Ok(await studyPlanService.GetOrCreateAsync(owner.UserId, owner.FullName, cancellationToken));
     }
 
     [HttpPut("study-plan")]
@@ -686,9 +706,10 @@ public sealed class GuidanceController(
         if (counselor is null) return Forbid();
         if (string.IsNullOrWhiteSpace(request.StudentName))
             return BadRequest(new { message = "Öğrenci adı gerekli." });
+        var (owner, error) = await ResolvePlanStudentAsync(request.StudentName, cancellationToken);
+        if (owner is null) return error!;
         // Rehber yalnız programı düzenler; XP/seri öğrenciye aittir ve korunur.
-        var plan = await studyPlanService.UpdatePlanItemsAsync(request.StudentName, request.PlanItemsSerialized, cancellationToken);
-        return Ok(plan);
+        return Ok(await studyPlanService.UpdatePlanItemsAsync(owner.UserId, owner.FullName, request.PlanItemsSerialized, cancellationToken));
     }
 
     // ─── Veli: bağlı çocukların program uyumu + hedef + randevu özeti ────
@@ -714,7 +735,7 @@ public sealed class GuidanceController(
         var result = new List<object>();
         foreach (var child in children)
         {
-            var plan = await studyPlanService.GetOrCreateAsync(child.FullName, cancellationToken);
+            var plan = await studyPlanService.GetOrCreateAsync(child.UserId, child.FullName, cancellationToken);
             var (total, done) = CountPlanTasks(plan.PlanItemsSerialized);
             var childKey = Normalize(child.FullName);
             var goal = goals.FirstOrDefault(g => Normalize(g.StudentName) == childKey);

@@ -7,134 +7,40 @@ using System.Text.Json.Nodes;
 
 namespace CourseIntellect.Infrastructure.Services;
 
+/// <summary>Çalışma programı; plan sahibinin kullanıcı kimliğiyle bulunur (ad yalnız gösterim).</summary>
 public sealed class StudyPlanService(CourseIntellectDbContext dbContext) : IStudyPlanService
 {
-    public async Task<StudyPlanStateDto> GetOrCreateAsync(string studentName, CancellationToken cancellationToken = default)
+    public async Task<StudyPlanStateDto> GetOrCreateAsync(Guid studentUserId, string displayName, CancellationToken cancellationToken = default)
+        => ToDto(await GetOrCreateEntityAsync(studentUserId, displayName, cancellationToken));
+
+    public async Task<StudyPlanStateDto> UpdatePlanItemsAsync(Guid studentUserId, string displayName, string planItemsSerialized, CancellationToken cancellationToken = default)
     {
-        var normalized = studentName.Trim();
-        var entity = await dbContext.Set<StudyPlanState>()
-            .FirstOrDefaultAsync(x => x.StudentName == normalized, cancellationToken);
+        // Önce kaydın var olduğundan emin ol (yarış korumalı oluşturma).
+        await GetOrCreateEntityAsync(studentUserId, displayName, cancellationToken);
 
-        if (entity is null)
-        {
-            try
-            {
-                entity = new StudyPlanState
-                {
-                    StudentName = normalized,
-                };
-                await dbContext.Set<StudyPlanState>().AddAsync(entity, cancellationToken);
-                await dbContext.SaveChangesAsync(cancellationToken);
-            }
-            catch (DbUpdateException)
-            {
-                // Concurrent request already inserted this student — clear the failed entry
-                // from the change tracker and fetch the existing row.
-                dbContext.ChangeTracker.Clear();
-                entity = await dbContext.Set<StudyPlanState>()
-                    .FirstAsync(x => x.StudentName == normalized, cancellationToken);
-            }
-        }
-
-        return ToDto(entity);
-    }
-
-    public async Task<StudyPlanStateDto> UpdateAsync(UpdateStudyPlanStateRequest request, CancellationToken cancellationToken = default)
-    {
-        var normalized = request.StudentName.Trim();
-        var entity = await dbContext.Set<StudyPlanState>()
-            .FirstOrDefaultAsync(x => x.StudentName == normalized, cancellationToken);
-
-        if (entity is null)
-        {
-            try
-            {
-                entity = new StudyPlanState
-                {
-                    StudentName = normalized,
-                };
-                await dbContext.Set<StudyPlanState>().AddAsync(entity, cancellationToken);
-                await dbContext.SaveChangesAsync(cancellationToken);
-            }
-            catch (DbUpdateException)
-            {
-                dbContext.ChangeTracker.Clear();
-                entity = await dbContext.Set<StudyPlanState>()
-                    .FirstAsync(x => x.StudentName == normalized, cancellationToken);
-            }
-        }
-
-        // Güvenlik: yalnız program maddeleri yazılır. XP/seri/son tamamlanma
-        // istemciden ALINMAZ — öğrenci PUT ile kendi XP'sini ayarlayabiliyordu.
-        // XP sunucuda soru denemesi ve ödev tesliminden (StudentXpRewards) gelir.
-        entity.PlanItemsSerialized = request.PlanItemsSerialized;
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return ToDto(entity);
-    }
-
-    public async Task<StudyPlanStateDto> UpdatePlanItemsAsync(string studentName, string planItemsSerialized, CancellationToken cancellationToken = default)
-    {
-        // Önce kaydın var olduğundan emin ol (GetOrCreate ile aynı yarış koruması).
-        await GetOrCreateAsync(studentName, cancellationToken);
-        var normalized = studentName.Trim();
-
-        // Tek alanlık güncelleme: öğrencinin aynı anda kazandığı XP/seri üzerine
-        // yazılmaz (eskiden istemcinin gönderdiği değerler aynen yazılıyordu).
+        // Tek alanlık güncelleme: öğrencinin aynı anda kazandığı XP/seri üzerine yazılmaz.
+        // XP/seri istemciden ALINMAZ; yalnız sunucu ödüllerinden gelir.
         await dbContext.Set<StudyPlanState>()
-            .Where(x => x.StudentName == normalized)
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(x => x.PlanItemsSerialized, planItemsSerialized),
-                cancellationToken);
+            .Where(x => x.StudentUserId == studentUserId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.PlanItemsSerialized, planItemsSerialized), cancellationToken);
 
         dbContext.ChangeTracker.Clear();
-        var entity = await dbContext.Set<StudyPlanState>()
-            .AsNoTracking()
-            .FirstAsync(x => x.StudentName == normalized, cancellationToken);
-        return ToDto(entity);
+        return ToDto(await dbContext.Set<StudyPlanState>().AsNoTracking().FirstAsync(x => x.StudentUserId == studentUserId, cancellationToken));
     }
 
-    public async Task<StudyPlanStateDto> AddXpAsync(string studentName, int amount, CancellationToken cancellationToken = default)
+    public async Task<StudyPlanStateDto> AddXpAsync(Guid studentUserId, string displayName, int amount, CancellationToken cancellationToken = default)
     {
-        var normalized = studentName.Trim();
-        var updatedRows = await dbContext.Set<StudyPlanState>()
-            .Where(x => x.StudentName == normalized)
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(x => x.XpPoints, x => x.XpPoints + amount),
-                cancellationToken);
-
-        if (updatedRows == 0)
-        {
-            try
-            {
-                var createdEntity = new StudyPlanState
-                {
-                    StudentName = normalized,
-                    XpPoints = amount,
-                };
-                await dbContext.Set<StudyPlanState>().AddAsync(createdEntity, cancellationToken);
-                await dbContext.SaveChangesAsync(cancellationToken);
-                return ToDto(createdEntity);
-            }
-            catch (DbUpdateException)
-            {
-                dbContext.ChangeTracker.Clear();
-                await dbContext.Set<StudyPlanState>()
-                    .Where(x => x.StudentName == normalized)
-                    .ExecuteUpdateAsync(
-                        setters => setters.SetProperty(x => x.XpPoints, x => x.XpPoints + amount),
-                        cancellationToken);
-            }
-        }
-
-        var entity = await dbContext.Set<StudyPlanState>()
-            .FirstAsync(x => x.StudentName == normalized, cancellationToken);
-        return ToDto(entity);
+        await GetOrCreateEntityAsync(studentUserId, displayName, cancellationToken);
+        await dbContext.Set<StudyPlanState>()
+            .Where(x => x.StudentUserId == studentUserId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.XpPoints, x => x.XpPoints + amount), cancellationToken);
+        dbContext.ChangeTracker.Clear();
+        return ToDto(await dbContext.Set<StudyPlanState>().AsNoTracking().FirstAsync(x => x.StudentUserId == studentUserId, cancellationToken));
     }
 
-    public async Task<StudyPlanStateDto> AddItemAsync(string studentName, StudyPlanItemRequest request, CancellationToken cancellationToken = default)
+    public async Task<StudyPlanStateDto> AddItemAsync(Guid studentUserId, string displayName, StudyPlanItemRequest request, CancellationToken cancellationToken = default)
     {
-        var entity = await GetOrCreateEntityAsync(studentName, cancellationToken);
+        var entity = await GetOrCreateEntityAsync(studentUserId, displayName, cancellationToken);
         var items = ParseItems(entity.PlanItemsSerialized);
         var item = JsonNode.Parse(request.Item.GetRawText()) as JsonObject ?? new JsonObject();
         if (string.IsNullOrWhiteSpace(item["id"]?.ToString()))
@@ -148,9 +54,9 @@ public sealed class StudyPlanService(CourseIntellectDbContext dbContext) : IStud
         return ToDto(entity);
     }
 
-    public async Task<StudyPlanStateDto> SetItemDoneAsync(string studentName, string itemId, bool done, CancellationToken cancellationToken = default)
+    public async Task<StudyPlanStateDto> SetItemDoneAsync(Guid studentUserId, string displayName, string itemId, bool done, CancellationToken cancellationToken = default)
     {
-        var entity = await GetOrCreateEntityAsync(studentName, cancellationToken);
+        var entity = await GetOrCreateEntityAsync(studentUserId, displayName, cancellationToken);
         var items = ParseItems(entity.PlanItemsSerialized);
         var changed = false;
 
@@ -180,9 +86,9 @@ public sealed class StudyPlanService(CourseIntellectDbContext dbContext) : IStud
         return ToDto(entity);
     }
 
-    public async Task<StudyPlanStateDto> DeleteItemAsync(string studentName, string itemId, CancellationToken cancellationToken = default)
+    public async Task<StudyPlanStateDto> DeleteItemAsync(Guid studentUserId, string displayName, string itemId, CancellationToken cancellationToken = default)
     {
-        var entity = await GetOrCreateEntityAsync(studentName, cancellationToken);
+        var entity = await GetOrCreateEntityAsync(studentUserId, displayName, cancellationToken);
         var items = ParseItems(entity.PlanItemsSerialized);
 
         for (var index = items.Count - 1; index >= 0; index--)
@@ -201,29 +107,35 @@ public sealed class StudyPlanService(CourseIntellectDbContext dbContext) : IStud
         return ToDto(entity);
     }
 
-    private async Task<StudyPlanState> GetOrCreateEntityAsync(string studentName, CancellationToken cancellationToken)
+    private async Task<StudyPlanState> GetOrCreateEntityAsync(Guid studentUserId, string displayName, CancellationToken cancellationToken)
     {
-        var normalized = studentName.Trim();
+        if (studentUserId == Guid.Empty) throw new ArgumentException("Plan sahibi belirsiz.", nameof(studentUserId));
+        var name = (displayName ?? string.Empty).Trim();
         var entity = await dbContext.Set<StudyPlanState>()
-            .FirstOrDefaultAsync(x => x.StudentName == normalized, cancellationToken);
-
+            .FirstOrDefaultAsync(x => x.StudentUserId == studentUserId, cancellationToken);
         if (entity is not null)
         {
+            // Ad değiştiyse gösterim adı güncellenir (anahtar etkilenmez).
+            if (name.Length > 0 && entity.StudentName != name)
+            {
+                entity.StudentName = name;
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
             return entity;
         }
 
         try
         {
-            entity = new StudyPlanState { StudentName = normalized };
+            entity = new StudyPlanState { StudentUserId = studentUserId, StudentName = name };
             await dbContext.Set<StudyPlanState>().AddAsync(entity, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
             return entity;
         }
         catch (DbUpdateException)
         {
+            // Eşzamanlı istek kaydı zaten oluşturdu.
             dbContext.ChangeTracker.Clear();
-            return await dbContext.Set<StudyPlanState>()
-                .FirstAsync(x => x.StudentName == normalized, cancellationToken);
+            return await dbContext.Set<StudyPlanState>().FirstAsync(x => x.StudentUserId == studentUserId, cancellationToken);
         }
     }
 

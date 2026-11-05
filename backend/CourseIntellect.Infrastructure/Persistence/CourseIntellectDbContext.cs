@@ -1604,7 +1604,9 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.ToTable("study_plan_states");
             entity.HasKey(x => x.Id);
             ConfigureTenantScope(entity);
-            entity.HasIndex(x => new { x.TenantId, x.StudentName }).IsUnique();
+            // Anahtar öğrenci kimliği: ad tekil değildir (aynı adlı iki öğrenci planı paylaşıyordu).
+            entity.HasIndex(x => new { x.TenantId, x.StudentUserId }).IsUnique().HasFilter("\"StudentUserId\" IS NOT NULL");
+            entity.HasIndex(x => new { x.TenantId, x.StudentName });
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.PlanItemsSerialized).HasColumnName("plan_items").HasMaxLength(12000).IsRequired();
         });

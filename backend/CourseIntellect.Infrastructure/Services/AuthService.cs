@@ -372,9 +372,15 @@ public sealed class AuthService(
         var fullName = request.FullName.Trim();
         if (string.IsNullOrEmpty(fullName)) return null;
 
-        user.FullName = fullName;
+        // Ad ve branş yetkiyi etkiler (rehber = branşı "Rehberlik" olan öğretmen; veli/öğrenci eşleşmeleri ada
+        // da bakar). Kullanıcı bunları kendi profilinden DEĞİŞTİREMEZ; yalnız yönetici kullanıcı dizininden değiştirir.
+        var canEditIdentity = user.PrimaryRole is UserRole.Admin or UserRole.Developer;
+        if (canEditIdentity)
+        {
+            user.FullName = fullName;
+            user.DepartmentOrBranch = request.DepartmentOrBranch.Trim();
+        }
         user.Campus = request.Campus.Trim();
-        user.DepartmentOrBranch = request.DepartmentOrBranch.Trim();
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return await CreateCurrentUserDtoAsync(user, cancellationToken);

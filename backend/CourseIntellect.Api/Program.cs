@@ -207,28 +207,27 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-var defaultCorsOrigins = new[]
+var defaultCorsOrigins = new List<string>
 {
     // Production web/API domains (SchoolAsist)
     "https://schoolasist.com",
     "https://www.schoolasist.com",
     "https://maydanozasist.schoolasist.com",
-    // React dev (desktop & web)
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-    // Tauri dev
-    "http://localhost:1420",
-    "http://127.0.0.1:1420",
+    // Yayınlanmış masaüstü uygulaması (Tauri webview kökenleri)
     "tauri://localhost",
     "https://tauri.localhost",
-    // Flutter web dev
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "http://localhost:5000",
-    "http://127.0.0.1:5000"
+    "http://tauri.localhost",
 };
+// Yerel geliştirme kökenleri (React, Tauri dev, Flutter web) yalnız Development ortamında:
+// canlıda localhost kökenine kimlikli CORS izni gereksiz bir yüzeydi.
+if (builder.Environment.IsDevelopment())
+{
+    defaultCorsOrigins.AddRange([
+        "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001",
+        "http://localhost:1420", "http://127.0.0.1:1420",
+        "http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:5000", "http://127.0.0.1:5000",
+    ]);
+}
 var configuredCorsOrigins = builder.Configuration["Cors:AllowedOrigins"]?
     .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
     ?? Array.Empty<string>();

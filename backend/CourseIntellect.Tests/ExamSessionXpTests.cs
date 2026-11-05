@@ -42,6 +42,7 @@ public sealed class ExamSessionXpTests : IDisposable
     [Fact]
     public async Task CompletingSession_AwardsXpOncePerQuestion_AndNeverTwice()
     {
+        AliId();
         var q1 = await Bank.CreateQuestionAsync(Question("Soru 1"));
         var q2 = await Bank.CreateQuestionAsync(Question("Soru 2"));
         var plans = new StudyPlanService(db.Context);
@@ -49,7 +50,7 @@ public sealed class ExamSessionXpTests : IDisposable
         // Doğru 18 + yanlış 6.
         var first = await SolveAsync([q1.Id, q2.Id], awardXp: true);
         Assert.Equal(24, first.XpAwarded);
-        Assert.Equal(24, (await plans.GetOrCreateAsync("Ali Kaya")).XpPoints);
+        Assert.Equal(24, (await plans.GetOrCreateAsync(AliId(), "Ali Kaya")).XpPoints);
 
         // Aynı oturumu yeniden tamamlamak XP vermez.
         var again = await Solving.CompleteAsync(first.SessionId, "http://localhost", true, CancellationToken.None);
@@ -59,7 +60,7 @@ public sealed class ExamSessionXpTests : IDisposable
         Assert.Equal(0, (await SolveAsync([q1.Id, q2.Id], awardXp: true)).XpAwarded);
         var practice = await Bank.SubmitAttemptAsync(q1.Id, new SubmitQuestionPracticeAttemptRequest("Ali Kaya", "ali", "2"), awardXp: true);
         Assert.Equal(0, practice!.XpAwarded);
-        Assert.Equal(24, (await plans.GetOrCreateAsync("Ali Kaya")).XpPoints);
+        Assert.Equal(24, (await plans.GetOrCreateAsync(AliId(), "Ali Kaya")).XpPoints);
     }
 
     [Fact]
@@ -69,7 +70,18 @@ public sealed class ExamSessionXpTests : IDisposable
         Assert.Equal(0, (await SolveAsync([q1.Id], awardXp: false)).XpAwarded);
         var q2 = await Bank.CreateQuestionAsync(Question("Soru 2"));
         Assert.Equal(0, (await SolveAsync([q2.Id], awardXp: true, preview: true)).XpAwarded);
-        Assert.Equal(0, (await new StudyPlanService(db.Context).GetOrCreateAsync("Ali Kaya")).XpPoints);
+        Assert.Equal(0, (await new StudyPlanService(db.Context).GetOrCreateAsync(AliId(), "Ali Kaya")).XpPoints);
+    }
+
+    /// <summary>XP kullanıcı kimliğine yazılır; oturumdaki "ali" kullanıcı adı bu kullanıcıya çözülür.</summary>
+    private Guid AliId()
+    {
+        var existing = db.Context.Users.FirstOrDefault(user => user.Username == "ali");
+        if (existing is not null) return existing.Id;
+        var user = new CourseIntellect.Domain.Entities.AppUser { FullName = "Ali Kaya", Username = "ali", PasswordHash = "x", PrimaryRole = CourseIntellect.Domain.Enums.UserRole.Student };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+        return user.Id;
     }
 
     public void Dispose() => db.Dispose();

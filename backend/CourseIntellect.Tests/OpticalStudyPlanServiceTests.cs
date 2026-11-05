@@ -112,8 +112,8 @@ public sealed class OpticalStudyPlanServiceTests : IDisposable
     public async Task Apply_WritesEditedTasks_KeepsXp_ReapplyReplacesOnlyPending_NotifiesParentOnce()
     {
         var (examId, ayse, _) = await ImportedExamAsync();
-        // Kayıtta soyad büyük harfe çevrilir ("Ayşe DOĞAN"); çalışma programı da bu adla tutulur.
-        db.StudyPlanStates.Add(new StudyPlanState { StudentName = ayse.FullName, XpPoints = 40, PlanItemsSerialized = "[{\"id\":\"m1\",\"type\":\"task\",\"title\":\"Kendi görevim\"}]" });
+        // Çalışma programı öğrenci kimliğiyle tutulur (ad yalnız gösterim).
+        db.StudyPlanStates.Add(new StudyPlanState { StudentUserId = ayse.Id, StudentName = ayse.FullName, XpPoints = 40, PlanItemsSerialized = "[{\"id\":\"m1\",\"type\":\"task\",\"title\":\"Kendi görevim\"}]" });
         await db.SaveChangesAsync();
         var row = (await Service().PreviewAsync(examId, true)).Students.Single(item => item.StudentUserId == ayse.Id);
         var edited = row.Tasks.Take(2).Select(task => task with { Title = task.Title + " (öğretmen)" }).ToList();
@@ -133,7 +133,7 @@ public sealed class OpticalStudyPlanServiceTests : IDisposable
         // Bir görev tamamlanmışsa yeniden uygulamada kalır; bekleyen görevler yenisiyle değişir.
         var node = System.Text.Json.Nodes.JsonNode.Parse(plan.PlanItemsSerialized)!.AsArray();
         node.First(item => item!["source"]?.ToString() == $"optical-exam:{examId}")!["status"] = "done";
-        await new StudyPlanService(db).UpdatePlanItemsAsync(ayse.FullName, node.ToJsonString());
+        await new StudyPlanService(db).UpdatePlanItemsAsync(ayse.Id, ayse.FullName, node.ToJsonString());
         await Service().ApplyAsync(examId, new ApplyOpticalStudyPlansRequest([new(ayse.Id, row.Tasks, true, null)]), null);
 
         var after = JsonDocument.Parse((await db.StudyPlanStates.AsNoTracking().SingleAsync()).PlanItemsSerialized).RootElement.EnumerateArray().ToList();
@@ -143,7 +143,7 @@ public sealed class OpticalStudyPlanServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Apply_RejectsInvalidTasks_AndSkipsNamesakes()
+    public async Task Apply_RejectsInvalidTasks_AndKeepsNamesakesSeparate()
     {
         var (examId, ayse, _) = await ImportedExamAsync();
         var row = (await Service().PreviewAsync(examId, true)).Students.Single(item => item.StudentUserId == ayse.Id);
@@ -154,15 +154,16 @@ public sealed class OpticalStudyPlanServiceTests : IDisposable
         await Assert.ThrowsAsync<ArgumentException>(() => Service().ApplyAsync(examId, new ApplyOpticalStudyPlansRequest([new(ayse.Id, tooMany, false, null)]), null));
         await Assert.ThrowsAsync<ArgumentException>(() => Service().ApplyAsync(examId, new ApplyOpticalStudyPlansRequest([]), null));
 
-        // Aynı adlı ikinci öğrenci: program adla tutulduğu için yazılmaz.
-        await StudentAsync("Ayşe Doğan", "999");
-        var namesake = (await Service().PreviewAsync(examId, true)).Students.Single(item => item.StudentUserId == ayse.Id);
-        Assert.StartsWith("Kurumda aynı adlı", namesake.SkipReason);
+        // Aynı adlı ikinci öğrenci: program öğrenci kimliğiyle tutulduğu için plan yazılır ve yalnız
+        // o öğrenciye gider; adaşın planı oluşmaz/etkilenmez.
+        var twin = await StudentAsync("Ayşe Doğan", "999");
+        var preview = (await Service().PreviewAsync(examId, true)).Students.Single(item => item.StudentUserId == ayse.Id);
+        Assert.Null(preview.SkipReason);
         var result = await Service().ApplyAsync(examId, new ApplyOpticalStudyPlansRequest([new(ayse.Id, row.Tasks, true, null)]), null);
-        Assert.Equal(0, result.Applied);
-        Assert.Single(result.Skipped);
-        Assert.Empty(notifier.Sent);
-        Assert.Equal(0, await db.StudyPlanStates.CountAsync());
+        Assert.Equal(1, result.Applied);
+        var plan = await db.StudyPlanStates.AsNoTracking().SingleAsync();
+        Assert.Equal(ayse.Id, plan.StudentUserId);
+        Assert.NotEqual(twin.Id, plan.StudentUserId);
     }
 
     private sealed class RecordingNotifier : IParentNotifier

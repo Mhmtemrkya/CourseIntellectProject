@@ -65,21 +65,15 @@ public sealed class OpticalStudyPlanService(
             .Where(item => ids.Contains(item.UserId))
             .Select(item => new { item.UserId, item.FullName, item.ClassName, item.ParentUserId, item.ParentEmail })
             .ToListAsync(ct);
-        var names = students.Select(item => item.FullName.Trim()).Distinct().ToList();
-        // Çalışma programı adla tutulur: aynı adı taşıyan ikinci öğrenci varsa plan yazılmaz.
-        var nameCounts = (await dbContext.Students.AsNoTracking()
-                .Where(item => names.Contains(item.FullName))
-                .Select(item => item.FullName)
-                .ToListAsync(ct))
-            .GroupBy(name => name.Trim())
-            .ToDictionary(group => group.Key, group => group.Count());
+        // Çalışma programı öğrenci kimliğiyle tutulur (aynı adlı öğrenciler artık ayrı plana sahip).
+        var userIds = students.Select(item => item.UserId).ToList();
         var applied = (await dbContext.StudyPlanStates.AsNoTracking()
-                .Where(item => names.Contains(item.StudentName))
-                .Select(item => new { item.StudentName, item.PlanItemsSerialized })
+                .Where(item => item.StudentUserId != null && userIds.Contains(item.StudentUserId.Value))
+                .Select(item => new { item.StudentUserId, item.PlanItemsSerialized })
                 .ToListAsync(ct))
             .Where(item => item.PlanItemsSerialized.Contains(SourceTag(examId), StringComparison.Ordinal))
-            .Select(item => item.StudentName)
-            .ToHashSet(StringComparer.Ordinal);
+            .Select(item => item.StudentUserId!.Value)
+            .ToHashSet();
 
         var start = TodayLocal().AddDays(1);
         var rows = students
@@ -100,12 +94,10 @@ public sealed class OpticalStudyPlanService(
                     .Take(MaxWeakTopics)
                     .ToList();
                 var tasks = Tasks(weak, start);
-                var skip = nameCounts.GetValueOrDefault(name) > 1
-                    ? "Kurumda aynı adlı başka öğrenci var; çalışma programı adla tutulduğu için plan yazılamaz."
-                    : weak.Count == 0 && hasTopics ? "Bu denemede belirgin bir zayıf konu yok." : null;
+                var skip = weak.Count == 0 && hasTopics ? "Bu denemede belirgin bir zayıf konu yok." : null;
                 return new OpticalStudyPlanRowDto(student.UserId, name, student.ClassName, nets.GetValueOrDefault(student.UserId),
                     weak, tasks, ParentSummary(name, examTitle, nets.GetValueOrDefault(student.UserId), weak, tasks.Count),
-                    student.ParentUserId is not null || !string.IsNullOrWhiteSpace(student.ParentEmail), skip, applied.Contains(name));
+                    student.ParentUserId is not null || !string.IsNullOrWhiteSpace(student.ParentEmail), skip, applied.Contains(student.UserId));
             })
             .ToList();
         return new RowSet(hasTopics, rows);
@@ -171,16 +163,15 @@ public sealed class OpticalStudyPlanService(
                 skipped.Add("Bu denemede sonucu olmayan öğrenci atlandı.");
                 continue;
             }
-            // Aynı adlı öğrenci varsa hiç yazılmaz; zayıf konusu olmayan öğrenciye öğretmen elle görev eklediyse yazılır.
-            var namesake = row.SkipReason?.StartsWith("Kurumda aynı adlı", StringComparison.Ordinal) == true;
-            if (namesake || (item.Tasks ?? []).Count == 0)
+            // Zayıf konusu olmayan öğrenciye öğretmen elle görev eklediyse yazılır.
+            if ((item.Tasks ?? []).Count == 0)
             {
                 skipped.Add($"{row.StudentName}: {row.SkipReason ?? "görev yok"}");
                 continue;
             }
             var tasks = Validate(row.StudentName, item.Tasks ?? [], today);
 
-            var plan = await studyPlans.GetOrCreateAsync(row.StudentName, cancellationToken);
+            var plan = await studyPlans.GetOrCreateAsync(row.StudentUserId, row.StudentName, cancellationToken);
             var items = ParseItems(plan.PlanItemsSerialized);
             // Yeniden uygulamada yalnız bu denemenin bekleyen görevleri değişir; tamamlananlar kalır.
             for (var index = items.Count - 1; index >= 0; index--)
@@ -214,7 +205,7 @@ public sealed class OpticalStudyPlanService(
                 skipped.Add($"{row.StudentName}: çalışma programı çok dolu; eski görevler temizlenmeden yeni plan eklenemez.");
                 continue;
             }
-            await studyPlans.UpdatePlanItemsAsync(row.StudentName, serialized, cancellationToken);
+            await studyPlans.UpdatePlanItemsAsync(row.StudentUserId, row.StudentName, serialized, cancellationToken);
             applied++;
             written += tasks.Count;
 

@@ -168,12 +168,11 @@ public sealed class StudentPromotionTests : IDisposable
     private static UpdateStudentRequest Edit(string fullName, string className = "7-A", string tcNo = "10000000146") =>
         new(fullName, tcNo, className, "", "", "2012-05-01", "Ortaokul", "Veli VELI", "", "", "", "");
 
-    /// <summary>Ad düzeltilince çalışma programı (XP, seri) yeni ada taşınır; değişen alanlar eski/yeni değerle kaydedilir, TC maskelenir.</summary>
     [Fact]
     public async Task Update_RenamesStudyPlan_AndAuditsChangedFieldsWithMaskedTc()
     {
         await SeedAsync();
-        db.Context.StudyPlanStates.Add(new StudyPlanState { TenantId = TenantA, StudentName = "Ali VELI", XpPoints = 120, StreakCount = 4 });
+        db.Context.StudyPlanStates.Add(new StudyPlanState { TenantId = TenantA, StudentUserId = AliUserId, StudentName = "Ali VELI", XpPoints = 120, StreakCount = 4 });
         await db.Context.SaveChangesAsync();
         var service = CreateService(TenantA);
         var id = (await db.Context.Students.FirstAsync(x => x.UserId == AliUserId)).Id;
@@ -188,7 +187,6 @@ public sealed class StudentPromotionTests : IDisposable
         Assert.Contains("Ad soyad: Ali VELI → Ali Veli CAN", entry);
         Assert.Contains("TC kimlik: (boş) → 100******46", entry);
         Assert.DoesNotContain("10000000146", entry);
-        Assert.Contains("Çalışma programı yeni ada taşındı", entry);
         var after = Assert.IsType<Dictionary<string, string>>(audit.Changes.Single().After);
         Assert.Equal("100******46", after["TC kimlik"]);
         Assert.DoesNotContain("Sınıf", after.Keys);
@@ -217,14 +215,15 @@ public sealed class StudentPromotionTests : IDisposable
         Assert.Equal("Ali VELI", rows.Single(x => x.StudentId == null).StudentName);
     }
 
+    /// <summary>Program öğrenci kimliğiyle bağlı: ad değişince yalnız gösterim adı güncellenir; adaşın planı ellenmez.</summary>
     [Fact]
-    public async Task Update_DoesNotMoveStudyPlan_WhenOldNameIsShared()
+    public async Task Update_TouchesOnlyTheStudentsOwnStudyPlan()
     {
         await SeedAsync();
         var twinId = Guid.NewGuid();
         db.Context.Users.Add(new AppUser { Id = twinId, TenantId = TenantA, Username = "ali2", FullName = "Ali VELI", PrimaryRole = UserRole.Student });
         db.Context.Students.Add(new StudentProfile { TenantId = TenantA, UserId = twinId, FullName = "Ali VELI", ClassName = "7-B" });
-        db.Context.StudyPlanStates.Add(new StudyPlanState { TenantId = TenantA, StudentName = "Ali VELI" });
+        db.Context.StudyPlanStates.Add(new StudyPlanState { TenantId = TenantA, StudentUserId = twinId, StudentName = "Ali VELI" });
         await db.Context.SaveChangesAsync();
         var service = CreateService(TenantA);
         var id = (await db.Context.Students.FirstAsync(x => x.UserId == AliUserId)).Id;
@@ -232,7 +231,6 @@ public sealed class StudentPromotionTests : IDisposable
         await service.UpdateStudentAsync(id, Edit("Ali Can"));
 
         Assert.Equal("Ali VELI", (await db.Context.StudyPlanStates.SingleAsync()).StudentName);
-        Assert.Contains(audit.Entries, item => item.Contains("çalışma programı taşınmadı"));
     }
 
     [Fact]

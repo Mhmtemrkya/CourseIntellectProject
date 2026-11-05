@@ -174,7 +174,7 @@ public sealed class HomeworkService(
         {
             var fileCount = (request.Files ?? []).Count(x => !string.IsNullOrWhiteSpace(x));
             var xp = StudentXpRewards.HomeworkSubmission(fileCount, hasNote: !string.IsNullOrWhiteSpace(request.Note));
-            await studyPlanService.AddXpAsync(studentName, xp, cancellationToken);
+            if (studentUserId is Guid xpOwner) await studyPlanService.AddXpAsync(xpOwner, studentName, xp, cancellationToken);
         }
 
         var allSubmissions = await dbContext.Set<HomeworkSubmission>()

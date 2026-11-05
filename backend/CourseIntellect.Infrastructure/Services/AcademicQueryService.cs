@@ -531,7 +531,7 @@ public sealed class AcademicQueryService(
 
         // Çalışma programı öğrenci adıyla tutulur; ad düzeltilince program, XP ve seri yeni ada taşınır.
         // Yeni adda zaten bir program varsa (aynı adlı başka öğrenci olabilir) birleştirilmez, olduğu gibi bırakılır.
-        var planNote = await MoveStudyPlanAsync(previousName, fullName, cancellationToken);
+        var planNote = await MoveStudyPlanAsync(student.UserId, fullName, cancellationToken);
 
         // Kimliğe bağlı yoklama ve sınav sonuçları yeni adı gösterir (bağ kimlikte, ad görüntü içindir).
         if (!string.Equals(previousName, student.FullName, StringComparison.Ordinal))
@@ -629,23 +629,16 @@ public sealed class AcademicQueryService(
     private static string MaskTcNo(string? tcNo) =>
         string.IsNullOrEmpty(tcNo) || tcNo.Length < 5 ? tcNo ?? string.Empty : $"{tcNo[..3]}{new string('*', tcNo.Length - 5)}{tcNo[^2..]}";
 
-    /// <summary>Ad değişince çalışma programını yeni ada taşır; kayıt geçmişine eklenecek notu döner.</summary>
-    private async Task<string> MoveStudyPlanAsync(string previousName, string newName, CancellationToken cancellationToken)
+    /// <summary>
+    /// Ad değişince çalışma programının gösterim adı güncellenir. Program öğrenci kimliğiyle bulunduğu için
+    /// taşımaya gerek yoktur; kimliği henüz bağlanmamış eski kayıtlar adla eşlenmez (yanlış öğrenciye geçmesin).
+    /// </summary>
+    private async Task<string> MoveStudyPlanAsync(Guid studentUserId, string newName, CancellationToken cancellationToken)
     {
-        var oldKey = (previousName ?? string.Empty).Trim();
-        var newKey = newName.Trim();
-        if (oldKey.Length == 0 || string.Equals(oldKey, newKey, StringComparison.Ordinal)) return string.Empty;
-
-        var plan = await dbContext.StudyPlanStates.FirstOrDefaultAsync(x => x.StudentName == oldKey, cancellationToken);
-        if (plan is null) return string.Empty;
-        // Eski adı taşıyan başka bir öğrenci varsa program ona da ait olabilir; taşınmaz.
-        var sharedOldName = await dbContext.Students.CountAsync(x => x.FullName == oldKey, cancellationToken) > 1;
-        if (sharedOldName) return " Eski adı taşıyan başka öğrenci olduğu için çalışma programı taşınmadı.";
-        if (await dbContext.StudyPlanStates.AnyAsync(x => x.StudentName == newKey, cancellationToken))
-            return " Yeni adda zaten bir çalışma programı olduğu için eski program taşınmadı.";
-
-        plan.StudentName = newKey;
-        return " Çalışma programı yeni ada taşındı.";
+        var plan = await dbContext.StudyPlanStates.FirstOrDefaultAsync(x => x.StudentUserId == studentUserId, cancellationToken);
+        if (plan is null || plan.StudentName == newName.Trim()) return string.Empty;
+        plan.StudentName = newName.Trim();
+        return string.Empty;
     }
 
     /// <summary>

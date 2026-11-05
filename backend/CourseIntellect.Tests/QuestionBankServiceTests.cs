@@ -65,9 +65,21 @@ public sealed class QuestionBankServiceTests : IDisposable
         Assert.DoesNotContain(teacherList, item => item.Id == created.Id);
     }
 
+    private Guid UserId(string username, string fullName)
+    {
+        var existing = db.Context.Users.FirstOrDefault(user => user.Username == username);
+        if (existing is not null) return existing.Id;
+        var user = new CourseIntellect.Domain.Entities.AppUser { FullName = fullName, Username = username, PasswordHash = "x", PrimaryRole = CourseIntellect.Domain.Enums.UserRole.Student };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+        return user.Id;
+    }
+
     [Fact]
     public async Task StudentXp_IsAwardedOnlyOnFirstAttempt_AndNeverForStaff()
     {
+        var ali = UserId("ali", "Ali Kaya");
+        var ayse = UserId("ayse", "Ayşe Demir");
         var created = await Service.CreateQuestionAsync(Request());
         var plans = new StudyPlanService(db.Context);
 
@@ -80,31 +92,46 @@ public sealed class QuestionBankServiceTests : IDisposable
         // Aynı soruya tekrar deneme XP getirmez (tekrar tekrar deneyerek XP toplanamaz).
         var second = await Service.SubmitAttemptAsync(created.Id, new SubmitQuestionPracticeAttemptRequest("Ali Kaya", "ali", "2"), awardXp: true);
         Assert.Equal(0, second!.XpAwarded);
-        Assert.Equal(18, (await plans.GetOrCreateAsync("Ali Kaya")).XpPoints);
+        Assert.Equal(18, (await plans.GetOrCreateAsync(ali, "Ali Kaya")).XpPoints);
 
         // Personel denemesi (awardXp=false) hiçbir öğrenciye XP yazmaz.
         var staff = await Service.SubmitAttemptAsync(created.Id, new SubmitQuestionPracticeAttemptRequest("Ayşe Demir", "ayse", "2"), awardXp: false);
         Assert.Equal(0, staff!.XpAwarded);
-        Assert.Equal(0, (await plans.GetOrCreateAsync("Ayşe Demir")).XpPoints);
+        Assert.Equal(0, (await plans.GetOrCreateAsync(ayse, "Ayşe Demir")).XpPoints);
     }
 
     [Fact]
     public async Task StudyPlan_ClientCannotSetXp_AndChecklistDoesNotAwardXp()
     {
+        var can = Guid.NewGuid();
         var plans = new StudyPlanService(db.Context);
-        await plans.AddXpAsync("Can Öz", 30);
+        await plans.AddXpAsync(can, "Can Öz", 30);
 
-        // PUT gövdesindeki XP/seri yok sayılır.
-        var updated = await plans.UpdateAsync(new CourseIntellect.Application.DTOs.StudyPlans.UpdateStudyPlanStateRequest("Can Öz", "[]", 99, 99999, null));
+        // Program yazmak XP/seriyi değiştirmez (istemci XP gönderemez).
+        var updated = await plans.UpdatePlanItemsAsync(can, "Can Öz", "[]");
         Assert.Equal(30, updated.XpPoints);
         Assert.Equal(0, updated.StreakCount);
 
         // Kendi eklediği maddeyi işaretlemek XP vermez.
-        var withItem = await plans.AddItemAsync("Can Öz", new CourseIntellect.Application.DTOs.StudyPlans.StudyPlanItemRequest(System.Text.Json.JsonDocument.Parse("{\"id\":\"m1\",\"title\":\"Madde\"}").RootElement));
-        var done = await plans.SetItemDoneAsync("Can Öz", "m1", true);
+        await plans.AddItemAsync(can, "Can Öz", new CourseIntellect.Application.DTOs.StudyPlans.StudyPlanItemRequest(System.Text.Json.JsonDocument.Parse("{\"id\":\"m1\",\"title\":\"Madde\"}").RootElement));
+        var done = await plans.SetItemDoneAsync(can, "Can Öz", "m1", true);
         Assert.Equal(30, done.XpPoints);
         Assert.Equal(1, done.StreakCount);
-        _ = withItem;
+    }
+
+    [Fact]
+    public async Task StudyPlans_OfStudentsWithTheSameName_AreSeparate()
+    {
+        var plans = new StudyPlanService(db.Context);
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        await plans.AddXpAsync(first, "Ali Kaya", 40);
+        await plans.UpdatePlanItemsAsync(first, "Ali Kaya", "[{\"id\":\"gizli\"}]");
+
+        var other = await plans.GetOrCreateAsync(second, "Ali Kaya");
+        Assert.Equal(0, other.XpPoints);
+        Assert.Equal("[]", other.PlanItemsSerialized);
+        Assert.Equal(2, db.Context.StudyPlanStates.Count());
     }
 
     public void Dispose() => db.Dispose();

@@ -350,7 +350,14 @@ public sealed class ExamSolvingService(
             .DistinctBy(item => item.QuestionBankItemId)
             .Where(item => !alreadySolved.Contains(item.QuestionBankItemId))
             .Sum(item => StudentXpRewards.QuestionSolve(item.Answer!.IsCorrect, hasImage: !string.IsNullOrWhiteSpace(item.ImagePath), hasSolutionAsset: false));
-        if (total > 0) await studyPlanService.AddXpAsync(session.StudentName, total, cancellationToken);
+        if (total > 0)
+        {
+            // XP kullanıcı kimliğine yazılır; oturumda kimlik yoksa kullanıcı adından çözülür (ad tekil değildir).
+            var owner = session.StudentUserId ?? await dbContext.Users.AsNoTracking()
+                .Where(user => user.Username == session.StudentUsername)
+                .Select(user => (Guid?)user.Id).FirstOrDefaultAsync(cancellationToken);
+            if (owner is Guid ownerId) await studyPlanService.AddXpAsync(ownerId, session.StudentName, total, cancellationToken);
+        }
         return total;
     }
 

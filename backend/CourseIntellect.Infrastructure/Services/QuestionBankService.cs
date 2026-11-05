@@ -198,7 +198,10 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext, IStu
                 isCorrect,
                 hasImage: !string.IsNullOrWhiteSpace(item.ImagePath),
                 hasSolutionAsset: !string.IsNullOrWhiteSpace(item.SolutionAssetPath));
-            await studyPlanService.AddXpAsync(attempt.StudentName, xpAwarded, cancellationToken);
+            // XP kullanıcı kimliğine yazılır (aynı adlı öğrenci başkasının XP'sini almasın).
+            var owner = await dbContext.Users.AsNoTracking().Where(user => user.Username == attempt.StudentUsername)
+                .Select(user => (Guid?)user.Id).FirstOrDefaultAsync(cancellationToken);
+            if (owner is Guid ownerId) await studyPlanService.AddXpAsync(ownerId, attempt.StudentName, xpAwarded, cancellationToken);
         }
 
         return new QuestionPracticeAttemptDto(

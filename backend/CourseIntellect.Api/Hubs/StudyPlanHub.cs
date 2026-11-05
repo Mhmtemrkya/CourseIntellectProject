@@ -15,21 +15,17 @@ public sealed class StudyPlanHub : Hub
 {
     public override async Task OnConnectedAsync()
     {
-        var fullName = Context.User?.FindFirstValue("name")
-            ?? Context.User?.FindFirstValue(ClaimTypes.Name);
-        if (!string.IsNullOrWhiteSpace(fullName))
+        var userId = Context.User?.FindFirstValue("sub") ?? Context.User?.FindFirstValue("nameid");
+        if (Guid.TryParse(userId, out var id))
         {
-            await Groups.AddToGroupAsync(
-                Context.ConnectionId,
-                BuildStudentGroup(Context.User?.FindFirstValue("tenant_id"), fullName));
+            await Groups.AddToGroupAsync(Context.ConnectionId, BuildUserGroup(Context.User?.FindFirstValue("tenant_id"), id));
         }
 
         await base.OnConnectedAsync();
     }
 
-    // Grup kurum + ad ile kurulur. Eskiden yalnız ad kullanılıyordu: başka
-    // kurumda aynı ad-soyadlı bir kullanıcı bu öğrencinin plan güncellemelerini
-    // canlı olarak alıyordu (plan verisi kurum filtreli olsa da yayın değildi).
-    public static string BuildStudentGroup(string? tenantId, string studentName) =>
-        $"studyplan-{(string.IsNullOrWhiteSpace(tenantId) ? "platform" : tenantId.Trim().ToLowerInvariant())}-{studentName.Trim().ToLowerInvariant()}";
+    // Grup kurum + KULLANICI KİMLİĞİ ile kurulur. Eskiden ad kullanılıyordu: aynı kurumdaki aynı adlı
+    // öğrenci (ve daha önce başka kurumdaki aynı adlı kullanıcı) bu öğrencinin plan güncellemelerini alıyordu.
+    public static string BuildUserGroup(string? tenantId, Guid userId) =>
+        $"studyplan-{(string.IsNullOrWhiteSpace(tenantId) ? "platform" : tenantId.Trim().ToLowerInvariant())}-{userId:N}";
 }

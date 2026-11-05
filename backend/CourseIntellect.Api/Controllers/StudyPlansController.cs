@@ -1,3 +1,4 @@
+using CourseIntellect.Api.Security;
 using System.Security.Claims;
 using CourseIntellect.Api.Authorization;
 using CourseIntellect.Api.Hubs;
@@ -17,48 +18,38 @@ public sealed class StudyPlansController(
     IStudyPlanService studyPlanService,
     IHubContext<StudyPlanHub> studyPlanHub) : ControllerBase
 {
-    /// <summary>
-    /// Plan değişimini öğrencinin tüm açık oturumlarına (desktop + mobil) yayınlar.
-    /// </summary>
-    private Task BroadcastAsync(string studentName, StudyPlanStateDto state, CancellationToken cancellationToken)
+    /// <summary>Plan sahibi: oturumdaki kullanıcının kimliği (istemci başka birini seçemez) ve gösterim adı.</summary>
+    private (Guid UserId, string Name)? Owner()
     {
-        return studyPlanHub.Clients
-            .Group(StudyPlanHub.BuildStudentGroup(User.FindFirstValue("tenant_id"), studentName))
-            .SendAsync("studyPlanUpdated", state, cancellationToken);
+        var userId = StudentScope.ResolveUserId(User);
+        var name = User.FindFirstValue("name");
+        return userId is Guid id && !string.IsNullOrWhiteSpace(name) ? (id, name) : null;
     }
+
+    private static UnauthorizedObjectResult NoSession() => new(new { message = "Oturum bilgisi alınamadı." });
+
+    /// <summary>Plan değişimini öğrencinin tüm açık oturumlarına (desktop + mobil) yayınlar (kimliğe göre).</summary>
+    private Task BroadcastAsync(Guid userId, StudyPlanStateDto state, CancellationToken cancellationToken) =>
+        studyPlanHub.Clients
+            .Group(StudyPlanHub.BuildUserGroup(User.FindFirstValue("tenant_id"), userId))
+            .SendAsync("studyPlanUpdated", state, cancellationToken);
 
     [HttpGet]
     [Authorize(Roles = "Student,Teacher,Admin")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
-        // Güvenlik: claim çözülemiyorsa sabit bir isme (eski "Ali Yilmaz"
-        // fallback'i) düşmek başkasının planını açardı; istek reddedilir.
-        var fullName = User.FindFirstValue("name");
-        if (string.IsNullOrWhiteSpace(fullName))
-        {
-            return Unauthorized(new { message = "Oturum bilgisi alınamadı." });
-        }
-
-        var item = await studyPlanService.GetOrCreateAsync(fullName, cancellationToken);
-        return Ok(item);
+        if (Owner() is not { } owner) return NoSession();
+        return Ok(await studyPlanService.GetOrCreateAsync(owner.UserId, owner.Name, cancellationToken));
     }
 
     [HttpPut]
     [Authorize(Roles = "Student,Teacher,Admin")]
     public async Task<IActionResult> Update([FromBody] UpdateStudyPlanStateRequest request, CancellationToken cancellationToken)
     {
-        // Güvenlik: studentName client-supplied olamaz. GET claim'den okurken
-        // PUT request body'den alıyordu — kullanıcı başkasının planına yazabilirdi.
-        // Token claim'inden çözüp request'i o ad ile override ediyoruz.
-        var fullName = User.FindFirstValue("name");
-        if (string.IsNullOrWhiteSpace(fullName))
-        {
-            return Unauthorized(new { message = "Oturum bilgisi alınamadı." });
-        }
-
-        var scopedRequest = request with { StudentName = fullName };
-        var item = await studyPlanService.UpdateAsync(scopedRequest, cancellationToken);
-        await BroadcastAsync(fullName, item, cancellationToken);
+        // Güvenlik: istemcinin gönderdiği öğrenci adı/XP KULLANILMAZ; yalnız kendi programı, yalnız maddeler yazılır.
+        if (Owner() is not { } owner) return NoSession();
+        var item = await studyPlanService.UpdatePlanItemsAsync(owner.UserId, owner.Name, request.PlanItemsSerialized, cancellationToken);
+        await BroadcastAsync(owner.UserId, item, cancellationToken);
         return Ok(item);
     }
 
@@ -66,33 +57,20 @@ public sealed class StudyPlansController(
     [Authorize(Roles = "Student,Teacher,Admin")]
     public async Task<IActionResult> AddXp([FromBody] AddStudyPlanXpRequest request, CancellationToken cancellationToken)
     {
-        var fullName = User.FindFirstValue("name");
-        if (string.IsNullOrWhiteSpace(fullName))
-        {
-            return Unauthorized(new { message = "Oturum bilgisi alınamadı." });
-        }
-
-        // Güvenlik: istemcinin gönderdiği XP miktarı KABUL EDİLMEZ (öğrenci istediği
-        // kadar XP ekleyebiliyordu). XP yalnız sunucuda soru denemesi ve ödev
-        // tesliminden verilir. Uç, eski istemciler hata almasın diye durur ve
-        // değişiklik yapmadan güncel durumu döndürür.
+        // Güvenlik: istemcinin gönderdiği XP miktarı KABUL EDİLMEZ; XP yalnız sunucu ödüllerinden gelir.
+        // Uç, eski istemciler hata almasın diye durur ve değişiklik yapmadan güncel durumu döndürür.
         _ = request;
-        var item = await studyPlanService.GetOrCreateAsync(fullName, cancellationToken);
-        return Ok(item);
+        if (Owner() is not { } owner) return NoSession();
+        return Ok(await studyPlanService.GetOrCreateAsync(owner.UserId, owner.Name, cancellationToken));
     }
 
     [HttpPost("items")]
     [Authorize(Roles = "Student,Teacher,Admin")]
     public async Task<IActionResult> AddItem([FromBody] StudyPlanItemRequest request, CancellationToken cancellationToken)
     {
-        var fullName = User.FindFirstValue("name");
-        if (string.IsNullOrWhiteSpace(fullName))
-        {
-            return Unauthorized(new { message = "Oturum bilgisi alınamadı." });
-        }
-
-        var item = await studyPlanService.AddItemAsync(fullName, request, cancellationToken);
-        await BroadcastAsync(fullName, item, cancellationToken);
+        if (Owner() is not { } owner) return NoSession();
+        var item = await studyPlanService.AddItemAsync(owner.UserId, owner.Name, request, cancellationToken);
+        await BroadcastAsync(owner.UserId, item, cancellationToken);
         return Ok(item);
     }
 
@@ -100,14 +78,9 @@ public sealed class StudyPlansController(
     [Authorize(Roles = "Student,Teacher,Admin")]
     public async Task<IActionResult> SetItemDone(string itemId, [FromBody] SetStudyPlanItemDoneRequest request, CancellationToken cancellationToken)
     {
-        var fullName = User.FindFirstValue("name");
-        if (string.IsNullOrWhiteSpace(fullName))
-        {
-            return Unauthorized(new { message = "Oturum bilgisi alınamadı." });
-        }
-
-        var item = await studyPlanService.SetItemDoneAsync(fullName, itemId, request.Done, cancellationToken);
-        await BroadcastAsync(fullName, item, cancellationToken);
+        if (Owner() is not { } owner) return NoSession();
+        var item = await studyPlanService.SetItemDoneAsync(owner.UserId, owner.Name, itemId, request.Done, cancellationToken);
+        await BroadcastAsync(owner.UserId, item, cancellationToken);
         return Ok(item);
     }
 
@@ -115,14 +88,9 @@ public sealed class StudyPlansController(
     [Authorize(Roles = "Student,Teacher,Admin")]
     public async Task<IActionResult> DeleteItem(string itemId, CancellationToken cancellationToken)
     {
-        var fullName = User.FindFirstValue("name");
-        if (string.IsNullOrWhiteSpace(fullName))
-        {
-            return Unauthorized(new { message = "Oturum bilgisi alınamadı." });
-        }
-
-        var item = await studyPlanService.DeleteItemAsync(fullName, itemId, cancellationToken);
-        await BroadcastAsync(fullName, item, cancellationToken);
+        if (Owner() is not { } owner) return NoSession();
+        var item = await studyPlanService.DeleteItemAsync(owner.UserId, owner.Name, itemId, cancellationToken);
+        await BroadcastAsync(owner.UserId, item, cancellationToken);
         return Ok(item);
     }
 }

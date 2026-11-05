@@ -10446,6 +10446,9 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<Guid?>("StudentUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
@@ -10457,8 +10460,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.HasIndex("TenantId", "StudentName")
-                        .IsUnique();
+                    b.HasIndex("TenantId", "StudentName");
+
+                    b.HasIndex("TenantId", "StudentUserId")
+                        .IsUnique()
+                        .HasFilter("\"StudentUserId\" IS NOT NULL");
 
                     b.ToTable("study_plan_states", (string)null);
                 });

@@ -8878,6 +8878,7 @@ export interface StudyPlanItemRequest {
 export interface StudyPlanState {
   id: string;
   tenantId: string | null;
+  studentUserId: string | null;
   studentName: string;
   planItemsSerialized: string;
   streakCount: number;

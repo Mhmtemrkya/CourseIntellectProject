@@ -117,7 +117,7 @@ public sealed class PlatformConfigurationsController(
         ImageInfo? imageInfo;
         try
         {
-            imageInfo = Image.Identify(bytes);
+            imageInfo = CourseIntellect.Api.Security.LogoImageProbe.Identify(bytes);
         }
         catch
         {
