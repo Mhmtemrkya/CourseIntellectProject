@@ -94,6 +94,13 @@ public sealed partial class StudentInsightService(
             .ThenBy(item => item.SuccessRate)
             .ToList();
 
+        // Etüt grubu adları ve ortalama kaçırılan soru için konu başına zorlanan öğrenciler.
+        var strugglers = perStudent
+            .SelectMany(student => student.Topics.Where(topic => topic.IsWeak)
+                .Select(topic => (Key: (topic.Subject, topic.Topic), Entry: (student.Student.FullName, topic.Wrong + topic.Blank))))
+            .GroupBy(item => item.Key)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<(string Name, int Missed)>)group.Select(item => item.Entry).ToList());
+
         return new ClassInsightDto(
             roster[0].ClassName,
             roster.Count,
@@ -108,7 +115,9 @@ public sealed partial class StudentInsightService(
                 .ThenBy(item => item.FullName, TrComparer)
                 .ToList(),
             topicsSummary,
-            StudentInsightCalculator.MinSample);
+            StudentInsightCalculator.MinSample,
+            StudentInsightCalculator.ComputeClassActions(topicsSummary, strugglers),
+            await ClassFollowupsAsync(roster, answers, cancellationToken));
     }
 
     public async Task<StudentInsightDto?> GetStudentAsync(Guid studentUserId, CancellationToken cancellationToken = default)
@@ -116,6 +125,7 @@ public sealed partial class StudentInsightService(
         var analysis = await AnalyzeStudentAsync(studentUserId, cancellationToken);
         if (analysis is null) return null;
         var (student, mine, topics, weak, strong, hash) = analysis.Value;
+        var followups = await RecordAndEvaluateAsync(student.UserId, mine, weak, cancellationToken);
 
         var note = await dbContext.StudentInsightNotes.AsNoTracking()
             .Where(item => item.StudentUserId == studentUserId)
@@ -135,7 +145,62 @@ public sealed partial class StudentInsightService(
             weak,
             strong,
             ToNoteDto(note, hash),
-            StudentInsightCalculator.MinSample);
+            StudentInsightCalculator.MinSample,
+            followups);
+    }
+
+    /// <summary>
+    /// Gösterilen öncelikli önerileri (ilk 3) kaydeder ve önceki önerilerin sonucunu hesaplar. Aynı konu
+    /// için 28 gün içinde ikinci kayıt açılmaz. Bu çağrıda yeni açılan kayıtlar sonuç listesine girmez
+    /// (henüz ölçülecek bir şey yok). Kayıt başarısızsa analiz yine döner.
+    /// </summary>
+    private async Task<IReadOnlyList<RecommendationFollowupDto>> RecordAndEvaluateAsync(
+        Guid studentUserId, IReadOnlyList<InsightAnswer> mine, IReadOnlyList<TopicInsightDto> weak, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var windowStart = now.AddDays(-StudentInsightCalculator.RecommendationWindowDays);
+        var previous = await dbContext.StudentRecommendations.AsNoTracking()
+            .Where(item => item.StudentUserId == studentUserId)
+            .OrderByDescending(item => item.IssuedAtUtc)
+            .ThenBy(item => item.Priority)
+            .Take(50)
+            .ToListAsync(cancellationToken);
+
+        var fresh = weak
+            .Where(topic => topic.Priority is int priority && priority <= 3)
+            .Where(topic => !previous.Any(item => item.Subject == topic.Subject && item.Topic == topic.Topic && item.IssuedAtUtc >= windowStart))
+            .Select(topic => new StudentRecommendationRecord
+            {
+                StudentUserId = studentUserId,
+                Subject = topic.Subject,
+                Topic = topic.Topic,
+                Diagnosis = topic.Diagnosis ?? string.Empty,
+                Priority = topic.Priority ?? 0,
+                SuggestedQuestions = topic.SuggestedQuestions ?? 0,
+                BaselineSuccessRate = topic.SuccessRate,
+                BaselineSolved = topic.Solved,
+                IssuedAtUtc = now,
+            })
+            .ToList();
+        if (fresh.Count > 0)
+        {
+            try
+            {
+                dbContext.StudentRecommendations.AddRange(fresh);
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException ex)
+            {
+                logger.LogInformation(ex, "Öneri kaydı yazılamadı; analiz yine döndü.");
+                foreach (var item in fresh) dbContext.Entry(item).State = EntityState.Detached;
+            }
+        }
+
+        return previous
+            .Take(8)
+            .Select(item => StudentInsightCalculator.EvaluateFollowup(item.Subject, item.Topic, item.Diagnosis, item.IssuedAtUtc,
+                item.BaselineSuccessRate, mine, now))
+            .ToList();
     }
 
     public async Task<InsightNoteDto?> RequestNoteAsync(Guid studentUserId, Guid? requestedByUserId, CancellationToken cancellationToken = default)
@@ -279,6 +344,21 @@ public sealed partial class StudentInsightService(
         var draft = StudentInsightCalculator.BuildDraft(weak, strong);
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(draft + "|" + (generator.IsEnabled ? generator.Model : "template"))));
         return (student, mine, topics, weak, strong, hash);
+    }
+
+    /// <summary>Sınıftaki son 8 haftanın öneri sonuçları (sayım).</summary>
+    private async Task<FollowupSummaryDto> ClassFollowupsAsync(IReadOnlyList<RosterEntry> roster, IReadOnlyList<InsightAnswer> answers, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var since = now.AddDays(-56);
+        var ids = roster.Select(item => item.UserId).ToList();
+        var records = await dbContext.StudentRecommendations.AsNoTracking()
+            .Where(item => ids.Contains(item.StudentUserId) && item.IssuedAtUtc >= since)
+            .ToListAsync(cancellationToken);
+        var byStudent = answers.GroupBy(item => item.StudentUserId).ToDictionary(group => group.Key, group => (IReadOnlyList<InsightAnswer>)group.ToList());
+        return StudentInsightCalculator.Summarize(records.Select(item => StudentInsightCalculator.EvaluateFollowup(
+            item.Subject, item.Topic, item.Diagnosis, item.IssuedAtUtc, item.BaselineSuccessRate,
+            byStudent.TryGetValue(item.StudentUserId, out var mine) ? mine : [], now)));
     }
 
     private async Task<List<RosterEntry>> LoadClassRosterAsync(string className, CancellationToken cancellationToken)

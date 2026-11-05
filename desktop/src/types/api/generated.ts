@@ -1417,12 +1417,30 @@ export interface ChunkUploadState {
   nextByte: number;
 }
 
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface ClassActionDto {
+  kind: string;
+  subject: string;
+  topic: string;
+  strugglingStudentCount: number;
+  studentCount: number;
+  successRate: number;
+  studentNames: string[];
+  suggestedQuestions: number;
+}
+
 // CourseIntellect.Api/Controllers/ClassesController.cs
 export interface ClassCourseAssignmentRequest {
   courseName: string;
   teacherId?: string | null;
   weeklyHours: number;
   isRequired: boolean;
+}
+
+// CourseIntellect.Infrastructure/Services/AssistantDigest.cs
+export interface ClassDigest {
+  className: string;
+  actions: ClassActionDto[];
 }
 
 // CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
@@ -1435,6 +1453,8 @@ export interface ClassInsightDto {
   students: ClassStudentInsightDto[];
   topics: ClassTopicInsightDto[];
   minSample: number;
+  actions: ClassActionDto[] | null;
+  followups: FollowupSummaryDto | null;
 }
 
 // CourseIntellect.Api/Controllers/ClassesController.cs
@@ -4531,6 +4551,15 @@ export interface FinanceReminderLog {
   sentAtUtc: string;
 }
 
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface FollowupSummaryDto {
+  improved: number;
+  steady: number;
+  declined: number;
+  pending: number;
+  notPracticed: number;
+}
+
 // CourseIntellect.Application/DTOs/Auth/PasswordResetDtos.cs
 export interface ForgotPasswordRequest {
   email: string;
@@ -6025,6 +6054,8 @@ export interface ParsedAssistantQuery {
   gradeLevel: number | null;
   sectionName: string | null;
   scoreThreshold: number | null;
+  correctedText: string | null;
+  correctedTokens: string[] | null;
 }
 
 // CourseIntellect.Infrastructure/Services/OpticalExamService.cs
@@ -7000,6 +7031,18 @@ export interface Range {
   start: number;
   length: number;
   readonly end?: number;
+}
+
+// CourseIntellect.Application/DTOs/Insights/StudentInsightDtos.cs
+export interface RecommendationFollowupDto {
+  subject: string;
+  topic: string;
+  diagnosis: string;
+  issuedAtUtc: string;
+  baselineSuccessRate: number;
+  afterSolved: number;
+  afterSuccessRate: number | null;
+  status: string;
 }
 
 // CourseIntellect.Application/DTOs/StudentFinance/FinanceOperationsDtos.cs
@@ -8099,6 +8142,13 @@ export interface SolutionSummaryResponse {
   xpAwarded: number;
 }
 
+// CourseIntellect.Infrastructure/Services/AssistantSpelling.cs
+export interface SpellingResult {
+  text: string;
+  changedTokens: string[];
+  readonly changed?: boolean;
+}
+
 // CourseIntellect.Domain/Entities/StaffAssetAssignment.cs
 export interface StaffAssetAssignment {
   id: string;
@@ -8570,6 +8620,7 @@ export interface StudentInsightDto {
   strongTopics: TopicInsightDto[];
   note: InsightNoteDto;
   minSample: number;
+  followups: RecommendationFollowupDto[] | null;
 }
 
 // CourseIntellect.Domain/Entities/StudentInsightEntities.cs
@@ -8677,6 +8728,22 @@ export interface StudentQuestionThread {
   lastActivityLabel: string;
   attachmentSummary: string;
   attachmentsSerialized: string;
+}
+
+// CourseIntellect.Domain/Entities/StudentInsightEntities.cs
+export interface StudentRecommendationRecord {
+  id: string;
+  tenantId: string | null;
+  branchId: string | null;
+  studentUserId: string;
+  subject: string;
+  topic: string;
+  diagnosis: string;
+  priority: number;
+  suggestedQuestions: number;
+  baselineSuccessRate: number;
+  baselineSolved: number;
+  issuedAtUtc: string;
 }
 
 // CourseIntellect.Application/DTOs/Students/StudentRecordScope.cs
@@ -8966,6 +9033,8 @@ export interface SuccessTopicRow {
   diagnosis: string | null;
   trend: string;
   solved: number;
+  priority: number | null;
+  suggestedQuestions: number | null;
 }
 
 // CourseIntellect.Infrastructure/Services/StudentSuccessReportPdf.cs
@@ -9424,6 +9493,9 @@ export interface TopicInsightDto {
   isWeak: boolean;
   isStrong: boolean;
   diagnosis: string | null;
+  priority: number | null;
+  suggestedQuestions: number | null;
+  lastPracticedAtUtc: string | null;
 }
 
 // CourseIntellect.Application/DTOs/Translations/TranslationDto.cs

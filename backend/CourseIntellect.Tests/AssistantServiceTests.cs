@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Assistant;
 using CourseIntellect.Application.Interfaces;
@@ -104,6 +105,226 @@ public sealed class AssistantServiceTests : IDisposable
         var named = await Service().SendAsync(Context(admin, "Admin", "Demo Yönetici"), Ask("Ali Yılmaz devamsızlığı", ayse.Id), CancellationToken.None);
         Assert.Contains("Ali", named.Text);
         Assert.DoesNotContain("Ayşe", named.Text);
+    }
+
+    // ── Haftalık özet ve sınıf önerileri ───────────────────────────────────────
+
+    /// <summary>10-A: 4 öğrenciden 3'ü Olasılık'ta zayıf (sınıf tekrarı), biri iyi. Öğretmen 10-A'ya giriyor.</summary>
+    private async Task<(Guid Teacher, Guid Parent, AppUser WeakStudent)> SeedClassWithSharedWeaknessAsync()
+    {
+        var teacher = Guid.NewGuid();
+        var parent = Guid.NewGuid();
+        db.TeacherTimetableSlots.Add(new TeacherTimetableSlot { TeacherUserId = teacher, TeacherName = "Hasan Hoca", DayOfWeek = 1, StartTime = "09:00", EndTime = "09:40", ClassName = "10-A", Lesson = "Matematik" });
+        var question = new QuestionBankItem { Subject = "Matematik", Topic = "Olasılık", QuestionText = "?", Type = "Test", Difficulty = "Orta", Teacher = "T" };
+        db.QuestionBankItems.Add(question);
+        await db.SaveChangesAsync();
+        var students = new[]
+        {
+            await StudentAsync("Ece Kurt", "10-A", parent),
+            await StudentAsync("Deniz Ak", "10-A"),
+            await StudentAsync("Ozan Er", "10-A"),
+            await StudentAsync("Mina Tan", "10-A"),
+        };
+        var at = DateTime.UtcNow.AddDays(-3);
+        for (var index = 0; index < students.Length; index++)
+        {
+            for (var i = 0; i < 8; i++)
+            {
+                db.QuestionPracticeAttempts.Add(new QuestionPracticeAttempt
+                {
+                    QuestionId = question.Id, StudentUsername = students[index].User.Username, StudentName = students[index].User.FullName,
+                    IsCorrect = index == 3 || i == 0, SubmittedAtUtc = at.AddMinutes(index * 10 + i),
+                });
+            }
+        }
+        await db.SaveChangesAsync();
+        return (teacher, parent, students[0].User);
+    }
+
+    /// <summary>Brifingdeki her maddenin sorusu aynı rol için Maydi'de cevaplanır ("anlamadım"a düşmez).</summary>
+    private async Task AssertAsksResolveAsync(AssistantRequestContext context)
+    {
+        var briefing = await Service().GetBriefingAsync(context, CancellationToken.None);
+        foreach (var ask in briefing.Items.Select(item => item.Ask).OfType<string>())
+        {
+            var response = await Service().SendAsync(context, Ask(ask), CancellationToken.None);
+            Assert.True(response.Type is not ("quick_actions" or "error" or "permission_denied"), $"\"{ask}\" → {response.Type}: {response.Text}");
+        }
+    }
+
+    [Fact]
+    public async Task WeeklyDigest_GivesEachRoleActionableItems_ThatMaydiCanAnswer()
+    {
+        var (teacher, parent, weak) = await SeedClassWithSharedWeaknessAsync();
+
+        var teacherBriefing = await Service().GetBriefingAsync(Context(teacher, "Teacher", "Hasan Hoca"), CancellationToken.None);
+        var classItem = Assert.Single(teacherBriefing.Items, item => item.Ask == "10-A sınıfının zayıf konuları");
+        Assert.Contains("Olasılık", classItem.Text);
+        Assert.Contains("sınıf tekrarı", classItem.Text);
+        await AssertAsksResolveAsync(Context(teacher, "Teacher", "Hasan Hoca"));
+
+        var admin = Guid.NewGuid();
+        var adminBriefing = await Service().GetBriefingAsync(Context(admin, "Admin", "Demo Yönetici"), CancellationToken.None);
+        Assert.Contains(adminBriefing.Items, item => item.Text.Contains("Sınıf tekrarı önerdiğim sınıflar") && item.Text.Contains("10-A"));
+        await AssertAsksResolveAsync(Context(admin, "Admin", "Demo Yönetici"));
+
+        var parentBriefing = await Service().GetBriefingAsync(Context(parent, "Parent", "Veli"), CancellationToken.None);
+        Assert.Contains(parentBriefing.Items, item => item.Text.Contains("Olasılık") && item.Text.Contains("soru"));
+        await AssertAsksResolveAsync(Context(parent, "Parent", "Veli"));
+
+        var studentBriefing = await Service().GetBriefingAsync(Context(weak.Id, "Student", weak.FullName), CancellationToken.None);
+        Assert.Contains(studentBriefing.Items, item => item.Text.Contains("Olasılık") && item.Text.Contains("soru"));
+        await AssertAsksResolveAsync(Context(weak.Id, "Student", weak.FullName));
+        Assert.All(new[] { teacherBriefing, adminBriefing, parentBriefing, studentBriefing }, briefing => Assert.InRange(briefing.Items.Count, 1, 6));
+    }
+
+    private sealed class RecordingPush : IPushNotificationService
+    {
+        public List<(Guid User, string Title, string Body)> Sent { get; } = [];
+        public bool IsConfigured => true;
+        public Task SendToUserAsync(Guid userId, string title, string body, IReadOnlyDictionary<string, string>? data = null, CancellationToken cancellationToken = default)
+        {
+            Sent.Add((userId, title, body));
+            return Task.CompletedTask;
+        }
+        public Task SendToUserByNameAsync(string fullName, string title, string body, IReadOnlyDictionary<string, string>? data = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SendToRoleAsync(string role, string title, string body, IReadOnlyDictionary<string, string>? data = null, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private WeeklyDigestJob DigestJob(RecordingPush push, bool enabled) => new(
+        db,
+        new StudentInsightService(db, new DisabledGenerator(), new NoOpBackgroundJobClient(NullLogger<NoOpBackgroundJobClient>.Instance), NullLogger<StudentInsightService>.Instance),
+        push,
+        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Assistant:WeeklyDigest:Enabled"] = enabled ? "true" : "false" }).Build(),
+        NullLogger<WeeklyDigestJob>.Instance);
+
+    [Fact]
+    public async Task WeeklyDigestJob_IsOffByDefault_SendsCountsOnly_AndNeverTwiceAWeek()
+    {
+        var (teacher, _, _) = await SeedClassWithSharedWeaknessAsync();
+        var quietTeacher = Guid.NewGuid();
+        db.TeacherTimetableSlots.Add(new TeacherTimetableSlot { TeacherUserId = quietTeacher, TeacherName = "Sessiz", DayOfWeek = 3, StartTime = "11:00", EndTime = "11:40", ClassName = "12-C", Lesson = "Tarih" });
+        await db.SaveChangesAsync();
+        db.SetTenantOverride(null);
+
+        var push = new RecordingPush();
+        Assert.Equal(0, await DigestJob(push, enabled: false).RunAsync());
+        Assert.Empty(push.Sent);
+        Assert.DoesNotContain(db.Notifications.IgnoreQueryFilters(), item => item.Category == WeeklyDigestJob.Category);
+
+        Assert.Equal(1, await DigestJob(push, enabled: true).RunAsync());
+        var (user, _, body) = Assert.Single(push.Sent);
+        Assert.Equal(teacher, user);
+        Assert.Contains("1 sınıf tekrarı", body);
+        foreach (var name in new[] { "Ece", "Deniz", "Ozan", "Mina", "Olasılık" }) Assert.DoesNotContain(name, body);
+
+        // Aynı hafta yeniden çalışırsa (Hangfire yeniden denemesi) ikinci kez gönderilmez.
+        Assert.Equal(0, await DigestJob(push, enabled: true).RunAsync());
+        Assert.Single(push.Sent);
+        db.SetTenantOverride(Tenant);
+    }
+
+    [Fact]
+    public async Task ParentDigest_CountsAbsencesById_AndComparesWithLastWeek()
+    {
+        var parent = Guid.NewGuid();
+        var (_, mine) = await StudentAsync("Ece Kurt", "7-A", parent);
+        var (_, namesake) = await StudentAsync("Ece Kurt", "8-B");
+        var today = DateTime.SpecifyKind(DateTime.UtcNow.AddHours(3).Date, DateTimeKind.Utc);
+        void Absent(StudentProfile who, DateTime day) => db.AttendanceEntries.Add(new AttendanceEntry
+            { StudentId = who.Id, StudentName = who.FullName, ClassName = who.ClassName, LessonDate = day, Status = "Devamsiz", Lesson = "Matematik" });
+        Absent(mine, today.AddDays(-1));
+        Absent(mine, today.AddDays(-2));
+        Absent(mine, today.AddDays(-9));
+        for (var i = 0; i < 5; i++) Absent(namesake, today.AddDays(-1)); // aynı adlı başka öğrenci sayılmaz
+        await db.SaveChangesAsync();
+
+        var briefing = await Service().GetBriefingAsync(Context(parent, "Parent", "Veli"), CancellationToken.None);
+        var line = Assert.Single(briefing.Items, item => item.Text.Contains("devamsız"));
+        Assert.Contains("son 7 günde 2 ders", line.Text);
+        Assert.Contains("önceki 7 günde 1", line.Text);
+        Assert.Equal("warn", line.Tone);
+    }
+
+    [Fact]
+    public async Task ClassTopicQuestion_IsLimitedToTheTeachersOwnClasses()
+    {
+        var (teacher, parent, _) = await SeedClassWithSharedWeaknessAsync();
+
+        var own = await Service().SendAsync(Context(teacher, "Teacher", "Hasan Hoca"), Ask("10-A sınıfının zayıf konuları"), CancellationToken.None);
+        Assert.Equal("text", own.Type);
+        Assert.Contains("sınıf tekrarı", own.Text);
+
+        var otherTeacher = Guid.NewGuid();
+        db.TeacherTimetableSlots.Add(new TeacherTimetableSlot { TeacherUserId = otherTeacher, TeacherName = "Başka", DayOfWeek = 2, StartTime = "10:00", EndTime = "10:40", ClassName = "9-B", Lesson = "Fizik" });
+        await db.SaveChangesAsync();
+        var foreign = await Service().SendAsync(Context(otherTeacher, "Teacher", "Başka Hoca"), Ask("10-A sınıfının zayıf konuları"), CancellationToken.None);
+        Assert.Equal("permission_denied", foreign.Type);
+        Assert.DoesNotContain("Olasılık", foreign.Text);
+
+        // Veli sınıf yoluna hiç girmez: kendi çocuğunun konu analizi döner, sınıf önerisi/adlar değil.
+        var byParent = await Service().SendAsync(Context(parent, "Parent", "Veli"), Ask("10-A sınıfının zayıf konuları"), CancellationToken.None);
+        Assert.NotEqual("permission_denied", byParent.Type);
+        Assert.DoesNotContain("Deniz", byParent.Text);
+        Assert.DoesNotContain("etüt", byParent.Text);
+    }
+
+    [Fact]
+    public async Task MisspelledStudentName_FindsTheRightStudent()
+    {
+        var admin = Guid.NewGuid();
+        await StudentAsync("Ahmet Yılmaz", "10-A");
+        await StudentAsync("Ahmet Kaya", "10-B");
+        await StudentAsync("Ayşe Demir", "10-A");
+
+        // Soyadı yanlış yazıldı: birçok Ahmet arasından Yılmaz seçilir, seçim kartı çıkmaz.
+        var typoSurname = await Service().SendAsync(Context(admin, "Admin", "Demo"), Ask("Ahmet Yılmz devamsızlığı"), CancellationToken.None);
+        Assert.Equal("attendance_summary", typoSurname.Type);
+        Assert.Contains("Ahmet Y", typoSurname.Text);
+
+        // Ad ve anahtar kelime birlikte yanlış: ad + devamsızlık yine anlaşılır.
+        var bothTypos = await Service().SendAsync(Context(admin, "Admin", "Demo"), Ask("Ayşe Demr devamszlığı"), CancellationToken.None);
+        Assert.Equal("attendance_summary", bothTypos.Type);
+        Assert.Contains("Ayşe", bothTypos.Text);
+
+        // Ekli yazım: "Yılmz'ın".
+        var suffixed = await Service().SendAsync(Context(admin, "Admin", "Demo"), Ask("Ahmet Yılmz'ın sınav sonuçları"), CancellationToken.None);
+        Assert.Equal("exam_results", suffixed.Type);
+
+        // Birebir yazılan ad her zaman yazım hatalı adaydan öne geçer.
+        await StudentAsync("Ali Kaya", "9-A");
+        await StudentAsync("Ali Kara", "9-B");
+        var exact = await Service().SendAsync(Context(admin, "Admin", "Demo"), Ask("Ali Kara devamsızlığı"), CancellationToken.None);
+        Assert.Contains("Kara", exact.Text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Kaya", exact.Text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task KeywordsAreNotMistakenForSimilarStudentNames()
+    {
+        var admin = Guid.NewGuid();
+        await StudentAsync("Sinan Öz", "10-A");
+        await StudentAsync("Mert Ak", "10-A");
+
+        // "sınav" Sinan'a bir harf uzak ama anahtar kelimedir: öğrenci seçilmez, hangi öğrenci diye sorulur.
+        var response = await Service().SendAsync(Context(admin, "Admin", "Demo"), Ask("sınav sonuçları"), CancellationToken.None);
+        Assert.DoesNotContain("Sinan", response.Text);
+
+        // Sinan yazılınca yine Sinan bulunur (ad "sınav"a düzeltilmez).
+        var byName = await Service().SendAsync(Context(admin, "Admin", "Demo"), Ask("Sinan"), CancellationToken.None);
+        Assert.Contains("Sinan", byName.Text);
+    }
+
+    [Fact]
+    public async Task MisspelledName_NeverReachesAStudentOutsideTheParentsChildren()
+    {
+        var parent = Guid.NewGuid();
+        await StudentAsync("Zeynep Arslan", "7-A", parent);
+        await StudentAsync("Zeynep Aslan", "7-B");
+
+        var response = await Service().SendAsync(Context(parent, "Parent", "Veli"), Ask("Zeynep Arsln devamsızlığı"), CancellationToken.None);
+        Assert.Contains("Arslan", response.Text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("7-B", response.Text);
     }
 
     [Fact]

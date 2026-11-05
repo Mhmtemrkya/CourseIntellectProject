@@ -49,3 +49,24 @@ public sealed class ExamBlankAnswer : ITenantScopedEntity
     public Guid ExamSessionId { get; set; }
     public DateTime CompletedAtUtc { get; set; } = DateTime.UtcNow;
 }
+
+/// <summary>
+/// Öğrenciye gösterilen öncelikli konu önerisi (ölçme için). Öneri gösterildiği andaki başarı
+/// (Baseline) saklanır; sonraki cevaplar bununla karşılaştırılır. Aynı konu için 28 gün içinde
+/// ikinci kayıt açılmaz. Sonuç (ilerleme/değişim yok/düşüş) saklanmaz, her seferinde cevaplardan hesaplanır.
+/// </summary>
+public sealed class StudentRecommendationRecord : IBranchScopedEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
+    public Guid StudentUserId { get; set; }
+    public string Subject { get; set; } = string.Empty;
+    public string Topic { get; set; } = string.Empty;
+    public string Diagnosis { get; set; } = string.Empty;
+    public int Priority { get; set; }
+    public int SuggestedQuestions { get; set; }
+    public decimal BaselineSuccessRate { get; set; }
+    public int BaselineSolved { get; set; }
+    public DateTime IssuedAtUtc { get; set; } = DateTime.UtcNow;
+}

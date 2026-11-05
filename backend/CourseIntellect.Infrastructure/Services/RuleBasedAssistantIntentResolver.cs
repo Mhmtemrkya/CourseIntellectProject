@@ -14,10 +14,31 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
         => Task.FromResult(Resolve(message));
 
     /// <summary>Senkron kural ayrıştırması. Hibrit resolver ve testler doğrudan kullanır.</summary>
-    public ParsedAssistantQuery Resolve(string message)
+    public ParsedAssistantQuery Resolve(string message) => Resolve(message, allowCorrection: true);
+
+    public ParsedAssistantQuery Resolve(string message, bool allowCorrection) => Resolve(message, allowCorrection, keepWords: null);
+
+    /// <summary>
+    /// Önce mesaj olduğu gibi ayrıştırılır. Anlaşılmazsa (Unknown) yazım hataları düzeltilip bir kez daha
+    /// denenir; doğru yazılmış mesajların sonucu bu yüzden hiç değişmez. <paramref name="allowCorrection"/>
+    /// false ise düzeltme denenmez. <paramref name="keepWords"/> düzeltmede korunacak kelimelerdir
+    /// (servis, değişen kelime bir öğrenci adıysa onu korur; diğer kelimeler yine düzeltilir).
+    /// </summary>
+    public ParsedAssistantQuery Resolve(string message, bool allowCorrection, IReadOnlySet<string>? keepWords)
     {
-        var normalized = Normalize(message);
-        var searchable = ExpandEnglish(RemoveDiacritics(normalized));
+        var exact = ResolveFolded(Normalize(message), RemoveDiacritics(Normalize(message)));
+        if (!allowCorrection || exact.Intent != AssistantIntent.Unknown) return exact;
+        var correction = AssistantSpelling.Correct(RemoveDiacritics(Normalize(message)), keepWords);
+        if (!correction.Changed) return exact;
+        var corrected = ResolveFolded(exact.NormalizedMessage, correction.Text);
+        return corrected.Intent == AssistantIntent.Unknown
+            ? exact
+            : corrected with { CorrectedText = correction.Text, CorrectedTokens = correction.ChangedTokens };
+    }
+
+    private static ParsedAssistantQuery ResolveFolded(string normalized, string folded)
+    {
+        var searchable = ExpandEnglish(folded);
         var number = NumberRegex().Match(searchable);
         string? tc = null;
         string? studentNumber = null;

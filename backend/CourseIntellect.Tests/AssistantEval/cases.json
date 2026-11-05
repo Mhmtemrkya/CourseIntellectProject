@@ -967,6 +967,71 @@
     {
       "q": "öğrenci ara Elif",
       "intent": "SearchStudent"
+    },
+    {
+      "q": "teşekürler",
+      "intent": "Thanks",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "saol",
+      "intent": "Thanks",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "merhabaaa",
+      "intent": "Greeting",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "mrhb",
+      "intent": "Greeting",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "nasılsn",
+      "intent": "SmallTalk",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "bugün devamszlık yapanlar kimler",
+      "intent": "ListAbsentStudents",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "yoklma",
+      "intent": "GetAttendance",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "duyrular",
+      "intent": "GetAnnouncements",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "mesjlarım",
+      "intent": "GetUnreadMessages",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "sevis nerde",
+      "intent": "GetTransportStatus",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "ödme durumu",
+      "intent": "GetPaymentSummary",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "ortlama",
+      "intent": "GetExamAverage",
+      "note": "yazım hatası"
+    },
+    {
+      "q": "kütüpahne",
+      "intent": "GetLibraryLoans",
+      "note": "yazım hatası"
     }
   ],
   "roles": [

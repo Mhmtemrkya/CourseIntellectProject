@@ -17,7 +17,101 @@ const topicDiagnoses = {
     Color(0xFFD97706),
   ),
   'declining': ('Son çalışmalarda düşüş', 'Kısa bir konu tekrarı yapıp son yanlışlarını yeniden çözmesi önerilir.', Color(0xFF7C3AED)),
+  'improving': (
+    'Toparlanıyor',
+    'Toparlanma var; aynı tempoda devam edip haftada bir kısa tekrarla kazanımı pekiştirmesi önerilir.',
+    Color(0xFF059669),
+  ),
+  'class_wide': (
+    'Ortak zorluk',
+    'Birçok öğrencinin zorlandığı bir konu; temel örneklerden başlayıp adım adım zorlaşan alıştırmalarla ilerlemesi önerilir.',
+    Color(0xFF0284C7),
+  ),
+  'stale': (
+    'Uzun süredir çalışılmadı',
+    'Bu konu uzun süredir çalışılmamış; kısa bir hatırlatma tekrarı ve birkaç soruyla konuyu tazelemesi önerilir.',
+    Color(0xFF475569),
+  ),
 };
+
+/// Önceki önerinin sonucu (masaüstü FOLLOWUP_STATUS ile aynı; öneriye bağlanmaz).
+const followupStatuses = {
+  'improved': ('İlerleme var', Color(0xFF059669)),
+  'steady': ('Belirgin değişim yok', Color(0xFF475569)),
+  'declined': ('Düşüş var', Color(0xFFE11D48)),
+  'pending': ('Ölçülüyor', Color(0xFF0284C7)),
+  'not_practiced': ('Çalışılmadı', Color(0xFFD97706)),
+};
+
+/// Öğretmene sınıf önerisi türleri (masaüstü CLASS_ACTIONS ile aynı metinler).
+const classActionKinds = {
+  'class_review': (
+    'Sınıf tekrarı',
+    'Sınıfın önemli bir kısmı zorlanıyor; derste kısa bir konu tekrarı ve birlikte çözülen örnekler önerilir.',
+    Color(0xFFE11D48),
+  ),
+  'study_group': (
+    'Etüt grubu',
+    'Birkaç öğrenci aynı konuda zorlanıyor; küçük bir etüt grubunda birlikte çalışmaları önerilir.',
+    Color(0xFFD97706),
+  ),
+};
+
+int _int(Object? raw) => (raw as num?)?.toInt() ?? 0;
+
+/// Önerinin dayanağı ("neden"): sunucunun döndürdüğü sayılardan kurulur (masaüstü topicReason ile aynı).
+String topicReason(Map<String, dynamic> topic) {
+  final parts = ['{n} sorudan {m} yanlış'.tr.replaceFirst('{n}', '${_int(topic['solved'])}').replaceFirst('{m}', '${_int(topic['wrong'])}')];
+  if (_int(topic['blank']) > 0) parts.add('{n} boş'.tr.replaceFirst('{n}', '${_int(topic['blank'])}'));
+  var text = '${parts.join(', ')} • ${'başarı'.tr} ${topicPct(topic['successRate'])}';
+  final trend = '${topic['trend'] ?? ''}';
+  if ((trend == 'down' || trend == 'up') && topic['previousSuccessRate'] != null && topic['recentSuccessRate'] != null) {
+    text += ' • ${topicPct(topic['previousSuccessRate'])} → ${topicPct(topic['recentSuccessRate'])}';
+  }
+  return text;
+}
+
+/// Haftalık somut adım: önerilen soru sayısı birkaç güne bölünür (masaüstü questionPlan ile aynı).
+String? questionPlan(Object? raw) {
+  final questions = _int(raw);
+  if (questions <= 0) return null;
+  final perDay = (questions / 4).ceil();
+  return 'Bu hafta: {n} soru, 4 güne bölerek günde ~{m}; hafta sonunda kısa bir mini test.'
+      .tr
+      .replaceFirst('{n}', '$questions')
+      .replaceFirst('{m}', '$perDay');
+}
+
+/// Zayıf konu kartının alt satırları: öneri, haftalık adım ve "neden".
+List<Widget> topicAdviceLines(Map<String, dynamic> topic, String advice, TextStyle hint) {
+  final plan = questionPlan(topic['suggestedQuestions']);
+  return [
+    Text(advice.tr, style: const TextStyle(fontSize: 13)),
+    if (plan != null) ...[
+      const SizedBox(height: 2),
+      Text(plan, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+    ],
+    if (_int(topic['solved']) > 0) ...[
+      const SizedBox(height: 2),
+      Text('${'Neden:'.tr} ${topicReason(topic)}', style: hint),
+    ],
+  ];
+}
+
+/// Öncelik sırası rozeti (1 = önce çalışılacak).
+Widget? topicPriorityBadge(BuildContext context, Object? raw) {
+  final priority = _int(raw);
+  if (priority <= 0) return null;
+  return Container(
+    margin: const EdgeInsets.only(right: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+    decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, borderRadius: BorderRadius.circular(999)),
+    child: Text(
+      '$priority',
+      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onPrimary),
+    ),
+  );
+}
 
 String topicPct(Object? raw) {
   final value = (raw as num?)?.toDouble();
@@ -144,6 +238,7 @@ class _TopicRecommendationsCardState extends State<TopicRecommendationsCard> {
                   children: [
                     Row(
                       children: [
+                        ?topicPriorityBadge(context, topic['priority']),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,7 +263,7 @@ class _TopicRecommendationsCardState extends State<TopicRecommendationsCard> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Text(diagnosis.$2.tr, style: const TextStyle(fontSize: 13)),
+                    ...topicAdviceLines(topic, diagnosis.$2, hint),
                   ],
                 ),
               );

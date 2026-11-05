@@ -5,22 +5,8 @@ import 'package:flutter/material.dart';
 import '../i18n/app_locale.dart';
 import '../services/module_api_client.dart';
 import '../widgets/admin_ui.dart';
+import '../widgets/topic_recommendations_card.dart';
 
-/// Masaüstü StudentInsightsPage ile aynı katalog: sunucu teşhis kodu döndürür,
-/// metin burada (çeviri katmanı bu sabit cümleleri çevirir).
-const _diagnoses = {
-  'misconception': (
-    'Yanlışlar ağırlıkta',
-    'Kavram yanılgısı olabilir; temel kuralları tekrar edip çözümlü örneklerle hata analizi yapması önerilir.',
-    Color(0xFFE11D48),
-  ),
-  'skipping': (
-    'Boş bırakma eğilimi',
-    'Kolaydan zora sıralanmış kısa testlerle soruya başlama alışkanlığı kazanması önerilir.',
-    Color(0xFFD97706),
-  ),
-  'declining': ('Son çalışmalarda düşüş', 'Kısa bir konu tekrarı yapıp son yanlışlarını yeniden çözmesi önerilir.', Color(0xFF7C3AED)),
-};
 
 String _pct(Object? raw) {
   final value = (raw as num?)?.toDouble();
@@ -103,6 +89,56 @@ class _StudentInsightsPageState extends State<StudentInsightsPage> {
     } catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
     }
+  }
+
+  /// Öğretmene sınıf önerisi: sınıf tekrarı ya da etüt grubu (adlar yalnız personele gelir).
+  Widget _classAction(Map<String, dynamic> action, TextStyle hint) {
+    final kind = classActionKinds['${action['kind']}'] ?? classActionKinds['study_group']!;
+    final names = (action['studentNames'] as List?)?.map((item) => '$item').toList() ?? const <String>[];
+    final plan = questionPlan(action['suggestedQuestions']);
+    return AdminPanel(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${action['topic']}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                    Text('${action['subject']}', style: hint),
+                  ],
+                ),
+              ),
+              AdminAccentBadge(label: kind.$1.tr, color: kind.$3),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(kind.$2.tr),
+          if (names.isNotEmpty) Text(names.join(', '), style: const TextStyle(fontWeight: FontWeight.w700)),
+          if (plan != null) Text(plan),
+          Text(
+            '${'Neden:'.tr} ${'konuda soru çözen {n} öğrenciden {m} öğrenci zorlanıyor'.tr.replaceFirst('{n}', '${action['studentCount']}').replaceFirst('{m}', '${action['strugglingStudentCount']}')} • ${'sınıf başarısı'.tr} ${_pct(action['successRate'])}',
+            style: hint,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Sınıfta son 8 haftanın öneri sonuçları; hiç kayıt yoksa gösterilmez.
+  Widget? _followupSummary(Map<String, dynamic> summary, TextStyle hint) {
+    int n(String key) => (summary[key] as num?)?.toInt() ?? 0;
+    if (n('improved') + n('steady') + n('declined') + n('pending') + n('notPracticed') == 0) return null;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(
+        '${'Son 8 haftadaki öneriler: '.tr}${'{a} konuda ilerleme, {b} konuda belirgin değişim yok, {c} konuda düşüş'.tr.replaceFirst('{a}', '${n('improved')}').replaceFirst('{b}', '${n('steady')}').replaceFirst('{c}', '${n('declined')}')} • ${'{d} ölçülüyor, {e} çalışılmadı'.tr.replaceFirst('{d}', '${n('pending')}').replaceFirst('{e}', '${n('notPracticed')}')}',
+        style: hint,
+      ),
+    );
   }
 
   @override
@@ -194,6 +230,12 @@ class _StudentInsightsPageState extends State<StudentInsightsPage> {
                   ),
                 )
               else ...[
+                AdminSectionTitle(title: 'Sınıf için öneriler'.tr),
+                if (asMapList(data['actions']).isEmpty)
+                  Text('Sınıf düzeyinde öneri için yeterli ortak zorluk yok; öneriler öğrenci bazında aşağıda.'.tr, style: hint),
+                ...asMapList(data['actions']).map((action) => _classAction(action, hint)),
+                ?_followupSummary(asMap(data['followups']), hint),
+                const SizedBox(height: 12),
                 AdminSectionTitle(title: 'Sınıfın zorlandığı konular'.tr),
                 if (struggling.isEmpty) Text('Belirgin bir ortak zorluk yok.'.tr, style: hint),
                 ...struggling
@@ -361,6 +403,37 @@ class _StudentInsightDetailPageState extends State<StudentInsightDetailPage> {
     if (result != null && result.length >= 20) await _review(noteId, 'edit', result);
   }
 
+  /// Önceki önerinin sonrası: öneri anındaki başarı → sonraki cevaplar ("işe yaradı" denmez).
+  Widget _followup(Map<String, dynamic> item, TextStyle hint) {
+    final status = followupStatuses['${item['status']}'] ?? followupStatuses['pending']!;
+    final issued = DateTime.tryParse('${item['issuedAtUtc']}')?.toLocal();
+    final date = issued == null ? '' : '${issued.day.toString().padLeft(2, '0')}.${issued.month.toString().padLeft(2, '0')}.${issued.year}';
+    final after = item['afterSuccessRate'];
+    final result = after != null
+        ? '${_pct(item['baselineSuccessRate'])} → ${_pct(after)} (${'{n} yeni soru'.tr.replaceFirst('{n}', '${item['afterSolved']}')})'
+        : '${item['status']}' == 'not_practiced'
+            ? 'Öneriden sonra bu konuda soru çözülmedi.'.tr
+            : 'Ölçüm için en az 5 yeni soru gerekiyor (şu an {n}).'.tr.replaceFirst('{n}', '${item['afterSolved']}');
+    return AdminPanel(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${item['topic']}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text('${item['subject']} • ${'öneri:'.tr} $date', style: hint),
+                Text(result, style: hint),
+              ],
+            ),
+          ),
+          AdminAccentBadge(label: status.$1.tr, color: status.$2),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = _data;
@@ -421,7 +494,7 @@ class _StudentInsightDetailPageState extends State<StudentInsightDetailPage> {
                   AdminSectionTitle(title: 'Öncelikli konular'.tr),
                   if (asMapList(data['weakTopics']).isEmpty) Text('Belirgin bir zayıf konu yok.'.tr, style: hint),
                   ...asMapList(data['weakTopics']).map((topic) {
-                    final diagnosis = _diagnoses['${topic['diagnosis']}'] ?? _diagnoses['misconception']!;
+                    final diagnosis = topicDiagnoses['${topic['diagnosis']}'] ?? topicDiagnoses['misconception']!;
                     return AdminPanel(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: Column(
@@ -429,6 +502,7 @@ class _StudentInsightDetailPageState extends State<StudentInsightDetailPage> {
                         children: [
                           Row(
                             children: [
+                              ?topicPriorityBadge(context, topic['priority']),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,11 +520,16 @@ class _StudentInsightDetailPageState extends State<StudentInsightDetailPage> {
                           if (topic['classSuccessRate'] != null)
                             Text('Sınıf %{n}'.tr.replaceFirst('%{n}', _pct(topic['classSuccessRate'])), style: hint),
                           const SizedBox(height: 6),
-                          Text(diagnosis.$2.tr),
+                          ...topicAdviceLines(topic, diagnosis.$2, hint),
                         ],
                       ),
                     );
                   }),
+                  if (asMapList(data['followups']).isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    AdminSectionTitle(title: 'Önceki öneriler ve sonrası'.tr),
+                    ...asMapList(data['followups']).map((item) => _followup(item, hint)),
+                  ],
                   if (asMapList(data['strongTopics']).isNotEmpty) ...[
                     const SizedBox(height: 8),
                     AdminSectionTitle(title: 'Güçlü konular'.tr),

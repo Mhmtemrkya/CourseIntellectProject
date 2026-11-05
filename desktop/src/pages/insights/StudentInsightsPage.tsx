@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  AlertTriangle, ArrowDownRight, ArrowUpRight, BookOpenCheck, Brain, Check, Info, Minus, Pencil, RefreshCw, Sparkles,
-  Target, ThumbsDown, TrendingDown, Trophy, Users,
+  AlertTriangle, ArrowDownRight, ArrowUpRight, BookOpenCheck, Brain, Check, Info, Minus, Pencil, RefreshCw, Sparkles, Target, ThumbsDown, TrendingDown, Trophy, Users, Lightbulb, History,
 } from 'lucide-react';
 import { Page, PageHeader, PageLoading, PageNotice, StatCard } from '../../components/layout/PageKit';
 import { Badge } from '../../components/ui/badge';
@@ -16,9 +15,9 @@ import {
   fetchClassInsight, fetchInsightOverview, fetchStudentInsight, requestInsightNote, reviewInsightNote,
 } from '../../lib/api/modules';
 import { errorMessage } from '../../lib/errors';
-import { diagnosisOf, formatPct } from '../../lib/insights';
+import { classActionOf, diagnosisOf, followupStatusOf, formatPct, questionPlan, topicReason } from '../../lib/insights';
 import type {
-  ClassInsightDto, InsightNoteDto, InsightOverviewDto, StudentInsightDto, TopicInsightDto,
+  ClassActionDto, ClassInsightDto, FollowupSummaryDto, InsightNoteDto, RecommendationFollowupDto, InsightOverviewDto, StudentInsightDto, TopicInsightDto,
 } from '../../types/api/generated';
 import { useAssistantFocus } from '../../lib/assistantFocus';
 
@@ -133,6 +132,9 @@ export default function StudentInsightsPage() {
                 <StatCard label="Sınıf başarısı" value={Math.round(data.successRate)} caption="yüzde" icon={Trophy} tone="emerald" />
                 <StatCard label="Zorlanılan konu" value={struggling.length} caption="En az bir öğrenci zayıf" icon={AlertTriangle} tone="rose" />
               </div>
+
+              <ClassActions actions={data.actions ?? []} />
+              {data.followups ? <FollowupSummary summary={data.followups} /> : null}
 
               <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
                 <section className="overflow-hidden rounded-2xl border bg-card">
@@ -256,6 +258,8 @@ function StudentInsightDialog({ studentId, aiEnabled, onClose }: { studentId: st
               )}
             </section>
 
+            {data.followups && data.followups.length > 0 ? <FollowupList followups={data.followups} /> : null}
+
             {data.strongTopics.length > 0 ? (
               <section>
                 <h3 className="mb-2 flex items-center gap-2 font-bold"><Trophy className="h-4 w-4 text-emerald-600" />Güçlü konular</h3>
@@ -315,12 +319,16 @@ function StudentInsightDialog({ studentId, aiEnabled, onClose }: { studentId: st
 
 function WeakTopicCard({ topic }: { topic: TopicInsightDto }) {
   const diagnosis = diagnosisOf(topic.diagnosis);
+  const plan = questionPlan(topic.suggestedQuestions);
   return (
     <div className="rounded-xl border p-3">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="font-semibold">{topic.topic}</p>
-          <p className="text-xs text-muted-foreground">{topic.subject}</p>
+        <div className="flex min-w-0 items-start gap-2">
+          {topic.priority ? <span className="mt-0.5 inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-primary px-1.5 text-[11px] font-bold text-white" title="Öncelik sırası">{topic.priority}</span> : null}
+          <div className="min-w-0">
+            <p className="font-semibold">{topic.topic}</p>
+            <p className="text-xs text-muted-foreground">{topic.subject}</p>
+          </div>
         </div>
         <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${diagnosis.tone}`}>{diagnosis.label}</span>
       </div>
@@ -331,7 +339,83 @@ function WeakTopicCard({ topic }: { topic: TopicInsightDto }) {
           ? <span className="text-rose-600">{`${pct(topic.previousSuccessRate)} → ${pct(topic.recentSuccessRate)}`}</span> : null}
       </div>
       <p className="mt-2 text-sm">{diagnosis.advice}</p>
+      {plan ? <p className="mt-1 text-sm font-medium">{plan}</p> : null}
+      <p className="mt-1 text-xs text-muted-foreground">{`Neden: ${topicReason(topic)}`}</p>
     </div>
+  );
+}
+
+/** Önceki önerilerin sonrası: öneri anındaki başarı → sonraki cevaplar. "İşe yaradı" denmez. */
+function FollowupList({ followups }: { followups: RecommendationFollowupDto[] }) {
+  return (
+    <section data-testid="followups">
+      <h3 className="mb-2 flex items-center gap-2 font-bold"><History className="h-4 w-4 text-sky-600" />Önceki öneriler ve sonrası</h3>
+      <ul className="space-y-2">
+        {followups.map((item) => {
+          const status = followupStatusOf(item.status);
+          const result = item.afterSuccessRate !== null && item.afterSuccessRate !== undefined
+            ? `${formatPct(item.baselineSuccessRate)} → ${formatPct(item.afterSuccessRate)} (${item.afterSolved} yeni soru)`
+            : item.status === 'not_practiced' ? 'Öneriden sonra bu konuda soru çözülmedi.'
+              : `Ölçüm için en az 5 yeni soru gerekiyor (şu an ${item.afterSolved}).`;
+          return (
+            <li key={`${item.subject}-${item.topic}-${item.issuedAtUtc}`} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3 text-sm">
+              <div className="min-w-0">
+                <p className="font-semibold">{item.topic}</p>
+                <p className="text-xs text-muted-foreground">{`${item.subject} • öneri: ${new Date(item.issuedAtUtc).toLocaleDateString('tr-TR')} • ${result}`}</p>
+              </div>
+              <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${status.tone}`}>{status.label}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Sınıfta son 8 haftanın öneri sonuçları (sayım). */
+function FollowupSummary({ summary }: { summary: FollowupSummaryDto }) {
+  const measured = summary.improved + summary.steady + summary.declined;
+  if (measured + summary.pending + summary.notPracticed === 0) return null;
+  return (
+    <p className="rounded-xl border bg-card px-4 py-2.5 text-sm" data-testid="followup-summary">
+      <span className="font-semibold">Son 8 haftadaki öneriler: </span>
+      {`${summary.improved} konuda ilerleme, ${summary.steady} konuda belirgin değişim yok, ${summary.declined} konuda düşüş`}
+      <span className="text-muted-foreground">{` • ${summary.pending} ölçülüyor, ${summary.notPracticed} çalışılmadı`}</span>
+    </p>
+  );
+}
+
+/** Öğretmene sınıf düzeyinde öneriler: sınıf tekrarı ve etüt grupları (adlar yalnız personele gelir). */
+function ClassActions({ actions }: { actions: ClassActionDto[] }) {
+  return (
+    <section className="rounded-2xl border bg-card p-4" data-testid="class-actions">
+      <h2 className="flex items-center gap-2 font-bold"><Lightbulb className="h-4 w-4 text-amber-500" />Sınıf için öneriler</h2>
+      {actions.length === 0 ? (
+        <p className="mt-2 text-sm text-muted-foreground">Sınıf düzeyinde öneri için yeterli ortak zorluk yok; öneriler öğrenci bazında aşağıda.</p>
+      ) : (
+        <ul className="mt-3 grid gap-2 lg:grid-cols-2">
+          {actions.map((action) => {
+            const meta = classActionOf(action.kind);
+            const plan = questionPlan(action.suggestedQuestions);
+            return (
+              <li key={`${action.kind}-${action.subject}-${action.topic}`} className="rounded-xl border p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{action.topic}</p>
+                    <p className="text-xs text-muted-foreground">{action.subject}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${meta.tone}`}>{meta.label}</span>
+                </div>
+                <p className="mt-1.5 text-sm">{meta.advice}</p>
+                {action.studentNames.length > 0 ? <p className="mt-1 text-sm font-medium">{action.studentNames.join(', ')}</p> : null}
+                {plan ? <p className="mt-1 text-sm">{plan.replace('Bu hafta', action.kind === 'class_review' ? 'Derste ve ödevde' : 'Etütte')}</p> : null}
+                <p className="mt-1 text-xs text-muted-foreground">{`Neden: konuda soru çözen ${action.studentCount} öğrenciden ${action.strugglingStudentCount} öğrenci zorlanıyor • sınıf başarısı ${formatPct(action.successRate)}`}</p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 

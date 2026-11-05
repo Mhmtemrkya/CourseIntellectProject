@@ -319,7 +319,7 @@ public sealed class AssistantVoice
         };
     }
 
-    public string TopicInsight(string name, bool self, int solved, IReadOnlyList<string> weak, IReadOnlyList<string> strong)
+    public string TopicInsight(string name, bool self, int solved, IReadOnlyList<string> weak, IReadOnlyList<string> strong, int? firstQuestions = null)
     {
         if (solved == 0)
             return self ? T("Henüz konu bilgisi taşıyan soru çözmedin. Online sınav ya da soru bankası çalıştıkça hangi konulara odaklanman gerektiğini söyleyebilirim.", "You haven't solved questions with topic data yet. As you practice, I can tell you which topics to focus on.")
@@ -329,9 +329,14 @@ public sealed class AssistantVoice
             return self ? T($"Belirgin bir zayıf konun yok, böyle devam!{strongText.Replace("olduğu", "olduğun")}", $"No clear weak topics — keep it up!{strongText}")
                 : T($"{name} için belirgin bir zayıf konu yok.{strongText}", $"No clear weak topics for {name}.{strongText}");
         var list = string.Join(", ", weak.Take(3));
+        // İlk konu öncelik sırasıdır: çok soru çözülüp en düşük kalan konu (sınav ağırlığı varsayılmaz).
+        var first = weak[0];
+        var plan = firstQuestions is int questions
+            ? T($" İlk adım: bu hafta {first} konusundan {questions} soru, birkaç güne bölerek.", $" First step: {questions} questions on {first} this week, spread over a few days.")
+            : string.Empty;
         return self
-            ? T($"Öncelikle şu konulara çalışmanı öneririm: {list}. Her biri için ne yapabileceğin aşağıda.", $"I'd suggest focusing on: {list}. Tips for each are below.")
-            : T($"{name} en çok şu konularda zorlanıyor: {list}. Nedenleri ve önerileri aşağıda.{strongText}", $"{name} struggles most with: {list}. Reasons and tips are below.{strongText}");
+            ? T($"Öncelik sırasıyla şu konulara çalışmanı öneririm: {list}.{plan.Replace("bölerek", "bölerek çözebilirsin")} Her biri için ne yapabileceğin aşağıda.", $"In order of priority, I'd suggest: {list}.{plan} Tips for each are below.")
+            : T($"{name} için öncelik sırası: {list}.{plan} Nedenleri ve önerileri aşağıda.{strongText}", $"Priority order for {name}: {list}.{plan} Reasons and tips are below.{strongText}");
     }
 
     // ── Yardım ──────────────────────────────────────────────────────────────

@@ -199,8 +199,42 @@ public sealed class StudentInsightServiceTests : IDisposable
         Assert.Equal("declining", uslu.Diagnosis);
 
         Assert.Equal("skipping", insight.Topics.Single(item => item.Topic == "Cümle Bilgisi").Diagnosis);
-        // Düşüşteki konu önce gelir.
-        Assert.Equal("Üslü Sayılar", insight.WeakTopics[0].Topic);
+        // Öncelik: %20'deki Cümle Bilgisi, %50'den düşen Üslü Sayılar'dan önce; sıra 1'den başlar.
+        Assert.Equal("Cümle Bilgisi", insight.WeakTopics[0].Topic);
+        Assert.Equal([1, 2, 3], insight.WeakTopics.Select(item => item.Priority ?? 0));
+        Assert.All(insight.WeakTopics, item => Assert.InRange(item.SuggestedQuestions ?? 0, 10, 40));
+        Assert.All(insight.Topics.Where(item => !item.IsWeak), item => Assert.Null(item.Priority));
+    }
+
+    [Fact]
+    public async Task Recommendations_AreRecordedOnce_ThenMeasuredAgainstLaterAnswers()
+    {
+        var ali = await StudentAsync("Ali Yılmaz", "9-A");
+        var olas = await QuestionAsync("Matematik", "Olasılık");
+        await PracticeAsync(ali, olas, false, false, false, true, false, false); // %16,7 → zayıf, öncelik 1
+
+        var first = (await Service(db).GetStudentAsync(ali.Id))!;
+        Assert.Empty(first.Followups!); // yeni açılan öneri bu çağrıda ölçülmez
+        var record = Assert.Single(db.StudentRecommendations.AsNoTracking());
+        Assert.Equal(("Matematik", "Olasılık", 1), (record.Subject, record.Topic, record.Priority));
+        Assert.Equal(16.7m, record.BaselineSuccessRate);
+
+        // Aynı pencere içinde tekrar bakmak ikinci kayıt açmaz; az yeni cevapla sonuç "bekliyor".
+        clock = DateTime.UtcNow.AddMinutes(1);
+        await PracticeAsync(ali, olas, true, true);
+        var pending = Assert.Single((await Service(db).GetStudentAsync(ali.Id))!.Followups!);
+        Assert.Equal("pending", pending.Status);
+        Assert.Single(db.StudentRecommendations.AsNoTracking());
+
+        // Öneriden sonra 6 cevabın 5'i doğru → %83,3; öncekine göre ilerleme.
+        await PracticeAsync(ali, olas, true, true, true, false);
+        var improved = Assert.Single((await Service(db).GetStudentAsync(ali.Id))!.Followups!);
+        Assert.Equal("improved", improved.Status);
+        Assert.Equal(6, improved.AfterSolved);
+        Assert.Equal(83.3m, improved.AfterSuccessRate);
+
+        var summary = (await Service(db).GetClassAsync("9-A"))!.Followups!;
+        Assert.Equal(1, summary.Improved);
     }
 
     [Fact]

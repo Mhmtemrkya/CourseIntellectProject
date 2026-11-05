@@ -33,14 +33,39 @@ public sealed partial class AssistantService
             token.StartsWith(namePart, StringComparison.Ordinal) && NameSuffixes.Contains(token[namePart.Length..]));
 
     /// <summary>
-    /// Mesajda adı geçen öğrenciler. Puan = mesajda geçen ad parçası sayısı; en yüksek puanlılar döner.
-    /// Örn. "Ali Yılmaz" iki parçayla, yalnız "Ali" bir parçayla eşleşir; tam eşleşen öne geçer.
+    /// Ad parçası mesajdaki bir kelimeyle 1–2 harf farkla (yazım hatası) eşleşiyor mu? Türkçe ek korunur
+    /// ("Yılmz'ın", "Ahmt'in"). İlk harf tutmalı; 4 harften kısa ad parçalarında tolerans yok ("Ali", "Can").
+    /// </summary>
+    private static bool NamePartAlmostMatches(string namePart, IReadOnlyList<string> looseTokens)
+    {
+        if (namePart.Length < 4) return false;
+        var limit = namePart.Length >= 8 ? 2 : 1;
+        foreach (var token in looseTokens)
+        {
+            if (token[0] != namePart[0]) continue;
+            for (var length = Math.Max(3, namePart.Length - limit); length <= Math.Min(token.Length, namePart.Length + limit); length++)
+            {
+                if (NameSuffixes.Contains(token[length..])
+                    && AssistantSpelling.Distance(token.AsSpan(0, length), namePart, limit) <= limit)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Mesajda adı geçen öğrenciler. Ad parçası birebir (ekiyle) geçiyorsa 2, yazım hatasıyla geçiyorsa 1
+    /// puan; en yüksek puanlılar döner. Örn. "Ali Yılmaz" iki parçayla, yalnız "Ali" bir parçayla eşleşir;
+    /// "Ahmet Yılmz" Ahmet'ler arasından Ahmet Yılmaz'ı öne çıkarır. Birebir eşleşme her zaman öne geçer.
+    /// Asistanın anahtar kelimeleri ("sınav", "devamsızlık") ad sanılmaz: Sinan "sınav sonuçları"yla seçilmez.
     /// </summary>
     private static List<StudentCandidate> MatchByName(IReadOnlyList<StudentCandidate> roster, string folded)
     {
         var tokens = Tokens(folded);
+        var looseTokens = tokens.Where(token => token.Length >= 3 && !token.Any(char.IsDigit) && !AssistantSpelling.IsVocabularyWord(token)).ToList();
         var scored = roster
-            .Select(student => (Student: student, Score: Tokens(RuleBasedAssistantIntentResolver.Fold(student.FullName)).Count(part => NamePartMatches(part, tokens))))
+            .Select(student => (Student: student, Score: Tokens(RuleBasedAssistantIntentResolver.Fold(student.FullName))
+                .Sum(part => NamePartMatches(part, tokens) ? 2 : NamePartAlmostMatches(part, looseTokens) ? 1 : 0)))
             .Where(item => item.Score > 0)
             .ToList();
         if (scored.Count == 0) return [];
@@ -214,17 +239,39 @@ public sealed partial class AssistantService
         var weak = insight.WeakTopics.Take(5).ToList();
         var strong = insight.StrongTopics.Take(5).ToList();
         return Build(conversationId, "topic_insight",
-            voice.TopicInsight(student.FullName, self, insight.Solved, weak.Select(item => item.Topic).ToList(), strong.Select(item => item.Topic).ToList()),
+            voice.TopicInsight(student.FullName, self, insight.Solved, weak.Select(item => item.Topic).ToList(), strong.Select(item => item.Topic).ToList(),
+                weak.FirstOrDefault()?.SuggestedQuestions) + FollowupSentence(voice, self, insight.Followups),
             new
             {
                 studentId = student.Id,
                 student.FullName,
                 solved = insight.Solved,
                 successRate = insight.SuccessRate,
-                weakTopics = weak.Select(item => new { item.Subject, item.Topic, item.SuccessRate, item.Diagnosis, item.Trend }),
+                weakTopics = weak.Select(item => new
+                {
+                    item.Subject, item.Topic, item.SuccessRate, item.Diagnosis, item.Trend,
+                    item.Priority, item.SuggestedQuestions, item.Solved, item.Wrong, item.Blank,
+                }),
                 strongTopics = strong.Select(item => new { item.Subject, item.Topic, item.SuccessRate }),
             },
             AssistantIntent.GetTopicInsight);
+    }
+
+    /// <summary>
+    /// Önceki önerinin sonrası: ilerleme varsa söylenir (öneriye bağlanmadan, "o konuda ilerleme var").
+    /// Ölçülemeyen ya da değişmeyen sonuçlar sohbette tekrarlanmaz; ayrıntı konu analizinde.
+    /// </summary>
+    private static string FollowupSentence(AssistantVoice voice, bool self, IReadOnlyList<Application.DTOs.Insights.RecommendationFollowupDto>? followups)
+    {
+        var best = followups?.Where(item => item.Status == "improved" && item.AfterSuccessRate is not null)
+            .OrderByDescending(item => item.AfterSuccessRate - item.BaselineSuccessRate).FirstOrDefault();
+        if (best is null) return string.Empty;
+        string P(decimal value) => "%" + Math.Round(value).ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        return voice.English
+            ? $" Since the last recommendation, {best.Topic} has improved ({P(best.BaselineSuccessRate)} → {P(best.AfterSuccessRate!.Value)})."
+            : self
+                ? $" Geçen öneriden sonra {best.Topic} konusunda ilerleme var ({P(best.BaselineSuccessRate)} → {P(best.AfterSuccessRate!.Value)}), böyle devam!"
+                : $" Geçen öneriden sonra {best.Topic} konusunda ilerleme var ({P(best.BaselineSuccessRate)} → {P(best.AfterSuccessRate!.Value)}).";
     }
 
     // ── Öneriler ────────────────────────────────────────────────────────────

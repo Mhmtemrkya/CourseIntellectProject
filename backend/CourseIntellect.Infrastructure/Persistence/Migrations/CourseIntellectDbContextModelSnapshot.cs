@@ -10320,6 +10320,65 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.ToTable("student_question_threads", (string)null);
                 });
 
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.StudentRecommendationRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BaselineSolved")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("BaselineSuccessRate")
+                        .HasPrecision(5, 1)
+                        .HasColumnType("numeric(5,1)");
+
+                    b.Property<Guid?>("BranchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("branch_id");
+
+                    b.Property<string>("Diagnosis")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTime>("IssuedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("StudentUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("SuggestedQuestions")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("StudentUserId", "IssuedAtUtc");
+
+                    b.ToTable("student_recommendations", (string)null);
+                });
+
             modelBuilder.Entity("CourseIntellect.Domain.Entities.StudentServiceAssignment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -13148,6 +13207,14 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("CourseIntellect.Domain.Entities.StudentQuestionThread", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.StudentRecommendationRecord", b =>
                 {
                     b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
                         .WithMany()

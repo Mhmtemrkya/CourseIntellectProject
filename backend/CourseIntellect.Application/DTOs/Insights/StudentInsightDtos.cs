@@ -2,8 +2,11 @@ namespace CourseIntellect.Application.DTOs.Insights;
 
 /// <summary>
 /// Konu bazlı başarı. Diagnosis: misconception (yanlışlar ağırlıkta), skipping (boş bırakma),
-/// declining (son çalışmalarda düşüş); zayıf olmayan konuda null. Trend: up, down, flat, unknown.
-/// Oranlar 0-100 arası yüzdedir.
+/// declining (son çalışmalarda düşüş), improving (zayıf ama toparlanıyor), class_wide (sınıfın
+/// genelinde zorlanılan konu), stale (uzun süredir çalışılmamış); zayıf olmayan konuda null.
+/// Trend: up, down, flat, unknown. Oranlar 0-100 arası yüzdedir.
+/// Priority: zayıf konular arasında çalışma sırası (1 = önce); SuggestedQuestions: bu hafta için
+/// önerilen soru sayısı; LastPracticedAtUtc: konuda son cevap. Üçü de zayıf olmayan konuda null.
 /// </summary>
 public sealed record TopicInsightDto(
     string Subject,
@@ -20,7 +23,10 @@ public sealed record TopicInsightDto(
     bool HasEnoughData,
     bool IsWeak,
     bool IsStrong,
-    string? Diagnosis);
+    string? Diagnosis,
+    int? Priority = null,
+    int? SuggestedQuestions = null,
+    DateTime? LastPracticedAtUtc = null);
 
 public sealed record SubjectInsightDto(string Subject, int Solved, decimal SuccessRate, int WeakTopicCount);
 
@@ -39,6 +45,24 @@ public sealed record InsightNoteDto(
 /// <summary>Öğretmen değerlendirmesi: approve (aynen doğru), edit (düzeltilmiş metin), reject.</summary>
 public sealed record ReviewInsightNoteRequest(string Action, string? EditedText);
 
+/// <summary>
+/// Daha önce gösterilen bir önerinin sonucu. Status: pending (henüz yeterli yeni cevap yok),
+/// improved / steady / declined (sonraki başarı öncekine göre), not_practiced (28 günde konu çalışılmadı).
+/// Sonuç öneriye bağlanmaz; yalnız "o konuda sonrasında ne oldu" gösterilir.
+/// </summary>
+public sealed record RecommendationFollowupDto(
+    string Subject,
+    string Topic,
+    string Diagnosis,
+    DateTime IssuedAtUtc,
+    decimal BaselineSuccessRate,
+    int AfterSolved,
+    decimal? AfterSuccessRate,
+    string Status);
+
+/// <summary>Sınıftaki öneri sonuçlarının sayımı (son 8 hafta).</summary>
+public sealed record FollowupSummaryDto(int Improved, int Steady, int Declined, int Pending, int NotPracticed);
+
 public sealed record StudentInsightDto(
     Guid StudentUserId,
     string FullName,
@@ -52,7 +76,8 @@ public sealed record StudentInsightDto(
     IReadOnlyList<TopicInsightDto> WeakTopics,
     IReadOnlyList<TopicInsightDto> StrongTopics,
     InsightNoteDto Note,
-    int MinSample);
+    int MinSample,
+    IReadOnlyList<RecommendationFollowupDto>? Followups = null);
 
 public sealed record ClassStudentInsightDto(
     Guid StudentUserId,
@@ -71,6 +96,21 @@ public sealed record ClassTopicInsightDto(
     int StudentCount,
     int StrugglingStudentCount);
 
+/// <summary>
+/// Öğretmene sınıf düzeyinde öneri. Kind: class_review (sınıfın önemli bir kısmı zorlanıyor →
+/// derste tekrar) ya da study_group (birkaç öğrenci zorlanıyor → etüt grubu; adlar yalnız personele).
+/// StudentCount: konuda soru çözen öğrenci sayısı; SuggestedQuestions: tekrar/etüt için soru sayısı.
+/// </summary>
+public sealed record ClassActionDto(
+    string Kind,
+    string Subject,
+    string Topic,
+    int StrugglingStudentCount,
+    int StudentCount,
+    decimal SuccessRate,
+    IReadOnlyList<string> StudentNames,
+    int SuggestedQuestions);
+
 public sealed record ClassInsightDto(
     string ClassName,
     int StudentCount,
@@ -79,7 +119,9 @@ public sealed record ClassInsightDto(
     decimal SuccessRate,
     IReadOnlyList<ClassStudentInsightDto> Students,
     IReadOnlyList<ClassTopicInsightDto> Topics,
-    int MinSample);
+    int MinSample,
+    IReadOnlyList<ClassActionDto>? Actions = null,
+    FollowupSummaryDto? Followups = null);
 
 public sealed record InsightClassSummaryDto(string ClassName, int StudentCount);
 

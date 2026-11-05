@@ -44,7 +44,10 @@ public sealed record ParsedAssistantQuery(
     string? StudentNumber,
     int? GradeLevel,
     string? SectionName,
-    decimal? ScoreThreshold);
+    decimal? ScoreThreshold,
+    // Yazım düzeltmesiyle anlaşıldıysa düzeltilmiş katlanmış metin ve değişen orijinal kelimeler.
+    string? CorrectedText = null,
+    IReadOnlyList<string>? CorrectedTokens = null);
 
 public sealed record AssistantRequestContext(
     Guid UserId,

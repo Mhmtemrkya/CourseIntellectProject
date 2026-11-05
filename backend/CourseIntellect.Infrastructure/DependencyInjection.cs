@@ -89,6 +89,7 @@ public static class DependencyInjection
         services.AddScoped<IParentNotifier, ParentNotifier>();
         services.AddScoped<ILibraryReminderService, LibraryReminderService>();
         services.AddScoped<IReminderJobService, ReminderJobService>();
+        services.AddScoped<IWeeklyDigestJob, WeeklyDigestJob>();
         services.AddScoped<INotificationFanoutJobService, NotificationFanoutJobService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IStudyPlanService, StudyPlanService>();

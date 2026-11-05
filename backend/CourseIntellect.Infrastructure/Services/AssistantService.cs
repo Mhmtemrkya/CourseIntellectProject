@@ -290,6 +290,12 @@ public sealed partial class AssistantService(
         // Hitap edilen ad ("Maydi, …") soru metninden çıkarılır; kayıtlı mesaj olduğu gibi kalır.
         var query = AssistantSmallTalk.WithoutName(rawMessage);
         var parsed = await resolver.ResolveAsync(query, cancellationToken);
+        // Yazım düzeltmesi bir öğrenci adını anahtar kelimeye çevirmiş olabilir ("Sinan" → "sınav"):
+        // değişen kelime kurumdaki bir öğrencinin adıysa düzeltme geri alınır, ad araması yapılır.
+        // Adın dışındaki kelimeler yine düzeltilir ("Nehir Acar devamszlığı" → Nehir'in devamsızlığı).
+        if (parsed.CorrectedTokens is { Count: > 0 } changedTokens
+            && await StudentNameWordsAsync(changedTokens, cancellationToken) is { Count: > 0 } nameWords)
+            parsed = new RuleBasedAssistantIntentResolver().Resolve(query, allowCorrection: true, keepWords: nameWords);
         AssistantResponseDto response;
         // Hedef önceliği: butondaki öğrenci > ekranda bakılan öğrenci > sohbette en son konuşulan.
         // Ekran ipucu yalnız aday seçer; rol kapsamı ResolveTargetAsync'te yine uygulanır.
@@ -301,7 +307,7 @@ public sealed partial class AssistantService(
         {
             var voice = Voice(context, request.ClientMessageId);
             var portal = voice.Portal;
-            var folded = RuleBasedAssistantIntentResolver.Fold(query);
+            var folded = parsed.CorrectedText ?? RuleBasedAssistantIntentResolver.Fold(query);
             var intent = parsed.Intent;
             var isServiceDriver = await db.ServiceDrivers.AsNoTracking().AnyAsync(x => x.UserId == context.UserId && x.IsActive, cancellationToken);
             var institutionType = await ResolveInstitutionTypeAsync(context, cancellationToken);
@@ -395,6 +401,12 @@ public sealed partial class AssistantService(
                 response = await ScheduleAsync(context, conversation.Id, new StudentCandidate(Guid.Empty, Guid.Empty, context.Principal.FindFirst("name")?.Value ?? "Öğretmen", string.Empty, string.Empty, string.Empty), voice, cancellationToken);
             else if (intent == AssistantIntent.GetAnnouncements && portal is not ("student" or "parent"))
                 response = await AnnouncementsAsync(context, conversation.Id, null, voice, cancellationToken);
+            // "10-A sınıfının zayıf konuları": personel için sınıf önerisi (öğrenci/veli bu yola girmez).
+            else if (IsClassTopicQuestion(intent, parsed, portal))
+            {
+                response = await ClassTopicInsightAsync(context, conversation.Id, parsed, portal, voice, cancellationToken);
+                if (response.Type == "permission_denied") { authorized = false; failureCode = "CLASS_SCOPE_DENIED"; }
+            }
             // ── Öğrenci hedefli sorular (ya da yalnız bir ad yazıldı) ──
             else
             {
@@ -781,6 +793,19 @@ public sealed partial class AssistantService(
     /// ayrıştırmaz. Aksi hâlde kullanıcı onaya basana kadar sohbette başka bir
     /// öğrenciye geçtiyse işlem yanlış kişiye uygulanırdı.
     /// </summary>
+    /// <summary>
+    /// Yazım düzeltmesinin değiştirdiği kelimelerden hangileri kurumdaki bir öğrencinin ad/soyad kelimesi?
+    /// Yalnız yönlendirme kararı içindir; sonuç kullanıcıya gösterilmez (veri yine rol kapsamıyla gelir).
+    /// </summary>
+    private async Task<IReadOnlySet<string>> StudentNameWordsAsync(IReadOnlyList<string> tokens, CancellationToken cancellationToken)
+    {
+        var names = await db.Students.AsNoTracking().Select(x => x.FullName).ToListAsync(cancellationToken);
+        var words = names
+            .SelectMany(name => RuleBasedAssistantIntentResolver.Fold(name).Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .ToHashSet(StringComparer.Ordinal);
+        return tokens.Where(words.Contains).ToHashSet(StringComparer.Ordinal);
+    }
+
     private static AssistantResponseDto BuildConfirmation(Guid conversationId, AssistantIntent intent, StudentCandidate student)
     {
         var command = WriteActionCommand(intent);

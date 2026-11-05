@@ -20,7 +20,7 @@ import MaydiLauncher from './MaydiLauncher';
 import { maydiResponseMood } from './maydiReactions';
 import { clearStaleAssistantFocus, setAssistantFocus, useAssistantFocusValue } from '../../lib/assistantFocus';
 import { errorMessage, isRecord } from '../../lib/errors';
-import { diagnosisOf, formatPct } from '../../lib/insights';
+import { diagnosisOf, formatPct, questionPlan, topicReason } from '../../lib/insights';
 import { foldTr } from '../../lib/foldTr';
 import './AssistantPanel.css';
 import type {
@@ -622,16 +622,22 @@ function ResponseBody({ response, english, self, onAction, onPickStudent }: {
         <div className="space-y-1.5">
           {list(field(data, 'weakTopics')).map((topic) => {
             const diagnosis = diagnosisOf(str(field(topic, 'diagnosis')));
+            const priority = num(field(topic, 'priority'));
+            const plan = questionPlan(num(field(topic, 'suggestedQuestions')));
             return (
               <div key={`${str(field(topic, 'subject'))}-${str(field(topic, 'topic'))}`} className="rounded-xl border p-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">{str(field(topic, 'topic'))}</p>
+                    <p className="text-sm font-semibold">{priority > 0 ? `${priority}. ` : ''}{str(field(topic, 'topic'))}</p>
                     <p className="text-[11px] text-muted-foreground">{`${str(field(topic, 'subject'))} • ${formatPct(num(field(topic, 'successRate')))}`}</p>
                   </div>
                   <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${diagnosis.tone}`}>{diagnosis.label}</span>
                 </div>
                 <p className="mt-1 text-xs">{self ? diagnosis.selfAdvice : diagnosis.advice}</p>
+                {plan ? <p className="mt-0.5 text-xs font-medium">{plan}</p> : null}
+                {num(field(topic, 'solved')) > 0 ? (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">{`Neden: ${topicReason({ solved: num(field(topic, 'solved')), wrong: num(field(topic, 'wrong')), blank: num(field(topic, 'blank')), successRate: num(field(topic, 'successRate')) })}`}</p>
+                ) : null}
               </div>
             );
           })}

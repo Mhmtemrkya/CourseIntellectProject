@@ -15,6 +15,9 @@ const _selfAdvice = {
   'misconception': 'Burada bir kavram yanılgısı olabilir; temel kuralları tekrar et, sonra çözümlü örneklerle yanlışlarının nedenine bak.',
   'skipping': 'Soruları boş bırakma eğilimindesin; kolaydan zora giden kısa testlerle soruya başlama alışkanlığı kazanabilirsin.',
   'declining': 'Son çalışmalarında biraz düşüş var; kısa bir konu tekrarı yapıp son yanlışlarını yeniden çözmeni öneririm.',
+  'improving': 'Bu konuda toparlanıyorsun; aynı tempoda devam et, haftada bir kısa tekrarla pekiştir.',
+  'class_wide': 'Bu konu birçok öğrenci için zor; temel örneklerden başlayıp adım adım zorlaşan sorularla ilerleyebilirsin.',
+  'stale': 'Bu konuya uzun süredir bakmadın; kısa bir hatırlatma tekrarı ve birkaç soruyla tazeleyebilirsin.',
 };
 const _days = ['', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
@@ -575,12 +578,13 @@ class _AssistantPageState extends State<AssistantPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
+                  ?topicPriorityBadge(context, topic['priority']),
                   Expanded(child: Text(_str(topic['topic']), style: const TextStyle(fontWeight: FontWeight.w700))),
                   Text(diagnosis.$1.tr, style: TextStyle(fontSize: 11, color: diagnosis.$3, fontWeight: FontWeight.w600)),
                 ]),
                 Text('${topic['subject']} • ${topicPct(topic['successRate'])}', style: hint),
                 const SizedBox(height: 4),
-                Text((_student ? _selfAdvice[_str(topic['diagnosis'])] ?? _selfAdvice['misconception']! : diagnosis.$2).tr, style: const TextStyle(fontSize: 13)),
+                ...topicAdviceLines(topic, _student ? _selfAdvice[_str(topic['diagnosis'])] ?? _selfAdvice['misconception']! : diagnosis.$2, hint),
               ],
             ),
           )));

@@ -103,6 +103,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<PreferenceProgram> PreferencePrograms => Set<PreferenceProgram>();
     public DbSet<StudentPreferenceChoice> StudentPreferenceChoices => Set<StudentPreferenceChoice>();
     public DbSet<StudentInsightNote> StudentInsightNotes => Set<StudentInsightNote>();
+    public DbSet<StudentRecommendationRecord> StudentRecommendations => Set<StudentRecommendationRecord>();
     public DbSet<ExamBlankAnswer> ExamBlankAnswers => Set<ExamBlankAnswer>();
     public DbSet<OpticalTemplate> OpticalTemplates => Set<OpticalTemplate>();
     public DbSet<OpticalExam> OpticalExams => Set<OpticalExam>();
@@ -526,6 +527,18 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ProgramCode).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(300).IsRequired();
             entity.HasIndex(x => new { x.StudentUserId, x.Exam, x.ProgramCode }).IsUnique();
+        });
+
+        modelBuilder.Entity<StudentRecommendationRecord>(entity =>
+        {
+            entity.ToTable("student_recommendations");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.Subject).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Topic).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Diagnosis).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.BaselineSuccessRate).HasPrecision(5, 1);
+            entity.HasIndex(x => new { x.StudentUserId, x.IssuedAtUtc });
         });
 
         modelBuilder.Entity<StudentInsightNote>(entity =>

@@ -111,7 +111,8 @@ public sealed partial class AssistantService
 
         var insight = await insights.GetStudentAsync(student.UserId, ct);
         SuccessTopicRow Topic(Application.DTOs.Insights.TopicInsightDto topic) => new(topic.Subject, topic.Topic, (double)topic.SuccessRate,
-            topic.ClassSuccessRate is decimal rate ? (double)rate : null, topic.Diagnosis, topic.Trend, topic.Solved);
+            topic.ClassSuccessRate is decimal rate ? (double)rate : null, topic.Diagnosis, topic.Trend, topic.Solved,
+            topic.Priority, topic.SuggestedQuestions);
 
         var pending = (await HomeworkAsync(Guid.Empty, student, false, Voice(context, Guid.NewGuid()), ct)).Data is { } homeworkData
             && System.Text.Json.JsonSerializer.SerializeToElement(homeworkData, JsonOptions).TryGetProperty("items", out var items)

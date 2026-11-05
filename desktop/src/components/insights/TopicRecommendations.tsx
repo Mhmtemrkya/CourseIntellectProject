@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Brain, Trophy } from 'lucide-react';
 import { fetchStudentInsight } from '../../lib/api/modules';
-import { diagnosisOf, formatPct } from '../../lib/insights';
+import { diagnosisOf, formatPct, questionPlan, topicReason } from '../../lib/insights';
 import type { StudentInsightDto } from '../../types/api/generated';
 
 /**
@@ -62,16 +62,22 @@ export function TopicRecommendations({ studentUserId, data: given, title, who, d
             <ul className="mt-3 space-y-2">
               {data.weakTopics.slice(0, maxTopics).map((topic) => {
                 const diagnosis = diagnosisOf(topic.diagnosis);
+                const plan = questionPlan(topic.suggestedQuestions);
                 return (
-                  <li key={`${topic.subject}-${topic.topic}`} className="rounded-xl border p-3">
+                  <li key={`${topic.subject}-${topic.topic}`} className="rounded-xl border p-3" data-testid="weak-topic">
                     <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-semibold">{topic.topic}</p>
-                        <p className="text-xs text-muted-foreground">{`${topic.subject} • ${formatPct(topic.successRate)}`}</p>
+                      <div className="flex min-w-0 items-start gap-2">
+                        {topic.priority ? <span className="mt-0.5 inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-primary px-1.5 text-[11px] font-bold text-white" title="Öncelik sırası">{topic.priority}</span> : null}
+                        <div className="min-w-0">
+                          <p className="font-semibold">{topic.topic}</p>
+                          <p className="text-xs text-muted-foreground">{topic.subject}</p>
+                        </div>
                       </div>
                       <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${diagnosis.tone}`}>{diagnosis.label}</span>
                     </div>
                     <p className="mt-1.5 text-sm">{diagnosis.advice}</p>
+                    {plan ? <p className="mt-1 text-sm font-medium">{plan}</p> : null}
+                    <p className="mt-1 text-xs text-muted-foreground">{`Neden: ${topicReason(topic)}`}</p>
                   </li>
                 );
               })}

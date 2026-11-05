@@ -8,7 +8,8 @@ using QuestPDF.Infrastructure;
 namespace CourseIntellect.Infrastructure.Services;
 
 public sealed record SuccessSubjectRow(string Subject, double? Student, double? ClassAverage, int Count, string Unit);
-public sealed record SuccessTopicRow(string Subject, string Topic, double SuccessRate, double? ClassRate, string? Diagnosis, string Trend, int Solved);
+public sealed record SuccessTopicRow(string Subject, string Topic, double SuccessRate, double? ClassRate, string? Diagnosis, string Trend, int Solved,
+    int? Priority = null, int? SuggestedQuestions = null);
 public sealed record SuccessExamRow(string Date, string Title, string Subject, double? Score, double? Net);
 public sealed record SuccessOpticalRow(string Date, string Title, string Subject, int Correct, int Wrong, int Blank, double Net);
 public sealed record SuccessTrendPoint(string Label, double Value);
@@ -214,14 +215,30 @@ public static class StudentSuccessReportPdf
                 : $"Sınav ortalaması sınıf ortalamasının {F(classAverage - average)} puan altında.");
         if (report.AttendanceRate is double attendance) comments.Add(attendance >= 95 ? "Devam durumu çok iyi." : attendance >= 85 ? "Devam durumu yeterli; devamsızlıklar takip edilmeli." : "Devamsızlık yüksek; veliyle görüşülmesi önerilir.");
         if (report.PendingHomework > 0) comments.Add($"Teslim edilmemiş {report.PendingHomework} ödev var.");
-        if (comments.Count > 0)
+        if (report.ScoreTrend.Count >= 2)
         {
-            column.Item().PaddingTop(18).Background(Card).Border(1).BorderColor(CardLine).Padding(16).Column(note =>
-            {
-                note.Item().Text("Değerlendirme").FontSize(11).Bold().FontColor(Orange);
-                foreach (var comment in comments) note.Item().PaddingTop(5).Text($"• {comment}");
-            });
+            var delta = report.ScoreTrend[^1].Value - report.ScoreTrend[0].Value;
+            if (Math.Abs(delta) >= 5)
+                comments.Add(delta > 0
+                    ? $"İlk sınavdan son sınava {F(delta)} puan yükseliş var."
+                    : $"İlk sınavdan son sınava {F(-delta)} puan düşüş var; yakından takip önerilir.");
         }
+        var steps = NextSteps(report);
+        column.Item().PaddingTop(18).Background(Card).Border(1).BorderColor(CardLine).Padding(16).Column(note =>
+        {
+            note.Item().Text("Özet ve sonraki adımlar").FontSize(11).Bold().FontColor(Orange);
+            if (comments.Count == 0 && steps.Count == 0)
+            {
+                note.Item().PaddingTop(5).Text("Değerlendirme için henüz yeterli veri yok; sınav ve soru çözümü arttıkça öneriler burada görünür.").FontColor(Muted);
+                return;
+            }
+            foreach (var comment in comments) note.Item().PaddingTop(5).Text($"• {comment}");
+            if (steps.Count > 0)
+            {
+                note.Item().PaddingTop(10).Text("Öncelikli çalışma adımları").FontSize(10).Bold();
+                foreach (var step in steps) note.Item().PaddingTop(4).Text(step);
+            }
+        });
     }
 
     // ── 3. Ders bazlı analiz ────────────────────────────────────────────────
@@ -527,6 +544,9 @@ public static class StudentSuccessReportPdf
     {
         "skipping" => "Boş bırakma",
         "declining" => "Düşüşte",
+        "improving" => "Toparlanıyor",
+        "class_wide" => "Ortak zorluk",
+        "stale" => "Uzun süredir çalışılmadı",
         _ => "Kavram yanılgısı",
     };
 
@@ -534,8 +554,21 @@ public static class StudentSuccessReportPdf
     {
         "skipping" => "Sorular sık boş bırakılıyor; kolaydan zora kısa testlerle soruya başlama alışkanlığı kazandırılmalı.",
         "declining" => "Son çalışmalarda düşüş var; kısa bir konu tekrarı ve son yanlışların yeniden çözülmesi önerilir.",
+        "improving" => "Toparlanma var; aynı tempoda devam edilip haftada bir kısa tekrarla pekiştirilmeli.",
+        "class_wide" => "Birçok öğrencinin zorlandığı konu; temel örneklerden başlayıp adım adım zorlaşan alıştırmalar önerilir.",
+        "stale" => "Uzun süredir çalışılmamış; kısa bir hatırlatma tekrarı ve birkaç soruyla tazelenmeli.",
         _ => "Yanlışlar ağırlıkta; temel kurallar tekrar edilip çözümlü örneklerle hata nedenleri incelenmeli.",
     };
+
+    /// <summary>Öncelik sırasıyla en fazla 3 zayıf konu ve haftalık soru hedefi (yalnız veri varsa).</summary>
+    public static IReadOnlyList<string> NextSteps(StudentSuccessReport report) => report.WeakTopics
+        .Where(topic => topic.Priority is not null)
+        .OrderBy(topic => topic.Priority)
+        .Take(3)
+        .Select(topic => topic.SuggestedQuestions is int questions
+            ? $"{topic.Priority}. {topic.Topic} ({topic.Subject}) — bu hafta {questions} soru, 4 güne bölerek. {Advice(topic.Diagnosis)}"
+            : $"{topic.Priority}. {topic.Topic} ({topic.Subject}) — {Advice(topic.Diagnosis)}")
+        .ToList();
 
     private static byte[] Qr(string content)
     {

@@ -181,6 +181,7 @@ public sealed partial class AssistantService
     /// </summary>
     public static AssistantIntent DeterministicIntent(ParsedAssistantQuery parsed, string folded)
     {
+        folded = parsed.CorrectedText ?? folded;
         var intent = parsed.Intent;
         if (intent is AssistantIntent.Greeting or AssistantIntent.Thanks or AssistantIntent.SmallTalk or AssistantIntent.Help or AssistantIntent.HowTo
             || AssistantIntentCatalog.IsWriteAction(intent) || !HasAnalyticCue(folded))

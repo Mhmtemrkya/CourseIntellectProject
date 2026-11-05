@@ -47,6 +47,7 @@ public sealed partial class AssistantService
                     }
                 }
                 await AtRiskBriefingAsync(context, voice, items, ask, cancellationToken);
+                await TeacherDigestAsync(context, voice, items, cancellationToken);
                 break;
             case "admin":
             case "administrative":
@@ -58,6 +59,7 @@ public sealed partial class AssistantService
                 if (voice.Portal == "admin")
                 {
                     await AtRiskBriefingAsync(context, voice, items, ask, cancellationToken);
+                    await AdminDigestAsync(context, voice, items, cancellationToken);
                     await FinanceBriefingAsync(context, voice, items, ask, cancellationToken);
                 }
                 break;
@@ -69,7 +71,7 @@ public sealed partial class AssistantService
         // Söylenecek bir şey yoksa sessiz kalmak yerine bunu açıkça söyler; olumlu satırlar zaten varsa tekrarlamaz.
         if (items.Count == 0)
             items.Add(new(voice.BriefingAllClear(), ToneGood, null));
-        return new AssistantBriefingDto(voice.BriefingGreeting(), items);
+        return new AssistantBriefingDto(voice.BriefingGreeting(), CapBriefing(items));
     }
 
     private async Task StudentBriefingAsync(AssistantRequestContext context, AssistantVoice voice, List<AssistantBriefingItemDto> items, Func<string, string, string> ask, CancellationToken ct)
@@ -91,7 +93,12 @@ public sealed partial class AssistantService
             var insight = await insights.GetStudentAsync(me.UserId, ct);
             var weakest = insight?.WeakTopics.FirstOrDefault();
             if (weakest is not null)
-                items.Add(new(voice.BriefingWeakTopic(weakest.Topic, weakest.Subject), ToneInfo, ask("Hangi konulara çalışmalıyım?", "Which topics should I study?")));
+            {
+                var plan = weakest.SuggestedQuestions is int questions
+                    ? ask($" Bu hafta {questions} soru çözmeyi hedefleyebilirsin.", $" Aim for {questions} questions this week.")
+                    : string.Empty;
+                items.Add(new(voice.BriefingWeakTopic(weakest.Topic, weakest.Subject) + plan, ToneInfo, ask("Hangi konulara çalışmalıyım?", "Which topics should I study?")));
+            }
         }
     }
 
@@ -100,23 +107,13 @@ public sealed partial class AssistantService
         var children = (await ParentChildrenAsync(context, ct)).Take(3).ToList();
         var canAttendance = await CanAsync(context, AssistantIntent.GetAttendance, ct);
         var canHomework = await CanAsync(context, AssistantIntent.GetHomework, ct);
-        var weekAgo = DateTime.UtcNow.Date.AddDays(-7);
         foreach (var child in children)
         {
             var first = child.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? child.FullName;
-            var quiet = true;
-            if (canAttendance)
-            {
-                var statuses = await db.AttendanceEntries.AsNoTracking()
-                    .Where(x => x.StudentName == child.FullName && x.LessonDate >= weekAgo)
-                    .Select(x => x.Status).ToListAsync(ct);
-                var absent = statuses.Count(AttendanceStatusMatcher.IsAbsent);
-                if (absent > 0)
-                {
-                    quiet = false;
-                    items.Add(new(voice.BriefingChildAbsence(first, absent), ToneWarn, ask($"{child.FullName} devamsızlığı", $"{child.FullName} attendance")));
-                }
-            }
+            // Devamsızlık (kimlikle, geçen haftayla karşılaştırmalı) ve önce çalışılacak konu.
+            var before = items.Count;
+            await ParentChildDigestAsync(context, voice, child, first, items, canAttendance, ct);
+            var quiet = items.Skip(before).All(item => item.Tone != ToneWarn);
             if (canHomework)
             {
                 var (count, nearest, deadline) = await PendingHomeworkAsync(child, ct);

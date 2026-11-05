@@ -506,6 +506,10 @@ if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
     // Ödeme hatırlatması: Pazartesi & Perşembe 08:00 TR (spam olmasın diye seyrek)
     recurringJobs.AddOrUpdate<IReminderJobService>(
         "finance-reminders", x => x.RunFinanceRemindersAsync(CancellationToken.None), "0 5 * * 1,4", utc);
+    // Haftalık özet (öğretmene sınıf önerisi bildirimi): Pazartesi 08:00 TR. İş her hafta çalışır ama
+    // "Assistant:WeeklyDigest:Enabled" = true değilse hiçbir şey göndermez (varsayılan kapalı).
+    recurringJobs.AddOrUpdate<IWeeklyDigestJob>(
+        "assistant-weekly-digest", x => x.RunAsync(CancellationToken.None), "0 5 * * 1", utc);
     // Ölü push token temizliği: Pazar 03:00 UTC
     recurringJobs.AddOrUpdate<IReminderJobService>(
         "stale-push-token-cleanup", x => x.CleanupStalePushTokensAsync(CancellationToken.None), "0 3 * * 0", utc);
