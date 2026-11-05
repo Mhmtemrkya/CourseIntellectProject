@@ -280,7 +280,8 @@ public sealed class SchoolDashboardTests : IDisposable
 
         var types = AlertTypesOf(await controller.Get(null, null, CancellationToken.None));
 
-        Assert.Equal(["Finance", "Approval", "Consent", "Attendance", "Library"], types);
+        // Seed'deki öğretmenlerin sınıf bağı yok: kurulum uyarısı en sonda (en düşük öncelik) gelir.
+        Assert.Equal(["Finance", "Approval", "Consent", "Attendance", "Library", "Setup"], types);
     }
 
     [Fact]

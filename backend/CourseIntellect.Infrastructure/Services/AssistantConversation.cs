@@ -167,8 +167,9 @@ public sealed partial class AssistantService
             .ToListAsync(ct);
     }
 
+    // Öğretmenin sınıfları: ders programı + sınıf öğretmenliği + atanmış sınıflar (TeacherClassLinks).
     private Task<List<string>> TeacherClassesAsync(AssistantRequestContext context, CancellationToken ct) =>
-        db.TeacherTimetableSlots.AsNoTracking().Where(x => x.TeacherUserId == context.UserId).Select(x => x.ClassName).Distinct().ToListAsync(ct);
+        TeacherClassLinks.StudentClassNamesAsync(db, context.UserId, ct);
 
     /// <summary>
     /// Velinin çocukları. Öncelik ParentUserId bağında; bağ kurulmamış eski kayıtlarda veli adı

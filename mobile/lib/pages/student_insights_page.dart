@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../i18n/app_locale.dart';
+import '../services/auth_session_store.dart';
 import '../services/module_api_client.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/topic_recommendations_card.dart';
@@ -56,6 +57,7 @@ class StudentInsightsPage extends StatefulWidget {
 class _StudentInsightsPageState extends State<StudentInsightsPage> {
   final _client = ModuleApiClient.instance;
   Map<String, dynamic>? _overview;
+  bool _isTeacher = false;
   Map<String, dynamic>? _class;
   String _className = '';
   String? _error;
@@ -63,6 +65,10 @@ class _StudentInsightsPageState extends State<StudentInsightsPage> {
   @override
   void initState() {
     super.initState();
+    unawaited(AuthSessionStore.instance.load().then((session) {
+      final role = (session?.primaryRole ?? '').toLowerCase();
+      if (mounted) setState(() => _isTeacher = role == 'teacher');
+    }));
     _loadOverview();
   }
 
@@ -187,7 +193,14 @@ class _StudentInsightsPageState extends State<StudentInsightsPage> {
             ),
             const SizedBox(height: 12),
             if (classes.isEmpty)
-              AdminPanel(child: Text('Öğrenciler sınıflara atanınca analiz burada görünür.'.tr))
+              AdminPanel(
+                child: Text(
+                  (_isTeacher
+                          ? 'Konu analizinde yalnız ders verdiğiniz ya da size atanmış sınıflar görünür. Yöneticiniz ders programınızı, sınıf öğretmenliğinizi ya da personel kaydınızdaki atanmış sınıfları girdiğinde sınıflarınız burada listelenir.'
+                          : 'Öğrenciler sınıflara atanınca analiz burada görünür.')
+                      .tr,
+                ),
+              )
             else ...[
               DropdownButtonFormField<String>(
                 initialValue: _className,

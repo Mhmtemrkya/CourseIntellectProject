@@ -20,6 +20,8 @@ import type {
   ClassActionDto, ClassInsightDto, FollowupSummaryDto, InsightNoteDto, RecommendationFollowupDto, InsightOverviewDto, StudentInsightDto, TopicInsightDto,
 } from '../../types/api/generated';
 import { useAssistantFocus } from '../../lib/assistantFocus';
+import { useApp } from '../../context/AppContext';
+import { getUserRoles } from '../../lib/permissions';
 
 const pct = formatPct;
 
@@ -54,6 +56,10 @@ function TrendIcon({ trend }: { trend: string }) {
  */
 export default function StudentInsightsPage() {
   const { toast } = useToast();
+  const { user } = useApp();
+  const roles = getUserRoles(user);
+  // Öğretmen yalnız kendisine bağlı sınıfları görür (ders programı, sınıf öğretmenliği, atanmış sınıflar).
+  const isTeacherView = roles.includes('teacher') && !roles.includes('admin') && !roles.includes('superadmin');
   const [overview, setOverview] = useState<InsightOverviewDto | null>(null);
   const [className, setClassName] = useState('');
   const [data, setData] = useState<ClassInsightDto | null>(null);
@@ -110,7 +116,15 @@ export default function StudentInsightsPage() {
       </section>
 
       {overview.classes.length === 0 ? (
-        <PageNotice icon={Users} title="Sınıf bulunamadı" message="Öğrenciler sınıflara atanınca analiz burada görünür." />
+        isTeacherView ? (
+          <PageNotice
+            icon={Users}
+            title="Size atanmış sınıf görünmüyor"
+            message="Konu analizinde yalnız ders verdiğiniz ya da size atanmış sınıflar görünür. Yöneticiniz ders programınızı, sınıf öğretmenliğinizi ya da personel kaydınızdaki atanmış sınıfları girdiğinde sınıflarınız burada listelenir."
+          />
+        ) : (
+          <PageNotice icon={Users} title="Sınıf bulunamadı" message="Öğrenciler sınıflara atanınca analiz burada görünür." />
+        )
       ) : (
         <>
           <div className="flex flex-wrap items-end gap-3">

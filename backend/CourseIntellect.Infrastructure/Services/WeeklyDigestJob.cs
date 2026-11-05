@@ -62,18 +62,26 @@ public sealed class WeeklyDigestJob(
 
     private async Task<int> RunTenantAsync(string week, CancellationToken ct)
     {
-        var slots = await dbContext.TeacherTimetableSlots.AsNoTracking()
-            .Where(x => x.TeacherUserId != null)
-            .Select(x => new { TeacherUserId = x.TeacherUserId!.Value, x.ClassName })
-            .ToListAsync(ct);
+        // Öğretmen–sınıf bağı ortak kuraldan: ders programı + sınıf öğretmenliği + atanmış sınıflar.
+        var teacherIds = await dbContext.Users.AsNoTracking()
+            .Where(x => x.PrimaryRole == Domain.Enums.UserRole.Teacher && x.Status == Domain.Enums.UserStatus.Active && x.DeletedAtUtc == null)
+            .Select(x => x.Id).ToListAsync(ct);
+        // Ders programındaki öğretmenler de (kullanıcı kaydı farklı rolde olsa bile) dahil.
+        teacherIds.AddRange(await dbContext.TeacherTimetableSlots.AsNoTracking()
+            .Where(x => x.TeacherUserId != null).Select(x => x.TeacherUserId!.Value).Distinct().ToListAsync(ct));
+        var links = await TeacherClassLinks.KeysByTeacherAsync(dbContext, teacherIds, ct);
+        var classNames = (await dbContext.Students.AsNoTracking().Select(x => x.ClassName).Distinct().ToListAsync(ct))
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .GroupBy(TeacherClassLinks.Key)
+            .ToDictionary(group => group.Key, group => group.First().Trim());
         var classActions = new Dictionary<string, (int Reviews, int Groups)>(StringComparer.Ordinal);
         var sent = 0;
-        foreach (var teacher in slots.GroupBy(x => x.TeacherUserId))
+        foreach (var (teacherId, keys) in links.Where(pair => pair.Value.Count > 0))
         {
             var reviews = 0;
             var groups = 0;
             var classesWithActions = 0;
-            foreach (var className in teacher.Select(x => x.ClassName.Trim()).Where(x => x.Length > 0).Distinct(StringComparer.Ordinal))
+            foreach (var className in keys.Select(key => classNames.GetValueOrDefault(key)).OfType<string>())
             {
                 if (!classActions.TryGetValue(className, out var counts))
                 {
@@ -87,8 +95,8 @@ public sealed class WeeklyDigestJob(
             }
             if (reviews + groups == 0) continue;
 
-            var dedupe = $"weekly-digest:{week}:{teacher.Key:N}";
-            if (await dbContext.Notifications.AsNoTracking().AnyAsync(x => x.DedupeKey == dedupe && x.TargetUserId == teacher.Key, ct)) continue;
+            var dedupe = $"weekly-digest:{week}:{teacherId:N}";
+            if (await dbContext.Notifications.AsNoTracking().AnyAsync(x => x.DedupeKey == dedupe && x.TargetUserId == teacherId, ct)) continue;
 
             const string title = "Haftalık özetiniz hazır";
             var parts = new List<string>();
@@ -103,13 +111,13 @@ public sealed class WeeklyDigestJob(
                 Audience = "Öğretmen",
                 TargetRole = "Teacher",
                 Category = Category,
-                TargetUserId = teacher.Key,
+                TargetUserId = teacherId,
                 DedupeKey = dedupe,
             });
             await dbContext.SaveChangesAsync(ct);
             try
             {
-                await push.SendToUserAsync(teacher.Key, title, message, new Dictionary<string, string> { ["category"] = Category }, ct);
+                await push.SendToUserAsync(teacherId, title, message, new Dictionary<string, string> { ["category"] = Category }, ct);
             }
             catch (Exception ex)
             {

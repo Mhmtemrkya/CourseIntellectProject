@@ -773,6 +773,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     '/admin/staff-hr' => () => const AdminWorkflowHubPage(),
     '/admin/documents' => () => const AdministrativeDocumentsPage(),
     '/admin/password-reset-requests' => () => const PasswordResetRequestsPage(),
+    '/admin/staff-registration' => () => const AdminStaffListPage(),
     '/library' => () => const LibraryManagePage(),
     _ => null,
   };

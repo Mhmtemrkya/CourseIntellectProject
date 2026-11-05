@@ -71,6 +71,38 @@ public sealed class TeacherClassScopeTests : IDisposable
         };
     }
 
+    private void Staff(Guid userId, string homeroom, string assigned)
+    {
+        db.Staff.Add(new StaffProfile { UserId = userId, FullName = "Öğretmen", Role = UserRole.Teacher, HomeroomClass = homeroom, AssignedClassesSerialized = assigned });
+        db.SaveChanges();
+    }
+
+    [Fact]
+    public async Task HomeroomAndAssignedClasses_AlsoLinkATeacher_ButNoHomeroomOptionDoesNot()
+    {
+        var homeroomTeacher = User("Sınıf Öğretmeni", UserRole.Teacher, "Matematik");
+        Staff(homeroomTeacher, "9 A", "");
+        var assignedTeacher = User("Branş Öğretmeni", UserRole.Teacher, "Fizik");
+        Staff(assignedTeacher, CourseIntellect.Infrastructure.Services.TeacherClassLinks.NoHomeroom, "10/B, 11-C");
+        var unlinked = User("Bağsız Öğretmen", UserRole.Teacher, "Kimya");
+        Staff(unlinked, CourseIntellect.Infrastructure.Services.TeacherClassLinks.NoHomeroom, "");
+        Student("Ece Kurt", "9-A");
+        Student("Deniz Ak", "10-B");
+        Student("Ozan Er", "11-C");
+
+        string[] Classes(IActionResult result) => Assert.IsType<InsightOverviewDto>(Assert.IsType<OkObjectResult>(result).Value).Classes.Select(item => item.ClassName).OrderBy(x => x).ToArray();
+        Assert.Equal(["9-A"], Classes(await Controller(homeroomTeacher, "Teacher").GetOverview(CancellationToken.None)));
+        Assert.Equal(["10-B", "11-C"], Classes(await Controller(assignedTeacher, "Teacher").GetOverview(CancellationToken.None)));
+        Assert.Empty(Classes(await Controller(unlinked, "Teacher").GetOverview(CancellationToken.None)));
+
+        // Yönetici uyarısı: rehber olmayan ve hiç bağı olmayan öğretmenler sayılır.
+        User("Rehber", UserRole.Teacher, "Rehberlik");
+        Assert.Equal(1, await CourseIntellect.Infrastructure.Services.TeacherClassLinks.UnlinkedTeacherCountAsync(db, CancellationToken.None));
+
+        // Maydi/roster da aynı kuralla öğrenci kaydındaki yazımı döner.
+        Assert.Equal(["10-B", "11-C"], (await CourseIntellect.Infrastructure.Services.TeacherClassLinks.StudentClassNamesAsync(db, assignedTeacher, CancellationToken.None)).OrderBy(x => x));
+    }
+
     [Fact]
     public async Task Teacher_SeesOnlyClassesInTheirTimetable_RehberAndAdminSeeAll()
     {

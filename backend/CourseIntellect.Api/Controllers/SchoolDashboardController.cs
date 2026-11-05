@@ -45,7 +45,7 @@ public sealed class SchoolDashboardController(
     /// olmayan tür sona düşer.
     /// </summary>
     private static readonly string[] AlertPriority =
-        ["Finance", "Approval", "Consent", "Attendance", "Task", "Leave", "Document", "Account", "Library"];
+        ["Finance", "Approval", "Consent", "Attendance", "Task", "Leave", "Document", "Account", "Library", "Setup"];
 
     [HttpGet]
     public async Task<IActionResult> Get(
@@ -337,6 +337,14 @@ public sealed class SchoolDashboardController(
         {
             alerts.Add(BuildAlert("Account", "Warning", "Şifre sıfırlama talebi",
                 $"{passwordResetRequests} kullanıcı şifre sıfırlama bekliyor.", "/admin/password-reset-requests"));
+        }
+        // Sınıf bağı olmayan öğretmen konu analizinde ve Maydi'de hiçbir öğrenciyi göremez.
+        var unlinkedTeachers = await CourseIntellect.Infrastructure.Services.TeacherClassLinks.UnlinkedTeacherCountAsync(dbContext, cancellationToken);
+        if (unlinkedTeachers > 0)
+        {
+            alerts.Add(BuildAlert("Setup", "Warning", "Sınıf ataması olmayan öğretmen",
+                $"{unlinkedTeachers} öğretmenin ders programı, sınıf öğretmenliği ya da atanmış sınıfı yok; bu öğretmenler öğrencilerinin konu analizini göremez. Personel kaydından sınıf atayın ya da ders programını girin.",
+                "/admin/staff-registration"));
         }
 
         // ── Son 6 ayın yeni kayıt eğilimi ────────────────────────────────────────

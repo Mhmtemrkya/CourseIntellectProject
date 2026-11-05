@@ -268,6 +268,8 @@ export const TR_EN_MODULES: Record<string, string> = {
   'Sınıf için öneriler': 'Recommendations for the class',
   'Sınıf düzeyinde öneri için yeterli ortak zorluk yok; öneriler öğrenci bazında aşağıda.': 'Not enough shared difficulty for a class-level recommendation; per-student recommendations are below.',
   'Öncelik sırası': 'Priority order',
+  'Size atanmış sınıf görünmüyor': 'No classes are assigned to you',
+  'Konu analizinde yalnız ders verdiğiniz ya da size atanmış sınıflar görünür. Yöneticiniz ders programınızı, sınıf öğretmenliğinizi ya da personel kaydınızdaki atanmış sınıfları girdiğinde sınıflarınız burada listelenir.': 'Topic analysis only shows the classes you teach or are assigned to. Your classes will appear here once your administrator enters your timetable, homeroom class or assigned classes in your staff record.',
   'Ad soyad ve branş bilgisini kurum yöneticiniz değiştirebilir.': 'Your institution administrator can change your name and branch.',
   '{a} konuda ilerleme, {b} konuda belirgin değişim yok, {c} konuda düşüş': '{a} improving, {b} no clear change, {c} declining',
   '{d} ölçülüyor, {e} çalışılmadı': '{d} measuring, {e} not practised',
