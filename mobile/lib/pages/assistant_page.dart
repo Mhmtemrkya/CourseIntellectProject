@@ -6,6 +6,7 @@ import '../i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/module_api_client.dart';
 import '../widgets/assistant_report_card.dart';
+import '../widgets/maydi_mascot.dart';
 import '../widgets/topic_recommendations_card.dart';
 import '../services/assistant_focus.dart';
 
@@ -27,6 +28,8 @@ class _ChatMessage {
   final Map<String, dynamic>? response;
   final String? id;
   int? feedback;
+  /// Bu cevapta maskotun ifadesi (teşekküre "sevgi", yönlendirmeye "yol gösterme"…).
+  MaydiMood mood = MaydiMood.speaking;
   _ChatMessage(this.mine, this.text, [this.response, this.id, this.feedback]);
 }
 
@@ -61,6 +64,16 @@ class _AssistantPageState extends State<AssistantPage> {
   String _firstName = '';
   Map<String, dynamic>? _briefing;
   bool _busy = false;
+  /// Başlıktaki maskotun tepkisi: her yeni cevap ya da 👍 yeni bir kimlikle bir kez oynar.
+  String? _reactionId;
+  MaydiMood _reactionMood = MaydiMood.speaking;
+  int _reactionSeq = 0;
+
+  void _react(MaydiMood mood) {
+    _reactionSeq++;
+    _reactionId = 'r$_reactionSeq';
+    _reactionMood = mood;
+  }
 
   bool get _english => AppLocale.isEnglish;
   bool get _student => widget.portal == 'student';
@@ -130,7 +143,10 @@ class _AssistantPageState extends State<AssistantPage> {
     try {
       final response = asMap(await request());
       _conversationId = _str(response['conversationId']);
-      _messages.add(_ChatMessage(false, _str(response['text']), response, _str(response['messageId'])));
+      final reply = _ChatMessage(false, _str(response['text']), response, _str(response['messageId']))
+        ..mood = maydiResponseMood(response, shown);
+      _messages.add(reply);
+      _react(reply.mood);
     } on ModuleApiException catch (error) {
       _messages.add(_ChatMessage(false, error.message));
     } catch (_) {
@@ -171,7 +187,10 @@ class _AssistantPageState extends State<AssistantPage> {
   void _rate(_ChatMessage message, bool helpful) {
     final id = message.id;
     if (id == null || id.isEmpty) return;
-    setState(() => message.feedback = helpful ? 1 : -1);
+    setState(() {
+      message.feedback = helpful ? 1 : -1;
+      if (helpful) _react(MaydiMood.love);
+    });
     ModuleApiClient.instance.post('/api/assistant/messages/$id/feedback', {'helpful': helpful}).catchError((_) => null);
   }
 
@@ -251,12 +270,23 @@ class _AssistantPageState extends State<AssistantPage> {
         ? [...focusChips, ..._suggestions]
         : (last.response?['suggestions'] as List?)?.map(_str).where((label) => label.isNotEmpty).toList() ?? const <String>[];
 
+    final sizes = MaydiSizes.of(context);
+    // Tablette sohbet ortalanır ve okunur genişlikte kalır; telefonda tam genişlik.
+    final contentWidth = MediaQuery.sizeOf(context).shortestSide >= 600 ? 760.0 : double.infinity;
+
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: sizes.header + 14 > kToolbarHeight ? sizes.header + 14 : kToolbarHeight,
         title: Row(
           children: [
-            const CircleAvatar(radius: 16, backgroundColor: _brand, child: Icon(Icons.smart_toy_rounded, size: 18, color: Colors.white)),
-            const SizedBox(width: 10),
+            MaydiMascot(
+              size: sizes.header,
+              thinking: _busy,
+              responseId: _reactionId,
+              responseMood: _reactionMood,
+              spinOnTap: true,
+            ),
+            const SizedBox(width: 8),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -275,7 +305,10 @@ class _AssistantPageState extends State<AssistantPage> {
         ],
       ),
       body: SafeArea(
-        child: Column(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: contentWidth),
+            child: Column(
           children: [
             Expanded(
               child: ListView(
@@ -360,16 +393,29 @@ class _AssistantPageState extends State<AssistantPage> {
               ),
             ),
           ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _intro(BuildContext context) => Container(
+  Widget _intro(BuildContext context) {
+    final sizes = MaydiSizes.of(context);
+    return Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: _brand.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16)),
-        child: Column(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Karşılama: büyük maskot (telefon ~88, tablet ~116-132 mantıksal piksel).
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: MaydiMascot(size: sizes.hero, responseId: _reactionId, responseMood: _reactionMood, spinOnTap: true),
+            ),
+            Expanded(
+              child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -406,13 +452,20 @@ class _AssistantPageState extends State<AssistantPage> {
               style: TextStyle(color: Theme.of(context).hintColor, fontSize: 12),
             ),
           ],
+              ),
+            ),
+          ],
         ),
       );
+  }
+
+  /// Mesaj balonu en geniş hâli: telefonda ekranın ~%78'i, tablette en fazla 520.
+  double _bubbleWidth(BuildContext context) => min(520, MediaQuery.sizeOf(context).width * 0.78);
 
   Widget _mine(String text) => Align(
         alignment: Alignment.centerRight,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 300),
+          constraints: BoxConstraints(maxWidth: _bubbleWidth(context)),
           margin: const EdgeInsets.only(bottom: 10, left: 40),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: const BoxDecoration(
@@ -428,7 +481,7 @@ class _AssistantPageState extends State<AssistantPage> {
         padding: const EdgeInsets.only(bottom: 10),
         child: Row(
           children: [
-            const CircleAvatar(radius: 13, backgroundColor: Color(0x224F46E5), child: Icon(Icons.smart_toy_rounded, size: 15, color: _brand)),
+            MaydiMascot(size: MaydiSizes.of(context).avatar, mood: MaydiMood.thinking, animated: false),
             const SizedBox(width: 8),
             Text(_english ? 'Checking the records…' : 'Kayıtlara bakıyorum…', style: TextStyle(color: Theme.of(context).hintColor, fontStyle: FontStyle.italic)),
           ],
@@ -444,7 +497,12 @@ class _AssistantPageState extends State<AssistantPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CircleAvatar(radius: 13, backgroundColor: Color(0x224F46E5), child: Icon(Icons.smart_toy_rounded, size: 15, color: _brand)),
+          // Mesaj avatarı sabit resim (her balonda animasyon pil yemesin); 👍 ya da teşekküre "sevgi".
+          MaydiMascot(
+            size: MaydiSizes.of(context).avatar,
+            mood: message.feedback == 1 || message.mood == MaydiMood.love ? MaydiMood.love : MaydiMood.idle,
+            animated: false,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(

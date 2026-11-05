@@ -1,7 +1,7 @@
 name: student
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.1.1+9
+version: 1.1.1+10
 
 environment:
   sdk: ^3.9.0
@@ -51,6 +51,7 @@ flutter:
     - assets/logo/school_asist_icon.png
     - assets/logo/school_asist_adaptive_fg.png
     - assets/logo/school_asist_emblem.png
+    - assets/maydi/
     - assets/fonts/ArialUnicode.ttf
     - assets/fonts/Roboto-Regular.ttf
     - assets/fonts/Roboto-Bold.ttf

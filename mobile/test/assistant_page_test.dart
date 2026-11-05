@@ -9,6 +9,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:student/pages/assistant_page.dart';
 import 'package:student/services/assistant_focus.dart';
+import 'package:student/widgets/maydi_mascot.dart';
 
 /// Asistan sayfası, yerel sunucudan alınmış gerçek yanıtlarla (test/fixtures/assistant) çalıştırılır:
 /// brifing, öneri, sınıf listesi → öğrenciye dokunma → özet, konu analizi, geri bildirim ve geçmiş.
@@ -64,7 +65,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const MaterialApp(home: AssistantPage(portal: 'teacher')));
+    await tester.pumpWidget(MaterialApp(builder: (context, child) => MediaQuery(data: MediaQuery.of(context).copyWith(disableAnimations: true), child: child!), home: AssistantPage(portal: 'teacher')));
     await tester.pumpAndSettle();
   }
 
@@ -135,7 +136,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(const MaterialApp(home: AssistantPage(portal: 'student')));
+      await tester.pumpWidget(MaterialApp(builder: (context, child) => MediaQuery(data: MediaQuery.of(context).copyWith(disableAnimations: true), child: child!), home: AssistantPage(portal: 'student')));
       await tester.pumpAndSettle();
       expect(find.textContaining('Son bakılan öğrenci'), findsNothing);
       await tester.enterText(find.byType(TextField), 'devamsızlığım');
@@ -176,4 +177,44 @@ void main() {
       expect(find.byType(ListTile), findsWidgets);
     }, api);
   });
+
+  // Maskot ve sohbet düzeni: küçük telefon, telefon, yatay telefon, tablet ve büyük tablette taşma yok;
+  // maskot ekran türüne göre ölçeklenir; animasyon açıkken de sorun çıkmaz.
+  for (final (name, size, dpr, header, hero) in [
+    ('küçük telefon', const Size(320, 568), 2.0, 38.0, 72.0),
+    ('telefon', const Size(390, 844), 3.0, 42.0, 88.0),
+    ('yatay telefon', const Size(844, 390), 3.0, 42.0, 88.0),
+    ('tablet', const Size(820, 1180), 2.0, 48.0, 116.0),
+    ('büyük tablet', const Size(1366, 1024), 2.0, 52.0, 132.0),
+  ]) {
+    testWidgets('Maydi maskotu $name ekranında taşmadan ölçeklenir', (tester) async {
+      await http.runWithClient(() async {
+        tester.view.physicalSize = size * dpr;
+        tester.view.devicePixelRatio = dpr;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(const MaterialApp(home: AssistantPage(portal: 'teacher')));
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 150));
+        }
+        expect(tester.takeException(), isNull);
+
+        final mascots = tester.widgetList<MaydiMascot>(find.byType(MaydiMascot)).map((m) => m.size).toList();
+        expect(mascots, contains(header), reason: 'başlık');
+        expect(mascots, contains(hero), reason: 'karşılama');
+        // Tablette sohbet okunur genişlikte (en fazla 760) ortalanır.
+        final list = tester.getSize(find.byType(ListView).first);
+        expect(list.width, lessThanOrEqualTo(size.shortestSide >= 600 ? 760 : size.width));
+
+        // Mesaj gönderince "yazıyor" avatarı ve cevap avatarı da taşmadan gelir.
+        await tester.enterText(find.byType(TextField), '10-A sınıfındaki öğrenciler');
+        await tester.testTextInput.receiveAction(TextInputAction.send);
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 150));
+        }
+        expect(tester.takeException(), isNull);
+        expect(find.textContaining('Bu sınıfta 12 öğrenci var'), findsOneWidget);
+      }, api);
+    });
+  }
 }
