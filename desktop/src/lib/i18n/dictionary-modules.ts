@@ -268,6 +268,7 @@ export const TR_EN_MODULES: Record<string, string> = {
   'Sınıf için öneriler': 'Recommendations for the class',
   'Sınıf düzeyinde öneri için yeterli ortak zorluk yok; öneriler öğrenci bazında aşağıda.': 'Not enough shared difficulty for a class-level recommendation; per-student recommendations are below.',
   'Öncelik sırası': 'Priority order',
+  'Ad soyad ve branş bilgisini kurum yöneticiniz değiştirebilir.': 'Your institution administrator can change your name and branch.',
   '{a} konuda ilerleme, {b} konuda belirgin değişim yok, {c} konuda düşüş': '{a} improving, {b} no clear change, {c} declining',
   '{d} ölçülüyor, {e} çalışılmadı': '{d} measuring, {e} not practised',
   '{n} yeni soru': '{n} new questions',

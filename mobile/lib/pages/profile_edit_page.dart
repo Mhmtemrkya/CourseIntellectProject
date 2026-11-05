@@ -21,6 +21,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   bool _saving = false;
   String? _error;
 
+  /// Ad ve branş yetkiyi etkiler (ör. rehber = branşı "Rehberlik" olan öğretmen); yalnız yönetici
+  /// kendi profilinde değiştirebilir. Diğer roller için alanlar salt okunur (sunucu da reddeder).
+  bool get _canEditIdentity {
+    final role = widget.profile.primaryRole.toLowerCase();
+    return widget.profile.isPlatformAdmin || role == 'admin' || role == 'developer';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -84,6 +91,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _fullName,
+                    readOnly: !_canEditIdentity,
                     decoration: const InputDecoration(
                       labelText: 'Ad Soyad',
                       border: OutlineInputBorder(),
@@ -104,11 +112,19 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _department,
+                    readOnly: !_canEditIdentity,
                     decoration: const InputDecoration(
                       labelText: 'Departman / Birim',
                       border: OutlineInputBorder(),
                     ),
                   ),
+                  if (!_canEditIdentity) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Ad soyad ve branş bilgisini kurum yöneticiniz değiştirebilir.'.tr,
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor),
+                    ),
+                  ],
                 ],
               ),
             ),
