@@ -7,5 +7,9 @@
          v2 bu dosyayı uygulama paketinin Info.plist'ine birleştirir. -->
     <key>NSCameraUsageDescription</key>
     <string>Öğrenci ve personel kaydında profil fotoğrafı çekmek ve çevrimiçi sınavda gözetim için kamera kullanılır.</string>
+    <!-- Uygulama yalnız işletim sisteminin HTTPS/TLS'ini ve anahtar zincirini kullanır (iOS Info.plist ile
+         aynı beyan). Böylece her yüklemede App Store Connect'te şifreleme sorusu sorulmaz. -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>
